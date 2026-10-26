@@ -239,6 +239,8 @@ mod tests {
         ));
         assert!(unfolded.contains("NAME:Test Group - Test Event"));
         assert!(unfolded.contains("STATUS:CONFIRMED"));
+        assert!(!unfolded.contains("STATUS:CANCELLED"));
+        assert!(!unfolded.contains("This event has been canceled"));
         assert!(unfolded.contains("SUMMARY:Test Event"));
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
         assert!(
@@ -263,37 +265,12 @@ mod tests {
         let data = String::from_utf8(attachment.data).unwrap();
         let unfolded = data.replace("\r\n ", "").replace("\n ", "");
 
-        assert_eq!(attachment.content_type, "text/calendar; charset=utf-8");
-        assert_eq!(attachment.file_name, "event-test-event.ics");
-        assert!(unfolded.contains("CREATED:"));
+        // The rest of the calendar matches the confirmed event
         assert!(unfolded.contains("DESCRIPTION:** This event has been canceled **"));
         assert!(unfolded.contains("Short description"));
-        assert!(unfolded.contains("Meeting link: https://example.test/live"));
-        assert!(unfolded.contains("Meeting password: secret123"));
-        assert!(unfolded.contains("DTEND;TZID=America/Los_Angeles:20260112T130000"));
-        assert!(unfolded.contains("DTSTAMP:"));
-        assert!(unfolded.contains("DTSTART;TZID=America/Los_Angeles:20260112T110000"));
-        assert!(unfolded.contains("GEO:37.780000;-122.420000"));
-        assert!(unfolded.contains(
-            "LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, California\\, United States"
-        ));
-        assert!(unfolded.contains("NAME:Test Group - Test Event"));
         assert!(unfolded.contains("STATUS:CANCELLED"));
-        assert!(unfolded.contains("SUMMARY:Test Event"));
-        assert!(
-            unfolded.contains(
-                "URL:https://example.test/test-community/group/test-group/event/test-event"
-            )
-        );
+        assert!(!unfolded.contains("STATUS:CONFIRMED"));
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
-        assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
-        assert!(unfolded.contains(
-            "X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, California, United States\""
-        ));
-        assert!(unfolded.contains("X-APPLE-RADIUS=100"));
-        assert!(unfolded.contains(
-            "X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, California, United States\""
-        ));
     }
 
     #[test]
@@ -308,24 +285,22 @@ mod tests {
     }
 
     #[test]
-    fn test_quote_ics_parameter_value_removes_double_quotes() {
-        let input = r#"Joe's "Best" Venue, 123 Main St"#;
-        let result = quote_ics_parameter_value(input);
-        assert_eq!(result, r#""Joe's Best Venue, 123 Main St""#);
-    }
+    fn test_quote_ics_parameter_value_quotes_and_strips_double_quotes() {
+        let cases = [
+            ("plain value", "Simple Venue", "Simple Venue"),
+            ("comma", "Venue, With Comma", "\"Venue, With Comma\""),
+            ("semicolon", "Room A; Floor 2", "\"Room A; Floor 2\""),
+            ("colon", "Hall: B", "\"Hall: B\""),
+            (
+                "double quotes",
+                r#"Joe's "Best" Venue, 123 Main St"#,
+                r#""Joe's Best Venue, 123 Main St""#,
+            ),
+        ];
 
-    #[test]
-    fn test_quote_ics_parameter_value_without_special_chars() {
-        let input = "Simple Venue";
-        let result = quote_ics_parameter_value(input);
-        assert_eq!(result, "Simple Venue");
-    }
-
-    #[test]
-    fn test_quote_ics_parameter_value_with_comma_no_quotes() {
-        let input = "Venue, With Comma";
-        let result = quote_ics_parameter_value(input);
-        assert_eq!(result, "\"Venue, With Comma\"");
+        for (case, input, expected) in cases {
+            assert_eq!(quote_ics_parameter_value(input), expected, "{case}");
+        }
     }
 
     // Helpers

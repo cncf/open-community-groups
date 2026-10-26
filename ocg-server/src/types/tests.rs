@@ -22,9 +22,14 @@ use crate::types::{
         events::EventInput,
         surveys::{EventSurveyFull, EventSurveySummary},
     },
-    dashboard::user::surveys::{UserEventSurvey, UserEventSurveyItem},
+    dashboard::user::{
+        events::{UserEvent, UserEventRole},
+        invitations::EventInvitation,
+        surveys::{UserEventSurvey, UserEventSurveyItem},
+    },
     event::{
-        EventAdmissionOfferSource, EventCohostGroup, EventFull, EventKind, EventMinimal,
+        EventAdmissionOfferSource, EventAdmissionOfferStatus, EventCohostGroup,
+        EventEnrollmentState, EventEnrollmentStatus, EventFull, EventKind, EventMinimal,
         EventSummary,
     },
     event_survey::{EventSurveyAudience, EventSurveyState},
@@ -33,13 +38,15 @@ use crate::types::{
         InboxConversation, InboxConversationStatus, InboxConversationSummary, InboxEvent,
         InboxMessage, InboxMessageKind,
     },
-    payments::{GroupPaymentRecipient, PaymentProvider},
+    notifications::CustomNotificationContent,
+    payments::{EventPurchaseStatus, EventPurchaseSummary, GroupPaymentRecipient, PaymentProvider},
     questionnaire::{
         QuestionnaireOption, QuestionnaireOptionCount, QuestionnaireQuestion,
         QuestionnaireQuestionBreakdown, QuestionnaireQuestionKind,
     },
     site::{SiteSettings, Theme},
-    user::{User, UserSearchResult},
+    user::{User, UserSearchResult, UserSummary},
+    utm::EventUtmAllowlist,
 };
 
 /// Sample community summary used across tests.
@@ -54,6 +61,35 @@ pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
         ad_banner_link_url: None,
         ad_banner_url: None,
         og_image_url: None,
+    }
+}
+
+/// Sample custom notification content.
+pub(crate) fn sample_custom_notification_content(
+    subject: &str,
+    body: &str,
+) -> CustomNotificationContent {
+    CustomNotificationContent {
+        body: body.to_string(),
+        subject: subject.to_string(),
+    }
+}
+
+/// Sample event enrollment state with the given status.
+pub(crate) fn sample_enrollment_state(status: EventEnrollmentStatus) -> EventEnrollmentState {
+    EventEnrollmentState {
+        is_checked_in: false,
+        status,
+
+        admission_offer_id: None,
+        event_ticket_type_id: None,
+        external_payment: None,
+        manually_invited: false,
+        purchase_amount_minor: None,
+        purchase_charge_model: None,
+        refund_rejection_reason: None,
+        refund_request_status: None,
+        resume_checkout_url: None,
     }
 }
 
@@ -325,6 +361,34 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
     }
 }
 
+/// Sample pending organizer invitation to an event used across tests.
+pub(crate) fn sample_event_invitation(event_id: Uuid) -> EventInvitation {
+    EventInvitation {
+        admission_offer_id: Uuid::new_v4(),
+        admission_offer_source: EventAdmissionOfferSource::OrganizerInvitation,
+        admission_offer_status: EventAdmissionOfferStatus::Pending,
+        community_display_name: "Test Community".to_string(),
+        community_name: "test-community".to_string(),
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        event_id,
+        event_name: "Test Event".to_string(),
+        event_ticket_type_id: Uuid::new_v4(),
+        expires_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
+        group_name: "Test Group".to_string(),
+        is_simple_rsvp: false,
+        ticket_title: "General admission".to_string(),
+        timezone: UTC,
+
+        amount_minor: None,
+        currency_code: None,
+        external_payment: None,
+        registration_answers: None,
+        registration_questions: vec![],
+        resume_checkout_url: None,
+        starts_at: Some(Utc.with_ymd_and_hms(2024, 2, 1, 12, 0, 0).unwrap()),
+    }
+}
+
 /// Sample minimal event drawn on the explore map and calendar.
 pub(crate) fn sample_event_minimal(event_id: Uuid) -> EventMinimal {
     let starts_at = Utc.with_ymd_and_hms(2030, 1, 10, 18, 0, 0).unwrap();
@@ -343,8 +407,25 @@ pub(crate) fn sample_event_minimal(event_id: Uuid) -> EventMinimal {
     }
 }
 
+/// Sample purchase of a USD 25.00 general admission ticket in the given
+/// status.
+pub(crate) fn sample_event_purchase_summary(
+    event_purchase_id: Uuid,
+    status: EventPurchaseStatus,
+) -> EventPurchaseSummary {
+    EventPurchaseSummary {
+        amount_minor: 2_500,
+        event_purchase_id,
+        status,
+        ticket_title: "General admission".to_string(),
+
+        currency_code: Some("USD".to_string()),
+        ..EventPurchaseSummary::default()
+    }
+}
+
 /// Sample event summary used in listings.
-pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSummary {
+pub(crate) fn sample_event_summary(event_id: Uuid) -> EventSummary {
     let starts_at = Utc::now() + Duration::hours(1);
     EventSummary {
         attendee_approval_required: false,
@@ -455,6 +536,15 @@ pub(crate) fn sample_event_survey_summary(
         closes_at: None,
         effective_opens_at: None,
         open_notification_processed_at: None,
+    }
+}
+
+/// Sample event UTM allowlist with one campaign, medium and source.
+pub(crate) fn sample_event_utm_allowlist() -> EventUtmAllowlist {
+    EventUtmAllowlist {
+        campaigns: vec!["spring-launch".to_string()],
+        mediums: vec!["email".to_string()],
+        sources: vec!["newsletter".to_string()],
     }
 }
 
@@ -671,12 +761,38 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> User {
     }
 }
 
+/// Sample user dashboard event row with cancelable attendee attendance.
+pub(crate) fn sample_user_event(event_id: Uuid) -> UserEvent {
+    UserEvent {
+        event: sample_event_summary(event_id),
+        has_paid_purchase: false,
+        manually_invited: false,
+        registration_questions: vec![],
+        roles: vec![UserEventRole::Attendee],
+
+        admission_offer_id: None,
+        admission_offer_source: None,
+        admission_offer_status: None,
+        amount_minor: None,
+        currency_code: None,
+        enrollment_status: Some(EventEnrollmentStatus::Attendee),
+        event_ticket_type_id: None,
+        external_payment: None,
+        offer_expires_at: None,
+        registration_answers: None,
+        refund_rejection_reason: None,
+        refund_request_status: None,
+        resume_checkout_url: None,
+        ticket_title: None,
+    }
+}
+
 /// Sample open anonymous survey the user can answer, with one required
 /// free-text question.
 pub(crate) fn sample_user_event_survey(event_survey_id: Uuid, event_id: Uuid) -> UserEventSurvey {
     UserEventSurvey {
         anonymous: true,
-        event: sample_event_summary(event_id, Uuid::new_v4()),
+        event: sample_event_summary(event_id),
         event_survey_id,
         questions: vec![QuestionnaireQuestion {
             required: true,
@@ -720,5 +836,19 @@ pub(crate) fn sample_user_search_result(user_id: Uuid) -> UserSearchResult {
 
         name: Some("Test User".to_string()),
         photo_url: Some("https://example.test/avatar.png".to_string()),
+    }
+}
+
+/// Sample user summary with only the identifier and username set.
+pub(crate) fn sample_user_summary(user_id: Uuid, username: &str) -> UserSummary {
+    UserSummary {
+        user_id,
+        username: username.to_string(),
+
+        company: None,
+        name: None,
+        photo_url: None,
+        provider: None,
+        title: None,
     }
 }

@@ -40,28 +40,17 @@ fn test_list_page_renders_empty_state() {
 
     let html = page.render().unwrap();
 
+    // Check the empty state
     assert!(html.contains("No surveys yet"));
     assert!(!html.contains("data-user-event-survey=\""));
-}
 
-#[test]
-fn test_list_page_renders_refresh_after_saved_answers() {
-    let page = sample_list_page(vec![], 0);
-
-    let html = page.render().unwrap();
-
+    // Check the list refreshes after saved answers
     assert!(html.contains(r#"hx-get="/dashboard/user?tab=surveys&#38;offset=10""#));
     assert!(html.contains(r#"hx-trigger="refresh-user-surveys from:body""#));
     assert!(html.contains(r##"hx-target="#dashboard-layout""##));
     assert!(html.contains(r##"hx-select="#dashboard-layout""##));
-}
 
-#[test]
-fn test_list_page_renders_survey_modal_shell_closed() {
-    let page = sample_list_page(vec![], 0);
-
-    let html = page.render().unwrap();
-
+    // Check the survey modal shell is rendered closed
     assert!(html.contains(r#"id="user-event-survey-modal""#));
     assert!(html.contains(r#"id="user-event-survey-modal-content""#));
     assert!(!html.contains("data-open-on-load"));

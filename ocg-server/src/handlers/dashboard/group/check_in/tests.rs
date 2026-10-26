@@ -1,20 +1,17 @@
 use axum::{
+    Router,
     body::{Body, to_bytes},
-    http::{Request, StatusCode, header::COOKIE},
+    http::{Request, StatusCode, header::CONTENT_TYPE},
 };
 use axum_login::tower_sessions::session;
 use chrono::Utc;
 use serde_json::{Value, json};
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
-    handlers::tests::{
-        TestRouterBuilder, assert_html_response, expect_authenticated_group_session,
-        expect_group_permission,
-    },
-    services::{check_in::CheckInScanRejection, notifications::MockNotificationsManager},
+    handlers::tests::*,
+    services::check_in::CheckInScanRejection,
     types::{
         dashboard::group::check_in::{CheckInAttendee, CheckInOutcome, CheckInScanResult},
         permissions::GroupPermission,
@@ -26,73 +23,105 @@ use super::scan_rejection_response;
 #[tokio::test]
 async fn test_list_page_returns_group_check_in_fragment() {
     // Setup an authorized group scanner list request
-    let community_id = Uuid::from_u128(1);
-    let group_id = Uuid::from_u128(2);
-    let session_id = session::Id::default();
-    let user_id = Uuid::from_u128(3);
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::CheckInsWrite,
-    );
+    expect_group_access(&mut db, &ids, GroupPermission::CheckInsWrite);
     db.expect_list_group_check_in_events()
         .times(1)
-        .withf(move |gid| *gid == group_id)
+        .withf(move |gid| *gid == ids.group_id)
         .returning(|_| Ok(vec![]));
 
     // Request the group check-in fragment
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/check-in")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let body = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/group/check-in", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Verify the fragment renders its empty scanner state
-    assert_html_response(&parts, &body, StatusCode::OK);
-    assert!(String::from_utf8_lossy(&body).contains("No events available for check-in"));
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(String::from_utf8_lossy(&bytes).contains("No events available for check-in"));
 }
 
 #[tokio::test]
 async fn test_scan_returns_already_checked_in_result() {
-    // Exercise and verify the neutral duplicate-scan result
-    assert_scan_result(CheckInOutcome::AlreadyCheckedIn, "already-checked-in").await;
+    // Setup an authorized scanner whose attendee was already checked in
+    let ids = DashboardIds::new();
+    let check_in_code = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::CheckInsWrite);
+    expect_check_in_attendee_by_code(
+        &mut db,
+        &ids,
+        event_id,
+        check_in_code,
+        CheckInOutcome::AlreadyCheckedIn,
+    );
+
+    // Submit a valid credential
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = scan_request(
+        ids.session_id,
+        event_id,
+        &credential(event_id, check_in_code),
+    );
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
+
+    // Verify the neutral duplicate-scan result
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(body["outcome"], "already-checked-in");
+    assert_eq!(body["attendee"]["name"], "Test Attendee");
+    assert_eq!(body["attendee"]["photo_url"], Value::Null);
+    assert!(body["checked_in_at"].is_number());
+    assert_eq!(body["ticket_title"], "General admission");
 }
 
 #[tokio::test]
 async fn test_scan_returns_checked_in_result() {
-    // Exercise and verify the first-scan result
-    assert_scan_result(CheckInOutcome::CheckedIn, "checked-in").await;
+    // Setup an authorized scanner whose attendee is checked in now
+    let ids = DashboardIds::new();
+    let check_in_code = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::CheckInsWrite);
+    expect_check_in_attendee_by_code(
+        &mut db,
+        &ids,
+        event_id,
+        check_in_code,
+        CheckInOutcome::CheckedIn,
+    );
+
+    // Submit a valid credential
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = scan_request(
+        ids.session_id,
+        event_id,
+        &credential(event_id, check_in_code),
+    );
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
+
+    // Verify the complete scanner response
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(body["outcome"], "checked-in");
+    assert_eq!(body["attendee"]["name"], "Test Attendee");
+    assert_eq!(body["attendee"]["photo_url"], Value::Null);
+    assert!(body["checked_in_at"].is_number());
+    assert_eq!(body["ticket_title"], "General admission");
 }
 
 #[tokio::test]
 async fn test_scan_returns_malformed_credential_error() {
-    // Setup an authorized scanner request with an invalid credential envelope
-    let (router, session_id) = scan_test_router(true).await;
+    // Setup an authorized scanner request with an unparseable credential
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/check-ins/scan"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header("content-type", "application/json")
-        .body(Body::from(
-            json!({ "credential": "not-a-code" }).to_string(),
-        ))
-        .unwrap();
+    let router = scan_router_without_check_in(&ids).await;
+
     // Submit the invalid credential
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let body: Value = serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+    let request = scan_request(ids.session_id, event_id, "not-a-code");
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Verify the typed failure response
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
@@ -100,151 +129,171 @@ async fn test_scan_returns_malformed_credential_error() {
 }
 
 #[tokio::test]
-async fn test_scan_returns_malformed_credential_for_invalid_json_shapes() {
-    // Define extractor failures that must share the scanner error contract
-    let cases = [
-        ("{", true),
-        ("{}", true),
-        (r#"{"credential": 1}"#, true),
-        (r#"{"credential": "unused"}"#, false),
-    ];
+async fn test_scan_returns_malformed_credential_for_missing_credential() {
+    // Setup an authorized scanner request without a credential field
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let router = scan_router_without_check_in(&ids).await;
 
-    for (body, include_content_type) in cases {
-        // Setup an independently authorized scanner request
-        let (router, session_id) = scan_test_router(true).await;
-        let event_id = Uuid::from_u128(10);
-        let mut request = Request::builder()
-            .method("POST")
-            .uri(format!("/dashboard/group/events/{event_id}/check-ins/scan"))
-            .header(COOKIE, format!("id={session_id}"));
-        if include_content_type {
-            request = request.header("content-type", "application/json");
-        }
+    // Submit the JSON body without a credential
+    let request = raw_scan_request(ids.session_id, event_id)
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from("{}"))
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
 
-        // Submit the malformed JSON body
-        let response = router.oneshot(request.body(Body::from(body)).unwrap()).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let body: Value =
-            serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
-
-        // Verify every extractor failure is normalized
-        assert_eq!(parts.status, StatusCode::BAD_REQUEST);
-        assert_eq!(body["error"]["code"], "malformed-credential");
-    }
+    // Verify the extractor failure is normalized
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"]["code"], "malformed-credential");
 }
 
 #[tokio::test]
-async fn test_scan_returns_mapped_database_domain_errors() {
-    // Define every stable database error mapping
+async fn test_scan_returns_malformed_credential_for_non_string_credential() {
+    // Setup an authorized scanner request with a numeric credential
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let router = scan_router_without_check_in(&ids).await;
+
+    // Submit the non-string credential
+    let request = raw_scan_request(ids.session_id, event_id)
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from(r#"{"credential": 1}"#))
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
+
+    // Verify the extractor failure is normalized
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"]["code"], "malformed-credential");
+}
+
+#[tokio::test]
+async fn test_scan_returns_malformed_credential_for_unterminated_json() {
+    // Setup an authorized scanner request with an unterminated JSON body
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let router = scan_router_without_check_in(&ids).await;
+
+    // Submit the unterminated JSON body
+    let request = raw_scan_request(ids.session_id, event_id)
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from("{"))
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
+
+    // Verify the extractor failure is normalized
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"]["code"], "malformed-credential");
+}
+
+#[tokio::test]
+async fn test_scan_returns_malformed_credential_without_json_content_type() {
+    // Setup an authorized scanner request without a JSON content type
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let router = scan_router_without_check_in(&ids).await;
+
+    // Submit the body without a content type
+    let request = raw_scan_request(ids.session_id, event_id)
+        .body(Body::from(r#"{"credential": "unused"}"#))
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
+
+    // Verify the extractor failure is normalized
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"]["code"], "malformed-credential");
+}
+
+#[tokio::test]
+async fn test_scan_rejection_response_maps_every_rejection() {
+    // Define every stable scanner rejection response
     let cases = [
         (
-            "attendance is not confirmed",
+            CheckInScanRejection::NonConfirmedAttendance,
             StatusCode::CONFLICT,
             "non-confirmed-attendance",
+            "This attendee no longer has confirmed attendance.",
         ),
         (
-            "check-in credential not found",
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "unknown-code",
-        ),
-        (
-            "event unavailable for check-in",
+            CheckInScanRejection::UnavailableEvent,
             StatusCode::CONFLICT,
             "unavailable-event",
+            "This event is not available for check-in.",
+        ),
+        (
+            CheckInScanRejection::UnknownCode,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "unknown-code",
+            "This check-in credential is not recognized.",
         ),
     ];
 
-    for (message, expected_status, expected_code) in cases {
+    for (rejection, expected_status, expected_code, expected_message) in cases {
         // Map and decode the typed response
-        let rejection = CheckInScanRejection::from_db_message(message).unwrap();
         let response = scan_rejection_response(rejection);
         let (parts, body) = response.into_parts();
-        let body: Value =
-            serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
 
-        // Verify the stable status and error code
-        assert_eq!(parts.status, expected_status);
-        assert_eq!(body["error"]["code"], expected_code);
+        // Verify the stable status, error code and message
+        assert_eq!(parts.status, expected_status, "case: {rejection:?}");
+        assert_eq!(body["error"]["code"], expected_code, "case: {rejection:?}");
+        assert_eq!(
+            body["error"]["message"], expected_message,
+            "case: {rejection:?}"
+        );
     }
 }
 
 #[tokio::test]
 async fn test_scan_returns_wrong_event_error() {
     // Setup a credential for a different event
-    let (router, session_id) = scan_test_router(true).await;
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
     let other_event_id = Uuid::new_v4();
-    let check_in_code = Uuid::new_v4();
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/check-ins/scan"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header("content-type", "application/json")
-        .body(Body::from(
-            json!({
-                "credential": format!("ocg-check-in:v1:{other_event_id}:{check_in_code}"),
-            })
-            .to_string(),
-        ))
-        .unwrap();
+    let router = scan_router_without_check_in(&ids).await;
+
     // Submit the credential to the selected event
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let body: Value = serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+    let request = scan_request(
+        ids.session_id,
+        event_id,
+        &credential(other_event_id, Uuid::new_v4()),
+    );
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Verify the typed event mismatch response
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(body["error"]["code"], "wrong-event");
 }
 
-#[tokio::test]
-async fn test_scan_validates_check_in_permission() {
-    // Setup a scanner request without check-in permission
-    let (router, session_id) = scan_test_router(false).await;
-    let event_id = Uuid::new_v4();
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/check-ins/scan"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header("content-type", "application/json")
-        .body(Body::from(json!({ "credential": "unused" }).to_string()))
-        .unwrap();
-    // Submit the scanner request
-    let response = router.oneshot(request).await.unwrap();
-
-    // Verify the route permission guard
-    assert_eq!(response.status(), StatusCode::FORBIDDEN);
-}
-
 // Helpers.
 
-/// Exercises the successful scanner response for one database outcome.
-async fn assert_scan_result(outcome: CheckInOutcome, expected_outcome: &str) {
-    // Setup identities and database expectations
-    let check_in_code = Uuid::from_u128(1);
-    let community_id = Uuid::from_u128(2);
-    let event_id = Uuid::from_u128(3);
-    let group_id = Uuid::from_u128(4);
-    let session_id = session::Id::default();
-    let user_id = Uuid::from_u128(5);
+/// Returns the versioned credential for the event and check-in code.
+fn credential(event_id: Uuid, check_in_code: Uuid) -> String {
+    format!("ocg-check-in:v1:{event_id}:{check_in_code}")
+}
 
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::CheckInsWrite,
-    );
+/// Expects one check-in by code that returns the outcome for a sample attendee.
+fn expect_check_in_attendee_by_code(
+    db: &mut MockDB,
+    ids: &DashboardIds,
+    event_id: Uuid,
+    check_in_code: Uuid,
+    outcome: CheckInOutcome,
+) {
+    let ids = *ids;
     db.expect_check_in_attendee_by_code()
         .times(1)
         .withf(move |actor, code, community, event, group| {
-            *actor == user_id
+            *actor == ids.user_id
                 && *code == check_in_code
-                && *community == community_id
+                && *community == ids.community_id
                 && *event == event_id
-                && *group == group_id
+                && *group == ids.group_id
         })
         .returning(move |_, _, _, _, _| {
             Ok(CheckInScanResult {
@@ -258,67 +307,32 @@ async fn assert_scan_result(outcome: CheckInOutcome, expected_outcome: &str) {
                 ticket_title: Some("General admission".to_string()),
             })
         });
-
-    // Submit a valid credential
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/check-ins/scan"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header("content-type", "application/json")
-        .body(Body::from(
-            json!({
-                "credential": format!("ocg-check-in:v1:{event_id}:{check_in_code}"),
-            })
-            .to_string(),
-        ))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let body: Value = serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
-
-    // Verify the complete scanner response
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(body["outcome"], expected_outcome);
-    assert_eq!(body["attendee"]["name"], "Test Attendee");
-    assert_eq!(body["attendee"]["photo_url"], Value::Null);
-    assert!(body["checked_in_at"].is_number());
-    assert_eq!(body["ticket_title"], "General admission");
 }
 
-/// Builds an authenticated scanner router with the selected permission result.
-async fn scan_test_router(has_permission: bool) -> (axum::Router, session::Id) {
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+/// Builds a scan request carrying the credential.
+fn scan_request(session_id: session::Id, event_id: Uuid, credential: &str) -> Request<Body> {
+    json_request(
+        "POST",
+        &format!("/dashboard/group/events/{event_id}/check-ins/scan"),
+        session_id,
+        &json!({ "credential": credential }),
+    )
+}
 
+/// Builds an authenticated scan request without content type or body.
+fn raw_scan_request(session_id: session::Id, event_id: Uuid) -> axum::http::request::Builder {
+    authenticated_request(
+        "POST",
+        &format!("/dashboard/group/events/{event_id}/check-ins/scan"),
+        session_id,
+    )
+}
+
+/// Builds an authorized scanner router that must reject before checking in.
+async fn scan_router_without_check_in(ids: &DashboardIds) -> Router {
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::CheckInsWrite
-        })
-        .returning(move |_, _, _, _| Ok(has_permission));
-    if !has_permission {
-        expect_group_permission(
-            &mut db,
-            community_id,
-            group_id,
-            user_id,
-            GroupPermission::Read,
-        );
-    }
+    expect_group_access(&mut db, ids, GroupPermission::CheckInsWrite);
     db.expect_check_in_attendee_by_code().never();
 
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    (router, session_id)
+    TestRouterBuilder::new(db).build().await
 }

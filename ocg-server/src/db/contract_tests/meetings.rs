@@ -11,11 +11,11 @@ use super::helpers::*;
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_meeting_for_auto_end_deserializes() -> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
 
     // Claim the meeting eligible for automatic ending
-    let candidate = db
+    let candidate = uow
         .claim_meeting_for_auto_end()
         .await?
         .expect("contract auto-end candidate should exist");
@@ -31,11 +31,11 @@ async fn db_contracts_claim_meeting_for_auto_end_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_meeting_out_of_sync_deserializes() -> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
 
     // Claim the meeting requiring provider synchronization
-    let meeting = db
+    let meeting = uow
         .claim_meeting_out_of_sync()
         .await?
         .expect("contract meeting sync candidate should exist");

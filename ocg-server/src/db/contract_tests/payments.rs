@@ -6,7 +6,8 @@ use uuid::Uuid;
 
 use crate::{
     db::{
-        dashboard::group::DBDashboardGroup,
+        PgExecutor,
+        dashboard::{group::DBDashboardGroup, user::DBDashboardUser},
         payments::{
             ClaimedPaymentJobWork, CompletePaymentJobRecoveryInput, DBPayments,
             EventPurchaseRefundKind, EventPurchaseRefundStatus, PrepareEventCheckoutPurchaseInput,
@@ -14,8 +15,11 @@ use crate::{
             ReconcileEventPurchaseResult,
         },
     },
-    types::payments::{
-        EventPurchaseChargeModel, EventPurchaseStatus, PaymentJobKind, PaymentProvider,
+    types::{
+        dashboard::user::purchases::PurchaseDocumentsFilters,
+        payments::{
+            EventPurchaseChargeModel, EventPurchaseStatus, PaymentJobKind, PaymentProvider,
+        },
     },
 };
 
@@ -24,26 +28,23 @@ use super::helpers::*;
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<()> {
-    // Setup the contract database and make the target refund claim deterministic
-    let db = contract_tests_db()?;
-    contract_tests_pool()?
-        .get()
-        .await?
-        .execute(
-            "
-            update payment_job
-            set next_attempt_at = case
-                when payment_job_id = $1::uuid then current_timestamp - interval '1 minute'
-                else current_timestamp + interval '1 minute'
-            end
-            where kind = 'event-purchase-refund'
-            ",
-            &[&refund_approve_job_id()],
-        )
-        .await?;
+    // Setup a rolled-back unit of work and make the target refund claim deterministic
+    let uow = contract_unit_of_work().await?;
+    uow.execute(
+        "
+        update payment_job
+        set next_attempt_at = case
+            when payment_job_id = $1::uuid then current_timestamp - interval '1 minute'
+            else current_timestamp + interval '1 minute'
+        end
+        where kind = 'event-purchase-refund'
+        ",
+        &[&refund_approve_job_id()],
+    )
+    .await?;
 
     // Claim the provider-complete durable refund from contract fixtures
-    let job = db
+    let job = uow
         .claim_payment_job(PaymentJobKind::EventPurchaseRefund, PaymentProvider::Stripe)
         .await?
         .context("provider-complete contract refund should be claimable")?;
@@ -68,7 +69,7 @@ async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<(
     assert!(refund.provider_refunded_at.is_some());
 
     // Finalize local state with the current worker claim
-    db.finalize_event_purchase_refund(
+    uow.finalize_event_purchase_refund(
         refund.event_purchase_refund_id,
         job.claim_id,
         serde_json::json!({"scenario": "contract"}),
@@ -82,9 +83,9 @@ async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<(
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_payment_job_application_fee_adjustment_deserializes() -> Result<()> {
-    // Setup the contract database and claim the pending adjustment fixture
-    let db = contract_tests_db()?;
-    let job = db
+    // Setup a rolled-back unit of work and claim the pending adjustment fixture
+    let uow = contract_unit_of_work().await?;
+    let job = uow
         .claim_payment_job(
             PaymentJobKind::EventPurchaseApplicationFeeAdjustment,
             PaymentProvider::Stripe,
@@ -120,8 +121,8 @@ async fn db_contracts_claim_payment_job_application_fee_adjustment_deserializes(
         "fee_contract_documents"
     );
 
-    // Complete the claim so it cannot interfere with later worker contracts
-    db.record_event_purchase_application_fee_adjustment_succeeded(
+    // Record the provider outcome with the current worker claim
+    uow.record_event_purchase_application_fee_adjustment_succeeded(
         adjustment.event_purchase_application_fee_adjustment_id,
         job.claim_id,
         "fr_contract_documents".to_string(),
@@ -134,9 +135,9 @@ async fn db_contracts_claim_payment_job_application_fee_adjustment_deserializes(
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_payment_job_credit_note_deserializes() -> Result<()> {
-    // Setup the contract database and claim the pending credit-note fixture
-    let db = contract_tests_db()?;
-    let job = db
+    // Setup a rolled-back unit of work and claim the pending credit-note fixture
+    let uow = contract_unit_of_work().await?;
+    let job = uow
         .claim_payment_job(
             PaymentJobKind::EventPurchaseCreditNote,
             PaymentProvider::Stripe,
@@ -167,8 +168,8 @@ async fn db_contracts_claim_payment_job_credit_note_deserializes() -> Result<()>
     assert_eq!(credit_note.provider_refund_id, "re_contract_documents");
     assert_eq!(credit_note.tax_amount_minor, 0);
 
-    // Issue the document so later attendee contracts cover the provider fields
-    db.record_event_purchase_credit_note_succeeded(
+    // Issue the document with the current worker claim
+    uow.record_event_purchase_credit_note_succeeded(
         credit_note.event_purchase_credit_note_id,
         job.claim_id,
         "cn_contract_documents".to_string(),
@@ -177,17 +178,38 @@ async fn db_contracts_claim_payment_job_credit_note_deserializes() -> Result<()>
     )
     .await?;
 
+    // Check the attendee document history exposes the issued credit note
+    let documents = uow
+        .list_user_purchase_documents(
+            free_buyer_id(),
+            &PurchaseDocumentsFilters {
+                limit: Some(10),
+                offset: Some(0),
+            },
+        )
+        .await?;
+    let issued = &documents.purchases[0].credit_notes[0];
+    assert_eq!(
+        issued.event_purchase_credit_note_id,
+        document_credit_note_id()
+    );
+    assert_eq!(
+        issued.provider_credit_note_id.as_deref(),
+        Some("cn_contract_documents")
+    );
+    assert_eq!(issued.status, "completed");
+
     Ok(())
 }
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_approve_external_event_refund_request_deserializes() -> Result<()> {
-    // Setup the contract database and pending external refund fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and pending external refund fixture
+    let uow = contract_unit_of_work().await?;
 
     // Approve the external refund request through the Rust contract
-    let purchase = db
+    let purchase = uow
         .approve_external_event_refund_request(
             organizer_id(),
             group_id(),
@@ -209,11 +231,11 @@ async fn db_contracts_approve_external_event_refund_request_deserializes() -> Re
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_complete_external_event_purchase_deserializes() -> Result<()> {
-    // Setup the contract database and pending external purchase fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and pending external purchase fixture
+    let uow = contract_unit_of_work().await?;
 
     // Complete the external purchase through the Rust contract
-    let purchase = db
+    let purchase = uow
         .complete_external_event_purchase(
             organizer_id(),
             group_id(),
@@ -236,61 +258,57 @@ async fn db_contracts_complete_external_event_purchase_deserializes() -> Result<
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_complete_payment_job_recovery_records_evidence() -> Result<()> {
-    // Setup the contract database and a dedicated exhausted recovery job
-    let db = contract_tests_db()?;
-    let pool = contract_tests_pool()?;
-    let adjustment_id = Uuid::parse_str("00000000-0000-0000-0000-00000000c13c")?;
-    let payment_job_id = Uuid::parse_str("00000000-0000-0000-0000-00000000c13b")?;
-    let client = pool.get().await?;
-    client
-        .execute(
-            "
-            insert into payment_job (
-                attempt_count,
-                event_purchase_id,
-                failure_message,
-                idempotency_key,
-                kind,
-                payment_job_id,
-                payment_provider_id,
-                status
-            ) values (
-                10,
-                $1::uuid,
-                'contract recovery failure',
-                'contract-complete-payment-job-recovery',
-                'event-purchase-application-fee-adjustment',
-                $2::uuid,
-                'stripe',
-                'failed'
-            )
-            ",
-            &[&document_purchase_id(), &payment_job_id],
+    // Setup a rolled-back unit of work and a dedicated exhausted recovery job
+    let uow = contract_unit_of_work().await?;
+    let adjustment_id = Uuid::new_v4();
+    let payment_job_id = Uuid::new_v4();
+    uow.execute(
+        "
+        insert into payment_job (
+            attempt_count,
+            event_purchase_id,
+            failure_message,
+            idempotency_key,
+            kind,
+            payment_job_id,
+            payment_provider_id,
+            status
+        ) values (
+            10,
+            $1::uuid,
+            'contract recovery failure',
+            'contract-complete-payment-job-recovery',
+            'event-purchase-application-fee-adjustment',
+            $2::uuid,
+            'stripe',
+            'failed'
         )
-        .await?;
-    client
-        .execute(
-            "
-            insert into event_purchase_application_fee_adjustment (
-                amount_minor,
-                event_purchase_application_fee_adjustment_id,
-                event_purchase_id,
-                kind,
-                payment_job_id
-            ) values (
-                25,
-                $3::uuid,
-                $1::uuid,
-                'tax-reconciliation',
-                $2::uuid
-            )
-            ",
-            &[&document_purchase_id(), &payment_job_id, &adjustment_id],
+        ",
+        &[&document_purchase_id(), &payment_job_id],
+    )
+    .await?;
+    uow.execute(
+        "
+        insert into event_purchase_application_fee_adjustment (
+            amount_minor,
+            event_purchase_application_fee_adjustment_id,
+            event_purchase_id,
+            kind,
+            payment_job_id
+        ) values (
+            25,
+            $3::uuid,
+            $1::uuid,
+            'tax-reconciliation',
+            $2::uuid
         )
-        .await?;
+        ",
+        &[&document_purchase_id(), &payment_job_id, &adjustment_id],
+    )
+    .await?;
 
     // Complete the exhausted job with external provider evidence
-    db.complete_payment_job_recovery(&CompletePaymentJobRecoveryInput {
+    uow.complete_payment_job_recovery(&CompletePaymentJobRecoveryInput {
         actor_user_id: organizer_id(),
         group_id: group_id(),
         payment_job_id,
@@ -301,8 +319,9 @@ async fn db_contracts_complete_payment_job_recovery_records_evidence() -> Result
     .await?;
 
     // Check the recovery evidence and provider outcome were persisted
-    let client = pool.get().await?;
-    let row = client
+    let row = uow
+        .client()
+        .await?
         .query_one(
             "
             select
@@ -357,15 +376,15 @@ async fn db_contracts_get_event_purchase_notification_context_deserializes() -> 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_complete_free_event_purchase_deserializes() -> Result<()> {
-    // Setup the contract database and free purchase fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and free purchase fixture
+    let uow = contract_unit_of_work().await?;
 
     // Load the provider-free purchase snapshot before completing it
-    let summary = db.get_event_purchase_summary(free_purchase_id()).await?;
+    let summary = uow.get_event_purchase_summary(free_purchase_id()).await?;
     assert_eq!(summary.currency_code, None);
 
     // Complete the free purchase through the Rust contract
-    let purchase = db.complete_free_event_purchase(free_purchase_id()).await?;
+    let purchase = uow.complete_free_event_purchase(free_purchase_id()).await?;
 
     // Check the completed purchase ownership fields
     assert_eq!(purchase.community_id, community_id());
@@ -378,24 +397,25 @@ async fn db_contracts_complete_free_event_purchase_deserializes() -> Result<()> 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
 
     // Queue a durable manual refund from deterministic contract data
-    db.queue_event_refund_request_approval(
+    uow.queue_event_refund_request_approval(
         organizer_id(),
         group_id(),
         refund_lifecycle_purchase_id(),
         Some("Approved for lifecycle contract".to_string()),
     )
     .await?;
-    let refund = db.get_event_purchase_refund(refund_lifecycle_purchase_id()).await?;
+    let refund = uow.get_event_purchase_refund(refund_lifecycle_purchase_id()).await?;
 
     // Check required fields and initial workflow metadata
     assert_eq!(refund.amount_minor, 2500);
     assert_eq!(refund.currency_code, "USD");
     assert_eq!(refund.event_purchase_id, refund_lifecycle_purchase_id());
     assert_ne!(refund.event_purchase_refund_id, Uuid::nil());
+    assert_ne!(refund.payment_job_id, Uuid::nil());
     assert_eq!(
         refund.idempotency_key,
         format!("event-purchase-refund-{}", refund_lifecycle_purchase_id())
@@ -411,7 +431,7 @@ async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<(
     assert!(refund.provider_refunded_at.is_none());
 
     // Record the in-progress provider refund
-    let refund = db
+    let refund = uow
         .record_event_purchase_refund_pending(
             refund.event_purchase_refund_id,
             refund.idempotency_key.clone(),
@@ -433,7 +453,7 @@ async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<(
     assert!(refund.provider_refunded_at.is_none());
 
     // Record provider success for the same durable refund
-    let refund = db
+    let refund = uow
         .record_event_purchase_refund_succeeded(
             refund.event_purchase_refund_id,
             refund.idempotency_key.clone(),
@@ -453,22 +473,6 @@ async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<(
         Some("re_contract_refund_lifecycle")
     );
     assert!(refund.provider_refunded_at.is_some());
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_get_event_purchase_recovery_summary_deserializes() -> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
-
-    // Load the deterministic purchase awaiting provider refund recovery
-    let summary = db.get_event_purchase_summary(refund_recovery_purchase_id()).await?;
-
-    // Check the recovery status crosses the SQL-to-Rust contract
-    assert_eq!(summary.event_purchase_id, refund_recovery_purchase_id());
-    assert_eq!(summary.status, EventPurchaseStatus::RefundRecoveryPending);
 
     Ok(())
 }
@@ -524,7 +528,7 @@ async fn db_contracts_get_event_purchase_refund_recovery_context_deserializes() 
 
     // Check the app receives authoritative notification composition context
     assert_eq!(context.community_id, community_id());
-    assert_eq!(context.event_id, refund_event_id());
+    assert_eq!(context.event_id, paid_event_id());
     assert_eq!(
         context.event_purchase_refund_id,
         refund_recovery_refund_id()
@@ -540,8 +544,9 @@ async fn db_contracts_get_event_purchase_summary_deserializes() -> Result<()> {
     // Setup the contract database and purchase fixture
     let db = contract_tests_db()?;
 
-    // Load the purchase summary through the Rust contract
+    // Load the pending and the refund recovery purchase summaries
     let summary = db.get_event_purchase_summary(summary_purchase_id()).await?;
+    let recovery_summary = db.get_event_purchase_summary(refund_recovery_purchase_id()).await?;
 
     // Check pricing, hold, status, and ticket fields
     assert_eq!(summary.amount_minor, 2500);
@@ -556,6 +561,16 @@ async fn db_contracts_get_event_purchase_summary_deserializes() -> Result<()> {
     assert_eq!(summary.provisional_platform_fee_amount_minor, 250);
     assert_eq!(summary.status, EventPurchaseStatus::Pending);
     assert_eq!(summary.ticket_title, "Contract Paid Ticket");
+
+    // Check the recovery status crosses the SQL-to-Rust contract
+    assert_eq!(
+        recovery_summary.event_purchase_id,
+        refund_recovery_purchase_id()
+    );
+    assert_eq!(
+        recovery_summary.status,
+        EventPurchaseStatus::RefundRecoveryPending
+    );
 
     Ok(())
 }
@@ -581,8 +596,8 @@ async fn db_contracts_get_user_purchase_document_context_deserializes() -> Resul
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<()> {
-    // Setup the contract database and checkout input
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and checkout input
+    let uow = contract_unit_of_work().await?;
     let input = PrepareEventCheckoutPurchaseInput {
         event_id: paid_event_id(),
         event_ticket_type_id: paid_ticket_type_id(),
@@ -596,7 +611,7 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
     };
 
     // Prepare the checkout purchase through the Rust contract
-    let checkout = match db.prepare_event_checkout_purchase(community_id(), &input).await? {
+    let checkout = match uow.prepare_event_checkout_purchase(community_id(), &input).await? {
         PrepareEventCheckoutPurchaseResult::Conflict(conflict) => {
             return Err(anyhow!("unexpected checkout conflict: {conflict:?}"));
         }
@@ -649,8 +664,8 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_prepare_event_checkout_purchase_external_deserializes() -> Result<()> {
-    // Setup the contract database and external checkout input
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and external checkout input
+    let uow = contract_unit_of_work().await?;
     let input = PrepareEventCheckoutPurchaseInput {
         event_id: external_event_id(),
         event_ticket_type_id: external_ticket_type_id(),
@@ -664,7 +679,7 @@ async fn db_contracts_prepare_event_checkout_purchase_external_deserializes() ->
     };
 
     // Prepare the external checkout purchase through the Rust contract
-    let checkout = match db.prepare_event_checkout_purchase(community_id(), &input).await? {
+    let checkout = match uow.prepare_event_checkout_purchase(community_id(), &input).await? {
         PrepareEventCheckoutPurchaseResult::Conflict(conflict) => {
             return Err(anyhow!("unexpected checkout conflict: {conflict:?}"));
         }
@@ -719,53 +734,22 @@ async fn db_contracts_queue_event_refund_request_approval_blocks_event_writers()
         .await?;
 
     // Probe whether a competing writer can lock the owning event
-    event_client
-        .batch_execute("begin; set local lock_timeout = '250ms'")
-        .await?;
-    let lock_result = event_client
-        .query_one(
-            "select event_id from event where event_id = $1::uuid for update",
-            &[&refund_event_id()],
-        )
-        .await;
-
-    // Roll back the approval and lock probe before checking the outcome
-    event_client.batch_execute("rollback").await?;
-    approval_client.batch_execute("rollback").await?;
-
-    // Check approval holds the event lock before refund workflow rows
-    let lock_err = lock_result.expect_err("event writer should wait for refund approval");
-    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_queue_event_refund_request_approval_deserializes() -> Result<()> {
-    // Setup the contract database and refund request fixture
-    let db = contract_tests_db()?;
-
-    // Queue organizer approval using deterministic request fixtures
-    db.queue_event_refund_request_approval(
-        organizer_id(),
-        group_id(),
-        refund_begin_purchase_id(),
-        Some("Approved by contract test".to_string()),
+    let probe_code = probe_lock(
+        &event_client,
+        "select event_id from event where event_id = $1::uuid for update",
+        &[&paid_event_id()],
     )
     .await?;
 
-    // Load the queued durable refund through the Rust database contract
-    let refund = db.get_event_purchase_refund(refund_begin_purchase_id()).await?;
+    // Roll back the approval before checking the outcome
+    approval_client.batch_execute("rollback").await?;
 
-    // Check required durable refund fields deserialize as expected
-    assert_eq!(refund.amount_minor, 2500);
-    assert_eq!(refund.currency_code, "USD");
-    assert_eq!(refund.event_purchase_id, refund_begin_purchase_id());
-    assert_eq!(refund.kind, EventPurchaseRefundKind::RefundRequestApproval);
-    assert_ne!(refund.payment_job_id, Uuid::nil());
-    assert_eq!(refund.payment_provider, PaymentProvider::Stripe);
-    assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
+    // Check approval holds the event lock before refund workflow rows
+    assert_eq!(
+        probe_code,
+        Some(SqlState::LOCK_NOT_AVAILABLE),
+        "event writer should wait for refund approval"
+    );
 
     Ok(())
 }
@@ -791,42 +775,33 @@ async fn db_contracts_record_event_purchase_refund_pending_blocks_event_writers(
         )
         .await?;
 
-    // Probe whether a competing writer can lock the owning event
-    probe_client
-        .batch_execute("begin; set local lock_timeout = '250ms'")
-        .await?;
-    let event_lock_result = probe_client
-        .query_one(
-            "select event_id from event where event_id = $1::uuid for update",
-            &[&refund_event_id()],
-        )
-        .await;
-    probe_client.batch_execute("rollback").await?;
-
-    // Probe whether a competing writer can lock the refunded purchase
-    probe_client
-        .batch_execute("begin; set local lock_timeout = '250ms'")
-        .await?;
-    let purchase_lock_result = probe_client
-        .query_one(
-            "select event_purchase_id from event_purchase where event_purchase_id = $1::uuid for update",
-            &[&refund_recovery_purchase_id()],
-        )
-        .await;
-    probe_client.batch_execute("rollback").await?;
+    // Probe whether competing writers can lock the owning event and purchase
+    let event_probe_code = probe_lock(
+        &probe_client,
+        "select event_id from event where event_id = $1::uuid for update",
+        &[&paid_event_id()],
+    )
+    .await?;
+    let purchase_probe_code = probe_lock(
+        &probe_client,
+        "select event_purchase_id from event_purchase where event_purchase_id = $1::uuid for update",
+        &[&refund_recovery_purchase_id()],
+    )
+    .await?;
 
     // Roll back the refund result before checking the outcomes
     result_client.batch_execute("rollback").await?;
 
     // Check the result holds the event and purchase locks
-    let event_lock_err =
-        event_lock_result.expect_err("event writer should wait for the refund result");
-    assert_eq!(event_lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
-    let purchase_lock_err =
-        purchase_lock_result.expect_err("purchase writer should wait for the refund result");
     assert_eq!(
-        purchase_lock_err.code(),
-        Some(&SqlState::LOCK_NOT_AVAILABLE)
+        event_probe_code,
+        Some(SqlState::LOCK_NOT_AVAILABLE),
+        "event writer should wait for the refund result"
+    );
+    assert_eq!(
+        purchase_probe_code,
+        Some(SqlState::LOCK_NOT_AVAILABLE),
+        "purchase writer should wait for the refund result"
     );
 
     Ok(())
@@ -835,28 +810,25 @@ async fn db_contracts_record_event_purchase_refund_pending_blocks_event_writers(
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_record_payment_job_failure_releases_claim() -> Result<()> {
-    // Setup a processing payment job with a deterministic claim
-    let db = contract_tests_db()?;
-    let pool = contract_tests_pool()?;
+    // Setup a rolled-back unit of work and a processing payment job with a deterministic claim
+    let uow = contract_unit_of_work().await?;
     let claim_id = Uuid::new_v4();
-    pool.get()
-        .await?
-        .execute(
-            "
-            update payment_job
-            set
-                attempt_count = 1,
-                claim_id = $2::uuid,
-                claimed_at = current_timestamp,
-                status = 'processing'
-            where payment_job_id = $1::uuid
-            ",
-            &[&document_refund_job_id(), &claim_id],
-        )
-        .await?;
+    uow.execute(
+        "
+        update payment_job
+        set
+            attempt_count = 1,
+            claim_id = $2::uuid,
+            claimed_at = current_timestamp,
+            status = 'processing'
+        where payment_job_id = $1::uuid
+        ",
+        &[&document_refund_job_id(), &claim_id],
+    )
+    .await?;
 
     // Release the claim through the Rust database wrapper
-    db.record_payment_job_failure(
+    uow.record_payment_job_failure(
         document_refund_job_id(),
         claim_id,
         "contract retryable failure".to_string(),
@@ -864,8 +836,8 @@ async fn db_contracts_record_payment_job_failure_releases_claim() -> Result<()> 
     .await?;
 
     // Check the job is failed and unclaimed for a later retry
-    let row = pool
-        .get()
+    let row = uow
+        .client()
         .await?
         .query_one(
             "
@@ -889,11 +861,11 @@ async fn db_contracts_record_payment_job_failure_releases_claim() -> Result<()> 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_reconcile_event_purchase_for_checkout_session_deserializes() -> Result<()> {
-    // Setup the contract database and provider checkout references
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and provider checkout references
+    let uow = contract_unit_of_work().await?;
 
     // Reconcile the provider checkout through the Rust contract
-    let result = db
+    let result = uow
         .reconcile_event_purchase_for_checkout_session(
             &ReconcileEventPurchaseForCheckoutSessionInput {
                 payment_provider: PaymentProvider::Stripe,
@@ -925,33 +897,30 @@ async fn db_contracts_reconcile_event_purchase_for_checkout_session_deserializes
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_requeue_payment_job_resets_exhausted_job() -> Result<()> {
-    // Setup the contract database and an exhausted refund job
-    let db = contract_tests_db()?;
-    let pool = contract_tests_pool()?;
-    pool.get()
-        .await?
-        .execute(
-            "
-            update payment_job
-            set
-                attempt_count = 10,
-                claim_id = null,
-                claimed_at = null,
-                failure_message = 'contract exhausted',
-                next_attempt_at = current_timestamp,
-                status = 'failed'
-            where payment_job_id = $1::uuid
-            ",
-            &[&document_refund_job_id()],
-        )
-        .await?;
+    // Setup a rolled-back unit of work and an exhausted refund job
+    let uow = contract_unit_of_work().await?;
+    uow.execute(
+        "
+        update payment_job
+        set
+            attempt_count = 10,
+            claim_id = null,
+            claimed_at = null,
+            failure_message = 'contract exhausted',
+            next_attempt_at = current_timestamp,
+            status = 'failed'
+        where payment_job_id = $1::uuid
+        ",
+        &[&document_refund_job_id()],
+    )
+    .await?;
 
     // Requeue the exhausted job through the Rust wrapper
-    db.requeue_payment_job(group_id(), document_refund_job_id()).await?;
+    uow.requeue_payment_job(group_id(), document_refund_job_id()).await?;
 
     // Check the job is ready for a new automatic attempt cycle
-    let row = pool
-        .get()
+    let row = uow
+        .client()
         .await?
         .query_one(
             "
@@ -972,32 +941,29 @@ async fn db_contracts_requeue_payment_job_resets_exhausted_job() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_requeue_stale_payment_job_claims_releases_old_claims() -> Result<()> {
-    // Setup a stale payment job claim beyond the recovery timeout
-    let db = contract_tests_db()?;
-    let pool = contract_tests_pool()?;
+    // Setup a rolled-back unit of work and a stale payment job claim beyond the recovery timeout
+    let uow = contract_unit_of_work().await?;
     let claim_id = Uuid::new_v4();
-    pool.get()
-        .await?
-        .execute(
-            "
-            update payment_job
-            set
-                attempt_count = 2,
-                claim_id = $2::uuid,
-                claimed_at = current_timestamp - interval '20 minutes',
-                status = 'processing'
-            where payment_job_id = $1::uuid
-            ",
-            &[&document_refund_job_id(), &claim_id],
-        )
-        .await?;
+    uow.execute(
+        "
+        update payment_job
+        set
+            attempt_count = 2,
+            claim_id = $2::uuid,
+            claimed_at = current_timestamp - interval '20 minutes',
+            status = 'processing'
+        where payment_job_id = $1::uuid
+        ",
+        &[&document_refund_job_id(), &claim_id],
+    )
+    .await?;
 
     // Recover stale claims through the Rust database wrapper
-    let recovered = db.requeue_stale_payment_job_claims().await?;
+    let recovered = uow.requeue_stale_payment_job_claims().await?;
 
-    // Check the stale claim was released without depending on total sweep count
-    let row = pool
-        .get()
+    // Check the only stale claim was recovered, unclaimed and marked failed
+    let row = uow
+        .client()
         .await?
         .query_one(
             "
@@ -1008,7 +974,7 @@ async fn db_contracts_requeue_stale_payment_job_claims_releases_old_claims() -> 
             &[&document_refund_job_id()],
         )
         .await?;
-    assert!(recovered >= 1);
+    assert_eq!(recovered, 1);
     assert_eq!(row.get::<_, Option<Uuid>>("claim_id"), None);
     assert_eq!(row.get::<_, &str>("status"), "failed");
 
@@ -1018,11 +984,11 @@ async fn db_contracts_requeue_stale_payment_job_claims_releases_old_claims() -> 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_reconcile_next_event_enrollment_deserializes() -> Result<()> {
-    // Setup the contract database and dedicated due event fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and dedicated due event fixture
+    let uow = contract_unit_of_work().await?;
 
     // Claim and reconcile the due event through the Rust JSON contract
-    let outcome = db
+    let outcome = uow
         .reconcile_next_event_enrollment(None)
         .await?
         .context("due contract event should be claimable")?;
@@ -1058,23 +1024,22 @@ async fn db_contracts_reject_event_refund_request_blocks_event_writers() -> Resu
         .await?;
 
     // Probe whether a competing writer can lock the owning event
-    event_client
-        .batch_execute("begin; set local lock_timeout = '250ms'")
-        .await?;
-    let lock_result = event_client
-        .query_one(
-            "select event_id from event where event_id = $1::uuid for update",
-            &[&refund_event_id()],
-        )
-        .await;
+    let probe_code = probe_lock(
+        &event_client,
+        "select event_id from event where event_id = $1::uuid for update",
+        &[&paid_event_id()],
+    )
+    .await?;
 
-    // Roll back the rejection and lock probe before checking the outcome
-    event_client.batch_execute("rollback").await?;
+    // Roll back the rejection before checking the outcome
     rejection_client.batch_execute("rollback").await?;
 
     // Check rejection holds the event lock before refund workflow rows
-    let lock_err = lock_result.expect_err("event writer should wait for refund rejection");
-    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+    assert_eq!(
+        probe_code,
+        Some(SqlState::LOCK_NOT_AVAILABLE),
+        "event writer should wait for refund rejection"
+    );
 
     Ok(())
 }
@@ -1082,11 +1047,11 @@ async fn db_contracts_reject_event_refund_request_blocks_event_writers() -> Resu
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
-    // Setup the contract database and pending refund request
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and pending refund request
+    let uow = contract_unit_of_work().await?;
 
     // Reject the refund request through the Rust contract
-    let purchase = db
+    let purchase = uow
         .reject_event_refund_request(
             organizer_id(),
             group_id(),
@@ -1106,8 +1071,8 @@ async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_sync_external_payments_config_deserializes() -> Result<()> {
-    // Setup the contract database and operator allowlist payload
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and operator allowlist payload
+    let uow = contract_unit_of_work().await?;
     let config = crate::config::ExternalPaymentsConfig {
         allowed_countries: vec!["US".to_string()],
         default_payment_window_hours: 72,
@@ -1115,10 +1080,10 @@ async fn db_contracts_sync_external_payments_config_deserializes() -> Result<()>
     };
 
     // Sync the singleton configuration through the Rust contract
-    db.sync_external_payments_config(Some(config)).await?;
+    uow.sync_external_payments_config(Some(config)).await?;
 
     // Check the group settings context still deserializes after the sync
-    let context = db
+    let context = uow
         .get_group_external_payments_context(community_id(), group_id())
         .await?;
     assert!(context.configured);

@@ -1,22 +1,14 @@
 use std::collections::BTreeMap;
 
-use axum::{
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE},
-    },
-};
-use axum_login::tower_sessions::session;
+use axum::http::{HeaderValue, StatusCode};
 use chrono::{TimeZone, Utc};
 use serde_json::{Value, from_slice};
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
     handlers::{error::HandlerError, tests::*},
-    services::notifications::MockNotificationsManager,
+    test_util::normalize_whitespace,
     types::dashboard::user::notifications::{
         MutedGroup, NotificationCategory, NotificationGroupOption, NotificationPreferences,
     },
@@ -26,15 +18,14 @@ use crate::{
 async fn test_group_options_returns_json() {
     // Setup identifiers and data structures
     let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_list_user_notification_group_options()
         .times(1)
-        .withf(move |uid| *uid == user_id)
+        .withf(move |uid| *uid == ids.user_id)
         .returning(move |_| {
             Ok(vec![NotificationGroupOption {
                 community_display_name: "Community".to_string(),
@@ -44,15 +35,13 @@ async fn test_group_options_returns_json() {
             }])
         });
 
-    // Send the request
-    let (parts, bytes) = send_request(
-        db,
-        session_id,
-        "GET",
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         "/dashboard/user/notifications/group-options",
-        "",
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response contains the options as JSON
     assert_eq!(parts.status, StatusCode::OK);
@@ -69,61 +58,27 @@ async fn test_group_options_returns_json() {
 }
 
 #[tokio::test]
-async fn test_mute_group_rejects_unavailable_group() {
-    // Setup identifiers and data structures
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock rejecting the mute
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_mute_user_group_notifications()
-        .times(1)
-        .withf(move |uid, gid| *uid == user_id && *gid == group_id)
-        .returning(|_, _| {
-            Err(HandlerError::Database("group not available to mute".to_string()).into())
-        });
-
-    // Send the request
-    let (parts, bytes) = send_request(
-        db,
-        session_id,
-        "PUT",
-        &format!("/dashboard/user/notifications/muted-groups/{group_id}"),
-        "",
-    )
-    .await;
-
-    // Check the rejection message is returned
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(bytes.as_ref(), b"group not available to mute");
-}
-
-#[tokio::test]
 async fn test_mute_group_success() {
     // Setup identifiers and data structures
     let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_mute_user_group_notifications()
         .times(1)
-        .withf(move |uid, gid| *uid == user_id && *gid == group_id)
+        .withf(move |uid, gid| *uid == ids.user_id && *gid == group_id)
         .returning(|_, _| Ok(()));
 
-    // Send the request
-    let (parts, bytes) = send_request(
-        db,
-        session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
         "PUT",
         &format!("/dashboard/user/notifications/muted-groups/{group_id}"),
-        "",
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the muted groups list is refreshed
     assert_empty_hx_trigger_response(
@@ -137,26 +92,20 @@ async fn test_mute_group_success() {
 #[tokio::test]
 async fn test_muted_groups_renders_empty_state() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_get_user_notification_preferences()
         .times(1)
-        .withf(move |uid| *uid == user_id)
+        .withf(move |uid| *uid == ids.user_id)
         .returning(|_| Ok(NotificationPreferences::default()));
 
-    // Send the request
-    let (parts, bytes) = send_request(
-        db,
-        session_id,
-        "GET",
-        "/dashboard/user/notifications/muted-groups",
-        "",
-    )
-    .await;
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user/notifications/muted-groups", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the empty state is rendered
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -168,9 +117,8 @@ async fn test_muted_groups_renders_empty_state() {
 async fn test_muted_groups_renders_inner_content_only() {
     // Setup identifiers and data structures
     let available_group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
+    let ids = DashboardIds::new();
     let unavailable_group_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
     let preferences = NotificationPreferences {
         muted_groups: vec![
             sample_muted_group(available_group_id, "Available Group", true),
@@ -181,21 +129,16 @@ async fn test_muted_groups_renders_inner_content_only() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_get_user_notification_preferences()
         .times(1)
-        .withf(move |uid| *uid == user_id)
+        .withf(move |uid| *uid == ids.user_id)
         .returning(move |_| Ok(preferences.clone()));
 
-    // Send the request
-    let (parts, bytes) = send_request(
-        db,
-        session_id,
-        "GET",
-        "/dashboard/user/notifications/muted-groups",
-        "",
-    )
-    .await;
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user/notifications/muted-groups", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the rows render without the refresh wrapper
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -212,16 +155,34 @@ async fn test_muted_groups_renders_inner_content_only() {
 #[tokio::test]
 async fn test_page_renders_community_team_section() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
 
     // Setup database mock for a community team member
     let mut db = MockDB::new();
-    expect_authenticated_session_with_teams(&mut db, session_id, user_id, true, true);
-    expect_preferences(&mut db, user_id, NotificationPreferences::default());
+    expect_session_with_teams(
+        &mut db,
+        &ids,
+        TeamMembership {
+            community: true,
+            group: true,
+        },
+    );
+    expect_preferences(&mut db, &ids, NotificationPreferences::default());
 
-    // Send the request
-    let body = Box::pin(send_page_request(db, session_id)).await;
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user/notifications", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the page partial pushes the full dashboard URL
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get("hx-push-url"),
+        Some(&HeaderValue::from_static(
+            "/dashboard/user?tab=notifications"
+        ))
+    );
+    let body = std::str::from_utf8(&bytes).unwrap();
 
     // Check every section is rendered
     assert!(body.contains("Events and groups"));
@@ -233,16 +194,34 @@ async fn test_page_renders_community_team_section() {
 #[tokio::test]
 async fn test_page_renders_group_team_section() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
 
     // Setup database mock for a group team member
     let mut db = MockDB::new();
-    expect_authenticated_session_with_teams(&mut db, session_id, user_id, true, false);
-    expect_preferences(&mut db, user_id, NotificationPreferences::default());
+    expect_session_with_teams(
+        &mut db,
+        &ids,
+        TeamMembership {
+            community: false,
+            group: true,
+        },
+    );
+    expect_preferences(&mut db, &ids, NotificationPreferences::default());
 
-    // Send the request
-    let body = Box::pin(send_page_request(db, session_id)).await;
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user/notifications", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the page partial pushes the full dashboard URL
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get("hx-push-url"),
+        Some(&HeaderValue::from_static(
+            "/dashboard/user?tab=notifications"
+        ))
+    );
+    let body = std::str::from_utf8(&bytes).unwrap();
 
     // Check the group organizing section is rendered without the community one
     assert!(body.contains("Group organizing"));
@@ -255,8 +234,7 @@ async fn test_page_renders_group_team_section() {
 #[tokio::test]
 async fn test_page_renders_many_muted_groups() {
     // Setup identifiers and more muted groups than any cap
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let muted_groups = (0..30)
         .map(|index| sample_muted_group(Uuid::new_v4(), &format!("Muted Group {index}"), true))
         .collect();
@@ -267,11 +245,23 @@ async fn test_page_renders_many_muted_groups() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session_with_teams(&mut db, session_id, user_id, false, false);
-    expect_preferences(&mut db, user_id, preferences);
+    expect_session_with_teams(&mut db, &ids, TeamMembership::default());
+    expect_preferences(&mut db, &ids, preferences);
 
-    // Send the request
-    let body = Box::pin(send_page_request(db, session_id)).await;
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user/notifications", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the page partial pushes the full dashboard URL
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get("hx-push-url"),
+        Some(&HeaderValue::from_static(
+            "/dashboard/user?tab=notifications"
+        ))
+    );
+    let body = std::str::from_utf8(&bytes).unwrap();
 
     // Check every muted group is listed
     assert_eq!(body.matches("aria-label=\"Unmute Muted Group").count(), 30);
@@ -280,16 +270,27 @@ async fn test_page_renders_many_muted_groups() {
 #[tokio::test]
 async fn test_page_renders_member_sections_only() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
 
     // Setup database mock for a member without team roles
     let mut db = MockDB::new();
-    expect_authenticated_session_with_teams(&mut db, session_id, user_id, false, false);
-    expect_preferences(&mut db, user_id, NotificationPreferences::default());
+    expect_session_with_teams(&mut db, &ids, TeamMembership::default());
+    expect_preferences(&mut db, &ids, NotificationPreferences::default());
 
-    // Send the request
-    let body = Box::pin(send_page_request(db, session_id)).await;
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user/notifications", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the page partial pushes the full dashboard URL
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get("hx-push-url"),
+        Some(&HeaderValue::from_static(
+            "/dashboard/user?tab=notifications"
+        ))
+    );
+    let body = std::str::from_utf8(&bytes).unwrap();
 
     // Check only the member section, always sent list and muted groups render
     assert!(body.contains("Events and groups"));
@@ -305,8 +306,7 @@ async fn test_page_renders_member_sections_only() {
 #[tokio::test]
 async fn test_page_renders_toggle_states() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let preferences = NotificationPreferences {
         muted_groups: vec![],
         opted_out_categories: vec![
@@ -317,14 +317,26 @@ async fn test_page_renders_toggle_states() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session_with_teams(&mut db, session_id, user_id, false, false);
-    expect_preferences(&mut db, user_id, preferences);
+    expect_session_with_teams(&mut db, &ids, TeamMembership::default());
+    expect_preferences(&mut db, &ids, preferences);
 
-    // Send the request
-    let body = Box::pin(send_page_request(db, session_id)).await;
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user/notifications", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the page partial pushes the full dashboard URL
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get("hx-push-url"),
+        Some(&HeaderValue::from_static(
+            "/dashboard/user?tab=notifications"
+        ))
+    );
+    let body = std::str::from_utf8(&bytes).unwrap();
 
     // Check opted-out and enabled categories render their state
-    let body = body.split_whitespace().collect::<Vec<_>>().join(" ");
+    let body = normalize_whitespace(body);
     assert!(body.contains("name=\"preferences[badges]\" value=\"false\""));
     assert!(body.contains("name=\"preferences[event-reminders]\" value=\"true\""));
     assert!(body.contains("name=\"preferences[event-surveys]\" value=\"false\""));
@@ -335,26 +347,24 @@ async fn test_page_renders_toggle_states() {
 async fn test_unmute_group_success() {
     // Setup identifiers and data structures
     let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_unmute_user_group_notifications()
         .times(1)
-        .withf(move |uid, gid| *uid == user_id && *gid == group_id)
+        .withf(move |uid, gid| *uid == ids.user_id && *gid == group_id)
         .returning(|_, _| Ok(()));
 
-    // Send the request
-    let (parts, bytes) = send_request(
-        db,
-        session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
         "DELETE",
         &format!("/dashboard/user/notifications/muted-groups/{group_id}"),
-        "",
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the muted groups list is refreshed
     assert_empty_hx_trigger_response(
@@ -368,23 +378,22 @@ async fn test_unmute_group_success() {
 #[tokio::test]
 async fn test_update_preferences_rejects_unknown_category() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
 
     // Setup database mock that must not be written
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_update_user_notification_preferences().never();
 
-    // Send the request
-    let (parts, bytes) = send_request(
-        db,
-        session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
         "PUT",
         "/dashboard/user/notifications/preferences",
+        ids.session_id,
         "preferences%5Bunknown%5D=false",
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the payload is rejected
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -394,12 +403,11 @@ async fn test_update_preferences_rejects_unknown_category() {
 #[tokio::test]
 async fn test_update_preferences_returns_database_rejection() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
 
     // Setup database mock rejecting the update
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_update_user_notification_preferences()
         .times(1)
         .returning(|_, _| {
@@ -407,15 +415,15 @@ async fn test_update_preferences_returns_database_rejection() {
         });
     db.expect_update_session().never();
 
-    // Send the request
-    let (parts, bytes) = send_request(
-        db,
-        session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
         "PUT",
         "/dashboard/user/notifications/preferences",
+        ids.session_id,
         "preferences%5Bbadges%5D=false",
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the rejection message is returned
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -425,8 +433,7 @@ async fn test_update_preferences_returns_database_rejection() {
 #[tokio::test]
 async fn test_update_preferences_success() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let expected_preferences = BTreeMap::from([
         (NotificationCategory::Badges, false),
         (NotificationCategory::NewEvents, true),
@@ -434,68 +441,58 @@ async fn test_update_preferences_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_update_user_notification_preferences()
         .times(1)
-        .withf(move |uid, input| *uid == user_id && input.preferences == expected_preferences)
+        .withf(move |uid, input| *uid == ids.user_id && input.preferences == expected_preferences)
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
         .withf(move |record| message_matches(record, "Notification preferences updated."))
         .returning(|_| Ok(()));
 
-    // Send the request
-    let (parts, bytes) = send_request(
-        db,
-        session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
         "PUT",
         "/dashboard/user/notifications/preferences",
+        ids.session_id,
         "preferences%5Bbadges%5D=false&preferences%5Bnew-events%5D=true",
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the page body is refreshed
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-body"))
-    );
-    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
+    assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
 }
 
 // Helpers.
 
-/// Expects an authenticated session for a user with the given team flags.
-fn expect_authenticated_session_with_teams(
-    db: &mut MockDB,
-    session_id: session::Id,
-    user_id: Uuid,
-    belongs_to_any_group_team: bool,
-    belongs_to_community_team: bool,
-) {
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let user = crate::auth::User {
-        belongs_to_any_group_team: Some(belongs_to_any_group_team),
-        belongs_to_community_team: Some(belongs_to_community_team),
-        ..sample_auth_user(user_id, &auth_hash)
-    };
-
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(user.clone())));
+/// Team memberships of the authenticated user that select the page sections.
+#[derive(Clone, Copy, Default)]
+struct TeamMembership {
+    /// Whether the user belongs to a community team.
+    community: bool,
+    /// Whether the user belongs to any group team.
+    group: bool,
 }
 
 /// Expects one preferences read for the user.
-fn expect_preferences(db: &mut MockDB, user_id: Uuid, preferences: NotificationPreferences) {
+fn expect_preferences(db: &mut MockDB, ids: &DashboardIds, preferences: NotificationPreferences) {
+    let user_id = ids.user_id;
     db.expect_get_user_notification_preferences()
         .times(1)
         .withf(move |uid| *uid == user_id)
         .returning(move |_| Ok(preferences.clone()));
+}
+
+/// Expects an authenticated session for a user with the given team memberships.
+fn expect_session_with_teams(db: &mut MockDB, ids: &DashboardIds, teams: TeamMembership) {
+    let user = crate::auth::User {
+        belongs_to_any_group_team: Some(teams.group),
+        belongs_to_community_team: Some(teams.community),
+        ..sample_auth_user(ids.user_id, "hash")
+    };
+    expect_session_with_user(db, ids, user);
 }
 
 /// Returns a muted group with the given availability.
@@ -508,44 +505,4 @@ fn sample_muted_group(group_id: Uuid, name: &str, available: bool) -> MutedGroup
         name: name.to_string(),
         logo_url: None,
     }
-}
-
-/// Requests the notifications page partial and returns its body.
-async fn send_page_request(db: MockDB, session_id: session::Id) -> String {
-    let (parts, bytes) =
-        send_request(db, session_id, "GET", "/dashboard/user/notifications", "").await;
-    assert_html_response(&parts, &bytes, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get("hx-push-url"),
-        Some(&HeaderValue::from_static(
-            "/dashboard/user?tab=notifications"
-        ))
-    );
-
-    String::from_utf8(bytes.to_vec()).unwrap()
-}
-
-/// Sends a request to the router and returns the response parts and body.
-async fn send_request(
-    db: MockDB,
-    session_id: session::Id,
-    method: &str,
-    uri: &str,
-    body: &str,
-) -> (axum::http::response::Parts, axum::body::Bytes) {
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method(method)
-        .uri(uri)
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body.to_string()))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    (parts, bytes)
 }

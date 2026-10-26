@@ -6,7 +6,7 @@ use super::*;
 // Public constructor behavior.
 
 #[test]
-fn from_event_builds_weekly_series_payloads_and_metadata() {
+fn test_from_event_builds_weekly_series_payloads_and_metadata() {
     // Setup recurring event form and base payload
     let starts_at = at(2030, 1, 7);
     let event = sample_event(
@@ -56,115 +56,82 @@ fn from_event_builds_weekly_series_payloads_and_metadata() {
 }
 
 #[test]
-fn from_event_carries_empty_organizers_to_every_occurrence() {
-    // Setup a recurring event whose organizers selection was cleared
-    let event = EventInput {
-        organizers_present: Some(true),
-        ..sample_event(
-            EventRecurrencePattern::Weekly,
-            Some(2),
-            Some(at(2030, 1, 7)),
-            "UTC",
-        )
-    };
-
-    // Build recurring payloads and check every occurrence clears organizers
-    assert_eq!(recurring_organizers(&event), vec![Some(json!([])); 3]);
-}
-
-#[test]
-fn from_event_carries_organizers_to_every_occurrence() {
-    // Setup a recurring event with organizers in submitted order
+fn test_from_event_applies_organizers_to_every_occurrence() {
     let first_organizer_id = Uuid::new_v4();
     let second_organizer_id = Uuid::new_v4();
-    let event = EventInput {
-        organizers: Some(vec![second_organizer_id, first_organizer_id]),
-        organizers_present: Some(true),
-        ..sample_event(
-            EventRecurrencePattern::Weekly,
-            Some(2),
-            Some(at(2030, 1, 7)),
-            "UTC",
-        )
-    };
+    let cases = [
+        ("cleared selection", None, Some(true), Some(json!([]))),
+        (
+            "selection in submitted order",
+            Some(vec![second_organizer_id, first_organizer_id]),
+            Some(true),
+            Some(json!([second_organizer_id, first_organizer_id])),
+        ),
+        ("missing selection", None, None, None),
+    ];
+    for (case, organizers, organizers_present, expected) in cases {
+        // Setup a weekly event with two additional occurrences
+        let event = EventInput {
+            organizers,
+            organizers_present,
+            ..sample_event(
+                EventRecurrencePattern::Weekly,
+                Some(2),
+                Some(at(2030, 1, 7)),
+                "UTC",
+            )
+        };
 
-    // Build recurring payloads and check every occurrence keeps the order
-    assert_eq!(
-        recurring_organizers(&event),
-        vec![Some(json!([second_organizer_id, first_organizer_id])); 3]
-    );
+        // Check every occurrence submits the same organizers
+        assert_eq!(recurring_organizers(&event), vec![expected; 3], "{case}");
+    }
 }
 
 #[test]
-fn from_event_omits_organizers_from_every_occurrence_when_missing() {
-    // Setup a recurring event without an organizers selection
-    let event = sample_event(
-        EventRecurrencePattern::Weekly,
-        Some(2),
-        Some(at(2030, 1, 7)),
-        "UTC",
-    );
-
-    // Build recurring payloads and check no occurrence submits organizers
-    assert_eq!(recurring_organizers(&event), vec![None; 3]);
-}
-
-#[test]
-fn from_event_rejects_invalid_recurrence_settings() {
-    // Setup shared recurring event inputs
-    let base_starts_at = at(2030, 1, 7);
+fn test_from_event_rejects_invalid_recurrence_settings() {
+    let starts_at = Some(at(2030, 1, 7));
+    let pattern = EventRecurrencePattern::Weekly;
+    let cases = [
+        (
+            "missing additional occurrences",
+            sample_event(pattern, None, starts_at, "UTC"),
+            "recurring events require recurrence_additional_occurrences",
+        ),
+        (
+            "zero additional occurrences",
+            sample_event(pattern, Some(0), starts_at, "UTC"),
+            "recurrence_additional_occurrences must be between 1 and 12",
+        ),
+        (
+            "too many additional occurrences",
+            sample_event(
+                pattern,
+                Some(MAX_RECURRING_ADDITIONAL_OCCURRENCES + 1),
+                starts_at,
+                "UTC",
+            ),
+            "recurrence_additional_occurrences must be between 1 and 12",
+        ),
+        (
+            "missing start",
+            sample_event(pattern, Some(1), None, "UTC"),
+            "recurring events require starts_at",
+        ),
+        (
+            "invalid timezone",
+            sample_event(pattern, Some(1), starts_at, "bad/timezone"),
+            "invalid event timezone",
+        ),
+    ];
     let base_payload = json!({ "starts_at": "2030-01-07T10:00:00" });
-
-    // Check missing additional occurrence count rejection
-    let missing_count_err = unwrap_err_message(RecurringEventPayloads::from_event(
-        &sample_event(
-            EventRecurrencePattern::Weekly,
-            None,
-            Some(base_starts_at),
-            "UTC",
-        ),
-        &base_payload,
-    ));
-    assert!(
-        missing_count_err.contains("recurring events require recurrence_additional_occurrences")
-    );
-
-    // Check invalid additional occurrence count rejection
-    let invalid_count_err = unwrap_err_message(RecurringEventPayloads::from_event(
-        &sample_event(
-            EventRecurrencePattern::Weekly,
-            Some(MAX_RECURRING_ADDITIONAL_OCCURRENCES + 1),
-            Some(base_starts_at),
-            "UTC",
-        ),
-        &base_payload,
-    ));
-    assert!(
-        invalid_count_err.contains("recurrence_additional_occurrences must be between 1 and 12")
-    );
-
-    // Check missing start date rejection
-    let missing_start_err = unwrap_err_message(RecurringEventPayloads::from_event(
-        &sample_event(EventRecurrencePattern::Weekly, Some(1), None, "UTC"),
-        &base_payload,
-    ));
-    assert!(missing_start_err.contains("recurring events require starts_at"));
-
-    // Check invalid timezone rejection
-    let invalid_timezone_err = unwrap_err_message(RecurringEventPayloads::from_event(
-        &sample_event(
-            EventRecurrencePattern::Weekly,
-            Some(1),
-            Some(base_starts_at),
-            "bad/timezone",
-        ),
-        &base_payload,
-    ));
-    assert!(invalid_timezone_err.contains("invalid event timezone"));
+    for (case, event, message) in cases {
+        let err = unwrap_err_message(RecurringEventPayloads::from_event(&event, &base_payload));
+        assert!(err.contains(message), "{case}: {err}");
+    }
 }
 
 #[test]
-fn from_event_returns_none_for_single_event() {
+fn test_from_event_returns_none_for_single_event() {
     // Setup single event form and base payload
     let event = EventInput::default();
     let base_payload = json!({ "starts_at": "2030-01-07T10:00:00" });
@@ -179,7 +146,7 @@ fn from_event_returns_none_for_single_event() {
 // Occurrence payload behavior.
 
 #[test]
-fn occurrence_payload_refreshes_label_ids_and_remaps_session_labels() {
+fn test_occurrence_payload_refreshes_label_ids_and_remaps_session_labels() {
     // Setup base payload with labels referenced by sessions
     let first_label_id = Uuid::new_v4();
     let second_label_id = Uuid::new_v4();
@@ -240,7 +207,7 @@ fn occurrence_payload_refreshes_label_ids_and_remaps_session_labels() {
 }
 
 #[test]
-fn occurrence_payload_rejects_invalid_payload_shapes_and_dates() {
+fn test_occurrence_payload_rejects_invalid_payload_shapes_and_dates() {
     // Setup recurrence inputs
     let base_starts_at = at(2030, 1, 7);
     let occurrence_starts_at = at(2030, 1, 14);
@@ -281,14 +248,10 @@ fn occurrence_payload_rejects_invalid_payload_shapes_and_dates() {
 }
 
 #[test]
-fn occurrence_payload_shifts_local_and_utc_dates_and_refreshes_ids() {
+fn test_occurrence_payload_shifts_local_and_utc_dates_and_refreshes_ids() {
     // Setup recurrence inputs and base payload
-    let base_starts_at = NaiveDate::from_ymd_opt(2026, 3, 28)
-        .unwrap()
-        .and_time(NaiveTime::from_hms_opt(10, 0, 0).unwrap());
-    let occurrence_starts_at = NaiveDate::from_ymd_opt(2026, 4, 4)
-        .unwrap()
-        .and_time(NaiveTime::from_hms_opt(10, 0, 0).unwrap());
+    let base_starts_at = at_time(2026, 3, 28, 10, 0);
+    let occurrence_starts_at = at_time(2026, 4, 4, 10, 0);
     let timezone: Tz = "Europe/Madrid".parse().unwrap();
     let discount_code_id = Uuid::new_v4();
     let price_window_id = Uuid::new_v4();
@@ -388,14 +351,10 @@ fn occurrence_payload_shifts_local_and_utc_dates_and_refreshes_ids() {
 }
 
 #[test]
-fn occurrence_payload_falls_back_across_missing_dst_local_time() {
+fn test_occurrence_payload_falls_back_across_missing_dst_local_time() {
     // Setup event recurrence with a UTC field shifted into a spring-forward gap
-    let base_starts_at = NaiveDate::from_ymd_opt(2026, 3, 22)
-        .unwrap()
-        .and_time(NaiveTime::from_hms_opt(2, 30, 0).unwrap());
-    let occurrence_starts_at = NaiveDate::from_ymd_opt(2026, 3, 29)
-        .unwrap()
-        .and_time(NaiveTime::from_hms_opt(2, 30, 0).unwrap());
+    let base_starts_at = at_time(2026, 3, 22, 2, 30);
+    let occurrence_starts_at = at_time(2026, 3, 29, 2, 30);
     let timezone: Tz = "Europe/Madrid".parse().unwrap();
     let base_payload = json!({
         "discount_codes": [{
@@ -422,14 +381,10 @@ fn occurrence_payload_falls_back_across_missing_dst_local_time() {
 }
 
 #[test]
-fn occurrence_payload_preserves_utc_field_wall_clock_across_dst() {
+fn test_occurrence_payload_preserves_utc_field_wall_clock_across_dst() {
     // Setup event recurrence crossing DST with ticket windows before the transition
-    let base_starts_at = NaiveDate::from_ymd_opt(2026, 3, 22)
-        .unwrap()
-        .and_time(NaiveTime::from_hms_opt(10, 0, 0).unwrap());
-    let occurrence_starts_at = NaiveDate::from_ymd_opt(2026, 3, 29)
-        .unwrap()
-        .and_time(NaiveTime::from_hms_opt(10, 0, 0).unwrap());
+    let base_starts_at = at_time(2026, 3, 22, 10, 0);
+    let occurrence_starts_at = at_time(2026, 3, 29, 10, 0);
     let timezone: Tz = "Europe/Madrid".parse().unwrap();
     let base_payload = json!({
         "discount_codes": [{
@@ -467,62 +422,53 @@ fn occurrence_payload_preserves_utc_field_wall_clock_across_dst() {
 // Occurrence start time behavior.
 
 #[test]
-fn occurrence_start_times_preserves_weekday_and_time() {
-    // Setup weekly recurrence anchor
-    let starts_at = at(2030, 1, 7);
-    let recurrence_request =
-        sample_recurrence_request(EventRecurrencePattern::Weekly, 2, starts_at);
-
-    // Generate weekly occurrence start times
-    let occurrence_start_times =
-        RecurringEventPayloads::occurrence_start_times(&recurrence_request);
-
-    // Check weekday and local time are preserved
-    assert_eq!(
-        occurrence_start_times,
-        vec![at(2030, 1, 14), at(2030, 1, 21)]
-    );
-}
-
-#[test]
-fn occurrence_start_times_skips_months_without_matching_ordinal_weekday() {
-    // Setup fifth Tuesday recurrence anchor
-    let starts_at = at(2030, 1, 29);
-    let recurrence_request =
-        sample_recurrence_request(EventRecurrencePattern::Monthly, 2, starts_at);
-
-    // Generate monthly occurrence start times
-    let occurrence_start_times =
-        RecurringEventPayloads::occurrence_start_times(&recurrence_request);
-
-    // Check months without a fifth Tuesday are skipped
-    assert_eq!(
-        occurrence_start_times,
-        vec![at(2030, 4, 30), at(2030, 7, 30)]
-    );
-}
-
-#[test]
-fn occurrence_start_times_supports_weekly_and_biweekly_patterns() {
-    // Setup weekly recurrence anchor
-    let starts_at = at(2030, 1, 7);
-    let biweekly_request =
-        sample_recurrence_request(EventRecurrencePattern::Biweekly, 2, starts_at);
-    let weekly_request = sample_recurrence_request(EventRecurrencePattern::Weekly, 2, starts_at);
-
-    // Generate weekly and biweekly start times
-    let weekly_start_times = RecurringEventPayloads::occurrence_start_times(&weekly_request);
-    let biweekly_start_times = RecurringEventPayloads::occurrence_start_times(&biweekly_request);
-
-    // Check expected weekly intervals
-    assert_eq!(weekly_start_times, vec![at(2030, 1, 14), at(2030, 1, 21)]);
-    assert_eq!(biweekly_start_times, vec![at(2030, 1, 21), at(2030, 2, 4)]);
+fn test_occurrence_start_times_follow_the_recurrence_pattern() {
+    let cases = [
+        (
+            "weekly keeps weekday and time",
+            EventRecurrencePattern::Weekly,
+            at(2030, 1, 7),
+            vec![at(2030, 1, 14), at(2030, 1, 21)],
+        ),
+        (
+            "biweekly",
+            EventRecurrencePattern::Biweekly,
+            at(2030, 1, 7),
+            vec![at(2030, 1, 21), at(2030, 2, 4)],
+        ),
+        (
+            "monthly second monday",
+            EventRecurrencePattern::Monthly,
+            at(2030, 1, 14),
+            vec![at(2030, 2, 11), at(2030, 3, 11)],
+        ),
+        (
+            "monthly across the year boundary",
+            EventRecurrencePattern::Monthly,
+            at(2030, 12, 9),
+            vec![at(2031, 1, 13), at(2031, 2, 10)],
+        ),
+        (
+            "monthly skips months without a fifth tuesday",
+            EventRecurrencePattern::Monthly,
+            at(2030, 1, 29),
+            vec![at(2030, 4, 30), at(2030, 7, 30)],
+        ),
+    ];
+    for (case, pattern, starts_at, expected) in cases {
+        let recurrence_request = sample_recurrence_request(pattern, 2, starts_at);
+        assert_eq!(
+            RecurringEventPayloads::occurrence_start_times(&recurrence_request),
+            expected,
+            "{case}"
+        );
+    }
 }
 
 // Date and timezone helper behavior.
 
 #[test]
-fn nth_weekday_in_month_returns_none_when_ordinal_is_missing() {
+fn test_nth_weekday_in_month_returns_none_when_ordinal_is_missing() {
     // Find present and missing ordinal weekdays
     let fifth_monday = nth_weekday_in_month(2030, 2, Weekday::Mon, 5);
     let second_monday = nth_weekday_in_month(2030, 2, Weekday::Mon, 2);
@@ -536,15 +482,11 @@ fn nth_weekday_in_month_returns_none_when_ordinal_is_missing() {
 }
 
 #[test]
-fn to_utc_resolves_ambiguous_and_missing_local_times() {
+fn test_to_utc_resolves_ambiguous_and_missing_local_times() {
     // Setup DST edge-case local times
     let timezone: Tz = "Europe/Madrid".parse().unwrap();
-    let ambiguous = NaiveDate::from_ymd_opt(2026, 10, 25)
-        .unwrap()
-        .and_time(NaiveTime::from_hms_opt(2, 30, 0).unwrap());
-    let missing = NaiveDate::from_ymd_opt(2026, 3, 29)
-        .unwrap()
-        .and_time(NaiveTime::from_hms_opt(2, 30, 0).unwrap());
+    let ambiguous = at_time(2026, 10, 25, 2, 30);
+    let missing = at_time(2026, 3, 29, 2, 30);
 
     // Check ambiguous times are resolved and missing times are rejected
     assert_eq!(
@@ -558,9 +500,14 @@ fn to_utc_resolves_ambiguous_and_missing_local_times() {
 
 /// Builds a test datetime at 10:00:00.
 fn at(year: i32, month: u32, day: u32) -> NaiveDateTime {
+    at_time(year, month, day, 10, 0)
+}
+
+/// Builds a test datetime at the given local time.
+fn at_time(year: i32, month: u32, day: u32, hour: u32, minute: u32) -> NaiveDateTime {
     NaiveDate::from_ymd_opt(year, month, day)
         .unwrap()
-        .and_time(NaiveTime::from_hms_opt(10, 0, 0).unwrap())
+        .and_time(NaiveTime::from_hms_opt(hour, minute, 0).unwrap())
 }
 
 /// Returns the organizers submitted in each recurring payload built from the event.

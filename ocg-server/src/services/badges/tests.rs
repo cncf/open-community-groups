@@ -1,9 +1,6 @@
 //! Badge credential manager tests.
 
-use std::io::Cursor;
-
 use chrono::{TimeZone, Utc};
-use image::{DynamicImage, ImageFormat};
 use serde_json::json;
 use ssi_jwk::{Base64urlUInt, JWK, OctetParams, Params};
 use ssi_verification_methods::ed25519_dalek::SigningKey;
@@ -11,6 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     config::{BadgeSigningKeyConfig, BadgeVerificationKeyConfig, BadgesConfig},
+    test_util::sample_png,
     types::badges::{
         BADGE_CRITERIA_MAX_CHARS, BADGE_DESCRIPTION_MAX_CHARS, BADGE_NAME_MAX_CHARS, BadgeSnapshot,
         BadgeSnapshotIssuer, UserBadge, UserBadgeIdentity,
@@ -29,7 +27,7 @@ const TEST_ISSUER_URL: &str =
 #[tokio::test(start_paused = true)]
 async fn test_cached_credential_rejects_cold_request_when_signer_is_busy() {
     // Setup a manager whose cold-signing guard is already held
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let _guard = manager.credential_cache.signing_guard().await.unwrap();
 
     // Run one cold request against the busy signer
@@ -42,7 +40,7 @@ async fn test_cached_credential_rejects_cold_request_when_signer_is_busy() {
 #[tokio::test]
 async fn test_cached_export_credential_reuses_binding_and_supersedes_on_rebind() {
     // Setup one immutable award with a persisted binding and a later rebind
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let award = sample_award();
     let binding = sample_identity();
     let rebind = UserBadgeIdentity {
@@ -74,7 +72,7 @@ async fn test_cached_export_credential_reuses_binding_and_supersedes_on_rebind()
 #[tokio::test]
 async fn test_credential_cache_reuses_immutable_signed_representation() {
     // Setup one immutable award and sign its public representation once
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let award = sample_award();
     let first = manager.cached_credential(&award).await.unwrap();
 
@@ -90,7 +88,7 @@ async fn test_credential_cache_reuses_immutable_signed_representation() {
 #[tokio::test]
 async fn test_credential_email_identity_binds_salted_hash_and_verifies() {
     // Issue an export credential bound to a fixed salted email identity
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let credential = manager
         .issue_credential(CredentialInput {
             award: &sample_award(),
@@ -140,7 +138,7 @@ async fn test_credential_email_identity_binds_salted_hash_and_verifies() {
 async fn test_credential_profile_signs_and_verifies_after_key_rotation() {
     // Setup and issue the deterministic credential fixture
     let original_key = test_jwk(7);
-    let original = manager(original_key.clone(), vec![]);
+    let original = manager();
     let credential = signed_credential(&original).await;
     let expected: serde_json::Value =
         serde_json::from_str(include_str!("testdata/opaque-subject-credential.json")).unwrap();
@@ -149,12 +147,13 @@ async fn test_credential_profile_signs_and_verifies_after_key_rotation() {
     assert_eq!(credential, expected);
     let serialized = credential.to_string();
     for forbidden in ["identifier", "email", "hash", "salt", "contract-user"] {
-        assert!(!serialized.contains(forbidden));
+        assert!(!serialized.contains(forbidden), "{forbidden}");
     }
 
     // Rotate the signing key while retaining the published public key
-    let rotated = manager(
+    let rotated = manager_with_key(
         test_jwk(9),
+        "rotated-key",
         vec![BadgeVerificationKeyConfig {
             key_id: "test-key".to_string(),
             public_jwk: original_key.to_public(),
@@ -171,7 +170,7 @@ async fn test_credential_profile_signs_and_verifies_after_key_rotation() {
 #[tokio::test]
 async fn test_maximum_badge_text_fits_png_credential_limit() {
     // Build a signed credential with worst-case escaped text at every input limit
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let mut award = sample_award();
     award.snapshot.criteria = "\u{0001}".repeat(BADGE_CRITERIA_MAX_CHARS);
     award.snapshot.description = "\u{0001}".repeat(BADGE_DESCRIPTION_MAX_CHARS);
@@ -191,13 +190,13 @@ async fn test_maximum_badge_text_fits_png_credential_limit() {
 
     // Check every valid persisted definition remains exportable
     assert!(credential.len() <= super::png::MAX_CREDENTIAL_SIZE);
-    assert!(bake(&sample_png(), &credential).is_ok());
+    assert!(bake(&sample_png(512, 512), &credential).is_ok());
 }
 
 #[tokio::test]
 async fn test_status_list_cache_reuses_state_and_refreshes_revocations() {
     // Build one manager and two distinct representation timestamps
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let list_id = Uuid::from_u128(31);
     let group_id = Uuid::from_u128(32);
     let first_created_at = Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap();
@@ -230,7 +229,7 @@ async fn test_status_list_cache_reuses_state_and_refreshes_revocations() {
 #[tokio::test]
 async fn test_status_list_profile_uses_required_ttl_and_revocation_purpose() {
     // Issue one signed status list for a known group
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let list_id = Uuid::from_u128(31);
     let group_id = Uuid::from_u128(32);
     let status = manager
@@ -286,7 +285,7 @@ async fn test_status_list_profile_uses_required_ttl_and_revocation_purpose() {
 #[tokio::test]
 async fn test_unknown_context_fails_closed_during_signing() {
     // Attempt to sign a document that references an unreviewed context
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let result = manager
         .sign_document(
             json!({
@@ -308,7 +307,7 @@ async fn test_unknown_context_fails_closed_during_signing() {
 #[tokio::test]
 async fn test_verify_credential_rejects_foreign_and_malformed_urls() {
     // Issue the valid signed fixture
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let credential = signed_credential(&manager).await;
 
     // Check foreign, nested, and malformed credential identifiers are rejected
@@ -319,10 +318,13 @@ async fn test_verify_credential_rejects_foreign_and_malformed_urls() {
     ] {
         let mut altered = credential.clone();
         altered["id"] = json!(id);
-        assert!(matches!(
-            manager.verify_credential(&altered).await,
-            Err(BadgesManagerError::InvalidUrl)
-        ));
+        assert!(
+            matches!(
+                manager.verify_credential(&altered).await,
+                Err(BadgesManagerError::InvalidUrl)
+            ),
+            "{id}"
+        );
     }
 
     // Check a foreign issuer URL is rejected before proof verification
@@ -338,7 +340,7 @@ async fn test_verify_credential_rejects_foreign_and_malformed_urls() {
 #[tokio::test]
 async fn test_verify_credential_rejects_invalid_status_entries() {
     // Setup the manager and the valid signed status entry
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let created_at = Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap();
     let valid_status = credential_status();
 
@@ -356,16 +358,20 @@ async fn test_verify_credential_rejects_invalid_status_entries() {
         ("statusPurpose", json!("suspension")),
     ];
     for (field, value) in rejected_entries {
+        let case = format!("{field}={value}");
         let mut status = valid_status.clone();
         status[field] = value;
         let credential = manager
             .sign_document(credential_document(&status), TEST_ISSUER_URL, created_at)
             .await
             .unwrap();
-        assert!(matches!(
-            manager.verify_credential(&credential).await,
-            Err(BadgesManagerError::InvalidStatusList)
-        ));
+        assert!(
+            matches!(
+                manager.verify_credential(&credential).await,
+                Err(BadgesManagerError::InvalidStatusList)
+            ),
+            "{case}"
+        );
     }
 
     // Check a signed foreign status-list reference is rejected
@@ -386,7 +392,7 @@ async fn test_verify_credential_rejects_invalid_status_entries() {
 #[tokio::test]
 async fn test_verify_credential_rejects_invalid_valid_from() {
     // Sign a credential whose award timestamp is not RFC 3339
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let mut document = credential_document(&credential_status());
     document["validFrom"] = json!("not-a-timestamp");
     let credential = manager
@@ -408,7 +414,7 @@ async fn test_verify_credential_rejects_invalid_valid_from() {
 #[tokio::test]
 async fn test_verify_credential_rejects_tampered_content() {
     // Issue the valid signed fixture
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let mut credential = signed_credential(&manager).await;
 
     // Alter one signed claim without re-signing
@@ -424,8 +430,8 @@ async fn test_verify_credential_rejects_tampered_content() {
 #[tokio::test]
 async fn test_verify_credential_rejects_unknown_verification_method() {
     // Issue a credential signed by a key outside the verifier allowlist
-    let signer = manager(test_jwk(9), vec![]);
-    let verifier = manager(test_jwk(7), vec![]);
+    let signer = manager_with_key(test_jwk(9), "rotated-key", vec![]);
+    let verifier = manager();
     let unknown_key = signed_credential(&signer).await;
 
     // Check the closed allowlist rejects the unknown proof key
@@ -448,7 +454,7 @@ async fn test_verify_credential_rejects_unknown_verification_method() {
 #[tokio::test]
 async fn test_verify_credential_rejects_unsupported_profile_and_identifier_claims() {
     // Issue the valid signed fixture
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let credential = signed_credential(&manager).await;
 
     // Check a URI-only issuer is rejected by the canonical local profile
@@ -504,7 +510,7 @@ async fn test_verify_credential_rejects_unsupported_profile_and_identifier_claim
 #[tokio::test]
 async fn test_verify_credential_rejects_unsupported_proof_profile() {
     // Issue the valid signed fixture
-    let manager = manager(test_jwk(7), vec![]);
+    let manager = manager();
     let credential = signed_credential(&manager).await;
 
     // Check every unsupported fixed proof field is rejected
@@ -515,10 +521,13 @@ async fn test_verify_credential_rejects_unsupported_proof_profile() {
     ] {
         let mut altered = credential.clone();
         altered["proof"][0][field] = value;
-        assert!(matches!(
-            manager.verify_credential(&altered).await,
-            Err(BadgesManagerError::InvalidProof)
-        ));
+        assert!(
+            matches!(
+                manager.verify_credential(&altered).await,
+                Err(BadgesManagerError::InvalidProof)
+            ),
+            "{field}"
+        );
     }
 
     // Check a missing proof is rejected
@@ -590,20 +599,22 @@ fn credential_status() -> serde_json::Value {
     })
 }
 
+/// Build a badges manager signing with the default `test-key` key.
+fn manager() -> SsiBadgesManager {
+    manager_with_key(test_jwk(7), "test-key", vec![])
+}
+
 /// Build a badges manager with one active key and retained public keys.
-fn manager(
+fn manager_with_key(
     signing_jwk: JWK,
+    key_id: &str,
     verification_keys: Vec<BadgeVerificationKeyConfig>,
 ) -> SsiBadgesManager {
     SsiBadgesManager::new(
         "https://badges.example.test",
         &BadgesConfig {
             signing_key: BadgeSigningKeyConfig {
-                key_id: if signing_jwk.to_public() == test_jwk(7).to_public() {
-                    "test-key".to_string()
-                } else {
-                    "rotated-key".to_string()
-                },
+                key_id: key_id.to_string(),
                 private_jwk: signing_jwk,
             },
             verification_keys,
@@ -657,15 +668,6 @@ fn sample_identity() -> UserBadgeIdentity {
             .to_string(),
         identity_salt: "0123456789abcdef0123456789abcdef".to_string(),
     }
-}
-
-/// Encode valid 512×512 PNG artwork.
-fn sample_png() -> Vec<u8> {
-    let mut output = Cursor::new(Vec::new());
-    DynamicImage::new_rgba8(512, 512)
-        .write_to(&mut output, ImageFormat::Png)
-        .unwrap();
-    output.into_inner()
 }
 
 /// Issue the deterministic signed credential fixture.

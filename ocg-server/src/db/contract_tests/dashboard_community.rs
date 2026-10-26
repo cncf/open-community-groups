@@ -127,55 +127,6 @@ async fn db_contracts_get_community_contact_recipients_summary_lists_unmatched_g
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_get_community_contact_recipients_summary_rejects_foreign_filters()
--> Result<()> {
-    // Setup the contract database and a category of another community
-    let db = contract_tests_db()?;
-    let filters = CommunityContactFilters {
-        group_category_ids: vec![group_category_id()],
-        ..Default::default()
-    };
-
-    // Summarize recipients with the foreign category
-    let err = db
-        .get_community_contact_recipients_summary(contact_community_id(), &filters)
-        .await
-        .expect_err("foreign category should be rejected");
-
-    // Check the user-facing rejection is raised
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("group category not found")
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_get_community_contact_recipients_summary_rejects_foreign_groups() -> Result<()>
-{
-    // Setup the contract database and a group of another community
-    let db = contract_tests_db()?;
-    let filters = CommunityContactFilters {
-        group_ids: vec![contact_group_a_id(), group_id()],
-        ..Default::default()
-    };
-
-    // Summarize recipients with the foreign group
-    let err = db
-        .get_community_contact_recipients_summary(contact_community_id(), &filters)
-        .await
-        .expect_err("foreign group should be rejected");
-
-    // Check the user-facing rejection is raised
-    assert_eq!(ocg01_message(&err).as_deref(), Some("group not found"));
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
 async fn db_contracts_get_community_stats_deserializes() -> Result<()> {
     // Setup the contract database and community fixture
     let db = contract_tests_db()?;

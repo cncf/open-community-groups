@@ -1,29 +1,30 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     extract::Query,
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE, HOST, LOCATION},
-    },
+    http::{HeaderValue, StatusCode, header::LOCATION},
     response::IntoResponse,
 };
 use axum_login::tower_sessions::session;
 use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl, basic::BasicClient};
 use openidconnect as oidc;
 use serde_json::json;
-use tower::ServiceExt;
 use tower_sessions::{MemoryStore, Session};
 use uuid::Uuid;
 
 use crate::{
-    auth::{AUTH_PROVIDER_KEY, OAuth2ProviderDetails, OidcProviderDetails},
-    config::{HttpServerConfig, LoginOptions, OAuth2Provider, OAuth2ProviderConfig},
-    db::{DynDB, mock::MockDB},
+    auth::{
+        AUTH_PROVIDER_KEY, EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR,
+        EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR, OAuth2ProviderDetails, OidcProviderDetails,
+    },
+    config::{HttpServerConfig, LoginOptions, OAuth2Provider},
+    db::{
+        DynDB,
+        mock::{MockDB, expect_site_settings},
+    },
     handlers::{
-        auth::session_context::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
         extractors::{OAuth2, Oidc},
         tests::*,
     },
@@ -32,257 +33,158 @@ use crate::{
 
 use super::*;
 
+// Pages and sections.
+
 #[tokio::test]
 async fn test_log_in_page_success() {
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_site_settings(&mut db);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(LOG_IN_URL)
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", LOG_IN_URL).body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
 async fn test_log_in_page_redirects_when_authenticated() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_session(&mut db, &ids);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(LOG_IN_URL)
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, get_request(LOG_IN_URL, ids.session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/"),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/"))
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_sign_up_page_success() {
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_site_settings(&mut db);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(SIGN_UP_URL)
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", SIGN_UP_URL).body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
 async fn test_sign_up_page_redirects_when_authenticated() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_session(&mut db, &ids);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(SIGN_UP_URL)
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, get_request(SIGN_UP_URL, ids.session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/"),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/"))
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_user_menu_section_success() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_session(&mut db, &ids);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/section/user-menu")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, get_request("/section/user-menu", ids.session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
+
+// Log in and log out.
 
 #[tokio::test]
 async fn test_log_in_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let password_hash = password_auth::generate_hash("secret-password");
-    let session_record = sample_empty_session_record(session_id);
+    let ids = DashboardIds::new();
+    let user = auth::User {
+        password: Some(password_auth::generate_hash("secret-password")),
+        ..sample_auth_user(ids.user_id, "hash")
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, sample_empty_session_record(ids.session_id));
     db.expect_get_user_by_username()
         .times(1)
         .withf(move |username| username == "test-user")
-        .returning(move |_| {
-            let mut user = sample_auth_user(user_id, &auth_hash);
-            user.password = Some(password_hash.clone());
-            Ok(Some(user))
-        });
+        .returning(move |_| Ok(Some(user.clone())));
     db.expect_delete_session()
         .times(1)
-        .withf(move |id| *id == session_id)
+        .withf(move |id| *id == ids.session_id)
         .returning(|_| Ok(()));
     db.expect_create_session()
         .times(1)
         .withf(move |record| {
             session_record_contains_auth_provider(record, AUTH_PROVIDER_EMAIL)
-                && session_record_contains_selected_group(record, group_id)
+                && session_record_contains_selected_group(record, ids.group_id)
         })
         .returning(|_| Ok(()));
     db.expect_list_user_groups()
         .times(1)
-        .withf(move |uid| uid == &user_id)
-        .returning(move |_| Ok(sample_user_groups_by_community(community_id, group_id)));
+        .withf(move |uid| uid == &ids.user_id)
+        .returning(move |_| {
+            Ok(sample_user_groups_by_community(
+                ids.community_id,
+                ids.group_id,
+            ))
+        });
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.email = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
         .build()
         .await;
-
-    // Setup request
-    let request = Request::builder()
-        .method("POST")
-        .uri("/log-in?next_url=%2Fdashboard")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("username=test-user&password=secret-password"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request(
+        "POST",
+        "/log-in?next_url=%2Fdashboard",
+        ids.session_id,
+        "username=test-user&password=secret-password",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert!(parts.headers.contains_key("set-cookie"));
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/dashboard"),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/dashboard")),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_log_in_invalid_credentials() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
-
     // Setup database mock
+    let session_id = session::Id::default();
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
     db.expect_get_user_by_username()
         .times(1)
         .withf(move |username| username == "test-user")
@@ -297,50 +199,62 @@ async fn test_log_in_invalid_credentials() {
         })
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.email = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
         .build()
         .await;
+    let request = form_request(
+        "POST",
+        "/log-in?next_url=%2Fdashboard",
+        session_id,
+        "username=test-user&password=wrong",
+    );
+    let (parts, bytes) = send(router, request).await;
 
-    // Setup request
-    let request = Request::builder()
-        .method("POST")
-        .uri("/log-in")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("username=test-user&password=wrong"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    // Check the log in page is shown again keeping the next url
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
+    );
+}
+
+#[tokio::test]
+async fn test_log_in_returns_unauthorized_when_authentication_fails() {
+    // Setup database mock with a failing user lookup
+    let session_id = session::Id::default();
+    let mut db = MockDB::new();
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
+    db.expect_get_user_by_username()
+        .times(1)
+        .withf(move |username| username == "test-user")
+        .returning(|_| Err(anyhow!("db error")));
+    db.expect_update_session().never();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let request = form_request(
+        "POST",
+        "/log-in",
+        session_id,
+        "username=test-user&password=secret-password",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
-    assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
-    );
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
 async fn test_log_in_validation_error() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
-
     // Setup database mock
+    let session_id = session::Id::default();
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
     db.expect_get_user_by_username().times(0);
     db.expect_update_session()
         .times(1)
@@ -352,83 +266,54 @@ async fn test_log_in_validation_error() {
         })
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.email = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request with a whitespace-only username
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
         .build()
         .await;
-
-    // Setup request (username is whitespace only - validation should fail)
-    let request = Request::builder()
-        .method("POST")
-        .uri("/log-in")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("username=+++&password=secret"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
-    assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+    let request = form_request(
+        "POST",
+        "/log-in?next_url=%2Fdashboard",
+        session_id,
+        "username=+++&password=secret",
     );
-    assert!(bytes.is_empty());
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the log in page is shown again keeping the next url
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
+    );
 }
 
 #[tokio::test]
 async fn test_log_out_success() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_delete_session()
         .times(1)
-        .withf(move |id| *id == session_id)
+        .withf(move |id| *id == ids.session_id)
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/log-out")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, empty_request("POST", "/log-out", ids.session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_log_out_success_with_invalid_session() {
-    // Setup identifiers and data structures
+    // Setup database mock without a stored session
     let session_id = session::Id::default();
-
-    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -437,184 +322,90 @@ async fn test_log_out_success_with_invalid_session() {
     db.expect_get_user_by_id().times(0);
     db.expect_delete_session().times(0);
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/log-out")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, empty_request("POST", "/log-out", session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
-    assert!(bytes.is_empty());
 }
+
+// OAuth2 callbacks and redirects.
 
 #[tokio::test]
 async fn test_oauth2_callback_missing_state() {
-    // Setup identifiers and data structures
+    // Setup database mock with a session without csrf state
     let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
-
-    // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
     db.expect_update_session()
         .times(1)
         .withf(move |record| message_matches(record, "OAuth2 authorization failed"))
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
-
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.github = true;
-    server_cfg.oauth2.insert(
-        OAuth2Provider::GitHub,
-        OAuth2ProviderConfig {
-            auth_url: "https://oauth.example/authorize".to_string(),
-            client_id: "client-id".to_string(),
-            client_secret: "client-secret".to_string(),
-            redirect_uri: "https://app.example/log-in/oauth2/github/callback".to_string(),
-            scopes: vec!["read:user".to_string()],
-            token_url: "https://oauth.example/token".to_string(),
-        },
-    );
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(github_login_cfg())
         .build()
         .await;
-
-    // Setup request
-    let request = Request::builder()
-        .method("GET")
-        .uri("/log-in/oauth2/github/callback?code=test-code&state=test-state")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let uri = "/log-in/oauth2/github/callback?code=test-code&state=test-state";
+    let (parts, bytes) = send(router, get_request(uri, session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_oauth2_callback_state_mismatch() {
-    // Setup identifiers and data structures
+    // Setup database mock with a session holding another csrf state
     let session_id = session::Id::default();
-    let mut session_record = sample_empty_session_record(session_id);
-    session_record
-        .data
-        .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
-
-    // Setup database mock
+    let session_record =
+        session_record_with_values(session_id, &[(OAUTH2_CSRF_STATE_KEY, "state-in-session")]);
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
         .withf(move |record| message_matches(record, "OAuth2 authorization failed"))
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
-
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.github = true;
-    server_cfg.oauth2.insert(
-        OAuth2Provider::GitHub,
-        OAuth2ProviderConfig {
-            auth_url: "https://oauth.example/authorize".to_string(),
-            client_id: "client-id".to_string(),
-            client_secret: "client-secret".to_string(),
-            redirect_uri: "https://app.example/log-in/oauth2/github/callback".to_string(),
-            scopes: vec!["read:user".to_string()],
-            token_url: "https://oauth.example/token".to_string(),
-        },
-    );
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(github_login_cfg())
         .build()
         .await;
-
-    // Setup request
-    let request = Request::builder()
-        .method("GET")
-        .uri("/log-in/oauth2/github/callback?code=test-code&state=state-in-request")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let uri = "/log-in/oauth2/github/callback?code=test-code&state=state-in-request";
+    let (parts, bytes) = send(router, get_request(uri, session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_oauth2_callback_authorization_error() {
-    // Setup in-memory session
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
-    session
-        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
-        .await
-        .unwrap();
-    session
-        .insert(NEXT_URL_KEY, Some("/dashboard".to_string()))
-        .await
-        .unwrap();
-
-    // Setup database mock
+    // Setup in-memory session and mocks
+    let session = callback_session(None, Some("/dashboard")).await;
     let mut db = MockDB::new();
     db.expect_list_user_groups().times(0);
-
-    // Setup callback auth mock
-    let mut callback_auth = MockCallbackAuth {
-        login_called: false,
-        login_result: Some(Ok(())),
-        oidc_result: None,
-        oauth2_result: Some(Err("oauth2 auth error".to_string())),
-    };
     let db: DynDB = Arc::new(db);
+    let mut callback_auth = MockCallbackAuth {
+        oauth2_result: Some(Err("oauth2 auth error".to_string())),
+        ..Default::default()
+    };
 
     // Execute helper
-    let error_message = std::sync::Arc::new(std::sync::Mutex::new(None));
-    let captured_error_message = error_message.clone();
+    let (error_message, on_error) = capture_error();
     let redirect = oauth2_callback_with_auth(
         &mut callback_auth,
         session.clone(),
@@ -622,68 +413,90 @@ async fn test_oauth2_callback_authorization_error() {
         OAuth2Provider::GitHub,
         "test-code".to_string(),
         oauth2::CsrfToken::new("state-in-session".to_string()),
-        move |message| {
-            let mut guard = captured_error_message.lock().unwrap();
-            *guard = Some(message);
-        },
+        on_error,
     )
     .await
     .unwrap();
 
     // Check callback result and side effects
     let response = redirect.into_response();
-    let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
-    let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
+    let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
-        response.headers().get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/log-in?next_url=%2Fdashboard"),
+        response.headers().get(LOCATION),
+        Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
     );
     assert_eq!(
         *error_message.lock().unwrap(),
         Some("OAuth2 authorization failed: oauth2 auth error".to_string()),
     );
     assert!(!callback_auth.login_called);
-    assert_eq!(selected_community_id, None);
-    assert_eq!(selected_group_id, None);
+    assert_eq!(auth_provider, None);
+    assert_eq!(selected_ids(&session).await, (None, None));
+}
+
+#[tokio::test]
+async fn test_oauth2_callback_rejects_unauthenticated_user() {
+    // Setup in-memory session and mocks
+    let session = callback_session(None, Some("/dashboard")).await;
+    let mut db = MockDB::new();
+    db.expect_list_user_groups().times(0);
+    let db: DynDB = Arc::new(db);
+    let mut callback_auth = MockCallbackAuth {
+        oauth2_result: Some(Ok(None)),
+        ..Default::default()
+    };
+
+    // Execute helper
+    let (error_message, on_error) = capture_error();
+    let redirect = oauth2_callback_with_auth(
+        &mut callback_auth,
+        session.clone(),
+        &db,
+        OAuth2Provider::GitHub,
+        "test-code".to_string(),
+        oauth2::CsrfToken::new("state-in-session".to_string()),
+        on_error,
+    )
+    .await
+    .unwrap();
+
+    // Check the user is sent back to log in without being logged in
+    let response = redirect.into_response();
+    let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
+    assert_eq!(response.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        response.headers().get(LOCATION),
+        Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
+    );
+    assert_eq!(
+        *error_message.lock().unwrap(),
+        Some("OAuth2 authorization failed".to_string()),
+    );
+    assert!(!callback_auth.login_called);
+    assert_eq!(auth_provider, None);
+    assert_eq!(selected_ids(&session).await, (None, None));
 }
 
 #[tokio::test]
 async fn test_oauth2_callback_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let ids = DashboardIds::new();
+    let groups = sample_user_groups_by_community(ids.community_id, ids.group_id);
 
-    // Setup in-memory session
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
-    session
-        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
-        .await
-        .unwrap();
-    session
-        .insert(NEXT_URL_KEY, Some("/dashboard".to_string()))
-        .await
-        .unwrap();
-
-    // Setup database mock
+    // Setup in-memory session and mocks
+    let session = callback_session(None, Some("/dashboard")).await;
     let mut db = MockDB::new();
     db.expect_list_user_groups()
         .times(1)
-        .withf(move |uid| uid == &user_id)
+        .withf(move |uid| uid == &ids.user_id)
         .returning(move |_| Ok(groups.clone()));
-
-    // Setup callback auth mock
-    let mut callback_auth = MockCallbackAuth {
-        login_called: false,
-        login_result: Some(Ok(())),
-        oidc_result: None,
-        oauth2_result: Some(Ok(Some(sample_auth_user(user_id, &auth_hash)))),
-    };
     let db: DynDB = Arc::new(db);
+    let mut callback_auth = MockCallbackAuth {
+        login_result: Some(Ok(())),
+        oauth2_result: Some(Ok(Some(sample_auth_user(ids.user_id, "hash")))),
+        ..Default::default()
+    };
 
     // Execute helper
     let redirect = oauth2_callback_with_auth(
@@ -703,40 +516,39 @@ async fn test_oauth2_callback_success() {
     // Check callback result and side effects
     let response = redirect.into_response();
     let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
-    let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
-    let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
-        response.headers().get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/dashboard"),
+        response.headers().get(LOCATION),
+        Some(&HeaderValue::from_static("/dashboard")),
+    );
+    assert_eq!(
+        callback_auth.oauth2_call,
+        Some(("test-code".to_string(), OAuth2Provider::GitHub)),
     );
     assert!(callback_auth.login_called);
     assert_eq!(
         auth_provider.as_deref(),
         Some(OAuth2Provider::GitHub.as_ref())
     );
-    assert_eq!(selected_community_id, Some(community_id));
-    assert_eq!(selected_group_id, Some(group_id));
+    assert_eq!(
+        selected_ids(&session).await,
+        (Some(ids.community_id), Some(ids.group_id)),
+    );
 }
 
 #[tokio::test]
 async fn test_oauth2_callback_returns_error_when_provider_is_not_configured() {
-    // Setup identifiers and data structures
+    // Setup database mock with a valid csrf state and next url
     let session_id = session::Id::default();
-    let mut session_record = sample_empty_session_record(session_id);
-    session_record
-        .data
-        .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
-    session_record
-        .data
-        .insert(NEXT_URL_KEY.to_string(), json!("/dashboard"));
-
-    // Setup database mock
+    let session_record = session_record_with_values(
+        session_id,
+        &[
+            (OAUTH2_CSRF_STATE_KEY, "state-in-session"),
+            (NEXT_URL_KEY, "/dashboard"),
+        ],
+    );
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
@@ -747,43 +559,26 @@ async fn test_oauth2_callback_returns_error_when_provider_is_not_configured() {
         })
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
-
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.github = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(github_login_cfg())
         .build()
         .await;
-
-    // Setup request
-    let request = Request::builder()
-        .method("GET")
-        .uri("/log-in/oauth2/github/callback?code=test-code&state=state-in-session")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let uri = "/log-in/oauth2/github/callback?code=test-code&state=state-in-session";
+    let (parts, bytes) = send(router, get_request(uri, session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/log-in?next_url=%2Fdashboard"),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_oauth2_redirect_success() {
     // Setup session and form input
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
+    let session = Session::new(None, Arc::new(MemoryStore::default()), None);
     let query = Query(NextUrl {
         next_url: Some("/dashboard".to_string()),
     });
@@ -817,206 +612,121 @@ async fn test_oauth2_redirect_success() {
     // Check response matches expectations
     let csrf_state: Option<String> = session.get(OAUTH2_CSRF_STATE_KEY).await.unwrap();
     let next_url: Option<Option<String>> = session.get(NEXT_URL_KEY).await.unwrap();
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(base_url, "https://oauth.example/authorize");
     assert_eq!(
         csrf_state.as_deref(),
-        query
-            .split('&')
-            .find_map(|pair| pair.strip_prefix("state=").map(String::from))
-            .as_deref(),
+        query_param(query, "state").as_deref()
     );
     assert_eq!(next_url, Some(Some("/dashboard".to_string())));
-    assert!(bytes.is_empty());
 }
+
+// OIDC callbacks and redirects.
 
 #[tokio::test]
 async fn test_oidc_callback_missing_nonce() {
-    // Setup identifiers and data structures
+    // Setup database mock with a csrf state but no nonce
     let session_id = session::Id::default();
-    let mut session_record = sample_empty_session_record(session_id);
-    session_record
-        .data
-        .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
-
-    // Setup database mock
+    let session_record =
+        session_record_with_values(session_id, &[(OAUTH2_CSRF_STATE_KEY, "state-in-session")]);
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
         .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
-
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.linuxfoundation = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(linuxfoundation_login_cfg())
         .build()
         .await;
-
-    // Setup request
-    let request = Request::builder()
-        .method("GET")
-        .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-session")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let uri = "/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-session";
+    let (parts, bytes) = send(router, get_request(uri, session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_oidc_callback_missing_state() {
-    // Setup identifiers and data structures
+    // Setup database mock with a session without csrf state
     let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
-
-    // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
     db.expect_update_session()
         .times(1)
         .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
-
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.linuxfoundation = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(linuxfoundation_login_cfg())
         .build()
         .await;
-
-    // Setup request
-    let request = Request::builder()
-        .method("GET")
-        .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=test-state")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let uri = "/log-in/oidc/linuxfoundation/callback?code=test-code&state=test-state";
+    let (parts, bytes) = send(router, get_request(uri, session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_oidc_callback_state_mismatch() {
-    // Setup identifiers and data structures
+    // Setup database mock with a session holding another csrf state
     let session_id = session::Id::default();
-    let mut session_record = sample_empty_session_record(session_id);
-    session_record
-        .data
-        .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
-    session_record
-        .data
-        .insert(OIDC_NONCE_KEY.to_string(), json!("nonce-in-session"));
-
-    // Setup database mock
+    let session_record = session_record_with_values(
+        session_id,
+        &[
+            (OAUTH2_CSRF_STATE_KEY, "state-in-session"),
+            (OIDC_NONCE_KEY, "nonce-in-session"),
+        ],
+    );
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
         .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
-
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.linuxfoundation = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(linuxfoundation_login_cfg())
         .build()
         .await;
-
-    // Setup request
-    let request = Request::builder()
-        .method("GET")
-        .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-request")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let uri = "/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-request";
+    let (parts, bytes) = send(router, get_request(uri, session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_oidc_callback_authorization_error() {
-    // Setup in-memory session
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
-    session
-        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
-        .await
-        .unwrap();
-    session.insert(OIDC_NONCE_KEY, "nonce-in-session").await.unwrap();
-    session
-        .insert(NEXT_URL_KEY, Some("/dashboard".to_string()))
-        .await
-        .unwrap();
-
-    // Setup database mock
+    // Setup in-memory session and mocks
+    let session = callback_session(Some("nonce-in-session"), Some("/dashboard")).await;
     let mut db = MockDB::new();
     db.expect_list_user_groups().times(0);
-
-    // Setup callback auth mock
-    let mut callback_auth = MockCallbackAuth {
-        login_called: false,
-        login_result: Some(Ok(())),
-        oidc_result: Some(Err("oidc auth error".to_string())),
-        oauth2_result: None,
-    };
     let db: DynDB = Arc::new(db);
+    let mut callback_auth = MockCallbackAuth {
+        oidc_result: Some(Err("oidc auth error".to_string())),
+        ..Default::default()
+    };
 
     // Execute helper
-    let error_message = std::sync::Arc::new(std::sync::Mutex::new(None));
-    let captured_error_message = error_message.clone();
+    let (error_message, on_error) = capture_error();
     let redirect = oidc_callback_with_auth(
         &mut callback_auth,
         session.clone(),
@@ -1024,10 +734,7 @@ async fn test_oidc_callback_authorization_error() {
         OidcProvider::LinuxFoundation,
         "test-code".to_string(),
         oauth2::CsrfToken::new("state-in-session".to_string()),
-        move |message| {
-            let mut guard = captured_error_message.lock().unwrap();
-            *guard = Some(message);
-        },
+        on_error,
     )
     .await
     .unwrap();
@@ -1035,12 +742,10 @@ async fn test_oidc_callback_authorization_error() {
     // Check callback result and side effects
     let response = redirect.into_response();
     let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
-    let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
-    let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
-        response.headers().get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/log-in?next_url=%2Fdashboard"),
+        response.headers().get(LOCATION),
+        Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
     );
     assert_eq!(
         *error_message.lock().unwrap(),
@@ -1048,165 +753,71 @@ async fn test_oidc_callback_authorization_error() {
     );
     assert!(!callback_auth.login_called);
     assert_eq!(auth_provider, None);
-    assert_eq!(selected_community_id, None);
-    assert_eq!(selected_group_id, None);
+    assert_eq!(selected_ids(&session).await, (None, None));
 }
 
 #[tokio::test]
-async fn test_oidc_callback_uses_friendly_external_auth_email_conflict_message() {
-    // Setup in-memory session
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
-    session
-        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
-        .await
-        .unwrap();
-    session.insert(OIDC_NONCE_KEY, "nonce-in-session").await.unwrap();
-
-    // Setup database mock
+async fn test_oidc_callback_rejects_unauthenticated_user() {
+    // Setup in-memory session and mocks
+    let session = callback_session(Some("nonce-in-session"), Some("/dashboard")).await;
     let mut db = MockDB::new();
     db.expect_list_user_groups().times(0);
-
-    // Setup callback auth mock
-    let mut callback_auth = MockCallbackAuth {
-        login_called: false,
-        login_result: Some(Ok(())),
-        oidc_result: Some(Err(format!(
-            "db error: {}",
-            crate::auth::EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR
-        ))),
-        oauth2_result: None,
-    };
     let db: DynDB = Arc::new(db);
+    let mut callback_auth = MockCallbackAuth {
+        oidc_result: Some(Ok(None)),
+        ..Default::default()
+    };
 
     // Execute helper
-    let error_message = std::sync::Arc::new(std::sync::Mutex::new(None));
-    let captured_error_message = error_message.clone();
+    let (error_message, on_error) = capture_error();
     let redirect = oidc_callback_with_auth(
         &mut callback_auth,
-        session,
+        session.clone(),
         &db,
         OidcProvider::LinuxFoundation,
         "test-code".to_string(),
         oauth2::CsrfToken::new("state-in-session".to_string()),
-        move |message| {
-            let mut guard = captured_error_message.lock().unwrap();
-            *guard = Some(message);
-        },
+        on_error,
     )
     .await
     .unwrap();
 
-    // Check callback result and side effects
+    // Check the user is sent back to log in without being logged in
     let response = redirect.into_response();
+    let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
-        response.headers().get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        response.headers().get(LOCATION),
+        Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
     );
     assert_eq!(
         *error_message.lock().unwrap(),
-        Some(LF_SSO_EMAIL_CONFLICT_MESSAGE.to_string()),
+        Some("OpenID Connect authorization failed".to_string()),
     );
     assert!(!callback_auth.login_called);
-}
-
-#[tokio::test]
-async fn test_oidc_callback_uses_friendly_external_auth_identity_conflict_message() {
-    // Setup in-memory session
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
-    session
-        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
-        .await
-        .unwrap();
-    session.insert(OIDC_NONCE_KEY, "nonce-in-session").await.unwrap();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_list_user_groups().times(0);
-
-    // Setup callback auth mock
-    let mut callback_auth = MockCallbackAuth {
-        login_called: false,
-        login_result: Some(Ok(())),
-        oidc_result: Some(Err(format!(
-            "db error: {}",
-            crate::auth::EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR
-        ))),
-        oauth2_result: None,
-    };
-    let db: DynDB = Arc::new(db);
-
-    // Execute helper
-    let error_message = std::sync::Arc::new(std::sync::Mutex::new(None));
-    let captured_error_message = error_message.clone();
-    let redirect = oidc_callback_with_auth(
-        &mut callback_auth,
-        session,
-        &db,
-        OidcProvider::LinuxFoundation,
-        "test-code".to_string(),
-        oauth2::CsrfToken::new("state-in-session".to_string()),
-        move |message| {
-            let mut guard = captured_error_message.lock().unwrap();
-            *guard = Some(message);
-        },
-    )
-    .await
-    .unwrap();
-
-    // Check callback result and side effects
-    let response = redirect.into_response();
-    assert_eq!(response.status(), StatusCode::SEE_OTHER);
-    assert_eq!(
-        response.headers().get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
-    );
-    assert_eq!(
-        *error_message.lock().unwrap(),
-        Some(LF_SSO_IDENTITY_CONFLICT_MESSAGE.to_string()),
-    );
-    assert!(!callback_auth.login_called);
+    assert_eq!(auth_provider, None);
+    assert_eq!(selected_ids(&session).await, (None, None));
 }
 
 #[tokio::test]
 async fn test_oidc_callback_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let ids = DashboardIds::new();
+    let groups = sample_user_groups_by_community(ids.community_id, ids.group_id);
 
-    // Setup in-memory session
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
-    session
-        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
-        .await
-        .unwrap();
-    session.insert(OIDC_NONCE_KEY, "nonce-in-session").await.unwrap();
-    session
-        .insert(NEXT_URL_KEY, Some("/dashboard".to_string()))
-        .await
-        .unwrap();
-
-    // Setup database mock
+    // Setup in-memory session and mocks
+    let session = callback_session(Some("nonce-in-session"), Some("/dashboard")).await;
     let mut db = MockDB::new();
     db.expect_list_user_groups()
         .times(1)
-        .withf(move |uid| uid == &user_id)
+        .withf(move |uid| uid == &ids.user_id)
         .returning(move |_| Ok(groups.clone()));
-
-    // Setup callback auth mock
-    let mut callback_auth = MockCallbackAuth {
-        login_called: false,
-        login_result: Some(Ok(())),
-        oidc_result: Some(Ok(Some(sample_auth_user(user_id, &auth_hash)))),
-        oauth2_result: None,
-    };
     let db: DynDB = Arc::new(db);
+    let mut callback_auth = MockCallbackAuth {
+        login_result: Some(Ok(())),
+        oidc_result: Some(Ok(Some(sample_auth_user(ids.user_id, "hash")))),
+        ..Default::default()
+    };
 
     // Execute helper
     let redirect = oidc_callback_with_auth(
@@ -1223,46 +834,49 @@ async fn test_oidc_callback_success() {
     .await
     .unwrap();
 
-    // Check callback result and side effects
+    // Check callback result and side effects, including the session nonce hand-off
     let response = redirect.into_response();
     let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
-    let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
-    let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
+    let nonce: Option<String> = session.get(OIDC_NONCE_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
-        response.headers().get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/dashboard"),
+        response.headers().get(LOCATION),
+        Some(&HeaderValue::from_static("/dashboard")),
     );
+    assert_eq!(
+        callback_auth.oidc_call,
+        Some((
+            "test-code".to_string(),
+            "nonce-in-session".to_string(),
+            OidcProvider::LinuxFoundation,
+        )),
+    );
+    assert_eq!(nonce, None);
     assert!(callback_auth.login_called);
     assert_eq!(
         auth_provider.as_deref(),
         Some(OidcProvider::LinuxFoundation.as_ref())
     );
-    assert_eq!(selected_community_id, Some(community_id));
-    assert_eq!(selected_group_id, Some(group_id));
+    assert_eq!(
+        selected_ids(&session).await,
+        (Some(ids.community_id), Some(ids.group_id)),
+    );
 }
 
 #[tokio::test]
 async fn test_oidc_callback_returns_error_when_provider_is_not_configured() {
-    // Setup identifiers and data structures
+    // Setup database mock with a valid csrf state, nonce and next url
     let session_id = session::Id::default();
-    let mut session_record = sample_empty_session_record(session_id);
-    session_record
-        .data
-        .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
-    session_record
-        .data
-        .insert(OIDC_NONCE_KEY.to_string(), json!("nonce-in-session"));
-    session_record
-        .data
-        .insert(NEXT_URL_KEY.to_string(), json!("/dashboard"));
-
-    // Setup database mock
+    let session_record = session_record_with_values(
+        session_id,
+        &[
+            (OAUTH2_CSRF_STATE_KEY, "state-in-session"),
+            (OIDC_NONCE_KEY, "nonce-in-session"),
+            (NEXT_URL_KEY, "/dashboard"),
+        ],
+    );
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
@@ -1273,43 +887,26 @@ async fn test_oidc_callback_returns_error_when_provider_is_not_configured() {
         })
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
-
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.linuxfoundation = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(linuxfoundation_login_cfg())
         .build()
         .await;
-
-    // Setup request
-    let request = Request::builder()
-        .method("GET")
-        .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-session")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let uri = "/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-session";
+    let (parts, bytes) = send(router, get_request(uri, session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/log-in?next_url=%2Fdashboard"),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_oidc_redirect_success() {
     // Setup session and form input
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
+    let session = Session::new(None, Arc::new(MemoryStore::default()), None);
     let query = Query(NextUrl {
         next_url: Some("/dashboard".to_string()),
     });
@@ -1357,71 +954,44 @@ async fn test_oidc_redirect_success() {
     let csrf_state: Option<String> = session.get(OAUTH2_CSRF_STATE_KEY).await.unwrap();
     let nonce: Option<String> = session.get(OIDC_NONCE_KEY).await.unwrap();
     let next_url: Option<Option<String>> = session.get(NEXT_URL_KEY).await.unwrap();
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(base_url, "https://issuer.example/authorize");
     assert_eq!(
         csrf_state.as_deref(),
-        query
-            .split('&')
-            .find_map(|pair| pair.strip_prefix("state=").map(String::from))
-            .as_deref(),
+        query_param(query, "state").as_deref()
     );
-    assert_eq!(
-        nonce.as_deref(),
-        query
-            .split('&')
-            .find_map(|pair| pair.strip_prefix("nonce=").map(String::from))
-            .as_deref(),
-    );
+    assert_eq!(nonce.as_deref(), query_param(query, "nonce").as_deref());
     assert_eq!(next_url, Some(Some("/dashboard".to_string())));
-    assert!(bytes.is_empty());
 }
+
+// Sign up.
 
 #[tokio::test]
 async fn test_sign_up_success() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
-    let user_for_db = sample_auth_user(Uuid::new_v4(), "hash");
-    let site_settings = sample_site_settings();
-    let activation_primary_color = site_settings.theme.primary_color.clone();
-    let sign_up_primary_color = site_settings.theme.primary_color.clone();
+    let user = sample_auth_user(Uuid::new_v4(), "hash");
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
+    expect_site_settings(&mut db);
     db.expect_activate_pre_registered_user_email_password()
         .times(1)
-        .withf(move |summary, verification| {
+        .withf(move |summary, _| {
             summary.email == "test@example.test"
                 && !matches!(summary.password.as_deref(), Some("secret-password"))
-                && verification.template_data["link"]
-                    == format!("https://app.example/verify-email/{}", verification.code)
-                && verification.template_data["theme"]["primary_color"] == activation_primary_color
         })
         .returning(|_, _| Ok(None));
     db.expect_sign_up_user()
         .times(1)
         .withf(move |summary, verify, verification| {
-            !matches!(summary.password.as_deref(), Some("secret-password"))
+            summary.email == "test@example.test"
+                && !matches!(summary.password.as_deref(), Some("secret-password"))
                 && !*verify
-                && verification.as_ref().is_some_and(|verification| {
-                    verification.template_data["link"]
-                        == format!("https://app.example/verify-email/{}", verification.code)
-                        && verification.template_data["theme"]["primary_color"]
-                            == sign_up_primary_color
-                })
+                && verification.is_some()
         })
-        .returning({
-            let user = user_for_db;
-            move |_, _, verification| Ok((user.clone(), verification.map(|value| value.code)))
-        });
+        .returning(move |_, _, verification| Ok((user.clone(), verification.map(|v| v.code))));
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
@@ -1436,76 +1006,44 @@ async fn test_sign_up_success() {
     let mut nm = MockNotificationsManager::new();
     nm.expect_enqueue().times(0);
 
-    // Setup router
-    let server_cfg = HttpServerConfig {
-        base_url: "https://app.example".to_string(),
-        login: LoginOptions {
-            email: true,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_notifications_manager(nm)
+        .with_server_cfg(email_login_cfg())
         .build()
         .await;
-
-    // Setup request
     let form =
         "email=test%40example.test&name=Test+User&username=test-user&password=secret-password";
-    let request = Request::builder()
-        .method("POST")
-        .uri("/sign-up?next_url=%2Fwelcome")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request("POST", "/sign-up?next_url=%2Fwelcome", session_id, form);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/log-in?next_url=%2Fwelcome"),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/log-in?next_url=%2Fwelcome")),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_sign_up_activates_pre_registered_user() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
-    let user_for_db = sample_auth_user(Uuid::new_v4(), "hash");
-    let site_settings = sample_site_settings();
-    let activation_primary_color = site_settings.theme.primary_color.clone();
+    let user = sample_auth_user(Uuid::new_v4(), "hash");
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
+    expect_site_settings(&mut db);
     db.expect_activate_pre_registered_user_email_password()
         .times(1)
-        .withf(move |summary, verification| {
+        .withf(move |summary, _| {
             summary.email == "invited@example.test"
                 && summary.name == "Invited User"
                 && summary.username == "invited-user"
                 && !matches!(summary.password.as_deref(), Some("secret-password"))
-                && verification.template_data["link"]
-                    == format!("https://app.example/verify-email/{}", verification.code)
-                && verification.template_data["theme"]["primary_color"] == activation_primary_color
         })
-        .returning({
-            let user = user_for_db;
-            move |_, verification| Ok(Some((user.clone(), verification.code)))
-        });
+        .returning(move |_, verification| Ok(Some((user.clone(), verification.code))));
     db.expect_sign_up_user().times(0);
     db.expect_update_session()
         .times(1)
@@ -1521,54 +1059,32 @@ async fn test_sign_up_activates_pre_registered_user() {
     let mut nm = MockNotificationsManager::new();
     nm.expect_enqueue().times(0);
 
-    // Setup router
-    let server_cfg = HttpServerConfig {
-        base_url: "https://app.example".to_string(),
-        login: LoginOptions {
-            email: true,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_notifications_manager(nm)
+        .with_server_cfg(email_login_cfg())
         .build()
         .await;
-
-    // Setup request
     let form = "email=invited%40example.test&name=Invited+User&username=invited-user&password=secret-password";
-    let request = Request::builder()
-        .method("POST")
-        .uri("/sign-up?next_url=%2Fdashboard%2Fuser%3Ftab%3Dinvitations")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let uri = "/sign-up?next_url=%2Fdashboard%2Fuser%3Ftab%3Dinvitations";
+    let (parts, bytes) = send(router, form_request("POST", uri, session_id, form)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/log-in?next_url=%2Fdashboard%2Fuser%3Ftab%3Dinvitations"),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(
+            "/log-in?next_url=%2Fdashboard%2Fuser%3Ftab%3Dinvitations"
+        )),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_sign_up_missing_password() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
-
     // Setup database mock
+    let session_id = session::Id::default();
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
     db.expect_activate_pre_registered_user_email_password().times(0);
     db.expect_sign_up_user().times(0);
 
@@ -1576,26 +1092,14 @@ async fn test_sign_up_missing_password() {
     let mut nm = MockNotificationsManager::new();
     nm.expect_enqueue().times(0);
 
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.email = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request without a password
+    let router = TestRouterBuilder::new(db)
+        .with_notifications_manager(nm)
+        .with_server_cfg(email_login_cfg())
         .build()
         .await;
-
-    // Setup request (password not provided)
     let form = "email=test%40example.test&name=Test+User&username=test-user";
-    let request = Request::builder()
-        .method("POST")
-        .uri("/sign-up")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, form_request("POST", "/sign-up", session_id, form)).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
@@ -1604,16 +1108,10 @@ async fn test_sign_up_missing_password() {
 
 #[tokio::test]
 async fn test_sign_up_rejects_empty_normalized_base_url() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
-
     // Setup database mock
+    let session_id = session::Id::default();
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
     db.expect_get_site_settings().times(0);
     db.expect_activate_pre_registered_user_email_password().times(0);
     db.expect_sign_up_user().times(0);
@@ -1631,57 +1129,34 @@ async fn test_sign_up_rejects_empty_normalized_base_url() {
     let mut nm = MockNotificationsManager::new();
     nm.expect_enqueue().times(0);
 
-    // Setup router
+    // Setup router with a base url that normalizes to empty and send request
     let server_cfg = HttpServerConfig {
         base_url: "/".to_string(),
-        login: LoginOptions {
-            email: true,
-            ..Default::default()
-        },
-        ..Default::default()
+        ..email_login_cfg()
     };
-    let router = TestRouterBuilder::new(db, nm)
+    let router = TestRouterBuilder::new(db)
+        .with_notifications_manager(nm)
         .with_server_cfg(server_cfg)
         .build()
         .await;
-
-    // Setup request
     let form = "email=test%40example.test&name=Test+User&username=test-user&password=secretpw";
-    let request = Request::builder()
-        .method("POST")
-        .uri("/sign-up")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, form_request("POST", "/sign-up", session_id, form)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(SIGN_UP_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(SIGN_UP_URL)),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_sign_up_db_error() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
-
     // Setup database mock
+    let session_id = session::Id::default();
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
+    expect_site_settings(&mut db);
     db.expect_activate_pre_registered_user_email_password()
         .times(1)
         .returning(|_, _| Ok(None));
@@ -1702,54 +1177,29 @@ async fn test_sign_up_db_error() {
     let mut nm = MockNotificationsManager::new();
     nm.expect_enqueue().times(0);
 
-    // Setup router
-    let server_cfg = HttpServerConfig {
-        base_url: "https://app.example".to_string(),
-        login: LoginOptions {
-            email: true,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_notifications_manager(nm)
+        .with_server_cfg(email_login_cfg())
         .build()
         .await;
-
-    // Setup request
     let form = "email=test%40example.test&name=Test+User&username=test-user&password=secretpw";
-    let request = Request::builder()
-        .method("POST")
-        .uri("/sign-up")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, form_request("POST", "/sign-up", session_id, form)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(SIGN_UP_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(SIGN_UP_URL)),
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_sign_up_validation_error() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
-
     // Setup database mock
+    let session_id = session::Id::default();
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
     db.expect_activate_pre_registered_user_email_password().times(0);
     db.expect_sign_up_user().times(0);
     db.expect_update_session()
@@ -1766,49 +1216,36 @@ async fn test_sign_up_validation_error() {
     let mut nm = MockNotificationsManager::new();
     nm.expect_enqueue().times(0);
 
-    // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.email = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    // Setup router and send request with an invalid email and short password
+    let router = TestRouterBuilder::new(db)
+        .with_notifications_manager(nm)
+        .with_server_cfg(email_login_cfg())
         .build()
         .await;
-
-    // Setup request (invalid email - validation should fail)
     let form = "email=invalid-email&name=Test+User&username=test-user&password=secret";
-    let request = Request::builder()
-        .method("POST")
-        .uri("/sign-up")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request("POST", "/sign-up?next_url=%2Fwelcome", session_id, form);
+    let (parts, bytes) = send(router, request).await;
 
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    // Check the sign up page is shown again keeping the next url
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(SIGN_UP_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/sign-up?next_url=%2Fwelcome")),
     );
-    assert!(bytes.is_empty());
 }
+
+// Account maintenance.
 
 #[tokio::test]
 async fn test_update_user_details_success() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_update_user_details()
         .times(1)
         .withf(move |uid, details| {
-            *uid == user_id
+            *uid == ids.user_id
                 && details.name == "Updated User"
                 && details.company.as_deref() == Some("Example")
                 && details.github_url.as_deref() == Some("https://github.com/updated-user")
@@ -1819,342 +1256,217 @@ async fn test_update_user_details_success() {
         .withf(move |record| message_matches(record, "User details updated successfully."))
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/account/update/details")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(
-            "name=Updated+User&company=Example&github_url=https%3A%2F%2Fgithub.com%2Fupdated-user",
-        ))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let form =
+        "name=Updated+User&company=Example&github_url=https%3A%2F%2Fgithub.com%2Fupdated-user";
+    let request = form_request("PUT", UPDATE_DETAILS_URL, ids.session_id, form);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-body"),
-    );
-    assert!(bytes.is_empty());
+    assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
 }
 
 #[tokio::test]
 async fn test_update_user_details_returns_error_on_db_failure() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
     // Setup database mock with a failing write and no flash message
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_update_user_details()
         .times(1)
-        .withf(move |uid, details| *uid == user_id && details.name == "Updated User")
+        .withf(move |uid, details| *uid == ids.user_id && details.name == "Updated User")
         .returning(|_, _| Err(anyhow!("db error")));
     db.expect_update_session().never();
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/account/update/details")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("name=Updated+User&company=Example"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let form = "name=Updated+User&company=Example";
+    let request = form_request("PUT", UPDATE_DETAILS_URL, ids.session_id, form);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
 async fn test_update_user_details_invalid_body() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_update_user_details().times(0);
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/account/update/details")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::from("invalid"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request("PUT", UPDATE_DETAILS_URL, ids.session_id, "invalid");
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(!bytes.is_empty());
+    assert_non_empty_response(&parts, &bytes, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]
 async fn test_update_user_password_accepts_valid_change() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let existing_password_hash = password_auth::generate_hash("current-password");
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_get_user_password()
         .times(1)
-        .withf(move |id| *id == user_id)
+        .withf(move |id| *id == ids.user_id)
         .returning(move |_| Ok(Some(existing_password_hash.clone())));
     db.expect_update_user_password()
         .times(1)
-        .withf(move |uid, new_password| *uid == user_id && new_password != "new-password")
+        .withf(move |uid, new_password| *uid == ids.user_id && new_password != "new-password")
         .returning(|_, _| Ok(()));
     db.expect_delete_session()
         .times(1)
-        .withf(move |id| *id == session_id)
+        .withf(move |id| *id == ids.session_id)
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db).build().await;
     let form = "old_password=current-password&new_password=new-password";
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/account/update/password")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request("PUT", UPDATE_PASSWORD_URL, ids.session_id, form);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
 }
 
 #[tokio::test]
 async fn test_update_user_password_rejects_wrong_old_password() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let existing_password_hash = password_auth::generate_hash("current-password");
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_get_user_password()
         .times(1)
-        .withf(move |id| *id == user_id)
+        .withf(move |id| *id == ids.user_id)
         .returning(move |_| Ok(Some(existing_password_hash.clone())));
     db.expect_update_user_password().times(0);
     db.expect_delete_session().never();
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db).build().await;
     let form = "old_password=wrong-password&new_password=new-password";
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/account/update/password")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request("PUT", UPDATE_PASSWORD_URL, ids.session_id, form);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::FORBIDDEN);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
 async fn test_update_user_password_returns_bad_request_when_hash_is_missing() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_get_user_password()
         .times(1)
-        .withf(move |id| *id == user_id)
+        .withf(move |id| *id == ids.user_id)
         .returning(|_| Ok(None));
     db.expect_update_user_password().times(0);
     db.expect_delete_session().never();
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db).build().await;
     let form = "old_password=current-password&new_password=new-password";
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/account/update/password")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request("PUT", UPDATE_PASSWORD_URL, ids.session_id, form);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]
 async fn test_update_user_password_returns_error_on_db_failure() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let existing_password_hash = password_auth::generate_hash("current-password");
 
-    // Setup database mock
+    // Setup database mock with a failing write and no session logout
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_get_user_password()
         .times(1)
-        .withf(move |id| *id == user_id)
+        .withf(move |id| *id == ids.user_id)
         .returning(move |_| Ok(Some(existing_password_hash.clone())));
     db.expect_update_user_password()
         .times(1)
-        .withf(move |uid, new_password| *uid == user_id && new_password != "new-password")
+        .withf(move |uid, new_password| *uid == ids.user_id && new_password != "new-password")
         .returning(|_, _| Err(anyhow!("db error")));
     db.expect_delete_session().never();
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db).build().await;
     let form = "old_password=current-password&new_password=new-password";
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/account/update/password")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request("PUT", UPDATE_PASSWORD_URL, ids.session_id, form);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
 async fn test_update_user_password_succeeds_when_session_delete_fails() {
     // Setup the authenticated user and current password
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let existing_password_hash = password_auth::generate_hash("current-password");
 
     // Setup a successful password update followed by a session deletion failure
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_get_user_password()
         .times(1)
-        .withf(move |id| *id == user_id)
+        .withf(move |id| *id == ids.user_id)
         .returning(move |_| Ok(Some(existing_password_hash.clone())));
     db.expect_update_user_password()
         .times(1)
-        .withf(move |uid, new_password| *uid == user_id && new_password != "new-password")
+        .withf(move |uid, new_password| *uid == ids.user_id && new_password != "new-password")
         .returning(|_, _| Ok(()));
     db.expect_delete_session()
         .times(1)
-        .withf(move |id| *id == session_id)
+        .withf(move |id| *id == ids.session_id)
         .returning(|_| Err(anyhow!("db error")));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && record.data.is_empty())
+        .withf(move |record| record.id == ids.session_id && record.data.is_empty())
         .returning(|_| Ok(()));
 
     // Send the password update request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/account/update/password")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(
-            "old_password=current-password&new_password=new-password",
-        ))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let form = "old_password=current-password&new_password=new-password";
+    let request = form_request("PUT", UPDATE_PASSWORD_URL, ids.session_id, form);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the committed password change still reports success
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
 }
 
 #[tokio::test]
 async fn test_verify_email_success() {
-    // Setup identifiers and data structures
+    // Setup identifiers and database mock
     let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
     let verification_code = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
     db.expect_verify_email()
         .times(1)
         .withf(move |code| *code == verification_code)
@@ -2169,49 +1481,29 @@ async fn test_verify_email_success() {
         })
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.email = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
         .build()
         .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/verify-email/{verification_code}"))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let uri = format!("/verify-email/{verification_code}");
+    let (parts, bytes) = send(router, get_request(&uri, session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
 }
 
 #[tokio::test]
 async fn test_verify_email_failure() {
-    // Setup identifiers and data structures
+    // Setup identifiers and database mock
     let session_id = session::Id::default();
-    let session_record = sample_empty_session_record(session_id);
     let verification_code = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
     db.expect_verify_email()
         .times(1)
         .withf(move |code| *code == verification_code)
@@ -2226,89 +1518,128 @@ async fn test_verify_email_failure() {
         })
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.email = true;
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
         .build()
         .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/verify-email/{verification_code}"))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let uri = format!("/verify-email/{verification_code}");
+    let (parts, bytes) = send(router, get_request(&uri, session_id)).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
-        parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
 }
 
+// Pure helpers.
+
 #[test]
-fn test_get_log_in_url_without_next() {
-    let url = get_log_in_url(None);
-    assert_eq!(url, LOG_IN_URL);
+fn test_get_log_in_url_appends_sanitized_next_url() {
+    // Setup next url inputs and the log in url each one expects
+    let cases = [
+        ("no next url", None, LOG_IN_URL),
+        (
+            "internal next url",
+            Some("/dashboard"),
+            "/log-in?next_url=%2Fdashboard",
+        ),
+        (
+            "external next url",
+            Some("https://evil.example"),
+            LOG_IN_URL,
+        ),
+    ];
+
+    for (case, next_url, expected) in cases {
+        assert_eq!(get_log_in_url(next_url), expected, "{case}");
+    }
 }
 
 #[test]
-fn test_get_log_in_url_with_next() {
-    let url = get_log_in_url(Some("/dashboard"));
-    assert_eq!(url, "/log-in?next_url=%2Fdashboard");
+fn test_oidc_authorization_error_message_maps_known_conflicts() {
+    // Setup authorization errors and the flash message each one expects
+    let email_conflict = format!("db error: {EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR}");
+    let identity_conflict = format!("db error: {EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR}");
+    let cases = [
+        (
+            "email conflict",
+            email_conflict.as_str(),
+            LF_SSO_EMAIL_CONFLICT_MESSAGE,
+        ),
+        (
+            "identity conflict",
+            identity_conflict.as_str(),
+            LF_SSO_IDENTITY_CONFLICT_MESSAGE,
+        ),
+        (
+            "other error",
+            "oidc auth error",
+            "OpenID Connect authorization failed: oidc auth error",
+        ),
+    ];
+
+    for (case, err, expected) in cases {
+        assert_eq!(oidc_authorization_error_message(err), expected, "{case}");
+    }
 }
 
 #[test]
-fn test_sanitize_next_url_accepts_internal_paths() {
-    assert_eq!(
-        sanitize_next_url(Some("/dashboard")),
-        Some("/dashboard".to_string())
-    );
-    assert_eq!(
-        sanitize_next_url(Some("/groups?page=2#section")),
-        Some("/groups?page=2#section".to_string())
-    );
-    assert_eq!(
-        sanitize_next_url(Some("   /profile  ")),
-        Some("/profile".to_string())
-    );
-}
+fn test_sanitize_next_url() {
+    // Setup next url inputs and the sanitized value each one expects
+    let cases = [
+        ("internal path", "/dashboard", Some("/dashboard")),
+        (
+            "internal path with query and fragment",
+            "/groups?page=2#section",
+            Some("/groups?page=2#section"),
+        ),
+        ("padded internal path", "   /profile  ", Some("/profile")),
+        ("empty", "", None),
+        ("absolute url", "https://evil.example", None),
+        ("protocol-relative url", "//evil.example", None),
+        ("javascript url", "javascript:alert(1)", None),
+        ("relative path", "relative/path", None),
+    ];
 
-#[test]
-fn test_sanitize_next_url_rejects_external_paths() {
-    assert_eq!(sanitize_next_url(Some("")), None);
-    assert_eq!(sanitize_next_url(Some("https://evil.example")), None);
-    assert_eq!(sanitize_next_url(Some("//evil.example")), None);
-    assert_eq!(sanitize_next_url(Some("javascript:alert(1)")), None);
-    assert_eq!(sanitize_next_url(Some("relative/path")), None);
+    for (case, next_url, expected) in cases {
+        assert_eq!(
+            sanitize_next_url(Some(next_url)).as_deref(),
+            expected,
+            "{case}"
+        );
+    }
 }
 
 // Helpers.
 
+/// Account details update route.
+const UPDATE_DETAILS_URL: &str = "/dashboard/account/update/details";
+
+/// Account password update route.
+const UPDATE_PASSWORD_URL: &str = "/dashboard/account/update/password";
+
+/// Callback authentication double that records the arguments it receives.
+#[derive(Default)]
 struct MockCallbackAuth {
     login_called: bool,
     login_result: Option<Result<(), HandlerError>>,
-    oidc_result: Option<Result<Option<auth::User>, String>>,
+    oauth2_call: Option<(String, OAuth2Provider)>,
     oauth2_result: Option<Result<Option<auth::User>, String>>,
+    oidc_call: Option<(String, String, OidcProvider)>,
+    oidc_result: Option<Result<Option<auth::User>, String>>,
 }
 
 #[async_trait]
 impl CallbackAuth for MockCallbackAuth {
     async fn authenticate_oauth2(
         &mut self,
-        _code: String,
-        _provider: OAuth2Provider,
+        code: String,
+        provider: OAuth2Provider,
     ) -> Result<Option<auth::User>, String> {
+        self.oauth2_call = Some((code, provider));
         self.oauth2_result
             .take()
             .expect("oauth2 callback auth result should be configured in tests")
@@ -2316,10 +1647,11 @@ impl CallbackAuth for MockCallbackAuth {
 
     async fn authenticate_oidc(
         &mut self,
-        _code: String,
-        _nonce: oidc::Nonce,
-        _provider: OidcProvider,
+        code: String,
+        nonce: oidc::Nonce,
+        provider: OidcProvider,
     ) -> Result<Option<auth::User>, String> {
+        self.oidc_call = Some((code, nonce.secret().clone(), provider));
         self.oidc_result
             .take()
             .expect("oidc callback auth result should be configured in tests")
@@ -2333,6 +1665,80 @@ impl CallbackAuth for MockCallbackAuth {
     }
 }
 
+/// Session record without a logged in user holding the given string values.
+fn session_record_with_values(session_id: session::Id, values: &[(&str, &str)]) -> session::Record {
+    let mut session_record = sample_empty_session_record(session_id);
+    for (key, value) in values {
+        session_record.data.insert((*key).to_string(), json!(value));
+    }
+    session_record
+}
+
+/// Builds an in-memory callback session holding the expected csrf state.
+async fn callback_session(nonce: Option<&str>, next_url: Option<&str>) -> Session {
+    let session = Session::new(None, Arc::new(MemoryStore::default()), None);
+    session
+        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
+        .await
+        .unwrap();
+    if let Some(nonce) = nonce {
+        session.insert(OIDC_NONCE_KEY, nonce).await.unwrap();
+    }
+    if let Some(next_url) = next_url {
+        session
+            .insert(NEXT_URL_KEY, Some(next_url.to_string()))
+            .await
+            .unwrap();
+    }
+    session
+}
+
+/// Returns a slot and an error callback that stores the reported message in it.
+fn capture_error() -> (Arc<Mutex<Option<String>>>, impl FnOnce(String)) {
+    let error_message = Arc::new(Mutex::new(None));
+    let captured_error_message = error_message.clone();
+    let on_error = move |message: String| {
+        *captured_error_message.lock().unwrap() = Some(message);
+    };
+    (error_message, on_error)
+}
+
+/// Server configuration with email log in enabled.
+fn email_login_cfg() -> HttpServerConfig {
+    HttpServerConfig {
+        base_url: "https://app.example".to_string(),
+        login: LoginOptions {
+            email: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    }
+}
+
+/// Server configuration with GitHub log in enabled.
+fn github_login_cfg() -> HttpServerConfig {
+    let mut server_cfg = HttpServerConfig::default();
+    server_cfg.login.github = true;
+    server_cfg
+}
+
+/// Server configuration with Linux Foundation log in enabled.
+fn linuxfoundation_login_cfg() -> HttpServerConfig {
+    let mut server_cfg = HttpServerConfig::default();
+    server_cfg.login.linuxfoundation = true;
+    server_cfg
+}
+
+/// Returns the value of the query string parameter.
+fn query_param(query: &str, name: &str) -> Option<String> {
+    query.split('&').find_map(|pair| {
+        pair.strip_prefix(name)
+            .and_then(|rest| rest.strip_prefix('='))
+            .map(String::from)
+    })
+}
+
+/// Returns whether the stored session tracks the auth provider.
 fn session_record_contains_auth_provider(record: &session::Record, provider: &str) -> bool {
     record.data.get(AUTH_PROVIDER_KEY).and_then(|value| value.as_str()) == Some(provider)
 }

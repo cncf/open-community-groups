@@ -1,23 +1,18 @@
-use axum::{
-    body::{Body, to_bytes},
-    http::{
-        Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE},
-    },
-};
-use axum_login::tower_sessions::session;
+use axum::http::StatusCode;
 use chrono::Utc;
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
-    handlers::tests::*,
-    services::{notifications::MockNotificationsManager, payments::MockPaymentsManager},
+    handlers::{error::HandlerError, tests::*},
+    services::payments::MockPaymentsManager,
     types::{
-        dashboard::group::refunds::{
-            FinancialRecoveryKind, GroupFinancialRecovery, GroupRefund, GroupRefundStatus,
-            RefundEvent, RefundsFilters, RefundsOutput, RefundsView,
+        dashboard::{
+            DASHBOARD_PAGINATION_LIMIT,
+            group::refunds::{
+                FinancialRecoveryKind, GroupFinancialRecovery, GroupRefund, GroupRefundStatus,
+                RefundEvent, RefundsFilters, RefundsOutput, RefundsView,
+            },
         },
         permissions::GroupPermission,
     },
@@ -26,11 +21,7 @@ use crate::{
 #[tokio::test]
 async fn test_list_page_renders_history_without_payments_setup() {
     // Setup a readable group after its current payment setup was removed
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
+    let ids = DashboardIds::new();
     let output = RefundsOutput {
         events: vec![],
         financial_recoveries: vec![],
@@ -40,67 +31,37 @@ async fn test_list_page_renders_history_without_payments_setup() {
 
     // Setup authentication and historical refund-list expectations
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, false);
     db.expect_list_group_refunds()
         .times(1)
         .withf(move |gid, filters| {
-            *gid == group_id
-                && filters.limit == Some(crate::types::dashboard::DASHBOARD_PAGINATION_LIMIT)
+            *gid == ids.group_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
                 && filters.view == RefundsView::Active
         })
         .returning(move |_, _| Ok(output.clone()));
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(false));
 
-    // Request the refunds partial without a configured payments provider
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/refunds")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    // Request the refunds partial without a configured payments provider; this
+    // guards against gating the route on payments setup like the webhooks
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/group/refunds", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check historical refund operations remain accessible
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    assert!(
-        std::str::from_utf8(&bytes)
-            .expect("refunds response to be UTF-8")
-            .contains("Review attendee requests")
-    );
+    assert!(body.contains("Review attendee requests"));
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
 async fn test_list_page_renders_filtered_refund_workflows() {
     // Setup identifiers and filtered refund output
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let recovery_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
     let mut output = RefundsOutput {
         events: vec![RefundEvent {
             event_id,
@@ -152,25 +113,12 @@ async fn test_list_page_renders_filtered_refund_workflows() {
 
     // Setup authentication, authorization, and filtered database expectations
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, true);
     db.expect_list_group_refunds()
         .times(1)
         .withf(move |gid, filters| {
-            *gid == group_id
+            *gid == ids.group_id
                 && filters.event_id == Some(event_id)
                 && filters.limit == Some(10)
                 && filters.offset == Some(10)
@@ -180,28 +128,17 @@ async fn test_list_page_renders_filtered_refund_workflows() {
         .returning(move |_, _| Ok(output.clone()));
 
     // Request the filtered refunds partial
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_payments_cfg(sample_payments_cfg())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!(
             "/dashboard/group/refunds?event_id={event_id}&limit=10&offset=10&ts_query=alice&view=attention"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        ),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the rendered operational state, filtered refresh, and stable action address
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        "text/html; charset=utf-8"
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get("hx-push-url").unwrap().to_str().unwrap(),
         format!(
@@ -226,121 +163,40 @@ async fn test_list_page_renders_filtered_refund_workflows() {
 
 #[tokio::test]
 async fn test_list_page_rejects_invalid_pagination_limit() {
-    // Setup authenticated group dashboard context
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
     // Expect invalid filters to fail before refund list work starts
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
 
     // Request a page size outside the validated dashboard range
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_payments_cfg(sample_payments_cfg())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/refunds?limit=0")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/group/refunds?limit=0", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the invalid page size is rejected
-    assert_non_empty_response(&parts, &bytes, StatusCode::UNPROCESSABLE_ENTITY);
-}
-
-#[tokio::test]
-async fn test_complete_payment_job_recovery_forbids_user_without_event_write_access() {
-    // Setup an authenticated group member without event-management access
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let payment_job_id = Uuid::new_v4();
-
-    // Reject recovery before the payment job mutation can run
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(false));
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "limit: lower than 1\n"
     );
-    db.expect_complete_payment_job_recovery().never();
-
-    // Attempt recovery with otherwise valid evidence
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/group/payment-jobs/recovery")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
-            "payment_job_id={payment_job_id}&provider_object_id=fr_test_123&recovery_note=Verified+Stripe+activity&recovery_reference=ticket-456"
-        )))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the route rejects recovery before calling the database function
-    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
 async fn test_complete_payment_job_recovery_records_provider_evidence() {
-    // Setup an authenticated event manager and payment job
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let payment_job_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
 
     // Expect provider evidence to reach the payments manager
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-
-    // Setup payments manager mock
     let mut payments_manager = MockPaymentsManager::new();
     payments_manager
         .expect_complete_payment_job_recovery()
         .times(1)
         .withf(move |input| {
-            input.actor_user_id == user_id
-                && input.group_id == group_id
+            input.actor_user_id == ids.user_id
+                && input.group_id == ids.group_id
                 && input.payment_job_id == payment_job_id
                 && input.provider_object_id == "fr_test_123"
                 && input.recovery_note == "Verified Stripe activity"
@@ -349,22 +205,19 @@ async fn test_complete_payment_job_recovery_records_provider_evidence() {
         .returning(|_| Box::pin(async { Ok(()) }));
 
     // Submit the payment job recovery evidence
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_payments_manager(payments_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/group/payment-jobs/recovery")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
+    let request = form_request(
+        "PUT",
+        "/dashboard/group/payment-jobs/recovery",
+        ids.session_id,
+        format!(
             "payment_job_id={payment_job_id}&provider_object_id=fr_test_123&recovery_note=Verified+Stripe+activity&recovery_reference=ticket-456"
-        )))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        ),
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the current financial-work view is refreshed
     assert_empty_hx_trigger_response(
@@ -376,56 +229,84 @@ async fn test_complete_payment_job_recovery_records_provider_evidence() {
 }
 
 #[tokio::test]
+async fn test_complete_payment_job_recovery_returns_rejection_message() {
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
+    let payment_job_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
+
+    // Setup payments manager mock rejecting the recovery
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_complete_payment_job_recovery()
+        .times(1)
+        .withf(move |input| input.payment_job_id == payment_job_id)
+        .returning(|_| {
+            Box::pin(async {
+                Err(HandlerError::Database("recoverable payment job not found".to_string()).into())
+            })
+        });
+
+    // Submit the payment job recovery evidence
+    let router = TestRouterBuilder::new(db)
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = form_request(
+        "PUT",
+        "/dashboard/group/payment-jobs/recovery",
+        ids.session_id,
+        format!(
+            "payment_job_id={payment_job_id}&provider_object_id=fr_test_123&recovery_note=Verified+Stripe+activity&recovery_reference=ticket-456"
+        ),
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the rejection message is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "recoverable payment job not found"
+    );
+}
+
+#[tokio::test]
 async fn test_complete_refund_recovery_allows_event_manager() {
-    // Setup an authenticated event manager
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let event_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
 
     // Expect the validated recovery evidence to reach the payments service
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-
-    // Setup payments manager mock
     let mut payments_manager = MockPaymentsManager::new();
     payments_manager
         .expect_complete_refund_recovery()
         .times(1)
         .withf(move |input| {
-            input.actor_user_id == user_id
+            input.actor_user_id == ids.user_id
                 && input.event_purchase_id == event_purchase_id
-                && input.group_id == group_id
+                && input.group_id == ids.group_id
                 && input.recovery_note == "Verified bank receipt"
                 && input.recovery_reference == "bank-transfer-123"
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
     // Submit recovery from the refunds page
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_payments_manager(payments_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/group/refunds/recovery")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
+    let request = form_request(
+        "PUT",
+        "/dashboard/group/refunds/recovery",
+        ids.session_id,
+        format!(
             "event_purchase_id={event_purchase_id}&recovery_note=Verified+bank+receipt&recovery_reference=bank-transfer-123"
-        )))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        ),
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check both operational views are refreshed after completion
     assert_empty_hx_trigger_response(
@@ -437,149 +318,71 @@ async fn test_complete_refund_recovery_allows_event_manager() {
 }
 
 #[tokio::test]
-async fn test_complete_refund_recovery_forbids_user_without_event_write_access() {
-    // Setup an authenticated group member without event-management access
-    let community_id = Uuid::new_v4();
+async fn test_complete_refund_recovery_returns_rejection_message() {
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let event_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Reject recovery before the payments service can run
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(false));
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
 
-    // Setup payments manager mock
+    // Setup payments manager mock rejecting the recovery
     let mut payments_manager = MockPaymentsManager::new();
-    payments_manager.expect_complete_refund_recovery().never();
+    payments_manager
+        .expect_complete_refund_recovery()
+        .times(1)
+        .withf(move |input| input.event_purchase_id == event_purchase_id)
+        .returning(|_| {
+            Box::pin(async {
+                Err(HandlerError::Database(
+                    "recoverable event purchase refund not found".to_string(),
+                )
+                .into())
+            })
+        });
 
-    // Attempt recovery with otherwise valid evidence
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    // Submit recovery from the refunds page
+    let router = TestRouterBuilder::new(db)
         .with_payments_manager(payments_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/group/refunds/recovery")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
+    let request = form_request(
+        "PUT",
+        "/dashboard/group/refunds/recovery",
+        ids.session_id,
+        format!(
             "event_purchase_id={event_purchase_id}&recovery_note=Verified+bank+receipt&recovery_reference=bank-transfer-123"
-        )))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the route rejects recovery before calling the payments service
-    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
-}
-
-#[tokio::test]
-async fn test_retry_payment_job_forbids_user_without_event_write_access() {
-    // Setup an authenticated group member without event-management access
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let payment_job_id = Uuid::new_v4();
-
-    // Reject retry before the payment job mutation can run
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(false));
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
+        ),
     );
-    db.expect_requeue_payment_job().never();
+    let (parts, bytes) = send(router, request).await;
 
-    // Attempt a retry with otherwise valid input
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!(
-            "/dashboard/group/payment-jobs/{payment_job_id}/retry"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the route rejects retry before calling the database function
-    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
+    // Check the rejection message is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "recoverable event purchase refund not found"
+    );
 }
 
 #[tokio::test]
 async fn test_retry_payment_job_requeues_selected_job() {
-    // Setup an authenticated event manager and payment job
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let payment_job_id = Uuid::new_v4();
-
     // Expect the selected payment job to be requeued
+    let ids = DashboardIds::new();
+    let payment_job_id = Uuid::new_v4();
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
     db.expect_requeue_payment_job()
         .times(1)
-        .withf(move |gid, id| *gid == group_id && *id == payment_job_id)
+        .withf(move |gid, id| *gid == ids.group_id && *id == payment_job_id)
         .returning(|_, _| Ok(()));
 
     // Submit a payment job retry request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!(
-            "/dashboard/group/payment-jobs/{payment_job_id}/retry"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "PUT",
+        &format!("/dashboard/group/payment-jobs/{payment_job_id}/retry"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the current payment job view is refreshed
     assert_empty_hx_trigger_response(

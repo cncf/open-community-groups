@@ -1,10 +1,5 @@
-use axum::{
-    body::{Body, to_bytes},
-    http::{Request, StatusCode, header::COOKIE},
-};
-use axum_login::tower_sessions::session;
+use axum::http::StatusCode;
 use serde_json::json;
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
@@ -13,120 +8,102 @@ use crate::{
         auth::session_context::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
         tests::*,
     },
-    services::notifications::MockNotificationsManager,
+    types::permissions::GroupPermission,
 };
 
 use super::payments_ready;
 
 #[test]
-fn test_payments_ready_returns_false_without_config() {
-    let payment_recipient = sample_group_payment_recipient();
-
-    assert!(!payments_ready(Some(&payment_recipient), None));
-}
-
-#[test]
-fn test_payments_ready_returns_false_without_recipient() {
-    let payments_cfg = sample_payments_cfg();
-
-    assert!(!payments_ready(None, Some(&payments_cfg)));
-}
-
-#[test]
-fn test_payments_ready_returns_true_for_matching_provider() {
+fn test_payments_ready() {
     let payment_recipient = sample_group_payment_recipient();
     let payments_cfg = sample_payments_cfg();
+    let cases = [
+        ("without config", Some(&payment_recipient), None, false),
+        ("without recipient", None, Some(&payments_cfg), false),
+        (
+            "with recipient for the configured provider",
+            Some(&payment_recipient),
+            Some(&payments_cfg),
+            true,
+        ),
+    ];
 
-    assert!(payments_ready(
-        Some(&payment_recipient),
-        Some(&payments_cfg)
-    ));
+    for (case, payment_recipient, payments_cfg, expected) in cases {
+        assert_eq!(
+            payments_ready(payment_recipient, payments_cfg),
+            expected,
+            "case: {case}"
+        );
+    }
 }
 
 #[tokio::test]
 async fn test_select_community_forbidden_when_user_has_no_groups_in_community() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let other_community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let groups = sample_user_groups_by_community(other_community_id, group_id);
+    let groups = sample_user_groups_by_community(other_community_id, ids.group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_user_has_community_permission().times(0);
     db.expect_list_user_groups()
         .times(1)
-        .withf(move |uid| uid == &user_id)
+        .withf(move |user_id| *user_id == ids.user_id)
         .returning(move |_| Ok(groups.clone()));
     db.expect_update_session().times(0);
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!("/dashboard/group/community/{community_id}/select"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, _) = response.into_parts();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "PUT",
+        &format!("/dashboard/group/community/{}/select", ids.community_id),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::FORBIDDEN);
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
 async fn test_select_community_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let ids = DashboardIds::new();
+    let groups = sample_user_groups_by_community(ids.community_id, ids.group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_user_has_community_permission().times(0);
     db.expect_list_user_groups()
         .times(1)
-        .withf(move |uid| uid == &user_id)
+        .withf(move |user_id| *user_id == ids.user_id)
         .returning(move |_| Ok(groups.clone()));
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
-            record.id == session_id
+            record.id == ids.session_id
                 && record
                     .data
                     .get(SELECTED_COMMUNITY_ID_KEY)
-                    .is_some_and(|value| value == &json!(community_id))
+                    .is_some_and(|value| value == &json!(ids.community_id))
                 && record
                     .data
                     .get(SELECTED_GROUP_ID_KEY)
-                    .is_some_and(|value| value == &json!(group_id))
+                    .is_some_and(|value| value == &json!(ids.group_id))
         })
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!("/dashboard/group/community/{community_id}/select"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "PUT",
+        &format!("/dashboard/group/community/{}/select", ids.community_id),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
@@ -134,50 +111,36 @@ async fn test_select_community_success() {
 
 #[tokio::test]
 async fn test_select_group_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_session(&mut db, &ids);
     db.expect_group_belongs_to_community()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+        .withf(move |community_id, group_id| {
+            *community_id == ids.community_id && *group_id == ids.group_id
         })
-        .returning(|_, _, _, _| Ok(true));
+        .returning(|_, _| Ok(true));
+    expect_group_permission_result(&mut db, &ids, GroupPermission::Read, true);
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
-            record.id == session_id
+            record.id == ids.session_id
                 && record
                     .data
                     .get(SELECTED_GROUP_ID_KEY)
-                    .is_some_and(|value| value == &json!(group_id))
+                    .is_some_and(|value| value == &json!(ids.group_id))
         })
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!("/dashboard/group/{group_id}/select"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "PUT",
+        &format!("/dashboard/group/{}/select", ids.group_id),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");

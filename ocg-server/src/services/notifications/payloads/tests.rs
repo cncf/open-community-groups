@@ -1,17 +1,20 @@
 use uuid::Uuid;
 
 use crate::{
-    config::HttpServerConfig,
+    config::tests::sample_server_cfg,
+    db::mock::{MockDB, expect_site_settings},
+    services::notifications::tests::template_of,
     templates::notifications::{
-        EventAttendanceCanceled, EventCanceled, EventPaidConfigured, EventPublished,
-        EventRefundApproved, EventRefundRejected, EventRescheduled, EventWaitlistJoined,
-        EventWaitlistLeft, EventWelcome, InboxMessageReceived, InboxReplyReceived, SpeakerWelcome,
+        EmailVerification, EventAttendanceCanceled, EventCanceled, EventPaidConfigured,
+        EventPublished, EventRefundApproved, EventRefundRejected, EventRescheduled,
+        EventWaitlistJoined, EventWaitlistLeft, EventWelcome, InboxMessageReceived,
+        InboxReplyReceived, SpeakerWelcome,
     },
     types::{
         notifications::NotificationKind,
         tests::{
-            sample_community_summary, sample_event_summary, sample_group_summary,
-            sample_inbox_conversation, sample_site_settings,
+            sample_community_summary, sample_custom_notification_content, sample_event_summary,
+            sample_group_summary, sample_inbox_conversation, sample_site_settings,
         },
     },
 };
@@ -27,8 +30,8 @@ fn test_build_community_custom_notification_returns_expected_content() {
     // Build notification content
     let template = build_community_custom_notification(
         &community,
-        &sample_content("Community Update", "Hello, group teams!"),
-        &sample_server_cfg(),
+        &sample_custom_notification_content("Community Update", "Hello, group teams!"),
+        &sample_server_cfg("https://example.test/"),
         &site_settings,
     );
 
@@ -43,15 +46,57 @@ fn test_build_community_custom_notification_returns_expected_content() {
     );
 }
 
+#[tokio::test]
+async fn test_build_email_verification_notification_rejects_empty_base_url() {
+    // Setup database mock, which must not be read without a base URL
+    let mut db = MockDB::new();
+    db.expect_get_site_settings().never();
+
+    // Build the notification payload
+    let err = build_email_verification_notification(&db, &sample_server_cfg(""))
+        .await
+        .expect_err("empty base URL to be rejected");
+
+    // Check the configuration error
+    assert_eq!(
+        err.to_string(),
+        "base URL is required to send verification email"
+    );
+}
+
+#[tokio::test]
+async fn test_build_email_verification_notification_returns_link_and_theme() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_site_settings(&mut db);
+
+    // Build the notification payload
+    let notification =
+        build_email_verification_notification(&db, &sample_server_cfg("https://example.test/"))
+            .await
+            .expect("notification to be built");
+
+    // Check the link carries the generated code and the theme is the site's
+    let template: EmailVerification =
+        serde_json::from_value(notification.template_data).expect("template data to deserialize");
+    assert_eq!(
+        template.link,
+        format!("https://example.test/verify-email/{}", notification.code)
+    );
+    assert_eq!(
+        template.theme.primary_color,
+        sample_site_settings().theme.primary_color
+    );
+}
+
 #[test]
 fn test_build_event_attendance_canceled_notification_returns_expected_payload() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let recipient_user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
+    let event = sample_event_summary(event_id);
     let site_settings = sample_site_settings();
-    let server_cfg = sample_server_cfg();
+    let server_cfg = sample_server_cfg("https://example.test/");
 
     // Build notification
     let notification = build_event_attendance_canceled_notification(
@@ -69,9 +114,7 @@ fn test_build_event_attendance_canceled_notification_returns_expected_payload() 
         NotificationKind::EventAttendanceCanceled
     ));
     assert_eq!(notification.recipients, vec![recipient_user_id]);
-    let template: EventAttendanceCanceled =
-        serde_json::from_value(notification.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let template: EventAttendanceCanceled = template_of(&notification);
     assert_eq!(
         template.dashboard_link,
         "https://example.test/dashboard/user?tab=events"
@@ -94,9 +137,9 @@ fn test_build_event_calendar_notifications_return_expected_payload() {
     let event_id = Uuid::new_v4();
     let owner_group_id = Uuid::new_v4();
     let recipient_user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, owner_group_id);
+    let event = sample_event_summary(event_id);
     let site_settings = sample_site_settings();
-    let server_cfg = sample_server_cfg();
+    let server_cfg = sample_server_cfg("https://example.test/");
 
     // Build notifications
     let canceled = build_event_canceled_notification(
@@ -133,17 +176,13 @@ fn test_build_event_calendar_notifications_return_expected_payload() {
     // Check notifications match expectations
     assert_eq!(canceled.attachments.len(), 1);
     assert!(matches!(canceled.kind, NotificationKind::EventCanceled));
-    let canceled_template: EventCanceled =
-        serde_json::from_value(canceled.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let canceled_template: EventCanceled = template_of(&canceled);
     assert_eq!(canceled_template.event.event_id, event_id);
 
     assert_eq!(published.attachments.len(), 1);
     assert_eq!(published.group_ids, vec![owner_group_id, cohost_group_id]);
     assert!(matches!(published.kind, NotificationKind::EventPublished));
-    let published_template: EventPublished =
-        serde_json::from_value(published.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let published_template: EventPublished = template_of(&published);
     assert_eq!(published_template.event.event_id, event_id);
 
     assert_eq!(rescheduled.attachments.len(), 1);
@@ -151,16 +190,12 @@ fn test_build_event_calendar_notifications_return_expected_payload() {
         rescheduled.kind,
         NotificationKind::EventRescheduled
     ));
-    let rescheduled_template: EventRescheduled =
-        serde_json::from_value(rescheduled.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let rescheduled_template: EventRescheduled = template_of(&rescheduled);
     assert_eq!(rescheduled_template.event.event_id, event_id);
 
     assert_eq!(speaker.attachments.len(), 1);
     assert!(matches!(speaker.kind, NotificationKind::SpeakerWelcome));
-    let speaker_template: SpeakerWelcome =
-        serde_json::from_value(speaker.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let speaker_template: SpeakerWelcome = template_of(&speaker);
     assert_eq!(speaker_template.event.event_id, event_id);
 }
 
@@ -168,14 +203,14 @@ fn test_build_event_calendar_notifications_return_expected_payload() {
 fn test_build_event_custom_notification_returns_expected_content() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, Uuid::new_v4());
+    let event = sample_event_summary(event_id);
     let site_settings = sample_site_settings();
 
     // Build notification content
     let template = build_event_custom_notification(
         &event,
-        &sample_content("Event Update", "Hello, event attendees!"),
-        &sample_server_cfg(),
+        &sample_custom_notification_content("Event Update", "Hello, event attendees!"),
+        &sample_server_cfg("https://example.test/"),
         &site_settings,
     );
 
@@ -214,10 +249,9 @@ fn test_build_event_paid_configured_notification_returns_expected_payload() {
     let event_id = Uuid::new_v4();
     let related_event_id = Uuid::new_v4();
     let recipient_user_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let mut related_event = sample_event_summary(related_event_id, group_id);
+    let mut related_event = sample_event_summary(related_event_id);
     related_event.has_external_payment = true;
-    let events = vec![sample_event_summary(event_id, group_id), related_event];
+    let events = vec![sample_event_summary(event_id), related_event];
     let site_settings = sample_site_settings();
 
     // Build the aggregate notification
@@ -232,9 +266,7 @@ fn test_build_event_paid_configured_notification_returns_expected_payload() {
         NotificationKind::EventPaidConfigured
     ));
     assert_eq!(notification.recipients, vec![recipient_user_id]);
-    let template: EventPaidConfigured =
-        serde_json::from_value(notification.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let template: EventPaidConfigured = template_of(&notification);
     assert_eq!(template.event_count, 2);
     assert_eq!(template.events[0].event_id, event_id);
     assert!(!template.events[0].has_external_payment);
@@ -248,18 +280,49 @@ fn test_build_event_paid_configured_notification_returns_expected_payload() {
 }
 
 #[test]
-fn test_build_event_refund_notifications_return_expected_payload() {
+fn test_build_event_refund_approved_template_data_returns_expected_payload() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id);
+    let site_settings = sample_site_settings();
+    let server_cfg = sample_server_cfg("https://example.test/");
+
+    // Check the payload carries the caller's external payment flag
+    for external_payment in [false, true] {
+        let approved = build_event_refund_approved_template_data(
+            &event,
+            external_payment,
+            &server_cfg,
+            &site_settings,
+        )
+        .expect("template data to be built");
+        let template: EventRefundApproved =
+            serde_json::from_value(approved).expect("template data to deserialize");
+        assert_eq!(
+            template.event.event_id, event_id,
+            "external_payment={external_payment}"
+        );
+        assert_eq!(
+            template.external_payment, external_payment,
+            "external_payment={external_payment}"
+        );
+        assert_eq!(
+            template.link, "https://example.test/test-community/group/def5678/event/ghi9abc",
+            "external_payment={external_payment}"
+        );
+    }
+}
+
+#[test]
+fn test_build_event_refund_rejected_notification_returns_expected_payload() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
     let recipient_user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, Uuid::new_v4());
+    let event = sample_event_summary(event_id);
     let site_settings = sample_site_settings();
-    let server_cfg = sample_server_cfg();
+    let server_cfg = sample_server_cfg("https://example.test/");
 
-    // Build notifications
-    let approved =
-        build_event_refund_approved_template_data(&event, false, &server_cfg, &site_settings)
-            .expect("template data to be built");
+    // Build notification
     let rejected = build_event_refund_rejected_notification(
         &event,
         recipient_user_id,
@@ -269,21 +332,14 @@ fn test_build_event_refund_notifications_return_expected_payload() {
     )
     .expect("notification to be built");
 
-    // Check notifications match expectations
-    let approved_template: EventRefundApproved =
-        serde_json::from_value(approved).expect("template data to deserialize");
-    assert_eq!(approved_template.event.event_id, event_id);
-    assert!(!approved_template.external_payment);
-
+    // Check notification matches expectations
     assert!(rejected.attachments.is_empty());
     assert!(matches!(
         rejected.kind,
         NotificationKind::EventRefundRejected
     ));
     assert_eq!(rejected.recipients, vec![recipient_user_id]);
-    let rejected_template: EventRefundRejected =
-        serde_json::from_value(rejected.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let rejected_template: EventRefundRejected = template_of(&rejected);
     assert_eq!(rejected_template.event.event_id, event_id);
     assert_eq!(
         rejected_template.rejection_reason,
@@ -292,33 +348,13 @@ fn test_build_event_refund_notifications_return_expected_payload() {
 }
 
 #[test]
-fn test_build_event_refund_approved_external_payment_payload() {
-    // Setup identifiers and data structures
-    let event_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, Uuid::new_v4());
-    let site_settings = sample_site_settings();
-    let server_cfg = sample_server_cfg();
-
-    // Build an external refund-approval payload
-    let approved =
-        build_event_refund_approved_template_data(&event, true, &server_cfg, &site_settings)
-            .expect("template data to be built");
-
-    // Check the payload marks the refund as returned outside OCG
-    let approved_template: EventRefundApproved =
-        serde_json::from_value(approved).expect("template data to deserialize");
-    assert_eq!(approved_template.event.event_id, event_id);
-    assert!(approved_template.external_payment);
-}
-
-#[test]
 fn test_build_event_waitlist_joined_and_left_notifications_return_expected_payload() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
     let recipient_user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, Uuid::new_v4());
+    let event = sample_event_summary(event_id);
     let site_settings = sample_site_settings();
-    let server_cfg = sample_server_cfg();
+    let server_cfg = sample_server_cfg("https://example.test/");
 
     // Build notifications
     let joined = build_event_waitlist_joined_notification(
@@ -340,9 +376,7 @@ fn test_build_event_waitlist_joined_and_left_notifications_return_expected_paylo
     assert!(joined.attachments.is_empty());
     assert!(matches!(joined.kind, NotificationKind::EventWaitlistJoined));
     assert_eq!(joined.recipients, vec![recipient_user_id]);
-    let joined_template: EventWaitlistJoined =
-        serde_json::from_value(joined.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let joined_template: EventWaitlistJoined = template_of(&joined);
     assert_eq!(joined_template.event.event_id, event_id);
     assert_eq!(
         joined_template.link,
@@ -352,9 +386,7 @@ fn test_build_event_waitlist_joined_and_left_notifications_return_expected_paylo
     assert!(left.attachments.is_empty());
     assert!(matches!(left.kind, NotificationKind::EventWaitlistLeft));
     assert_eq!(left.recipients, vec![recipient_user_id]);
-    let left_template: EventWaitlistLeft =
-        serde_json::from_value(left.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let left_template: EventWaitlistLeft = template_of(&left);
     assert_eq!(left_template.event.event_id, event_id);
     assert_eq!(
         left_template.link,
@@ -366,9 +398,9 @@ fn test_build_event_welcome_notification_returns_expected_payload() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
     let recipient_user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, Uuid::new_v4());
+    let event = sample_event_summary(event_id);
     let site_settings = sample_site_settings();
-    let server_cfg = sample_server_cfg();
+    let server_cfg = sample_server_cfg("https://example.test/");
 
     // Build notification
     let notification = build_event_welcome_notification(
@@ -384,9 +416,7 @@ fn test_build_event_welcome_notification_returns_expected_payload() {
     assert_eq!(notification.attachments.len(), 1);
     assert!(matches!(notification.kind, NotificationKind::EventWelcome));
     assert_eq!(notification.recipients, vec![recipient_user_id]);
-    let template: EventWelcome =
-        serde_json::from_value(notification.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let template: EventWelcome = template_of(&notification);
     assert_eq!(
         template.dashboard_link.as_deref(),
         Some("https://example.test/dashboard/user?tab=events")
@@ -401,6 +431,7 @@ fn test_build_event_welcome_notification_returns_expected_payload() {
         site_settings.theme.primary_color
     );
 }
+
 #[test]
 fn test_build_group_custom_notification_returns_expected_content() {
     // Setup identifiers and data structures
@@ -412,8 +443,8 @@ fn test_build_group_custom_notification_returns_expected_content() {
     // Build notification content
     let template = build_group_custom_notification(
         &group,
-        &sample_content("Important Update", "Hello, group members!"),
-        &sample_server_cfg(),
+        &sample_custom_notification_content("Important Update", "Hello, group members!"),
+        &sample_server_cfg("https://example.test/"),
         &site_settings,
     );
 
@@ -458,9 +489,7 @@ fn test_build_inbox_message_received_notification_returns_expected_payload() {
         NotificationKind::InboxMessageReceived
     ));
     assert_eq!(notification.recipients, vec![recipient_user_id]);
-    let template: InboxMessageReceived =
-        serde_json::from_value(notification.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let template: InboxMessageReceived = template_of(&notification);
     assert_eq!(template.body, "When do doors open?");
     assert_eq!(template.community_display_name, "Test Community");
     assert_eq!(template.group_name, "Test Group");
@@ -492,9 +521,7 @@ fn test_build_inbox_message_received_notification_uses_username_without_name() {
     .expect("notification to be built");
 
     // Check the sender falls back to the username
-    let template: InboxMessageReceived =
-        serde_json::from_value(notification.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let template: InboxMessageReceived = template_of(&notification);
     assert_eq!(template.sender_name, "inbox-user");
 }
 
@@ -517,9 +544,7 @@ fn test_build_inbox_reply_received_notification_returns_expected_payload() {
         NotificationKind::InboxReplyReceived
     ));
     assert_eq!(notification.recipients, vec![user_id]);
-    let template: InboxReplyReceived =
-        serde_json::from_value(notification.template_data.expect("template data to exist"))
-            .expect("template data to deserialize");
+    let template: InboxReplyReceived = template_of(&notification);
     assert_eq!(template.group_name, "Test Group");
     assert_eq!(
         template.link,
@@ -529,21 +554,4 @@ fn test_build_inbox_reply_received_notification_returns_expected_payload() {
         )
     );
     assert_eq!(template.event_name, None);
-}
-
-// Helpers.
-
-/// Returns custom notification content with the given subject and body.
-fn sample_content(subject: &str, body: &str) -> CustomNotificationContent {
-    CustomNotificationContent {
-        body: body.to_string(),
-        subject: subject.to_string(),
-    }
-}
-
-fn sample_server_cfg() -> HttpServerConfig {
-    HttpServerConfig {
-        base_url: "https://example.test/".to_string(),
-        ..Default::default()
-    }
 }

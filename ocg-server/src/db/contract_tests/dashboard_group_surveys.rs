@@ -11,11 +11,13 @@ use crate::{
     db::{
         DBUnitOfWork, PgDB, PgExecutor,
         dashboard::{group::DBDashboardGroup, user::DBDashboardUser},
+        user_facing_message,
     },
     types::{
         dashboard::group::surveys::{
-            EventSurveyInput, EventSurveyResponseNavigationFilters, EventSurveyResponsesFilters,
-            EventSurveyStatusAction, EventSurveyStatusForm, EventSurveyTextAnswersFilters,
+            EventSurveyFull, EventSurveyInput, EventSurveyResponseNavigationFilters,
+            EventSurveyResponsesFilters, EventSurveyStatusAction, EventSurveyStatusForm,
+            EventSurveyTextAnswersFilters,
         },
         event_survey::{EventSurveyAudience, EventSurveyState},
         questionnaire::{
@@ -46,10 +48,7 @@ async fn db_contracts_add_event_survey_creates_draft() -> Result<()> {
         .await?;
 
     // Check the draft settings, with dates interpreted in the event timezone
-    let survey = uow
-        .get_event_survey(subgroup_id(), survey_event_id(), event_survey_id)
-        .await?
-        .context("added survey should be returned")?;
+    let survey = load_survey(&uow, survey_event_id(), event_survey_id).await?;
     assert!(!survey.summary.anonymous);
     assert_eq!(survey.summary.audience, EventSurveyAudience::Confirmed);
     assert_eq!(survey.summary.questions_count, 1);
@@ -84,43 +83,15 @@ async fn db_contracts_add_event_survey_creates_draft() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_add_event_survey_rejects_survey_limit() -> Result<()> {
-    // Setup a rolled-back unit of work for an event with three surveys
-    let uow = contract_unit_of_work().await?;
-    let input = identified_survey_input();
-
-    // Fill the event up to the survey limit
-    for _ in 0..7 {
-        uow.add_event_survey(organizer_id(), subgroup_id(), survey_event_id(), &input)
-            .await?;
-    }
-
-    // Check one more survey is rejected under the event lock
-    let err = uow
-        .add_event_survey(organizer_id(), subgroup_id(), survey_event_id(), &input)
-        .await
-        .expect_err("the eleventh survey should be rejected");
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("events can have up to 10 surveys")
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
 async fn db_contracts_change_event_survey_status_applies_transitions() -> Result<()> {
     // Setup a rolled-back unit of work and the draft opening the editor shows
     let uow = contract_unit_of_work().await?;
-    let draft = uow
-        .get_event_survey(
-            subgroup_id(),
-            survey_mark_ready_event_id(),
-            survey_mark_ready_race_id(),
-        )
-        .await?
-        .context("draft survey should be returned")?;
+    let draft = load_survey(
+        &uow,
+        survey_mark_ready_event_id(),
+        survey_mark_ready_race_id(),
+    )
+    .await?;
 
     // Mark the draft ready with the opening time it showed
     uow.change_event_survey_status(
@@ -136,14 +107,12 @@ async fn db_contracts_change_event_survey_status_applies_transitions() -> Result
         },
     )
     .await?;
-    let ready = uow
-        .get_event_survey(
-            subgroup_id(),
-            survey_mark_ready_event_id(),
-            survey_mark_ready_race_id(),
-        )
-        .await?
-        .context("ready survey should be returned")?;
+    let ready = load_survey(
+        &uow,
+        survey_mark_ready_event_id(),
+        survey_mark_ready_race_id(),
+    )
+    .await?;
     assert_eq!(ready.summary.revision, draft.summary.revision + 1);
     assert_eq!(ready.summary.state, EventSurveyState::Scheduled);
 
@@ -156,14 +125,12 @@ async fn db_contracts_change_event_survey_status_applies_transitions() -> Result
         &status_form(EventSurveyStatusAction::BackToDraft, ready.summary.revision),
     )
     .await?;
-    let draft_again = uow
-        .get_event_survey(
-            subgroup_id(),
-            survey_mark_ready_event_id(),
-            survey_mark_ready_race_id(),
-        )
-        .await?
-        .context("draft survey should be returned")?;
+    let draft_again = load_survey(
+        &uow,
+        survey_mark_ready_event_id(),
+        survey_mark_ready_race_id(),
+    )
+    .await?;
     assert_eq!(draft_again.summary.state, EventSurveyState::Draft);
 
     // Close and reopen the open identified survey
@@ -175,10 +142,7 @@ async fn db_contracts_change_event_survey_status_applies_transitions() -> Result
         &status_form(EventSurveyStatusAction::Close, 2),
     )
     .await?;
-    let closed = uow
-        .get_event_survey(subgroup_id(), survey_event_id(), survey_identified_id())
-        .await?
-        .context("closed survey should be returned")?;
+    let closed = load_survey(&uow, survey_event_id(), survey_identified_id()).await?;
     assert!(closed.summary.closed_manually);
     assert!(closed.closed_at.is_some());
     assert_eq!(closed.summary.state, EventSurveyState::Closed);
@@ -190,10 +154,7 @@ async fn db_contracts_change_event_survey_status_applies_transitions() -> Result
         &status_form(EventSurveyStatusAction::Reopen, 3),
     )
     .await?;
-    let reopened = uow
-        .get_event_survey(subgroup_id(), survey_event_id(), survey_identified_id())
-        .await?
-        .context("reopened survey should be returned")?;
+    let reopened = load_survey(&uow, survey_event_id(), survey_identified_id()).await?;
     assert!(!reopened.summary.closed_manually);
     assert_eq!(reopened.summary.revision, 4);
     assert_eq!(reopened.summary.state, EventSurveyState::Open);
@@ -225,121 +186,25 @@ async fn db_contracts_change_event_survey_status_applies_transitions() -> Result
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_change_event_survey_status_rejects_invalid_requests() -> Result<()> {
-    // Setup a rolled-back unit of work and the draft opening the editor shows
-    let uow = contract_unit_of_work().await?;
-    let draft = uow
-        .get_event_survey(
-            subgroup_id(),
-            survey_mark_ready_event_id(),
-            survey_mark_ready_race_id(),
-        )
-        .await?
-        .context("draft survey should be returned")?;
-    let scenarios = [
-        (
-            "a draft without questions",
-            survey_event_id(),
-            survey_draft_id(),
-            EventSurveyStatusForm {
-                action: EventSurveyStatusAction::MarkReady,
-                revision: 1,
-
-                expected_effective_opens_at: Utc.with_ymd_and_hms(2025, 4, 1, 19, 0, 0).single(),
-            },
-            "event survey must have at least one question",
-        ),
-        (
-            "a confirmation showing another opening time",
-            survey_mark_ready_event_id(),
-            survey_mark_ready_race_id(),
-            EventSurveyStatusForm {
-                action: EventSurveyStatusAction::MarkReady,
-                revision: draft.summary.revision,
-
-                expected_effective_opens_at: Utc.with_ymd_and_hms(2099, 12, 1, 0, 0, 0).single(),
-            },
-            "the survey opening time changed; review and try again",
-        ),
-        (
-            "a draft close",
-            survey_event_id(),
-            survey_draft_id(),
-            status_form(EventSurveyStatusAction::Close, 1),
-            "only open surveys can be closed",
-        ),
-        (
-            "a stale revision",
-            survey_event_id(),
-            survey_identified_id(),
-            status_form(EventSurveyStatusAction::Close, 1),
-            "the survey changed; review and try again",
-        ),
-        (
-            "an open survey moved back to draft",
-            survey_event_id(),
-            survey_identified_id(),
-            status_form(EventSurveyStatusAction::BackToDraft, 2),
-            "only scheduled surveys not yet sent or answered can move back to draft",
-        ),
-        (
-            "an open survey reopened",
-            survey_event_id(),
-            survey_identified_id(),
-            status_form(EventSurveyStatusAction::Reopen, 2),
-            "only closed surveys can be reopened",
-        ),
-    ];
-
-    for (scenario, event_id, event_survey_id, status, message) in scenarios {
-        // Request the transition inside its own savepoint
-        uow.execute("savepoint status_change", &[]).await?;
-        let err = uow
-            .change_event_survey_status(
-                organizer_id(),
-                subgroup_id(),
-                event_id,
-                event_survey_id,
-                &status,
-            )
-            .await
-            .expect_err(scenario);
-
-        // Check the transition was rejected with its message
-        assert_eq!(ocg01_message(&err).as_deref(), Some(message), "{scenario}");
-        uow.execute("rollback to savepoint status_change", &[]).await?;
-    }
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
 async fn db_contracts_change_event_survey_status_rejects_mark_ready_racing_reschedule() -> Result<()>
 {
     // Setup reschedule, status and probe connections
     let reschedule_uow = contract_unit_of_work().await?;
     let status_uow = contract_unit_of_work().await?;
     let probe_client = contract_tests_pool()?.get().await?;
-    let reschedule_backend_pid: i32 = reschedule_uow
-        .fetch_scalar_one("select pg_backend_pid()", &[])
-        .await?;
-    let status_backend_pid: i32 =
-        status_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let reschedule_backend_pid = uow_backend_pid(&reschedule_uow).await?;
+    let status_backend_pid = uow_backend_pid(&status_uow).await?;
 
     // Load the opening time the Mark ready confirmation shows
-    let draft = status_uow
-        .get_event_survey(
-            subgroup_id(),
-            survey_mark_ready_event_id(),
-            survey_mark_ready_race_id(),
-        )
-        .await?
-        .context("draft survey should be returned")?;
+    let draft = load_survey(
+        &status_uow,
+        survey_mark_ready_event_id(),
+        survey_mark_ready_race_id(),
+    )
+    .await?;
 
     // Reschedule the event while retaining its lock
-    let payload =
-        group_lock_event_update("Contract Survey Mark Ready Event", 10).to_db_payload()?;
+    let payload = contract_event_input("Contract Survey Mark Ready Event", 10).to_db_payload()?;
     reschedule_uow
         .update_event(
             organizer_id(),
@@ -377,9 +242,9 @@ async fn db_contracts_change_event_survey_status_rejects_mark_ready_racing_resch
         .expect_err("a confirmation of the old opening time should be rejected");
 
     // Check the survey stayed a draft
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("the survey opening time changed; review and try again")
+    assert_ocg01(
+        &err,
+        "the survey opening time changed; review and try again",
     );
     let status: String = probe_client
         .query_one(
@@ -443,10 +308,8 @@ async fn db_contracts_delete_event_survey_waits_for_concurrent_submission() -> R
     let submit_uow = contract_unit_of_work().await?;
     let delete_uow = contract_unit_of_work().await?;
     let probe_client = contract_tests_pool()?.get().await?;
-    let submit_backend_pid: i32 =
-        submit_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
-    let delete_backend_pid: i32 =
-        delete_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let submit_backend_pid = uow_backend_pid(&submit_uow).await?;
+    let delete_backend_pid = uow_backend_pid(&delete_uow).await?;
 
     // Submit answers while retaining the event and survey locks
     submit_uow
@@ -497,124 +360,6 @@ async fn db_contracts_delete_event_survey_waits_for_concurrent_submission() -> R
         )
         .await?;
     assert_eq!(responses, 0);
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_event_survey_mutations_reject_unmanageable_events() -> Result<()> {
-    // Setup a rolled-back unit of work and the changes that block management
-    let uow = contract_unit_of_work().await?;
-    let scenarios = [
-        (
-            "canceled event",
-            "update event set canceled = true where event_id = $1::uuid",
-        ),
-        (
-            "deleted event",
-            "update event set deleted = true, published = false where event_id = $1::uuid",
-        ),
-        (
-            "deleted group",
-            r#"update "group" set active = false, deleted = true where group_id = (select group_id from event where event_id = $1::uuid)"#,
-        ),
-        (
-            "inactive group",
-            r#"update "group" set active = false where group_id = (select group_id from event where event_id = $1::uuid)"#,
-        ),
-    ];
-
-    for (scenario, change) in scenarios {
-        // Apply the change inside its own savepoint
-        uow.execute("savepoint unmanageable_event", &[]).await?;
-        uow.execute(change, &[&survey_event_id()]).await?;
-
-        // Check adding a survey is rejected
-        let err = uow
-            .add_event_survey(
-                organizer_id(),
-                subgroup_id(),
-                survey_event_id(),
-                &identified_survey_input(),
-            )
-            .await
-            .expect_err(scenario);
-        assert_eq!(
-            ocg01_message(&err).as_deref(),
-            Some("event not found or inactive"),
-            "{scenario}"
-        );
-        uow.execute("rollback to savepoint unmanageable_event", &[]).await?;
-    }
-
-    // Check a survey cannot be managed through another group
-    uow.execute("savepoint invalid_request", &[]).await?;
-    let err = uow
-        .delete_event_survey(
-            organizer_id(),
-            group_id(),
-            survey_event_id(),
-            survey_identified_id(),
-        )
-        .await
-        .expect_err("a foreign group should not manage the survey");
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("event not found or inactive")
-    );
-    uow.execute("rollback to savepoint invalid_request", &[]).await?;
-
-    // Check a survey cannot be added to the event of another group
-    let err = uow
-        .add_event_survey(
-            organizer_id(),
-            group_id(),
-            survey_event_id(),
-            &identified_survey_input(),
-        )
-        .await
-        .expect_err("a foreign group should not add surveys to the event");
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("event not found or inactive")
-    );
-    uow.execute("rollback to savepoint invalid_request", &[]).await?;
-
-    // Check a survey closing before it opens is rejected
-    let err = uow
-        .add_event_survey(
-            organizer_id(),
-            subgroup_id(),
-            survey_event_id(),
-            &EventSurveyInput {
-                opens_at: NaiveDate::from_ymd_opt(2099, 1, 2)
-                    .and_then(|day| day.and_hms_opt(1, 0, 0)),
-                ..identified_survey_input()
-            },
-        )
-        .await
-        .expect_err("surveys closing before they open should be rejected");
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("event survey closing date must be after the opening date")
-    );
-    uow.execute("rollback to savepoint invalid_request", &[]).await?;
-
-    // Check a missing survey cannot be deleted
-    let err = uow
-        .delete_event_survey(
-            organizer_id(),
-            subgroup_id(),
-            survey_event_id(),
-            Uuid::new_v4(),
-        )
-        .await
-        .expect_err("missing surveys should not be deleted");
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("event survey not found")
-    );
 
     Ok(())
 }
@@ -809,11 +554,11 @@ async fn db_contracts_get_event_survey_export_rejects_oversized_export() -> Resu
         )
         .await
         .expect_err("export above the row bound should be rejected");
-    assert_eq!(
-        ocg01_message(&err),
-        Some(format!(
+    assert_ocg01(
+        &err,
+        &format!(
             "survey export supports up to 2 responses and 1000000 bytes of answers; this survey has 3 responses and {answers_bytes} bytes"
-        ))
+        ),
     );
 
     // Check exports above the byte bound are rejected with both bounds and sizes
@@ -828,11 +573,11 @@ async fn db_contracts_get_event_survey_export_rejects_oversized_export() -> Resu
         )
         .await
         .expect_err("export above the byte bound should be rejected");
-    assert_eq!(
-        ocg01_message(&err),
-        Some(format!(
+    assert_ocg01(
+        &err,
+        &format!(
             "survey export supports up to 100 responses and {max_bytes} bytes of answers; this survey has 3 responses and {answers_bytes} bytes"
-        ))
+        ),
     );
 
     Ok(())
@@ -919,7 +664,7 @@ async fn db_contracts_get_event_survey_export_stays_consistent_while_responses_g
 async fn db_contracts_get_event_survey_response_deserializes() -> Result<()> {
     // Setup the contract database
     let db = contract_tests_db()?;
-    let second_respondent_id = parse_uuid("00000000-0000-0000-0000-00000000f303");
+    let second_respondent_id = survey_second_respondent_id();
 
     // Load the second response among all respondents
     let response = db
@@ -967,33 +712,6 @@ async fn db_contracts_get_event_survey_response_deserializes() -> Result<()> {
     assert_eq!(searched.total, 2);
     assert!(searched.next_user_id.is_none());
     assert_eq!(searched.previous_user_id, Some(survey_respondent_id()));
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_get_event_survey_response_rejects_anonymous_survey() -> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
-
-    // Load a response of the anonymous survey
-    let err = db
-        .get_event_survey_response(
-            subgroup_id(),
-            survey_event_id(),
-            survey_anonymous_id(),
-            survey_respondent_id(),
-            &EventSurveyResponseNavigationFilters::default(),
-        )
-        .await
-        .expect_err("anonymous respondents should not be viewed");
-
-    // Check the respondents stay hidden
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("responses of anonymous surveys cannot be viewed")
-    );
 
     Ok(())
 }
@@ -1127,10 +845,7 @@ async fn db_contracts_list_event_survey_responses_deserializes() -> Result<()> {
     // Check the respondent without a ticket whose blank text is unanswered
     let second = &second_page.responses[0];
     assert_eq!(second.answered_questions_count, 2);
-    assert_eq!(
-        second.user.user_id,
-        parse_uuid("00000000-0000-0000-0000-00000000f303")
-    );
+    assert_eq!(second.user.user_id, survey_second_respondent_id());
     assert_eq!(second.user.username, "survey-second-respondent");
     assert_eq!(
         second.user.name.as_deref(),
@@ -1157,32 +872,6 @@ async fn db_contracts_list_event_survey_responses_deserializes() -> Result<()> {
     assert_eq!(
         search_page.responses[0].user.user_id,
         survey_former_attendee_id()
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_list_event_survey_responses_rejects_anonymous_survey() -> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
-
-    // List the responses of the anonymous survey
-    let err = db
-        .list_event_survey_responses(
-            subgroup_id(),
-            survey_event_id(),
-            survey_anonymous_id(),
-            &EventSurveyResponsesFilters::default(),
-        )
-        .await
-        .expect_err("anonymous respondents should not be listed");
-
-    // Check the respondents stay hidden
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("responses of anonymous surveys cannot be listed")
     );
 
     Ok(())
@@ -1322,10 +1011,8 @@ async fn db_contracts_submit_event_survey_response_locks_settings_against_anonym
     let submit_uow = contract_unit_of_work().await?;
     let update_uow = contract_unit_of_work().await?;
     let probe_client = contract_tests_pool()?.get().await?;
-    let submit_backend_pid: i32 =
-        submit_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
-    let update_backend_pid: i32 =
-        update_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let submit_backend_pid = uow_backend_pid(&submit_uow).await?;
+    let update_backend_pid = uow_backend_pid(&update_uow).await?;
 
     // Submit the first response while retaining the event and survey locks
     submit_uow
@@ -1359,9 +1046,9 @@ async fn db_contracts_submit_event_survey_response_locks_settings_against_anonym
         .expect_err("answered surveys should keep their anonymity");
 
     // Check the response locked the settings it was given under
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("survey questions, audience and anonymity cannot change once it has responses")
+    assert_ocg01(
+        &err,
+        "survey questions, audience and anonymity cannot change once it has responses",
     );
     let row = probe_client
         .query_one(
@@ -1383,10 +1070,8 @@ async fn db_contracts_submit_event_survey_response_rejects_concurrent_reconfigur
     let update_uow = contract_unit_of_work().await?;
     let submit_uow = contract_unit_of_work().await?;
     let probe_client = contract_tests_pool()?.get().await?;
-    let update_backend_pid: i32 =
-        update_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
-    let submit_backend_pid: i32 =
-        submit_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let update_backend_pid = uow_backend_pid(&update_uow).await?;
+    let submit_backend_pid = uow_backend_pid(&submit_uow).await?;
 
     // Make the survey anonymous while retaining the event and survey locks
     update_uow
@@ -1420,10 +1105,7 @@ async fn db_contracts_submit_event_survey_response_rejects_concurrent_reconfigur
         .expect_err("answers to an older revision should be rejected");
 
     // Check no response was stored
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("the survey changed; review and try again")
-    );
+    assert_ocg01(&err, "the survey changed; review and try again");
     assert_survey_has_no_responses(&probe_client, survey_stale_race_id()).await?;
 
     Ok(())
@@ -1437,9 +1119,8 @@ async fn db_contracts_submit_event_survey_response_rejects_concurrently_closed_s
     let close_uow = contract_unit_of_work().await?;
     let submit_uow = contract_unit_of_work().await?;
     let probe_client = contract_tests_pool()?.get().await?;
-    let close_backend_pid: i32 = close_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
-    let submit_backend_pid: i32 =
-        submit_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let close_backend_pid = uow_backend_pid(&close_uow).await?;
+    let submit_backend_pid = uow_backend_pid(&submit_uow).await?;
 
     // Close the survey while retaining the event and survey locks
     close_uow
@@ -1472,10 +1153,7 @@ async fn db_contracts_submit_event_survey_response_rejects_concurrently_closed_s
         .expect_err("answers to a closed survey should be rejected");
 
     // Check no response was stored
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("event survey is not open")
-    );
+    assert_ocg01(&err, "event survey is not open");
     assert_survey_has_no_responses(&probe_client, survey_close_race_id()).await?;
 
     Ok(())
@@ -1489,10 +1167,8 @@ async fn db_contracts_submit_event_survey_response_rejects_concurrently_deleted_
     let delete_uow = contract_unit_of_work().await?;
     let submit_uow = contract_unit_of_work().await?;
     let probe_client = contract_tests_pool()?.get().await?;
-    let delete_backend_pid: i32 =
-        delete_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
-    let submit_backend_pid: i32 =
-        submit_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let delete_backend_pid = uow_backend_pid(&delete_uow).await?;
+    let submit_backend_pid = uow_backend_pid(&submit_uow).await?;
 
     // Delete the survey while retaining the event lock
     delete_uow
@@ -1524,10 +1200,7 @@ async fn db_contracts_submit_event_survey_response_rejects_concurrently_deleted_
         .expect_err("answers to a deleted survey should be rejected");
 
     // Check no response was stored
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("event survey not found")
-    );
+    assert_ocg01(&err, "event survey not found");
     assert_survey_has_no_responses(&probe_client, survey_delete_race_id()).await?;
 
     Ok(())
@@ -1558,10 +1231,7 @@ async fn db_contracts_update_event_survey_bumps_revision_for_configuration_chang
     .await?;
 
     // Check the configuration change increased the revision
-    let survey = uow
-        .get_event_survey(subgroup_id(), survey_event_id(), survey_draft_id())
-        .await?
-        .context("draft survey should be returned")?;
+    let survey = load_survey(&uow, survey_event_id(), survey_draft_id()).await?;
     assert_eq!(survey.summary.questions_count, 1);
     assert_eq!(survey.summary.revision, 2);
     assert_eq!(
@@ -1575,54 +1245,10 @@ async fn db_contracts_update_event_survey_bumps_revision_for_configuration_chang
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_update_event_survey_keeps_anonymity_once_opened() -> Result<()> {
-    // Setup a rolled-back unit of work
-    let uow = contract_unit_of_work().await?;
-
-    // Check the opened anonymous survey reports its anonymity as locked
-    let survey = uow
-        .get_event_survey(
-            subgroup_id(),
-            survey_race_event_id(),
-            survey_opened_anonymous_id(),
-        )
-        .await?
-        .context("opened anonymous survey should be returned")?;
-    assert!(survey.summary.anonymous);
-    assert!(survey.summary.anonymous_locked);
-    assert!(!survey.summary.locked);
-
-    // Try to make the opened anonymous survey identified
-    let err = uow
-        .update_event_survey(
-            organizer_id(),
-            subgroup_id(),
-            survey_race_event_id(),
-            survey_opened_anonymous_id(),
-            1,
-            &race_survey_input(false, "Contract opened anonymous survey"),
-        )
-        .await
-        .expect_err("opened anonymous surveys should stay anonymous");
-
-    // Check the anonymity change was rejected
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("anonymity cannot be turned off after the survey has opened")
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
 async fn db_contracts_update_event_survey_keeps_locked_settings() -> Result<()> {
     // Setup a rolled-back unit of work and the editor input of the answered survey
     let uow = contract_unit_of_work().await?;
-    let survey = uow
-        .get_event_survey(subgroup_id(), survey_event_id(), survey_identified_id())
-        .await?
-        .context("identified survey should be returned")?;
+    let survey = load_survey(&uow, survey_event_id(), survey_identified_id()).await?;
     let input = EventSurveyInput {
         description: Some("Contract renamed introduction".to_string()),
         questions: survey.questions,
@@ -1642,10 +1268,7 @@ async fn db_contracts_update_event_survey_keeps_locked_settings() -> Result<()> 
     .await?;
 
     // Check the rename kept the revision and both stored dates
-    let renamed = uow
-        .get_event_survey(subgroup_id(), survey_event_id(), survey_identified_id())
-        .await?
-        .context("renamed survey should be returned")?;
+    let renamed = load_survey(&uow, survey_event_id(), survey_identified_id()).await?;
     assert_eq!(renamed.summary.revision, 2);
     assert_eq!(renamed.summary.title, "Contract renamed survey");
     assert_eq!(
@@ -1671,9 +1294,9 @@ async fn db_contracts_update_event_survey_keeps_locked_settings() -> Result<()> 
         )
         .await
         .expect_err("answered surveys should keep their anonymity");
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("survey questions, audience and anonymity cannot change once it has responses")
+    assert_ocg01(
+        &err,
+        "survey questions, audience and anonymity cannot change once it has responses",
     );
     uow.execute("rollback to savepoint locked_settings", &[]).await?;
 
@@ -1689,10 +1312,7 @@ async fn db_contracts_update_event_survey_keeps_locked_settings() -> Result<()> 
         )
         .await
         .expect_err("stale forms should be rejected");
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("the survey changed; review and try again")
-    );
+    assert_ocg01(&err, "the survey changed; review and try again");
 
     Ok(())
 }
@@ -1751,7 +1371,7 @@ async fn check_survey_export_snapshot(
         }
         // Rejected exports measured one snapshot above the bounds
         Err(err) => {
-            let message = ocg01_message(&err)
+            let message = user_facing_message(&err)
                 .with_context(|| format!("export should only fail by size: {err:#}"))?;
             let measured = message
                 .split("this survey has ")
@@ -1789,6 +1409,17 @@ async fn assert_survey_has_no_responses(
     assert_eq!(responses, 0);
 
     Ok(())
+}
+
+/// Loads a survey of the given subgroup event, failing when it is missing.
+async fn load_survey(
+    db: &(impl DBDashboardGroup + Sync),
+    event_id: Uuid,
+    event_survey_id: Uuid,
+) -> Result<EventSurveyFull> {
+    db.get_event_survey(subgroup_id(), event_id, event_survey_id)
+        .await?
+        .context("survey should be returned")
 }
 
 /// Builds the editor input that echoes the identified survey settings.

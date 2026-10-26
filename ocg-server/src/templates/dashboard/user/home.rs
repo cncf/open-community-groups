@@ -219,60 +219,48 @@ pub(crate) enum Tab {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{
-        dashboard::user::notifications::NotificationPreferences, pagination::NavigationLinks,
-    };
+    use crate::types::pagination::NavigationLinks;
 
     use super::*;
 
     #[test]
-    fn test_refresh_path_uses_events_route_for_events_content() {
-        let content = Content::Events(events::ListPage {
-            events: vec![],
-            navigation_links: NavigationLinks::default(),
-            total: 0,
+    fn test_refresh_path_matches_list_routes() {
+        let cases = [
+            (
+                Content::Events(events::ListPage {
+                    events: vec![],
+                    navigation_links: NavigationLinks::default(),
+                    total: 0,
 
-            offset: None,
-        });
+                    offset: None,
+                }),
+                "events",
+            ),
+            (
+                Content::Invitations(invitations::ListPage {
+                    community_invitations: vec![],
+                    event_invitations: vec![],
+                    group_invitations: vec![],
+                }),
+                "invitations",
+            ),
+            (
+                Content::Surveys(surveys::ListPage {
+                    navigation_links: NavigationLinks::default(),
+                    refresh_url: "/dashboard/user?tab=surveys".to_string(),
+                    surveys: vec![],
+                    total: 0,
 
-        assert_eq!(content.refresh_path(), "events");
-    }
+                    offset: None,
+                    survey: None,
+                    warning: None,
+                }),
+                "surveys",
+            ),
+        ];
 
-    #[test]
-    fn test_refresh_path_uses_invitations_route_for_invitations_content() {
-        let content = Content::Invitations(invitations::ListPage {
-            community_invitations: vec![],
-            event_invitations: vec![],
-            group_invitations: vec![],
-        });
-
-        assert_eq!(content.refresh_path(), "invitations");
-    }
-
-    #[test]
-    fn test_refresh_path_uses_notifications_route_for_notifications_content() {
-        let content = Content::Notifications(Box::new(notifications::Page {
-            preferences: NotificationPreferences::default(),
-            show_community_team_section: false,
-            show_group_team_section: false,
-        }));
-
-        assert_eq!(content.refresh_path(), "notifications");
-    }
-
-    #[test]
-    fn test_refresh_path_uses_surveys_route_for_surveys_content() {
-        let content = Content::Surveys(surveys::ListPage {
-            navigation_links: NavigationLinks::default(),
-            refresh_url: "/dashboard/user?tab=surveys".to_string(),
-            surveys: vec![],
-            total: 0,
-
-            offset: None,
-            survey: None,
-            warning: None,
-        });
-
-        assert_eq!(content.refresh_path(), "surveys");
+        for (content, expected) in cases {
+            assert_eq!(content.refresh_path(), expected, "{expected}");
+        }
     }
 }

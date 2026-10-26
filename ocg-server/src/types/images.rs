@@ -84,25 +84,18 @@ mod tests {
     use super::ImageTarget;
 
     #[test]
-    fn test_image_target_from_str_parses_upload_names() {
-        assert_eq!(
-            ImageTarget::from_str("ad_banner").unwrap(),
-            ImageTarget::AdBanner
-        );
-        assert_eq!(ImageTarget::from_str("badge").unwrap(), ImageTarget::Badge);
-        assert_eq!(
-            ImageTarget::from_str("banner").unwrap(),
-            ImageTarget::Banner
-        );
-        assert_eq!(
-            ImageTarget::from_str("banner_mobile").unwrap(),
-            ImageTarget::BannerMobile
-        );
-        assert_eq!(ImageTarget::from_str("logo").unwrap(), ImageTarget::Logo);
-        assert_eq!(
-            ImageTarget::from_str("open_graph").unwrap(),
-            ImageTarget::OpenGraph
-        );
+    fn test_image_target_round_trips_upload_names() {
+        for (target, name) in [
+            (ImageTarget::AdBanner, "ad_banner"),
+            (ImageTarget::Badge, "badge"),
+            (ImageTarget::Banner, "banner"),
+            (ImageTarget::BannerMobile, "banner_mobile"),
+            (ImageTarget::Logo, "logo"),
+            (ImageTarget::OpenGraph, "open_graph"),
+        ] {
+            assert_eq!(ImageTarget::from_str(name).unwrap(), target, "{name}");
+            assert_eq!(target.to_string(), name, "{name}");
+        }
     }
 
     #[test]
@@ -117,15 +110,5 @@ mod tests {
         assert_eq!(ImageTarget::AdBanner.height(), 300);
         assert_eq!(ImageTarget::AdBanner.size_text(), "2400 x 300");
         assert_eq!(ImageTarget::OpenGraph.size_text(), "1200 x 630");
-    }
-
-    #[test]
-    fn test_image_target_to_string_matches_upload_names() {
-        assert_eq!(ImageTarget::AdBanner.to_string(), "ad_banner");
-        assert_eq!(ImageTarget::Badge.to_string(), "badge");
-        assert_eq!(ImageTarget::Banner.to_string(), "banner");
-        assert_eq!(ImageTarget::BannerMobile.to_string(), "banner_mobile");
-        assert_eq!(ImageTarget::Logo.to_string(), "logo");
-        assert_eq!(ImageTarget::OpenGraph.to_string(), "open_graph");
     }
 }

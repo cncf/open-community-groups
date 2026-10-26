@@ -7,20 +7,14 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::{
-    db::contract_tests::helpers::{contract_tests_db, contract_tests_pool},
+    db::contract_tests::helpers::{
+        contract_tests_db, contract_tests_pool, inbox_admin_id, inbox_community_id,
+        inbox_events_manager_id, inbox_manager_user_id, inbox_opt_out_admin_id,
+        inbox_opt_out_event_id, inbox_opt_out_events_manager_id, inbox_opt_out_group_id,
+        inbox_opt_out_user_id, inbox_write_event_id,
+    },
     services::inbox::{InboxManager, PgInboxManager, StartConversationInput},
 };
-
-/// Inactive community holding every inbox contract fixture.
-const INBOX_COMMUNITY_ID: Uuid = Uuid::from_u128(0xe001);
-/// Group team member with the admin role in the write group.
-const INBOX_ADMIN_ID: Uuid = Uuid::from_u128(0xe021);
-/// Group team member with the events-manager role in the write group.
-const INBOX_EVENTS_MANAGER_ID: Uuid = Uuid::from_u128(0xe022);
-/// User starting a conversation through the manager.
-const INBOX_MANAGER_USER_ID: Uuid = Uuid::from_u128(0xe02a);
-/// Published event owned by the write group.
-const INBOX_WRITE_EVENT_ID: Uuid = Uuid::from_u128(0xe032);
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
@@ -32,9 +26,9 @@ async fn db_contracts_inbox_manager_commits_message_with_notification() -> Resul
     let inbox_conversation_id = manager
         .start_conversation(&StartConversationInput {
             body: "Can I bring a friend?".to_string(),
-            community_id: INBOX_COMMUNITY_ID,
-            event_id: INBOX_WRITE_EVENT_ID,
-            user_id: INBOX_MANAGER_USER_ID,
+            community_id: inbox_community_id(),
+            event_id: inbox_write_event_id(),
+            user_id: inbox_manager_user_id(),
         })
         .await?;
 
@@ -64,7 +58,106 @@ async fn db_contracts_inbox_manager_commits_message_with_notification() -> Resul
 
     // Check the message and its emails were committed together
     assert_eq!(body, "Can I bring a friend?");
-    assert_eq!(recipients, vec![INBOX_ADMIN_ID, INBOX_EVENTS_MANAGER_ID]);
+    assert_eq!(
+        recipients,
+        vec![inbox_admin_id(), inbox_events_manager_id()]
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_inbox_manager_commits_conversation_when_recipients_opt_out() -> Result<()> {
+    // Setup the manager over the contract database and a clean opted-out flow
+    let client = contract_tests_pool()?.get().await?;
+    cleanup_opted_out_inbox_flow(&client).await?;
+    let manager = PgInboxManager::new(Arc::new(contract_tests_db()?));
+
+    // Start a conversation whose group team recipients all opted out of its emails
+    let inbox_conversation_id = manager
+        .start_conversation(&StartConversationInput {
+            body: "Will the recording be posted?".to_string(),
+            community_id: inbox_community_id(),
+            event_id: inbox_opt_out_event_id(),
+            user_id: inbox_opt_out_user_id(),
+        })
+        .await?;
+
+    // Load the stored message and any notifications for the opted-out recipients
+    let body: String = client
+        .query_one(
+            "select body
+            from inbox_message
+            where inbox_conversation_id = $1::uuid",
+            &[&inbox_conversation_id],
+        )
+        .await?
+        .get(0);
+    let notification_count: i64 = client
+        .query_one(
+            "select count(*)
+            from notification
+            where kind = 'inbox-message-received'
+            and user_id = any($1::uuid[])",
+            &[&vec![
+                inbox_opt_out_admin_id(),
+                inbox_opt_out_events_manager_id(),
+            ]],
+        )
+        .await?
+        .get(0);
+
+    // Clean up the durable rows before any check can fail
+    cleanup_opted_out_inbox_flow(&client).await?;
+
+    // Check preference filtering did not roll back the inbox write
+    assert_eq!(body, "Will the recording be posted?");
+    assert_eq!(notification_count, 0);
+
+    Ok(())
+}
+
+// Helpers.
+
+/// Removes rows written by the opted-out inbox conversation contract.
+async fn cleanup_opted_out_inbox_flow(client: &tokio_postgres::Client) -> Result<()> {
+    // Remove any emails written by a failed prior focused run
+    client
+        .execute(
+            "delete from notification
+            where kind = 'inbox-message-received'
+            and user_id = any($1::uuid[])",
+            &[&vec![
+                inbox_opt_out_admin_id(),
+                inbox_opt_out_events_manager_id(),
+            ]],
+        )
+        .await?;
+
+    // Remove messages before their conversations are deleted
+    client
+        .execute(
+            "delete from inbox_message
+            where inbox_conversation_id in (
+                select inbox_conversation_id
+                from inbox_conversation
+                where group_id = $1::uuid
+                and user_id = $2::uuid
+            )",
+            &[&inbox_opt_out_group_id(), &inbox_opt_out_user_id()],
+        )
+        .await?;
+
+    // Remove the conversation started by the contract
+    client
+        .execute(
+            "delete from inbox_conversation
+            where group_id = $1::uuid
+            and user_id = $2::uuid",
+            &[&inbox_opt_out_group_id(), &inbox_opt_out_user_id()],
+        )
+        .await?;
 
     Ok(())
 }

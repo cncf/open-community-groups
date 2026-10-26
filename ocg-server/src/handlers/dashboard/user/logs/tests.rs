@@ -1,34 +1,21 @@
-use axum::{
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE},
-    },
-};
-use axum_login::tower_sessions::session;
+use axum::http::{HeaderValue, StatusCode};
 use chrono::NaiveDate;
-use tower::ServiceExt;
-use uuid::Uuid;
 
-use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    types::dashboard::common::AuditLogSort,
-};
+use crate::{db::mock::MockDB, handlers::tests::*, types::dashboard::common::AuditLogSort};
 
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let output = sample_audit_logs_output();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_list_user_audit_logs()
         .times(1)
         .withf(move |id, filters| {
-            *id == user_id
+            *id == ids.user_id
                 && filters.action.as_deref() == Some("user_details_updated")
                 && filters.actor.is_none()
                 && filters.date_from == Some(NaiveDate::from_ymd_opt(2024, 1, 1).unwrap())
@@ -39,31 +26,18 @@ async fn test_list_page_success() {
         })
         .returning(move |_, _| Ok(output.clone()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(
-            "/dashboard/user/logs?action=user_details_updated\
-             &date_from=2024-01-01&date_to=2024-01-31&limit=5&offset=10&sort=created-asc",
-        )
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        "/dashboard/user/logs?action=user_details_updated\
+         &date_from=2024-01-01&date_to=2024-01-31&limit=5&offset=10&sort=created-asc",
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get("hx-push-url").unwrap(),
         &HeaderValue::from_static(concat!(

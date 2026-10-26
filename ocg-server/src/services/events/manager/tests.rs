@@ -1,18 +1,21 @@
 use std::{collections::HashSet, sync::Arc};
 
 use anyhow::anyhow;
-use chrono::Utc;
+use chrono::{DateTime, TimeDelta, Utc};
 use mockall::Sequence;
 use serde_json::{from_value, json};
 use uuid::Uuid;
 
 use crate::{
-    config::{HttpClientConfig, HttpServerConfig, MeetingsConfig, MeetingsZoomConfig},
+    config::{HttpServerConfig, MeetingsConfig, tests::sample_zoom_meetings_cfg},
     db::{
         dashboard::group::{
             EventCohostNotificationData, EventCohostRef, EventCohostResponse, EventCohostsSync,
         },
-        mock::MockDB,
+        mock::{
+            MockDB, expect_rolled_back_transaction, expect_site_settings,
+            expect_successful_transaction,
+        },
     },
     services::{
         events::{
@@ -50,7 +53,10 @@ use crate::{
     },
 };
 
-use super::{PgEventsManager, is_event_payload_paid_capable};
+use super::{
+    PgEventsManager, cancellation_notification_events, is_event_payload_paid_capable,
+    publication_notification_events,
+};
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
@@ -131,9 +137,7 @@ async fn test_add_cohosts_invites_every_occurrence_with_one_email_per_group() {
         .withf(|items| items.len() == 2)
         .in_sequence(&mut sequence)
         .returning(move |_| Ok(notification_data.clone()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_list_group_admin_ids()
         .times(1)
         .withf(move |gid| *gid == cohost_group_id)
@@ -208,9 +212,7 @@ async fn test_add_cohosts_rolls_back_when_invitation_enqueue_fails() {
     tx.expect_get_event_cohost_notification_data()
         .times(1)
         .returning(move |_| Ok(vec![notification_data.clone()]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_list_group_admin_ids()
         .times(1)
         .returning(|_| Ok(vec![Uuid::new_v4()]));
@@ -232,7 +234,10 @@ async fn test_add_cohosts_rolls_back_when_invitation_enqueue_fails() {
         .await;
 
     // Check the workflow failed
-    assert!(matches!(result, Err(EventsError::Other(_))));
+    assert!(matches!(
+        result,
+        Err(EventsError::Other(err)) if err.to_string() == "enqueue failed"
+    ));
 }
 
 #[tokio::test]
@@ -274,7 +279,7 @@ async fn test_add_free_success() {
     expect_successful_transaction(&mut db, tx);
 
     // Setup meetings config with Zoom
-    let meetings_cfg = sample_zoom_meetings_cfg();
+    let meetings_cfg = sample_zoom_meetings_cfg("test-token");
 
     // Run the workflow through the manager
     let manager = sample_manager(db, Some(&meetings_cfg), sample_payments_manager(None));
@@ -289,7 +294,7 @@ async fn test_add_free_success() {
         .await;
 
     // Check the created event identifiers
-    assert_eq!(result.unwrap()[0], event_id);
+    assert_eq!(result.unwrap(), vec![event_id]);
 }
 
 #[tokio::test]
@@ -302,9 +307,9 @@ async fn test_add_paid_event_notification_failure_rolls_back() {
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let body = sample_paid_event_body();
-    let event_summary = sample_event_summary(event_id, group_id);
+    let event_summary = sample_event_summary(event_id);
 
-    // Setup authentication and permission checks
+    // Setup the configured payment recipient read
     let mut db = MockDB::new();
 
     db.expect_get_group_payment_recipient()
@@ -330,9 +335,7 @@ async fn test_add_paid_event_notification_failure_rolls_back() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_summary.clone()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
         .returning(|_| Err(anyhow!("notification error")));
@@ -390,7 +393,7 @@ async fn test_add_paid_recurring_success() {
         serde_qs::to_string(&event_form).unwrap(),
     );
 
-    // Setup authentication and permission checks
+    // Setup the configured payment recipient read
     let mut db = MockDB::new();
 
     db.expect_get_group_payment_recipient()
@@ -419,28 +422,26 @@ async fn test_add_paid_recurring_success() {
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(vec![admin_id]));
-    let event_summary = sample_event_summary(event_id, group_id);
+    let event_summary = sample_event_summary(event_id);
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_summary.clone()));
-    let related_event_summary = sample_event_summary(related_event_id, group_id);
+    let related_event_summary = sample_event_summary(related_event_id);
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == community_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
-    let third_event_summary = sample_event_summary(third_event_id, group_id);
+    let third_event_summary = sample_event_summary(third_event_id);
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == community_id && *gid == group_id && *eid == third_event_id
         })
         .returning(move |_, _, _| Ok(third_event_summary.clone()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     let expected_event_ids = vec![event_id, related_event_id, third_event_id];
     tx.expect_enqueue_notification()
         .times(1)
@@ -474,7 +475,10 @@ async fn test_add_paid_recurring_success() {
         .await;
 
     // Check the created event identifiers
-    assert_eq!(result.unwrap()[0], event_id);
+    assert_eq!(
+        result.unwrap(),
+        vec![event_id, related_event_id, third_event_id]
+    );
 }
 
 #[tokio::test]
@@ -533,7 +537,10 @@ async fn test_add_paid_rejects_unready_fiscal_sponsor_without_persisting() {
         .await;
 
     // Check the rejection message
-    assert!(matches!(result.unwrap_err(), EventsError::Rejected(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        EventsError::Rejected(message) if message == "Stripe Tax is not active"
+    ));
 }
 
 #[tokio::test]
@@ -545,9 +552,9 @@ async fn test_add_paid_success() {
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let body = sample_paid_event_body();
-    let event_summary = sample_event_summary(event_id, group_id);
+    let event_summary = sample_event_summary(event_id);
 
-    // Setup authentication and permission checks
+    // Setup the configured payment recipient read
     let mut db = MockDB::new();
 
     db.expect_get_group_payment_recipient()
@@ -582,9 +589,7 @@ async fn test_add_paid_success() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_summary.clone()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
@@ -617,7 +622,7 @@ async fn test_add_paid_success() {
         .await;
 
     // Check the created event identifiers
-    assert_eq!(result.unwrap()[0], event_id);
+    assert_eq!(result.unwrap(), vec![event_id]);
 }
 
 #[tokio::test]
@@ -698,7 +703,7 @@ async fn test_add_recurring_success() {
     // Run the workflow through the manager
     let manager = sample_manager(
         db,
-        Some(&sample_zoom_meetings_cfg()),
+        Some(&sample_zoom_meetings_cfg("test-token")),
         sample_payments_manager(None),
     );
     let event = parse_event_form(&body);
@@ -712,11 +717,14 @@ async fn test_add_recurring_success() {
         .await;
 
     // Check the created event identifiers
-    assert_eq!(result.unwrap()[0], event_id);
+    assert_eq!(
+        result.unwrap(),
+        vec![event_id, related_event_id, third_event_id]
+    );
 }
 
 #[tokio::test]
-async fn test_add_validation_rejects_paid_event_without_payments() {
+async fn test_add_paid_event_without_payments_propagates_database_rejection() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -791,9 +799,7 @@ async fn test_approve_cohosting_notifies_owner_admins() {
         .times(1)
         .in_sequence(&mut sequence)
         .returning(move |_| Ok(vec![notification_data.clone()]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
@@ -804,6 +810,7 @@ async fn test_approve_cohosting_notifies_owner_admins() {
                         .is_ok_and(|template| template.status == EventCohostStatus::Approved)
                 })
         })
+        .in_sequence(&mut sequence)
         .returning(|_| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
@@ -846,9 +853,7 @@ async fn test_approve_cohosting_rolls_back_when_enqueue_fails() {
     tx.expect_get_event_cohost_notification_data()
         .times(1)
         .returning(move |_| Ok(vec![notification_data.clone()]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
         .returning(|_| Err(anyhow!("enqueue failed")));
@@ -865,7 +870,10 @@ async fn test_approve_cohosting_rolls_back_when_enqueue_fails() {
         .await;
 
     // Check the workflow failed
-    assert!(matches!(result, Err(EventsError::Other(_))));
+    assert!(matches!(
+        result,
+        Err(EventsError::Other(err)) if err.to_string() == "enqueue failed"
+    ));
 }
 
 #[tokio::test]
@@ -879,7 +887,7 @@ async fn test_cancel_closes_open_cohosts_after_the_mutation() {
     let group_id = Uuid::new_v4();
     let invitation_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut event_summary = sample_event_summary(event_id, group_id);
+    let mut event_summary = sample_event_summary(event_id);
     event_summary.published = false;
     let notification_data =
         sample_cohost_notification_data(cohost_group_id, event_id, invitation_id);
@@ -918,9 +926,7 @@ async fn test_cancel_closes_open_cohosts_after_the_mutation() {
         .times(1)
         .in_sequence(&mut sequence)
         .returning(move |_| Ok(vec![notification_data.clone()]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_list_group_admin_ids()
         .times(1)
         .withf(move |gid| *gid == cohost_group_id)
@@ -958,41 +964,50 @@ async fn test_cancel_closes_open_cohosts_after_the_mutation() {
 #[tokio::test]
 async fn test_cancel_cohosting_notifies_owner_admins() {
     // Setup identifiers and the co-host withdrawal
+    let admin_id = Uuid::new_v4();
     let cohost_group_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let invitation_id = Uuid::new_v4();
     let owner_group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
     let response = sample_cohost_response(cohost_group_id, event_id, invitation_id, owner_group_id);
     let notification_data =
         sample_cohost_notification_data(cohost_group_id, event_id, invitation_id);
 
     // Setup database mock
     let mut db = MockDB::new();
+    let mut sequence = Sequence::new();
 
-    // Setup transaction mock
+    // Setup transaction mock with the transition before the email
     let mut tx = MockDB::new();
     tx.expect_cancel_event_cohost()
         .times(1)
-        .withf(move |_, gid, iid| *gid == cohost_group_id && *iid == invitation_id)
+        .withf(move |uid, gid, iid| {
+            *uid == user_id && *gid == cohost_group_id && *iid == invitation_id
+        })
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(response));
     tx.expect_list_group_admin_ids()
         .times(1)
         .withf(move |gid| *gid == owner_group_id)
-        .returning(|_| Ok(vec![Uuid::new_v4()]));
+        .in_sequence(&mut sequence)
+        .returning(move |_| Ok(vec![admin_id]));
     tx.expect_get_event_cohost_notification_data()
         .times(1)
+        .in_sequence(&mut sequence)
         .returning(move |_| Ok(vec![notification_data.clone()]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
-        .withf(|notification| {
-            notification.template_data.as_ref().is_some_and(|value| {
-                from_value::<EventCohostResponded>(value.clone())
-                    .is_ok_and(|template| template.status == EventCohostStatus::Canceled)
-            })
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventCohostResponded)
+                && notification.recipients == vec![admin_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventCohostResponded>(value.clone())
+                        .is_ok_and(|template| template.status == EventCohostStatus::Canceled)
+                })
         })
+        .in_sequence(&mut sequence)
         .returning(|_| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
@@ -1000,7 +1015,7 @@ async fn test_cancel_cohosting_notifies_owner_admins() {
     let manager = sample_manager(db, None, sample_payments_manager(None));
     let result = manager
         .cancel_cohosting(&EventCohostActionInput {
-            actor_user_id: Uuid::new_v4(),
+            actor_user_id: user_id,
             cohost_group_id,
             invitation_id,
         })
@@ -1028,11 +1043,11 @@ async fn test_cancel_series_closes_open_cohosts_with_one_email_per_group() {
     let expected_series_event_ids = series_event_ids.clone();
     let event_summary = EventSummary {
         published: false,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
     let related_event_summary = EventSummary {
         published: false,
-        ..sample_event_summary(related_event_id, group_id)
+        ..sample_event_summary(related_event_id)
     };
     let expected_refs = vec![
         EventCohostRef {
@@ -1120,9 +1135,7 @@ async fn test_cancel_series_closes_open_cohosts_with_one_email_per_group() {
         .withf(move |items| items == expected_refs.as_slice())
         .in_sequence(&mut sequence)
         .returning(move |_| Ok(notification_data.clone()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_list_group_admin_ids()
         .times(1)
         .withf(move |gid| *gid == cohost_group_id)
@@ -1170,12 +1183,12 @@ async fn test_cancel_series_sends_aggregate_notification() {
     let user_id = Uuid::new_v4();
     let event_summary = EventSummary {
         published: true,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
     let related_event_summary = EventSummary {
         event_id: related_event_id,
         published: true,
-        ..sample_event_summary(related_event_id, group_id)
+        ..sample_event_summary(related_event_id)
     };
     let event_full = EventFull {
         event_id,
@@ -1199,7 +1212,7 @@ async fn test_cancel_series_sends_aggregate_notification() {
     let mut db = MockDB::new();
     let mut sequence = Sequence::new();
 
-    // Setup transaction mock
+    // Setup transaction mock snapshotting recipients before attendance is deactivated
     let mut tx = MockDB::new();
     tx.expect_list_event_series_cancelable_event_ids()
         .times(1)
@@ -1225,12 +1238,6 @@ async fn test_cancel_series_sends_aggregate_notification() {
         })
         .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
-    tx.expect_cancel_event_series_events()
-        .times(1)
-        .withf(move |uid, gid, event_ids| {
-            *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
-        })
-        .returning(move |_, _, _| Ok(()));
     tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -1246,6 +1253,7 @@ async fn test_cancel_series_sends_aggregate_notification() {
         .withf(move |gid, eid, checked_in_only| {
             *gid == group_id && (*eid == event_id || *eid == related_event_id) && !checked_in_only
         })
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(vec![attendee_id]));
     tx.expect_list_event_waitlist_ids()
         .times(2)
@@ -1269,85 +1277,14 @@ async fn test_cancel_series_sends_aggregate_notification() {
                     })
                 })
         })
+        .in_sequence(&mut sequence)
         .returning(|_| Ok(()));
-    tx.expect_list_event_cohosts()
-        .withf(move |gid, _| *gid == group_id)
-        .returning(|_, _| Ok(EventCohostsEditor::default()));
-    expect_successful_transaction(&mut db, tx);
-
-    // Run the workflow through the manager
-    let manager = sample_manager(db, None, sample_payments_manager(None));
-    let result = manager
-        .cancel(&EventActionInput {
-            actor_user_id: user_id,
-            community_id,
-            event_id,
-            group_id,
-            scope: EventActionScope::Series,
-        })
-        .await;
-
-    // Check the workflow succeeded
-    result.unwrap();
-}
-
-#[tokio::test]
-async fn test_cancel_series_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let related_event_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let series_event_ids = vec![event_id, related_event_id];
-    let expected_lock_event_ids = series_event_ids.clone();
-    let expected_series_event_ids = series_event_ids.clone();
-    let event_summary = EventSummary {
-        published: false,
-        ..sample_event_summary(event_id, group_id)
-    };
-    let related_event_summary = EventSummary {
-        event_id: related_event_id,
-        published: false,
-        ..sample_event_summary(related_event_id, group_id)
-    };
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    let mut sequence = Sequence::new();
-
-    // Setup transaction mock
-    let mut tx = MockDB::new();
-    tx.expect_list_event_series_cancelable_event_ids()
-        .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-        .in_sequence(&mut sequence)
-        .returning(move |_, _| Ok(series_event_ids.clone()));
-    tx.expect_lock_events_for_cancellation()
-        .times(1)
-        .withf(move |gid, event_ids| {
-            *gid == group_id && event_ids == expected_lock_event_ids.as_slice()
-        })
-        .in_sequence(&mut sequence)
-        .returning(|_, _| Ok(()));
-    tx.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .in_sequence(&mut sequence)
-        .returning(move |_, _, _| Ok(event_summary.clone()));
-    tx.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| {
-            *cid == community_id && *gid == group_id && *eid == related_event_id
-        })
-        .in_sequence(&mut sequence)
-        .returning(move |_, _, _| Ok(related_event_summary.clone()));
-    tx.expect_cancel_event().times(0);
     tx.expect_cancel_event_series_events()
         .times(1)
         .withf(move |uid, gid, event_ids| {
             *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
         })
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(()));
     tx.expect_list_event_cohosts()
         .withf(move |gid, _| *gid == group_id)
@@ -1379,7 +1316,7 @@ async fn test_cancel_success() {
     let group_id = Uuid::new_v4();
     let speaker_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let event_summary = sample_event_summary(event_id, group_id);
+    let event_summary = sample_event_summary(event_id);
     let event_full = EventFull {
         speakers: vec![Speaker {
             featured: false,
@@ -1394,7 +1331,7 @@ async fn test_cancel_success() {
     let mut db = MockDB::new();
     let mut sequence = Sequence::new();
 
-    // Setup transaction mock
+    // Setup transaction mock snapshotting recipients before attendance is deactivated
     let mut tx = MockDB::new();
     tx.expect_lock_events_for_cancellation()
         .times(1)
@@ -1406,10 +1343,6 @@ async fn test_cancel_success() {
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(event_summary.clone()));
-    tx.expect_cancel_event()
-        .times(1)
-        .withf(move |uid, id, eid| *uid == user_id && *id == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(()));
     tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -1419,6 +1352,7 @@ async fn test_cancel_success() {
         .withf(move |gid, eid, checked_in_only| {
             *gid == group_id && *eid == event_id && !checked_in_only
         })
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(vec![attendee_id]));
     tx.expect_list_event_waitlist_ids()
         .times(1)
@@ -1442,7 +1376,13 @@ async fn test_cancel_success() {
                     })
                 })
         })
+        .in_sequence(&mut sequence)
         .returning(|_| Ok(()));
+    tx.expect_cancel_event()
+        .times(1)
+        .withf(move |uid, id, eid| *uid == user_id && *id == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _, _| Ok(()));
     tx.expect_list_event_cohosts()
         .withf(move |gid, _| *gid == group_id)
         .returning(|_, _| Ok(EventCohostsEditor::default()));
@@ -1473,7 +1413,7 @@ async fn test_cancel_test_event_no_notification() {
     let user_id = Uuid::new_v4();
     let test_event = EventSummary {
         test_event: true,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
 
     // Setup database mock
@@ -1515,6 +1455,93 @@ async fn test_cancel_test_event_no_notification() {
 
     // Check the workflow succeeded
     result.unwrap();
+}
+
+#[test]
+fn test_cancellation_notification_events_keeps_live_published_events() {
+    type Adjust = fn(&mut EventSummary, DateTime<Utc>);
+    let now = Utc::now();
+    let cases: [(&str, Adjust, bool); 6] = [
+        ("upcoming published event", |_, _| {}, true),
+        (
+            "unscheduled published event",
+            |event, _| {
+                event.starts_at = None;
+                event.ends_at = None;
+            },
+            true,
+        ),
+        ("already canceled", |event, _| event.canceled = true, false),
+        (
+            "ended event",
+            |event, now| {
+                event.starts_at = Some(now - TimeDelta::hours(3));
+                event.ends_at = Some(now - TimeDelta::hours(1));
+            },
+            false,
+        ),
+        ("test event", |event, _| event.test_event = true, false),
+        (
+            "unpublished event",
+            |event, _| event.published = false,
+            false,
+        ),
+    ];
+    for (case, adjust, notified) in cases {
+        let mut event = EventSummary {
+            canceled: false,
+            ends_at: Some(now + TimeDelta::hours(2)),
+            published: true,
+            starts_at: Some(now + TimeDelta::hours(1)),
+            test_event: false,
+            ..sample_event_summary(Uuid::new_v4())
+        };
+        adjust(&mut event, now);
+        assert_eq!(
+            cancellation_notification_events(vec![event], now).len() == 1,
+            notified,
+            "{case}"
+        );
+    }
+}
+
+#[test]
+fn test_publication_notification_events_keeps_upcoming_unpublished_events() {
+    type Adjust = fn(&mut EventSummary, DateTime<Utc>);
+    let now = Utc::now();
+    let cases: [(&str, Adjust, bool); 5] = [
+        ("upcoming unpublished event", |_, _| {}, true),
+        (
+            "already published",
+            |event, _| event.published = true,
+            false,
+        ),
+        (
+            "started event",
+            |event, now| event.starts_at = Some(now - TimeDelta::hours(1)),
+            false,
+        ),
+        ("test event", |event, _| event.test_event = true, false),
+        (
+            "unscheduled event",
+            |event, _| event.starts_at = None,
+            false,
+        ),
+    ];
+    for (case, adjust, notified) in cases {
+        let mut event = EventSummary {
+            published: false,
+            starts_at: Some(now + TimeDelta::hours(1)),
+            test_event: false,
+            ..sample_event_summary(Uuid::new_v4())
+        };
+        adjust(&mut event, now);
+        assert_eq!(
+            publication_notification_events(vec![event], now).len() == 1,
+            notified,
+            "{case}"
+        );
+    }
 }
 
 #[tokio::test]
@@ -1698,9 +1725,7 @@ async fn test_delete_closes_open_cohosts_and_notifies_their_admins() {
         })
         .in_sequence(&mut sequence)
         .returning(move |_| Ok(vec![notification_data.clone()]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_list_group_admin_ids()
         .times(1)
         .withf(move |gid| *gid == cohost_group_id)
@@ -1772,7 +1797,10 @@ async fn test_delete_rolls_back_when_mutation_fails() {
         .await;
 
     // Check the workflow failed
-    assert!(matches!(result, Err(EventsError::Other(_))));
+    assert!(matches!(
+        result,
+        Err(EventsError::Other(err)) if err.to_string() == "db error"
+    ));
 }
 
 #[tokio::test]
@@ -1865,9 +1893,7 @@ async fn test_delete_series_closes_open_cohosts_with_one_email_per_group() {
         .withf(move |items| items == expected_refs.as_slice())
         .in_sequence(&mut sequence)
         .returning(move |_| Ok(notification_data.clone()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_list_group_admin_ids()
         .times(1)
         .withf(move |gid| *gid == cohost_group_id)
@@ -1885,61 +1911,6 @@ async fn test_delete_series_closes_open_cohosts_with_one_email_per_group() {
                 })
         })
         .returning(|_| Ok(()));
-    expect_successful_transaction(&mut db, tx);
-
-    // Run the workflow through the manager
-    let manager = sample_manager(db, None, sample_payments_manager(None));
-    let result = manager
-        .delete(&EventActionInput {
-            actor_user_id: user_id,
-            community_id,
-            event_id,
-            group_id,
-            scope: EventActionScope::Series,
-        })
-        .await;
-
-    // Check the workflow succeeded
-    result.unwrap();
-}
-
-#[tokio::test]
-async fn test_delete_series_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let related_event_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let series_event_ids = vec![event_id, related_event_id];
-    let expected_locked_event_ids = series_event_ids.clone();
-    let expected_series_event_ids = series_event_ids.clone();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-
-    // Setup transaction mock
-    let mut tx = MockDB::new();
-    tx.expect_list_event_series_event_ids()
-        .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-        .returning(move |_, _| Ok(series_event_ids.clone()));
-    tx.expect_lock_group_events()
-        .times(1)
-        .withf(move |gid, event_ids| {
-            *gid == group_id && event_ids == expected_locked_event_ids.as_slice()
-        })
-        .returning(|_, _| Ok(()));
-    tx.expect_list_event_cohosts()
-        .times(2)
-        .returning(|_, _| Ok(EventCohostsEditor::default()));
-    tx.expect_delete_event().times(0);
-    tx.expect_delete_event_series_events()
-        .times(1)
-        .withf(move |uid, gid, event_ids| {
-            *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
-        })
-        .returning(move |_, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
     // Run the workflow through the manager
@@ -2133,7 +2104,7 @@ async fn test_publish_already_published_no_notification() {
     // Event is already published, so no notification should be sent
     let already_published_event = EventSummary {
         published: true,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
 
     // Setup database mock
@@ -2160,8 +2131,6 @@ async fn test_publish_already_published_no_notification() {
         })
         .returning(move |_, _, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
-
-    // Setup notifications manager mock (no enqueue expected)
 
     // Run the workflow through the manager
     let manager = sample_manager(db, None, sample_payments_manager(None));
@@ -2191,12 +2160,12 @@ async fn test_publish_series_sends_aggregate_notification() {
     let user_id = Uuid::new_v4();
     let event_summary = EventSummary {
         published: false,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
     let related_event_summary = EventSummary {
         event_id: related_event_id,
         published: false,
-        ..sample_event_summary(related_event_id, group_id)
+        ..sample_event_summary(related_event_id)
     };
     let event_full = EventFull {
         event_id,
@@ -2239,6 +2208,7 @@ async fn test_publish_series_sends_aggregate_notification() {
             *cid == community_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
+    tx.expect_publish_event().times(0);
     tx.expect_publish_event_series_events()
         .times(1)
         .withf(
@@ -2312,81 +2282,6 @@ async fn test_publish_series_sends_aggregate_notification() {
 }
 
 #[tokio::test]
-async fn test_publish_series_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let related_event_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let event_summary = EventSummary {
-        published: true,
-        ..sample_event_summary(event_id, group_id)
-    };
-    let related_event_summary = EventSummary {
-        event_id: related_event_id,
-        published: true,
-        ..sample_event_summary(related_event_id, group_id)
-    };
-    let series_event_ids = vec![event_id, related_event_id];
-    let expected_series_event_ids = series_event_ids.clone();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-
-    // Setup transaction mock
-    let mut tx = MockDB::new();
-    tx.expect_list_event_series_publishable_event_ids()
-        .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-        .returning(move |_, _| Ok(series_event_ids.clone()));
-    let locked_event_ids = expected_series_event_ids.clone();
-    tx.expect_lock_group_events()
-        .times(1)
-        .withf(move |gid, event_ids| *gid == group_id && event_ids == locked_event_ids)
-        .returning(|_, _| Ok(()));
-    tx.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event_summary.clone()));
-    tx.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| {
-            *cid == community_id && *gid == group_id && *eid == related_event_id
-        })
-        .returning(move |_, _, _| Ok(related_event_summary.clone()));
-    tx.expect_publish_event().times(0);
-    tx.expect_publish_event_series_events()
-        .times(1)
-        .withf(
-            move |uid, gid, event_ids, payment_provider, payment_validation| {
-                *uid == user_id
-                    && *gid == group_id
-                    && event_ids == expected_series_event_ids.as_slice()
-                    && payment_provider.is_none()
-                    && payment_validation.is_none()
-            },
-        )
-        .returning(move |_, _, _, _, _| Ok(()));
-    expect_successful_transaction(&mut db, tx);
-
-    // Run the workflow through the manager
-    let manager = sample_manager(db, None, sample_payments_manager(None));
-    let result = manager
-        .publish(&EventActionInput {
-            actor_user_id: user_id,
-            community_id,
-            event_id,
-            group_id,
-            scope: EventActionScope::Series,
-        })
-        .await;
-
-    // Check the workflow succeeded
-    result.unwrap();
-}
-
-#[tokio::test]
 async fn test_publish_speakers_only() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -2396,7 +2291,7 @@ async fn test_publish_speakers_only() {
     let user_id = Uuid::new_v4();
     let unpublished_event = EventSummary {
         published: false,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
     let event_full = EventFull {
         speakers: vec![Speaker {
@@ -2486,7 +2381,7 @@ async fn test_publish_success() {
     let user_id = Uuid::new_v4();
     let unpublished_event = EventSummary {
         published: false,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
     let event_full = EventFull {
         speakers: vec![Speaker {
@@ -2585,6 +2480,102 @@ async fn test_publish_success() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_publish_paid_binds_validation_to_publish_mutation() {
+    // Setup a paid automatic-tax event published with Stripe configured
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, event_id, group_id);
+    event.payment_currency_code = Some("USD".to_string());
+    event.tax_calculation_mode = TicketTaxCalculationMode::Automatic;
+    event.ticket_types = Some(sample_paid_ticket_types(2500));
+    let already_published_event = EventSummary {
+        published: true,
+        ..sample_event_summary(event_id)
+    };
+
+    // Setup database mock validating the sponsor before the transaction
+    let mut db = MockDB::new();
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
+
+    // Setup transaction mock binding the validation to the publish mutation
+    let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .returning(move |_, _, _| Ok(already_published_event.clone()));
+    tx.expect_publish_event()
+        .times(1)
+        .withf(move |uid, gid, eid, payment_provider, payment_validation| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && *payment_provider == Some(PaymentProvider::Stripe)
+                && payment_validation.as_ref().is_some_and(|validation| {
+                    validation.require_automatic_tax
+                        && validation.tax_calculation_mode
+                            == Some(TicketTaxCalculationMode::Automatic)
+                        && validation
+                            .validated_payment_recipient
+                            .as_ref()
+                            .is_some_and(|recipient| recipient.recipient_id == "acct_test")
+                })
+        })
+        .returning(|_, _, _, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup payments manager mock accepting the sponsor and venue
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_configured_provider()
+        .return_const(Some(PaymentProvider::Stripe));
+    payments_manager
+        .expect_validate_fiscal_sponsor()
+        .times(1)
+        .returning(|_, _| Box::pin(async { Ok(()) }));
+    payments_manager
+        .expect_ensure_automatic_tax_readiness()
+        .times(1)
+        .returning(|_, _| {
+            Box::pin(async {
+                Ok(AutomaticTaxReadiness {
+                    cached: true,
+                    fingerprint: "fingerprint".to_string(),
+                    provider_tax_location_id: "loc_cached".to_string(),
+                    state_code: None,
+                })
+            })
+        });
+
+    // Run the workflow through the manager
+    let manager = sample_manager(db, None, payments_manager);
+    let result = manager
+        .publish(&EventActionInput {
+            actor_user_id: user_id,
+            community_id,
+            event_id,
+            group_id,
+            scope: EventActionScope::This,
+        })
+        .await;
+
+    // Check the workflow succeeded
+    result.unwrap();
+}
+
+#[tokio::test]
 async fn test_publish_test_event_no_notification() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -2594,7 +2585,7 @@ async fn test_publish_test_event_no_notification() {
     let unpublished_test_event = EventSummary {
         published: false,
         test_event: true,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
 
     // Setup database mock
@@ -2650,16 +2641,7 @@ async fn test_publish_validation_rechecks_every_manual_tax_selection() {
     paid_event.payment_currency_code = Some("USD".to_string());
     paid_event.tax_behavior = TicketTaxBehavior::Exclusive;
     paid_event.tax_calculation_mode = TicketTaxCalculationMode::Manual;
-    paid_event.ticket_types = Some(vec![EventTicketType {
-        event_ticket_type_id: Uuid::new_v4(),
-        order: 1,
-        price_windows: vec![EventTicketPriceWindow {
-            amount_minor: 2500,
-            ..Default::default()
-        }],
-        title: "General admission".to_string(),
-        ..Default::default()
-    }]);
+    paid_event.ticket_types = Some(sample_paid_ticket_types(2500));
     let mut free_event = sample_event_full(community_id, free_event_id, group_id);
     free_event.manual_tax_rate_ids = vec!["txr_free".to_string()];
     free_event.tax_behavior = TicketTaxBehavior::Inclusive;
@@ -2718,6 +2700,72 @@ async fn test_publish_validation_rechecks_every_manual_tax_selection() {
 }
 
 #[tokio::test]
+async fn test_publish_validation_rejects_automatic_tax_event_without_fiscal_sponsor() {
+    // Setup a paid automatic-tax event in a group without a sponsor
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, event_id, group_id);
+    event.tax_calculation_mode = TicketTaxCalculationMode::Automatic;
+    event.ticket_types = Some(sample_paid_ticket_types(2500));
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_full()
+        .times(1)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .returning(|_, _| Ok(None));
+
+    // Check publication is rejected before any provider call
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager.expect_validate_fiscal_sponsor().never();
+    let error = sample_manager(db, None, payments_manager)
+        .validate_publish_fiscal_sponsor(community_id, group_id, &[event_id])
+        .await
+        .expect_err("missing sponsor to stop publication");
+    assert!(matches!(
+        error,
+        EventsError::Rejected(message)
+            if message == "configure a fiscal sponsor before publishing this automatic-tax event"
+    ));
+}
+
+#[tokio::test]
+async fn test_publish_validation_rejects_manual_tax_rates_without_fiscal_sponsor() {
+    // Setup a free manual-tax event keeping selected Tax Rates without a sponsor
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, event_id, group_id);
+    event.manual_tax_rate_ids = vec!["txr_test".to_string()];
+    event.tax_calculation_mode = TicketTaxCalculationMode::Manual;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_full()
+        .times(1)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .returning(|_, _| Ok(None));
+
+    // Check publication is rejected before any provider call
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager.expect_validate_tax_rates().never();
+    let error = sample_manager(db, None, payments_manager)
+        .validate_publish_fiscal_sponsor(community_id, group_id, &[event_id])
+        .await
+        .expect_err("missing sponsor to stop publication");
+    assert!(matches!(
+        error,
+        EventsError::Rejected(message)
+            if message == "configure a fiscal sponsor before selecting Stripe Tax Rates"
+    ));
+}
+
+#[tokio::test]
 async fn test_publish_validation_requires_automatic_tax_location_readiness() {
     // Setup a paid automatic-tax event and its connected fiscal sponsor
     let community_id = Uuid::new_v4();
@@ -2726,16 +2774,7 @@ async fn test_publish_validation_requires_automatic_tax_location_readiness() {
     let mut event = sample_event_full(community_id, event_id, group_id);
     event.payment_currency_code = Some("USD".to_string());
     event.tax_calculation_mode = TicketTaxCalculationMode::Automatic;
-    event.ticket_types = Some(vec![EventTicketType {
-        event_ticket_type_id: Uuid::new_v4(),
-        order: 1,
-        price_windows: vec![EventTicketPriceWindow {
-            amount_minor: 2500,
-            ..Default::default()
-        }],
-        title: "General admission".to_string(),
-        ..Default::default()
-    }]);
+    event.ticket_types = Some(sample_paid_ticket_types(2500));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2787,16 +2826,7 @@ async fn test_publish_validation_skips_external_paid_events() {
     event.external_payment_url = Some("https://pay.example.test/publish".to_string());
     event.payment_currency_code = Some("KRW".to_string());
     event.tax_calculation_mode = TicketTaxCalculationMode::None;
-    event.ticket_types = Some(vec![EventTicketType {
-        event_ticket_type_id: Uuid::new_v4(),
-        order: 1,
-        price_windows: vec![EventTicketPriceWindow {
-            amount_minor: 5000,
-            ..Default::default()
-        }],
-        title: "General admission".to_string(),
-        ..Default::default()
-    }]);
+    event.ticket_types = Some(sample_paid_ticket_types(5000));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2823,41 +2853,50 @@ async fn test_publish_validation_skips_external_paid_events() {
 #[tokio::test]
 async fn test_reject_cohosting_notifies_owner_admins() {
     // Setup identifiers and the co-host rejection
+    let admin_id = Uuid::new_v4();
     let cohost_group_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let invitation_id = Uuid::new_v4();
     let owner_group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
     let response = sample_cohost_response(cohost_group_id, event_id, invitation_id, owner_group_id);
     let notification_data =
         sample_cohost_notification_data(cohost_group_id, event_id, invitation_id);
 
     // Setup database mock
     let mut db = MockDB::new();
+    let mut sequence = Sequence::new();
 
-    // Setup transaction mock
+    // Setup transaction mock with the transition before the email
     let mut tx = MockDB::new();
     tx.expect_reject_event_cohost()
         .times(1)
-        .withf(move |_, gid, iid| *gid == cohost_group_id && *iid == invitation_id)
+        .withf(move |uid, gid, iid| {
+            *uid == user_id && *gid == cohost_group_id && *iid == invitation_id
+        })
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(response));
     tx.expect_list_group_admin_ids()
         .times(1)
         .withf(move |gid| *gid == owner_group_id)
-        .returning(|_| Ok(vec![Uuid::new_v4()]));
+        .in_sequence(&mut sequence)
+        .returning(move |_| Ok(vec![admin_id]));
     tx.expect_get_event_cohost_notification_data()
         .times(1)
+        .in_sequence(&mut sequence)
         .returning(move |_| Ok(vec![notification_data.clone()]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
-        .withf(|notification| {
-            notification.template_data.as_ref().is_some_and(|value| {
-                from_value::<EventCohostResponded>(value.clone())
-                    .is_ok_and(|template| template.status == EventCohostStatus::Rejected)
-            })
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventCohostResponded)
+                && notification.recipients == vec![admin_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventCohostResponded>(value.clone())
+                        .is_ok_and(|template| template.status == EventCohostStatus::Rejected)
+                })
         })
+        .in_sequence(&mut sequence)
         .returning(|_| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
@@ -2865,7 +2904,7 @@ async fn test_reject_cohosting_notifies_owner_admins() {
     let manager = sample_manager(db, None, sample_payments_manager(None));
     let result = manager
         .reject_cohosting(&EventCohostActionInput {
-            actor_user_id: Uuid::new_v4(),
+            actor_user_id: user_id,
             cohost_group_id,
             invitation_id,
         })
@@ -2959,7 +2998,7 @@ async fn test_update_cohosts_syncs_selection_and_notifies_groups() {
     let removed_group_id = Uuid::new_v4();
     let removed_invitation_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let before = sample_event_summary(event_id, group_id);
+    let before = sample_event_summary(event_id);
     let after = before.clone();
     let mut event_form = sample_event_form();
     event_form.cohost_group_ids = Some(vec![added_group_id]);
@@ -3086,7 +3125,7 @@ async fn test_update_cohosts_rolls_back_on_rejected_sync() {
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let before = sample_event_summary(event_id, group_id);
+    let before = sample_event_summary(event_id);
     let mut event_form = sample_event_form();
     event_form.cohost_group_ids_present = Some(true);
     event_form.cohosts_revision = Some(1);
@@ -3130,7 +3169,10 @@ async fn test_update_cohosts_rolls_back_on_rejected_sync() {
         .await;
 
     // Check the workflow failed
-    assert!(matches!(result, Err(EventsError::Other(_))));
+    assert!(matches!(
+        result,
+        Err(EventsError::Other(err)) if err.to_string() == "co-hosts changed since this page was loaded; reload to continue"
+    ));
 }
 
 #[tokio::test]
@@ -3141,7 +3183,7 @@ async fn test_update_free_manual_event_without_tax_rates_skips_fiscal_sponsor_va
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let before = sample_event_summary(event_id, group_id);
+    let before = sample_event_summary(event_id);
     let after = before.clone();
     let mut event_form = sample_event_form();
     event_form.manual_tax_rate_ids_present = Some(true);
@@ -3169,21 +3211,17 @@ async fn test_update_free_manual_event_without_tax_rates_skips_fiscal_sponsor_va
         .times(1)
         .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
         .returning(|_, _| Ok(()));
+    let mut sequence = Sequence::new();
     tx.expect_get_event_summary()
-        .times(2)
+        .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning({
-            let mut first_call = true;
-            move |_, _, _| {
-                let result = if first_call {
-                    first_call = false;
-                    before.clone()
-                } else {
-                    after.clone()
-                };
-                Ok(result)
-            }
-        });
+        .in_sequence(&mut sequence)
+        .return_once(move |_, _, _| Ok(before));
+    tx.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .return_once(move |_, _, _| Ok(after));
     tx.expect_update_event()
         .times(1)
         .withf(move |uid, gid, eid, event, _, payment_provider| {
@@ -3233,63 +3271,29 @@ async fn test_update_free_success() {
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let before = sample_event_summary(event_id, group_id);
+    let before = sample_event_summary(event_id);
     let after = before.clone();
     let event_form = sample_event_form();
     let body = serde_qs::to_string(&event_form).unwrap();
+    let input = UpdateEventInput {
+        actor_user_id: user_id,
+        community_id,
+        event: parse_event_form(&body),
+        event_id,
+        group_id,
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
 
     // Setup transaction mock
     let mut tx = MockDB::new();
-    tx.expect_lock_group_events()
-        .times(1)
-        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
-        .returning(|_, _| Ok(()));
-    tx.expect_get_event_summary()
-        .times(2)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning({
-            let mut first_call = true;
-            move |_, _, _| {
-                let result = if first_call {
-                    first_call = false;
-                    before.clone()
-                } else {
-                    after.clone()
-                };
-                Ok(result)
-            }
-        });
-    tx.expect_update_event()
-        .times(1)
-        .withf(
-            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
-                *uid == user_id
-                    && *gid == group_id
-                    && *eid == event_id
-                    && event.get("name").and_then(serde_json::Value::as_str)
-                        == Some(event_form.name.as_str())
-                    && cfg_meeting_limits.is_empty()
-                    && payment_provider.is_none()
-            },
-        )
-        .returning(move |_, _, _, _, _, _| Ok(false));
+    expect_free_event_update(&mut tx, &input, before, Ok(after));
     expect_successful_transaction(&mut db, tx);
 
     // Run the workflow through the manager
     let manager = sample_manager(db, None, sample_payments_manager(None));
-    let event = parse_event_form(&body);
-    let result = manager
-        .update(&UpdateEventInput {
-            actor_user_id: user_id,
-            community_id,
-            event,
-            event_id,
-            group_id,
-        })
-        .await;
+    let result = manager.update(&input).await;
 
     // Check the workflow succeeded
     result.unwrap();
@@ -3307,16 +3311,16 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
     let before = EventSummary {
         published: false,
         test_event: true,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
     let after = EventSummary {
         published: false,
         test_event: false,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
     let body = format!("{}&test_event=false", sample_paid_event_body());
 
-    // Setup authentication and permission checks
+    // Setup the ticketing change and payment recipient reads
     let mut db = MockDB::new();
 
     db.expect_event_ticketing_configuration_changed()
@@ -3378,9 +3382,7 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(vec![admin_id]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -3422,7 +3424,7 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
 }
 
 #[tokio::test]
-async fn test_update_paid_event_without_payment_recipient_returns_unprocessable_entity() {
+async fn test_update_published_paid_event_without_payment_recipient_is_rejected() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -3483,10 +3485,10 @@ async fn test_update_paid_notification_failure_rolls_back() {
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let before = sample_event_summary(event_id, group_id);
+    let before = sample_event_summary(event_id);
     let body = sample_paid_event_body();
 
-    // Setup authentication and permission checks
+    // Setup the ticketing change and payment recipient reads
     let mut db = MockDB::new();
 
     db.expect_event_ticketing_configuration_changed()
@@ -3536,9 +3538,7 @@ async fn test_update_paid_notification_failure_rolls_back() {
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(vec![admin_id]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
         .returning(|_| Err(anyhow!("notification error")));
@@ -3637,7 +3637,7 @@ async fn test_update_reschedule_notification_success() {
     let group_id = Uuid::new_v4();
     let speaker_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let before = sample_event_summary(event_id, group_id);
+    let before = sample_event_summary(event_id);
     let after = EventSummary {
         starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
         ..before.clone()
@@ -3653,44 +3653,20 @@ async fn test_update_reschedule_notification_success() {
     let site_settings_for_reschedule_notification = site_settings.clone();
     let event_form = sample_event_form();
     let body = serde_qs::to_string(&event_form).unwrap();
+    let input = UpdateEventInput {
+        actor_user_id: user_id,
+        community_id,
+        event: parse_event_form(&body),
+        event_id,
+        group_id,
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
 
     // Setup transaction mock
     let mut tx = MockDB::new();
-    tx.expect_lock_group_events()
-        .times(1)
-        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
-        .returning(|_, _| Ok(()));
-    tx.expect_get_event_summary()
-        .times(2)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning({
-            let mut call_count = 0;
-            move |_, _, _| {
-                call_count += 1;
-                match call_count {
-                    1 => Ok(before.clone()),
-                    2 => Ok(after.clone()),
-                    _ => unreachable!(),
-                }
-            }
-        });
-    tx.expect_update_event()
-        .times(1)
-        .withf(
-            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
-                *uid == user_id
-                    && *gid == group_id
-                    && *eid == event_id
-                    && event.get("name").and_then(serde_json::Value::as_str)
-                        == Some(event_form.name.as_str())
-                    && cfg_meeting_limits.is_empty()
-                    && payment_provider.is_none()
-            },
-        )
-        .returning(move |_, _, _, _, _, _| Ok(false));
+    expect_free_event_update(&mut tx, &input, before, Ok(after));
     tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -3724,16 +3700,7 @@ async fn test_update_reschedule_notification_success() {
 
     // Run the workflow through the manager
     let manager = sample_manager(db, None, sample_payments_manager(None));
-    let event = parse_event_form(&body);
-    let result = manager
-        .update(&UpdateEventInput {
-            actor_user_id: user_id,
-            community_id,
-            event,
-            event_id,
-            group_id,
-        })
-        .await;
+    let result = manager.update(&input).await;
 
     // Check the workflow succeeded
     result.unwrap();
@@ -3747,7 +3714,7 @@ async fn test_update_reschedule_rollback_on_enqueue_failure() {
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let before = sample_event_summary(event_id, group_id);
+    let before = sample_event_summary(event_id);
     let after = EventSummary {
         starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
         ..before.clone()
@@ -3757,45 +3724,20 @@ async fn test_update_reschedule_rollback_on_enqueue_failure() {
     let site_settings_for_notification = site_settings.clone();
     let event_form = sample_event_form();
     let body = serde_qs::to_string(&event_form).unwrap();
+    let input = UpdateEventInput {
+        actor_user_id: user_id,
+        community_id,
+        event: parse_event_form(&body),
+        event_id,
+        group_id,
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
 
     // Setup transaction mock
     let mut tx = MockDB::new();
-    tx.expect_lock_group_events()
-        .times(1)
-        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
-        .returning(|_, _| Ok(()));
-    tx.expect_get_event_summary()
-        .times(2)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning({
-            let mut first_call = true;
-            move |_, _, _| {
-                let result = if first_call {
-                    first_call = false;
-                    before.clone()
-                } else {
-                    after.clone()
-                };
-                Ok(result)
-            }
-        });
-    tx.expect_update_event()
-        .times(1)
-        .withf(
-            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
-                *uid == user_id
-                    && *gid == group_id
-                    && *eid == event_id
-                    && event.get("name").and_then(serde_json::Value::as_str)
-                        == Some(event_form.name.as_str())
-                    && cfg_meeting_limits.is_empty()
-                    && payment_provider.is_none()
-            },
-        )
-        .returning(move |_, _, _, _, _, _| Ok(false));
+    expect_free_event_update(&mut tx, &input, before, Ok(after));
     tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -3825,16 +3767,7 @@ async fn test_update_reschedule_rollback_on_enqueue_failure() {
 
     // Run the workflow through the manager
     let manager = sample_manager(db, None, sample_payments_manager(None));
-    let event = parse_event_form(&body);
-    let result = manager
-        .update(&UpdateEventInput {
-            actor_user_id: user_id,
-            community_id,
-            event,
-            event_id,
-            group_id,
-        })
-        .await;
+    let result = manager.update(&input).await;
 
     // Check the internal failure propagates
     assert!(
@@ -3849,141 +3782,33 @@ async fn test_update_reschedule_rollback_on_notification_context_failure() {
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let before = sample_event_summary(event_id, group_id);
+    let before = sample_event_summary(event_id);
     let event_form = sample_event_form();
     let body = serde_qs::to_string(&event_form).unwrap();
+    let input = UpdateEventInput {
+        actor_user_id: user_id,
+        community_id,
+        event: parse_event_form(&body),
+        event_id,
+        group_id,
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
 
     // Setup transaction mock
     let mut tx = MockDB::new();
-    tx.expect_lock_group_events()
-        .times(1)
-        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
-        .returning(|_, _| Ok(()));
-    tx.expect_get_event_summary()
-        .times(2)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning({
-            let mut call_count = 0;
-            move |_, _, _| {
-                call_count += 1;
-                match call_count {
-                    1 => Ok(before.clone()),
-                    2 => Err(anyhow!("db error")),
-                    _ => unreachable!(),
-                }
-            }
-        });
-    tx.expect_update_event()
-        .times(1)
-        .withf(
-            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
-                *uid == user_id
-                    && *gid == group_id
-                    && *eid == event_id
-                    && event.get("name").and_then(serde_json::Value::as_str)
-                        == Some(event_form.name.as_str())
-                    && cfg_meeting_limits.is_empty()
-                    && payment_provider.is_none()
-            },
-        )
-        .returning(move |_, _, _, _, _, _| Ok(false));
+    expect_free_event_update(&mut tx, &input, before, Err(anyhow!("db error")));
     expect_rolled_back_transaction(&mut db, tx);
 
     // Run the workflow through the manager
     let manager = sample_manager(db, None, sample_payments_manager(None));
-    let event = parse_event_form(&body);
-    let result = manager
-        .update(&UpdateEventInput {
-            actor_user_id: user_id,
-            community_id,
-            event,
-            event_id,
-            group_id,
-        })
-        .await;
+    let result = manager.update(&input).await;
 
     // Check the internal failure propagates
     assert!(
         matches!(result.unwrap_err(), EventsError::Other(err) if err.to_string() == "db error")
     );
-}
-
-#[tokio::test]
-async fn test_update_reschedule_skips_notification_when_shift_too_small() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let before = sample_event_summary(event_id, group_id);
-    // Shift by only 10 minutes (below MIN_RESCHEDULE_SHIFT of 15 minutes)
-    let after = EventSummary {
-        starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(10)),
-        ..before.clone()
-    };
-    let event_form = sample_event_form();
-    let body = serde_qs::to_string(&event_form).unwrap();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-
-    // Setup transaction mock
-    let mut tx = MockDB::new();
-    tx.expect_lock_group_events()
-        .times(1)
-        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
-        .returning(|_, _| Ok(()));
-    tx.expect_get_event_summary()
-        .times(2)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning({
-            let mut first_call = true;
-            move |_, _, _| {
-                let result = if first_call {
-                    first_call = false;
-                    before.clone()
-                } else {
-                    after.clone()
-                };
-                Ok(result)
-            }
-        });
-    tx.expect_update_event()
-        .times(1)
-        .withf(
-            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
-                *uid == user_id
-                    && *gid == group_id
-                    && *eid == event_id
-                    && event.get("name").and_then(serde_json::Value::as_str)
-                        == Some(event_form.name.as_str())
-                    && cfg_meeting_limits.is_empty()
-                    && payment_provider.is_none()
-            },
-        )
-        .returning(move |_, _, _, _, _, _| Ok(false));
-    expect_successful_transaction(&mut db, tx);
-
-    // Setup notifications manager mock (no enqueue expected - shift too small)
-
-    // Run the workflow through the manager
-    let manager = sample_manager(db, None, sample_payments_manager(None));
-    let event = parse_event_form(&body);
-    let result = manager
-        .update(&UpdateEventInput {
-            actor_user_id: user_id,
-            community_id,
-            event,
-            event_id,
-            group_id,
-        })
-        .await;
-
-    // Check the workflow succeeded
-    result.unwrap();
 }
 
 #[tokio::test]
@@ -3996,7 +3821,7 @@ async fn test_update_reschedule_skips_notification_when_unpublished() {
     // Event is unpublished, so no reschedule notification should be sent
     let before = EventSummary {
         published: false,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
     // Significant reschedule (30 minutes), but event is unpublished
     let after = EventSummary {
@@ -4005,61 +3830,25 @@ async fn test_update_reschedule_skips_notification_when_unpublished() {
     };
     let event_form = sample_event_form();
     let body = serde_qs::to_string(&event_form).unwrap();
+    let input = UpdateEventInput {
+        actor_user_id: user_id,
+        community_id,
+        event: parse_event_form(&body),
+        event_id,
+        group_id,
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
 
     // Setup transaction mock
     let mut tx = MockDB::new();
-    tx.expect_lock_group_events()
-        .times(1)
-        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
-        .returning(|_, _| Ok(()));
-    tx.expect_get_event_summary()
-        .times(2)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning({
-            let mut first_call = true;
-            move |_, _, _| {
-                let result = if first_call {
-                    first_call = false;
-                    before.clone()
-                } else {
-                    after.clone()
-                };
-                Ok(result)
-            }
-        });
-    tx.expect_update_event()
-        .times(1)
-        .withf(
-            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
-                *uid == user_id
-                    && *gid == group_id
-                    && *eid == event_id
-                    && event.get("name").and_then(serde_json::Value::as_str)
-                        == Some(event_form.name.as_str())
-                    && cfg_meeting_limits.is_empty()
-                    && payment_provider.is_none()
-            },
-        )
-        .returning(move |_, _, _, _, _, _| Ok(false));
+    expect_free_event_update(&mut tx, &input, before, Ok(after));
     expect_successful_transaction(&mut db, tx);
-
-    // Setup notifications manager mock (no enqueue expected - event unpublished)
 
     // Run the workflow through the manager
     let manager = sample_manager(db, None, sample_payments_manager(None));
-    let event = parse_event_form(&body);
-    let result = manager
-        .update(&UpdateEventInput {
-            actor_user_id: user_id,
-            community_id,
-            event,
-            event_id,
-            group_id,
-        })
-        .await;
+    let result = manager.update(&input).await;
 
     // Check the workflow succeeded
     result.unwrap();
@@ -4077,7 +3866,7 @@ async fn test_update_skips_notification_for_past_event() {
         EventSummary {
             ends_at: Some(past_time + chrono::Duration::hours(1)),
             starts_at: Some(past_time),
-            ..sample_event_summary(event_id, group_id)
+            ..sample_event_summary(event_id)
         }
     };
     let mut past_event_form = sample_event_form();
@@ -4116,8 +3905,6 @@ async fn test_update_skips_notification_for_past_event() {
         .returning(move |_, _, _, _, _, _| Ok(false));
     expect_successful_transaction(&mut db, tx);
 
-    // Setup notifications manager mock (no expectations - past events don't notify)
-
     // Run the workflow through the manager
     let manager = sample_manager(db, None, sample_payments_manager(None));
     let event = parse_event_form(&body);
@@ -4143,7 +3930,7 @@ async fn test_update_unrelated_paid_event_edit_skips_fiscal_sponsor_validation()
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let before = sample_event_summary(event_id, group_id);
+    let before = sample_event_summary(event_id);
     let body = sample_paid_event_body();
 
     // Authorize the update and report that paid-ticket readiness fields are unchanged
@@ -4244,20 +4031,6 @@ async fn test_validate_group_fiscal_sponsor_omits_invalid_form_jurisdiction() {
 
 // Helpers.
 
-/// Expects a transaction that rolls back without committing.
-fn expect_rolled_back_transaction(db: &mut MockDB, mut tx: MockDB) {
-    tx.expect_commit().never();
-    tx.expect_rollback().times(1).returning(|| Ok(()));
-    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
-}
-
-/// Expects a transaction that commits without rolling back.
-fn expect_successful_transaction(db: &mut MockDB, mut tx: MockDB) {
-    tx.expect_commit().times(1).returning(|| Ok(()));
-    tx.expect_rollback().never();
-    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
-}
-
 /// Parses a dashboard event form body the same way the extractor does.
 fn parse_event_form(body: &str) -> EventInput {
     serde_qs::Config::new()
@@ -4265,6 +4038,57 @@ fn parse_event_form(body: &str) -> EventInput {
         .use_form_encoding(true)
         .deserialize_str(body)
         .expect("event form body to deserialize")
+}
+
+/// Expects the lock, the summary reads around it, and the free update of a
+/// single event, in workflow order.
+///
+/// `after` is the summary read after the update that drives the reschedule
+/// decision.
+fn expect_free_event_update(
+    tx: &mut MockDB,
+    input: &UpdateEventInput,
+    before: EventSummary,
+    after: anyhow::Result<EventSummary>,
+) {
+    let UpdateEventInput {
+        actor_user_id,
+        community_id,
+        event_id,
+        group_id,
+        ..
+    } = *input;
+    let name = input.event.name.clone();
+    let mut sequence = Sequence::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .return_once(move |_, _, _| Ok(before));
+    tx.expect_update_event()
+        .times(1)
+        .withf(
+            move |uid, gid, eid, event, cfg_meeting_limits, payment_provider| {
+                *uid == actor_user_id
+                    && *gid == group_id
+                    && *eid == event_id
+                    && event.get("name").and_then(serde_json::Value::as_str) == Some(name.as_str())
+                    && cfg_meeting_limits.is_empty()
+                    && payment_provider.is_none()
+            },
+        )
+        .in_sequence(&mut sequence)
+        .returning(|_, _, _, _, _, _| Ok(false));
+    tx.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .return_once(move |_, _, _| after);
 }
 
 /// Creates co-hosting notification content for one event and co-host group.
@@ -4347,6 +4171,20 @@ fn sample_manager(
     )
 }
 
+/// Creates one general admission ticket type with a single paid price window.
+fn sample_paid_ticket_types(amount_minor: i64) -> Vec<EventTicketType> {
+    vec![EventTicketType {
+        event_ticket_type_id: Uuid::new_v4(),
+        order: 1,
+        price_windows: vec![EventTicketPriceWindow {
+            amount_minor,
+            ..Default::default()
+        }],
+        title: "General admission".to_string(),
+        ..Default::default()
+    }]
+}
+
 /// Creates a payments manager mock with the configured provider and a ready sponsor.
 fn sample_payments_manager(provider: Option<PaymentProvider>) -> MockPaymentsManager {
     // Setup payments manager mock
@@ -4356,22 +4194,4 @@ fn sample_payments_manager(provider: Option<PaymentProvider>) -> MockPaymentsMan
         .expect_validate_fiscal_sponsor()
         .returning(|_, _| Box::pin(async { Ok(()) }));
     payments_manager
-}
-
-/// Creates a meetings configuration with the Zoom provider enabled.
-fn sample_zoom_meetings_cfg() -> MeetingsConfig {
-    MeetingsConfig {
-        zoom: Some(MeetingsZoomConfig {
-            account_id: "account-id".to_string(),
-            client_id: "client-id".to_string(),
-            client_secret: "client-secret".to_string(),
-            enabled: true,
-            host_pool_users: vec!["host@example.com".to_string()],
-            max_participants: 100,
-            max_simultaneous_meetings_per_host: 1,
-            webhook_secret_token: "test-token".to_string(),
-
-            http_client: HttpClientConfig::default(),
-        }),
-    }
 }

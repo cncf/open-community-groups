@@ -1,19 +1,10 @@
-use axum::{
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE},
-    },
-};
-use axum_login::tower_sessions::session;
+use axum::http::{HeaderValue, StatusCode};
 use chrono::{DateTime, Utc};
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    services::notifications::MockNotificationsManager,
     types::dashboard::{
         DASHBOARD_PAGINATION_LIMIT,
         user::groups::{UserGroup, UserGroupsOutput},
@@ -22,89 +13,67 @@ use crate::{
 
 #[tokio::test]
 async fn test_leave_group_community_not_found() {
-    // Setup identifiers and authenticated session
+    // Setup identifiers and database mock
     let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database expectations
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "missing-community")
         .returning(|_| Ok(None));
     db.expect_leave_group().never();
 
-    // Send the dashboard action request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!(
-            "/dashboard/user/groups/missing-community/{group_id}/membership"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "DELETE",
+        &format!("/dashboard/user/groups/missing-community/{group_id}/membership"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the missing community is rejected before mutation
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
 async fn test_leave_group_success() {
-    // Setup identifiers and authenticated session
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and database mock
     let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database expectations
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
     db.expect_leave_group()
         .times(1)
-        .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid| {
+            *cid == ids.community_id && *gid == group_id && *uid == ids.user_id
+        })
         .returning(|_, _, _| Ok(()));
 
-    // Send the dashboard action request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!(
-            "/dashboard/user/groups/test-community/{group_id}/membership"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "DELETE",
+        &format!("/dashboard/user/groups/test-community/{group_id}/membership"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response refreshes the dashboard list
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-user-dashboard-content"))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-user-dashboard-content",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and list data
     let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let output = UserGroupsOutput {
         groups: vec![UserGroup {
             group: sample_group_summary(group_id),
@@ -115,43 +84,31 @@ async fn test_list_page_success() {
         total: 1,
     };
 
-    // Setup database expectations
+    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_list_user_dashboard_groups()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id
+            *uid == ids.user_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
 
-    // Request the groups partial
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/user/groups")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user/groups", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
-    // Check the partial response and pushed URL
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE),
-        Some(&HeaderValue::from_static("text/html; charset=utf-8"))
-    );
+    // Check the partial response, pushed URL and listed group
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get("hx-push-url"),
         Some(&HeaderValue::from_static(
             "/dashboard/user?tab=groups&limit=50&offset=0",
         ))
     );
-    assert!(!bytes.is_empty());
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("Test Group"));
 }

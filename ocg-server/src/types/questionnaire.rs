@@ -463,7 +463,11 @@ mod tests {
             registration_answers: answers,
         };
 
-        assert!(form.validate().is_err());
+        let report = form.validate().unwrap_err().to_string();
+        assert!(
+            report.contains("questionnaire answers must include each question at most once"),
+            "{report}"
+        );
     }
 
     #[test]
@@ -495,34 +499,199 @@ mod tests {
     }
 
     #[test]
-    fn test_questionnaire_answers_validate_against_questions_rejects_missing_required_answer() {
-        let question = sample_question(QuestionnaireQuestionKind::FreeText, true, vec![]);
-        let answers = QuestionnaireAnswers::default();
+    fn test_questionnaire_answers_validate_against_questions_rejects_invalid_answers() {
+        use QuestionnaireAnswerValue::{Many, One};
+        use QuestionnaireQuestionKind::{FreeText, MultiSelect, SingleSelect};
+
+        let option_id = Uuid::new_v4();
+        let unknown_id = Uuid::new_v4();
+        // (case, kind, required, answer value, expected error)
+        let cases = [
+            (
+                "missing required answer",
+                FreeText,
+                true,
+                None,
+                "required questionnaire answer is missing",
+            ),
+            (
+                "blank required free text",
+                FreeText,
+                true,
+                Some(One("  ".to_string())),
+                "required questionnaire answer is empty",
+            ),
+            (
+                "free text given as options",
+                FreeText,
+                false,
+                Some(Many(vec![option_id])),
+                "free-text questionnaire answer must be a string",
+            ),
+            (
+                "single select given as text",
+                SingleSelect,
+                false,
+                Some(One("not-an-id".to_string())),
+                "single-select questionnaire answer must be an option id",
+            ),
+            (
+                "single select given as options",
+                SingleSelect,
+                false,
+                Some(Many(vec![option_id])),
+                "single-select questionnaire answer must be an option id",
+            ),
+            (
+                "single select with unknown option",
+                SingleSelect,
+                false,
+                Some(One(unknown_id.to_string())),
+                "questionnaire answer references an unknown option",
+            ),
+            (
+                "empty required multi select",
+                MultiSelect,
+                true,
+                Some(Many(vec![])),
+                "required questionnaire answer is empty",
+            ),
+            (
+                "multi select given as text",
+                MultiSelect,
+                false,
+                Some(One(option_id.to_string())),
+                "multi-select questionnaire answer must be an option id array",
+            ),
+            (
+                "multi select with unknown option",
+                MultiSelect,
+                false,
+                Some(Many(vec![unknown_id])),
+                "questionnaire answer references an unknown option",
+            ),
+            (
+                "multi select repeating an option",
+                MultiSelect,
+                false,
+                Some(Many(vec![option_id, option_id])),
+                "multi-select questionnaire answers cannot repeat options",
+            ),
+        ];
+
+        for (case, kind, required, value, expected) in cases {
+            let question = sample_question(kind, required, vec![option_id]);
+            let answers = QuestionnaireAnswers {
+                answers: value
+                    .into_iter()
+                    .map(|value| QuestionnaireAnswer {
+                        question_id: question.id,
+                        value,
+                    })
+                    .collect(),
+            };
+
+            assert_eq!(
+                answers.validate_against_questions(&[question]),
+                Err(expected.to_string()),
+                "{case}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_questionnaire_answers_validate_against_questions_rejects_unexpected_answers() {
+        let answers = sample_text_answers("Answer".to_string());
+        let question = sample_question(QuestionnaireQuestionKind::FreeText, false, vec![]);
 
         assert_eq!(
+            answers.validate_against_questions(&[]),
+            Err(
+                "questionnaire answers cannot be submitted when questions are not configured"
+                    .to_string()
+            ),
+            "questions not configured"
+        );
+        assert_eq!(
             answers.validate_against_questions(&[question]),
-            Err("required questionnaire answer is missing".to_string())
+            Err("questionnaire answer references an unknown question".to_string()),
+            "unknown question"
+        );
+        assert!(
+            QuestionnaireAnswers::default()
+                .validate_against_questions(&[])
+                .is_ok(),
+            "no answers without questions"
         );
     }
 
     #[test]
-    fn test_questionnaire_answers_validate_against_questions_rejects_unknown_option() {
-        let question = sample_question(
-            QuestionnaireQuestionKind::MultiSelect,
-            false,
-            vec![Uuid::new_v4()],
-        );
-        let answers = QuestionnaireAnswers {
-            answers: vec![QuestionnaireAnswer {
-                question_id: question.id,
-                value: QuestionnaireAnswerValue::Many(vec![Uuid::new_v4()]),
-            }],
-        };
+    fn test_questionnaire_question_format_answer_uses_option_labels() {
+        use QuestionnaireAnswerValue::{Many, One};
+        use QuestionnaireQuestionKind::{FreeText, MultiSelect, SingleSelect};
 
-        assert_eq!(
-            answers.validate_against_questions(&[question]),
-            Err("questionnaire answer references an unknown option".to_string())
-        );
+        let (blue, red) = (Uuid::new_v4(), Uuid::new_v4());
+        // (case, kind, answer value, expected)
+        let cases = [
+            ("no answer", FreeText, None, ""),
+            (
+                "free text",
+                FreeText,
+                Some(One("Hello".to_string())),
+                "Hello",
+            ),
+            (
+                "single select",
+                SingleSelect,
+                Some(One(red.to_string())),
+                "Red",
+            ),
+            (
+                "single select with unknown option",
+                SingleSelect,
+                Some(One(Uuid::new_v4().to_string())),
+                "",
+            ),
+            (
+                "multi select",
+                MultiSelect,
+                Some(Many(vec![blue, Uuid::new_v4(), red])),
+                "Blue, Red",
+            ),
+            (
+                "mismatched value",
+                MultiSelect,
+                Some(One(red.to_string())),
+                "",
+            ),
+        ];
+
+        for (case, kind, value, expected) in cases {
+            let question = QuestionnaireQuestion {
+                options: vec![
+                    QuestionnaireOption {
+                        id: blue,
+                        label: "Blue".to_string(),
+                    },
+                    QuestionnaireOption {
+                        id: red,
+                        label: "Red".to_string(),
+                    },
+                ],
+                ..sample_question(kind, false, vec![])
+            };
+            let answers = QuestionnaireAnswers {
+                answers: value
+                    .into_iter()
+                    .map(|value| QuestionnaireAnswer {
+                        question_id: question.id,
+                        value,
+                    })
+                    .collect(),
+            };
+
+            assert_eq!(question.format_answer(Some(&answers)), expected, "{case}");
+        }
     }
 
     #[test]
@@ -535,43 +704,34 @@ mod tests {
     }
 
     #[test]
-    fn test_questionnaire_question_rejects_missing_kind() {
-        let mut question = sample_question_json();
-        question.as_object_mut().unwrap().remove("kind");
+    fn test_questionnaire_question_rejects_malformed_definitions() {
+        // (case, field pointer, replacement; None removes the field)
+        let cases = [
+            ("missing kind", "/kind", None),
+            ("non-string kind", "/kind", Some(json!(1))),
+            ("null kind", "/kind", Some(Value::Null)),
+            (
+                "non-string option label",
+                "/options/0/label",
+                Some(json!(1)),
+            ),
+            ("non-string prompt", "/prompt", Some(json!(1))),
+        ];
 
-        assert!(serde_json::from_value::<QuestionnaireQuestion>(question).is_err());
-    }
+        for (case, pointer, replacement) in cases {
+            let mut question = sample_question_json();
+            match replacement {
+                Some(value) => *question.pointer_mut(pointer).unwrap() = value,
+                None => {
+                    question.as_object_mut().unwrap().remove(&pointer[1..]);
+                }
+            }
 
-    #[test]
-    fn test_questionnaire_question_rejects_non_string_kind() {
-        let mut question = sample_question_json();
-        question["kind"] = json!(1);
-
-        assert!(serde_json::from_value::<QuestionnaireQuestion>(question).is_err());
-    }
-
-    #[test]
-    fn test_questionnaire_question_rejects_non_string_option_label() {
-        let mut question = sample_question_json();
-        question["options"][0]["label"] = json!(1);
-
-        assert!(serde_json::from_value::<QuestionnaireQuestion>(question).is_err());
-    }
-
-    #[test]
-    fn test_questionnaire_question_rejects_non_string_prompt() {
-        let mut question = sample_question_json();
-        question["prompt"] = json!(1);
-
-        assert!(serde_json::from_value::<QuestionnaireQuestion>(question).is_err());
-    }
-
-    #[test]
-    fn test_questionnaire_question_rejects_null_kind() {
-        let mut question = sample_question_json();
-        question["kind"] = Value::Null;
-
-        assert!(serde_json::from_value::<QuestionnaireQuestion>(question).is_err());
+            assert!(
+                serde_json::from_value::<QuestionnaireQuestion>(question).is_err(),
+                "{case}"
+            );
+        }
     }
 
     // Helpers.

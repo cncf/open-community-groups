@@ -1,51 +1,32 @@
 use axum::{
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE},
-    },
+    body::Body,
+    http::{HeaderValue, StatusCode, header::CACHE_CONTROL},
 };
-use tower::ServiceExt;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_PUBLIC_SHARED,
-    services::notifications::MockNotificationsManager,
+    db::mock::{MockDB, expect_site_settings},
+    handlers::tests::*,
+    router::CACHE_CONTROL_PUBLIC_SHARED,
 };
 
 #[tokio::test]
 async fn test_page_success() {
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_get_site_stats()
         .times(1)
         .returning(|| Ok(sample_site_stats()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/stats")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/stats").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
-    assert!(!bytes.is_empty());
 }

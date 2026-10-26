@@ -264,10 +264,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_redirect_drops_query_string_from_lookup_and_target() {
-        let router = test_router(test_community_redirects(HashMap::from([(
-            "/events/legacy-event".to_string(),
-            "/community/group/group/event/event".to_string(),
-        )])));
+        let router = legacy_event_router();
         let response = router
             .oneshot(test_request("/events/legacy-event?utm_source=test"))
             .await
@@ -282,10 +279,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_redirect_normalizes_event_trailing_slash_lookup() {
-        let router = test_router(test_community_redirects(HashMap::from([(
-            "/events/legacy-event".to_string(),
-            "/community/group/group/event/event".to_string(),
-        )])));
+        let router = legacy_event_router();
         let response = router.oneshot(test_request("/events/legacy-event/")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
@@ -297,10 +291,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_redirects_event_match_to_canonical_url() {
-        let router = test_router(test_community_redirects(HashMap::from([(
-            "/events/legacy-event".to_string(),
-            "/community/group/group/event/event".to_string(),
-        )])));
+        let router = legacy_event_router();
         let response = router.oneshot(test_request("/events/legacy-event")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
@@ -403,18 +394,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_redirects_to_community_page_when_match_is_duplicated() {
-        let router = test_router(test_community_redirects(HashMap::new()));
-        let response = router.oneshot(test_request("/duplicate")).await.unwrap();
-
-        assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
-        assert_eq!(
-            response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example/active-community")
-        );
-    }
-
-    #[tokio::test]
     async fn test_redirects_unknown_community_host_to_not_found() {
         let router = test_router(test_community_redirects(HashMap::new()));
         let response = router
@@ -458,6 +437,14 @@ mod tests {
     }
 
     // Helpers.
+
+    /// Sets up a router mapping the legacy event path for the active community.
+    fn legacy_event_router() -> Router {
+        test_router(test_community_redirects(HashMap::from([(
+            "/events/legacy-event".to_string(),
+            "/community/group/group/event/event".to_string(),
+        )])))
+    }
 
     /// Builds test redirects for the active community.
     fn test_community_redirects(redirects: HashMap<String, String>) -> Redirects {

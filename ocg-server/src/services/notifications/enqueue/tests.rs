@@ -5,28 +5,162 @@ use chrono::{Duration, Utc};
 use serde_json::from_value;
 
 use crate::{
-    config::HttpServerConfig,
-    db::mock::MockDB,
+    config::tests::sample_server_cfg,
+    db::mock::{MockDB, expect_site_settings, sample_posted_inbox_message},
+    services::notifications::tests::template_of,
     templates::notifications::{
-        EventCohostInvitation, EventCohostRemoved, EventPaidConfigured, EventPublished,
-        EventRescheduled, EventSeriesCanceled, EventSeriesPublished, InboxMessageReceived,
-        InboxReplyReceived, SpeakerSeriesWelcome, SpeakerWelcome,
+        EventCanceled, EventCohostInvitation, EventCohostRemoved, EventCohostResponded,
+        EventPaidConfigured, EventPublished, EventRescheduled, EventSeriesCanceled,
+        EventSeriesPublished, InboxMessageReceived, InboxReplyReceived, SpeakerSeriesWelcome,
+        SpeakerWelcome,
     },
     types::{
         dashboard::community::contact::{CommunityContactFilters, RegionFilterValue},
         event::{EventFull, EventSummary, Speaker},
         group::GroupRole,
         inbox::InboxMessageKind,
-        notifications::{CustomNotificationContent, NewNotification, NotificationKind},
+        notifications::{NewNotification, NotificationKind},
         tests::{
-            sample_community_summary, sample_event_cohost_group, sample_event_full,
-            sample_event_summary, sample_group_summary, sample_inbox_conversation,
-            sample_site_settings, sample_template_user, sample_template_user_with_id,
+            sample_community_summary, sample_custom_notification_content,
+            sample_event_cohost_group, sample_event_full, sample_event_summary,
+            sample_group_summary, sample_inbox_conversation, sample_site_settings,
+            sample_template_user, sample_template_user_with_id,
         },
     },
 };
 
 use super::*;
+
+#[tokio::test]
+async fn test_enqueue_event_canceled_notification_dedupes_attendees_waitlist_and_speakers() {
+    // Setup identifiers and overlapping attendee, waitlist, and speaker sets
+    let attendee_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let speaker_id = Uuid::new_v4();
+    let waitlist_id = Uuid::new_v4();
+    let event = sample_event_full_with_speakers(community_id, event_id, group_id, &[speaker_id]);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_list_event_attendees_ids()
+        .times(1)
+        .withf(move |gid, eid, checked_in_only| {
+            *gid == group_id && *eid == event_id && !checked_in_only
+        })
+        .returning(move |_, _, _| Ok(vec![attendee_id, speaker_id]));
+    db.expect_list_event_waitlist_ids()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .returning(move |_, _| Ok(vec![waitlist_id, attendee_id]));
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 1);
+
+    // Run the workflow
+    enqueue_event_canceled_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        community_id,
+        group_id,
+        event_id,
+    )
+    .await
+    .unwrap();
+
+    // Check one notification reaches each recipient once
+    let notifications = enqueued(&notifications);
+    let notification = find_notification(&notifications, &NotificationKind::EventCanceled);
+    assert_eq!(
+        sorted_ids(notification.recipients.clone()),
+        sorted_ids(vec![attendee_id, speaker_id, waitlist_id])
+    );
+    let template: EventCanceled = template_of(notification);
+    assert_eq!(template.event.event_id, event_id);
+    assert_eq!(
+        template.link,
+        "https://example.test/test/group/npq6789/event/abc1234"
+    );
+    assert_eq!(
+        template.theme.primary_color,
+        sample_site_settings().theme.primary_color
+    );
+}
+
+#[tokio::test]
+async fn test_enqueue_event_canceled_notification_returns_for_empty_recipients() {
+    // Setup identifiers and an event without attendees, waitlist, or speakers
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let event = sample_event_full_with_speakers(community_id, event_id, group_id, &[]);
+
+    // Setup database mock forbidding the notification work
+    let mut db = MockDB::new();
+    db.expect_get_event_full()
+        .times(1)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_list_event_attendees_ids()
+        .times(1)
+        .returning(|_, _, _| Ok(vec![]));
+    db.expect_list_event_waitlist_ids()
+        .times(1)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_get_site_settings().never();
+    db.expect_enqueue_notification().never();
+
+    // Run the workflow
+    enqueue_event_canceled_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        community_id,
+        group_id,
+        event_id,
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_enqueue_event_canceled_notification_returns_for_test_events() {
+    // Setup identifiers and a test event with an attendee
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let event = EventFull {
+        test_event: true,
+        ..sample_event_full(community_id, event_id, group_id)
+    };
+
+    // Setup database mock forbidding the notification work
+    let mut db = MockDB::new();
+    db.expect_get_event_full()
+        .times(1)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_list_event_attendees_ids()
+        .times(1)
+        .returning(|_, _, _| Ok(vec![Uuid::new_v4()]));
+    db.expect_list_event_waitlist_ids()
+        .times(1)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_get_site_settings().never();
+    db.expect_enqueue_notification().never();
+
+    // Run the workflow
+    enqueue_event_canceled_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        community_id,
+        group_id,
+        event_id,
+    )
+    .await
+    .unwrap();
+}
 
 #[tokio::test]
 async fn test_enqueue_event_cohost_invitation_notifications_combines_events_per_group() {
@@ -47,7 +181,6 @@ async fn test_enqueue_event_cohost_invitation_notifications_combines_events_per_
             sample_cohost_notification_data(reference.cohost_group_id, reference.event_id)
         })
         .collect::<Vec<_>>();
-    let notifications = Arc::new(Mutex::new(Vec::new()));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -55,9 +188,7 @@ async fn test_enqueue_event_cohost_invitation_notifications_combines_events_per_
         .times(1)
         .withf(|items| items.len() == 3)
         .returning(move |_| Ok(data.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_list_group_admin_ids().times(2).returning(move |gid| {
         if gid == group_with_admins_id {
             Ok(vec![admin_id])
@@ -65,32 +196,22 @@ async fn test_enqueue_event_cohost_invitation_notifications_combines_events_per_
             Ok(vec![])
         }
     });
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(1)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    let notifications = capture_enqueued(&mut db, 1);
 
     // Run the workflow
-    enqueue_event_cohost_invitation_notifications(&db, &sample_server_cfg(), &refs)
-        .await
-        .unwrap();
+    enqueue_event_cohost_invitation_notifications(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &refs,
+    )
+    .await
+    .unwrap();
 
     // Check one combined invitation reaches only the admins
-    let notifications = notifications
-        .lock()
-        .expect("notifications lock not to be poisoned")
-        .clone();
+    let notifications = enqueued(&notifications);
     let notification = find_notification(&notifications, &NotificationKind::EventCohostInvitation);
     assert_eq!(notification.recipients, vec![admin_id]);
-    let template: EventCohostInvitation =
-        from_value(notification.template_data.clone().expect("template data to exist"))
-            .expect("invitation notification to deserialize");
+    let template: EventCohostInvitation = template_of(notification);
     assert_eq!(template.events.len(), 2);
     assert_eq!(
         template.link,
@@ -104,8 +225,12 @@ async fn test_enqueue_event_cohost_invitation_notifications_returns_for_empty_re
     let db = MockDB::new();
 
     // Run the workflow
-    let result =
-        enqueue_event_cohost_invitation_notifications(&db, &sample_server_cfg(), &[]).await;
+    let result = enqueue_event_cohost_invitation_notifications(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &[],
+    )
+    .await;
 
     // Check nothing was loaded or enqueued
     assert!(result.is_ok());
@@ -125,9 +250,7 @@ async fn test_enqueue_event_cohost_removed_notifications_links_dashboard_for_rem
     db.expect_get_event_cohost_notification_data()
         .times(1)
         .returning(move |_| Ok(data.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_list_group_admin_ids()
         .times(1)
         .withf(move |gid| *gid == cohost_group_id)
@@ -150,12 +273,114 @@ async fn test_enqueue_event_cohost_removed_notifications_links_dashboard_for_rem
     // Run the workflow
     enqueue_event_cohost_removed_notifications(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         EventCohostRemovalReason::Removed,
         &refs,
     )
     .await
     .unwrap();
+}
+
+#[tokio::test]
+async fn test_enqueue_event_cohost_responded_notification_notifies_owner_admins() {
+    // Setup identifiers and the response
+    let admin_id = Uuid::new_v4();
+    let cohost_group_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let invitation_id = Uuid::new_v4();
+    let owner_group_id = Uuid::new_v4();
+    let response = EventCohostResponse {
+        cohost_group_id,
+        event_id,
+        invitation_id,
+        owner_community_id: Uuid::new_v4(),
+        owner_group_id,
+    };
+    let data = vec![sample_cohost_notification_data(cohost_group_id, event_id)];
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_list_group_admin_ids()
+        .times(1)
+        .withf(move |gid| *gid == owner_group_id)
+        .returning(move |_| Ok(vec![admin_id]));
+    db.expect_get_event_cohost_notification_data()
+        .times(1)
+        .withf(move |refs| {
+            refs.len() == 1
+                && refs[0].cohost_group_id == cohost_group_id
+                && refs[0].event_id == event_id
+                && refs[0].invitation_id == invitation_id
+        })
+        .returning(move |_| Ok(data.clone()));
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 1);
+
+    // Run the workflow
+    enqueue_event_cohost_responded_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &response,
+        EventCohostStatus::Rejected,
+    )
+    .await
+    .unwrap();
+
+    // Check the owner admins get the response with its status and link
+    let notifications = enqueued(&notifications);
+    let notification = find_notification(&notifications, &NotificationKind::EventCohostResponded);
+    assert_eq!(notification.recipients, vec![admin_id]);
+    let template: EventCohostResponded = template_of(notification);
+    assert_eq!(template.cohost_group_name, "Cohost Group");
+    assert_eq!(template.event.name, "Co-hosted Event");
+    assert_eq!(
+        template.link,
+        "https://example.test/dashboard/group?tab=events"
+    );
+    assert_eq!(template.owner_group_name, "Owner Group");
+    assert_eq!(template.status, EventCohostStatus::Rejected);
+    assert_eq!(
+        template.theme.primary_color,
+        sample_site_settings().theme.primary_color
+    );
+}
+
+#[tokio::test]
+async fn test_enqueue_event_cohost_responded_notification_rejects_missing_data() {
+    // Setup the response
+    let response = EventCohostResponse {
+        cohost_group_id: Uuid::new_v4(),
+        event_id: Uuid::new_v4(),
+        invitation_id: Uuid::new_v4(),
+        owner_community_id: Uuid::new_v4(),
+        owner_group_id: Uuid::new_v4(),
+    };
+
+    // Setup database mock without co-hosting content
+    let mut db = MockDB::new();
+    db.expect_list_group_admin_ids()
+        .times(1)
+        .returning(|_| Ok(vec![Uuid::new_v4()]));
+    db.expect_get_event_cohost_notification_data()
+        .times(1)
+        .returning(|_| Ok(vec![]));
+    db.expect_get_site_settings().never();
+    db.expect_enqueue_notification().never();
+
+    // Run the workflow
+    let result = enqueue_event_cohost_responded_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &response,
+        EventCohostStatus::Approved,
+    )
+    .await;
+
+    // Check the missing content fails the required notification
+    assert_eq!(
+        result.unwrap_err().to_string(),
+        "co-hosting notification data not found"
+    );
 }
 
 #[tokio::test]
@@ -182,7 +407,7 @@ async fn test_enqueue_event_cohost_responded_notification_skips_owner_without_ad
     // Run the workflow
     let result = enqueue_event_cohost_responded_notification(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         &response,
         EventCohostStatus::Approved,
     )
@@ -199,7 +424,7 @@ async fn test_enqueue_event_paid_configured_notifications_propagates_enqueue_fai
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
+    let event = sample_event_summary(event_id);
     let mut db = MockDB::new();
     db.expect_list_community_admin_ids()
         .times(1)
@@ -209,9 +434,7 @@ async fn test_enqueue_event_paid_configured_notifications_propagates_enqueue_fai
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_notification()
         .times(1)
         .returning(|_| Err(anyhow::anyhow!("notification error")));
@@ -273,7 +496,7 @@ async fn test_enqueue_event_paid_configured_notifications_returns_for_test_event
     let group_id = Uuid::new_v4();
     let event = EventSummary {
         test_event: true,
-        ..sample_event_summary(event_id, group_id)
+        ..sample_event_summary(event_id)
     };
 
     // Setup recipient and event queries while forbidding downstream work
@@ -303,9 +526,8 @@ async fn test_enqueue_event_paid_configured_notifications_sends_ordered_aggregat
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let related_event_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
-    let related_event = sample_event_summary(related_event_id, group_id);
-    let notifications = Arc::new(Mutex::new(Vec::new()));
+    let event = sample_event_summary(event_id);
+    let related_event = sample_event_summary(related_event_id);
 
     // Setup database reads in event-id order
     let mut db = MockDB::new();
@@ -323,19 +545,8 @@ async fn test_enqueue_event_paid_configured_notifications_sends_ordered_aggregat
             *cid == community_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(1)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 1);
 
     // Run the workflow
     enqueue_event_paid_configured_notifications(
@@ -348,7 +559,7 @@ async fn test_enqueue_event_paid_configured_notifications_sends_ordered_aggregat
     .unwrap();
 
     // Check the aggregate contract and ordering
-    let notifications = notifications.lock().expect("notifications lock not to be poisoned");
+    let notifications = enqueued(&notifications);
     assert_eq!(notifications.len(), 1);
     let notification = &notifications[0];
     assert!(matches!(
@@ -356,9 +567,7 @@ async fn test_enqueue_event_paid_configured_notifications_sends_ordered_aggregat
         NotificationKind::EventPaidConfigured
     ));
     assert_eq!(notification.recipients, vec![admin_id]);
-    let template: EventPaidConfigured =
-        from_value(notification.template_data.clone().expect("template data to exist"))
-            .expect("paid event notification to deserialize");
+    let template: EventPaidConfigured = template_of(notification);
     assert_eq!(
         template.events.iter().map(|event| event.event_id).collect::<Vec<_>>(),
         vec![event_id, related_event_id]
@@ -386,7 +595,6 @@ async fn test_enqueue_event_series_canceled_notifications_groups_by_recipient_ev
         test_event: true,
         ..sample_event_full_with_speakers(community_id, test_event_id, group_id, &[])
     };
-    let notifications = Arc::new(Mutex::new(Vec::new()));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -436,24 +644,13 @@ async fn test_enqueue_event_series_canceled_notifications_groups_by_recipient_ev
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == test_event_id)
         .returning(|_, _| Ok(vec![]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(3)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 3);
 
     // Run the workflow
     enqueue_event_series_canceled_notifications(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         community_id,
         group_id,
         &[event_id, related_event_id, test_event_id],
@@ -462,18 +659,13 @@ async fn test_enqueue_event_series_canceled_notifications_groups_by_recipient_ev
     .unwrap();
 
     // Check notifications match recipient event sets
-    let notifications = notifications
-        .lock()
-        .expect("notifications lock not to be poisoned")
-        .clone();
+    let notifications = enqueued(&notifications);
     assert_eq!(notifications.len(), 3);
     let groups: Vec<(Vec<Uuid>, Vec<Uuid>)> = notifications
         .iter()
         .filter(|notification| matches!(notification.kind, NotificationKind::EventSeriesCanceled))
         .map(|notification| {
-            let template: EventSeriesCanceled =
-                from_value(notification.template_data.clone().expect("template data to exist"))
-                    .expect("series canceled notification to deserialize");
+            let template: EventSeriesCanceled = template_of(notification);
             let event_ids = template.events.iter().map(|event| event.event.event_id).collect();
             (notification.recipients.clone(), event_ids)
         })
@@ -497,7 +689,6 @@ async fn test_enqueue_event_series_canceled_notifications_groups_by_recipient_ev
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
 async fn test_enqueue_event_series_published_notifications_dedupes_cohost_audiences() {
     // Setup identifiers and two occurrences with overlapping co-host audiences
     let alpha_group_id = Uuid::new_v4();
@@ -520,7 +711,6 @@ async fn test_enqueue_event_series_published_notifications_dedupes_cohost_audien
         ],
         ..sample_event_full(community_id, related_event_id, group_id)
     };
-    let notifications = Arc::new(Mutex::new(Vec::new()));
 
     // Setup database mock with each audience loaded once
     let mut db = MockDB::new();
@@ -548,24 +738,13 @@ async fn test_enqueue_event_series_published_notifications_dedupes_cohost_audien
         .times(2)
         .withf(|kind, _, _| matches!(kind, NotificationKind::EventSeriesPublished))
         .returning(|_, recipients, _| Ok(recipients.to_vec()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(3)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 3);
 
     // Run the workflow
     enqueue_event_series_published_notifications(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         community_id,
         group_id,
         &[event_id, related_event_id],
@@ -574,16 +753,11 @@ async fn test_enqueue_event_series_published_notifications_dedupes_cohost_audien
     .unwrap();
 
     // Collect the recipients, events, and co-host name of every copy
-    let notifications = notifications
-        .lock()
-        .expect("notifications lock not to be poisoned")
-        .clone();
+    let notifications = enqueued(&notifications);
     let copies: Vec<(Option<String>, Vec<Uuid>, Vec<Uuid>)> = notifications
         .iter()
         .map(|notification| {
-            let template: EventSeriesPublished =
-                from_value(notification.template_data.clone().expect("template data to exist"))
-                    .expect("series published notification to deserialize");
+            let template: EventSeriesPublished = template_of(notification);
             let event_ids = template.events.iter().map(|event| event.event.event_id).collect();
             (
                 template.cohost_group_name,
@@ -640,7 +814,6 @@ async fn test_enqueue_event_series_published_notifications_filters_recipients_pe
     let owner_audience = sorted_ids(vec![muting_member_id, owner_member_id]);
     let first_candidates = [owner_audience.clone(), vec![cohost_member_id]].concat();
     let related_candidates = owner_audience.clone();
-    let notifications = Arc::new(Mutex::new(Vec::new()));
 
     // Setup audience expectations
     let mut db = MockDB::new();
@@ -682,24 +855,13 @@ async fn test_enqueue_event_series_published_notifications_filters_recipients_pe
         .returning(|_, recipients, _| Ok(recipients.to_vec()));
 
     // Setup notification expectations
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(4)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 4);
 
     // Run the workflow
     enqueue_event_series_published_notifications(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         community_id,
         group_id,
         &[event_id, related_event_id],
@@ -708,17 +870,12 @@ async fn test_enqueue_event_series_published_notifications_filters_recipients_pe
     .unwrap();
 
     // Collect the co-host name, recipients, events, and groups of every bundle
-    let notifications = notifications
-        .lock()
-        .expect("notifications lock not to be poisoned")
-        .clone();
+    let notifications = enqueued(&notifications);
     let bundles: Vec<SeriesBundle> = notifications
         .iter()
         .filter(|notification| matches!(notification.kind, NotificationKind::EventSeriesPublished))
         .map(|notification| {
-            let template: EventSeriesPublished =
-                from_value(notification.template_data.clone().expect("template data to exist"))
-                    .expect("series published notification to deserialize");
+            let template: EventSeriesPublished = template_of(notification);
             let event_ids = template.events.iter().map(|event| event.event.event_id).collect();
             (
                 template.cohost_group_name,
@@ -757,7 +914,6 @@ async fn test_enqueue_event_series_published_notifications_filters_recipients_pe
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
 async fn test_enqueue_event_series_published_notifications_groups_members_and_speakers() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -775,7 +931,6 @@ async fn test_enqueue_event_series_published_notifications_groups_members_and_sp
         group_id,
         &[speaker_id, related_event_speaker_id],
     );
-    let notifications = Arc::new(Mutex::new(Vec::new()));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -797,24 +952,13 @@ async fn test_enqueue_event_series_published_notifications_groups_members_and_sp
         .times(2)
         .withf(|kind, _, _| matches!(kind, NotificationKind::EventSeriesPublished))
         .returning(|_, recipients, _| Ok(recipients.to_vec()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(3)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 3);
 
     // Run the workflow
     enqueue_event_series_published_notifications(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         community_id,
         group_id,
         &[event_id, related_event_id],
@@ -823,18 +967,13 @@ async fn test_enqueue_event_series_published_notifications_groups_members_and_sp
     .unwrap();
 
     // Check notifications match member and speaker event sets
-    let notifications = notifications
-        .lock()
-        .expect("notifications lock not to be poisoned")
-        .clone();
+    let notifications = enqueued(&notifications);
     assert_eq!(notifications.len(), 3);
     let member_groups: Vec<(Vec<Uuid>, Vec<Uuid>)> = notifications
         .iter()
         .filter(|notification| matches!(notification.kind, NotificationKind::EventSeriesPublished))
         .map(|notification| {
-            let template: EventSeriesPublished =
-                from_value(notification.template_data.clone().expect("template data to exist"))
-                    .expect("series published notification to deserialize");
+            let template: EventSeriesPublished = template_of(notification);
             let event_ids = template.events.iter().map(|event| event.event.event_id).collect();
             (notification.recipients.clone(), event_ids)
         })
@@ -848,9 +987,7 @@ async fn test_enqueue_event_series_published_notifications_groups_members_and_sp
         .iter()
         .filter(|notification| matches!(notification.kind, NotificationKind::SpeakerSeriesWelcome))
         .map(|notification| {
-            let template: SpeakerSeriesWelcome =
-                from_value(notification.template_data.clone().expect("template data to exist"))
-                    .expect("speaker series notification to deserialize");
+            let template: SpeakerSeriesWelcome = template_of(notification);
             let event_ids = template.events.iter().map(|event| event.event.event_id).collect();
             (notification.recipients.clone(), event_ids)
         })
@@ -891,7 +1028,6 @@ async fn test_enqueue_event_series_published_notifications_skips_covered_cohost_
         ],
         ..sample_event_full(community_id, related_event_id, group_id)
     };
-    let notifications = Arc::new(Mutex::new(Vec::new()));
 
     // Setup audience expectations with each audience loaded once
     let mut db = MockDB::new();
@@ -927,24 +1063,13 @@ async fn test_enqueue_event_series_published_notifications_skips_covered_cohost_
         .withf(|kind, _, _| matches!(kind, NotificationKind::EventSeriesPublished))
         .returning(|_, recipients, _| Ok(recipients.to_vec()));
 
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(4)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 4);
 
     // Run the workflow
     enqueue_event_series_published_notifications(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         community_id,
         group_id,
         &[event_id, related_event_id],
@@ -953,17 +1078,12 @@ async fn test_enqueue_event_series_published_notifications_skips_covered_cohost_
     .unwrap();
 
     // Collect the co-host name, recipients, and events of every published copy
-    let notifications = notifications
-        .lock()
-        .expect("notifications lock not to be poisoned")
-        .clone();
+    let notifications = enqueued(&notifications);
     let copies: Vec<(Option<String>, Vec<Uuid>, Vec<Uuid>)> = notifications
         .iter()
         .filter(|notification| matches!(notification.kind, NotificationKind::EventSeriesPublished))
         .map(|notification| {
-            let template: EventSeriesPublished =
-                from_value(notification.template_data.clone().expect("template data to exist"))
-                    .expect("series published notification to deserialize");
+            let template: EventSeriesPublished = template_of(notification);
             let event_ids = template.events.iter().map(|event| event.event.event_id).collect();
             (
                 template.cohost_group_name,
@@ -1002,13 +1122,7 @@ async fn test_enqueue_event_series_published_notifications_skips_covered_cohost_
     let speaker_notification =
         find_notification(&notifications, &NotificationKind::SpeakerSeriesWelcome);
     assert_eq!(speaker_notification.recipients, vec![speaker_id]);
-    let template: SpeakerSeriesWelcome = from_value(
-        speaker_notification
-            .template_data
-            .clone()
-            .expect("template data to exist"),
-    )
-    .expect("speaker series notification to deserialize");
+    let template: SpeakerSeriesWelcome = template_of(speaker_notification);
     assert_eq!(
         template
             .events
@@ -1020,7 +1134,6 @@ async fn test_enqueue_event_series_published_notifications_skips_covered_cohost_
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
 async fn test_enqueue_event_published_notifications_dedupes_cohost_audiences() {
     // Setup identifiers and an event whose speaker and audiences overlap
     let alpha_group_id = Uuid::new_v4();
@@ -1041,7 +1154,6 @@ async fn test_enqueue_event_published_notifications_dedupes_cohost_audiences() {
         ],
         ..sample_event_full_with_speakers(community_id, event_id, group_id, &[speaker_id])
     };
-    let notifications = Arc::new(Mutex::new(Vec::new()));
 
     // Setup event expectations
     let mut db = MockDB::new();
@@ -1075,24 +1187,13 @@ async fn test_enqueue_event_published_notifications_dedupes_cohost_audiences() {
         .returning(move |_| Ok(sorted_ids(vec![owner_member_id, speaker_id])));
 
     // Setup notification expectations
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(4)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 4);
 
     // Run the workflow
     enqueue_event_published_notifications(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         community_id,
         group_id,
         event_id,
@@ -1101,17 +1202,12 @@ async fn test_enqueue_event_published_notifications_dedupes_cohost_audiences() {
     .unwrap();
 
     // Collect the co-host name and recipients of every published copy
-    let notifications = notifications
-        .lock()
-        .expect("notifications lock not to be poisoned")
-        .clone();
+    let notifications = enqueued(&notifications);
     let copies: Vec<(Option<String>, Vec<Uuid>)> = notifications
         .iter()
         .filter(|notification| matches!(notification.kind, NotificationKind::EventPublished))
         .map(|notification| {
-            let template: EventPublished =
-                from_value(notification.template_data.clone().expect("template data to exist"))
-                    .expect("published notification to deserialize");
+            let template: EventPublished = template_of(notification);
             (template.cohost_group_name, notification.recipients.clone())
         })
         .collect();
@@ -1152,7 +1248,6 @@ async fn test_enqueue_event_published_notifications_notifies_cohost_audience_alo
         cohosts: vec![sample_event_cohost_group(cohost_group_id, "Cohost Group")],
         ..sample_event_full(community_id, event_id, group_id)
     };
-    let notifications = Arc::new(Mutex::new(Vec::new()));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1167,24 +1262,13 @@ async fn test_enqueue_event_published_notifications_notifies_cohost_audience_alo
         .times(1)
         .withf(move |gid| *gid == cohost_group_id)
         .returning(move |_| Ok(vec![cohost_member_id]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(1)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 1);
 
     // Run the workflow
     enqueue_event_published_notifications(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         community_id,
         group_id,
         event_id,
@@ -1193,15 +1277,10 @@ async fn test_enqueue_event_published_notifications_notifies_cohost_audience_alo
     .unwrap();
 
     // Check the co-host copy names the co-host group
-    let notifications = notifications
-        .lock()
-        .expect("notifications lock not to be poisoned")
-        .clone();
+    let notifications = enqueued(&notifications);
     let notification = find_notification(&notifications, &NotificationKind::EventPublished);
     assert_eq!(notification.recipients, vec![cohost_member_id]);
-    let template: EventPublished =
-        from_value(notification.template_data.clone().expect("template data to exist"))
-            .expect("published notification to deserialize");
+    let template: EventPublished = template_of(notification);
     assert_eq!(template.cohost_group_name.as_deref(), Some("Cohost Group"));
 }
 
@@ -1221,7 +1300,6 @@ async fn test_enqueue_event_published_notifications_sends_members_and_speakers_s
         group_id,
         &[speaker_id, speaker_member_id],
     );
-    let notifications = Arc::new(Mutex::new(Vec::new()));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1239,24 +1317,13 @@ async fn test_enqueue_event_published_notifications_sends_members_and_speakers_s
                 team_member_id,
             ]))
         });
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(2)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 2);
 
     // Run the workflow
     enqueue_event_published_notifications(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         community_id,
         group_id,
         event_id,
@@ -1265,10 +1332,7 @@ async fn test_enqueue_event_published_notifications_sends_members_and_speakers_s
     .unwrap();
 
     // Check notifications split member and speaker audiences
-    let notifications = notifications
-        .lock()
-        .expect("notifications lock not to be poisoned")
-        .clone();
+    let notifications = enqueued(&notifications);
     assert_eq!(notifications.len(), 2);
     let member_notification = find_notification(&notifications, &NotificationKind::EventPublished);
     assert_eq!(
@@ -1280,13 +1344,77 @@ async fn test_enqueue_event_published_notifications_sends_members_and_speakers_s
         sorted_ids(speaker_notification.recipients.clone()),
         sorted_ids(vec![speaker_id, speaker_member_id])
     );
-    let _: SpeakerWelcome = from_value(
-        speaker_notification
-            .template_data
-            .clone()
-            .expect("template data to exist"),
+    let _: SpeakerWelcome = template_of(speaker_notification);
+}
+
+#[tokio::test]
+async fn test_enqueue_event_published_notifications_sends_speakers_without_audience() {
+    // Setup identifiers and an event whose owner group has no audience
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let speaker_id = Uuid::new_v4();
+    let event = sample_event_full_with_speakers(community_id, event_id, group_id, &[speaker_id]);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_full()
+        .times(1)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_list_group_audience_ids()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(|_| Ok(vec![]));
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 1);
+
+    // Run the workflow
+    enqueue_event_published_notifications(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        community_id,
+        group_id,
+        event_id,
     )
-    .expect("speaker notification to deserialize");
+    .await
+    .unwrap();
+
+    // Check only the speaker welcome was enqueued
+    let notifications = enqueued(&notifications);
+    assert!(matches!(
+        notifications[0].kind,
+        NotificationKind::SpeakerWelcome
+    ));
+    assert_eq!(notifications[0].recipients, vec![speaker_id]);
+}
+
+#[tokio::test]
+async fn test_enqueue_event_rescheduled_notification_skips_past_events() {
+    // Setup an event that already ended
+    let starts_at = Utc::now() - Duration::hours(3);
+    let before = EventSummary {
+        ends_at: Some(starts_at + Duration::hours(1)),
+        starts_at: Some(starts_at),
+        ..sample_event_summary(Uuid::new_v4())
+    };
+
+    // Setup database mock forbidding every read
+    let mut db = MockDB::new();
+    db.expect_get_event_summary().never();
+    db.expect_enqueue_notification().never();
+
+    // Run the workflow
+    enqueue_event_rescheduled_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        before.event_id,
+        &before,
+        Utc::now(),
+    )
+    .await
+    .unwrap();
 }
 
 #[tokio::test]
@@ -1295,7 +1423,7 @@ async fn test_enqueue_event_rescheduled_notification_skips_small_shift() {
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let before = sample_future_event_summary(event_id, group_id);
+    let before = sample_future_event_summary(event_id);
     let after = EventSummary {
         starts_at: before.starts_at.map(|starts_at| starts_at + Duration::minutes(10)),
         ..before.clone()
@@ -1307,11 +1435,13 @@ async fn test_enqueue_event_rescheduled_notification_skips_small_shift() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(after.clone()));
+    db.expect_get_event_full().never();
+    db.expect_enqueue_notification().never();
 
     // Run the workflow
     enqueue_event_rescheduled_notification(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         community_id,
         group_id,
         event_id,
@@ -1330,13 +1460,12 @@ async fn test_enqueue_event_rescheduled_notification_sends_to_attendees_and_spea
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let speaker_id = Uuid::new_v4();
-    let before = sample_future_event_summary(event_id, group_id);
+    let before = sample_future_event_summary(event_id);
     let after = EventSummary {
         starts_at: before.starts_at.map(|starts_at| starts_at + Duration::minutes(30)),
         ..before.clone()
     };
     let event = sample_event_full_with_speakers(community_id, event_id, group_id, &[speaker_id]);
-    let notifications = Arc::new(Mutex::new(Vec::new()));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1354,24 +1483,13 @@ async fn test_enqueue_event_rescheduled_notification_sends_to_attendees_and_spea
             *gid == group_id && *eid == event_id && !checked_in_only
         })
         .returning(move |_, _, _| Ok(vec![attendee_id, speaker_id]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    let notifications_for_mock = notifications.clone();
-    db.expect_enqueue_notification()
-        .times(1)
-        .returning(move |notification| {
-            notifications_for_mock
-                .lock()
-                .expect("notifications lock not to be poisoned")
-                .push(notification.clone());
-            Ok(())
-        });
+    expect_site_settings(&mut db);
+    let notifications = capture_enqueued(&mut db, 1);
 
     // Run the workflow
     enqueue_event_rescheduled_notification(
         &db,
-        &sample_server_cfg(),
+        &sample_server_cfg("https://example.test/"),
         community_id,
         group_id,
         event_id,
@@ -1382,20 +1500,80 @@ async fn test_enqueue_event_rescheduled_notification_sends_to_attendees_and_spea
     .unwrap();
 
     // Check notification matches recipient selection
-    let notifications = notifications
-        .lock()
-        .expect("notifications lock not to be poisoned")
-        .clone();
+    let notifications = enqueued(&notifications);
     assert_eq!(notifications.len(), 1);
     let notification = find_notification(&notifications, &NotificationKind::EventRescheduled);
     assert_eq!(
         sorted_ids(notification.recipients.clone()),
         sorted_ids(vec![attendee_id, speaker_id])
     );
-    let template: EventRescheduled =
-        from_value(notification.template_data.clone().expect("template data to exist"))
-            .expect("event rescheduled notification to deserialize");
+    let template: EventRescheduled = template_of(notification);
     assert_eq!(template.event.event_id, event_id);
+}
+
+#[tokio::test]
+async fn test_enqueue_event_rescheduled_notification_skips_test_events() {
+    // Setup a future test event
+    let before = EventSummary {
+        test_event: true,
+        ..sample_future_event_summary(Uuid::new_v4())
+    };
+
+    // Setup database mock forbidding every read
+    let mut db = MockDB::new();
+    db.expect_get_event_summary().never();
+    db.expect_enqueue_notification().never();
+
+    // Run the workflow
+    enqueue_event_rescheduled_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        before.event_id,
+        &before,
+        Utc::now(),
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_enqueue_event_rescheduled_notification_skips_unpublished_events() {
+    // Setup identifiers and an unpublished event moved by an hour
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let before = EventSummary {
+        published: false,
+        ..sample_future_event_summary(event_id)
+    };
+    let after = EventSummary {
+        starts_at: before.starts_at.map(|starts_at| starts_at + Duration::hours(1)),
+        ..before.clone()
+    };
+
+    // Setup database mock forbidding the notification work
+    let mut db = MockDB::new();
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(after.clone()));
+    db.expect_get_event_full().never();
+    db.expect_enqueue_notification().never();
+
+    // Run the workflow
+    enqueue_event_rescheduled_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        community_id,
+        group_id,
+        event_id,
+        &before,
+        Utc::now(),
+    )
+    .await
+    .unwrap();
 }
 
 #[tokio::test]
@@ -1417,9 +1595,7 @@ async fn test_enqueue_inbox_message_received_notification_excludes_author() {
         .times(1)
         .withf(move |gid| *gid == posted.group_id)
         .returning(move |_| Ok(vec![author_id, recipient_id]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
@@ -1465,9 +1641,7 @@ async fn test_enqueue_inbox_message_received_notification_keeps_message_without_
     db.expect_list_inbox_recipient_ids()
         .times(1)
         .returning(|_| Ok(vec![]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_notification().never();
 
     // Run the workflow
@@ -1492,9 +1666,7 @@ async fn test_enqueue_inbox_message_received_notification_propagates_enqueue_fai
     db.expect_list_inbox_recipient_ids()
         .times(1)
         .returning(|_| Ok(vec![Uuid::new_v4()]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_notification()
         .times(1)
         .returning(|_| Err(anyhow!("enqueue failed")));
@@ -1519,9 +1691,7 @@ async fn test_enqueue_inbox_message_received_notification_rejects_missing_conver
     db.expect_list_inbox_recipient_ids()
         .times(1)
         .returning(|_| Ok(vec![Uuid::new_v4()]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_notification().never();
 
     // Run the workflow
@@ -1555,9 +1725,7 @@ async fn test_enqueue_inbox_reply_received_notification_notifies_conversation_us
         .times(1)
         .withf(move |gid, cid| *gid == posted.group_id && *cid == posted.inbox_conversation_id)
         .returning(move |_, _| Ok(Some(conversation.clone())));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
@@ -1598,9 +1766,7 @@ async fn test_enqueue_inbox_reply_received_notification_rejects_deleted_user() {
     db.expect_get_group_inbox_conversation()
         .times(1)
         .returning(move |_, _| Ok(Some(conversation.clone())));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_notification().never();
 
     // Run the workflow
@@ -1624,15 +1790,15 @@ async fn test_enqueue_tracked_community_custom_notification_builds_content_and_e
     let community = sample_community_summary(community_id);
     let expected_template_data = serde_json::to_value(build_community_custom_notification(
         &community,
-        &sample_content("Community Update", "Hello, group teams!"),
-        &sample_server_cfg(),
+        &sample_custom_notification_content("Community Update", "Hello, group teams!"),
+        &sample_server_cfg("https://example.test/"),
         &sample_site_settings(),
     ))
     .unwrap();
     let input = CommunityCustomNotificationInput {
         actor_user_id,
         community_id,
-        content: sample_content("Community Update", "Hello, group teams!"),
+        content: sample_custom_notification_content("Community Update", "Hello, group teams!"),
         filters: CommunityContactFilters {
             group_category_ids: vec![group_category_id],
             group_ids: vec![group_id],
@@ -1650,9 +1816,7 @@ async fn test_enqueue_tracked_community_custom_notification_builds_content_and_e
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(community.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_tracked_community_custom_notification()
         .times(1)
         .withf(move |input| {
@@ -1673,9 +1837,13 @@ async fn test_enqueue_tracked_community_custom_notification_builds_content_and_e
         .returning(|_| Ok(3));
 
     // Run the workflow
-    let count = enqueue_tracked_community_custom_notification(&db, &sample_server_cfg(), &input)
-        .await
-        .unwrap();
+    let count = enqueue_tracked_community_custom_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &input,
+    )
+    .await
+    .unwrap();
 
     // Check the recipient count reported by the database
     assert_eq!(count, 3);
@@ -1697,8 +1865,12 @@ async fn test_enqueue_tracked_community_custom_notification_propagates_context_f
     db.expect_enqueue_tracked_community_custom_notification().never();
 
     // Run the workflow
-    let result =
-        enqueue_tracked_community_custom_notification(&db, &sample_server_cfg(), &input).await;
+    let result = enqueue_tracked_community_custom_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &input,
+    )
+    .await;
 
     // Check the failure propagates before anything is enqueued
     assert_eq!(result.unwrap_err().to_string(), "database unavailable");
@@ -1715,16 +1887,18 @@ async fn test_enqueue_tracked_community_custom_notification_propagates_enqueue_f
     db.expect_get_community_summary()
         .times(1)
         .returning(move |_| Ok(sample_community_summary(community_id)));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_tracked_community_custom_notification()
         .times(1)
         .returning(|_| Err(anyhow!("no group team members match the selected filters")));
 
     // Run the workflow
-    let result =
-        enqueue_tracked_community_custom_notification(&db, &sample_server_cfg(), &input).await;
+    let result = enqueue_tracked_community_custom_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &input,
+    )
+    .await;
 
     // Check the database error passes through unchanged
     assert_eq!(
@@ -1742,18 +1916,18 @@ async fn test_enqueue_tracked_event_custom_notification_builds_content_and_track
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
+    let event = sample_event_summary(event_id);
     let expected_template_data = serde_json::to_value(build_event_custom_notification(
         &event,
-        &sample_content("Event Update", "Hello, event attendees!"),
-        &sample_server_cfg(),
+        &sample_custom_notification_content("Event Update", "Hello, event attendees!"),
+        &sample_server_cfg("https://example.test/"),
         &sample_site_settings(),
     ))
     .unwrap();
     let input = EventCustomNotificationInput {
         actor_user_id,
         community_id,
-        content: sample_content("Event Update", "Hello, event attendees!"),
+        content: sample_custom_notification_content("Event Update", "Hello, event attendees!"),
         event_id,
         group_id,
         recipients: vec![attendee_id1, attendee_id2],
@@ -1765,9 +1939,7 @@ async fn test_enqueue_tracked_event_custom_notification_builds_content_and_track
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_tracked_custom_notification()
         .times(1)
         .withf(move |notification, tracking| {
@@ -1791,9 +1963,13 @@ async fn test_enqueue_tracked_event_custom_notification_builds_content_and_track
         .returning(|_, _| Ok(()));
 
     // Run the workflow
-    enqueue_tracked_event_custom_notification(&db, &sample_server_cfg(), &input)
-        .await
-        .unwrap();
+    enqueue_tracked_event_custom_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &input,
+    )
+    .await
+    .unwrap();
 }
 
 #[tokio::test]
@@ -1804,7 +1980,7 @@ async fn test_enqueue_tracked_event_custom_notification_propagates_context_failu
     let input = EventCustomNotificationInput {
         actor_user_id: Uuid::new_v4(),
         community_id,
-        content: sample_content("Subject", "Hello"),
+        content: sample_custom_notification_content("Subject", "Hello"),
         event_id,
         group_id: Uuid::new_v4(),
         recipients: vec![Uuid::new_v4()],
@@ -1821,10 +1997,15 @@ async fn test_enqueue_tracked_event_custom_notification_propagates_context_failu
     db.expect_enqueue_tracked_custom_notification().never();
 
     // Run the workflow
-    let result = enqueue_tracked_event_custom_notification(&db, &sample_server_cfg(), &input).await;
+    let result = enqueue_tracked_event_custom_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &input,
+    )
+    .await;
 
     // Check the failure propagates
-    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().to_string(), "database unavailable");
 }
 
 #[tokio::test]
@@ -1842,15 +2023,15 @@ async fn test_enqueue_tracked_group_custom_notification_builds_content_and_track
     group.slug_pretty = Some("pretty-group".to_string());
     let expected_template_data = serde_json::to_value(build_group_custom_notification(
         &group,
-        &sample_content("Important Update", "Hello, group members!"),
-        &sample_server_cfg(),
+        &sample_custom_notification_content("Important Update", "Hello, group members!"),
+        &sample_server_cfg("https://example.test/"),
         &sample_site_settings(),
     ))
     .unwrap();
     let input = GroupCustomNotificationInput {
         actor_user_id,
         community_id,
-        content: sample_content("Important Update", "Hello, group members!"),
+        content: sample_custom_notification_content("Important Update", "Hello, group members!"),
         group_id,
     };
 
@@ -1866,9 +2047,7 @@ async fn test_enqueue_tracked_group_custom_notification_builds_content_and_track
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(move |_, _| Ok(group.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_enqueue_tracked_custom_notification()
         .times(1)
         .withf(move |notification, tracking| {
@@ -1891,9 +2070,13 @@ async fn test_enqueue_tracked_group_custom_notification_builds_content_and_track
         .returning(|_, _| Ok(()));
 
     // Run the workflow
-    let outcome = enqueue_tracked_group_custom_notification(&db, &sample_server_cfg(), &input)
-        .await
-        .unwrap();
+    let outcome = enqueue_tracked_group_custom_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &input,
+    )
+    .await
+    .unwrap();
 
     // Check the whole audience was notified
     assert_eq!(outcome, GroupCustomNotificationOutcome::Sent(3));
@@ -1905,7 +2088,7 @@ async fn test_enqueue_tracked_group_custom_notification_propagates_context_failu
     let input = GroupCustomNotificationInput {
         actor_user_id: Uuid::new_v4(),
         community_id: Uuid::new_v4(),
-        content: sample_content("Subject", "Hello"),
+        content: sample_custom_notification_content("Subject", "Hello"),
         group_id: Uuid::new_v4(),
     };
 
@@ -1923,10 +2106,15 @@ async fn test_enqueue_tracked_group_custom_notification_propagates_context_failu
     db.expect_enqueue_tracked_custom_notification().never();
 
     // Run the workflow
-    let result = enqueue_tracked_group_custom_notification(&db, &sample_server_cfg(), &input).await;
+    let result = enqueue_tracked_group_custom_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &input,
+    )
+    .await;
 
     // Check the failure propagates
-    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().to_string(), "database unavailable");
 }
 
 #[tokio::test]
@@ -1935,7 +2123,7 @@ async fn test_enqueue_tracked_group_custom_notification_returns_no_recipients() 
     let input = GroupCustomNotificationInput {
         actor_user_id: Uuid::new_v4(),
         community_id: Uuid::new_v4(),
-        content: sample_content("Subject", "Hello"),
+        content: sample_custom_notification_content("Subject", "Hello"),
         group_id: Uuid::new_v4(),
     };
 
@@ -1946,9 +2134,13 @@ async fn test_enqueue_tracked_group_custom_notification_returns_no_recipients() 
     db.expect_enqueue_tracked_custom_notification().never();
 
     // Run the workflow
-    let outcome = enqueue_tracked_group_custom_notification(&db, &sample_server_cfg(), &input)
-        .await
-        .unwrap();
+    let outcome = enqueue_tracked_group_custom_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        &input,
+    )
+    .await
+    .unwrap();
 
     // Check nothing was enqueued
     assert_eq!(outcome, GroupCustomNotificationOutcome::NoRecipients);
@@ -1974,6 +2166,41 @@ fn assert_recipient_event_group_exists(
         }),
         "expected notification group for recipients {recipients:?} and events {event_ids:?}"
     );
+}
+
+/// Captures every enqueued notification, expecting exactly `times` enqueues.
+fn capture_enqueued(db: &mut MockDB, times: usize) -> Arc<Mutex<Vec<NewNotification>>> {
+    let notifications = Arc::new(Mutex::new(Vec::new()));
+    let notifications_for_mock = notifications.clone();
+    db.expect_enqueue_notification()
+        .times(times)
+        .returning(move |notification| {
+            notifications_for_mock
+                .lock()
+                .expect("notifications lock not to be poisoned")
+                .push(notification.clone());
+            Ok(())
+        });
+    notifications
+}
+
+/// Returns the notifications captured by `capture_enqueued`.
+fn enqueued(notifications: &Arc<Mutex<Vec<NewNotification>>>) -> Vec<NewNotification> {
+    notifications
+        .lock()
+        .expect("notifications lock not to be poisoned")
+        .clone()
+}
+
+/// Finds the first captured notification of the expected kind.
+fn find_notification<'a>(
+    notifications: &'a [NewNotification],
+    expected_kind: &NotificationKind,
+) -> &'a NewNotification {
+    notifications
+        .iter()
+        .find(|notification| notification.kind.to_string() == expected_kind.to_string())
+        .expect("notification to exist")
 }
 
 /// Builds co-hosting notification content for one event and co-host group.
@@ -2014,28 +2241,9 @@ fn sample_community_custom_notification_input() -> CommunityCustomNotificationIn
     CommunityCustomNotificationInput {
         actor_user_id: Uuid::new_v4(),
         community_id: Uuid::new_v4(),
-        content: sample_content("Subject", "Hello"),
+        content: sample_custom_notification_content("Subject", "Hello"),
         filters: CommunityContactFilters::default(),
     }
-}
-
-/// Returns custom notification content with the given subject and body.
-fn sample_content(subject: &str, body: &str) -> CustomNotificationContent {
-    CustomNotificationContent {
-        body: body.to_string(),
-        subject: subject.to_string(),
-    }
-}
-
-/// Finds the first captured notification of the expected kind.
-fn find_notification<'a>(
-    notifications: &'a [NewNotification],
-    expected_kind: &NotificationKind,
-) -> &'a NewNotification {
-    notifications
-        .iter()
-        .find(|notification| notification.kind.to_string() == expected_kind.to_string())
-        .expect("notification to exist")
 }
 
 /// Builds a sample full event with the provided event-level speakers.
@@ -2059,29 +2267,12 @@ fn sample_event_full_with_speakers(
 }
 
 /// Builds a published event summary safely in the future.
-fn sample_future_event_summary(event_id: Uuid, group_id: Uuid) -> EventSummary {
+fn sample_future_event_summary(event_id: Uuid) -> EventSummary {
     let starts_at = Utc::now() + Duration::hours(1);
     EventSummary {
         ends_at: Some(starts_at + Duration::hours(1)),
         starts_at: Some(starts_at),
-        ..sample_event_summary(event_id, group_id)
-    }
-}
-
-/// Builds the identifiers of a posted inbox message.
-fn sample_posted_inbox_message() -> PostedInboxMessage {
-    PostedInboxMessage {
-        group_id: Uuid::new_v4(),
-        inbox_conversation_id: Uuid::new_v4(),
-        inbox_message_id: Uuid::new_v4(),
-    }
-}
-
-/// Builds server config with a stable public base URL.
-fn sample_server_cfg() -> HttpServerConfig {
-    HttpServerConfig {
-        base_url: "https://example.test/".to_string(),
-        ..Default::default()
+        ..sample_event_summary(event_id)
     }
 }
 

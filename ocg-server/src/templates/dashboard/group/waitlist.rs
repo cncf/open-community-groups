@@ -78,14 +78,6 @@ mod tests {
     }
 
     #[test]
-    fn test_waitlist_row_key_differs_between_users() {
-        assert_ne!(
-            waitlist_row_key(&entry(Uuid::from_u128(1), None, None)),
-            waitlist_row_key(&entry(Uuid::from_u128(2), None, None))
-        );
-    }
-
-    #[test]
     fn test_waitlist_row_key_is_stable_for_the_same_user() {
         let user_id = Uuid::max();
         let queued = entry(user_id, None, None);

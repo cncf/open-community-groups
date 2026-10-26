@@ -1,25 +1,22 @@
-use std::sync::Arc;
-
-use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST, REFERER};
 use axum::{
-    Router,
-    body::{Body, to_bytes},
-    http::{Request, StatusCode},
-    routing::get,
+    body::Body,
+    http::{
+        Request, StatusCode,
+        header::{CACHE_CONTROL, CONTENT_TYPE, HOST, REFERER},
+    },
 };
 use axum_login::tower_sessions::session;
-use image::{ImageFormat, RgbaImage};
-use serde_json::Value;
-use tower::ServiceExt;
-use uuid::Uuid;
+use serde_json::{Value, json};
 
 use crate::{
     db::mock::MockDB,
     handlers::tests::{
-        TestRouterBuilder, expect_authenticated_session, sample_tracking_server_cfg,
-        test_state_with_server_cfg,
+        DashboardIds, TestRouterBuilder, assert_empty_response, authenticated_request,
+        expect_session, request, sample_server_cfg, send,
     },
-    services::{images::MockImageStorage, notifications::MockNotificationsManager},
+    router::CACHE_CONTROL_PRIVATE_NO_STORE,
+    services::images::MockImageStorage,
+    test_util::sample_png,
     types::images::Image,
 };
 
@@ -35,53 +32,31 @@ const PNG_BYTES: &[u8] = &[
 
 #[tokio::test]
 async fn test_serve_allows_cross_origin_referer_when_hotlinking_enabled() {
-    // Setup mocks
-    let mut storage = MockImageStorage::new();
-    storage
-        .expect_get()
-        .times(1)
-        .withf(|file_name| file_name == "foo.png")
-        .returning(|_| {
-            Box::pin(async {
-                Ok(Some(Image {
-                    bytes: PNG_BYTES.to_vec(),
-                    content_type: "image/png".to_string(),
-                }))
-            })
-        });
-    let image_storage: DynImageStorage = Arc::new(storage);
+    // Setup an image storage returning the stored image
+    let storage = storage_returning("foo.png", sample_image(PNG_BYTES, "image/png"));
 
-    // Setup router and send a cross-origin request
-    let mut state = test_state_with_server_cfg(
-        Arc::new(MockDB::new()),
-        Arc::clone(&image_storage),
-        Arc::new(MockNotificationsManager::new()),
-        &sample_tracking_server_cfg(),
-    );
-    state.server_cfg.allow_image_hotlinking = true;
-    let router = Router::new()
-        .route("/images/{file_name}", get(serve))
-        .with_state(state);
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/images/foo.png")
-                .header(REFERER, "https://other.test/page")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    // Setup router with hotlinking enabled and send a cross-origin request
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_image_storage(storage)
+        .with_server_cfg(HttpServerConfig {
+            allow_image_hotlinking: true,
+            ..sample_server_cfg("https://example.test")
+        })
+        .build()
+        .await;
+    let request = request("GET", "/images/foo.png")
+        .header(REFERER, "https://other.test/page")
+        .body(Body::empty())
         .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
-    // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::OK);
+    // Check the image is served for any origin
+    assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(
-        response
-            .headers()
-            .get(CROSS_ORIGIN_RESOURCE_POLICY)
-            .and_then(|value| value.to_str().ok()),
-        Some(RESOURCE_POLICY_CROSS_ORIGIN)
+        parts.headers[CROSS_ORIGIN_RESOURCE_POLICY],
+        RESOURCE_POLICY_CROSS_ORIGIN
     );
+    assert_eq!(bytes.as_ref(), PNG_BYTES);
 }
 
 #[tokio::test]
@@ -92,339 +67,188 @@ async fn test_serve_badge_returns_referenced_image_without_referer() {
         .times(1)
         .withf(|file_name| file_name == "badge.png")
         .returning(|_| Ok(true));
-    let mut storage = MockImageStorage::new();
-    storage
-        .expect_get()
-        .times(1)
-        .withf(|file_name| file_name == "badge.png")
-        .returning(|_| {
-            Box::pin(async {
-                Ok(Some(Image {
-                    bytes: PNG_BYTES.to_vec(),
-                    content_type: "image/png".to_string(),
-                }))
-            })
-        });
-    let router = Router::new()
-        .route("/images/badges/{file_name}", get(serve_badge))
-        .with_state(test_state_with_server_cfg(
-            Arc::new(db),
-            Arc::new(storage),
-            Arc::new(MockNotificationsManager::new()),
-            &sample_tracking_server_cfg(),
-        ));
+    let storage = storage_returning("badge.png", sample_image(PNG_BYTES, "image/png"));
 
     // Request the public badge image without a referer
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/images/badges/badge.png")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let router = TestRouterBuilder::new(db)
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = request("GET", "/images/badges/badge.png")
+        .body(Body::empty())
         .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the referenced image uses the immutable public response contract
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(parts.headers[CACHE_CONTROL], CACHE_CONTROL_IMMUTABLE);
     assert_eq!(
-        response.headers().get(CACHE_CONTROL).unwrap(),
-        CACHE_CONTROL_IMMUTABLE
+        parts.headers[CROSS_ORIGIN_RESOURCE_POLICY],
+        RESOURCE_POLICY_CROSS_ORIGIN
     );
-    assert_eq!(
-        response
-            .headers()
-            .get(CROSS_ORIGIN_RESOURCE_POLICY)
-            .and_then(|value| value.to_str().ok()),
-        Some(RESOURCE_POLICY_CROSS_ORIGIN)
-    );
+    assert_eq!(bytes.as_ref(), PNG_BYTES);
 }
 
 #[tokio::test]
 async fn test_serve_badge_returns_not_found_for_unreferenced_image() {
     // Setup an unreferenced badge basename
     let mut db = MockDB::new();
-    db.expect_is_badge_image().times(1).returning(|_| Ok(false));
+    db.expect_is_badge_image()
+        .times(1)
+        .withf(|file_name| file_name == "missing.png")
+        .returning(|_| Ok(false));
     let mut storage = MockImageStorage::new();
     storage.expect_get().never();
-    let router = Router::new()
-        .route("/images/badges/{file_name}", get(serve_badge))
-        .with_state(test_state_with_server_cfg(
-            Arc::new(db),
-            Arc::new(storage),
-            Arc::new(MockNotificationsManager::new()),
-            &sample_tracking_server_cfg(),
-        ));
 
     // Request the unreferenced public badge image
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/images/badges/missing.png")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let router = TestRouterBuilder::new(db)
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = request("GET", "/images/badges/missing.png")
+        .body(Body::empty())
         .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check storage is not consulted and the route remains private by default
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
+    assert_eq!(parts.headers[CACHE_CONTROL], CACHE_CONTROL_PRIVATE_NO_STORE);
 }
 
 #[tokio::test]
 async fn test_serve_open_graph_returns_not_found_for_unreferenced_image() {
-    // Setup mocks
+    // Setup an image not configured for previews
     let mut db = MockDB::new();
     db.expect_is_open_graph_image()
         .times(1)
         .withf(|file_name| file_name == "foo.png")
         .returning(|_| Ok(false));
-
     let mut storage = MockImageStorage::new();
     storage.expect_get().never();
 
     // Setup router and send request without referer
-    let router = Router::new()
-        .route("/images/og/{file_name}", get(serve_open_graph))
-        .with_state(test_state_with_server_cfg(
-            Arc::new(db),
-            Arc::new(storage),
-            Arc::new(MockNotificationsManager::new()),
-            &sample_tracking_server_cfg(),
-        ));
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/images/og/foo.png")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    let router = TestRouterBuilder::new(db)
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = request("GET", "/images/og/foo.png").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
-    // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    // Check the image is not published
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
+    assert_eq!(parts.headers[CACHE_CONTROL], CACHE_CONTROL_PRIVATE_NO_STORE);
 }
 
 #[tokio::test]
 async fn test_serve_open_graph_returns_referenced_image_without_referer() {
-    // Setup mocks
+    // Setup an image configured for previews
     let mut db = MockDB::new();
     db.expect_is_open_graph_image()
         .times(1)
         .withf(|file_name| file_name == "foo.png")
         .returning(|_| Ok(true));
-
-    let mut storage = MockImageStorage::new();
-    storage
-        .expect_get()
-        .times(1)
-        .withf(|file_name| file_name == "foo.png")
-        .returning(|_| {
-            let image = Image {
-                bytes: PNG_BYTES.to_vec(),
-                content_type: "image/png".to_string(),
-            };
-            Box::pin(async move { Ok(Some(image)) })
-        });
+    let storage = storage_returning("foo.png", sample_image(PNG_BYTES, "image/png"));
 
     // Setup router and send request without referer
-    let router = Router::new()
-        .route("/images/og/{file_name}", get(serve_open_graph))
-        .with_state(test_state_with_server_cfg(
-            Arc::new(db),
-            Arc::new(storage),
-            Arc::new(MockNotificationsManager::new()),
-            &sample_tracking_server_cfg(),
-        ));
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/images/og/foo.png")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    let router = TestRouterBuilder::new(db)
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = request("GET", "/images/og/foo.png").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(parts.headers[CACHE_CONTROL], CACHE_CONTROL_IMMUTABLE);
     assert_eq!(
-        response
-            .headers()
-            .get(CACHE_CONTROL)
-            .and_then(|value| value.to_str().ok()),
-        Some(CACHE_CONTROL_IMMUTABLE)
+        parts.headers[CROSS_ORIGIN_RESOURCE_POLICY],
+        RESOURCE_POLICY_CROSS_ORIGIN
     );
-    assert_eq!(
-        response
-            .headers()
-            .get(CROSS_ORIGIN_RESOURCE_POLICY)
-            .and_then(|value| value.to_str().ok()),
-        Some(RESOURCE_POLICY_CROSS_ORIGIN)
-    );
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     assert_eq!(bytes.as_ref(), PNG_BYTES);
 }
 
 #[tokio::test]
 async fn test_serve_rejects_mismatched_referer() {
-    // Setup mocks
+    // Setup an image storage that must not be read
     let mut storage = MockImageStorage::new();
     storage.expect_get().never();
 
     // Setup router and send request
-    let router = Router::new().route("/images/{file_name}", get(serve)).with_state(
-        test_state_with_server_cfg(
-            Arc::new(MockDB::new()),
-            Arc::new(storage),
-            Arc::new(MockNotificationsManager::new()),
-            &sample_tracking_server_cfg(),
-        ),
-    );
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/images/foo.png")
-                .header(REFERER, "https://unauthorized.test/images/foo.png")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = request("GET", "/images/foo.png")
+        .header(REFERER, "https://unauthorized.test/images/foo.png")
+        .body(Body::empty())
         .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
 async fn test_serve_returns_bytes_with_headers() {
-    // Setup mocks
-    let mut storage = MockImageStorage::new();
-    storage
-        .expect_get()
-        .times(1)
-        .withf(|file_name| file_name == "foo.png")
-        .returning(|_| {
-            let image = Image {
-                bytes: PNG_BYTES.to_vec(),
-                content_type: "image/png".to_string(),
-            };
-            Box::pin(async move { Ok(Some(image)) })
-        });
+    // Setup an image storage returning the stored image
+    let storage = storage_returning("foo.png", sample_image(PNG_BYTES, "image/png"));
 
     // Setup router and send request
-    let router = Router::new().route("/images/{file_name}", get(serve)).with_state(
-        test_state_with_server_cfg(
-            Arc::new(MockDB::new()),
-            Arc::new(storage),
-            Arc::new(MockNotificationsManager::new()),
-            &sample_tracking_server_cfg(),
-        ),
-    );
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/images/foo.png")
-                .header(REFERER, "https://example.test/images/foo.png")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = request("GET", "/images/foo.png")
+        .header(REFERER, "https://example.test/images/foo.png")
+        .body(Body::empty())
         .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(parts.headers[CACHE_CONTROL], CACHE_CONTROL_IMMUTABLE);
     assert_eq!(
-        response
-            .headers()
-            .get(CACHE_CONTROL)
-            .and_then(|value| value.to_str().ok()),
-        Some(CACHE_CONTROL_IMMUTABLE)
+        parts.headers[CROSS_ORIGIN_RESOURCE_POLICY],
+        RESOURCE_POLICY_SAME_ORIGIN
     );
-    assert_eq!(
-        response
-            .headers()
-            .get(CROSS_ORIGIN_RESOURCE_POLICY)
-            .and_then(|value| value.to_str().ok()),
-        Some(RESOURCE_POLICY_SAME_ORIGIN)
-    );
-    assert_eq!(
-        response
-            .headers()
-            .get(CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok()),
-        Some("image/png")
-    );
-    assert_eq!(
-        response
-            .headers()
-            .get(X_CONTENT_TYPE_OPTIONS)
-            .and_then(|value| value.to_str().ok()),
-        Some("nosniff")
-    );
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    assert_eq!(parts.headers[CONTENT_TYPE], "image/png");
+    assert_eq!(parts.headers[X_CONTENT_TYPE_OPTIONS], "nosniff");
     assert_eq!(bytes.as_ref(), PNG_BYTES);
 }
 
 #[tokio::test]
 async fn test_serve_returns_isolated_svg() {
-    // Setup mocks
+    // Setup an image storage returning a stored SVG
     let svg_bytes = br#"<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>"#;
-    let mut storage = MockImageStorage::new();
-    storage
-        .expect_get()
-        .times(1)
-        .withf(|file_name| file_name == "foo.svg")
-        .returning(move |_| {
-            let image = Image {
-                bytes: svg_bytes.to_vec(),
-                content_type: "image/svg+xml".to_string(),
-            };
-            Box::pin(async move { Ok(Some(image)) })
-        });
+    let storage = storage_returning("foo.svg", sample_image(svg_bytes, "image/svg+xml"));
 
     // Setup router and send request
-    let router = Router::new().route("/images/{file_name}", get(serve)).with_state(
-        test_state_with_server_cfg(
-            Arc::new(MockDB::new()),
-            Arc::new(storage),
-            Arc::new(MockNotificationsManager::new()),
-            &sample_tracking_server_cfg(),
-        ),
-    );
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/images/foo.svg")
-                .header(REFERER, "https://example.test/images/foo.svg")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = request("GET", "/images/foo.svg")
+        .header(REFERER, "https://example.test/images/foo.svg")
+        .body(Body::empty())
         .unwrap();
+    let (parts, _) = send(router, request).await;
 
     // Check SVGs are isolated from the application origin
-    assert_eq!(response.status(), StatusCode::OK);
-    assert_eq!(
-        response
-            .headers()
-            .get(CONTENT_SECURITY_POLICY)
-            .and_then(|value| value.to_str().ok()),
-        Some("sandbox")
-    );
-    assert_eq!(
-        response
-            .headers()
-            .get(X_CONTENT_TYPE_OPTIONS)
-            .and_then(|value| value.to_str().ok()),
-        Some("nosniff")
-    );
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(parts.headers[CONTENT_SECURITY_POLICY], "sandbox");
+    assert_eq!(parts.headers[X_CONTENT_TYPE_OPTIONS], "nosniff");
 }
 
 #[tokio::test]
 async fn test_serve_returns_not_found_for_missing_image() {
-    // Setup mocks
+    // Setup an image storage without the requested image
     let mut storage = MockImageStorage::new();
     storage
         .expect_get()
@@ -433,282 +257,209 @@ async fn test_serve_returns_not_found_for_missing_image() {
         .returning(|_| Box::pin(async { Ok(None) }));
 
     // Setup router and send request
-    let router = Router::new().route("/images/{file_name}", get(serve)).with_state(
-        test_state_with_server_cfg(
-            Arc::new(MockDB::new()),
-            Arc::new(storage),
-            Arc::new(MockNotificationsManager::new()),
-            &sample_tracking_server_cfg(),
-        ),
-    );
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/images/missing.png")
-                .header(REFERER, "https://example.test/images/missing.png")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = request("GET", "/images/missing.png")
+        .header(REFERER, "https://example.test/images/missing.png")
+        .body(Body::empty())
         .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
 async fn test_upload_accepts_exact_open_graph_dimensions() {
     // Setup identifiers and data structures
-    let png_bytes = open_graph_png_bytes();
-    let expected_hash = compute_hash(&png_bytes);
-    let expected_file_name = format!("{expected_hash}.png");
-    let boundary = "X-BOUNDARY";
-    let body = build_multipart_body_with_target(boundary, "open_graph", &png_bytes);
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
+    let png_bytes = sample_png(
+        ImageTarget::OpenGraph.width(),
+        ImageTarget::OpenGraph.height(),
+    );
+    let expected_file_name = format!("{}.png", compute_hash(&png_bytes));
 
-    // Setup database mock
+    // Setup database and image storage mocks
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-
-    // Setup image storage mock
-    let expected_file_name_for_mock = expected_file_name.clone();
-    let expected_bytes = png_bytes.clone();
+    expect_session(&mut db, &ids);
     let mut storage = MockImageStorage::new();
+    let (expected_bytes, file_name) = (png_bytes.clone(), expected_file_name.clone());
     storage
         .expect_save()
         .times(1)
         .withf(move |image| {
-            image.file_name == expected_file_name_for_mock
+            image.file_name == file_name
                 && image.content_type == "image/png"
                 && image.bytes == expected_bytes
-                && image.user_id == user_id
+                && image.user_id == ids.user_id
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
     // Setup router and send request
-    let server_cfg = HttpServerConfig {
-        base_url: "https://example.test".to_string(),
-        ..HttpServerConfig::default()
-    };
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_image_storage(storage)
-        .with_server_cfg(server_cfg)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/images")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(
-            CONTENT_TYPE,
-            format!("multipart/form-data; boundary={boundary}"),
-        )
-        .header(REFERER, "https://example.test/dashboard")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let status = response.status();
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-    let value: Value = serde_json::from_slice(&bytes).unwrap();
+    let request = upload_request(
+        ids.session_id,
+        multipart_body(Some("open_graph"), &png_bytes),
+        Some("https://example.test/dashboard"),
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(parts.status, StatusCode::CREATED);
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(
-        value.get("url"),
-        Some(&Value::String(format!("/images/{expected_file_name}")))
+        body,
+        json!({ "url": format!("/images/{expected_file_name}") })
+    );
+}
+
+#[tokio::test]
+async fn test_upload_rejects_missing_file() {
+    // Setup a signed-in uploader and an image storage that must not be written
+    let ids = DashboardIds::new();
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    let mut storage = MockImageStorage::new();
+    storage.expect_save().never();
+
+    // Setup router and send a payload with only the target field
+    let router = TestRouterBuilder::new(db)
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let body = format!(
+        "--{UPLOAD_BOUNDARY}\r\nContent-Disposition: form-data; name=\"target\"\r\n\r\nlogo\r\n--{UPLOAD_BOUNDARY}--\r\n"
+    );
+    let request = upload_request(
+        ids.session_id,
+        body.into_bytes(),
+        Some("https://example.test/dashboard"),
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the upload is rejected with the missing file message
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "missing file in upload payload"
     );
 }
 
 #[tokio::test]
 async fn test_upload_rejects_missing_referer_when_hotlinking_allowed() {
-    // Setup identifiers and data structures
-    let boundary = "X-BOUNDARY";
-    let body = build_multipart_body(boundary, PNG_BYTES);
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup a signed-in uploader and an image storage that must not be written
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-
-    // Setup image storage mock
+    expect_session(&mut db, &ids);
     let mut storage = MockImageStorage::new();
     storage.expect_save().never();
 
     // Setup router with image hotlinking allowed
-    let server_cfg = HttpServerConfig {
-        base_url: "https://example.test".to_string(),
-
-        allow_image_hotlinking: true,
-        ..HttpServerConfig::default()
-    };
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_image_storage(storage)
-        .with_server_cfg(server_cfg)
+        .with_server_cfg(HttpServerConfig {
+            allow_image_hotlinking: true,
+            ..sample_server_cfg("https://example.test")
+        })
         .build()
         .await;
 
     // Send request without referer
-    let request = Request::builder()
-        .method("POST")
-        .uri("/images")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(
-            CONTENT_TYPE,
-            format!("multipart/form-data; boundary={boundary}"),
-        )
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let request = upload_request(ids.session_id, multipart_body(None, PNG_BYTES), None);
+    let (parts, bytes) = send(router, request).await;
 
     // Check hotlinking does not relax upload origin enforcement
-    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
 async fn test_upload_rejects_missing_referer_when_hotlinking_disabled() {
-    // Setup identifiers and data structures
-    let boundary = "X-BOUNDARY";
-    let body = build_multipart_body(boundary, PNG_BYTES);
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup a signed-in uploader and an image storage that must not be written
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-
-    // Setup image storage mock
+    expect_session(&mut db, &ids);
     let mut storage = MockImageStorage::new();
     storage.expect_save().never();
 
     // Setup router with image hotlinking disabled
-    let server_cfg = HttpServerConfig {
-        base_url: "https://example.test".to_string(),
-        ..HttpServerConfig::default()
-    };
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_image_storage(storage)
-        .with_server_cfg(server_cfg)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
         .build()
         .await;
 
     // Send request without referer
-    let request = Request::builder()
-        .method("POST")
-        .uri("/images")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(
-            CONTENT_TYPE,
-            format!("multipart/form-data; boundary={boundary}"),
-        )
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let request = upload_request(ids.session_id, multipart_body(None, PNG_BYTES), None);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
 async fn test_upload_rejects_wrong_ad_banner_dimensions() {
-    // Setup identifiers and data structures
-    let boundary = "X-BOUNDARY";
-    let body = build_multipart_body_with_target(boundary, "ad_banner", PNG_BYTES);
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup a signed-in uploader and an image storage that must not be written
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-
-    // Setup image storage mock
+    expect_session(&mut db, &ids);
     let mut storage = MockImageStorage::new();
     storage.expect_save().never();
 
     // Setup router and send request
-    let server_cfg = HttpServerConfig {
-        base_url: "https://example.test".to_string(),
-        ..HttpServerConfig::default()
-    };
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_image_storage(storage)
-        .with_server_cfg(server_cfg)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/images")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(
-            CONTENT_TYPE,
-            format!("multipart/form-data; boundary={boundary}"),
-        )
-        .header(REFERER, "https://example.test/dashboard")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let status = response.status();
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let request = upload_request(
+        ids.session_id,
+        multipart_body(Some("ad_banner"), PNG_BYTES),
+        Some("https://example.test/dashboard"),
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(
-        std::str::from_utf8(bytes.as_ref()).unwrap(),
+        String::from_utf8(bytes.to_vec()).unwrap(),
         "image dimensions 1x1 do not match required 2400x300"
     );
 }
 
 #[tokio::test]
 async fn test_upload_rejects_wrong_open_graph_dimensions() {
-    // Setup identifiers and data structures
-    let boundary = "X-BOUNDARY";
-    let body = build_multipart_body_with_target(boundary, "open_graph", PNG_BYTES);
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup a signed-in uploader and an image storage that must not be written
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-
-    // Setup image storage mock
+    expect_session(&mut db, &ids);
     let mut storage = MockImageStorage::new();
     storage.expect_save().never();
 
     // Setup router and send request
-    let server_cfg = HttpServerConfig {
-        base_url: "https://example.test".to_string(),
-        ..HttpServerConfig::default()
-    };
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_image_storage(storage)
-        .with_server_cfg(server_cfg)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/images")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(
-            CONTENT_TYPE,
-            format!("multipart/form-data; boundary={boundary}"),
-        )
-        .header(REFERER, "https://example.test/dashboard")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let status = response.status();
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let request = upload_request(
+        ids.session_id,
+        multipart_body(Some("open_graph"), PNG_BYTES),
+        Some("https://example.test/dashboard"),
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(
-        std::str::from_utf8(bytes.as_ref()).unwrap(),
+        String::from_utf8(bytes.to_vec()).unwrap(),
         "image dimensions 1x1 do not match required 1200x630"
     );
 }
@@ -716,107 +467,101 @@ async fn test_upload_rejects_wrong_open_graph_dimensions() {
 #[tokio::test]
 async fn test_upload_stores_image_and_returns_url() {
     // Setup identifiers and data structures
-    let expected_hash = compute_hash(PNG_BYTES);
-    let expected_file_name = format!("{expected_hash}.png");
-    let boundary = "X-BOUNDARY";
-    let body = build_multipart_body(boundary, PNG_BYTES);
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
+    let expected_file_name = format!("{}.png", compute_hash(PNG_BYTES));
 
-    // Setup database mock
+    // Setup database and image storage mocks
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-
-    // Setup image storage mock
-    let expected_file_name_for_mock = expected_file_name.clone();
+    expect_session(&mut db, &ids);
     let mut storage = MockImageStorage::new();
+    let file_name = expected_file_name.clone();
     storage
         .expect_save()
         .times(1)
         .withf(move |image| {
-            image.file_name == expected_file_name_for_mock
+            image.file_name == file_name
                 && image.content_type == "image/png"
                 && image.bytes == PNG_BYTES
-                && image.user_id == user_id
+                && image.user_id == ids.user_id
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
     // Setup router and send request
-    let server_cfg = HttpServerConfig {
-        base_url: "https://example.test".to_string(),
-        ..HttpServerConfig::default()
-    };
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_image_storage(storage)
-        .with_server_cfg(server_cfg)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/images")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(
-            CONTENT_TYPE,
-            format!("multipart/form-data; boundary={boundary}"),
-        )
-        .header(REFERER, "https://example.test/dashboard")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let status = response.status();
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-    let value: Value = serde_json::from_slice(&bytes).unwrap();
+    let request = upload_request(
+        ids.session_id,
+        multipart_body(None, PNG_BYTES),
+        Some("https://example.test/dashboard"),
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(parts.status, StatusCode::CREATED);
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(
-        value.get("url"),
-        Some(&Value::String(format!("/images/{expected_file_name}")))
+        body,
+        json!({ "url": format!("/images/{expected_file_name}") })
     );
 }
 
 // Helpers.
 
-fn build_multipart_body(boundary: &str, bytes: &[u8]) -> Vec<u8> {
-    build_multipart_body_with_target_opt(boundary, None, bytes)
-}
+/// Multipart boundary of the upload requests.
+const UPLOAD_BOUNDARY: &str = "X-BOUNDARY";
 
-fn build_multipart_body_with_target(boundary: &str, target: &str, bytes: &[u8]) -> Vec<u8> {
-    build_multipart_body_with_target_opt(boundary, Some(target), bytes)
-}
-
-fn build_multipart_body_with_target_opt(
-    boundary: &str,
-    target: Option<&str>,
-    bytes: &[u8],
-) -> Vec<u8> {
+/// Encodes an upload multipart body with an optional target field.
+fn multipart_body(target: Option<&str>, bytes: &[u8]) -> Vec<u8> {
     let mut body = Vec::new();
     if let Some(target) = target {
         body.extend_from_slice(
-            format!("--{boundary}\r\nContent-Disposition: form-data; name=\"target\"\r\n\r\n{target}\r\n")
+            format!("--{UPLOAD_BOUNDARY}\r\nContent-Disposition: form-data; name=\"target\"\r\n\r\n{target}\r\n")
                 .as_bytes(),
         );
     }
     body.extend_from_slice(
         format!(
-            "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"example.png\"\r\nContent-Type: image/png\r\n\r\n"
+            "--{UPLOAD_BOUNDARY}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"example.png\"\r\nContent-Type: image/png\r\n\r\n"
         )
         .as_bytes(),
     );
     body.extend_from_slice(bytes);
-    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+    body.extend_from_slice(format!("\r\n--{UPLOAD_BOUNDARY}--\r\n").as_bytes());
     body
 }
 
-fn open_graph_png_bytes() -> Vec<u8> {
-    let image = RgbaImage::new(
-        ImageTarget::OpenGraph.width(),
-        ImageTarget::OpenGraph.height(),
-    );
-    let mut bytes = Vec::new();
-    image
-        .write_to(&mut std::io::Cursor::new(&mut bytes), ImageFormat::Png)
-        .unwrap();
-    bytes
+/// Builds a stored image with the given bytes and content type.
+fn sample_image(bytes: &[u8], content_type: &str) -> Image {
+    Image {
+        bytes: bytes.to_vec(),
+        content_type: content_type.to_string(),
+    }
+}
+
+/// Builds an image storage that returns `image` once for `file_name`.
+fn storage_returning(file_name: &'static str, image: Image) -> MockImageStorage {
+    let mut storage = MockImageStorage::new();
+    storage
+        .expect_get()
+        .times(1)
+        .withf(move |name| name == file_name)
+        .return_once(move |_| Box::pin(async move { Ok(Some(image)) }));
+    storage
+}
+
+/// Builds an authenticated upload request for the test site host.
+fn upload_request(session_id: session::Id, body: Vec<u8>, referer: Option<&str>) -> Request<Body> {
+    let mut request = authenticated_request("POST", "/images", session_id)
+        .header(HOST, "example.test")
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={UPLOAD_BOUNDARY}"),
+        );
+    if let Some(referer) = referer {
+        request = request.header(REFERER, referer);
+    }
+    request.body(Body::from(body)).unwrap()
 }

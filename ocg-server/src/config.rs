@@ -32,7 +32,7 @@ use crate::types::{
 };
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 /// Default connection deadline in seconds for outbound clients.
 const DEFAULT_CONNECT_TIMEOUT_SECS: u64 = 10;

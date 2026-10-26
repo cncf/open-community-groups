@@ -418,9 +418,12 @@ assertions, so the seeded rows also prove they survive later migrations.
 `ocg-server/src/db/contract_tests/` runs the ignored `db_contracts` tests
 against a real database migrated and seeded with `tests/data/contract.sql`.
 They guard the JSON boundary between functions and Rust DTOs, lock ordering,
-and the error SQLSTATEs, with one module per database trait. A change to a
-JSON-returning function, a DTO, a wrapper, or `contract.sql` runs
-`just db-contract-tests`.
+and that an `OCG01` rejection reaches Rust as a user-facing error, with one
+module per database trait. A test that only re-asserts a pgTAP `throws_ok`
+rejection is not repeated in Rust; a rejection is asserted here only as the
+outcome of a race, lifecycle, or composition the test exists to prove, or to
+pin how a wrapper passes its arguments. A change to a JSON-returning
+function, a DTO, a wrapper, or `contract.sql` runs `just db-contract-tests`.
 
 ### Commands
 

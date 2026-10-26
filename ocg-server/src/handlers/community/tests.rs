@@ -1,17 +1,14 @@
-use axum::body::{Body, to_bytes};
-use axum::http::{
-    HeaderValue, Request, StatusCode,
-    header::{CACHE_CONTROL, CONTENT_TYPE},
+use axum::{
+    body::Body,
+    http::{HeaderValue, StatusCode, header::CACHE_CONTROL},
 };
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     activity_tracker::{Activity, MockActivityTracker},
-    db::mock::MockDB,
+    db::mock::{MockDB, expect_site_settings},
     handlers::tests::*,
     router::CACHE_CONTROL_PUBLIC_SHARED,
-    services::notifications::MockNotificationsManager,
     types::{community::CommunityStats, event::EventKind},
 };
 
@@ -27,10 +24,7 @@ async fn test_page_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_test_community(&mut db, community_id);
     db.expect_get_community_full()
         .times(1)
         .withf(move |id| *id == community_id)
@@ -55,61 +49,41 @@ async fn test_page_success() {
         .times(1)
         .withf(move |id| *id == community_id)
         .returning(move |_| Ok(CommunityStats::default()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_site_settings(&mut db);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(sample_tracking_server_cfg())
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
         .build()
         .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test-community")
-        .body(axum::body::Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("GET", "/test-community").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    assert!(body.contains("<title>Test Community community</title>"));
-    assert!(body.contains(r#"<meta name="description""#));
-    assert!(
-        body.contains(r#"content="Open Community Groups, where Open Source communities thrive.">"#)
-    );
-    assert!(body.contains(r#"<link rel="canonical" href="https://example.test/test-community">"#));
-    assert!(body.contains(r#"<meta property="og:title" content="Test Community community">"#));
-    assert!(
-        body.contains(r#"<meta property="og:url" content="https://example.test/test-community">"#)
-    );
-    assert!(body.contains(
-        r#"<meta property="og:description" content="Open Community Groups, where Open Source communities thrive.">"#
-    ));
-    assert!(body.contains(
-        r#"<meta property="og:image" content="https://example.test/images/og/community-og.png">"#
-    ));
-    assert!(body.contains(r#"<meta name="twitter:title" content="Test Community community">"#));
-    assert!(body.contains(
-        r#"<meta name="twitter:description" content="Open Community Groups, where Open Source communities thrive.">"#
-    ));
-    assert!(body.contains(
-        r#"<meta name="twitter:image" content="https://example.test/images/og/community-og.png">"#
-    ));
+    let description = "Open Community Groups, where Open Source communities thrive.";
+    let url = "https://example.test/test-community";
+    let image = "https://example.test/images/og/community-og.png";
+    for tag in [
+        "<title>Test Community community</title>".to_string(),
+        r#"<meta name="description""#.to_string(),
+        format!(r#"content="{description}">"#),
+        format!(r#"<link rel="canonical" href="{url}">"#),
+        r#"<meta property="og:title" content="Test Community community">"#.to_string(),
+        format!(r#"<meta property="og:url" content="{url}">"#),
+        format!(r#"<meta property="og:description" content="{description}">"#),
+        format!(r#"<meta property="og:image" content="{image}">"#),
+        r#"<meta name="twitter:title" content="Test Community community">"#.to_string(),
+        format!(r#"<meta name="twitter:description" content="{description}">"#),
+        format!(r#"<meta name="twitter:image" content="{image}">"#),
+    ] {
+        assert!(body.contains(&tag), "missing {tag}");
+    }
 }
 
 #[tokio::test]
@@ -120,30 +94,15 @@ async fn test_page_community_not_found() {
         .times(1)
         .withf(|name| name == "missing-community")
         .returning(|_| Ok(None));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_site_settings(&mut db);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/missing-community")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/missing-community").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::NOT_FOUND);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
@@ -155,16 +114,8 @@ async fn test_page_community_not_found() {
 
 #[tokio::test]
 async fn test_track_view_accepts_same_origin_request() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-
-    // Setup database mock
-    let db = MockDB::new();
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup activity tracker mock
+    let community_id = Uuid::new_v4();
     let mut activity_tracker = MockActivityTracker::new();
     activity_tracker
         .expect_track()
@@ -173,87 +124,60 @@ async fn test_track_view_accepts_same_origin_request() {
         .returning(|_| Box::pin(async { Ok(()) }));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
+    let router = TestRouterBuilder::new(MockDB::new())
         .with_activity_tracker(activity_tracker)
-        .with_server_cfg(sample_tracking_server_cfg())
+        .with_server_cfg(sample_server_cfg("https://example.test"))
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/communities/{community_id}/views"))
+    let request = request("POST", &format!("/communities/{community_id}/views"))
         .header("origin", "https://example.test")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn test_track_view_rejects_cross_origin_request() {
-    // Setup database mock
-    let db = MockDB::new();
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup activity tracker mock
+    // Setup an activity tracker that must not record the request
     let mut activity_tracker = MockActivityTracker::new();
     activity_tracker.expect_track().times(0);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
+    let router = TestRouterBuilder::new(MockDB::new())
         .with_activity_tracker(activity_tracker)
-        .with_server_cfg(sample_tracking_server_cfg())
+        .with_server_cfg(sample_server_cfg("https://example.test"))
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/communities/{}/views", Uuid::new_v4()))
+    let request = request("POST", &format!("/communities/{}/views", Uuid::new_v4()))
         .header("origin", "https://evil.test")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::FORBIDDEN);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
 async fn test_track_view_rejects_missing_origin_request() {
-    // Setup dependencies that must not record the unverified request
-    let db = MockDB::new();
-    let nm = MockNotificationsManager::new();
+    // Setup an activity tracker that must not record the request
     let mut activity_tracker = MockActivityTracker::new();
-    activity_tracker.expect_track().never();
+    activity_tracker.expect_track().times(0);
 
-    // Send a headerless tracking request
-    let router = TestRouterBuilder::new(db, nm)
+    // Send a request without origin headers, which the middleware lets through
+    let router = TestRouterBuilder::new(MockDB::new())
         .with_activity_tracker(activity_tracker)
-        .with_server_cfg(sample_tracking_server_cfg())
+        .with_server_cfg(sample_server_cfg("https://example.test"))
         .build()
         .await;
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri(format!("/communities/{}/views", Uuid::new_v4()))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let request = request("POST", &format!("/communities/{}/views", Uuid::new_v4()))
+        .body(Body::empty())
         .unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
-    // Check missing same-origin evidence is forbidden
-    assert_eq!(parts.status, StatusCode::FORBIDDEN);
-    assert!(bytes.is_empty());
+    // Check the handler rejects the request without same-origin evidence
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }

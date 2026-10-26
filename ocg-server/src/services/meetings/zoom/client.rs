@@ -674,93 +674,146 @@ fn default_meeting_settings(recording_requested: Option<bool>) -> MeetingSetting
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
+    use axum::http::{self, StatusCode, header::RETRY_AFTER};
     use serde_json::json;
 
-    use crate::types::meetings::Meeting;
+    use crate::{services::meetings::MeetingProviderError, types::meetings::Meeting};
 
-    use super::{CreateMeetingRequest, UpdateMeetingRequest};
+    use super::{
+        CreateMeetingRequest, MAX_DURATION_MINUTES, MIN_DURATION_MINUTES, Minutes,
+        UpdateMeetingRequest, ZoomClientError,
+    };
 
     #[test]
-    fn create_meeting_request_sets_cloud_recording_when_requested() {
-        let request = CreateMeetingRequest::try_from(&Meeting {
-            recording_requested: Some(true),
-            ..Default::default()
-        })
-        .unwrap();
+    fn test_meeting_requests_map_recording_preference_to_auto_recording() {
+        let cases = [
+            ("recording requested", Some(true), "cloud"),
+            ("recording preference unset", None, "cloud"),
+            ("recording declined", Some(false), "none"),
+        ];
+        for (case, recording_requested, auto_recording) in cases {
+            let meeting = Meeting {
+                recording_requested,
+                ..Default::default()
+            };
 
-        assert_eq!(
-            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
-            json!("cloud")
-        );
+            // Check create and update requests apply the same recording setting
+            let create = serde_json::to_value(CreateMeetingRequest::try_from(&meeting).unwrap());
+            assert_eq!(
+                create.unwrap()["settings"]["auto_recording"],
+                json!(auto_recording),
+                "{case} create"
+            );
+            let update = serde_json::to_value(UpdateMeetingRequest::try_from(&meeting).unwrap());
+            assert_eq!(
+                update.unwrap()["settings"]["auto_recording"],
+                json!(auto_recording),
+                "{case} update"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_from_response_classifies_status_into_provider_errors() {
+        let cases = [
+            (
+                "rate limited with retry-after",
+                StatusCode::TOO_MANY_REQUESTS,
+                Some("45"),
+                json!({}),
+                "rate limit exceeded (retry after 45s)",
+                Some(Duration::from_secs(45)),
+            ),
+            (
+                "rate limited without retry-after",
+                StatusCode::TOO_MANY_REQUESTS,
+                None,
+                json!({}),
+                "rate limit exceeded (retry after 60s)",
+                Some(Duration::from_mins(1)),
+            ),
+            (
+                "unauthorized",
+                StatusCode::UNAUTHORIZED,
+                None,
+                json!({"code": 124, "message": "Invalid access token"}),
+                "provider token error: 124 - Invalid access token",
+                None,
+            ),
+            (
+                "forbidden",
+                StatusCode::FORBIDDEN,
+                None,
+                json!({"code": 200, "message": "No permission"}),
+                "provider token error: 200 - No permission",
+                None,
+            ),
+            (
+                "other client error",
+                StatusCode::NOT_FOUND,
+                None,
+                json!({"code": 1001, "message": "User does not exist"}),
+                "provider client error: 1001: User does not exist",
+                None,
+            ),
+            (
+                "meeting not found",
+                StatusCode::NOT_FOUND,
+                None,
+                json!({"code": 3001, "message": "Meeting does not exist"}),
+                "meeting not found",
+                None,
+            ),
+            (
+                "server error without a body",
+                StatusCode::SERVICE_UNAVAILABLE,
+                None,
+                json!(null),
+                "provider server error: 0: ",
+                None,
+            ),
+        ];
+        for (case, status, retry_after_header, body, message, retry_after) in cases {
+            // Build the response the Zoom API would return
+            let mut response = http::Response::builder().status(status);
+            if let Some(retry_after_header) = retry_after_header {
+                response = response.header(RETRY_AFTER, retry_after_header);
+            }
+            let response = reqwest::Response::from(response.body(body.to_string()).unwrap());
+
+            // Check the provider error it maps to
+            let err = MeetingProviderError::from(ZoomClientError::from_response(response).await);
+            assert_eq!(err.to_string(), message, "{case}");
+            assert_eq!(err.retry_after(), retry_after, "{case}");
+        }
     }
 
     #[test]
-    fn create_meeting_request_sets_cloud_recording_by_default() {
-        let request = CreateMeetingRequest::try_from(&Meeting {
-            recording_requested: None,
-            ..Default::default()
-        })
-        .unwrap();
-
-        assert_eq!(
-            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
-            json!("cloud")
-        );
-    }
-
-    #[test]
-    fn create_meeting_request_sets_no_recording_when_not_requested() {
-        let request = CreateMeetingRequest::try_from(&Meeting {
-            recording_requested: Some(false),
-            ..Default::default()
-        })
-        .unwrap();
-
-        assert_eq!(
-            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
-            json!("none")
-        );
-    }
-
-    #[test]
-    fn update_meeting_request_sets_cloud_recording_when_requested() {
-        let request = UpdateMeetingRequest::try_from(&Meeting {
-            recording_requested: Some(true),
-            ..Default::default()
-        })
-        .unwrap();
-
-        assert_eq!(
-            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
-            json!("cloud")
-        );
-    }
-
-    #[test]
-    fn update_meeting_request_sets_cloud_recording_by_default() {
-        let request = UpdateMeetingRequest::try_from(&Meeting {
-            recording_requested: None,
-            ..Default::default()
-        })
-        .unwrap();
-
-        assert_eq!(
-            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
-            json!("cloud")
-        );
-    }
-
-    #[test]
-    fn update_meeting_request_sets_no_recording_when_not_requested() {
-        let request = UpdateMeetingRequest::try_from(&Meeting {
-            recording_requested: Some(false),
-            ..Default::default()
-        })
-        .unwrap();
-
-        assert_eq!(
-            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
-            json!("none")
-        );
+    fn test_minutes_try_from_duration_enforces_provider_bounds() {
+        let cases = [
+            ("below minimum", MIN_DURATION_MINUTES - 1, false),
+            ("minimum", MIN_DURATION_MINUTES, true),
+            ("maximum", MAX_DURATION_MINUTES, true),
+            ("above maximum", MAX_DURATION_MINUTES + 1, false),
+        ];
+        for (case, minutes, accepted) in cases {
+            let duration = Duration::from_mins(u64::try_from(minutes).unwrap());
+            match Minutes::try_from_duration(duration) {
+                Ok(Minutes(converted)) => {
+                    assert!(accepted, "{case}");
+                    assert_eq!(converted, minutes, "{case}");
+                }
+                Err(err) => {
+                    assert!(!accepted, "{case}");
+                    assert_eq!(
+                        err.to_string(),
+                        format!("invalid meeting duration: {minutes} minutes"),
+                        "{case}"
+                    );
+                }
+            }
+        }
     }
 }

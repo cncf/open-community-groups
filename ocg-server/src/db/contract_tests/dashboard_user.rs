@@ -5,7 +5,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use tokio_postgres::{error::SqlState, types::Json};
 
 use crate::{
-    db::{PgExecutor, dashboard::user::DBDashboardUser},
+    db::{PgExecutor, dashboard::user::DBDashboardUser, user_facing_message},
     types::{
         community::CommunityRole,
         dashboard::{
@@ -59,14 +59,8 @@ async fn db_contracts_delete_session_proposal_locks_before_submission_check() ->
     let barrier_client = pool.get().await?;
     let delete_client = pool.get().await?;
     let probe_client = pool.get().await?;
-    let barrier_backend_pid = barrier_client
-        .query_one("select pg_backend_pid()", &[])
-        .await?
-        .get::<_, i32>(0);
-    let delete_backend_pid = delete_client
-        .query_one("select pg_backend_pid()", &[])
-        .await?
-        .get::<_, i32>(0);
+    let barrier_backend_pid = backend_pid(&barrier_client).await?;
+    let delete_backend_pid = backend_pid(&delete_client).await?;
 
     // Block the dependent submission read after the proposal lock is acquired
     barrier_client
@@ -91,24 +85,23 @@ async fn db_contracts_delete_session_proposal_locks_before_submission_check() ->
     wait_for_backend_blocker(&probe_client, barrier_backend_pid, delete_backend_pid).await?;
 
     // Probe whether deletion already holds the proposal update lock
-    probe_client
-        .batch_execute("begin; set local lock_timeout = '250ms'")
-        .await?;
-    let lock_result = probe_client
-        .query_one(
-            "select session_proposal_id from session_proposal where session_proposal_id = $1::uuid for key share",
-            &[&cfs_delete_lock_proposal_id()],
-        )
-        .await;
+    let probe_code = probe_lock(
+        &probe_client,
+        "select session_proposal_id from session_proposal where session_proposal_id = $1::uuid for key share",
+        &[&cfs_delete_lock_proposal_id()],
+    )
+    .await?;
 
-    // Release the probes and let the deletion roll back its mutation
-    probe_client.batch_execute("rollback").await?;
+    // Release the barrier and let the deletion roll back its mutation
     barrier_client.batch_execute("rollback").await?;
     delete_task.await??;
 
     // Check deletion locks the proposal before inspecting submissions
-    let lock_err = lock_result.expect_err("proposal read should wait for the deletion lock");
-    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+    assert_eq!(
+        probe_code,
+        Some(SqlState::LOCK_NOT_AVAILABLE),
+        "proposal read should wait for the deletion lock"
+    );
 
     Ok(())
 }
@@ -116,11 +109,11 @@ async fn db_contracts_delete_session_proposal_locks_before_submission_check() ->
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_decline_event_admission_offer_deserializes() -> Result<()> {
-    // Setup the contract database and dedicated RSVP offer fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the dedicated RSVP offer fixture
+    let uow = contract_unit_of_work().await?;
 
     // Decline the owned offer through the Rust JSON contract
-    let outcome = db
+    let outcome = uow
         .decline_event_admission_offer(offer_decliner_id(), offer_decline_offer_id(), None)
         .await?;
 
@@ -223,10 +216,10 @@ async fn db_contracts_get_user_event_survey_hides_unavailable_surveys() -> Resul
     assert!(closed.is_none());
     uow.execute("rollback to savepoint survey_scope", &[]).await?;
 
-    for (scenario, change) in survey_scope_changes() {
+    for (scenario, change, id) in survey_scope_changes() {
         // Apply the change inside its own savepoint
         uow.execute("savepoint survey_scope", &[]).await?;
-        uow.execute(change, &[]).await?;
+        uow.execute(change, &[&id]).await?;
 
         // Check the survey is no longer returned
         let survey = uow
@@ -509,10 +502,10 @@ async fn db_contracts_list_user_event_surveys_hides_unreachable_surveys() -> Res
     // Setup a rolled-back unit of work
     let uow = contract_unit_of_work().await?;
 
-    for (scenario, change) in survey_scope_changes() {
+    for (scenario, change, id) in survey_scope_changes() {
         // Apply the change inside its own savepoint
         uow.execute("savepoint survey_scope", &[]).await?;
-        uow.execute(change, &[]).await?;
+        uow.execute(change, &[&id]).await?;
 
         // Check the surveys are no longer listed
         let output = uow
@@ -682,7 +675,7 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
     assert_eq!(answers.answers.len(), 1);
     match &answers.answers[0].value {
         QuestionnaireAnswerValue::One(value) => {
-            assert_eq!(value, "00000000-0000-0000-0000-00000000c072");
+            assert_eq!(*value, registration_question_option_id().to_string());
         }
         QuestionnaireAnswerValue::Many(_) => panic!("expected single-select answer"),
     }
@@ -931,18 +924,18 @@ async fn db_contracts_list_user_session_proposals_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_refresh_user_badge_identity_deserializes() -> Result<()> {
-    // Setup the contract database and stale badge identity
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the stale badge identity
+    let uow = contract_unit_of_work().await?;
 
     // Rebind the stale seeded identity, repeat the current binding, and read
     // the persisted award through its production wrapper
-    let rebound = db
+    let rebound = uow
         .refresh_user_badge_identity(organizer_id(), rebind_user_badge_id())
         .await?;
-    let repeated = db
+    let repeated = uow
         .refresh_user_badge_identity(organizer_id(), rebind_user_badge_id())
         .await?;
-    let award = db
+    let award = uow
         .get_user_badge(organizer_id(), rebind_user_badge_id())
         .await?
         .context("rebind contract badge should exist")?;
@@ -962,72 +955,6 @@ async fn db_contracts_refresh_user_badge_identity_deserializes() -> Result<()> {
     assert_eq!(award.identity_bound_at, Some(rebound.identity_bound_at));
     assert_eq!(award.identity_hash, Some(rebound.identity_hash));
     assert_eq!(award.identity_salt, Some(rebound.identity_salt));
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_submit_event_survey_response_rejects_invalid_requests() -> Result<()> {
-    // Setup a rolled-back unit of work and the requests to reject
-    let uow = contract_unit_of_work().await?;
-    let rating = rating_answers();
-    let scenarios = [
-        (
-            "a closed survey",
-            Some(
-                "update event_survey set closed_at = current_timestamp where event_survey_id = '00000000-0000-0000-0000-00000000f305'",
-            ),
-            survey_identified_id(),
-            survey_pending_respondent_id(),
-            2,
-            rating.clone(),
-            "event survey is not open",
-        ),
-        (
-            "a missing required answer",
-            None,
-            survey_identified_id(),
-            survey_pending_respondent_id(),
-            2,
-            QuestionnaireAnswers::default(),
-            "required questionnaire answer is missing",
-        ),
-        (
-            "a stale revision",
-            None,
-            survey_identified_id(),
-            survey_pending_respondent_id(),
-            1,
-            rating.clone(),
-            "the survey changed; review and try again",
-        ),
-        (
-            "an attendee outside the audience",
-            None,
-            survey_anonymous_id(),
-            survey_pending_respondent_id(),
-            3,
-            QuestionnaireAnswers::default(),
-            "you are not eligible to answer this survey",
-        ),
-    ];
-
-    for (scenario, change, event_survey_id, user_id, revision, answers, message) in scenarios {
-        // Apply the change inside its own savepoint
-        uow.execute("savepoint survey_submission", &[]).await?;
-        if let Some(change) = change {
-            uow.execute(change, &[]).await?;
-        }
-
-        // Check the submission is rejected with its message
-        let err = uow
-            .submit_event_survey_response(event_survey_id, user_id, revision, &answers)
-            .await
-            .expect_err(scenario);
-        assert_eq!(ocg01_message(&err).as_deref(), Some(message), "{scenario}");
-        uow.execute("rollback to savepoint survey_submission", &[]).await?;
-    }
 
     Ok(())
 }
@@ -1057,17 +984,17 @@ async fn db_contracts_submit_event_survey_response_rejects_unreachable_surveys()
 
         // Check the survey is not found
         assert_eq!(
-            ocg01_message(&err).as_deref(),
+            user_facing_message(&err).as_deref(),
             Some("event survey not found"),
-            "{scenario}"
+            "{scenario}: {err:#}"
         );
         uow.execute("rollback to savepoint survey_scope", &[]).await?;
     }
 
-    for (scenario, change) in survey_scope_changes() {
+    for (scenario, change, id) in survey_scope_changes() {
         // Apply the change inside its own savepoint
         uow.execute("savepoint survey_scope", &[]).await?;
-        uow.execute(change, &[]).await?;
+        uow.execute(change, &[&id]).await?;
 
         // Check the survey is no longer found
         let err = uow
@@ -1080,9 +1007,9 @@ async fn db_contracts_submit_event_survey_response_rejects_unreachable_surveys()
             .await
             .expect_err(scenario);
         assert_eq!(
-            ocg01_message(&err).as_deref(),
+            user_facing_message(&err).as_deref(),
             Some("event survey not found"),
-            "{scenario}"
+            "{scenario}: {err:#}"
         );
         uow.execute("rollback to savepoint survey_scope", &[]).await?;
     }
@@ -1175,23 +1102,22 @@ async fn db_contracts_update_session_proposal_blocks_key_share() -> Result<()> {
         .await?;
 
     // Probe with a lock mode compatible with an ordinary non-key update
-    probe_client
-        .batch_execute("begin; set local lock_timeout = '250ms'")
-        .await?;
-    let lock_result = probe_client
-        .query_one(
-            "select session_proposal_id from session_proposal where session_proposal_id = $1::uuid for key share",
-            &[&cfs_update_lock_proposal_id()],
-        )
-        .await;
+    let probe_code = probe_lock(
+        &probe_client,
+        "select session_proposal_id from session_proposal where session_proposal_id = $1::uuid for key share",
+        &[&cfs_update_lock_proposal_id()],
+    )
+    .await?;
 
-    // Roll back the update and lock probe before checking the outcome
-    probe_client.batch_execute("rollback").await?;
+    // Roll back the update before checking the outcome
     update_client.batch_execute("rollback").await?;
 
     // Check the explicit update lock blocks a competing key-share reader
-    let lock_err = lock_result.expect_err("proposal read should wait for the update lock");
-    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+    assert_eq!(
+        probe_code,
+        Some(SqlState::LOCK_NOT_AVAILABLE),
+        "proposal read should wait for the update lock"
+    );
 
     Ok(())
 }

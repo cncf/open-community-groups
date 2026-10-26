@@ -13,13 +13,17 @@ use crate::{
             EventAttendeeCancellationOutcome, EventAttendeeCancellationStatus,
         },
         event::{AttendEventConflict, AttendEventResult},
-        mock::MockDB,
+        mock::{
+            MockDB, expect_rolled_back_transaction, expect_site_settings,
+            expect_successful_transaction,
+        },
     },
     services::{
         enrollment::{
             AcceptInvitationRequestInput, AdmissionAllocationOutcome, AttendEventInput,
             AttendOutcome, EnrollmentError, EnrollmentManager, InviteAttendeeInput,
             LeaveEventInput, OrganizerCancellationInput, PgEnrollmentManager, StartCheckoutInput,
+            manager::{checkout_enrollment_status, should_defer_registration_answers},
         },
         notifications::MockNotificationsManager,
         payments::{MockPaymentsManager, PaymentsError, PrepareCheckoutOutcome},
@@ -36,7 +40,7 @@ use crate::{
             OptionalQuestionnaireAnswersForm, QuestionnaireAnswer, QuestionnaireAnswerValue,
             QuestionnaireAnswers, QuestionnaireQuestion, QuestionnaireQuestionKind,
         },
-        tests::{sample_event_summary, sample_group_summary, sample_site_settings},
+        tests::{sample_event_purchase_summary, sample_event_summary, sample_group_summary},
     },
 };
 
@@ -104,11 +108,7 @@ async fn test_accept_invitation_request_returns_conflict_code() {
         });
 
     // Accept the request
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     let outcome = manager
         .accept_invitation_request(&AcceptInvitationRequestInput {
             actor_user_id: Uuid::new_v4(),
@@ -134,20 +134,18 @@ async fn test_attend_completes_free_checkout_for_pending_payment() {
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut event = sample_event_summary(event_id, group_id);
+    let mut event = sample_event_summary(event_id);
     event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 0, false)]);
-    let mut purchase = sample_purchase_summary(event_purchase_id, EventPurchaseStatus::Pending);
+    let mut purchase =
+        sample_event_purchase_summary(event_purchase_id, EventPurchaseStatus::Pending);
     purchase.amount_minor = 0;
 
     // Setup the attendance registration through the pending-payment state
     let mut db = MockDB::new();
     expect_active_event(&mut db, community_id, event_id, event);
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![]));
+    expect_registration_questions(&mut db, vec![]);
     db.expect_attend_event()
         .times(1)
         .withf(move |cid, eid, uid, answers, selected| {
@@ -221,10 +219,9 @@ async fn test_attend_enqueues_waitlist_joined_notification_best_effort() {
     // Setup a waitlist join on a sold-out ticket without answers
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut event = sample_event_summary(event_id, group_id);
+    let mut event = sample_event_summary(event_id);
     event.waitlist_enabled = true;
     event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 0, true)]);
     let notification_event = event.clone();
@@ -241,9 +238,7 @@ async fn test_attend_enqueues_waitlist_joined_notification_best_effort() {
     db.expect_get_event_summary_by_id()
         .times(1)
         .returning(move |_, _| Ok(notification_event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
 
     // Setup the single waitlist notification
     let mut notifications_manager = MockNotificationsManager::new();
@@ -281,10 +276,9 @@ async fn test_attend_keeps_waitlist_outcome_when_notification_context_fails() {
     // Setup a waitlist join whose notification context load fails
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut event = sample_event_summary(event_id, group_id);
+    let mut event = sample_event_summary(event_id);
     event.waitlist_enabled = true;
     event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 0, true)]);
 
@@ -299,9 +293,7 @@ async fn test_attend_keeps_waitlist_outcome_when_notification_context_fails() {
     db.expect_get_event_summary_by_id()
         .times(1)
         .returning(|_, _| Err(anyhow!("database unavailable")));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
 
     // Setup the manager, which must not enqueue
     let mut notifications_manager = MockNotificationsManager::new();
@@ -343,11 +335,7 @@ async fn test_attend_propagates_inactive_event_rejection_before_reads() {
     db.expect_attend_event().never();
 
     // Attend the event
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     let err = manager
         .attend_event(&sample_attend_input(
             community_id,
@@ -370,23 +358,16 @@ async fn test_attend_rejects_missing_answers_when_questions_exist() {
     // Setup an event with a required registration question
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
+    let event = sample_event_summary(event_id);
 
     // Setup database mock
     let mut db = MockDB::new();
     expect_active_event(&mut db, community_id, event_id, event);
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![sample_question(Uuid::new_v4())]));
+    expect_registration_questions(&mut db, vec![sample_question(Uuid::new_v4())]);
     db.expect_attend_event().never();
 
     // Attend without answers
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     let err = manager
         .attend_event(&sample_attend_input(
             community_id,
@@ -409,19 +390,17 @@ async fn test_attend_rejects_refund_requested_purchase() {
     // Setup a pending-payment registration whose purchase is in refund
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut event = sample_event_summary(event_id, group_id);
+    let mut event = sample_event_summary(event_id);
     event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 2_500, false)]);
-    let purchase = sample_purchase_summary(Uuid::new_v4(), EventPurchaseStatus::RefundRequested);
+    let purchase =
+        sample_event_purchase_summary(Uuid::new_v4(), EventPurchaseStatus::RefundRequested);
 
     // Setup database mock
     let mut db = MockDB::new();
     expect_active_event(&mut db, community_id, event_id, event);
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![]));
+    expect_registration_questions(&mut db, vec![]);
     db.expect_attend_event().times(1).returning(|_, _, _, _, _| {
         Ok(AttendEventResult::Enrollment(
             EventEnrollmentStatus::PendingPayment,
@@ -430,17 +409,7 @@ async fn test_attend_rejects_refund_requested_purchase() {
 
     // Setup payments manager mock
     let mut payments_manager = sample_payments_manager(Some(PaymentProvider::Stripe));
-    payments_manager
-        .expect_prepare_checkout()
-        .times(1)
-        .returning(move |_, _, _, _| {
-            let purchase = purchase.clone();
-            Box::pin(async move {
-                Ok(PrepareCheckoutOutcome::Prepared(Box::new(
-                    sample_prepared_checkout(event_id, purchase),
-                )))
-            })
-        });
+    expect_prepared_checkout(&mut payments_manager, event_id, purchase);
     payments_manager.expect_complete_free_checkout().never();
     payments_manager.expect_get_or_create_checkout_redirect_url().never();
 
@@ -470,9 +439,8 @@ async fn test_attend_requires_answers_when_waitlist_ticket_becomes_available() {
     // Setup a deferred-answers waitlist join that resolves to checkout
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
-    let mut event = sample_event_summary(event_id, group_id);
+    let mut event = sample_event_summary(event_id);
     event.waitlist_enabled = true;
     event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 2_500, true)]);
 
@@ -484,9 +452,7 @@ async fn test_attend_requires_answers_when_waitlist_ticket_becomes_available() {
             EventEnrollmentStatus::PendingPayment,
         ))
     });
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![sample_question(Uuid::new_v4())]));
+    expect_registration_questions(&mut db, vec![sample_question(Uuid::new_v4())]);
 
     // Setup payments manager mock
     let mut payments_manager = sample_payments_manager(Some(PaymentProvider::Stripe));
@@ -517,18 +483,15 @@ async fn test_attend_resolves_omitted_single_public_ticket_type() {
     // Setup an event with exactly one public ticket type
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut event = sample_event_summary(event_id, group_id);
+    let mut event = sample_event_summary(event_id);
     event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 0, false)]);
 
     // Setup database mock
     let mut db = MockDB::new();
     expect_active_event(&mut db, community_id, event_id, event);
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![]));
+    expect_registration_questions(&mut db, vec![]);
     db.expect_attend_event()
         .times(1)
         .withf(move |_, _, _, _, selected| *selected == Some(ticket_type_id))
@@ -539,11 +502,7 @@ async fn test_attend_resolves_omitted_single_public_ticket_type() {
         });
 
     // Attend without selecting a ticket type
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     let outcome = manager
         .attend_event(&sample_attend_input(
             community_id,
@@ -567,15 +526,12 @@ async fn test_attend_returns_capacity_conflict() {
     // Setup a registration that hits the capacity conflict
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
+    let event = sample_event_summary(event_id);
 
     // Setup database mock
     let mut db = MockDB::new();
     expect_active_event(&mut db, community_id, event_id, event);
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![]));
+    expect_registration_questions(&mut db, vec![]);
     db.expect_attend_event().times(1).returning(|_, _, _, _, _| {
         Ok(AttendEventResult::Conflict(
             AttendEventConflict::EventCapacityUnavailable,
@@ -583,11 +539,7 @@ async fn test_attend_returns_capacity_conflict() {
     });
 
     // Attend the event
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     let outcome = manager
         .attend_event(&sample_attend_input(
             community_id,
@@ -611,17 +563,14 @@ async fn test_attend_returns_checkout_conflict() {
     // Setup a pending-payment registration whose hold cannot be reserved
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
-    let mut event = sample_event_summary(event_id, group_id);
+    let mut event = sample_event_summary(event_id);
     event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 2_500, false)]);
 
     // Setup database mock
     let mut db = MockDB::new();
     expect_active_event(&mut db, community_id, event_id, event);
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![]));
+    expect_registration_questions(&mut db, vec![]);
     db.expect_attend_event().times(1).returning(|_, _, _, _, _| {
         Ok(AttendEventResult::Enrollment(
             EventEnrollmentStatus::PendingPayment,
@@ -667,23 +616,21 @@ async fn test_attend_returns_checkout_redirect_for_paid_ticket() {
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut event = sample_event_summary(event_id, group_id);
+    let mut event = sample_event_summary(event_id);
     event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 2_500, false)]);
     let answers = sample_answers(question_id);
     let hold_expires_at = Utc::now() + Duration::minutes(15);
-    let mut purchase = sample_purchase_summary(event_purchase_id, EventPurchaseStatus::Pending);
+    let mut purchase =
+        sample_event_purchase_summary(event_purchase_id, EventPurchaseStatus::Pending);
     purchase.hold_expires_at = Some(hold_expires_at);
 
     // Setup the registration with validated answers
     let mut db = MockDB::new();
     expect_active_event(&mut db, community_id, event_id, event);
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(move |_, _| Ok(vec![sample_question(question_id)]));
+    expect_registration_questions(&mut db, vec![sample_question(question_id)]);
     db.expect_attend_event()
         .times(1)
         .withf(move |_, _, _, submitted, _| {
@@ -751,20 +698,17 @@ async fn test_attend_returns_external_pending_payment() {
     // Setup a paid ticket collected outside the platform
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
-    let mut event = sample_event_summary(event_id, group_id);
+    let mut event = sample_event_summary(event_id);
     event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 2_500, false)]);
-    let mut purchase = sample_purchase_summary(Uuid::new_v4(), EventPurchaseStatus::Pending);
+    let mut purchase = sample_event_purchase_summary(Uuid::new_v4(), EventPurchaseStatus::Pending);
     purchase.charge_model = EventPurchaseChargeModel::External;
     let expected_checkout = sample_prepared_checkout(event_id, purchase.clone());
 
     // Setup database mock
     let mut db = MockDB::new();
     expect_active_event(&mut db, community_id, event_id, event);
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![]));
+    expect_registration_questions(&mut db, vec![]);
     db.expect_attend_event().times(1).returning(|_, _, _, _, _| {
         Ok(AttendEventResult::Enrollment(
             EventEnrollmentStatus::PendingPayment,
@@ -773,17 +717,7 @@ async fn test_attend_returns_external_pending_payment() {
 
     // Setup payments manager mock
     let mut payments_manager = sample_payments_manager(None);
-    payments_manager
-        .expect_prepare_checkout()
-        .times(1)
-        .returning(move |_, _, _, _| {
-            let purchase = purchase.clone();
-            Box::pin(async move {
-                Ok(PrepareCheckoutOutcome::Prepared(Box::new(
-                    sample_prepared_checkout(event_id, purchase),
-                )))
-            })
-        });
+    expect_prepared_checkout(&mut payments_manager, event_id, purchase);
     payments_manager.expect_get_or_create_checkout_redirect_url().never();
 
     // Attend the event
@@ -814,7 +748,7 @@ async fn test_cancel_attendance_as_organizer_commits_cancellation_with_notificat
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
+    let event = sample_event_summary(event_id);
 
     // Setup transaction mock
     let mut tx = MockDB::new();
@@ -835,9 +769,7 @@ async fn test_cancel_attendance_as_organizer_commits_cancellation_with_notificat
     tx.expect_get_event_summary_by_id()
         .times(1)
         .returning(move |_, _| Ok(event.clone()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
@@ -902,7 +834,7 @@ async fn test_cancel_attendance_as_organizer_queues_paid_refund_without_notifica
 #[tokio::test]
 async fn test_cancel_attendance_as_organizer_rolls_back_when_notification_enqueue_fails() {
     // Setup an immediate cancellation whose required notification fails
-    let event = sample_event_summary(Uuid::new_v4(), Uuid::new_v4());
+    let event = sample_event_summary(Uuid::new_v4());
 
     // Setup transaction mock
     let mut tx = MockDB::new();
@@ -916,9 +848,7 @@ async fn test_cancel_attendance_as_organizer_rolls_back_when_notification_enqueu
     tx.expect_get_event_summary_by_id()
         .times(1)
         .returning(move |_, _| Ok(event.clone()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
         .returning(|_| Err(anyhow!("queue unavailable")));
@@ -928,11 +858,7 @@ async fn test_cancel_attendance_as_organizer_rolls_back_when_notification_enqueu
     expect_rolled_back_transaction(&mut db, tx);
 
     // Cancel the attendance
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     let err = manager
         .cancel_attendance_as_organizer(&sample_organizer_cancellation_input())
         .await
@@ -972,11 +898,7 @@ async fn test_invite_returns_allocated_for_email_target() {
         });
 
     // Invite the email address
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     let outcome = manager
         .invite_event_attendee(&InviteAttendeeInput {
             actor_user_id,
@@ -1005,11 +927,7 @@ async fn test_invite_returns_conflict_code() {
     });
 
     // Invite a registered user
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     let outcome = manager
         .invite_event_attendee(&InviteAttendeeInput {
             actor_user_id: Uuid::new_v4(),
@@ -1045,9 +963,7 @@ async fn test_join_group_enqueues_welcome_notification() {
         .times(1)
         .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
         .returning(|_, _, _| Ok(()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_get_group_summary()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -1078,9 +994,7 @@ async fn test_join_group_keeps_success_when_welcome_notification_fails() {
     // Setup the membership mutation and a failing context load
     let mut db = MockDB::new();
     db.expect_join_group().times(1).returning(|_, _, _| Ok(()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_get_group_summary()
         .times(1)
         .returning(|_, _| Err(anyhow!("database unavailable")));
@@ -1126,9 +1040,8 @@ async fn test_leave_commits_attendee_cancellation_with_notification() {
     // Setup identifiers and the transactional leave
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
+    let event = sample_event_summary(event_id);
 
     // Setup transaction mock
     let mut tx = MockDB::new();
@@ -1148,9 +1061,7 @@ async fn test_leave_commits_attendee_cancellation_with_notification() {
     tx.expect_get_event_summary_by_id()
         .times(1)
         .returning(move |_, _| Ok(event.clone()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
@@ -1191,9 +1102,8 @@ async fn test_leave_enqueues_waitlist_left_notification_after_commit() {
     // Setup a waitlist exit with its best-effort confirmation
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
+    let event = sample_event_summary(event_id);
 
     // Setup transaction mock
     let mut tx = MockDB::new();
@@ -1211,9 +1121,7 @@ async fn test_leave_enqueues_waitlist_left_notification_after_commit() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
 
     // Setup notifications manager mock
     let mut notifications_manager = MockNotificationsManager::new();
@@ -1255,11 +1163,7 @@ async fn test_leave_propagates_paid_attendee_rejection_and_rolls_back() {
     expect_rolled_back_transaction(&mut db, tx);
 
     // Leave the event
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     let err = manager.leave_event(&sample_leave_input()).await.unwrap_err();
 
     // Check the rejection propagates unchanged for SQLSTATE classification
@@ -1273,7 +1177,7 @@ async fn test_leave_propagates_paid_attendee_rejection_and_rolls_back() {
 #[tokio::test]
 async fn test_leave_rolls_back_when_notification_enqueue_fails() {
     // Setup an attendee leave whose required notification fails
-    let event = sample_event_summary(Uuid::new_v4(), Uuid::new_v4());
+    let event = sample_event_summary(Uuid::new_v4());
 
     // Setup transaction mock
     let mut tx = MockDB::new();
@@ -1285,9 +1189,7 @@ async fn test_leave_rolls_back_when_notification_enqueue_fails() {
     tx.expect_get_event_summary_by_id()
         .times(1)
         .returning(move |_, _| Ok(event.clone()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut tx);
     tx.expect_enqueue_notification()
         .times(1)
         .returning(|_| Err(anyhow!("queue unavailable")));
@@ -1297,11 +1199,7 @@ async fn test_leave_rolls_back_when_notification_enqueue_fails() {
     expect_rolled_back_transaction(&mut db, tx);
 
     // Leave the event
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     let err = manager.leave_event(&sample_leave_input()).await.unwrap_err();
 
     // Check the required side-effect failure propagates
@@ -1351,11 +1249,7 @@ async fn test_leave_group_removes_membership() {
         .returning(|_, _, _| Ok(()));
 
     // Leave the group
-    let manager = sample_manager(
-        db,
-        MockNotificationsManager::new(),
-        sample_payments_manager(None),
-    );
+    let manager = sample_manager_with_db(db);
     manager.leave_group(community_id, group_id, user_id).await.unwrap();
 }
 
@@ -1367,7 +1261,8 @@ async fn test_start_checkout_completes_free_ticket() {
     let event_purchase_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let mut purchase = sample_purchase_summary(event_purchase_id, EventPurchaseStatus::Pending);
+    let mut purchase =
+        sample_event_purchase_summary(event_purchase_id, EventPurchaseStatus::Pending);
     purchase.amount_minor = 0;
 
     // Setup database mock
@@ -1376,9 +1271,7 @@ async fn test_start_checkout_completes_free_ticket() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(|_, _| Ok(()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![]));
+    expect_registration_questions(&mut db, vec![]);
 
     // Setup payments manager mock
     let mut payments_manager = sample_payments_manager(None);
@@ -1465,9 +1358,7 @@ async fn test_start_checkout_rejects_missing_ticket_type() {
     // Setup an active event whose checkout rejects the missing ticket
     let mut db = MockDB::new();
     db.expect_ensure_event_is_active().times(1).returning(|_, _| Ok(()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![]));
+    expect_registration_questions(&mut db, vec![]);
 
     // Setup payments manager mock
     let mut payments_manager = sample_payments_manager(None);
@@ -1508,28 +1399,16 @@ async fn test_start_checkout_returns_redirect_for_paid_ticket() {
     let event_purchase_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let purchase = sample_purchase_summary(event_purchase_id, EventPurchaseStatus::Pending);
+    let purchase = sample_event_purchase_summary(event_purchase_id, EventPurchaseStatus::Pending);
 
     // Setup database mock
     let mut db = MockDB::new();
     db.expect_ensure_event_is_active().times(1).returning(|_, _| Ok(()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![]));
+    expect_registration_questions(&mut db, vec![]);
 
     // Setup payments manager mock
     let mut payments_manager = sample_payments_manager(Some(PaymentProvider::Stripe));
-    payments_manager
-        .expect_prepare_checkout()
-        .times(1)
-        .returning(move |_, _, _, _| {
-            let purchase = purchase.clone();
-            Box::pin(async move {
-                Ok(PrepareCheckoutOutcome::Prepared(Box::new(
-                    sample_prepared_checkout(event_id, purchase),
-                )))
-            })
-        });
+    expect_prepared_checkout(&mut payments_manager, event_id, purchase);
     payments_manager
         .expect_get_or_create_checkout_redirect_url()
         .times(1)
@@ -1566,9 +1445,7 @@ async fn test_start_checkout_validates_registration_answers() {
     // Setup an event with a required question and no answers
     let mut db = MockDB::new();
     db.expect_ensure_event_is_active().times(1).returning(|_, _| Ok(()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .returning(|_, _| Ok(vec![sample_question(Uuid::new_v4())]));
+    expect_registration_questions(&mut db, vec![sample_question(Uuid::new_v4())]);
 
     // Setup payments manager mock
     let mut payments_manager = sample_payments_manager(None);
@@ -1592,6 +1469,148 @@ async fn test_start_checkout_validates_registration_answers() {
     );
 }
 
+#[test]
+fn test_checkout_enrollment_status_resolves_purchase_states() {
+    let unavailable = "checkout is unavailable for this purchase";
+    let cases = [
+        (
+            EventPurchaseStatus::Completed,
+            Ok(Some(EventEnrollmentStatus::Attendee)),
+        ),
+        (EventPurchaseStatus::Expired, Err(unavailable)),
+        (EventPurchaseStatus::Pending, Ok(None)),
+        (EventPurchaseStatus::Refunded, Err(unavailable)),
+        (EventPurchaseStatus::RefundPending, Err(unavailable)),
+        (
+            EventPurchaseStatus::RefundRecoveryPending,
+            Err("checkout is unavailable while refund recovery is in progress"),
+        ),
+        (
+            EventPurchaseStatus::RefundRequested,
+            Err("checkout is unavailable while a refund is in progress"),
+        ),
+    ];
+    for (purchase_status, expected) in cases {
+        let result = checkout_enrollment_status(purchase_status).map_err(|err| match err {
+            EnrollmentError::Rejected(message) => message,
+            err @ EnrollmentError::Other(_) => {
+                panic!("{purchase_status:?}: unexpected error {err:?}")
+            }
+        });
+        assert_eq!(
+            result,
+            expected.map_err(str::to_string),
+            "{purchase_status:?}"
+        );
+    }
+}
+
+#[test]
+fn test_should_defer_registration_answers_only_for_sold_out_waitlist_tickets() {
+    let ticket_type_id = Uuid::new_v4();
+    let cases = [
+        (
+            "sold-out ticket on a waitlist",
+            false,
+            true,
+            true,
+            Some(ticket_type_id),
+            true,
+        ),
+        (
+            "approval required",
+            true,
+            true,
+            true,
+            Some(ticket_type_id),
+            false,
+        ),
+        (
+            "waitlist disabled",
+            false,
+            false,
+            true,
+            Some(ticket_type_id),
+            false,
+        ),
+        (
+            "ticket still available",
+            false,
+            true,
+            false,
+            Some(ticket_type_id),
+            false,
+        ),
+        ("no ticket selected", false, true, true, None, false),
+        (
+            "unknown ticket selected",
+            false,
+            true,
+            true,
+            Some(Uuid::new_v4()),
+            false,
+        ),
+    ];
+    for (case, attendee_approval_required, waitlist_enabled, sold_out, selected, expected) in cases
+    {
+        let mut event = sample_event_summary(Uuid::new_v4());
+        event.attendee_approval_required = attendee_approval_required;
+        event.waitlist_enabled = waitlist_enabled;
+        event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 2_500, sold_out)]);
+        assert_eq!(
+            should_defer_registration_answers(&event, selected),
+            expected,
+            "{case}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_attend_returns_attendee_for_completed_purchase_without_checkout() {
+    // Setup a pending-payment registration whose purchase already completed
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let ticket_type_id = Uuid::new_v4();
+    let mut event = sample_event_summary(event_id);
+    event.ticket_types = Some(vec![sample_ticket_type(ticket_type_id, 2_500, false)]);
+    let purchase = sample_event_purchase_summary(Uuid::new_v4(), EventPurchaseStatus::Completed);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_active_event(&mut db, community_id, event_id, event);
+    expect_registration_questions(&mut db, vec![]);
+    db.expect_attend_event().times(1).returning(|_, _, _, _, _| {
+        Ok(AttendEventResult::Enrollment(
+            EventEnrollmentStatus::PendingPayment,
+        ))
+    });
+
+    // Setup payments manager mock: checkout is neither completed nor reopened
+    let mut payments_manager = sample_payments_manager(Some(PaymentProvider::Stripe));
+    expect_prepared_checkout(&mut payments_manager, event_id, purchase);
+    payments_manager.expect_complete_free_checkout().never();
+    payments_manager.expect_get_or_create_checkout_redirect_url().never();
+
+    // Attend the event
+    let manager = sample_manager(db, MockNotificationsManager::new(), payments_manager);
+    let outcome = manager
+        .attend_event(&sample_attend_input(
+            community_id,
+            event_id,
+            Uuid::new_v4(),
+            Some(ticket_type_id),
+            None,
+        ))
+        .await
+        .unwrap();
+
+    // Check the attendee outcome
+    assert_eq!(
+        outcome,
+        AttendOutcome::Enrolled(EventEnrollmentStatus::Attendee)
+    );
+}
+
 // Helpers.
 
 /// Expects the active-event guard and the event summary read used by attendance.
@@ -1606,18 +1625,30 @@ fn expect_active_event(db: &mut MockDB, community_id: Uuid, event_id: Uuid, even
         .returning(move |_, _| Ok(event.clone()));
 }
 
-/// Expects a transaction that rolls back without committing.
-fn expect_rolled_back_transaction(db: &mut MockDB, mut tx: MockDB) {
-    tx.expect_commit().never();
-    tx.expect_rollback().times(1).returning(|| Ok(()));
-    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
+/// Expects one checkout hold preparing the given purchase.
+fn expect_prepared_checkout(
+    payments_manager: &mut MockPaymentsManager,
+    event_id: Uuid,
+    purchase: EventPurchaseSummary,
+) {
+    payments_manager
+        .expect_prepare_checkout()
+        .times(1)
+        .returning(move |_, _, _, _| {
+            let purchase = purchase.clone();
+            Box::pin(async move {
+                Ok(PrepareCheckoutOutcome::Prepared(Box::new(
+                    sample_prepared_checkout(event_id, purchase),
+                )))
+            })
+        });
 }
 
-/// Expects a transaction that commits without rolling back.
-fn expect_successful_transaction(db: &mut MockDB, mut tx: MockDB) {
-    tx.expect_commit().times(1).returning(|| Ok(()));
-    tx.expect_rollback().never();
-    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
+/// Expects the registration questionnaire read returning `questions`.
+fn expect_registration_questions(db: &mut MockDB, questions: Vec<QuestionnaireQuestion>) {
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .returning(move |_, _| Ok(questions.clone()));
 }
 
 /// Builds a free-text answer for the given question.
@@ -1674,6 +1705,15 @@ fn sample_manager(
     )
 }
 
+/// Creates an enrollment manager with inert notifications and no payments provider.
+fn sample_manager_with_db(db: MockDB) -> PgEnrollmentManager {
+    sample_manager(
+        db,
+        MockNotificationsManager::new(),
+        sample_payments_manager(None),
+    )
+}
+
 /// Builds an organizer cancellation input with fresh identifiers.
 fn sample_organizer_cancellation_input() -> OrganizerCancellationInput {
     OrganizerCancellationInput {
@@ -1706,22 +1746,6 @@ fn sample_prepared_checkout(
         purchase,
 
         ..PreparedEventCheckout::default()
-    }
-}
-
-/// Builds a purchase summary in the given status.
-fn sample_purchase_summary(
-    event_purchase_id: Uuid,
-    status: EventPurchaseStatus,
-) -> EventPurchaseSummary {
-    EventPurchaseSummary {
-        amount_minor: 2_500,
-        currency_code: Some("USD".to_string()),
-        event_purchase_id,
-        status,
-        ticket_title: "General admission".to_string(),
-
-        ..EventPurchaseSummary::default()
     }
 }
 

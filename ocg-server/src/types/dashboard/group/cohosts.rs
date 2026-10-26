@@ -141,7 +141,7 @@ mod tests {
     use super::CohostedEvent;
 
     #[test]
-    fn cohosted_event_public_url_links_canceled_published_events() {
+    fn test_cohosted_event_public_url_links_canceled_published_events() {
         let event = CohostedEvent {
             canceled: true,
             published: true,
@@ -155,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    fn cohosted_event_public_url_links_published_events() {
+    fn test_cohosted_event_public_url_links_published_events() {
         let event = CohostedEvent {
             published: true,
             owner_group_slug_pretty: Some("owner".to_string()),
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn cohosted_event_public_url_skips_canceled_drafts() {
+    fn test_cohosted_event_public_url_skips_canceled_drafts() {
         let event = CohostedEvent {
             canceled: true,
             ..sample_cohosted_event()
@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn cohosted_event_public_url_skips_drafts() {
+    fn test_cohosted_event_public_url_skips_drafts() {
         assert_eq!(sample_cohosted_event().public_url(), None);
     }
 

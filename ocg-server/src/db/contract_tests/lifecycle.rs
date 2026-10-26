@@ -9,7 +9,7 @@ use tokio::{sync::oneshot, time::timeout};
 use tokio_postgres::{NoTls, error::DbError};
 use uuid::Uuid;
 
-use crate::db::{DB, DBExt, DBUnitOfWork, PgDB, PgExecutor, PgUnitOfWork, group::DBGroup};
+use crate::db::{DB, DBExt, DBUnitOfWork, PgDB, PgExecutor, group::DBGroup};
 
 use super::helpers::*;
 
@@ -18,12 +18,7 @@ use super::helpers::*;
 async fn db_contracts_unit_of_work_commit_failure_persists_nothing() -> Result<()> {
     // Setup a unit of work whose deferred constraint fires at commit
     let db = contract_tests_db()?;
-    let pool = contract_tests_pool()?;
-    let client = pool.get().await?;
-    client.batch_execute("begin").await?;
-    let uow = PgUnitOfWork {
-        client: Some(client),
-    };
+    let uow = contract_unit_of_work().await?;
     let event_id = Uuid::new_v4();
 
     // Insert an event without the ticket type its deferred constraint requires

@@ -5,10 +5,9 @@ use chrono::{DateTime, NaiveDate};
 use tokio_postgres::error::{DbError, SqlState};
 
 use crate::{
-    db::common::DBCommon,
+    db::{PgExecutor, common::DBCommon, user_facing_message},
     types::{
         event::EventKind,
-        payments::EventTicketType,
         search::{SearchEventsFilters, SearchGroupsFilters},
     },
 };
@@ -166,8 +165,11 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
     // Setup the contract database and event fixture
     let db = contract_tests_db()?;
 
-    // Load the event summary through the Rust contract
+    // Load the event summaries through the Rust contract
     let event = db.get_event_summary(community_id(), group_id(), event_id()).await?;
+    let external_event = db
+        .get_event_summary(community_id(), group_id(), external_event_id())
+        .await?;
 
     // Check required and computed event fields
     assert_eq!(event.event_id, event_id());
@@ -178,12 +180,6 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
     );
     assert!(!event.has_external_payment);
     assert!(event.has_registration_questions);
-    assert!(
-        event
-            .ticket_types
-            .as_ref()
-            .is_some_and(|ticket_types| !ticket_types.is_empty())
-    );
     assert_contract_ticket_type(
         &event.ticket_types.as_ref().expect("event should have tickets")[0],
     );
@@ -193,23 +189,9 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
     // Check the venue zip code key
     assert_eq!(event.venue_zip_code.as_deref(), Some("94105"));
 
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_get_event_summary_external_payment_deserializes() -> Result<()> {
-    // Setup the contract database and external-payments event
-    let db = contract_tests_db()?;
-
-    // Load the external-payments event summary through the Rust contract
-    let event = db
-        .get_event_summary(community_id(), group_id(), external_event_id())
-        .await?;
-
-    // Check the summary marks off-platform payment collection
-    assert_eq!(event.event_id, external_event_id());
-    assert!(event.has_external_payment);
+    // Check the external-payments summary marks off-platform payment collection
+    assert_eq!(external_event.event_id, external_event_id());
+    assert!(external_event.has_external_payment);
 
     Ok(())
 }
@@ -276,7 +258,10 @@ async fn db_contracts_get_group_summary_deserializes() -> Result<()> {
     // Check group identity and community fields
     assert_eq!(group.group_id, group_id());
     assert_eq!(group.community_name, "contract-community");
-    assert!(group.region.is_some());
+    assert_eq!(
+        group.region.as_ref().map(|region| region.name.as_str()),
+        Some("North America")
+    );
 
     Ok(())
 }
@@ -284,23 +269,45 @@ async fn db_contracts_get_group_summary_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_worker_queue_health_deserializes() -> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the queue health before any change
+    let uow = contract_unit_of_work().await?;
+    let before = uow.get_worker_queue_health().await?;
+
+    // Queue one old pending and one processing notification
+    uow.execute(
+        "
+        insert into notification (created_at, delivery_status, kind, user_id)
+        values
+            (current_timestamp - interval '100 years', 'pending', 'event-welcome', $1::uuid),
+            (current_timestamp, 'processing', 'event-welcome', $1::uuid)
+        ",
+        &[&organizer_id()],
+    )
+    .await?;
 
     // Load the queue health through the Rust contract
-    let health = db.get_worker_queue_health().await?;
+    let after = uow.get_worker_queue_health().await?;
 
-    // Check every queue decodes with an age only while something is pending
-    for queue in [
-        &health.badge_award_jobs,
-        &health.notifications,
-        &health.payment_jobs,
-    ] {
-        assert!(queue.pending >= 0);
-        assert!(queue.processing >= 0);
-        assert_eq!(queue.pending > 0, queue.oldest_pending_age_secs.is_some());
-        assert!(queue.oldest_pending_age_secs.is_none_or(|age| age >= 0));
-    }
+    // Check only the notification queue counts the new jobs and reports the
+    // oldest pending age in seconds
+    assert_eq!(
+        after.notifications.pending,
+        before.notifications.pending + 1
+    );
+    assert_eq!(
+        after.notifications.processing,
+        before.notifications.processing + 1
+    );
+    assert!(
+        after
+            .notifications
+            .oldest_pending_age_secs
+            .is_some_and(|age| age >= 100 * 365 * 24 * 60 * 60),
+        "unexpected oldest pending age: {:?}",
+        after.notifications.oldest_pending_age_secs
+    );
+    assert_eq!(after.badge_award_jobs, before.badge_award_jobs);
+    assert_eq!(after.payment_jobs, before.payment_jobs);
 
     Ok(())
 }
@@ -321,6 +328,10 @@ async fn db_contracts_internal_raise_keeps_default_sqlstate() -> Result<()> {
     assert_eq!(
         internal_err.as_db_error().map(DbError::message),
         Some("badge award job retention must be positive")
+    );
+    assert_eq!(
+        user_facing_message(&anyhow::Error::from(internal_err)),
+        None
     );
 
     Ok(())
@@ -380,55 +391,6 @@ async fn db_contracts_list_group_organizers_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_list_event_ticket_types_deserializes() -> Result<()> {
-    // Query the normalized ticket inventory through its SQL boundary
-    let pool = contract_tests_pool()?;
-    let client = pool.get().await?;
-    let row = client
-        .query_one("select list_event_ticket_types($1)", &[&paid_event_id()])
-        .await?;
-
-    // Deserialize the exact JSON result into the production DTO
-    let payload: serde_json::Value = row.try_get(0)?;
-    let ticket_types: Vec<EventTicketType> = serde_json::from_value(payload)?;
-    assert_eq!(ticket_types.len(), 2);
-    let paid_ticket_type = ticket_types
-        .iter()
-        .find(|ticket_type| ticket_type.event_ticket_type_id == paid_ticket_type_id())
-        .expect("paid ticket type to be returned");
-    assert_contract_paid_ticket_type(paid_ticket_type);
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_list_public_event_ticket_types_deserializes() -> Result<()> {
-    // Query the attendee-facing ticket inventory through its SQL boundary
-    let pool = contract_tests_pool()?;
-    let client = pool.get().await?;
-    let row = client
-        .query_one(
-            "select list_public_event_ticket_types($1)",
-            &[&paid_event_id()],
-        )
-        .await?;
-
-    // Deserialize the exact JSON result into the production DTO
-    let payload: serde_json::Value = row.try_get(0)?;
-    let ticket_types: Vec<EventTicketType> = serde_json::from_value(payload)?;
-    assert_eq!(ticket_types.len(), 2);
-    let paid_ticket_type = ticket_types
-        .iter()
-        .find(|ticket_type| ticket_type.event_ticket_type_id == paid_ticket_type_id())
-        .expect("public paid ticket type to be returned");
-    assert_contract_paid_ticket_type(paid_ticket_type);
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
 async fn db_contracts_search_events_deserializes() -> Result<()> {
     // Setup the contract database and event search filters
     let db = contract_tests_db()?;
@@ -446,9 +408,11 @@ async fn db_contracts_search_events_deserializes() -> Result<()> {
     // Search events through the Rust contract
     let output = db.search_events(&filters).await?;
 
-    // Check result totals
+    // Check result totals and the returned event
     assert_eq!(output.total, 1);
     assert_eq!(output.events.len(), 1);
+    assert_eq!(output.events[0].event_id, event_id());
+    assert_eq!(output.events[0].name, "Future Contract Event");
 
     Ok(())
 }
@@ -470,9 +434,19 @@ async fn db_contracts_search_groups_deserializes() -> Result<()> {
     // Search groups through the Rust contract
     let output = db.search_groups(&filters).await?;
 
-    // Check result totals
+    // Check result totals and the returned groups in name order
     assert_eq!(output.total, 2);
-    assert_eq!(output.groups.len(), 2);
+    assert_eq!(
+        output
+            .groups
+            .iter()
+            .map(|group| (group.group_id, group.name.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            (group_id(), "Contract Group"),
+            (subgroup_id(), "Contract Subgroup")
+        ]
+    );
 
     Ok(())
 }

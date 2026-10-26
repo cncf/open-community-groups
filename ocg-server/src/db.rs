@@ -7,7 +7,10 @@ use async_trait::async_trait;
 use cached::{Cached, async_sync::RwLock};
 use deadpool_postgres::{Client, Pool};
 use serde::de::DeserializeOwned;
-use tokio_postgres::types::{FromSql, Json, ToSql};
+use tokio_postgres::{
+    error::SqlState,
+    types::{FromSql, Json, ToSql},
+};
 
 use crate::db::{
     activity_tracker::DBActivityTracker, auth::DBAuth, badges::DBBadges, common::DBCommon,
@@ -76,6 +79,20 @@ pub(crate) mod site;
 /// to show to the user. Any other database error, including the default
 /// `P0001` of `raise exception`, is an internal failure.
 pub(crate) const USER_FACING_DB_ERROR_CODE: &str = "OCG01";
+
+/// Returns the message of a database error raised with the user-facing SQLSTATE.
+///
+/// Every other error, including database errors with another SQLSTATE, yields
+/// `None` and stays internal.
+pub(crate) fn user_facing_message(err: &anyhow::Error) -> Option<String> {
+    let db_err = err.downcast_ref::<tokio_postgres::Error>()?.as_db_error()?;
+    user_facing_db_message(db_err.code(), db_err.message())
+}
+
+/// Returns the message of a database error when its SQLSTATE is user-facing.
+fn user_facing_db_message(code: &SqlState, message: &str) -> Option<String> {
+    (code.code() == USER_FACING_DB_ERROR_CODE).then(|| message.to_string())
+}
 
 /// Database operations supported by root and transaction-scoped handles.
 pub(crate) trait DBOperations:
@@ -420,11 +437,15 @@ mod tests {
     use anyhow::{Result, anyhow};
     use cached::cached;
     use tokio::{sync::Notify, time::timeout};
+    use tokio_postgres::error::SqlState;
 
-    use crate::db::{DBExt, cache_probe, mock::MockDB};
+    use crate::db::{
+        DBExt, USER_FACING_DB_ERROR_CODE, cache_probe, mock::MockDB, user_facing_db_message,
+        user_facing_message,
+    };
 
     #[tokio::test]
-    async fn cache_probe_returns_without_waiting_for_in_progress_fill() {
+    async fn test_cache_probe_returns_without_waiting_for_in_progress_fill() {
         // Setup a cached fill that holds its key lock until released
         #[cached(
             ttl = 60,
@@ -462,8 +483,34 @@ mod tests {
         assert_eq!(cache_probe(&FILL.0, "key").await, Some("KEY".to_string()));
     }
 
+    #[test]
+    fn test_user_facing_db_message_keeps_only_user_facing_sqlstate() {
+        let message = "event has reached capacity";
+        let cases = [
+            (
+                "OCG01 user-facing rejection",
+                SqlState::from_code(USER_FACING_DB_ERROR_CODE),
+                Some(message.to_string()),
+            ),
+            ("P0001 raise exception", SqlState::RAISE_EXCEPTION, None),
+            ("23505 unique violation", SqlState::UNIQUE_VIOLATION, None),
+        ];
+
+        for (case, code, expected) in cases {
+            assert_eq!(user_facing_db_message(&code, message), expected, "{case}");
+        }
+    }
+
+    #[test]
+    fn test_user_facing_message_ignores_non_database_errors() {
+        assert_eq!(
+            user_facing_message(&anyhow!("event has reached capacity")),
+            None
+        );
+    }
+
     #[tokio::test]
-    async fn transaction_commits_successful_work() {
+    async fn test_transaction_commits_successful_work() {
         // Setup transaction-scoped database mock
         let mut uow = MockDB::new();
         uow.expect_list_timezones()
@@ -487,7 +534,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn transaction_rolls_back_failed_work() {
+    async fn test_transaction_rolls_back_failed_work() {
         // Setup transaction-scoped database mock
         let mut uow = MockDB::new();
         uow.expect_list_timezones()

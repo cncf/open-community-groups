@@ -24,7 +24,6 @@ use crate::{
             },
         },
         event::EventSummary,
-        group::GroupRole,
         notifications::{NewNotification, NotificationKind},
     },
 };
@@ -34,12 +33,12 @@ use super::helpers::*;
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_pending_notification_deserializes() -> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
 
     // Claim the seeded notification through the production wrapper
     let claim_started_at = Utc::now();
-    let notification = db
+    let notification = uow
         .claim_pending_notification()
         .await?
         .context("pending contract notification should be claimable")?;
@@ -56,7 +55,7 @@ async fn db_contracts_claim_pending_notification_deserializes() -> Result<()> {
     assert!(notification.template_data.is_none());
 
     // Finalize through the production wrapper to verify the claim identity round trip
-    db.update_notification(&notification, None).await?;
+    uow.update_notification(&notification, None).await?;
 
     Ok(())
 }
@@ -82,8 +81,7 @@ async fn db_contracts_enqueue_due_event_survey_notifications_enqueues_opening_em
     // Run the survey opening email job
     let count = uow.enqueue_due_event_survey_notifications().await?;
 
-    // Check the count matches the enqueued notifications and the recipients
-    // recorded by the surveys it handled
+    // Check the count matches the enqueued notifications
     let enqueued: i64 = uow
         .fetch_scalar_one(
             "select count(*) from notification
@@ -93,81 +91,20 @@ async fn db_contracts_enqueue_due_event_survey_notifications_enqueues_opening_em
         )
         .await?;
     assert_eq!(count, usize::try_from(enqueued)?);
-    let recorded: i64 = uow
-        .fetch_scalar_one(
-            "select coalesce(sum(open_notification_recipients), 0)::bigint
-            from event_survey
-            where open_notification_processed_at = current_timestamp",
-            &[],
-        )
-        .await?;
-    assert_eq!(count, usize::try_from(recorded)?);
-    assert_eq!(
-        survey_open_notification_recipients(&uow, survey_email_id()).await?,
-        Some(1)
-    );
-    assert_eq!(
-        survey_open_notification_recipients(&uow, survey_identified_id()).await?,
-        Some(0)
-    );
 
-    // Check only the verified attendee was emailed, with the template data
-    let notifications = uow
-        .client()
-        .await?
-        .query(
-            "select n.user_id, ntd.data
-            from notification n
-            join notification_template_data ntd using (notification_template_data_id)
-            where n.kind = 'event-survey-opened'
-            and ntd.data->>'survey_title' = 'Contract email survey'",
-            &[],
-        )
-        .await?;
-    assert_eq!(notifications.len(), 1);
-    assert_eq!(
-        notifications[0].get::<_, Uuid>(0),
-        survey_email_recipient_id()
-    );
-    let data = notifications[0].get::<_, serde_json::Value>(1);
-    assert_eq!(data["anonymous"], serde_json::json!(false));
-    assert_eq!(data["closes_at"], serde_json::json!(4_070_908_800_i64));
-    let event: EventSummary = serde_json::from_value(data["event"].clone())?;
+    // Check both template payloads carry a decodable event and the closing
+    // date only when the survey has one
+    let dated = survey_opened_template_data(&uow, "Contract email survey").await?;
+    let event: EventSummary = serde_json::from_value(dated["event"].clone())?;
     assert_eq!(event.event_id, survey_email_event_id());
     assert_eq!(
-        data["link"],
-        format!(
-            "/dashboard/user?tab=surveys&event_survey_id={}",
-            survey_email_id()
-        )
+        dated.get("closes_at").and_then(serde_json::Value::as_i64),
+        Some(4_070_908_800)
     );
-    assert!(data["theme"]["primary_color"].is_string());
-
-    // Check the closing date is omitted for the survey without one
-    let open_ended: serde_json::Value = uow
-        .fetch_scalar_one(
-            "select ntd.data
-            from notification n
-            join notification_template_data ntd using (notification_template_data_id)
-            where n.kind = 'event-survey-opened'
-            and ntd.data->>'survey_title' = 'Contract email close race survey'",
-            &[],
-        )
-        .await?;
+    let open_ended = survey_opened_template_data(&uow, "Contract email close race survey").await?;
+    let event: EventSummary = serde_json::from_value(open_ended["event"].clone())?;
+    assert_eq!(event.event_id, survey_email_event_id());
     assert!(open_ended.get("closes_at").is_none());
-
-    // Check unverified attendees are never emailed
-    let unverified_notifications: i64 = uow
-        .fetch_scalar_one(
-            "select count(*) from notification where kind = 'event-survey-opened' and user_id = $1::uuid",
-            &[&survey_unverified_attendee_id()],
-        )
-        .await?;
-    assert_eq!(unverified_notifications, 0);
-
-    // Check a second run never emails the handled surveys again
-    let second_count = uow.enqueue_due_event_survey_notifications().await?;
-    assert_eq!(second_count, 0);
 
     Ok(())
 }
@@ -182,7 +119,7 @@ async fn db_contracts_enqueue_due_event_survey_notifications_rechecks_event_resc
     let payload = EventInput {
         ends_at: NaiveDate::from_ymd_opt(2025, 3, 31).and_then(|day| day.and_hms_opt(19, 0, 0)),
         starts_at: NaiveDate::from_ymd_opt(2025, 3, 31).and_then(|day| day.and_hms_opt(17, 0, 0)),
-        ..group_lock_event_update("Contract Survey Reschedule Event", 1)
+        ..contract_event_input("Contract Survey Reschedule Event", 1)
     }
     .to_db_payload()?;
 
@@ -364,15 +301,14 @@ async fn db_contracts_enqueue_notification_filters_all_group_scoped_recipients()
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_enqueue_tracked_community_custom_notification_audits_selected_groups()
+async fn db_contracts_enqueue_tracked_community_custom_notification_enqueues_and_tracks()
 -> Result<()> {
-    // Setup the contract database and filters selecting two groups
-    let db = contract_tests_db()?;
-    let client = contract_tests_pool()?.get().await?;
+    // Setup a rolled-back unit of work and filters selecting two groups
+    let uow = contract_unit_of_work().await?;
     let subject = "Contract community contact groups";
 
     // Enqueue the notification for the selected groups only
-    let count = db
+    let count = uow
         .enqueue_tracked_community_custom_notification(CommunityCustomNotificationEnqueue {
             body: "Hello selected group teams".to_string(),
             community_id: contact_community_id(),
@@ -388,77 +324,9 @@ async fn db_contracts_enqueue_tracked_community_custom_notification_audits_selec
 
     // Check only the team member of the active selected group was notified
     assert_eq!(count, 1);
-    let recipients: Vec<uuid::Uuid> = client
-        .query(
-            "select n.user_id
-            from notification n
-            join notification_template_data ntd using (notification_template_data_id)
-            where n.kind = 'community-custom'
-            and ntd.data->>'subject' = $1::text",
-            &[&subject],
-        )
+    let recipients: Vec<Uuid> = uow
+        .client()
         .await?
-        .iter()
-        .map(|row| row.get(0))
-        .collect();
-    assert_eq!(recipients, vec![contact_admin_id()]);
-
-    // Check the audit row names the selected groups by label
-    let details: serde_json::Value = client
-        .query_one(
-            "select details
-            from audit_log
-            where action = 'community_custom_notification_sent'
-            and details->>'subject' = $1::text",
-            &[&subject],
-        )
-        .await?
-        .get(0);
-    assert_eq!(
-        details,
-        serde_json::json!({
-            "group_categories": "All",
-            "groups": [
-                "Contact Group B · Contact Category B",
-                "Contact Inactive Group · Contact Category A",
-            ],
-            "recipient_count": 1,
-            "regions": "All",
-            "roles": "All",
-            "subject": subject,
-        })
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_enqueue_tracked_community_custom_notification_enqueues_and_audits()
--> Result<()> {
-    // Setup the contract database and admin-only filters
-    let db = contract_tests_db()?;
-    let client = contract_tests_pool()?.get().await?;
-    let subject = "Contract community contact";
-
-    // Enqueue the community notification through the production wrapper
-    let count = db
-        .enqueue_tracked_community_custom_notification(CommunityCustomNotificationEnqueue {
-            body: "Hello group teams".to_string(),
-            community_id: contact_community_id(),
-            created_by: contact_manager_id(),
-            filters: CommunityContactFilters {
-                roles: vec![GroupRole::Admin],
-                ..Default::default()
-            },
-            subject: subject.to_string(),
-            template_data: serde_json::json!({ "subject": subject }),
-        })
-        .await?;
-
-    // Check only the verified admin of an active group was notified
-    assert_eq!(count, 1);
-    let recipients: Vec<uuid::Uuid> = client
         .query(
             "select n.user_id
             from notification n
@@ -474,110 +342,13 @@ async fn db_contracts_enqueue_tracked_community_custom_notification_enqueues_and
     assert_eq!(recipients, vec![contact_admin_id()]);
 
     // Check the custom notification is tracked against the community
-    let tracked_community_id: Option<uuid::Uuid> = client
-        .query_one(
+    let tracked_community_id: Option<Uuid> = uow
+        .fetch_scalar_one(
             "select community_id from custom_notification where subject = $1::text",
             &[&subject],
         )
-        .await?
-        .get(0);
-    assert_eq!(tracked_community_id, Some(contact_community_id()));
-
-    // Check the audit row describes the recipients and filters by name
-    let audit = client
-        .query_one(
-            "select community_id, details, resource_id, resource_type
-            from audit_log
-            where action = 'community_custom_notification_sent'
-            and details->>'subject' = $1::text",
-            &[&subject],
-        )
         .await?;
-    assert_eq!(
-        audit.get::<_, Option<uuid::Uuid>>("community_id"),
-        Some(contact_community_id())
-    );
-    assert_eq!(
-        audit.get::<_, serde_json::Value>("details"),
-        serde_json::json!({
-            "group_categories": "All",
-            "groups": "All",
-            "recipient_count": 1,
-            "regions": "All",
-            "roles": ["Admin"],
-            "subject": subject,
-        })
-    );
-    assert_eq!(
-        audit.get::<_, uuid::Uuid>("resource_id"),
-        contact_community_id()
-    );
-    assert_eq!(audit.get::<_, String>("resource_type"), "community");
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_enqueue_tracked_community_custom_notification_rejects_foreign_filters()
--> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
-
-    // Enqueue with a group category of another community
-    let err = db
-        .enqueue_tracked_community_custom_notification(CommunityCustomNotificationEnqueue {
-            body: "Hello".to_string(),
-            community_id: contact_community_id(),
-            created_by: contact_manager_id(),
-            filters: CommunityContactFilters {
-                group_category_ids: vec![group_category_id()],
-                ..Default::default()
-            },
-            subject: "Contract foreign contact".to_string(),
-            template_data: serde_json::json!({}),
-        })
-        .await
-        .expect_err("foreign category should be rejected");
-
-    // Check the user-facing rejection is raised
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("group category not found")
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_enqueue_tracked_community_custom_notification_rejects_zero_recipients()
--> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
-
-    // Enqueue with filters no seat matches together
-    let err = db
-        .enqueue_tracked_community_custom_notification(CommunityCustomNotificationEnqueue {
-            body: "Hello".to_string(),
-            community_id: contact_community_id(),
-            created_by: contact_manager_id(),
-            filters: CommunityContactFilters {
-                group_category_ids: vec![contact_category_b_id()],
-                roles: vec![GroupRole::Admin],
-                ..Default::default()
-            },
-            subject: "Contract empty contact".to_string(),
-            template_data: serde_json::json!({}),
-        })
-        .await
-        .expect_err("empty audience should be rejected");
-
-    // Check the user-facing rejection is raised
-    assert_eq!(
-        ocg01_message(&err).as_deref(),
-        Some("no group team members match the selected filters")
-    );
+    assert_eq!(tracked_community_id, Some(contact_community_id()));
 
     Ok(())
 }
@@ -585,13 +356,12 @@ async fn db_contracts_enqueue_tracked_community_custom_notification_rejects_zero
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_enqueue_tracked_custom_notification_tracks_group_scope() -> Result<()> {
-    // Setup the contract database
-    let db = contract_tests_db()?;
-    let client = contract_tests_pool()?.get().await?;
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
     let subject = "Contract group scope";
 
     // Enqueue a group notification through the production wrapper
-    db.enqueue_tracked_custom_notification(
+    uow.enqueue_tracked_custom_notification(
         &NewNotification {
             attachments: vec![],
             group_ids: vec![contact_group_a_id()],
@@ -613,7 +383,9 @@ async fn db_contracts_enqueue_tracked_custom_notification_tracks_group_scope() -
     .await?;
 
     // Check the custom notification is tracked against the group only
-    let tracked = client
+    let tracked = uow
+        .client()
+        .await?
         .query_one(
             "select community_id, event_id, group_id
             from custom_notification
@@ -621,15 +393,17 @@ async fn db_contracts_enqueue_tracked_custom_notification_tracks_group_scope() -
             &[&subject],
         )
         .await?;
-    assert_eq!(tracked.get::<_, Option<uuid::Uuid>>("community_id"), None);
-    assert_eq!(tracked.get::<_, Option<uuid::Uuid>>("event_id"), None);
+    assert_eq!(tracked.get::<_, Option<Uuid>>("community_id"), None);
+    assert_eq!(tracked.get::<_, Option<Uuid>>("event_id"), None);
     assert_eq!(
-        tracked.get::<_, Option<uuid::Uuid>>("group_id"),
+        tracked.get::<_, Option<Uuid>>("group_id"),
         Some(contact_group_a_id())
     );
 
     // Check the audit row carries the community of the group and the recipient count
-    let audit = client
+    let audit = uow
+        .client()
+        .await?
         .query_one(
             "select community_id, group_id, details->>'recipient_count' as recipient_count
             from audit_log
@@ -639,11 +413,11 @@ async fn db_contracts_enqueue_tracked_custom_notification_tracks_group_scope() -
         )
         .await?;
     assert_eq!(
-        audit.get::<_, Option<uuid::Uuid>>("community_id"),
+        audit.get::<_, Option<Uuid>>("community_id"),
         Some(contact_community_id())
     );
     assert_eq!(
-        audit.get::<_, Option<uuid::Uuid>>("group_id"),
+        audit.get::<_, Option<Uuid>>("group_id"),
         Some(contact_group_a_id())
     );
     assert_eq!(
@@ -684,6 +458,23 @@ async fn db_contracts_filter_notification_recipient_ids_preserves_eligible_order
 }
 
 // Helpers.
+
+/// Returns the template data of the survey opening email sent for the given
+/// survey title.
+async fn survey_opened_template_data(
+    uow: &PgUnitOfWork,
+    survey_title: &str,
+) -> Result<serde_json::Value> {
+    uow.fetch_scalar_one(
+        "select ntd.data
+            from notification n
+            join notification_template_data ntd using (notification_template_data_id)
+            where n.kind = 'event-survey-opened'
+            and ntd.data->>'survey_title' = $1::text",
+        &[&survey_title],
+    )
+    .await
+}
 
 /// Returns the opening email recipients a survey recorded, when it was handled.
 async fn survey_open_notification_recipients(

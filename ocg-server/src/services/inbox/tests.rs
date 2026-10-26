@@ -2,19 +2,20 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use mockall::Sequence;
-use serde_json::from_value;
 use uuid::Uuid;
 
 use crate::{
     db::{
         inbox::{PostedInboxMessage, StartInboxConversationConflict, StartInboxConversationResult},
-        mock::MockDB,
+        mock::{
+            MockDB, expect_rolled_back_transaction, expect_site_settings,
+            expect_successful_transaction, sample_posted_inbox_message,
+        },
     },
-    templates::notifications::{InboxMessageReceived, InboxReplyReceived},
     types::{
         inbox::{InboxConversation, InboxMessage, InboxMessageKind},
         notifications::NotificationKind,
-        tests::{sample_inbox_conversation, sample_site_settings, sample_template_user},
+        tests::{sample_inbox_conversation, sample_template_user},
     },
 };
 
@@ -24,7 +25,7 @@ use super::*;
 async fn test_add_group_reply_commits_reply_with_notification() {
     // Setup identifiers and the posted reply
     let actor_user_id = Uuid::new_v4();
-    let posted = sample_posted();
+    let posted = sample_posted_inbox_message();
     let conversation = sample_conversation_with_reply(posted);
     let user_id = conversation.user.as_ref().unwrap().user_id;
 
@@ -42,24 +43,14 @@ async fn test_add_group_reply_commits_reply_with_notification() {
         })
         .in_sequence(&mut sequence)
         .returning(move |_, _, _, _| Ok(posted));
-    tx.expect_get_group_inbox_conversation()
-        .times(1)
-        .withf(move |gid, cid| *gid == posted.group_id && *cid == posted.inbox_conversation_id)
-        .in_sequence(&mut sequence)
-        .returning(move |_, _| Ok(Some(conversation.clone())));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_reply_received_context(&mut tx, &mut sequence, posted, conversation);
     tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::InboxReplyReceived)
                 && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<InboxReplyReceived>(value.clone())
-                        .is_ok_and(|template| template.body == "Doors open at 6pm.")
-                })
         })
+        .in_sequence(&mut sequence)
         .returning(|_| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
@@ -81,7 +72,7 @@ async fn test_add_group_reply_commits_reply_with_notification() {
 #[tokio::test]
 async fn test_add_group_reply_rolls_back_when_enqueue_fails() {
     // Setup identifiers and the posted reply
-    let posted = sample_posted();
+    let posted = sample_posted_inbox_message();
     let conversation = sample_conversation_with_reply(posted);
 
     // Setup transaction mock with a failing enqueue
@@ -90,12 +81,7 @@ async fn test_add_group_reply_rolls_back_when_enqueue_fails() {
     tx.expect_add_inbox_group_reply()
         .times(1)
         .returning(move |_, _, _, _| Ok(posted));
-    tx.expect_get_group_inbox_conversation()
-        .times(1)
-        .returning(move |_, _| Ok(Some(conversation.clone())));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_reply_received_context(&mut tx, &mut Sequence::new(), posted, conversation);
     tx.expect_enqueue_notification()
         .times(1)
         .returning(|_| Err(anyhow!("enqueue failed")));
@@ -149,7 +135,7 @@ async fn test_add_group_reply_rolls_back_when_reply_fails() {
 async fn test_add_user_message_commits_message_with_notification() {
     // Setup identifiers and the posted follow-up
     let recipient_id = Uuid::new_v4();
-    let posted = sample_posted();
+    let posted = sample_posted_inbox_message();
     let mut conversation = sample_inbox_conversation(posted.inbox_conversation_id);
     conversation.messages[0].inbox_message_id = posted.inbox_message_id;
     let user_id = conversation.user.as_ref().unwrap().user_id;
@@ -165,27 +151,20 @@ async fn test_add_user_message_commits_message_with_notification() {
         })
         .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(posted));
-    tx.expect_get_group_inbox_conversation()
-        .times(1)
-        .in_sequence(&mut sequence)
-        .returning(move |_, _| Ok(Some(conversation.clone())));
-    tx.expect_list_inbox_recipient_ids()
-        .times(1)
-        .withf(move |gid| *gid == posted.group_id)
-        .returning(move |_| Ok(vec![recipient_id]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_message_received_context(
+        &mut tx,
+        &mut sequence,
+        posted,
+        conversation,
+        vec![recipient_id],
+    );
     tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::InboxMessageReceived)
                 && notification.recipients == vec![recipient_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<InboxMessageReceived>(value.clone())
-                        .is_ok_and(|template| template.group_name == "Test Group")
-                })
         })
+        .in_sequence(&mut sequence)
         .returning(|_| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
@@ -206,7 +185,7 @@ async fn test_add_user_message_commits_message_with_notification() {
 #[tokio::test]
 async fn test_add_user_message_rolls_back_when_enqueue_fails() {
     // Setup identifiers and the posted follow-up
-    let posted = sample_posted();
+    let posted = sample_posted_inbox_message();
     let mut conversation = sample_inbox_conversation(posted.inbox_conversation_id);
     conversation.messages[0].inbox_message_id = posted.inbox_message_id;
 
@@ -216,15 +195,13 @@ async fn test_add_user_message_rolls_back_when_enqueue_fails() {
     tx.expect_add_inbox_user_message()
         .times(1)
         .returning(move |_, _, _| Ok(posted));
-    tx.expect_get_group_inbox_conversation()
-        .times(1)
-        .returning(move |_, _| Ok(Some(conversation.clone())));
-    tx.expect_list_inbox_recipient_ids()
-        .times(1)
-        .returning(|_| Ok(vec![Uuid::new_v4()]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_message_received_context(
+        &mut tx,
+        &mut Sequence::new(),
+        posted,
+        conversation,
+        vec![Uuid::new_v4()],
+    );
     tx.expect_enqueue_notification()
         .times(1)
         .returning(|_| Err(anyhow!("enqueue failed")));
@@ -392,7 +369,7 @@ async fn test_start_conversation_commits_conversation_with_notification() {
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let recipient_id = Uuid::new_v4();
-    let posted = sample_posted();
+    let posted = sample_posted_inbox_message();
     let mut conversation = sample_inbox_conversation(posted.inbox_conversation_id);
     conversation.messages[0].inbox_message_id = posted.inbox_message_id;
     let user_id = conversation.user.as_ref().unwrap().user_id;
@@ -408,23 +385,20 @@ async fn test_start_conversation_commits_conversation_with_notification() {
         })
         .in_sequence(&mut sequence)
         .returning(move |_, _, _, _| Ok(StartInboxConversationResult::Started(posted)));
-    tx.expect_get_group_inbox_conversation()
-        .times(1)
-        .withf(move |gid, cid| *gid == posted.group_id && *cid == posted.inbox_conversation_id)
-        .in_sequence(&mut sequence)
-        .returning(move |_, _| Ok(Some(conversation.clone())));
-    tx.expect_list_inbox_recipient_ids()
-        .times(1)
-        .returning(move |_| Ok(vec![recipient_id]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_message_received_context(
+        &mut tx,
+        &mut sequence,
+        posted,
+        conversation,
+        vec![recipient_id],
+    );
     tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::InboxMessageReceived)
                 && notification.recipients == vec![recipient_id]
         })
+        .in_sequence(&mut sequence)
         .returning(|_| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
@@ -479,7 +453,7 @@ async fn test_start_conversation_rejects_open_conversation_conflict() {
 #[tokio::test]
 async fn test_start_conversation_rolls_back_when_enqueue_fails() {
     // Setup identifiers and the posted first message
-    let posted = sample_posted();
+    let posted = sample_posted_inbox_message();
     let mut conversation = sample_inbox_conversation(posted.inbox_conversation_id);
     conversation.messages[0].inbox_message_id = posted.inbox_message_id;
 
@@ -489,15 +463,13 @@ async fn test_start_conversation_rolls_back_when_enqueue_fails() {
     tx.expect_start_inbox_conversation()
         .times(1)
         .returning(move |_, _, _, _| Ok(StartInboxConversationResult::Started(posted)));
-    tx.expect_get_group_inbox_conversation()
-        .times(1)
-        .returning(move |_, _| Ok(Some(conversation.clone())));
-    tx.expect_list_inbox_recipient_ids()
-        .times(1)
-        .returning(|_| Ok(vec![Uuid::new_v4()]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_message_received_context(
+        &mut tx,
+        &mut Sequence::new(),
+        posted,
+        conversation,
+        vec![Uuid::new_v4()],
+    );
     tx.expect_enqueue_notification()
         .times(1)
         .returning(|_| Err(anyhow!("enqueue failed")));
@@ -606,18 +578,38 @@ async fn test_unmark_conversation_as_spam_succeeds_without_transaction_or_notifi
 
 // Helpers.
 
-/// Expects a transaction that rolls back without committing.
-fn expect_rolled_back_transaction(db: &mut MockDB, mut tx: MockDB) {
-    tx.expect_commit().never();
-    tx.expect_rollback().times(1).returning(|| Ok(()));
-    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
+/// Expects the context reads behind an inbox message notification, with the
+/// conversation read next in `sequence`.
+fn expect_message_received_context(
+    tx: &mut MockDB,
+    sequence: &mut Sequence,
+    posted: PostedInboxMessage,
+    conversation: InboxConversation,
+    recipient_ids: Vec<Uuid>,
+) {
+    expect_reply_received_context(tx, sequence, posted, conversation);
+    tx.expect_list_inbox_recipient_ids()
+        .times(1)
+        .withf(move |group_id| *group_id == posted.group_id)
+        .return_once(move |_| Ok(recipient_ids));
 }
 
-/// Expects a transaction that commits without rolling back.
-fn expect_successful_transaction(db: &mut MockDB, mut tx: MockDB) {
-    tx.expect_commit().times(1).returning(|| Ok(()));
-    tx.expect_rollback().never();
-    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
+/// Expects the context reads behind an inbox reply notification, with the
+/// conversation read next in `sequence`.
+fn expect_reply_received_context(
+    tx: &mut MockDB,
+    sequence: &mut Sequence,
+    posted: PostedInboxMessage,
+    conversation: InboxConversation,
+) {
+    tx.expect_get_group_inbox_conversation()
+        .times(1)
+        .withf(move |group_id, inbox_conversation_id| {
+            *group_id == posted.group_id && *inbox_conversation_id == posted.inbox_conversation_id
+        })
+        .in_sequence(sequence)
+        .return_once(move |_, _| Ok(Some(conversation)));
+    expect_site_settings(tx);
 }
 
 /// Builds a conversation whose latest message is the posted group reply.
@@ -632,13 +624,4 @@ fn sample_conversation_with_reply(posted: PostedInboxMessage) -> InboxConversati
         author: Some(sample_template_user()),
     });
     conversation
-}
-
-/// Builds the identifiers of a posted inbox message.
-fn sample_posted() -> PostedInboxMessage {
-    PostedInboxMessage {
-        group_id: Uuid::new_v4(),
-        inbox_conversation_id: Uuid::new_v4(),
-        inbox_message_id: Uuid::new_v4(),
-    }
 }

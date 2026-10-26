@@ -98,6 +98,11 @@ fn cached_aggregate_reads_stay_outside_services() {
     let mut entries = Vec::new();
     walk_rust_files(&src_dir.join("services"), &mut entries);
     entries.push(src_dir.join("services.rs"));
+    assert!(
+        entries.len() > 1,
+        "service source files should be found under {}",
+        src_dir.display()
+    );
 
     // Check service code for calls to cached aggregates over mutable data
     let mut violations = Vec::new();
@@ -127,6 +132,15 @@ fn layer_dependencies_follow_backend_rules() {
     let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let files = collect_source_files(&src_dir);
     let mut violations = Vec::new();
+
+    // Check every layer directory contributed source files, so an empty walk cannot pass
+    for layer in LAYERS {
+        let layer_dir = format!("{layer}/");
+        assert!(
+            files.iter().any(|file| file.relative_path.starts_with(&layer_dir)),
+            "no source files found under `{layer_dir}`"
+        );
+    }
 
     // Check layer edges against the forbidden list and its allowances
     let mut used_layer_allowances = BTreeSet::new();
@@ -192,6 +206,36 @@ fn layer_dependencies_follow_backend_rules() {
         violations.is_empty(),
         "layer dependency violations:\n{}",
         violations.join("\n")
+    );
+}
+
+#[test]
+fn crate_paths_flattens_use_trees_and_inline_paths() {
+    let source = r"
+        use crate::{
+            db::{DynDB, pool::Pool as DbPool},
+            services::notifications,
+            types::{self, event::EventSummary},
+        };
+        use std::collections::BTreeSet;
+        // use crate::templates::Commented;
+
+        fn render(_: crate::handlers::HandlerError) {}
+    ";
+
+    assert_eq!(
+        crate_paths(source),
+        BTreeSet::from(
+            [
+                "db::DynDB",
+                "db::pool::Pool",
+                "handlers::HandlerError",
+                "services::notifications",
+                "types",
+                "types::event::EventSummary",
+            ]
+            .map(String::from)
+        )
     );
 }
 

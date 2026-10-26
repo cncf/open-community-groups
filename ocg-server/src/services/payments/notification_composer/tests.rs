@@ -11,112 +11,59 @@ use crate::{
         EventRefundApproved, EventRefundRejected, EventRefundRequested, EventWelcome,
     },
     types::{
-        event::{EventKind, EventSummary},
-        notifications::NotificationKind,
-        site::SiteSettings,
+        event::EventSummary, notifications::NotificationKind, site::SiteSettings,
+        tests::sample_event_summary,
     },
 };
 
 use super::PaymentsNotificationComposer;
 
+/// Public event link built for `sample_event_summary`.
+const SAMPLE_EVENT_LINK: &str = "/test-community/group/def5678/event/ghi9abc";
+
 #[tokio::test]
-async fn build_refund_approval_template_data_returns_expected_payload() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-    let site_settings = SiteSettings::default();
+async fn test_build_refund_approval_template_data_returns_expected_payload() {
+    for external_payment in [false, true] {
+        // Setup identifiers and notification context
+        let community_id = Uuid::new_v4();
+        let event = sample_event_summary(Uuid::new_v4());
+        let mut db = MockDB::new();
+        expect_event_notification_context(&mut db, community_id, &event);
 
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
+        // Build the template payload
+        let composer = sample_notification_composer(db, MockNotificationsManager::new());
+        let template_data = composer
+            .build_refund_approval_template_data(community_id, event.event_id, external_payment)
+            .await
+            .expect("refund approval template data to be built");
 
-    // Build the template payload
-    let composer = sample_notification_composer(db, MockNotificationsManager::new());
-    let template_data = composer
-        .build_refund_approval_template_data(community_id, event_id, false)
-        .await
-        .expect("refund approval template data to be built");
-
-    // Check result matches expectations
-    assert_eq!(
-        template_data,
-        to_value(&EventRefundApproved {
-            event: sample_event_summary(event_id),
-            external_payment: false,
-            link: "/community/group/group/event/event".to_string(),
-            theme: SiteSettings::default().theme,
-        })
-        .unwrap()
-    );
+        // Check the payload marks where the refund was returned
+        assert_eq!(
+            template_data,
+            to_value(&EventRefundApproved {
+                event: event.clone(),
+                external_payment,
+                link: SAMPLE_EVENT_LINK.to_string(),
+                theme: SiteSettings::default().theme,
+            })
+            .unwrap(),
+            "external_payment: {external_payment}"
+        );
+    }
 }
 
 #[tokio::test]
-async fn build_refund_approval_template_data_marks_external_payment() {
-    // Setup identifiers and data structures
+async fn test_build_refund_request_template_data_returns_expected_payload() {
+    // Setup identifiers and notification context
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-    let site_settings = SiteSettings::default();
-
-    // Setup database mock
+    let event = sample_event_summary(Uuid::new_v4());
     let mut db = MockDB::new();
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
+    expect_event_notification_context(&mut db, community_id, &event);
 
     // Build the template payload
     let composer = sample_notification_composer(db, MockNotificationsManager::new());
     let template_data = composer
-        .build_refund_approval_template_data(community_id, event_id, true)
-        .await
-        .expect("refund approval template data to be built");
-
-    // Check the payload marks the refund as returned outside OCG
-    assert_eq!(
-        template_data,
-        to_value(&EventRefundApproved {
-            event: sample_event_summary(event_id),
-            external_payment: true,
-            link: "/community/group/group/event/event".to_string(),
-            theme: SiteSettings::default().theme,
-        })
-        .unwrap()
-    );
-}
-
-#[tokio::test]
-async fn build_refund_request_template_data_returns_expected_payload() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-    let site_settings = SiteSettings::default();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-
-    // Build the template payload
-    let composer = sample_notification_composer(db, MockNotificationsManager::new());
-    let template_data = composer
-        .build_refund_request_template_data(community_id, event_id)
+        .build_refund_request_template_data(community_id, event.event_id)
         .await
         .expect("refund request template data to be built");
 
@@ -124,7 +71,7 @@ async fn build_refund_request_template_data_returns_expected_payload() {
     assert_eq!(
         template_data,
         to_value(&EventRefundRequested {
-            event: sample_event_summary(event_id),
+            event,
             link: "/dashboard/group?tab=refunds".to_string(),
             theme: SiteSettings::default().theme,
         })
@@ -133,31 +80,21 @@ async fn build_refund_request_template_data_returns_expected_payload() {
 }
 
 #[tokio::test]
-async fn enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance() {
-    // Setup identifiers and data structures
+async fn test_enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance() {
+    // Setup identifiers, notification context, and expected payload
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-    let site_settings = SiteSettings::default();
+    let event = sample_event_summary(Uuid::new_v4());
     let user_id = Uuid::new_v4();
     let expected_template_data = to_value(&EventWelcome {
-        event: sample_event_summary(event_id),
-        link: "/community/group/group/event/event".to_string(),
+        event: event.clone(),
+        link: SAMPLE_EVENT_LINK.to_string(),
         theme: SiteSettings::default().theme,
 
         dashboard_link: None,
     })
     .unwrap();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
+    expect_event_notification_context(&mut db, community_id, &event);
 
     // Setup notifications manager mock
     let mut notifications_manager = MockNotificationsManager::new();
@@ -177,7 +114,7 @@ async fn enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance
     composer
         .enqueue_checkout_completed_notification(CompletedEventPurchase {
             community_id,
-            event_id,
+            event_id: event.event_id,
             user_id,
 
             transitioned: None,
@@ -186,31 +123,21 @@ async fn enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance
 }
 
 #[tokio::test]
-async fn enqueue_event_welcome_notification_enqueues_expected_payload() {
-    // Setup identifiers and data structures
+async fn test_enqueue_event_welcome_notification_enqueues_expected_payload() {
+    // Setup identifiers, notification context, and expected payload
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-    let site_settings = SiteSettings::default();
+    let event = sample_event_summary(Uuid::new_v4());
     let user_id = Uuid::new_v4();
     let expected_template_data = to_value(&EventWelcome {
-        event: sample_event_summary(event_id),
-        link: "/community/group/group/event/event".to_string(),
+        event: event.clone(),
+        link: SAMPLE_EVENT_LINK.to_string(),
         theme: SiteSettings::default().theme,
 
         dashboard_link: Some("/dashboard/user?tab=events".to_string()),
     })
     .unwrap();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
+    expect_event_notification_context(&mut db, community_id, &event);
 
     // Setup notifications manager mock
     let mut notifications_manager = MockNotificationsManager::new();
@@ -228,35 +155,65 @@ async fn enqueue_event_welcome_notification_enqueues_expected_payload() {
     // Enqueue the welcome notification
     let composer = sample_notification_composer(db, notifications_manager);
     composer
-        .enqueue_event_welcome_notification(community_id, event_id, user_id)
+        .enqueue_event_welcome_notification(community_id, event.event_id, user_id)
         .await;
 }
 
 #[tokio::test]
-async fn enqueue_refund_rejection_notification_enqueues_expected_payload() {
-    // Setup identifiers and data structures
+async fn test_enqueue_event_welcome_notification_skips_enqueue_when_context_fails() {
+    // Setup a notification context that cannot be loaded
+    let mut db = MockDB::new();
+    db.expect_get_event_summary_by_id().never();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Err(anyhow::anyhow!("context unavailable")));
+
+    // Forbid enqueueing a notification without its context
+    let mut notifications_manager = MockNotificationsManager::new();
+    notifications_manager.expect_enqueue().never();
+
+    // Enqueue the welcome notification on a best-effort basis
+    let composer = sample_notification_composer(db, notifications_manager);
+    composer
+        .enqueue_event_welcome_notification(Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4())
+        .await;
+}
+
+#[tokio::test]
+async fn test_enqueue_event_welcome_notification_swallows_enqueue_failure() {
+    // Setup the notification context and a failing enqueue
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-    let site_settings = SiteSettings::default();
+    let event = sample_event_summary(Uuid::new_v4());
+    let mut db = MockDB::new();
+    expect_event_notification_context(&mut db, community_id, &event);
+    let mut notifications_manager = MockNotificationsManager::new();
+    notifications_manager
+        .expect_enqueue()
+        .times(1)
+        .returning(|_| Box::pin(async { Err(anyhow::anyhow!("queue unavailable")) }));
+
+    // Enqueue the welcome notification on a best-effort basis
+    let composer = sample_notification_composer(db, notifications_manager);
+    composer
+        .enqueue_event_welcome_notification(community_id, event.event_id, Uuid::new_v4())
+        .await;
+}
+
+#[tokio::test]
+async fn test_enqueue_refund_rejection_notification_enqueues_expected_payload() {
+    // Setup identifiers, notification context, and expected payload
+    let community_id = Uuid::new_v4();
+    let event = sample_event_summary(Uuid::new_v4());
     let user_id = Uuid::new_v4();
     let expected_template_data = to_value(&EventRefundRejected {
-        event: sample_event_summary(event_id),
-        link: "/community/group/group/event/event".to_string(),
+        event: event.clone(),
+        link: SAMPLE_EVENT_LINK.to_string(),
         rejection_reason: "Outside the refund policy window".to_string(),
         theme: SiteSettings::default().theme,
     })
     .unwrap();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
+    expect_event_notification_context(&mut db, community_id, &event);
 
     // Setup notifications manager mock
     let mut notifications_manager = MockNotificationsManager::new();
@@ -276,70 +233,76 @@ async fn enqueue_refund_rejection_notification_enqueues_expected_payload() {
     composer
         .enqueue_refund_rejection_notification(
             community_id,
-            event_id,
+            event.event_id,
             user_id,
             "Outside the refund policy window",
         )
         .await;
 }
 
+#[tokio::test]
+async fn test_enqueue_refund_rejection_notification_skips_enqueue_when_context_fails() {
+    // Setup a notification context that cannot be loaded
+    let mut db = MockDB::new();
+    db.expect_get_event_summary_by_id().never();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Err(anyhow::anyhow!("context unavailable")));
+
+    // Forbid enqueueing a notification without its context
+    let mut notifications_manager = MockNotificationsManager::new();
+    notifications_manager.expect_enqueue().never();
+
+    // Enqueue the rejection notification on a best-effort basis
+    let composer = sample_notification_composer(db, notifications_manager);
+    composer
+        .enqueue_refund_rejection_notification(
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            "Not eligible",
+        )
+        .await;
+}
+
+#[tokio::test]
+async fn test_enqueue_refund_rejection_notification_swallows_enqueue_failure() {
+    // Setup the notification context and a failing enqueue
+    let community_id = Uuid::new_v4();
+    let event = sample_event_summary(Uuid::new_v4());
+    let mut db = MockDB::new();
+    expect_event_notification_context(&mut db, community_id, &event);
+    let mut notifications_manager = MockNotificationsManager::new();
+    notifications_manager
+        .expect_enqueue()
+        .times(1)
+        .returning(|_| Box::pin(async { Err(anyhow::anyhow!("queue unavailable")) }));
+
+    // Enqueue the rejection notification on a best-effort basis
+    let composer = sample_notification_composer(db, notifications_manager);
+    composer
+        .enqueue_refund_rejection_notification(
+            community_id,
+            event.event_id,
+            Uuid::new_v4(),
+            "Not eligible",
+        )
+        .await;
+}
+
 // Helpers.
 
-/// Create a sample event summary.
-fn sample_event_summary(event_id: Uuid) -> EventSummary {
-    EventSummary {
-        attendee_approval_required: false,
-        canceled: false,
-        cohosts: vec![],
-        community_display_name: "Community".to_string(),
-        community_name: "community".to_string(),
-        event_id,
-        group_category_name: "Technology".to_string(),
-        group_name: "Group".to_string(),
-        group_slug: "group".to_string(),
-        has_external_payment: false,
-        has_registration_questions: false,
-        has_related_events: false,
-        kind: EventKind::default(),
-        logo_url: "https://example.test/logo.png".to_string(),
-        name: "Event".to_string(),
-        published: true,
-        slug: "event".to_string(),
-        test_event: false,
-        timezone: chrono_tz::UTC,
-        waitlist_count: 0,
-        waitlist_enabled: false,
-        attendee_count: None,
-        capacity: None,
-        created_by_display_name: None,
-        created_by_username: None,
-        description_short: None,
-        delete_eligibility: None,
-        ends_at: None,
-        event_series_id: None,
-        group_slug_pretty: None,
-        latitude: None,
-        longitude: None,
-        meeting_join_instructions: None,
-        meeting_join_url: None,
-        meeting_password: None,
-        meeting_provider: None,
-        payment_currency_code: None,
-        pending_cohosts_count: None,
-        registration_ends_at: None,
-        registration_starts_at: None,
-        remaining_capacity: None,
-        starts_at: None,
-        ticket_types: None,
-        venue_address: None,
-        venue_city: None,
-        venue_country_code: None,
-        venue_country_name: None,
-        venue_name: None,
-        venue_state_code: None,
-        venue_state_name: None,
-        venue_zip_code: None,
-    }
+/// Expects the event summary and default site settings for one notification.
+fn expect_event_notification_context(db: &mut MockDB, community_id: Uuid, event: &EventSummary) {
+    let event = event.clone();
+    let event_id = event.event_id;
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(SiteSettings::default()));
 }
 
 /// Create a payments notification composer with mock dependencies.

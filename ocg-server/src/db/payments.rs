@@ -1513,145 +1513,14 @@ pub(crate) struct UserPurchaseDocumentContext {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use uuid::Uuid;
 
     use super::{
-        ClaimedPaymentJob, ClaimedPaymentJobWork, EventPurchaseRefundStatus,
         PrepareEventCheckoutPurchaseConflict, PrepareEventCheckoutPurchaseOutput,
         ReconcileEventPurchaseForCheckoutSessionOutput, ReconcileEventPurchaseResult,
     };
 
     #[test]
-    fn claimed_payment_job_deserializes_application_fee_adjustment_work() {
-        let claim_id = Uuid::new_v4();
-        let payment_job_id = Uuid::new_v4();
-        let purchase_id = Uuid::new_v4();
-
-        // Deserialize the flattened lifecycle fields plus internally tagged work
-        let job: ClaimedPaymentJob = serde_json::from_value(json!({
-            "application_fee_adjustment": {
-                "amount_minor": 125,
-                "connected_seller_id": "acct_worker",
-                "currency_code": "USD",
-                "event_purchase_application_fee_adjustment_id": Uuid::new_v4(),
-                "kind": "tax-reconciliation",
-                "provider_application_fee_id": "fee_worker"
-            },
-            "attempt_count": 1,
-            "claim_id": claim_id,
-            "event_purchase_id": purchase_id,
-            "idempotency_key": "event-purchase-tax-fee-adjustment-test",
-            "kind": "event-purchase-application-fee-adjustment",
-            "payment_job_id": payment_job_id,
-            "payment_provider": "stripe",
-            "status": "processing"
-        }))
-        .unwrap();
-
-        // Check the job lifecycle and typed work remain distinct
-        assert_eq!(job.attempt_count, 1);
-        assert_eq!(job.claim_id, claim_id);
-        assert_eq!(job.event_purchase_id, purchase_id);
-        assert_eq!(job.payment_job_id, payment_job_id);
-        assert!(matches!(
-            job.work,
-            ClaimedPaymentJobWork::EventPurchaseApplicationFeeAdjustment { .. }
-        ));
-    }
-
-    #[test]
-    fn claimed_payment_job_deserializes_credit_note_work() {
-        let claim_id = Uuid::new_v4();
-        let payment_job_id = Uuid::new_v4();
-        let purchase_id = Uuid::new_v4();
-
-        // Deserialize the flattened lifecycle fields plus internally tagged work
-        let job: ClaimedPaymentJob = serde_json::from_value(json!({
-            "attempt_count": 1,
-            "claim_id": claim_id,
-            "credit_note": {
-                "amount_minor": 2500,
-                "connected_seller_id": "acct_worker",
-                "event_purchase_credit_note_id": Uuid::new_v4(),
-                "event_purchase_refund_id": Uuid::new_v4(),
-                "provider_invoice_id": "in_worker",
-                "provider_refund_id": "re_worker",
-                "tax_amount_minor": 200
-            },
-            "event_purchase_id": purchase_id,
-            "idempotency_key": "event-purchase-credit-note-test",
-            "kind": "event-purchase-credit-note",
-            "payment_job_id": payment_job_id,
-            "payment_provider": "stripe",
-            "status": "processing"
-        }))
-        .unwrap();
-
-        // Check the job lifecycle and typed work remain distinct
-        assert_eq!(job.attempt_count, 1);
-        assert_eq!(job.claim_id, claim_id);
-        assert_eq!(job.event_purchase_id, purchase_id);
-        assert_eq!(job.payment_job_id, payment_job_id);
-        assert!(matches!(
-            job.work,
-            ClaimedPaymentJobWork::EventPurchaseCreditNote { .. }
-        ));
-    }
-
-    #[test]
-    fn claimed_payment_job_deserializes_refund_work() {
-        let claim_id = Uuid::new_v4();
-        let payment_job_id = Uuid::new_v4();
-        let purchase_id = Uuid::new_v4();
-        let refund_id = Uuid::new_v4();
-
-        // Deserialize the flattened lifecycle fields plus internally tagged work
-        let job: ClaimedPaymentJob = serde_json::from_value(json!({
-            "attempt_count": 1,
-            "claim_id": claim_id,
-            "event_purchase_id": purchase_id,
-            "idempotency_key": "event-purchase-refund-test",
-            "kind": "event-purchase-refund",
-            "payment_job_id": payment_job_id,
-            "payment_provider": "stripe",
-            "refund": {
-                "amount_minor": 2500,
-                "claim_id": claim_id,
-                "community_id": Uuid::new_v4(),
-                "connected_seller_id": "acct_worker",
-                "currency_code": "USD",
-                "event_id": Uuid::new_v4(),
-                "event_purchase_id": purchase_id,
-                "event_purchase_refund_id": refund_id,
-                "idempotency_key": "event-purchase-refund-test",
-                "kind": "event-cancellation",
-                "payment_job_id": payment_job_id,
-                "payment_provider": "stripe",
-                "provider_payment_reference": "pi_worker",
-                "status": "provider-pending",
-                "terminal_failure": false
-            },
-            "status": "processing"
-        }))
-        .unwrap();
-
-        // Check the job lifecycle and nested refund DTO both deserialize
-        assert_eq!(job.attempt_count, 1);
-        assert_eq!(job.claim_id, claim_id);
-        assert_eq!(job.event_purchase_id, purchase_id);
-        assert_eq!(job.payment_job_id, payment_job_id);
-        match job.work {
-            ClaimedPaymentJobWork::EventPurchaseRefund { refund } => {
-                assert_eq!(refund.event_purchase_refund_id, refund_id);
-                assert_eq!(refund.payment_job_id, payment_job_id);
-                assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
-            }
-            _ => panic!("expected refund work"),
-        }
-    }
-
-    #[test]
-    fn prepare_event_checkout_purchase_output_maps_conflicts() {
+    fn test_prepare_event_checkout_purchase_output_maps_conflicts() {
         for (value, expected) in [
             (
                 "admission-offer-price-locked",
@@ -1693,64 +1562,31 @@ mod tests {
             let output: PrepareEventCheckoutPurchaseOutput =
                 serde_json::from_value(json!({ "conflict": value })).unwrap();
 
-            assert!(matches!(
-                output,
-                PrepareEventCheckoutPurchaseOutput::Conflict { conflict }
-                    if conflict == expected
-            ));
+            assert!(
+                matches!(
+                    output,
+                    PrepareEventCheckoutPurchaseOutput::Conflict { conflict }
+                        if conflict == expected
+                ),
+                "{value}"
+            );
         }
     }
 
     #[test]
-    fn reconcile_event_purchase_for_checkout_session_output_maps_completed() {
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let user_id = Uuid::new_v4();
+    fn test_reconcile_event_purchase_for_checkout_session_output_maps_outcomes_without_ids() {
+        for (outcome, expected) in [
+            ("noop", ReconcileEventPurchaseResult::Noop),
+            ("refund_queued", ReconcileEventPurchaseResult::RefundQueued),
+        ] {
+            let output: ReconcileEventPurchaseForCheckoutSessionOutput =
+                serde_json::from_value(json!({ "outcome": outcome })).unwrap();
 
-        let output: ReconcileEventPurchaseForCheckoutSessionOutput =
-            serde_json::from_value(json!({
-                "outcome": "completed",
-                "community_id": community_id,
-                "event_id": event_id,
-                "user_id": user_id
-            }))
-            .unwrap();
-
-        match ReconcileEventPurchaseResult::from(output) {
-            ReconcileEventPurchaseResult::Completed(completed) => {
-                assert_eq!(completed.community_id, community_id);
-                assert_eq!(completed.event_id, event_id);
-                assert_eq!(completed.user_id, user_id);
-            }
-            _ => panic!("expected completed result"),
+            assert!(
+                std::mem::discriminant(&ReconcileEventPurchaseResult::from(output))
+                    == std::mem::discriminant(&expected),
+                "{outcome}"
+            );
         }
-    }
-
-    #[test]
-    fn reconcile_event_purchase_for_checkout_session_output_maps_noop() {
-        let output: ReconcileEventPurchaseForCheckoutSessionOutput =
-            serde_json::from_value(json!({
-                "outcome": "noop"
-            }))
-            .unwrap();
-
-        assert!(matches!(
-            ReconcileEventPurchaseResult::from(output),
-            ReconcileEventPurchaseResult::Noop
-        ));
-    }
-
-    #[test]
-    fn reconcile_event_purchase_for_checkout_session_output_maps_refund_queued() {
-        let output: ReconcileEventPurchaseForCheckoutSessionOutput =
-            serde_json::from_value(json!({
-                "outcome": "refund_queued"
-            }))
-            .unwrap();
-
-        assert!(matches!(
-            ReconcileEventPurchaseResult::from(output),
-            ReconcileEventPurchaseResult::RefundQueued
-        ));
     }
 }

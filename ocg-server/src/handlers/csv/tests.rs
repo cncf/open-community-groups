@@ -33,15 +33,21 @@ async fn test_attachment_response_sets_csv_download_headers() {
 }
 
 #[test]
-fn test_csv_optional_timestamp_formats_missing_value_as_empty_cell() {
-    assert_eq!(csv_optional_timestamp(None), "");
-}
+fn test_csv_optional_timestamp() {
+    // Setup labeled optional timestamps with the expected cell
+    let cases = [
+        ("missing value", None, ""),
+        (
+            "present value",
+            Some(Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap()),
+            "2024-02-03 04:05 UTC",
+        ),
+    ];
 
-#[test]
-fn test_csv_optional_timestamp_formats_present_value() {
-    let value = Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap();
-
-    assert_eq!(csv_optional_timestamp(Some(value)), "2024-02-03 04:05 UTC");
+    // Check each timestamp is formatted as expected
+    for (case, value, expected) in cases {
+        assert_eq!(csv_optional_timestamp(value), expected, "{case}");
+    }
 }
 
 #[test]

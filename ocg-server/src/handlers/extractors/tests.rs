@@ -3,16 +3,16 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use axum::{
     Router,
-    body::{Body, to_bytes},
+    body::Body,
     http::{
-        Request, StatusCode,
-        header::{COOKIE, SET_COOKIE},
+        StatusCode,
+        header::{CONTENT_TYPE, COOKIE, SET_COOKIE},
+        response::Parts as ResponseParts,
     },
-    routing::get,
+    routing::{get, post},
 };
 use axum_login::AuthManagerLayerBuilder;
 use serde::Deserialize;
-use tower::ServiceExt;
 use tower_sessions::{MemoryStore, SessionManagerLayer};
 use uuid::Uuid;
 
@@ -22,12 +22,13 @@ use crate::{
     db::{DynDB, mock::MockDB},
     handlers::{
         error::INVALID_REQUEST_PAYLOAD,
-        tests::{sample_auth_user, test_state},
+        tests::{
+            assert_empty_response, request, sample_auth_user, send, test_state_with_server_cfg,
+        },
     },
     services::{
-        blocking::BlockingExecutor,
-        images::{DynImageStorage, MockImageStorage},
-        notifications::{DynNotificationsManager, MockNotificationsManager},
+        blocking::BlockingExecutor, images::MockImageStorage,
+        notifications::MockNotificationsManager,
     },
 };
 
@@ -35,38 +36,25 @@ use super::*;
 
 #[tokio::test]
 async fn test_community_id_extractor_success() {
-    // Setup identifiers and data structures
+    // Setup identifiers and database mock
     let community_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    let db: DynDB = Arc::new(db);
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
     // Setup router with test endpoint that uses CommunityId extractor
-    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/{community}/test",
             get(|CommunityId(id): CommunityId| async move { id.to_string() }),
         )
-        .with_state(state);
+        .with_state(state(db));
 
     // Send request with community in path
-    let request = Request::builder()
-        .uri("/test-community/test")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("GET", "/test-community/test").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
@@ -81,26 +69,18 @@ async fn test_community_id_extractor_unknown_community() {
         .times(1)
         .withf(|name| name == "unknown")
         .returning(|_| Ok(None));
-    let db: DynDB = Arc::new(db);
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
     // Setup router with test endpoint that uses CommunityId extractor
-    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/{community}/test",
             get(|CommunityId(_id): CommunityId| async { StatusCode::OK }),
         )
-        .with_state(state);
+        .with_state(state(db));
 
     // Send request
-    let request = Request::builder().uri("/unknown/test").body(Body::empty()).unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("GET", "/unknown/test").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NOT_FOUND);
@@ -115,54 +95,36 @@ async fn test_community_id_extractor_db_error() {
         .times(1)
         .withf(|name| name == "test-community")
         .returning(|_| Err(anyhow!("db error")));
-    let db: DynDB = Arc::new(db);
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
     // Setup router with test endpoint that uses CommunityId extractor
-    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/{community}/test",
             get(|CommunityId(_id): CommunityId| async { StatusCode::OK }),
         )
-        .with_state(state);
+        .with_state(state(db));
 
     // Send request
-    let request = Request::builder()
-        .uri("/test-community/test")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let request = request("GET", "/test-community/test").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
 async fn test_current_user_extractor_missing_auth_session() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
     // Setup router without auth layer
     let router = Router::new()
         .route(
             "/test",
             get(|_current_user: CurrentUser| async { StatusCode::OK }),
         )
-        .with_state(test_state(db, is, nm));
+        .with_state(state(MockDB::new()));
 
     // Send request
-    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("GET", "/test").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNAUTHORIZED);
@@ -171,29 +133,8 @@ async fn test_current_user_extractor_missing_auth_session() {
 
 #[tokio::test]
 async fn test_current_user_extractor_session_without_user() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup auth layer
-    let server_cfg = HttpServerConfig::default();
-    let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let backend = AuthnBackend::new(
-        BlockingExecutor::new(1),
-        db.clone(),
-        &server_cfg.http_client,
-        &server_cfg.oauth2,
-        &server_cfg.oidc,
-    )
-    .await
-    .expect("backend setup should succeed");
-    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
-
-    // Setup router
-    let router = Router::new()
+    // Setup router with a route that initializes a session without logging in
+    let endpoints = Router::new()
         .route(
             "/init",
             get(|auth_session: AuthSession| async move {
@@ -208,34 +149,19 @@ async fn test_current_user_extractor_session_without_user() {
         .route(
             "/test",
             get(|CurrentUser(_user): CurrentUser| async move { StatusCode::OK }),
-        )
-        .layer(auth_layer)
-        .with_state(test_state(db, is, nm));
+        );
+    let router = with_auth_layer(endpoints, MockDB::new(), &HttpServerConfig::default()).await;
 
     // Initialize session without logging in
-    let init_request = Request::builder().uri("/init").body(Body::empty()).unwrap();
-    let init_response = router.clone().oneshot(init_request).await.unwrap();
-    let set_cookie = init_response
-        .headers()
-        .get(SET_COOKIE)
-        .expect("set-cookie header should be present")
-        .to_str()
-        .expect("set-cookie should be valid utf-8");
-    let cookie = set_cookie
-        .split(';')
-        .next()
-        .expect("set-cookie should contain cookie pair")
-        .to_string();
+    let init_request = request("GET", "/init").body(Body::empty()).unwrap();
+    let (init_parts, _) = send(router.clone(), init_request).await;
 
     // Send request with session cookie
-    let request = Request::builder()
-        .uri("/test")
-        .header(COOKIE, cookie)
+    let request = request("GET", "/test")
+        .header(COOKIE, session_cookie(&init_parts))
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNAUTHORIZED);
@@ -244,38 +170,17 @@ async fn test_current_user_extractor_session_without_user() {
 
 #[tokio::test]
 async fn test_current_user_extractor_success() {
-    // Setup identifiers and data structures
+    // Setup identifiers and database mock
     let auth_hash = "auth-hash";
     let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_user_by_id()
         .times(1)
         .withf(move |id| id == &user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, auth_hash))));
-    let db: DynDB = Arc::new(db);
 
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup auth layer
-    let server_cfg = HttpServerConfig::default();
-    let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let backend = AuthnBackend::new(
-        BlockingExecutor::new(1),
-        db.clone(),
-        &server_cfg.http_client,
-        &server_cfg.oauth2,
-        &server_cfg.oidc,
-    )
-    .await
-    .expect("backend setup should succeed");
-    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
-
-    // Setup router
-    let router = Router::new()
+    // Setup router with a route that logs the user in
+    let endpoints = Router::new()
         .route(
             "/log-in",
             get(move |mut auth_session: AuthSession| async move {
@@ -287,34 +192,19 @@ async fn test_current_user_extractor_success() {
         .route(
             "/test",
             get(|CurrentUser(user): CurrentUser| async move { user.username }),
-        )
-        .layer(auth_layer)
-        .with_state(test_state(db, is, nm));
+        );
+    let router = with_auth_layer(endpoints, db, &HttpServerConfig::default()).await;
 
     // Log in to create authenticated session
-    let login_request = Request::builder().uri("/log-in").body(Body::empty()).unwrap();
-    let login_response = router.clone().oneshot(login_request).await.unwrap();
-    let set_cookie = login_response
-        .headers()
-        .get(SET_COOKIE)
-        .expect("set-cookie header should be present")
-        .to_str()
-        .expect("set-cookie should be valid utf-8");
-    let cookie = set_cookie
-        .split(';')
-        .next()
-        .expect("set-cookie should contain cookie pair")
-        .to_string();
+    let login_request = request("GET", "/log-in").body(Body::empty()).unwrap();
+    let (login_parts, _) = send(router.clone(), login_request).await;
 
     // Send authenticated request
-    let request = Request::builder()
-        .uri("/test")
-        .header(COOKIE, cookie)
+    let request = request("GET", "/test")
+        .header(COOKIE, session_cookie(&login_parts))
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
@@ -323,15 +213,7 @@ async fn test_current_user_extractor_success() {
 
 #[tokio::test]
 async fn test_oauth2_extractor_success() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup config
-    let scopes = vec!["read:user".to_string()];
+    // Setup config with a GitHub provider
     let mut server_cfg = HttpServerConfig::default();
     server_cfg.login.github = true;
     server_cfg.oauth2.insert(
@@ -341,73 +223,40 @@ async fn test_oauth2_extractor_success() {
             client_id: "client-id".to_string(),
             client_secret: "client-secret".to_string(),
             redirect_uri: "https://example.test/oauth2/callback".to_string(),
-            scopes: scopes.clone(),
+            scopes: vec!["read:user".to_string(), "user:email".to_string()],
             token_url: "https://github.com/login/oauth/access_token".to_string(),
         },
     );
 
-    // Setup auth layer with the configured provider
-    let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let backend = AuthnBackend::new(
-        BlockingExecutor::new(1),
-        db.clone(),
-        &server_cfg.http_client,
-        &server_cfg.oauth2,
-        &server_cfg.oidc,
-    )
-    .await
-    .expect("backend setup should succeed");
-    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
-
-    // Setup router
-    let mut state = test_state(db, is, nm);
-    state.server_cfg = server_cfg;
-    let router = Router::new()
-        .route(
-            "/log-in/oauth2/{provider}",
-            get({
-                move |OAuth2(provider_details): OAuth2| async move {
-                    assert_eq!(provider_details.scopes, scopes.clone());
-                    StatusCode::OK
-                }
-            }),
-        )
-        .layer(auth_layer)
-        .with_state(state);
+    // Setup router returning the extracted provider scopes
+    let endpoints = Router::new().route(
+        "/log-in/oauth2/{provider}",
+        get(|OAuth2(provider_details): OAuth2| async move { provider_details.scopes.join(" ") }),
+    );
+    let router = with_auth_layer(endpoints, MockDB::new(), &server_cfg).await;
 
     // Send request for the configured provider
-    let request = Request::builder()
-        .uri("/log-in/oauth2/github")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let request = request("GET", "/log-in/oauth2/github").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(bytes.as_ref(), b"read:user user:email");
 }
 
 #[tokio::test]
 async fn test_oauth2_extractor_missing_oauth2_provider() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
     // Setup router
     let router = Router::new()
         .route(
             "/log-in/oauth2",
             get(|_oauth2: OAuth2| async { StatusCode::OK }),
         )
-        .with_state(test_state(db, is, nm));
+        .with_state(state(MockDB::new()));
 
     // Send request
-    let request = Request::builder().uri("/log-in/oauth2").body(Body::empty()).unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("GET", "/log-in/oauth2").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
@@ -416,29 +265,17 @@ async fn test_oauth2_extractor_missing_oauth2_provider() {
 
 #[tokio::test]
 async fn test_oauth2_extractor_missing_auth_session() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup router
+    // Setup router without auth layer
     let router = Router::new()
         .route(
             "/log-in/oauth2/{provider}",
             get(|_oauth2: OAuth2| async { StatusCode::OK }),
         )
-        .with_state(test_state(db, is, nm));
+        .with_state(state(MockDB::new()));
 
     // Send request
-    let request = Request::builder()
-        .uri("/log-in/oauth2/github")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("GET", "/log-in/oauth2/github").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
@@ -447,44 +284,16 @@ async fn test_oauth2_extractor_missing_auth_session() {
 
 #[tokio::test]
 async fn test_oauth2_extractor_unsupported_provider() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup auth layer with an empty set of OAuth2 providers
-    let server_cfg = HttpServerConfig::default();
-    let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let backend = AuthnBackend::new(
-        BlockingExecutor::new(1),
-        db.clone(),
-        &server_cfg.http_client,
-        &server_cfg.oauth2,
-        &server_cfg.oidc,
-    )
-    .await
-    .expect("backend setup should succeed");
-    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
-
-    // Setup router
-    let router = Router::new()
-        .route(
-            "/log-in/oauth2/{provider}",
-            get(|_oauth2: OAuth2| async { StatusCode::OK }),
-        )
-        .layer(auth_layer)
-        .with_state(test_state(db, is, nm));
+    // Setup router with an auth layer without OAuth2 providers
+    let endpoints = Router::new().route(
+        "/log-in/oauth2/{provider}",
+        get(|_oauth2: OAuth2| async { StatusCode::OK }),
+    );
+    let router = with_auth_layer(endpoints, MockDB::new(), &HttpServerConfig::default()).await;
 
     // Send request
-    let request = Request::builder()
-        .uri("/log-in/oauth2/github")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("GET", "/log-in/oauth2/github").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
@@ -493,23 +302,14 @@ async fn test_oauth2_extractor_unsupported_provider() {
 
 #[tokio::test]
 async fn test_oidc_extractor_missing_oidc_provider() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
     // Setup router
     let router = Router::new()
         .route("/log-in/oidc", get(|_oidc: Oidc| async { StatusCode::OK }))
-        .with_state(test_state(db, is, nm));
+        .with_state(state(MockDB::new()));
 
     // Send request
-    let request = Request::builder().uri("/log-in/oidc").body(Body::empty()).unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("GET", "/log-in/oidc").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
@@ -518,29 +318,19 @@ async fn test_oidc_extractor_missing_oidc_provider() {
 
 #[tokio::test]
 async fn test_oidc_extractor_missing_auth_session() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup router
+    // Setup router without auth layer
     let router = Router::new()
         .route(
             "/log-in/oidc/{provider}",
             get(|_oidc: Oidc| async { StatusCode::OK }),
         )
-        .with_state(test_state(db, is, nm));
+        .with_state(state(MockDB::new()));
 
     // Send request
-    let request = Request::builder()
-        .uri("/log-in/oidc/linuxfoundation")
+    let request = request("GET", "/log-in/oidc/linuxfoundation")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
@@ -549,44 +339,18 @@ async fn test_oidc_extractor_missing_auth_session() {
 
 #[tokio::test]
 async fn test_oidc_extractor_unsupported_provider() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup auth layer with an empty set of OIDC providers
-    let server_cfg = HttpServerConfig::default();
-    let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let backend = AuthnBackend::new(
-        BlockingExecutor::new(1),
-        db.clone(),
-        &server_cfg.http_client,
-        &server_cfg.oauth2,
-        &server_cfg.oidc,
-    )
-    .await
-    .expect("backend setup should succeed");
-    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
-
-    // Setup router
-    let router = Router::new()
-        .route(
-            "/log-in/oidc/{provider}",
-            get(|_oidc: Oidc| async { StatusCode::OK }),
-        )
-        .layer(auth_layer)
-        .with_state(test_state(db, is, nm));
+    // Setup router with an auth layer without OIDC providers
+    let endpoints = Router::new().route(
+        "/log-in/oidc/{provider}",
+        get(|_oidc: Oidc| async { StatusCode::OK }),
+    );
+    let router = with_auth_layer(endpoints, MockDB::new(), &HttpServerConfig::default()).await;
 
     // Send request
-    let request = Request::builder()
-        .uri("/log-in/oidc/linuxfoundation")
+    let request = request("GET", "/log-in/oidc/linuxfoundation")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
@@ -595,20 +359,11 @@ async fn test_oidc_extractor_unsupported_provider() {
 
 #[tokio::test]
 async fn test_selected_community_id_extractor_missing_context() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup request parts and state
-    let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-    let (mut parts, _) = request.into_parts();
-    let state = test_state(db, is, nm);
+    // Setup request parts
+    let (mut parts, _) = request("GET", "/").body(Body::empty()).unwrap().into_parts();
 
     // Check extraction matches expectations
-    let result = SelectedCommunityId::from_request_parts(&mut parts, &state).await;
+    let result = SelectedCommunityId::from_request_parts(&mut parts, &state(MockDB::new())).await;
     assert!(matches!(
         result,
         Err((
@@ -620,25 +375,15 @@ async fn test_selected_community_id_extractor_missing_context() {
 
 #[tokio::test]
 async fn test_selected_community_id_extractor_success() {
-    // Setup identifiers and data structures
+    // Setup request parts carrying the selected community
     let community_id = Uuid::new_v4();
-
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup request parts and state
-    let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
+    let mut request = request("GET", "/").body(Body::empty()).unwrap();
     request.extensions_mut().insert(SelectedCommunityId(community_id));
     let (mut parts, _) = request.into_parts();
-    let state = test_state(db, is, nm);
 
     // Check extraction matches expectations
     let SelectedCommunityId(extracted) =
-        SelectedCommunityId::from_request_parts(&mut parts, &state)
+        SelectedCommunityId::from_request_parts(&mut parts, &state(MockDB::new()))
             .await
             .expect("extractor should succeed");
     assert_eq!(extracted, community_id);
@@ -646,45 +391,27 @@ async fn test_selected_community_id_extractor_success() {
 
 #[tokio::test]
 async fn test_selected_group_id_extractor_success() {
-    // Setup identifiers and data structures
+    // Setup request parts carrying the selected group
     let group_id = Uuid::new_v4();
-
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup request parts and state
-    let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
+    let mut request = request("GET", "/").body(Body::empty()).unwrap();
     request.extensions_mut().insert(SelectedGroupId(group_id));
     let (mut parts, _) = request.into_parts();
-    let state = test_state(db, is, nm);
 
     // Check extraction matches expectations
-    let SelectedGroupId(extracted) = SelectedGroupId::from_request_parts(&mut parts, &state)
-        .await
-        .expect("extractor should succeed");
+    let SelectedGroupId(extracted) =
+        SelectedGroupId::from_request_parts(&mut parts, &state(MockDB::new()))
+            .await
+            .expect("extractor should succeed");
     assert_eq!(extracted, group_id);
 }
 
 #[tokio::test]
 async fn test_selected_group_id_extractor_missing_context() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup request parts and state
-    let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-    let (mut parts, _) = request.into_parts();
-    let state = test_state(db, is, nm);
+    // Setup request parts
+    let (mut parts, _) = request("GET", "/").body(Body::empty()).unwrap().into_parts();
 
     // Check extraction matches expectations
-    let result = SelectedGroupId::from_request_parts(&mut parts, &state).await;
+    let result = SelectedGroupId::from_request_parts(&mut parts, &state(MockDB::new())).await;
     assert!(matches!(
         result,
         Err((
@@ -696,68 +423,34 @@ async fn test_selected_group_id_extractor_missing_context() {
 
 #[tokio::test]
 async fn test_validated_form_success() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup router with a handler that uses ValidatedForm
-    let state = test_state(db, is, nm);
+    // Setup router with a handler that returns the extracted form
     let router = Router::new()
         .route(
             "/test",
-            axum::routing::post(|ValidatedForm(form): ValidatedForm<TestForm>| async move {
-                assert_eq!(form.name, "test name");
-                StatusCode::OK
-            }),
+            post(|ValidatedForm(form): ValidatedForm<TestForm>| async move { form.name }),
         )
-        .with_state(state);
+        .with_state(state(MockDB::new()));
 
     // Send valid request
-    let request = Request::builder()
-        .method("POST")
-        .uri("/test")
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(Body::from("name=test+name"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let (parts, bytes) = send(router, form_post("/test", "name=test+name")).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(bytes.as_ref(), b"test name");
 }
 
 #[tokio::test]
 async fn test_validated_form_deserialization_error() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
     // Setup router with a handler that uses ValidatedForm
-    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/test",
-            axum::routing::post(|ValidatedForm(_form): ValidatedForm<TestForm>| async move {
-                StatusCode::OK
-            }),
+            post(|ValidatedForm(_form): ValidatedForm<TestForm>| async move { StatusCode::OK }),
         )
-        .with_state(state);
+        .with_state(state(MockDB::new()));
 
     // Send request without the required field (deserialization should fail)
-    let request = Request::builder()
-        .method("POST")
-        .uri("/test")
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(Body::from("other=value"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, form_post("/test", "other=value")).await;
 
     // Check the fixed body hides the parser detail
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -766,70 +459,39 @@ async fn test_validated_form_deserialization_error() {
 
 #[tokio::test]
 async fn test_validated_form_validation_error() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
     // Setup router with a handler that uses ValidatedForm
-    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/test",
-            axum::routing::post(|ValidatedForm(_form): ValidatedForm<TestForm>| async move {
-                StatusCode::OK
-            }),
+            post(|ValidatedForm(_form): ValidatedForm<TestForm>| async move { StatusCode::OK }),
         )
-        .with_state(state);
+        .with_state(state(MockDB::new()));
 
     // Send request with empty name (validation should fail)
-    let request = Request::builder()
-        .method("POST")
-        .uri("/test")
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(Body::from("name=+++"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, form_post("/test", "name=+++")).await;
 
     // Check the garde report is returned
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("name"));
+    assert_eq!(
+        bytes.as_ref(),
+        b"name: value cannot be empty or whitespace-only\n"
+    );
 }
 
 #[tokio::test]
 async fn test_validated_form_qs_deserialization_error() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
     // Setup router with a handler that uses ValidatedFormQs
-    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/test",
-            axum::routing::post(
+            post(
                 |ValidatedFormQs(_form): ValidatedFormQs<TestFormQs>| async move { StatusCode::OK },
             ),
         )
-        .with_state(state);
+        .with_state(state(MockDB::new()));
 
     // Send request without the required field (deserialization should fail)
-    let request = Request::builder()
-        .method("POST")
-        .uri("/test")
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(Body::from("tags[0]=tag1"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, form_post("/test", "tags[0]=tag1")).await;
 
     // Check the fixed body hides the parser detail
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -838,147 +500,90 @@ async fn test_validated_form_qs_deserialization_error() {
 
 #[tokio::test]
 async fn test_validated_form_qs_success() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup router with a handler that uses ValidatedFormQs
-    let state = test_state(db, is, nm);
+    // Setup router with a handler that returns the extracted form
     let router = Router::new()
         .route(
             "/test",
-            axum::routing::post(
+            post(
                 |ValidatedFormQs(form): ValidatedFormQs<TestFormQs>| async move {
-                    assert_eq!(form.name, "test name");
-                    assert_eq!(
-                        form.tags,
-                        Some(vec!["tag1".to_string(), "tag2".to_string()])
-                    );
-                    StatusCode::OK
+                    format!("{} {:?}", form.name, form.tags)
                 },
             ),
         )
-        .with_state(state);
+        .with_state(state(MockDB::new()));
 
     // Send valid request with nested array
-    let request = Request::builder()
-        .method("POST")
-        .uri("/test")
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(Body::from("name=test+name&tags[0]=tag1&tags[1]=tag2"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let body = "name=test+name&tags[0]=tag1&tags[1]=tag2";
+    let (parts, bytes) = send(router, form_post("/test", body)).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(bytes.as_ref(), br#"test name Some(["tag1", "tag2"])"#);
 }
 
 #[tokio::test]
 async fn test_validated_form_qs_validation_error() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
     // Setup router with a handler that uses ValidatedFormQs
-    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/test",
-            axum::routing::post(
+            post(
                 |ValidatedFormQs(_form): ValidatedFormQs<TestFormQs>| async move { StatusCode::OK },
             ),
         )
-        .with_state(state);
+        .with_state(state(MockDB::new()));
 
     // Send request with whitespace-only name (validation should fail)
-    let request = Request::builder()
-        .method("POST")
-        .uri("/test")
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(Body::from("name=+++"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, form_post("/test", "name=+++")).await;
 
     // Check the garde report is returned
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("name"));
+    assert_eq!(
+        bytes.as_ref(),
+        b"name: value cannot be empty or whitespace-only\n"
+    );
 }
 
 #[tokio::test]
 async fn test_validated_query_success() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    // Setup router with a handler that uses ValidatedQuery
-    let state = test_state(db, is, nm);
+    // Setup router with a handler that returns the extracted query
     let router = Router::new()
         .route(
             "/test",
             get(
                 |ValidatedQuery(query): ValidatedQuery<TestQuery>| async move {
-                    assert_eq!(query.name, "test name");
-                    assert_eq!(query.limit, Some(10));
-                    assert_eq!(
-                        query.tags,
-                        Some(vec!["tag1".to_string(), "tag2".to_string()])
-                    );
-                    StatusCode::OK
+                    format!("{} {:?} {:?}", query.name, query.limit, query.tags)
                 },
             ),
         )
-        .with_state(state);
+        .with_state(state(MockDB::new()));
 
     // Send valid request with nested array in the query string
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test?name=test+name&limit=10&tags[0]=tag1&tags[1]=tag2")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let uri = "/test?name=test+name&limit=10&tags[0]=tag1&tags[1]=tag2";
+    let request = request("GET", uri).body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        bytes.as_ref(),
+        br#"test name Some(10) Some(["tag1", "tag2"])"#
+    );
 }
 
 #[tokio::test]
 async fn test_validated_query_deserialization_error() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
     // Setup router with a handler that uses ValidatedQuery
-    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/test",
             get(|ValidatedQuery(_query): ValidatedQuery<TestQuery>| async move { StatusCode::OK }),
         )
-        .with_state(state);
+        .with_state(state(MockDB::new()));
 
     // Send request without the required field (deserialization should fail)
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test?limit=10")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("GET", "/test?limit=10").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the fixed body hides the parser detail
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -987,35 +592,21 @@ async fn test_validated_query_deserialization_error() {
 
 #[tokio::test]
 async fn test_validated_query_validation_error() {
-    // Setup database mock
-    let db: DynDB = Arc::new(MockDB::new());
-
-    // Setup services mocks
-    let is: DynImageStorage = Arc::new(MockImageStorage::new());
-    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
     // Setup router with a handler that uses ValidatedQuery
-    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/test",
             get(|ValidatedQuery(_query): ValidatedQuery<TestQuery>| async move { StatusCode::OK }),
         )
-        .with_state(state);
+        .with_state(state(MockDB::new()));
 
     // Send request with an out-of-range limit (validation should fail)
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test?name=test&limit=0")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("GET", "/test?name=test&limit=0").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the garde report is returned
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("limit"));
+    assert_eq!(bytes.as_ref(), b"limit: lower than 1\n");
 }
 
 #[test]
@@ -1040,6 +631,69 @@ fn test_validated_query_parse_validation_error() {
     let err = ValidatedQuery::<TestQuery>::parse("name=+++").expect_err("parse to fail");
 
     assert!(matches!(err, HandlerError::Validation(_)));
+}
+
+// Helpers.
+
+/// Builds an unauthenticated form-encoded POST request.
+fn form_post(uri: &str, body: &'static str) -> axum::http::Request<Body> {
+    request("POST", uri)
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap()
+}
+
+/// Returns the session cookie pair set by the response.
+fn session_cookie(parts: &ResponseParts) -> String {
+    let set_cookie = parts
+        .headers
+        .get(SET_COOKIE)
+        .expect("set-cookie header should be present")
+        .to_str()
+        .expect("set-cookie should be valid utf-8");
+    set_cookie
+        .split(';')
+        .next()
+        .expect("set-cookie should contain cookie pair")
+        .to_string()
+}
+
+/// Builds router state around the database mock with default service mocks.
+fn state(db: MockDB) -> router::State {
+    test_state_with_server_cfg(
+        Arc::new(db),
+        Arc::new(MockImageStorage::new()),
+        Arc::new(MockNotificationsManager::new()),
+        &HttpServerConfig::default(),
+    )
+}
+
+/// Wraps the routes with an in-memory auth layer and the test state.
+async fn with_auth_layer(
+    routes: Router<router::State>,
+    db: MockDB,
+    server_cfg: &HttpServerConfig,
+) -> Router {
+    let db: DynDB = Arc::new(db);
+    let backend = AuthnBackend::new(
+        BlockingExecutor::new(1),
+        db.clone(),
+        &server_cfg.http_client,
+        &server_cfg.oauth2,
+        &server_cfg.oidc,
+    )
+    .await
+    .expect("backend setup should succeed");
+    let session_layer = SessionManagerLayer::new(MemoryStore::default());
+    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
+    let state = test_state_with_server_cfg(
+        db,
+        Arc::new(MockImageStorage::new()),
+        Arc::new(MockNotificationsManager::new()),
+        server_cfg,
+    );
+
+    routes.layer(auth_layer).with_state(state)
 }
 
 // Test form structs for validation.

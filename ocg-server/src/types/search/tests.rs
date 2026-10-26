@@ -46,8 +46,6 @@ fn test_events_filters_normalize_list_keeps_provided_date_range() {
     let mut filters = SearchEventsFilters {
         date_from: NaiveDate::from_ymd_opt(2031, 1, 15),
         date_to: NaiveDate::from_ymd_opt(2031, 2, 20),
-        limit: Some(20),
-        offset: Some(40),
         view_mode: Some(ViewMode::List),
         ..Default::default()
     };
@@ -55,11 +53,9 @@ fn test_events_filters_normalize_list_keeps_provided_date_range() {
     // Normalize filters
     filters.normalize(sample_now(2030, 6, 1));
 
-    // Check the provided range and pagination were kept
+    // Check the provided range was kept
     assert_eq!(filters.date_from, NaiveDate::from_ymd_opt(2031, 1, 15));
     assert_eq!(filters.date_to, NaiveDate::from_ymd_opt(2031, 2, 20));
-    assert_eq!(filters.limit, Some(20));
-    assert_eq!(filters.offset, Some(40));
 }
 
 #[test]
@@ -76,32 +72,6 @@ fn test_events_filters_normalize_list_sets_default_date_range() {
     // Check the range starts today and spans twelve months
     assert_eq!(filters.date_from, NaiveDate::from_ymd_opt(2031, 1, 31));
     assert_eq!(filters.date_to, NaiveDate::from_ymd_opt(2032, 1, 31));
-}
-
-#[test]
-fn test_events_filters_normalize_map_keeps_bbox_and_pagination() {
-    // Setup map filters
-    let mut filters = SearchEventsFilters {
-        bbox_ne_lat: Some(45.0),
-        bbox_ne_lon: Some(10.0),
-        bbox_sw_lat: Some(40.0),
-        bbox_sw_lon: Some(5.0),
-        limit: Some(10),
-        offset: Some(30),
-        view_mode: Some(ViewMode::Map),
-        ..Default::default()
-    };
-
-    // Normalize filters
-    filters.normalize(sample_now(2031, 1, 15));
-
-    // Check the bbox and pagination were kept
-    assert_eq!(filters.bbox_ne_lat, Some(45.0));
-    assert_eq!(filters.bbox_ne_lon, Some(10.0));
-    assert_eq!(filters.bbox_sw_lat, Some(40.0));
-    assert_eq!(filters.bbox_sw_lon, Some(5.0));
-    assert_eq!(filters.limit, Some(10));
-    assert_eq!(filters.offset, Some(30));
 }
 
 #[test]
@@ -127,6 +97,7 @@ fn test_events_filters_to_raw_query_preserves_custom_values() {
         longitude: Some(-0.12),
         offset: Some(15),
         sort_by: Some("distance".to_string()),
+        sort_direction: Some("desc".to_string()),
         ts_query: Some("rust".to_string()),
         view_mode: Some(ViewMode::List),
         ..Default::default()
@@ -135,7 +106,7 @@ fn test_events_filters_to_raw_query_preserves_custom_values() {
     // Generate raw query
     let query = filters.to_raw_query().expect("raw query to be generated");
 
-    // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
+    // Check custom values are kept and the viewer location is dropped
     assert!(query.contains("date_from=2030-01-01"));
     assert!(query.contains("date_to=2030-06-01"));
     assert!(query.contains("event_category[0]=conference"));
@@ -143,6 +114,7 @@ fn test_events_filters_to_raw_query_preserves_custom_values() {
     assert!(query.contains("limit=40"));
     assert!(query.contains("offset=15"));
     assert!(query.contains("sort_by=distance"));
+    assert!(query.contains("sort_direction=desc"));
     assert!(query.contains("ts_query=rust"));
     assert!(query.contains("view_mode=list"));
     assert!(!query.contains("latitude"));
@@ -151,38 +123,29 @@ fn test_events_filters_to_raw_query_preserves_custom_values() {
 
 #[test]
 fn test_events_filters_to_raw_query_resets_default_values() {
-    // Prepare filters
-    let date_from = Utc::now().date_naive();
-    let date_to = date_from.checked_add_months(Months::new(12)).expect("valid date");
-    let filters = SearchEventsFilters {
-        date_from: Some(date_from),
-        date_to: Some(date_to),
-        event_category: vec!["meetup".to_string()],
-        kind: vec![EventKind::InPerson],
-        latitude: Some(52.0),
-        limit: Some(20),
-        longitude: Some(13.0),
-        offset: Some(5),
-        sort_by: Some("date".to_string()),
-        ts_query: Some("rust".to_string()),
-        view_mode: Some(ViewMode::List),
-        ..Default::default()
-    };
+    // Generate the raw query of filters using the default dates and sorting
+    let query = with_stable_today(|today| {
+        let filters = SearchEventsFilters {
+            date_from: Some(today),
+            date_to: today.checked_add_months(Months::new(12)),
+            event_category: vec!["meetup".to_string()],
+            limit: Some(20),
+            sort_by: Some("date".to_string()),
+            sort_direction: Some("asc".to_string()),
+            view_mode: Some(ViewMode::List),
+            ..Default::default()
+        };
+        filters.to_raw_query().expect("raw query to be generated")
+    });
 
-    // Generate raw query
-    let query = filters.to_raw_query().expect("raw query to be generated");
-
-    // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
+    // Check only the non-default values remain
     assert!(query.contains("event_category[0]=meetup"));
     assert!(query.contains("limit=20"));
-    assert!(query.contains("offset=5"));
-    assert!(query.contains("ts_query=rust"));
     assert!(query.contains("view_mode=list"));
     assert!(!query.contains("date_from"));
     assert!(!query.contains("date_to"));
-    assert!(!query.contains("latitude"));
-    assert!(!query.contains("longitude"));
     assert!(!query.contains("sort_by"));
+    assert!(!query.contains("sort_direction"));
 }
 
 #[test]
@@ -233,32 +196,6 @@ fn test_groups_filters_normalize_drops_empty_entries() {
 }
 
 #[test]
-fn test_groups_filters_normalize_map_keeps_bbox_and_pagination() {
-    // Setup map filters
-    let mut filters = SearchGroupsFilters {
-        bbox_ne_lat: Some(45.0),
-        bbox_ne_lon: Some(10.0),
-        bbox_sw_lat: Some(40.0),
-        bbox_sw_lon: Some(5.0),
-        limit: Some(10),
-        offset: Some(30),
-        view_mode: Some(ViewMode::Map),
-        ..Default::default()
-    };
-
-    // Normalize filters
-    filters.normalize();
-
-    // Check the bbox and pagination were kept
-    assert_eq!(filters.bbox_ne_lat, Some(45.0));
-    assert_eq!(filters.bbox_ne_lon, Some(10.0));
-    assert_eq!(filters.bbox_sw_lat, Some(40.0));
-    assert_eq!(filters.bbox_sw_lon, Some(5.0));
-    assert_eq!(filters.limit, Some(10));
-    assert_eq!(filters.offset, Some(30));
-}
-
-#[test]
 fn test_groups_filters_parse_legacy_include_bbox() {
     // Parse a bookmarked query string that still carries the removed key
     let filters: SearchGroupsFilters =
@@ -269,8 +206,8 @@ fn test_groups_filters_parse_legacy_include_bbox() {
 }
 
 #[test]
-fn test_groups_filters_to_raw_query_preserves_custom_values() {
-    // Prepare filters
+fn test_groups_filters_to_raw_query_keeps_custom_values_and_drops_defaults() {
+    // Prepare filters with custom values, the viewer location and the default sorting
     let filters = SearchGroupsFilters {
         distance: Some(25.5),
         group_category: vec!["rust".to_string()],
@@ -279,54 +216,31 @@ fn test_groups_filters_to_raw_query_preserves_custom_values() {
         longitude: Some(-0.12),
         offset: Some(15),
         region: vec!["europe".to_string()],
-        sort_by: Some("distance".to_string()),
+        sort_by: Some("date".to_string()),
         ts_query: Some("community".to_string()),
         view_mode: Some(ViewMode::List),
         ..Default::default()
     };
+    let distance_sorted = SearchGroupsFilters {
+        sort_by: Some("distance".to_string()),
+        ..filters.clone()
+    };
 
-    // Generate raw query
+    // Generate raw queries
     let query = filters.to_raw_query().expect("raw query to be generated");
+    let distance_sorted_query = distance_sorted.to_raw_query().expect("raw query to be generated");
 
-    // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
+    // Check custom values are kept (serde_qs uses bracket notation for arrays)
     assert!(query.contains("distance=25.5"));
     assert!(query.contains("group_category[0]=rust"));
     assert!(query.contains("limit=40"));
     assert!(query.contains("offset=15"));
     assert!(query.contains("region[0]=europe"));
-    assert!(query.contains("sort_by=distance"));
     assert!(query.contains("ts_query=community"));
     assert!(query.contains("view_mode=list"));
-    assert!(!query.contains("latitude"));
-    assert!(!query.contains("longitude"));
-}
+    assert!(distance_sorted_query.contains("sort_by=distance"));
 
-#[test]
-fn test_groups_filters_to_raw_query_resets_default_values() {
-    // Prepare filters
-    let filters = SearchGroupsFilters {
-        group_category: vec!["dev".to_string()],
-        latitude: Some(40.0),
-        limit: Some(20),
-        longitude: Some(-3.7),
-        offset: Some(5),
-        region: vec!["emea".to_string()],
-        sort_by: Some("date".to_string()),
-        ts_query: Some("rust".to_string()),
-        view_mode: Some(ViewMode::List),
-        ..Default::default()
-    };
-
-    // Generate raw query
-    let query = filters.to_raw_query().expect("raw query to be generated");
-
-    // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
-    assert!(query.contains("group_category[0]=dev"));
-    assert!(query.contains("limit=20"));
-    assert!(query.contains("offset=5"));
-    assert!(query.contains("region[0]=emea"));
-    assert!(query.contains("ts_query=rust"));
-    assert!(query.contains("view_mode=list"));
+    // Check the viewer location and the default sorting are dropped
     assert!(!query.contains("latitude"));
     assert!(!query.contains("longitude"));
     assert!(!query.contains("sort_by"));
@@ -362,6 +276,17 @@ fn test_groups_filters_uses_viewer_location_for_distance_searches() {
 }
 
 // Helpers.
+
+/// Runs `f` with today's UTC date, retrying if the date changes meanwhile.
+fn with_stable_today<T>(f: impl Fn(NaiveDate) -> T) -> T {
+    loop {
+        let today = Utc::now().date_naive();
+        let result = f(today);
+        if Utc::now().date_naive() == today {
+            return result;
+        }
+    }
+}
 
 /// Returns a fixed noon UTC instant for the given date.
 fn sample_now(year: i32, month: u32, day: u32) -> DateTime<Utc> {

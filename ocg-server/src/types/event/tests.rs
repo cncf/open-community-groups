@@ -9,7 +9,7 @@ use crate::types::payments::{
 use super::*;
 
 #[test]
-fn event_enrollment_state_can_request_refund_allows_tbd_events() {
+fn test_event_enrollment_state_can_request_refund_allows_tbd_events() {
     let enrollment = EventEnrollmentState {
         is_checked_in: false,
         status: EventEnrollmentStatus::Attendee,
@@ -31,7 +31,7 @@ fn event_enrollment_state_can_request_refund_allows_tbd_events() {
 }
 
 #[test]
-fn event_full_to_summary_maps_event_fields() {
+fn test_event_full_to_summary_maps_event_fields() {
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_series_id = Uuid::new_v4();
@@ -124,7 +124,7 @@ fn event_full_to_summary_maps_event_fields() {
 }
 
 #[test]
-fn event_full_agenda_labels_collects_unique_session_labels_sorted_by_name() {
+fn test_event_full_agenda_labels_collects_unique_session_labels_sorted_by_name() {
     // Setup labels shared across sessions and days
     let security = sample_event_label(1, "Security");
     let ai = sample_event_label(2, "AI");
@@ -164,7 +164,7 @@ fn event_full_agenda_labels_collects_unique_session_labels_sorted_by_name() {
 }
 
 #[test]
-fn event_full_agenda_labels_ignores_event_labels_not_assigned_to_sessions() {
+fn test_event_full_agenda_labels_ignores_event_labels_not_assigned_to_sessions() {
     // Setup an event label without session assignments
     let starts_at = Utc.with_ymd_and_hms(2030, 1, 2, 9, 0, 0).unwrap();
     let event = EventFull {
@@ -184,79 +184,72 @@ fn event_full_agenda_labels_ignores_event_labels_not_assigned_to_sessions() {
 }
 
 #[test]
-fn event_full_cfs_is_enabled_returns_false_when_flag_missing() {
-    let event = EventFull {
-        cfs_enabled: None,
-        ..Default::default()
-    };
-    assert!(!event.cfs_is_enabled());
+fn test_event_full_cfs_predicates_follow_flag_and_window() {
+    let hours = |hours| Some(Utc::now() + Duration::hours(hours));
+    // (case, cfs_enabled, cfs_starts_at, cfs_ends_at, [enabled, open, closed, upcoming])
+    let cases = [
+        ("flag missing", None, hours(-1), hours(1), [false; 4]),
+        ("disabled", Some(false), hours(-1), hours(1), [false; 4]),
+        (
+            "within window",
+            Some(true),
+            hours(-1),
+            hours(1),
+            [true, true, false, false],
+        ),
+        (
+            "window ended",
+            Some(true),
+            hours(-2),
+            hours(-1),
+            [true, false, true, false],
+        ),
+        (
+            "window not started",
+            Some(true),
+            hours(1),
+            hours(2),
+            [true, false, false, true],
+        ),
+        (
+            "started without end",
+            Some(true),
+            hours(-1),
+            None,
+            [true, false, false, false],
+        ),
+        (
+            "ended without start",
+            Some(true),
+            None,
+            hours(-1),
+            [true, false, true, false],
+        ),
+    ];
+
+    for (case, cfs_enabled, cfs_starts_at, cfs_ends_at, expected) in cases {
+        let event = EventFull {
+            cfs_enabled,
+            cfs_ends_at,
+            cfs_starts_at,
+            ..Default::default()
+        };
+
+        assert_eq!(
+            [
+                event.cfs_is_enabled(),
+                event.cfs_is_open(),
+                event.cfs_is_closed(),
+                event.cfs_is_upcoming(),
+            ],
+            expected,
+            "{case}"
+        );
+    }
 }
 
 #[test]
-fn event_full_cfs_is_enabled_returns_true_when_flag_set() {
-    let event = EventFull {
-        cfs_enabled: Some(true),
-        ..Default::default()
-    };
-    assert!(event.cfs_is_enabled());
-}
-
-#[test]
-fn event_full_cfs_is_open_returns_false_when_disabled() {
-    let now = Utc::now();
-    let event = EventFull {
-        cfs_enabled: Some(false),
-        cfs_starts_at: Some(now - Duration::hours(1)),
-        cfs_ends_at: Some(now + Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(!event.cfs_is_open());
-}
-
-#[test]
-fn event_full_cfs_is_open_returns_true_when_within_window() {
-    let now = Utc::now();
-    let event = EventFull {
-        cfs_enabled: Some(true),
-        cfs_starts_at: Some(now - Duration::hours(1)),
-        cfs_ends_at: Some(now + Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(event.cfs_is_open());
-}
-
-#[test]
-fn event_full_cfs_is_closed_returns_true_when_window_ended() {
-    let event = EventFull {
-        cfs_enabled: Some(true),
-        cfs_ends_at: Some(Utc::now() - Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(event.cfs_is_closed());
-}
-
-#[test]
-fn event_full_cfs_is_upcoming_returns_false_when_started() {
-    let event = EventFull {
-        cfs_enabled: Some(true),
-        cfs_starts_at: Some(Utc::now() - Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(!event.cfs_is_upcoming());
-}
-
-#[test]
-fn event_full_cfs_is_upcoming_returns_true_when_start_in_future() {
-    let event = EventFull {
-        cfs_enabled: Some(true),
-        cfs_starts_at: Some(Utc::now() + Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(event.cfs_is_upcoming());
-}
-
-#[test]
-fn event_full_has_only_free_visible_ticket_types_requires_all_visible_prices_to_be_free() {
+fn test_event_full_has_only_free_visible_ticket_types_requires_all_visible_prices_to_be_free() {
     let free_event = EventFull {
         ticket_types: Some(vec![
             sample_ticket_type(true, Some(0), false, "Free"),
@@ -277,7 +270,7 @@ fn event_full_has_only_free_visible_ticket_types_requires_all_visible_prices_to_
 }
 
 #[test]
-fn event_full_has_sellable_ticket_types_returns_false_when_no_tier_is_purchasable() {
+fn test_event_full_has_sellable_ticket_types_returns_false_when_no_tier_is_purchasable() {
     let event = EventFull {
         ticket_types: Some(vec![
             sample_ticket_type(false, Some(0), false, "Hidden free"),
@@ -291,7 +284,7 @@ fn event_full_has_sellable_ticket_types_returns_false_when_no_tier_is_purchasabl
 }
 
 #[test]
-fn event_full_has_single_free_public_ticket_type_ignores_private_tiers() {
+fn test_event_full_has_single_free_public_ticket_type_ignores_private_tiers() {
     let mut private_paid = sample_ticket_type(true, Some(2500), false, "Private paid");
     private_paid.availability = EventTicketTypeAvailability::InvitationOnly;
     let event = EventFull {
@@ -312,7 +305,7 @@ fn event_full_has_single_free_public_ticket_type_ignores_private_tiers() {
 }
 
 #[test]
-fn event_full_has_sold_out_visible_ticket_types_detects_public_inventory() {
+fn test_event_full_has_sold_out_visible_ticket_types_detects_public_inventory() {
     let event = EventFull {
         ticket_types: Some(vec![
             sample_ticket_type(true, Some(0), false, "Available"),
@@ -325,7 +318,7 @@ fn event_full_has_sold_out_visible_ticket_types_detects_public_inventory() {
 }
 
 #[test]
-fn event_full_has_visible_ticket_types_requires_an_active_current_price() {
+fn test_event_full_has_visible_ticket_types_requires_an_active_current_price() {
     let mut private = sample_ticket_type(true, Some(0), false, "Private");
     private.availability = EventTicketTypeAvailability::InvitationOnly;
     let hidden_event = EventFull {
@@ -345,117 +338,72 @@ fn event_full_has_visible_ticket_types_requires_an_active_current_price() {
 }
 
 #[test]
-fn event_full_is_live_returns_false_when_ends_at_is_none() {
-    let event = EventFull {
-        starts_at: Some(Utc::now() - Duration::hours(1)),
-        ends_at: None,
-        ..Default::default()
-    };
-    assert!(!event.is_live());
+fn test_event_full_is_live_includes_lead_time() {
+    let minutes = |minutes| Some(Utc::now() + Duration::minutes(minutes));
+    // (case, starts_at, ends_at, expected)
+    let cases = [
+        ("live", minutes(-60), minutes(60), true),
+        (
+            "starts within the lead time",
+            minutes(EVENT_LIVE_LEAD_TIME_MINUTES - 5),
+            minutes(60),
+            true,
+        ),
+        (
+            "starts after the lead time",
+            minutes(EVENT_LIVE_LEAD_TIME_MINUTES + 5),
+            minutes(60),
+            false,
+        ),
+        ("ended", minutes(-120), minutes(-60), false),
+        ("without end", minutes(-60), None, false),
+        ("without start", None, minutes(60), false),
+    ];
+
+    for (case, starts_at, ends_at, expected) in cases {
+        let event = EventFull {
+            ends_at,
+            starts_at,
+            ..Default::default()
+        };
+
+        assert_eq!(event.is_live(), expected, "{case}");
+    }
 }
 
 #[test]
-fn event_full_is_live_returns_false_when_event_ended() {
-    let event = EventFull {
-        starts_at: Some(Utc::now() - Duration::hours(2)),
-        ends_at: Some(Utc::now() - Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(!event.is_live());
+fn test_event_is_past_at_uses_end_or_start_time() {
+    let now = Utc.with_ymd_and_hms(2030, 1, 1, 12, 0, 0).unwrap();
+    let hours = |hours| Some(now + Duration::hours(hours));
+    // (case, starts_at, ends_at, expected)
+    let cases = [
+        ("without times", None, None, false),
+        ("ends in the future", hours(-1), hours(1), false),
+        ("ends now", hours(-1), Some(now), false),
+        ("ended", hours(-2), hours(-1), true),
+        ("starts in the future without end", hours(1), None, false),
+        ("started without end", hours(-1), None, true),
+    ];
+
+    for (case, starts_at, ends_at, expected) in cases {
+        let event = EventFull {
+            ends_at,
+            starts_at,
+            ..Default::default()
+        };
+        let summary = EventSummary {
+            ends_at,
+            starts_at,
+            ..sample_event_summary(vec![])
+        };
+
+        assert_eq!(event.is_past_at(now), expected, "{case}: full");
+        assert_eq!(summary.is_past_at(now), expected, "{case}: summary");
+    }
 }
 
 #[test]
-fn event_full_is_live_returns_false_when_event_not_started() {
-    let event = EventFull {
-        starts_at: Some(Utc::now() + Duration::hours(1)),
-        ends_at: Some(Utc::now() + Duration::hours(2)),
-        ..Default::default()
-    };
-    assert!(!event.is_live());
-}
-
-#[test]
-fn event_full_is_live_returns_false_when_starts_at_is_none() {
-    let event = EventFull {
-        starts_at: None,
-        ends_at: Some(Utc::now() + Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(!event.is_live());
-}
-
-#[test]
-fn event_full_is_live_returns_true_when_event_is_live() {
-    let event = EventFull {
-        starts_at: Some(Utc::now() - Duration::hours(1)),
-        ends_at: Some(Utc::now() + Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(event.is_live());
-}
-
-#[test]
-fn event_full_is_live_returns_true_when_event_starts_soon() {
-    let event = EventFull {
-        starts_at: Some(Utc::now() + Duration::minutes(10)),
-        ends_at: Some(Utc::now() + Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(event.is_live());
-}
-
-#[test]
-fn event_full_is_past_returns_false_when_both_times_are_none() {
-    let event = EventFull {
-        ends_at: None,
-        starts_at: None,
-        ..Default::default()
-    };
-    assert!(!event.is_past());
-}
-
-#[test]
-fn event_full_is_past_returns_false_when_ends_at_is_in_future() {
-    let event = EventFull {
-        ends_at: Some(Utc::now() + Duration::hours(1)),
-        starts_at: Some(Utc::now() - Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(!event.is_past());
-}
-
-#[test]
-fn event_full_is_past_returns_false_when_starts_at_is_in_future() {
-    let event = EventFull {
-        ends_at: None,
-        starts_at: Some(Utc::now() + Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(!event.is_past());
-}
-
-#[test]
-fn event_full_is_past_returns_true_when_ends_at_is_in_past() {
-    let event = EventFull {
-        ends_at: Some(Utc::now() - Duration::hours(1)),
-        starts_at: Some(Utc::now() - Duration::hours(2)),
-        ..Default::default()
-    };
-    assert!(event.is_past());
-}
-
-#[test]
-fn event_full_is_past_returns_true_when_starts_at_is_in_past_and_no_ends_at() {
-    let event = EventFull {
-        ends_at: None,
-        starts_at: Some(Utc::now() - Duration::hours(1)),
-        ..Default::default()
-    };
-    assert!(event.is_past());
-}
-
-#[test]
-fn event_full_paid_capability_includes_future_and_inactive_prices() {
+fn test_event_full_paid_capability_includes_future_and_inactive_prices() {
     let event = EventFull {
         ticket_types: Some(vec![EventTicketType {
             active: false,
@@ -473,29 +421,17 @@ fn event_full_paid_capability_includes_future_and_inactive_prices() {
 }
 
 #[test]
-fn event_full_speakers_ids_collects_both_event_and_session_level_speakers() {
+fn test_event_full_speakers_ids_collects_both_event_and_session_level_speakers() {
     let event_speaker_id = Uuid::from_u128(1);
     let session_speaker_id = Uuid::from_u128(2);
     let date = Utc::now().date_naive();
 
     let event = EventFull {
-        speakers: vec![Speaker {
-            featured: false,
-            user: User {
-                user_id: event_speaker_id,
-                ..Default::default()
-            },
-        }],
+        speakers: vec![speaker(event_speaker_id)],
         sessions: BTreeMap::from([(
             date,
             vec![Session {
-                speakers: vec![Speaker {
-                    featured: false,
-                    user: User {
-                        user_id: session_speaker_id,
-                        ..Default::default()
-                    },
-                }],
+                speakers: vec![speaker(session_speaker_id)],
                 starts_at: Utc::now(),
                 ..Default::default()
             }],
@@ -510,29 +446,17 @@ fn event_full_speakers_ids_collects_both_event_and_session_level_speakers() {
 }
 
 #[test]
-fn event_full_speakers_ids_deduplicates_speakers() {
+fn test_event_full_speakers_ids_deduplicates_speakers() {
     let shared_speaker_id = Uuid::from_u128(1);
     let date = Utc::now().date_naive();
 
     // Same speaker appears at both event and session level
     let event = EventFull {
-        speakers: vec![Speaker {
-            featured: false,
-            user: User {
-                user_id: shared_speaker_id,
-                ..Default::default()
-            },
-        }],
+        speakers: vec![speaker(shared_speaker_id)],
         sessions: BTreeMap::from([(
             date,
             vec![Session {
-                speakers: vec![Speaker {
-                    featured: false,
-                    user: User {
-                        user_id: shared_speaker_id,
-                        ..Default::default()
-                    },
-                }],
+                speakers: vec![speaker(shared_speaker_id)],
                 starts_at: Utc::now(),
                 ..Default::default()
             }],
@@ -546,7 +470,7 @@ fn event_full_speakers_ids_deduplicates_speakers() {
 }
 
 #[test]
-fn event_full_speakers_ids_returns_empty_when_no_speakers() {
+fn test_event_full_speakers_ids_returns_empty_when_no_speakers() {
     let event = EventFull::default();
     assert!(
         event.speakers_ids().is_empty(),
@@ -556,35 +480,13 @@ fn event_full_speakers_ids_returns_empty_when_no_speakers() {
 }
 
 #[test]
-fn event_full_speakers_ids_returns_sorted_ids() {
+fn test_event_full_speakers_ids_returns_sorted_ids() {
     let id_a = Uuid::from_u128(100);
     let id_b = Uuid::from_u128(50);
     let id_c = Uuid::from_u128(200);
 
     let event = EventFull {
-        speakers: vec![
-            Speaker {
-                featured: false,
-                user: User {
-                    user_id: id_a,
-                    ..Default::default()
-                },
-            },
-            Speaker {
-                featured: false,
-                user: User {
-                    user_id: id_b,
-                    ..Default::default()
-                },
-            },
-            Speaker {
-                featured: false,
-                user: User {
-                    user_id: id_c,
-                    ..Default::default()
-                },
-            },
-        ],
+        speakers: vec![speaker(id_a), speaker(id_b), speaker(id_c)],
         ..Default::default()
     };
 
@@ -593,7 +495,7 @@ fn event_full_speakers_ids_returns_sorted_ids() {
 }
 
 #[test]
-fn event_full_sellable_ticket_types_filters_unsellable_tiers() {
+fn test_event_full_sellable_ticket_types_filters_unsellable_tiers() {
     let event = EventFull {
         ticket_types: Some(vec![
             sample_ticket_type(false, Some(0), false, "Hidden free"),
@@ -614,7 +516,88 @@ fn event_full_sellable_ticket_types_filters_unsellable_tiers() {
 }
 
 #[test]
-fn event_full_unconfigured_registration_window_stays_open_after_event_start() {
+fn test_event_full_registration_window_message_describes_window_state() {
+    let past = Some(Utc.with_ymd_and_hms(2000, 1, 1, 10, 0, 0).unwrap());
+    let later_past = Some(Utc.with_ymd_and_hms(2000, 2, 1, 10, 0, 0).unwrap());
+    let future = Some(Utc.with_ymd_and_hms(2099, 1, 1, 10, 0, 0).unwrap());
+    let later_future = Some(Utc.with_ymd_and_hms(2099, 2, 1, 10, 0, 0).unwrap());
+    // (case, registration_starts_at, registration_ends_at, event starts_at, expected)
+    let cases = [
+        ("not configured", None, None, future, None),
+        (
+            "opens and closes later",
+            future,
+            later_future,
+            None,
+            Some(
+                "Registration opens Jan 1, 2099 at 10:00 AM UTC and closes Feb 1, 2099 at 10:00 AM UTC.",
+            ),
+        ),
+        (
+            "opens later and closes at the event start",
+            future,
+            None,
+            later_future,
+            Some(
+                "Registration opens Jan 1, 2099 at 10:00 AM UTC and closes Feb 1, 2099 at 10:00 AM UTC.",
+            ),
+        ),
+        (
+            "closed",
+            past,
+            later_past,
+            future,
+            Some("Registration closed Feb 1, 2000 at 10:00 AM UTC."),
+        ),
+        (
+            "open until the close",
+            past,
+            future,
+            later_future,
+            Some("Registration is open until Jan 1, 2099 at 10:00 AM UTC."),
+        ),
+        (
+            "open until the close without start",
+            None,
+            future,
+            later_future,
+            Some("Registration is open until Jan 1, 2099 at 10:00 AM UTC."),
+        ),
+        (
+            "opens later without event start",
+            future,
+            None,
+            None,
+            Some("Registration opens Jan 1, 2099 at 10:00 AM UTC."),
+        ),
+        (
+            "opened without event start",
+            past,
+            None,
+            None,
+            Some("Registration opened Jan 1, 2000 at 10:00 AM UTC."),
+        ),
+    ];
+
+    for (case, registration_starts_at, registration_ends_at, starts_at, expected) in cases {
+        let event = EventFull {
+            registration_ends_at,
+            registration_starts_at,
+            starts_at,
+            timezone: chrono_tz::UTC,
+            ..Default::default()
+        };
+
+        assert_eq!(
+            event.registration_window_message().as_deref(),
+            expected,
+            "{case}"
+        );
+    }
+}
+
+#[test]
+fn test_event_full_unconfigured_registration_window_stays_open_after_event_start() {
     let now = Utc::now();
     let event = EventFull {
         ends_at: Some(now + Duration::hours(1)),
@@ -631,7 +614,7 @@ fn event_full_unconfigured_registration_window_stays_open_after_event_start() {
 }
 
 #[test]
-fn event_full_visible_ticket_types_include_sold_out_tiers_sorted_by_price() {
+fn test_event_full_visible_ticket_types_include_sold_out_tiers_sorted_by_price() {
     let event = EventFull {
         ticket_types: Some(vec![
             sample_ticket_type(false, Some(500), false, "Inactive cheap"),
@@ -653,7 +636,7 @@ fn event_full_visible_ticket_types_include_sold_out_tiers_sorted_by_price() {
 }
 
 #[test]
-fn event_summary_registration_window_closes_open_only_window_at_event_start() {
+fn test_event_summary_registration_window_closes_open_only_window_at_event_start() {
     let now = Utc::now();
     let mut event = sample_event_summary(vec![]);
     event.ends_at = Some(now + Duration::hours(1));
@@ -676,7 +659,7 @@ fn event_summary_registration_window_closes_open_only_window_at_event_start() {
 }
 
 #[test]
-fn event_summary_formatted_ticket_price_badge_ignores_unsellable_tiers() {
+fn test_event_summary_formatted_ticket_price_badge_ignores_unsellable_tiers() {
     let event = sample_event_summary(vec![
         sample_ticket_type(false, Some(0), false, "Inactive free"),
         sample_ticket_type(true, Some(1000), true, "Sold out early bird"),
@@ -690,7 +673,7 @@ fn event_summary_formatted_ticket_price_badge_ignores_unsellable_tiers() {
 }
 
 #[test]
-fn event_summary_formatted_ticket_price_badge_returns_free_and_up_when_mixed() {
+fn test_event_summary_formatted_ticket_price_badge_returns_free_and_up_when_mixed() {
     let event = sample_event_summary(vec![
         sample_ticket_type(true, Some(0), false, "Free"),
         sample_ticket_type(true, Some(2500), false, "General"),
@@ -703,33 +686,30 @@ fn event_summary_formatted_ticket_price_badge_returns_free_and_up_when_mixed() {
 }
 
 #[test]
-fn event_summary_has_started_is_false_before_start() {
-    let now = Utc::now();
-    let mut event = sample_event_summary(vec![]);
-    event.starts_at = Some(now + Duration::hours(1));
+fn test_event_summary_has_started_after_start_time() {
+    // (case, starts_at, expected)
+    let cases = [
+        ("before start", Some(Utc::now() + Duration::hours(1)), false),
+        ("without start", None, false),
+        (
+            "after start",
+            Some(Utc::now() - Duration::minutes(15)),
+            true,
+        ),
+    ];
 
-    assert!(!event.has_started());
+    for (case, starts_at, expected) in cases {
+        let event = EventSummary {
+            starts_at,
+            ..sample_event_summary(vec![])
+        };
+
+        assert_eq!(event.has_started(), expected, "{case}");
+    }
 }
 
 #[test]
-fn event_summary_has_started_is_false_when_event_has_no_start() {
-    let mut event = sample_event_summary(vec![]);
-    event.starts_at = None;
-
-    assert!(!event.has_started());
-}
-
-#[test]
-fn event_summary_has_started_is_true_after_event_start() {
-    let now = Utc::now();
-    let mut event = sample_event_summary(vec![]);
-    event.starts_at = Some(now - Duration::minutes(15));
-
-    assert!(event.has_started());
-}
-
-#[test]
-fn event_summary_publish_unavailable_title_reports_pending_cohosts() {
+fn test_event_summary_publish_unavailable_title_reports_pending_cohosts() {
     let mut event = sample_event_summary(vec![]);
     event.pending_cohosts_count = Some(2);
 
@@ -740,7 +720,7 @@ fn event_summary_publish_unavailable_title_reports_pending_cohosts() {
 }
 
 #[test]
-fn event_summary_publish_unavailable_title_returns_none_without_pending_cohosts() {
+fn test_event_summary_publish_unavailable_title_returns_none_without_pending_cohosts() {
     let mut event = sample_event_summary(vec![]);
     event.pending_cohosts_count = Some(0);
 
@@ -750,7 +730,7 @@ fn event_summary_publish_unavailable_title_returns_none_without_pending_cohosts(
 }
 
 #[test]
-fn event_summary_single_public_ticket_type_requires_exactly_one_visible_tier() {
+fn test_event_summary_single_public_ticket_type_requires_exactly_one_visible_tier() {
     let single = sample_event_summary(vec![sample_ticket_type(true, Some(0), false, "General")]);
     let multiple = sample_event_summary(vec![
         sample_ticket_type(true, Some(0), false, "Free"),
@@ -767,7 +747,7 @@ fn event_summary_single_public_ticket_type_requires_exactly_one_visible_tier() {
 }
 
 #[test]
-fn event_summary_ticket_type_is_sold_out_matches_the_requested_tier() {
+fn test_event_summary_ticket_type_is_sold_out_matches_the_requested_tier() {
     // Setup one sold-out tier and one tier with seats
     let available_id = Uuid::from_u128(1);
     let sold_out_id = Uuid::from_u128(2);
@@ -833,57 +813,19 @@ fn sample_ticket_type(
 /// Build a sample event summary with specified ticket types for testing.
 fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
     EventSummary {
-        attendee_approval_required: false,
-        canceled: false,
-        cohosts: vec![],
-        community_display_name: "Community".to_string(),
-        community_name: "community".to_string(),
-        event_id: Uuid::nil(),
-        group_category_name: "Technology".to_string(),
-        group_name: "Group".to_string(),
-        group_slug: "group".to_string(),
-        has_external_payment: false,
-        has_registration_questions: false,
-        has_related_events: false,
-        kind: EventKind::InPerson,
-        logo_url: "https://example.com/logo.png".to_string(),
-        name: "Event".to_string(),
         payment_currency_code: Some("USD".to_string()),
-        published: true,
-        registration_ends_at: None,
-        registration_starts_at: None,
-        slug: "event".to_string(),
-        test_event: false,
         ticket_types: Some(ticket_types),
-        timezone: chrono_tz::UTC,
-        waitlist_count: 0,
-        waitlist_enabled: false,
+        ..crate::types::tests::sample_event_summary(Uuid::nil())
+    }
+}
 
-        attendee_count: None,
-        capacity: None,
-        created_by_display_name: None,
-        created_by_username: None,
-        description_short: None,
-        delete_eligibility: None,
-        ends_at: None,
-        event_series_id: None,
-        group_slug_pretty: None,
-        latitude: None,
-        longitude: None,
-        meeting_join_instructions: None,
-        meeting_join_url: None,
-        meeting_password: None,
-        meeting_provider: None,
-        pending_cohosts_count: None,
-        remaining_capacity: None,
-        starts_at: None,
-        venue_address: None,
-        venue_city: None,
-        venue_country_code: None,
-        venue_country_name: None,
-        venue_name: None,
-        venue_state_code: None,
-        venue_state_name: None,
-        venue_zip_code: None,
+/// Build a speaker for the given user.
+fn speaker(user_id: Uuid) -> Speaker {
+    Speaker {
+        featured: false,
+        user: User {
+            user_id,
+            ..Default::default()
+        },
     }
 }

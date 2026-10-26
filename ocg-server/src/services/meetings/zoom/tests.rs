@@ -11,12 +11,11 @@ use axum::{
     routing::{get, post},
 };
 use serde_json::{Value, json};
-use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 use crate::{
     config::{HttpClientConfig, MeetingsZoomConfig},
-    services::meetings::{MeetingProviderError, MeetingsProvider},
+    services::meetings::{MeetingEndResult, MeetingProviderError, MeetingsProvider},
     types::meetings::Meeting,
 };
 
@@ -29,7 +28,7 @@ const ASSIGNED_HOST: &str = "assigned@example.com";
 const OTHER_HOST: &str = "other@example.com";
 
 #[tokio::test]
-async fn create_meeting_creates_when_no_host_has_the_reference() {
+async fn test_create_meeting_creates_when_no_host_has_the_reference() {
     // Serve a pool where no host owns a meeting stamped with the reference
     let event_id = Uuid::new_v4();
     let calls = Arc::new(Mutex::new(Vec::new()));
@@ -43,7 +42,7 @@ async fn create_meeting_creates_when_no_host_has_the_reference() {
             vec![json!({"meetings": [{"id": 2, "agenda": "Weekly sync"}]})],
         ),
     ]);
-    let (api, server) = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
+    let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
     let provider = sample_zoom_provider(&api);
 
     // Create the meeting
@@ -51,7 +50,6 @@ async fn create_meeting_creates_when_no_host_has_the_reference() {
         .create_meeting(&sample_meeting(event_id))
         .await
         .expect("meeting to be created");
-    server.abort();
 
     // Check both hosts were searched before creating on the assigned host
     let calls = calls.lock().expect("calls lock to be available").clone();
@@ -73,7 +71,7 @@ async fn create_meeting_creates_when_no_host_has_the_reference() {
 }
 
 #[tokio::test]
-async fn create_meeting_adopts_meeting_found_on_another_host() {
+async fn test_create_meeting_adopts_meeting_found_on_another_host() {
     // Serve a pool where another host owns the meeting from an interrupted creation
     let event_id = Uuid::new_v4();
     let calls = Arc::new(Mutex::new(Vec::new()));
@@ -90,7 +88,7 @@ async fn create_meeting_adopts_meeting_found_on_another_host() {
         ),
         (ASSIGNED_HOST.to_string(), vec![json!({"meetings": []})]),
     ]);
-    let (api, server) = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
+    let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
     let provider = sample_zoom_provider(&api);
 
     // Create the meeting
@@ -98,7 +96,6 @@ async fn create_meeting_adopts_meeting_found_on_another_host() {
         .create_meeting(&sample_meeting(event_id))
         .await
         .expect("meeting to be adopted");
-    server.abort();
 
     // Check the existing meeting was updated and re-read instead of created again
     let calls = calls.lock().expect("calls lock to be available").clone();
@@ -120,7 +117,7 @@ async fn create_meeting_adopts_meeting_found_on_another_host() {
 }
 
 #[tokio::test]
-async fn create_meeting_walks_every_listing_page() {
+async fn test_create_meeting_walks_every_listing_page() {
     // Serve a host whose stamped meeting is only on the second page
     let event_id = Uuid::new_v4();
     let calls = Arc::new(Mutex::new(Vec::new()));
@@ -134,7 +131,7 @@ async fn create_meeting_walks_every_listing_page() {
         ),
         (ASSIGNED_HOST.to_string(), vec![json!({"meetings": []})]),
     ]);
-    let (api, server) = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
+    let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
     let provider = sample_zoom_provider(&api);
 
     // Create the meeting
@@ -142,7 +139,6 @@ async fn create_meeting_walks_every_listing_page() {
         .create_meeting(&sample_meeting(event_id))
         .await
         .expect("meeting to be adopted");
-    server.abort();
 
     // Check the second page was requested with the token from the first one
     let calls = calls.lock().expect("calls lock to be available").clone();
@@ -162,12 +158,12 @@ async fn create_meeting_walks_every_listing_page() {
 }
 
 #[tokio::test]
-async fn create_meeting_fails_instead_of_creating_when_a_listing_fails() {
+async fn test_create_meeting_fails_instead_of_creating_when_a_listing_fails() {
     // Serve a pool where one host cannot be listed
     let event_id = Uuid::new_v4();
     let calls = Arc::new(Mutex::new(Vec::new()));
     let listings = HashMap::from([(ASSIGNED_HOST.to_string(), vec![json!({"meetings": []})])]);
-    let (api, server) = spawn_zoom_api(fake_zoom_api(
+    let api = spawn_zoom_api(fake_zoom_api(
         &calls,
         listings,
         Some((OTHER_HOST.to_string(), StatusCode::NOT_FOUND)),
@@ -180,7 +176,6 @@ async fn create_meeting_fails_instead_of_creating_when_a_listing_fails() {
         .create_meeting(&sample_meeting(event_id))
         .await
         .expect_err("listing failure to fail the creation");
-    server.abort();
 
     // Check the failure surfaced before any meeting was created
     assert!(matches!(err, MeetingProviderError::Client(_)), "{err}");
@@ -191,6 +186,22 @@ async fn create_meeting_fails_instead_of_creating_when_a_listing_fails() {
             "GET /users/{OTHER_HOST}/meetings page_size=300 type=scheduled"
         )]
     );
+}
+
+#[tokio::test]
+async fn test_end_meeting_skips_end_call_when_meeting_is_not_running() {
+    // Serve a meeting whose details report no running status
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let api = spawn_zoom_api(fake_zoom_api(&calls, HashMap::new(), None)).await;
+    let provider = sample_zoom_provider(&api);
+
+    // End the meeting
+    let result = provider.end_meeting("555").await.expect("status check to succeed");
+
+    // Check only the status was read and no end request was sent
+    assert!(matches!(result, MeetingEndResult::AlreadyNotRunning));
+    let calls = calls.lock().expect("calls lock to be available").clone();
+    assert_eq!(calls, vec!["GET /meetings/555".to_string()]);
 }
 
 /// Builds a fake Zoom API that records calls and serves the given listings.
@@ -344,17 +355,17 @@ fn sample_zoom_provider(api_address: &str) -> ZoomMeetingsProvider {
     provider
 }
 
-/// Serves the fake Zoom API on an ephemeral port.
-async fn spawn_zoom_api(router: Router) -> (String, JoinHandle<()>) {
+/// Serves the fake Zoom API on an ephemeral port until the test runtime stops.
+async fn spawn_zoom_api(router: Router) -> String {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("test Zoom API listener to bind");
     let address = listener
         .local_addr()
         .expect("test Zoom API listener address to exist");
-    let server = tokio::spawn(async move {
+    tokio::spawn(async move {
         axum::serve(listener, router).await.expect("test Zoom API to serve");
     });
 
-    (format!("http://{address}"), server)
+    format!("http://{address}")
 }

@@ -1,70 +1,37 @@
-use axum::{
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE, HOST},
-    },
-};
-use axum_login::tower_sessions::session;
-use tower::ServiceExt;
-use uuid::Uuid;
+use axum::http::StatusCode;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
+    db::mock::MockDB,
+    handlers::{error::INVALID_REQUEST_PAYLOAD, tests::*},
     types::permissions::CommunityPermission,
 };
 
 #[tokio::test]
 async fn test_update_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let community = sample_community_full(community_id);
+    let ids = DashboardIds::new();
+    let community = sample_community_full(ids.community_id);
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::SettingsWrite
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_community_access(&mut db, &ids, CommunityPermission::Read);
+    expect_community_permission_result(&mut db, &ids, CommunityPermission::SettingsWrite, true);
     db.expect_get_community_full()
         .times(1)
-        .withf(move |cid| *cid == community_id)
+        .withf(move |community_id| *community_id == ids.community_id)
         .returning(move |_| Ok(community.clone()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/community/settings/update")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/community/settings/update", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    // Check the editable form is rendered
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let html = std::str::from_utf8(&bytes).unwrap();
+    assert!(!html.contains("Your role cannot update community settings."));
 
     // Check image fields render target sizes and validated upload targets
-    let html = std::str::from_utf8(&bytes).unwrap();
     let logo_field = html
         .split(r#"name="logo_url""#)
         .nth(1)
@@ -81,94 +48,55 @@ async fn test_update_page_success() {
 #[tokio::test]
 async fn test_update_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let update = sample_community_update();
     let expected_display_name = update.display_name.clone();
     let body = serde_qs::to_string(&update).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::SettingsWrite
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_community_access(&mut db, &ids, CommunityPermission::SettingsWrite);
     db.expect_update_community()
         .times(1)
-        .withf(move |uid, cid, update| {
-            *uid == user_id && *cid == community_id && update.display_name == expected_display_name
+        .withf(move |user_id, community_id, update| {
+            *user_id == ids.user_id
+                && *community_id == ids.community_id
+                && update.display_name == expected_display_name
         })
         .returning(|_, _, _| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/community/settings/update")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "PUT",
+        "/dashboard/community/settings/update",
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-body"),
-    );
-    assert!(bytes.is_empty());
+    assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
 }
 
 #[tokio::test]
 async fn test_update_invalid_payload() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::SettingsWrite
-        })
-        .returning(|_, _, _| Ok(true));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_community_access(&mut db, &ids, CommunityPermission::SettingsWrite);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri("/dashboard/community/settings/update")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("invalid-body"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "PUT",
+        "/dashboard/community/settings/update",
+        ids.session_id,
+        "invalid-body",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(!bytes.is_empty());
+    assert_eq!(bytes.as_ref(), INVALID_REQUEST_PAYLOAD.as_bytes());
 }

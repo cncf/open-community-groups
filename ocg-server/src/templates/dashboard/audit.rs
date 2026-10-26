@@ -854,119 +854,90 @@ mod tests {
     );
 
     #[test]
-    fn test_action_label_badge_actions() {
-        assert_eq!(action_label("badge_added"), "Badge added");
-        assert_eq!(action_label("badge_artwork_added"), "Badge artwork added");
-        assert_eq!(
-            action_label("badge_artwork_deleted"),
-            "Badge artwork deleted"
-        );
-        assert_eq!(action_label("badge_awarded"), "Badge awarded");
-        assert_eq!(action_label("badge_deleted"), "Badge deleted");
-        assert_eq!(action_label("badge_revoked"), "Badge revoked");
-        assert_eq!(
-            action_label("badge_revoked_account_deleted"),
-            "Badge revoked after account deletion"
-        );
-        assert_eq!(
-            action_label("badge_revoked_by_recipient"),
-            "Badge revoked by recipient"
-        );
-        assert_eq!(action_label("badge_updated"), "Badge updated");
-    }
+    fn test_action_catalog_labels_and_scopes() {
+        use AuditScope::{Community, Group, User};
 
-    #[test]
-    fn test_action_label_community_custom_notification_sent() {
-        assert_eq!(
-            action_label("community_custom_notification_sent"),
-            "Community custom notification sent"
-        );
-    }
-
-    #[test]
-    fn test_action_label_event_survey_actions() {
-        assert_eq!(action_label("event_survey_added"), "Event survey added");
-        assert_eq!(action_label("event_survey_closed"), "Event survey closed");
-        assert_eq!(action_label("event_survey_deleted"), "Event survey deleted");
-        assert_eq!(
-            action_label("event_survey_marked_ready"),
-            "Event survey marked ready"
-        );
-        assert_eq!(
-            action_label("event_survey_moved_to_draft"),
-            "Event survey moved to draft"
-        );
-        assert_eq!(
-            action_label("event_survey_reopened"),
-            "Event survey reopened"
-        );
-        assert_eq!(action_label("event_survey_updated"), "Event survey updated");
-    }
-
-    #[test]
-    fn test_action_label_ticket_offer_actions() {
-        assert_eq!(
-            action_label("admission_offer_expired"),
-            "Event ticket offer expired"
-        );
-        assert_eq!(
-            action_label("event_admission_offer_canceled"),
-            "Event ticket offer canceled"
-        );
-        assert_eq!(
-            action_label("event_admission_offer_declined"),
-            "Event ticket offer declined"
-        );
-        assert_eq!(
-            action_label("event_admission_offer_reissued"),
-            "Event ticket offer reissued"
-        );
-        assert_eq!(
-            action_label("event_ticket_waitlist_offer_created"),
-            "Event waitlist ticket offer created"
-        );
-    }
-
-    #[test]
-    fn test_badge_actions_are_group_scoped() {
         // Collect the actions listed by each scope
-        let community_actions = scope_action_values(AuditScope::Community);
-        let group_actions = scope_action_values(AuditScope::Group);
-        let user_actions = scope_action_values(AuditScope::User);
+        let scopes_actions =
+            [Community, Group, User].map(|scope| (scope, scope_action_values(scope)));
 
-        // Check every badge action is listed only in the group scope
-        for action in [
-            "badge_added",
-            "badge_artwork_added",
-            "badge_artwork_deleted",
-            "badge_awarded",
-            "badge_deleted",
-            "badge_revoked",
-            "badge_revoked_account_deleted",
-            "badge_revoked_by_recipient",
-            "badge_updated",
-        ] {
-            assert!(group_actions.contains(action), "{action} missing in group");
-            assert!(!community_actions.contains(action), "{action} in community");
-            assert!(!user_actions.contains(action), "{action} in user");
+        // (action, label, scopes listing the action)
+        let cases: [(&str, &str, &[AuditScope]); 22] = [
+            (
+                "admission_offer_expired",
+                "Event ticket offer expired",
+                &[Group],
+            ),
+            ("badge_added", "Badge added", &[Group]),
+            ("badge_artwork_added", "Badge artwork added", &[Group]),
+            ("badge_artwork_deleted", "Badge artwork deleted", &[Group]),
+            ("badge_awarded", "Badge awarded", &[Group]),
+            ("badge_deleted", "Badge deleted", &[Group]),
+            ("badge_revoked", "Badge revoked", &[Group]),
+            (
+                "badge_revoked_account_deleted",
+                "Badge revoked after account deletion",
+                &[Group],
+            ),
+            (
+                "badge_revoked_by_recipient",
+                "Badge revoked by recipient",
+                &[Group],
+            ),
+            ("badge_updated", "Badge updated", &[Group]),
+            (
+                "community_custom_notification_sent",
+                "Community custom notification sent",
+                &[Community],
+            ),
+            (
+                "event_admission_offer_canceled",
+                "Event ticket offer canceled",
+                &[Group],
+            ),
+            (
+                "event_admission_offer_declined",
+                "Event ticket offer declined",
+                &[Group, User],
+            ),
+            (
+                "event_admission_offer_reissued",
+                "Event ticket offer reissued",
+                &[Group],
+            ),
+            ("event_survey_added", "Event survey added", &[Group]),
+            ("event_survey_closed", "Event survey closed", &[Group]),
+            ("event_survey_deleted", "Event survey deleted", &[Group]),
+            (
+                "event_survey_marked_ready",
+                "Event survey marked ready",
+                &[Group],
+            ),
+            (
+                "event_survey_moved_to_draft",
+                "Event survey moved to draft",
+                &[Group],
+            ),
+            ("event_survey_reopened", "Event survey reopened", &[Group]),
+            ("event_survey_updated", "Event survey updated", &[Group]),
+            (
+                "event_ticket_waitlist_offer_created",
+                "Event waitlist ticket offer created",
+                &[Group],
+            ),
+        ];
+
+        // Check each action label and the scopes that list it
+        for (action, label, scopes) in cases {
+            assert_eq!(action_label(action), label, "{action}");
+            for (scope, scope_actions) in &scopes_actions {
+                assert_eq!(
+                    scope_actions.contains(action),
+                    scopes.contains(scope),
+                    "{action} in {scope:?}"
+                );
+            }
         }
-    }
-
-    #[test]
-    fn test_event_survey_actions_are_group_scoped() {
-        let group_actions: Vec<String> = AuditScope::Group
-            .action_options()
-            .into_iter()
-            .map(|option| option.value)
-            .collect();
-        let community_actions: Vec<String> = AuditScope::Community
-            .action_options()
-            .into_iter()
-            .map(|option| option.value)
-            .collect();
-
-        assert!(group_actions.contains(&"event_survey_marked_ready".to_string()));
-        assert!(!community_actions.contains(&"event_survey_marked_ready".to_string()));
     }
 
     #[test]
@@ -991,39 +962,79 @@ mod tests {
     }
 
     #[test]
-    fn test_render_detail_value_joins_scalar_arrays() {
-        assert_eq!(
-            render_detail_value(&json!(["Platform", "No region", 3])),
-            "Platform, No region, 3"
+    fn test_humanize_key_capitalizes_words_and_cfs() {
+        let cases = [
+            ("single word", "name", "Name"),
+            ("several words", "starts_at", "Starts At"),
+            ("cfs abbreviation", "cfs_enabled", "CFS Enabled"),
+            ("empty segment", "a__b", "A  B"),
+        ];
+
+        for (case, key, expected) in cases {
+            assert_eq!(humanize_key(key), expected, "{case}");
+        }
+    }
+
+    #[test]
+    fn test_list_page_new_selects_filtered_action() {
+        let filters = AuditLogFilters {
+            action: Some("badge_added".to_string()),
+            ..AuditLogFilters::default()
+        };
+        let output = AuditLogsOutput {
+            logs: vec![],
+            total: 0,
+        };
+
+        let page = ListPage::new(
+            AuditScope::Group,
+            &filters,
+            output,
+            pagination::NavigationLinks::default(),
         );
+
+        let selected: Vec<&str> = page
+            .action_options
+            .iter()
+            .filter(|option| option.selected)
+            .map(|option| option.value.as_str())
+            .collect();
+        assert_eq!(selected, ["badge_added"]);
     }
 
     #[test]
-    fn test_render_detail_value_keeps_nested_arrays_as_json() {
-        assert_eq!(
-            render_detail_value(&json!([{"name": "Platform"}])),
-            r#"[{"name":"Platform"}]"#
-        );
+    fn test_render_detail_value_formats_values() {
+        let cases = [
+            ("integer", json!(2), "2"),
+            (
+                "nested array",
+                json!([{"name": "Platform"}]),
+                r#"[{"name":"Platform"}]"#,
+            ),
+            ("null", json!(null), "-"),
+            (
+                "scalar array",
+                json!(["Platform", "No region", 3]),
+                "Platform, No region, 3",
+            ),
+            ("string", json!("All"), "All"),
+        ];
+        for (case, value, expected) in cases {
+            assert_eq!(render_detail_value(&value), expected, "{case}");
+        }
     }
 
     #[test]
-    fn test_render_detail_value_renders_scalars() {
-        assert_eq!(render_detail_value(&json!("All")), "All");
-        assert_eq!(render_detail_value(&json!(null)), "-");
-        assert_eq!(render_detail_value(&json!(2)), "2");
-    }
-
-    #[test]
-    fn test_resource_type_label_badge_and_ticket_offer_types() {
-        assert_eq!(resource_type_label("admission_offer"), "Ticket offer");
-        assert_eq!(resource_type_label("badge"), "Badge");
-        assert_eq!(resource_type_label("badge_artwork"), "Badge artwork");
-        assert_eq!(resource_type_label("user_badge"), "Badge award");
-    }
-
-    #[test]
-    fn test_resource_type_label_event_survey() {
-        assert_eq!(resource_type_label("event_survey"), "Event survey");
+    fn test_resource_type_label_names_resource_types() {
+        for (resource_type, label) in [
+            ("admission_offer", "Ticket offer"),
+            ("badge", "Badge"),
+            ("badge_artwork", "Badge artwork"),
+            ("event_survey", "Event survey"),
+            ("user_badge", "Badge award"),
+        ] {
+            assert_eq!(resource_type_label(resource_type), label, "{resource_type}");
+        }
     }
 
     #[test]
@@ -1040,31 +1051,6 @@ mod tests {
             scope_action_values(AuditScope::User),
             sql_allow_list(USER_AUDIT_LOGS_SQL)
         );
-    }
-
-    #[test]
-    fn test_ticket_offer_action_scopes() {
-        // Collect the actions listed by each scope
-        let community_actions = scope_action_values(AuditScope::Community);
-        let group_actions = scope_action_values(AuditScope::Group);
-        let user_actions = scope_action_values(AuditScope::User);
-
-        // Check offer declines are listed in the group and user scopes
-        assert!(group_actions.contains("event_admission_offer_declined"));
-        assert!(user_actions.contains("event_admission_offer_declined"));
-        assert!(!community_actions.contains("event_admission_offer_declined"));
-
-        // Check the remaining offer actions are listed only in the group scope
-        for action in [
-            "admission_offer_expired",
-            "event_admission_offer_canceled",
-            "event_admission_offer_reissued",
-            "event_ticket_waitlist_offer_created",
-        ] {
-            assert!(group_actions.contains(action), "{action} missing in group");
-            assert!(!community_actions.contains(action), "{action} in community");
-            assert!(!user_actions.contains(action), "{action} in user");
-        }
     }
 
     // Helpers.
