@@ -45,7 +45,7 @@
           {% if !can_manage_events -%}
             disabled title="Your role cannot add events."
           {% endif -%}
-          class="btn-primary shrink-0 self-end sm:mb-3
+          class="btn-primary shrink-0 self-end sm:mb-4
                  {% if !can_manage_events -%}
                    opacity-50 cursor-not-allowed
                  {% endif -%}">Add Event</button>
@@ -60,7 +60,7 @@
      class="{% if events_tab == EventsTab::Past %}
               hidden
             {% endif %}">
-  <div class="text-sm text-stone-600 mb-5">
+  <div class="text-sm text-stone-600 mt-3 mb-8">
     {{ pagination::range_display(offset = upcoming_offset.unwrap_or(0) , count = events.upcoming.events.len(), total = events.upcoming.total, label = "event") }}
   </div>
   {# Upcoming events table -#}
@@ -363,7 +363,7 @@
      class="{% if events_tab == EventsTab::Upcoming %}
               hidden
             {% endif %}">
-  <div class="text-sm text-stone-600 mb-5">
+  <div class="text-sm text-stone-600 mt-3 mb-8">
     {{ pagination::range_display(offset = past_offset.unwrap_or(0) , count = events.past.events.len(), total = events.past.total, label = "event") }}
   </div>
   {# Past events table -#}
