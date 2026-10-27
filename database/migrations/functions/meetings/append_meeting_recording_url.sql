@@ -17,4 +17,4 @@ create or replace function append_meeting_recording_url(
       and input.recording_url is not null
       -- Keep raw recording URLs unique per meeting
       and array_position(recording_urls, input.recording_url) is null;
-$$ language sql;
+$$ language sql volatile;

@@ -6,23 +6,15 @@ create or replace function cancel_event(
 )
 returns void as $$
 declare
-    v_event_discount_code_id uuid;
+    v_event event;
+    v_event_purchase_id uuid;
+    v_purchase event_purchase;
 begin
-    -- Lock event row to serialize state transitions
-    perform 1
-    from event
-    where event_id = p_event_id
-    and group_id = p_group_id
-    and canceled = false
-    and deleted = false
-    and (
-        event_effective_ends_at(event) is null
-        or event_effective_ends_at(event) >= current_timestamp
-    )
-    for update;
+    -- Lock the event, if not deleted or canceled, to serialize state transitions
+    v_event := lock_manageable_event(p_group_id, p_event_id, false);
 
-    -- Reject events outside the group or already closed
-    if not found then
+    -- Reject events that are already over
+    if event_is_past(v_event) then
         raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
@@ -57,91 +49,46 @@ begin
     where event_id = p_event_id
     and status = 'invitation-pending';
 
-    -- Close free and external ticket purchases locally and restore discount inventory
-    for v_event_discount_code_id in
-        update event_purchase
-        set
-            refunded_at = current_timestamp,
-            status = 'refunded',
-            updated_at = current_timestamp
-        where event_id = p_event_id
+    -- Refund free and external ticket purchases locally in lock order
+    for v_event_purchase_id in
+        select ep.event_purchase_id
+        from event_purchase ep
+        where ep.event_id = p_event_id
         and (
-            amount_minor = 0
-            or charge_model = 'external'
+            ep.amount_minor = 0
+            or ep.charge_model = 'external'
         )
-        and status in ('completed', 'refund-requested')
-        returning event_discount_code_id
+        and ep.status in ('completed', 'refund-requested')
+        order by ep.event_purchase_id
     loop
-        -- Return the discount seat of each closed purchase
-        if v_event_discount_code_id is not null then
-            perform release_event_discount_code_availability(v_event_discount_code_id);
-        end if;
+        -- Close the purchase, its discount reservation and any waiting request
+        perform refund_event_purchase_locally(v_event_purchase_id, p_actor_user_id);
     end loop;
 
-    -- Complete free-purchase refund requests locally without worker handoff
-    update event_refund_request err
-    set
-        reviewed_at = coalesce(err.reviewed_at, current_timestamp),
-        reviewed_by_user_id = coalesce(err.reviewed_by_user_id, p_actor_user_id),
-        status = 'approved',
-        updated_at = current_timestamp
-    from event_purchase ep
-    where ep.event_purchase_id = err.event_purchase_id
-    and ep.event_id = p_event_id
-    and (
-        ep.amount_minor = 0
-        or ep.charge_model = 'external'
-    )
-    and ep.status = 'refunded'
-    and err.status in ('approving', 'pending');
-
-    -- Queue provider-backed purchases that do not already have durable work
-    with queued_jobs as (
-        insert into payment_job (
-            event_purchase_id,
-            idempotency_key,
-            kind,
-            payment_provider_id
-        )
-        select
-            ep.event_purchase_id,
-            format('event-purchase-refund-%s', ep.event_purchase_id),
-            'event-purchase-refund',
-            ep.payment_provider_id
+    -- Queue provider-backed purchases in lock order
+    for v_purchase in
+        select ep.*
         from event_purchase ep
         where ep.event_id = p_event_id
         and ep.amount_minor > 0
         and ep.charge_model is distinct from 'external'
         and ep.status in ('completed', 'refund-requested')
-        on conflict (idempotency_key) do nothing
-        returning event_purchase_id, payment_job_id
-    )
-    insert into event_purchase_refund (
-        amount_minor,
-        currency_code,
-        event_purchase_id,
-        event_refund_request_id,
-        initiated_by_user_id,
-        kind,
-        payment_job_id,
-        payment_provider_id,
-        status
-    )
-    select
-        ep.provider_total_minor,
-        ep.currency_code,
-        ep.event_purchase_id,
-        err.event_refund_request_id,
-        p_actor_user_id,
-        'event-cancellation',
-        qj.payment_job_id,
-        ep.payment_provider_id,
-        'provider-pending'
-    from queued_jobs qj
-    join event_purchase ep on ep.event_purchase_id = qj.event_purchase_id
-    left join event_refund_request err
-        on err.event_purchase_id = ep.event_purchase_id
-        and err.status in ('approving', 'pending');
+        order by ep.event_purchase_id
+    loop
+        -- Link the waiting request and skip purchases that already have durable work
+        perform enqueue_event_purchase_refund(
+            v_purchase,
+            'event-cancellation',
+            v_purchase.provider_total_minor,
+            (
+                select err.event_refund_request_id
+                from event_refund_request err
+                where err.event_purchase_id = v_purchase.event_purchase_id
+                and err.status in ('approving', 'pending')
+            ),
+            p_actor_user_id
+        );
+    end loop;
 
     -- Move attached paid requests into the worker-owned approval state
     update event_refund_request err
@@ -168,23 +115,15 @@ begin
     and charge_model is distinct from 'external'
     and status in ('completed', 'refund-requested');
 
-    -- Update event to mark as canceled
-    -- If meeting was requested, mark meeting_in_sync as false to trigger deletion
-    update event set
-        canceled = true,
-        meeting_in_sync = case
-            when meeting_requested = true then false
-            else meeting_in_sync
-        end
+    -- Mark the event as canceled
+    update event set canceled = true
     where event_id = p_event_id
     and group_id = p_group_id
     and canceled = false
     and deleted = false;
 
-    -- Mark sessions as out of sync to trigger meeting deletion
-    update session set meeting_in_sync = false
-    where event_id = p_event_id
-    and meeting_requested = true;
+    -- Request provider deletion of the event and session meetings
+    perform mark_event_meetings_out_of_sync(p_event_id);
 
     -- Track the event cancellation
     perform insert_audit_log(
@@ -192,9 +131,8 @@ begin
         p_actor_user_id,
         'event',
         p_event_id,
-        (select community_id from "group" where group_id = p_group_id),
-        p_group_id,
-        p_event_id
+        p_group_id => p_group_id,
+        p_event_id => p_event_id
     );
 end;
 $$ language plpgsql;

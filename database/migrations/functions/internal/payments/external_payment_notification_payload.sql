@@ -22,4 +22,4 @@ returns jsonb as $$
         'ticket_title', p_purchase.ticket_title,
         'timezone', p_event.timezone
     ));
-$$ language sql immutable;
+$$ language sql stable;

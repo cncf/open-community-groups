@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -26,14 +26,20 @@ select plan(12);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, group category and groups
+-- Community
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
-select fx_group(:'wrongGroupID', :'communityID', :'groupCategoryID');
 
 -- Actor updating the sponsors
 select fx_user(:'actorUserID', jsonb_build_object('username', 'update-group-sponsor-actor'));
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group owning the sponsors
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Group that does not own the sponsors
+select fx_group(:'wrongGroupID', :'communityID', :'groupCategoryID');
 
 -- Sponsor whose website is cleared with an empty string
 insert into group_sponsor (featured, group_id, group_sponsor_id, logo_url, name, website_url)
@@ -138,8 +144,8 @@ select results_eq(
     'Should default featured to false when omitted from payload'
 );
 
--- Should silently ignore updates for a sponsor outside the selected group
-select lives_ok(
+-- Should reject updates for a sponsor outside the selected group
+select throws_ok(
     format(
         $$select update_group_sponsor(%L::uuid, %L::uuid, %L::uuid, '{
             "featured": true,
@@ -149,22 +155,9 @@ select lives_ok(
         }'::jsonb)$$,
         :'actorUserID', :'wrongGroupID', :'sponsorWrongGroupID'
     ),
-    'Should accept updates for a sponsor outside the selected group without error'
-);
-
-select results_eq(
-    format(
-        $$select featured, logo_url, name, website_url from group_sponsor where group_sponsor_id = %L::uuid$$,
-        :'sponsorWrongGroupID'
-    ),
-    $$values (false, 'https://ex.com/lambda.png'::text, 'Lambda'::text, 'https://lambda.io'::text)$$,
-    'Should leave sponsor fields unchanged when sponsor belongs to another group'
-);
-
-select is(
-    (select count(*) from audit_log where resource_id = :'sponsorWrongGroupID'::uuid),
-    0::bigint,
-    'Should not create an audit row when sponsor belongs to another group'
+    'OCG01',
+    'sponsor not found',
+    'Should reject updates for a sponsor outside the selected group'
 );
 
 -- Should set website_url to null when empty in payload

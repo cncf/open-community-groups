@@ -22,31 +22,66 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community
+-- Community owning the taxonomy under test
 select fx_community(:'communityID');
 
--- Updated region and second region whose name the duplicate scenario reuses
-insert into region (
-    region_id,
-    community_id,
-    name
-) values
-    (:'region1ID', :'communityID', 'North America'),
-    (:'region2ID', :'communityID', 'Europe');
-
--- Other community with its own region
+-- Other community owning the foreign region
 select fx_community(:'otherCommunityID');
-insert into region (region_id, community_id, name)
-values (:'foreignRegionID', :'otherCommunityID', 'Asia');
 
 -- Actor recorded in the audit row
 select fx_user(:'actorUserID', jsonb_build_object('username', 'update-region-audit-actor'));
+
+-- Region owned by the other community
+insert into region (region_id, community_id, name)
+values (:'foreignRegionID', :'otherCommunityID', 'Asia');
+
+-- Region updated by the scenarios
+insert into region (region_id, community_id, name)
+values (:'region1ID', :'communityID', 'North America');
+
+-- Second region whose name the duplicate scenario reuses
+insert into region (region_id, community_id, name)
+values (:'region2ID', :'communityID', 'Europe');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should update region name and generated normalized name
+-- Should fail when updating a region from another community
+select throws_ok(
+    format(
+        $$ select update_region(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        jsonb_build_object('name', 'APAC')
+    ) $$,
+        :'communityID',
+        :'foreignRegionID'
+    ),
+    'OCG01',
+    'region not found',
+    'Should fail when updating a region from another community'
+);
+
+-- Should reject duplicate region names
+select throws_ok(
+    format(
+        $$ select update_region(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        jsonb_build_object('name', 'Europe')
+    ) $$,
+        :'communityID',
+        :'region1ID'
+    ),
+    'OCG01',
+    'region already exists',
+    'Should reject duplicate region names'
+);
+
+-- Should update region name
 select lives_ok(
     format(
         $$ select update_region(
@@ -104,40 +139,6 @@ select results_eq(
         :'region1ID'
     ),
     'Should create the expected audit row'
-);
-
--- Should reject duplicate normalized names in same community
-select throws_ok(
-    format(
-        $$ select update_region(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        jsonb_build_object('name', 'Europe')
-    ) $$,
-        :'communityID',
-        :'region1ID'
-    ),
-    'OCG01',
-    'region already exists',
-    'Should reject duplicate region names'
-);
-
--- Should fail when target region belongs to another community
-select throws_ok(
-    format(
-        $$ select update_region(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        jsonb_build_object('name', 'APAC')
-    ) $$,
-        :'communityID',
-        :'foreignRegionID'
-    ),
-    'OCG01',
-    'region not found',
-    'Should fail when updating a region from another community'
 );
 
 -- ============================================================================

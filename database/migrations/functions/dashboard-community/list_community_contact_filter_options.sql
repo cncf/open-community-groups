@@ -86,4 +86,4 @@ returns json as $$
         'regions', rs.options
     )
     from group_categories gcs, groups gs, regions rs;
-$$ language sql;
+$$ language sql stable;

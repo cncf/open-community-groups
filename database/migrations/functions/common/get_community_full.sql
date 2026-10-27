@@ -9,7 +9,7 @@ returns json as $$
         'banner_url', banner_url,
         'community_id', community_id,
         'community_site_layout_id', community_site_layout_id,
-        'created_at', floor(extract(epoch from created_at)*1000),
+        'created_at', epoch_seconds(created_at),
         'description', description,
         'display_name', display_name,
         'group_team_management_restricted', group_team_management_restricted,
@@ -37,4 +37,4 @@ returns json as $$
     )) as json_data
     from community
     where community_id = p_community_id;
-$$ language sql;
+$$ language sql stable;

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -50,20 +50,6 @@ select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_bui
 -- TESTS
 -- ============================================================================
 
--- Should return the group row
-select is(
-    (select (lock_active_group(:'communityID', :'liveGroupID')).name),
-    'Lock Active Group Live',
-    'Should return the group row'
-);
-
--- Should return deactivated groups so they can be activated again
-select is(
-    (select (lock_active_group(:'communityID', :'inactiveGroupID')).active),
-    false,
-    'Should return deactivated groups so they can be activated again'
-);
-
 -- Should reject groups from another community
 select throws_ok(
     format($$select lock_active_group(%L::uuid, %L::uuid)$$, :'otherCommunityID', :'liveGroupID'),
@@ -80,12 +66,49 @@ select throws_ok(
     'Should reject missing groups'
 );
 
+-- Should reject missing groups when the community is null
+select throws_ok(
+    format($$select lock_active_group(null::uuid, %L::uuid)$$, :'missingGroupID'),
+    'OCG01',
+    'group not found or inactive',
+    'Should reject missing groups when the community is null'
+);
+
 -- Should reject soft-deleted groups
 select throws_ok(
     format($$select lock_active_group(%L::uuid, %L::uuid)$$, :'communityID', :'deletedGroupID'),
     'OCG01',
     'group not found or inactive',
     'Should reject soft-deleted groups'
+);
+
+-- Should reject soft-deleted groups when the community is null
+select throws_ok(
+    format($$select lock_active_group(null::uuid, %L::uuid)$$, :'deletedGroupID'),
+    'OCG01',
+    'group not found or inactive',
+    'Should reject soft-deleted groups when the community is null'
+);
+
+-- Should return deactivated groups so they can be activated again
+select is(
+    (select (lock_active_group(:'communityID', :'inactiveGroupID')).active),
+    false,
+    'Should return deactivated groups so they can be activated again'
+);
+
+-- Should return the group row
+select is(
+    (select (lock_active_group(:'communityID', :'liveGroupID')).name),
+    'Lock Active Group Live',
+    'Should return the group row'
+);
+
+-- Should return the group row by id when the community is null
+select is(
+    (select (lock_active_group(null, :'liveGroupID')).group_id),
+    :'liveGroupID'::uuid,
+    'Should return the group row by id when the community is null'
 );
 
 -- ============================================================================

@@ -23,21 +23,9 @@ returns json as $$
         -- Apply group ownership plus all requested award filters
         filtered as (
             select
+                ub as award,
                 ub.awarded_at,
-                ub.badge_status_list_id,
-                ub.display_order,
-                ub.group_id,
-                ub.is_listed,
-                ub.snapshot,
-                ub.status_list_index,
                 ub.user_badge_id,
-
-                ub.badge_id,
-                ub.event_id,
-                ub.revocation_reason,
-                ub.revoked_at,
-                ub.revoked_by_user_id,
-                ub.user_id,
 
                 e.name as event_name,
                 coalesce(u.name, u.username) as recipient_name,
@@ -76,7 +64,15 @@ returns json as $$
     select json_build_object(
         'awards', coalesce(
             (
-                select json_agg(row_to_json(page) order by awarded_at desc, user_badge_id desc)
+                select json_agg(
+                    user_badge_json(page.award, false)
+                    || jsonb_build_object(
+                        'event_name', page.event_name,
+                        'recipient_name', page.recipient_name,
+                        'recipient_username', page.recipient_username
+                    )
+                    order by page.awarded_at desc, page.user_badge_id desc
+                )
                 from page
             ),
             '[]'::json
@@ -120,4 +116,4 @@ returns json as $$
         ),
         'total', (select count(*)::integer from filtered)
     );
-$$ language sql;
+$$ language sql stable;

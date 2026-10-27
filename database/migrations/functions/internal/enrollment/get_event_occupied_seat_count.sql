@@ -28,8 +28,7 @@ returns int as $$
         select ao.user_id
         from admission_offer ao
         where ao.event_id = p_event_id
-        and admission_offer_is_active(ao.status)
-        and ao.expires_at > current_timestamp
+        and admission_offer_reserves_seat(ao.status, ao.expires_at)
 
         union
 
@@ -37,12 +36,6 @@ returns int as $$
         select ep.user_id
         from event_purchase ep
         where ep.event_id = p_event_id
-        and (
-            event_purchase_holds_seat(ep.status)
-            or (
-                ep.status = 'pending'
-                and ep.hold_expires_at > current_timestamp
-            )
-        )
+        and event_purchase_reserves_seat(ep.status, ep.hold_expires_at)
     ) occupied_users;
-$$ language sql;
+$$ language sql stable;

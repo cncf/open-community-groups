@@ -6,28 +6,27 @@ create or replace function delete_event_category(
 )
 returns void as $$
 declare
-    v_events_count bigint;
     v_name text;
 begin
-    -- Ensure the event category exists in the selected community, snapshotting
-    -- its name so the audit row remains readable after deletion
+    -- Lock the category and snapshot its name for the audit row
     select ec.name
     into v_name
     from event_category ec
     where ec.community_id = p_community_id
-      and ec.event_category_id = p_event_category_id;
+      and ec.event_category_id = p_event_category_id
+    for update of ec;
 
+    -- Reject categories outside the selected community
     if not found then
         raise exception 'event category not found' using errcode = 'OCG01';
     end if;
 
-    -- Block deletion when events still reference this category
-    select count(*)
-    into v_events_count
-    from event e
-    where e.event_category_id = p_event_category_id;
-
-    if v_events_count > 0 then
+    -- Reject categories still used by any events, including deleted ones
+    if exists (
+        select 1
+        from event e
+        where e.event_category_id = p_event_category_id
+    ) then
         raise exception 'cannot delete event category in use by events' using errcode = 'OCG01';
     end if;
 

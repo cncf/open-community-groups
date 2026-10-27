@@ -226,12 +226,14 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
     ) -> Result<CheckInScanResult>;
 
-    /// Checks in a confirmed attendee and returns whether the state changed.
+    /// Checks in a confirmed attendee of an event in the selected group and
+    /// returns whether the state changed.
     async fn check_in_event(
         &self,
         actor_user_id: Uuid,
         community_id: Uuid,
         event_id: Uuid,
+        group_id: Uuid,
         user_id: Uuid,
     ) -> Result<bool>;
 
@@ -299,9 +301,10 @@ pub(crate) trait DBDashboardGroup {
         event: &serde_json::Value,
     ) -> Result<bool>;
 
-    /// Gets submission notification data.
+    /// Gets submission notification data for an event owned by the group.
     async fn get_cfs_submission_notification_data(
         &self,
+        group_id: Uuid,
         event_id: Uuid,
         cfs_submission_id: Uuid,
     ) -> Result<CfsSubmissionNotificationData>;
@@ -438,13 +441,6 @@ pub(crate) trait DBDashboardGroup {
     /// Reports whether an event exists, is not deleted and belongs to the group.
     async fn group_has_event(&self, group_id: Uuid, event_id: Uuid) -> Result<bool>;
 
-    /// Reports whether current paid events require automatic tax from a new sponsor.
-    async fn group_requires_automatic_tax_readiness(
-        &self,
-        community_id: Uuid,
-        group_id: Uuid,
-    ) -> Result<bool>;
-
     /// Creates an organizer-created event invitation.
     async fn invite_event_attendee(
         &self,
@@ -481,9 +477,10 @@ pub(crate) trait DBDashboardGroup {
     /// Lists accepted, email-verified community admin user ids.
     async fn list_community_admin_ids(&self, community_id: Uuid) -> Result<Vec<Uuid>>;
 
-    /// Lists approved CFS submissions for an event.
+    /// Lists approved CFS submissions for an event owned by the group.
     async fn list_event_approved_cfs_submissions(
         &self,
+        group_id: Uuid,
         event_id: Uuid,
     ) -> Result<Vec<ApprovedSubmissionSummary>>;
 
@@ -499,9 +496,10 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all event categories for a community.
     async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>>;
 
-    /// Lists CFS submissions for an event.
+    /// Lists CFS submissions for an event owned by the group.
     async fn list_event_cfs_submissions(
         &self,
+        group_id: Uuid,
         event_id: Uuid,
         filters: &CfsSubmissionsFilters,
     ) -> Result<CfsSubmissionsOutput>;
@@ -579,6 +577,10 @@ pub(crate) trait DBDashboardGroup {
     /// Lists accepted, email-verified group admin user ids.
     async fn list_group_admin_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
 
+    /// Lists the verified members and accepted, verified team members of a group,
+    /// deduplicated and sorted.
+    async fn list_group_audience_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
+
     /// Lists group dashboard audit log rows.
     async fn list_group_audit_logs(
         &self,
@@ -617,9 +619,6 @@ pub(crate) trait DBDashboardGroup {
         filters: &GroupMembersFilters,
     ) -> Result<GroupMembersOutput>;
 
-    /// Lists all group member user ids.
-    async fn list_group_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
-
     /// Lists purchase refund workflows for a group.
     async fn list_group_refunds(
         &self,
@@ -647,9 +646,6 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         filters: &GroupTeamFilters,
     ) -> Result<GroupTeamOutput>;
-
-    /// Lists all accepted, verified group team member user ids.
-    async fn list_group_team_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
 
     /// Lists supported payment currency codes.
     ///
@@ -794,10 +790,11 @@ pub(crate) trait DBDashboardGroup {
         badge: &BadgeInput,
     ) -> Result<()>;
 
-    /// Updates a CFS submission for an event.
+    /// Updates a CFS submission for an event owned by the group.
     async fn update_cfs_submission(
         &self,
         reviewer_id: Uuid,
+        group_id: Uuid,
         event_id: Uuid,
         cfs_submission_id: Uuid,
         submission: &CfsSubmissionUpdate,
@@ -1224,11 +1221,18 @@ where
         actor_user_id: Uuid,
         community_id: Uuid,
         event_id: Uuid,
+        group_id: Uuid,
         user_id: Uuid,
     ) -> Result<bool> {
         self.fetch_scalar_one(
-            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
-            &[&actor_user_id, &community_id, &event_id, &user_id],
+            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid)",
+            &[
+                &actor_user_id,
+                &community_id,
+                &event_id,
+                &group_id,
+                &user_id,
+            ],
         )
         .await
     }
@@ -1361,12 +1365,13 @@ where
     #[instrument(skip(self), err)]
     async fn get_cfs_submission_notification_data(
         &self,
+        group_id: Uuid,
         event_id: Uuid,
         cfs_submission_id: Uuid,
     ) -> Result<CfsSubmissionNotificationData> {
         self.fetch_json_one(
-            "select get_cfs_submission_notification_data($1::uuid, $2::uuid)",
-            &[&event_id, &cfs_submission_id],
+            "select get_cfs_submission_notification_data($1::uuid, $2::uuid, $3::uuid)",
+            &[&group_id, &event_id, &cfs_submission_id],
         )
         .await
     }
@@ -1646,20 +1651,6 @@ where
         .await
     }
 
-    /// [`DBDashboardGroup::group_requires_automatic_tax_readiness`]
-    #[instrument(skip(self), err)]
-    async fn group_requires_automatic_tax_readiness(
-        &self,
-        community_id: Uuid,
-        group_id: Uuid,
-    ) -> Result<bool> {
-        self.fetch_scalar_one(
-            "select group_requires_automatic_tax_readiness($1::uuid, $2::uuid)",
-            &[&community_id, &group_id],
-        )
-        .await
-    }
-
     /// [`DBDashboardGroup::invite_event_attendee`]
     #[instrument(skip(self, invitation), err)]
     async fn invite_event_attendee(
@@ -1764,11 +1755,12 @@ where
     #[instrument(skip(self), err)]
     async fn list_event_approved_cfs_submissions(
         &self,
+        group_id: Uuid,
         event_id: Uuid,
     ) -> Result<Vec<ApprovedSubmissionSummary>> {
         self.fetch_json_one(
-            "select list_event_approved_cfs_submissions($1::uuid)",
-            &[&event_id],
+            "select list_event_approved_cfs_submissions($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
         )
         .await
     }
@@ -1799,12 +1791,13 @@ where
     #[instrument(skip(self, filters), err)]
     async fn list_event_cfs_submissions(
         &self,
+        group_id: Uuid,
         event_id: Uuid,
         filters: &CfsSubmissionsFilters,
     ) -> Result<CfsSubmissionsOutput> {
         self.fetch_json_one(
-            "select list_event_cfs_submissions($1::uuid, $2::jsonb)",
-            &[&event_id, &Json(filters)],
+            "select list_event_cfs_submissions($1::uuid, $2::uuid, $3::jsonb)",
+            &[&group_id, &event_id, &Json(filters)],
         )
         .await
     }
@@ -1966,6 +1959,13 @@ where
             .await
     }
 
+    /// [`DBDashboardGroup::list_group_audience_ids`].
+    #[instrument(skip(self), err)]
+    async fn list_group_audience_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one("select list_group_audience_ids($1::uuid)", &[&group_id])
+            .await
+    }
+
     /// [`DBDashboardGroup::list_group_audit_logs`]
     #[instrument(skip(self, filters), err)]
     async fn list_group_audit_logs(
@@ -2043,13 +2043,6 @@ where
         .await
     }
 
-    /// [`DBDashboardGroup::list_group_members_ids`]
-    #[instrument(skip(self), err)]
-    async fn list_group_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>> {
-        self.fetch_scalar_one("select list_group_members_ids($1::uuid)", &[&group_id])
-            .await
-    }
-
     /// [`DBDashboardGroup::list_group_refunds`].
     #[instrument(skip(self, filters), err)]
     async fn list_group_refunds(
@@ -2114,13 +2107,6 @@ where
             &[&group_id, &Json(filters)],
         )
         .await
-    }
-
-    /// [`DBDashboardGroup::list_group_team_members_ids`]
-    #[instrument(skip(self), err)]
-    async fn list_group_team_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>> {
-        self.fetch_scalar_one("select list_group_team_members_ids($1::uuid)", &[&group_id])
-            .await
     }
 
     /// [`DBDashboardGroup::list_payment_currency_codes`]
@@ -2455,14 +2441,16 @@ where
     async fn update_cfs_submission(
         &self,
         reviewer_id: Uuid,
+        group_id: Uuid,
         event_id: Uuid,
         cfs_submission_id: Uuid,
         submission: &CfsSubmissionUpdate,
     ) -> Result<bool> {
         self.fetch_scalar_one(
-            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::jsonb)::bool",
+            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::jsonb)::bool",
             &[
                 &reviewer_id,
+                &group_id,
                 &event_id,
                 &cfs_submission_id,
                 &Json(submission),

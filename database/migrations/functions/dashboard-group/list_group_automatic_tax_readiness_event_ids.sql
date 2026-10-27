@@ -18,8 +18,5 @@ returns uuid[] as $$
     and e.published = true
     and e.tax_calculation_mode = 'automatic'
     and is_event_paid_capable(e.event_id)
-    and (
-        event_effective_ends_at(e) is null
-        or event_effective_ends_at(e) > current_timestamp
-    );
+    and not event_is_past(e);
 $$ language sql stable;

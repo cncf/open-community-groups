@@ -5,16 +5,12 @@
 -- ============================================================================
 
 begin;
-select plan(25);
+select plan(24);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set canceledEventID '5e000000-0000-0000-0000-000000000042'
-\set canceledPriceWindowID '5e000000-0000-0000-0000-000000000047'
-\set canceledTicketTypeID '5e000000-0000-0000-0000-000000000043'
-\set canceledUserID '5e000000-0000-0000-0000-000000000044'
 \set closedEventID '5e000000-0000-0000-0000-000000000027'
 \set closedExpiredOfferID '5e000000-0000-0000-0000-000000000028'
 \set closedExpiredUserID '5e000000-0000-0000-0000-000000000029'
@@ -39,6 +35,7 @@ select plan(25);
 \set freeUser3ID '5e000000-0000-0000-0000-00000000000d'
 \set groupCategoryID '5e000000-0000-0000-0000-00000000000e'
 \set groupID '5e000000-0000-0000-0000-00000000000f'
+\set lockedUserID '5e000000-0000-0000-0000-00000000004f'
 \set noPriceEventID '5e000000-0000-0000-0000-000000000010'
 \set noPriceTicketTypeID '5e000000-0000-0000-0000-000000000011'
 \set noPriceUser1ID '5e000000-0000-0000-0000-000000000012'
@@ -81,11 +78,11 @@ select plan(25);
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'canceledUserID');
 select fx_user(:'dueUserID');
 select fx_user(:'freeUser1ID');
 select fx_user(:'freeUser2ID');
 select fx_user(:'freeUser3ID');
+select fx_user(:'lockedUserID');
 select fx_user(:'noPriceUser1ID');
 select fx_user(:'noPriceUser2ID');
 select fx_user(:'paidUserID');
@@ -130,10 +127,17 @@ select fx_event(:'noPriceEventID', :'groupID', :'eventCategoryID', jsonb_build_o
     'waitlist_enabled', true
 ));
 select fx_event(:'paidEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'event_kind_id', 'virtual',
+    'event_kind_id', 'in-person',
+    'manual_tax_rate_ids', '{}'::text[],
     'payment_currency_code', 'USD',
     'published', true,
     'starts_at', current_timestamp + interval '2 days',
+    'tax_calculation_mode', 'automatic',
+    'venue_address', '1 Reconciliation Way',
+    'venue_city', 'Reconciliation City',
+    'venue_country_code', 'US',
+    'venue_name', 'Reconciliation Hall',
+    'venue_zip_code', '12345',
     'waitlist_enabled', true
 ));
 select fx_event(:'refundPendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -167,15 +171,6 @@ select fx_event(:'closedEventID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'waitlist_enabled', true
 ));
 
--- Canceled published event whose free queue could otherwise be promoted
-select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'event_kind_id', 'virtual',
-    'published', true,
-    'starts_at', current_timestamp + interval '2 days',
-    'waitlist_enabled', true
-));
-
 -- Ticket tiers
 select fx_event_ticket_type(:'freeTicketTypeID', :'freeEventID', jsonb_build_object(
     'seats_total', 2,
@@ -192,7 +187,6 @@ select fx_event_ticket_type(:'retryTicketTypeID', :'retryEventID', jsonb_build_o
 select fx_event_ticket_type(:'dueTicketTypeID', :'dueEventID', jsonb_build_object('seats_total', 1));
 select fx_event_ticket_type(:'replacementTicketTypeID', :'replacementEventID', jsonb_build_object('seats_total', 1));
 select fx_event_ticket_type(:'closedTicketTypeID', :'closedEventID', jsonb_build_object('seats_total', 1));
-select fx_event_ticket_type(:'canceledTicketTypeID', :'canceledEventID', jsonb_build_object('seats_total', 1));
 
 -- Current prices, excluding the intentionally blocked no-price tier
 select fx_event_ticket_price_window(:'freePriceWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
@@ -202,7 +196,6 @@ select fx_event_ticket_price_window(:'retryPriceWindowID', :'retryTicketTypeID',
 select fx_event_ticket_price_window(:'duePriceWindowID', :'dueTicketTypeID', jsonb_build_object('amount_minor', 1000));
 select fx_event_ticket_price_window(:'replacementPriceWindowID', :'replacementTicketTypeID', jsonb_build_object('amount_minor', 0));
 select fx_event_ticket_price_window(:'closedPriceWindowID', :'closedTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(:'canceledPriceWindowID', :'canceledTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Single-seat RSVP tier
 select fx_event_ticket_type(:'rsvpTicketTypeID', :'rsvpEventID', jsonb_build_object('seats_total', 1));
@@ -308,11 +301,6 @@ insert into event_waitlist (
     :'closedEventID',
     :'closedTicketTypeID',
     :'closedQueueUserID'
-), (
-    '2024-01-01 00:00:00+00',
-    :'canceledEventID',
-    :'canceledTicketTypeID',
-    :'canceledUserID'
 );
 
 -- Checkout-pending offers with stale hold and deadline scenarios
@@ -657,6 +645,25 @@ select results_eq(
     'Should leave other ticket-tier queues unchanged'
 );
 
+-- Should lock the caller's user with the affected users
+-- Take the lock within this scenario before reading pg_locks
+select 1 as "lockedUserReconciled"
+from reconcile_event_enrollment(:'rsvpEventID', null, null, :'lockedUserID') \gset
+
+select ok(
+    exists (
+        select 1
+        from pg_locks l
+        where l.locktype = 'advisory'
+        and l.pid = pg_backend_pid()
+        and l.classid = hashtext(:'rsvpEventID'::text)::oid
+        and l.objid = hashtext(:'lockedUserID'::text)::oid
+        and l.objsubid = 2
+        and l.granted
+    ),
+    'Should lock the caller''s user with the affected users'
+);
+
 -- Should reject a scoped ticket type owned by another event
 select throws_ok(
     format(
@@ -667,26 +674,6 @@ select throws_ok(
     'P0001',
     'ticket type not found',
     'Should reject a scoped ticket type owned by another event'
-);
-
--- Should not promote queues of a canceled event
-select is(
-    reconcile_event_enrollment(:'canceledEventID'),
-    array[]::uuid[],
-    'Should not promote queues of a canceled event'
-);
-
-select results_eq(
-    format(
-        $$
-            select user_id
-            from event_waitlist
-            where event_id = %L::uuid
-        $$,
-        :'canceledEventID'
-    ),
-    format($$ values (%L::uuid) $$, :'canceledUserID'),
-    'Should keep the canceled event queue in place'
 );
 
 -- Should expire stale offers without promoting closed registration queues

@@ -7,50 +7,22 @@ create or replace function record_event_purchase_refund_succeeded(
 )
 returns jsonb as $$
 declare
-    v_event_id uuid;
     v_job payment_job;
-    v_payment_job_id uuid;
+    v_lock record;
     v_purchase event_purchase;
     v_refund event_purchase_refund;
 begin
-    -- Validate the provider attempt identifiers
-    perform validate_event_purchase_refund_result(p_expected_idempotency_key, p_provider_refund_id);
-
-    -- Resolve the event that owns the refund
-    select ep.event_id
-    into v_event_id
-    from event_purchase_refund epr
-    join event_purchase ep on ep.event_purchase_id = epr.event_purchase_id
-    where epr.event_purchase_refund_id = p_event_purchase_refund_id;
-
-    -- Reject unknown refunds
-    if not found then
-        raise exception 'event purchase refund not found';
-    end if;
-
-    -- Lock the event before its purchase and durable refund
-    perform 1
-    from event
-    where event_id = v_event_id
-    for update;
-
-    -- Lock the purchase and durable refund before accepting the provider result
-    select epr.*
-    into v_refund
-    from event_purchase_refund epr
-    join event_purchase ep on ep.event_purchase_id = epr.event_purchase_id
-    where epr.event_purchase_refund_id = p_event_purchase_refund_id
-    for update of ep, epr;
-
-    -- Lock the payment job that owns the worker claim
-    select pj.*
-    into v_job
-    from payment_job pj
-    where pj.payment_job_id = v_refund.payment_job_id
-    for update;
-
-    -- Reject refunds removed while waiting for the locks or claimed by another worker
-    perform ensure_event_purchase_refund_claim(v_refund, v_job, p_expected_claim_id);
+    -- Validate the result and lock its rows for the current worker claim
+    select *
+    into v_lock
+    from lock_event_purchase_refund_result(
+        p_event_purchase_refund_id,
+        p_expected_idempotency_key,
+        p_provider_refund_id,
+        p_expected_claim_id
+    );
+    v_job := v_lock.job_row;
+    v_refund := v_lock.refund_row;
 
     -- Ignore superseded attempts and delayed success for terminal refunds
     if v_job.idempotency_key = p_expected_idempotency_key
@@ -133,67 +105,29 @@ begin
 
         -- Return the platform fee collected on the refunded charge
         if v_purchase.final_platform_fee_amount_minor > 0 then
-            v_payment_job_id := enqueue_payment_job(
-                'event-purchase-application-fee-adjustment',
-                v_purchase.payment_provider_id,
-                v_purchase.event_purchase_id,
-                format('event-purchase-refund-fee-adjustment-%s', v_purchase.event_purchase_id)
+            perform enqueue_event_purchase_application_fee_adjustment(
+                v_purchase,
+                'purchase-refund',
+                v_purchase.final_platform_fee_amount_minor
             );
-
-            -- Create the adjustment only once per purchase refund
-            if v_payment_job_id is not null then
-                insert into event_purchase_application_fee_adjustment (
-                    amount_minor,
-                    event_purchase_id,
-                    kind,
-                    payment_job_id
-                ) values (
-                    v_purchase.final_platform_fee_amount_minor,
-                    v_purchase.event_purchase_id,
-                    'purchase-refund',
-                    v_payment_job_id
-                );
-            end if;
         end if;
 
         -- Document invoiced purchases with a linked credit note
         if v_purchase.provider_invoice_id is not null then
-            v_payment_job_id := enqueue_payment_job(
-                'event-purchase-credit-note',
-                v_purchase.payment_provider_id,
-                v_purchase.event_purchase_id,
-                format('event-purchase-credit-note-%s', v_refund.event_purchase_refund_id)
+            perform enqueue_event_purchase_credit_note(
+                v_purchase,
+                v_refund.event_purchase_refund_id
             );
-
-            -- Create the credit note only once per refund
-            if v_payment_job_id is not null then
-                insert into event_purchase_credit_note (
-                    amount_minor,
-                    currency_code,
-                    event_purchase_refund_id,
-                    payment_job_id,
-                    payment_provider_id,
-                    provider_object_account_id,
-                    tax_amount_minor
-                ) values (
-                    v_purchase.provider_total_minor,
-                    v_purchase.currency_code,
-                    v_refund.event_purchase_refund_id,
-                    v_payment_job_id,
-                    v_purchase.payment_provider_id,
-                    v_purchase.provider_object_account_id,
-                    v_purchase.tax_amount_minor
-                );
-            end if;
         end if;
     end if;
 
-    -- Return the durable refund state after recording provider success
+    -- Reload the job state written while recording provider success
     select pj.*
     into v_job
     from payment_job pj
     where pj.payment_job_id = v_refund.payment_job_id;
 
+    -- Return the durable refund state
     return event_purchase_refund_to_json(v_refund, v_job);
 end;
 $$ language plpgsql;

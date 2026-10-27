@@ -7,7 +7,7 @@
 -- ============================================================================
 
 begin;
-select plan(63);
+select plan(65);
 
 -- ============================================================================
 -- VARIABLES
@@ -53,6 +53,7 @@ select plan(63);
 \set groupPayeeDisableID '1c040000-0000-0000-0000-000000000062'
 \set groupPayeeID '1c040000-0000-0000-0000-00000000005b'
 \set groupPayeePreserveID '1c040000-0000-0000-0000-000000000061'
+\set groupProviderOnlyClearID '1c040000-0000-0000-0000-00000000006d'
 \set groupRecipientClearRejectID '1c040000-0000-0000-0000-000000000063'
 \set groupRejectEnableID '1c040000-0000-0000-0000-000000000035'
 \set groupSwapRecipientID '1c040000-0000-0000-0000-000000000067'
@@ -153,6 +154,13 @@ select fx_group(:'groupSwapRecipientID', :'communityID', :'groupCategoryID', jso
     'description', 'Payment recipient swap coverage',
     'name', 'Group With Swap Recipient',
     'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_123", "seller_display_name": "New Fiscal Sponsor"}'::jsonb
+));
+
+-- Group with a stored recipient cleared by a provider-only recipient payload
+select fx_group(:'groupProviderOnlyClearID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'description', 'Provider-only recipient clear coverage',
+    'name', 'Group With Provider Only Recipient',
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_provider_only", "seller_display_name": "Provider Only Fiscal Sponsor"}'::jsonb
 ));
 
 -- Enabled group whose country is no longer allowlisted despite an upcoming external event
@@ -956,6 +964,36 @@ select is(
     (select manual_tax_rate_ids from event where event_id = :'eventUnpublishedID'::uuid),
     '{}'::text[],
     'Should require draft manual-tax events to reselect rates after a sponsor change'
+);
+
+-- Should accept a payment recipient payload with only a provider
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Group With Provider Only Recipient",
+            "category_id": "%s",
+            "description": "Provider-only recipient clear coverage",
+            "payment_recipient": {
+                "provider": "stripe"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupProviderOnlyClearID',
+        :'groupCategoryID'
+    ),
+    'Should accept a payment recipient payload with only a provider'
+);
+
+-- Should clear the stored recipient after a provider-only recipient payload
+select is(
+    (select payment_recipient from "group" where group_id = :'groupProviderOnlyClearID'::uuid),
+    null::jsonb,
+    'Should clear the stored recipient after a provider-only recipient payload'
 );
 
 -- Should allow disabling external payments when no upcoming published external events remain

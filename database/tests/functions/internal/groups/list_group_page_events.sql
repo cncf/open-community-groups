@@ -14,8 +14,6 @@ select plan(3);
 \set cohostedCanceledEventID 'e5050000-0000-0000-0000-000000000001'
 \set cohostedEventID 'e5050000-0000-0000-0000-000000000002'
 \set cohostedOtherKindEventID 'e5050000-0000-0000-0000-000000000003'
-\set cohostedTestEventID 'e5050000-0000-0000-0000-000000000004'
-\set cohostedUnpublishedEventID 'e5050000-0000-0000-0000-000000000005'
 \set cohostedUnscheduledEventID 'e5050000-0000-0000-0000-000000000006'
 \set communityID 'e5050000-0000-0000-0000-000000000007'
 \set crossCommunityID 'e5050000-0000-0000-0000-000000000008'
@@ -42,8 +40,6 @@ select plan(3);
 \set ownedCanceledEventID 'e5050000-0000-0000-0000-00000000001d'
 \set ownedEventID 'e5050000-0000-0000-0000-00000000001e'
 \set ownedOtherKindEventID 'e5050000-0000-0000-0000-00000000001f'
-\set ownedTestEventID 'e5050000-0000-0000-0000-000000000020'
-\set ownedUnpublishedEventID 'e5050000-0000-0000-0000-000000000021'
 \set ownedUnscheduledEventID 'e5050000-0000-0000-0000-000000000022'
 \set ownerGroupID 'e5050000-0000-0000-0000-000000000023'
 \set pendingEventID 'e5050000-0000-0000-0000-000000000024'
@@ -142,18 +138,6 @@ select fx_event(:'cohostedOtherKindEventID', :'ownerGroupID', :'eventCategoryID'
     'starts_at', current_timestamp + interval '6 days'
 ));
 
--- Test event co-hosted by the target group
-select fx_event(:'cohostedTestEventID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'starts_at', current_timestamp + interval '7 days',
-    'test_event', true
-));
-
--- Unpublished event co-hosted by the target group
-select fx_event(:'cohostedUnpublishedEventID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object(
-    'starts_at', current_timestamp + interval '8 days'
-));
-
 -- Unscheduled event co-hosted by the target group
 select fx_event(:'cohostedUnscheduledEventID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object(
     'published', true
@@ -215,18 +199,6 @@ select fx_event(:'ownedOtherKindEventID', :'targetGroupID', :'eventCategoryID', 
     'starts_at', current_timestamp + interval '14 days'
 ));
 
--- Test event owned by the target group
-select fx_event(:'ownedTestEventID', :'targetGroupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'starts_at', current_timestamp + interval '15 days',
-    'test_event', true
-));
-
--- Unpublished event owned by the target group
-select fx_event(:'ownedUnpublishedEventID', :'targetGroupID', :'eventCategoryID', jsonb_build_object(
-    'starts_at', current_timestamp + interval '16 days'
-));
-
 -- Unscheduled event owned by the target group
 select fx_event(:'ownedUnscheduledEventID', :'targetGroupID', :'eventCategoryID', jsonb_build_object(
     'published', true
@@ -256,8 +228,6 @@ insert into event_cohost (approved_at, event_cohost_status_id, event_id, group_i
     (current_timestamp, 'approved', :'cohostedEventID', :'otherCohostGroupID'),
     (current_timestamp, 'approved', :'cohostedEventID', :'targetGroupID'),
     (current_timestamp, 'approved', :'cohostedOtherKindEventID', :'targetGroupID'),
-    (current_timestamp, 'approved', :'cohostedTestEventID', :'targetGroupID'),
-    (current_timestamp, 'approved', :'cohostedUnpublishedEventID', :'targetGroupID'),
     (current_timestamp, 'approved', :'cohostedUnscheduledEventID', :'targetGroupID'),
     (current_timestamp, 'approved', :'crossOwnerEventID', :'targetGroupID'),
     (current_timestamp, 'approved', :'inactiveCommunityOwnerEventID', :'targetGroupID'),

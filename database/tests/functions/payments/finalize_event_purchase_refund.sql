@@ -88,10 +88,18 @@ select fx_user(:'waitlistUserID', jsonb_build_object('username', 'waitlist-final
 
 -- Event owning every finalization purchase
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'in-person',
+    'manual_tax_rate_ids', '{}'::text[],
     'payment_currency_code', 'USD',
     'published', true,
     'slug', 'event',
     'starts_at', current_timestamp + interval '2 days',
+    'tax_calculation_mode', 'automatic',
+    'venue_address', '1 Finalize Refund Way',
+    'venue_city', 'Finalize Refund City',
+    'venue_country_code', 'US',
+    'venue_name', 'Finalize Refund Hall',
+    'venue_zip_code', '12345',
     'waitlist_enabled', true
 ));
 

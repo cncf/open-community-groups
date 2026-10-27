@@ -20,4 +20,4 @@ returns uuid[] as $$
     where se.event_series_id is not null
     and e.group_id = p_group_id
     and e.deleted = false;
-$$ language sql;
+$$ language sql stable;

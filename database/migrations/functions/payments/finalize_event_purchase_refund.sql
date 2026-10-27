@@ -49,10 +49,9 @@ begin
     perform reconcile_event_enrollment(
         v_event_id,
         v_event_ticket_type_id,
-        p_configured_provider
+        p_configured_provider,
+        v_user_id
     );
-
-    perform pg_advisory_xact_lock(hashtext(v_event_id::text), hashtext(v_user_id::text));
 
     -- Lock the purchase and durable refund and resolve their group context
     select
@@ -107,23 +106,11 @@ begin
     end if;
 
     -- Remove active access only when this refund owns the attendee relationship
-    update event_attendee
-    set
-        attendance_canceled_at = current_timestamp,
-        attendance_canceled_by_user_id = v_refund.initiated_by_user_id,
-        checked_in = false,
-        checked_in_at = null,
-        status = 'attendance-canceled'
-    where event_id = v_event_id
-    and user_id = v_user_id
-    and status in ('confirmed', 'registration-questions-pending')
-    and not exists (
-        select 1
-        from event_purchase replacement
-        where replacement.event_id = v_event_id
-        and replacement.event_purchase_id <> v_refund.event_purchase_id
-        and replacement.status in ('completed', 'refund-requested')
-        and replacement.user_id = v_user_id
+    perform mark_event_attendance_canceled(
+        v_event_id,
+        v_user_id,
+        v_refund.initiated_by_user_id,
+        v_refund.event_purchase_id
     );
 
     -- Mark the purchase refunded and return any discount inventory
@@ -135,7 +122,7 @@ begin
     where event_purchase_id = v_refund.event_purchase_id;
 
     -- Release the discount seat held by every refund except abandoned checkouts
-    if v_refund.kind <> 'automatic-unfulfillable-checkout'
+    if event_purchase_refund_releases_discount(v_refund.kind)
        and v_event_discount_code_id is not null then
         perform release_event_discount_code_availability(v_event_discount_code_id);
     end if;
@@ -156,7 +143,7 @@ begin
         and status = 'approving';
     end if;
 
-    -- Record local finalization and complete the job for the current worker claim
+    -- Record local finalization of the refund
     update event_purchase_refund
     set
         finalized_at = current_timestamp,
@@ -164,6 +151,7 @@ begin
         updated_at = current_timestamp
     where event_purchase_refund_id = p_event_purchase_refund_id;
 
+    -- Complete the job for the current worker claim
     perform complete_payment_job(v_refund.payment_job_id, p_claim_id);
 
     -- Fill capacity released only after the refund is locally terminal

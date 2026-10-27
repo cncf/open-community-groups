@@ -14,6 +14,7 @@ create or replace function list_event_survey_text_answers(
     p_filters jsonb
 )
 returns json as $$
+-- Resolve the search and the page bounds
 with filters as (
     select
         f.ilike_pattern,
@@ -22,24 +23,23 @@ with filters as (
         f.ts_query
     from parse_search_filters(p_filters) f
 ),
+-- Load the free-text question of the survey of the group event
 question as (
     select
         definition.position,
         definition.value->>'prompt' as prompt
-    from event e
-    join event_survey s on s.event_id = e.event_id
-    cross join lateral jsonb_array_elements(s.questions)
+    from group_dashboard_event_surveys(p_group_id, p_event_id, p_event_survey_id) gs
+    cross join lateral jsonb_array_elements((gs.event_survey_row).questions)
         with ordinality as definition(value, position)
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and s.event_survey_id = p_event_survey_id
+    where p_event_survey_id is not null
     and definition.value->>'kind' = 'free-text'
     and case
+        -- Compare only question identifiers that are valid uuids
         when pg_input_is_valid(definition.value->>'id', 'uuid')
             then (definition.value->>'id')::uuid
     end = p_question_id
 ),
+-- Collect the answers to the question matching the search
 answers as (
     select
         ta.created_at,
@@ -51,6 +51,7 @@ answers as (
     and exists (select 1 from question)
     and (f.ts_query is null or ta.value ilike f.ilike_pattern)
 ),
+-- Select the requested page of answers
 page as (
     select
         a.created_at,
@@ -61,6 +62,7 @@ page as (
     offset (select offset_value from filters)
     limit (select limit_value from filters)
 )
+-- Project the page with the question details and the total
 select json_build_object(
     'answers', coalesce((
         select json_agg(p.value order by p.created_at, p.user_id)

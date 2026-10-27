@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -148,6 +148,17 @@ select throws_ok(
     'P0001',
     'credit-note claim is stale',
     'Should reject a stale credit-note claim'
+);
+
+-- Should reject a null credit-note claim
+select throws_ok(
+    format(
+        'select record_event_purchase_credit_note_succeeded(%L, null, %L, null, null)',
+        :'creditNoteID', 'cn_credit'
+    ),
+    'P0001',
+    'credit-note claim is stale',
+    'Should reject a null credit-note claim'
 );
 
 -- Should complete a claimed credit note

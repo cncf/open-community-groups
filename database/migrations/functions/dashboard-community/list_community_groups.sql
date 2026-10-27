@@ -59,4 +59,4 @@ returns json as $$
             from matches
         )
     );
-$$ language sql;
+$$ language sql stable;

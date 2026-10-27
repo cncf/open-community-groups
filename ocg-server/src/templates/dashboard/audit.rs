@@ -98,6 +98,56 @@ const USER_SCOPES: &[AuditScope] = &[AuditScope::User];
 /// Shared audit action catalog used by filters and table rows.
 const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
     AuditActionDefinition {
+        label: "Event ticket offer expired",
+        scopes: GROUP_SCOPES,
+        value: "admission_offer_expired",
+    },
+    AuditActionDefinition {
+        label: "Badge added",
+        scopes: GROUP_SCOPES,
+        value: "badge_added",
+    },
+    AuditActionDefinition {
+        label: "Badge artwork added",
+        scopes: GROUP_SCOPES,
+        value: "badge_artwork_added",
+    },
+    AuditActionDefinition {
+        label: "Badge artwork deleted",
+        scopes: GROUP_SCOPES,
+        value: "badge_artwork_deleted",
+    },
+    AuditActionDefinition {
+        label: "Badge awarded",
+        scopes: GROUP_SCOPES,
+        value: "badge_awarded",
+    },
+    AuditActionDefinition {
+        label: "Badge deleted",
+        scopes: GROUP_SCOPES,
+        value: "badge_deleted",
+    },
+    AuditActionDefinition {
+        label: "Badge revoked",
+        scopes: GROUP_SCOPES,
+        value: "badge_revoked",
+    },
+    AuditActionDefinition {
+        label: "Badge revoked after account deletion",
+        scopes: GROUP_SCOPES,
+        value: "badge_revoked_account_deleted",
+    },
+    AuditActionDefinition {
+        label: "Badge revoked by recipient",
+        scopes: GROUP_SCOPES,
+        value: "badge_revoked_by_recipient",
+    },
+    AuditActionDefinition {
+        label: "Badge updated",
+        scopes: GROUP_SCOPES,
+        value: "badge_updated",
+    },
+    AuditActionDefinition {
         label: "CFS submission updated",
         scopes: GROUP_SCOPES,
         value: "cfs_submission_updated",
@@ -141,6 +191,21 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         label: "Event added",
         scopes: GROUP_SCOPES,
         value: "event_added",
+    },
+    AuditActionDefinition {
+        label: "Event ticket offer canceled",
+        scopes: GROUP_SCOPES,
+        value: "event_admission_offer_canceled",
+    },
+    AuditActionDefinition {
+        label: "Event ticket offer declined",
+        scopes: GROUP_USER_SCOPES,
+        value: "event_admission_offer_declined",
+    },
+    AuditActionDefinition {
+        label: "Event ticket offer reissued",
+        scopes: GROUP_SCOPES,
+        value: "event_admission_offer_reissued",
     },
     AuditActionDefinition {
         label: "Event application-fee recovery completed",
@@ -321,6 +386,11 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         label: "Event survey updated",
         scopes: GROUP_SCOPES,
         value: "event_survey_updated",
+    },
+    AuditActionDefinition {
+        label: "Event waitlist ticket offer created",
+        scopes: GROUP_SCOPES,
+        value: "event_ticket_waitlist_offer_created",
     },
     AuditActionDefinition {
         label: "Event unpublished",
@@ -742,6 +812,9 @@ fn render_detail_value(value: &Value) -> String {
 /// Maps a raw resource type to a user-facing label.
 fn resource_type_label(resource_type: &str) -> &'static str {
     match resource_type {
+        "admission_offer" => "Ticket offer",
+        "badge" => "Badge",
+        "badge_artwork" => "Badge artwork",
         "cfs_submission" => "CFS submission",
         "community" => "Community",
         "event" => "Event",
@@ -754,15 +827,53 @@ fn resource_type_label(resource_type: &str) -> &'static str {
         "region" => "Region",
         "session_proposal" => "Session proposal",
         "user" => "User",
+        "user_badge" => "Badge award",
         _ => "Resource",
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use serde_json::json;
 
     use super::*;
+
+    /// Community audit log function source holding its action allow-list.
+    const COMMUNITY_AUDIT_LOGS_SQL: &str = include_str!(
+        "../../../../database/migrations/functions/dashboard-community/list_community_audit_logs.sql"
+    );
+    /// Group audit log function source holding its action allow-list.
+    const GROUP_AUDIT_LOGS_SQL: &str = include_str!(
+        "../../../../database/migrations/functions/dashboard-group/list_group_audit_logs.sql"
+    );
+    /// User audit log function source holding its action allow-list.
+    const USER_AUDIT_LOGS_SQL: &str = include_str!(
+        "../../../../database/migrations/functions/dashboard-user/list_user_audit_logs.sql"
+    );
+
+    #[test]
+    fn test_action_label_badge_actions() {
+        assert_eq!(action_label("badge_added"), "Badge added");
+        assert_eq!(action_label("badge_artwork_added"), "Badge artwork added");
+        assert_eq!(
+            action_label("badge_artwork_deleted"),
+            "Badge artwork deleted"
+        );
+        assert_eq!(action_label("badge_awarded"), "Badge awarded");
+        assert_eq!(action_label("badge_deleted"), "Badge deleted");
+        assert_eq!(action_label("badge_revoked"), "Badge revoked");
+        assert_eq!(
+            action_label("badge_revoked_account_deleted"),
+            "Badge revoked after account deletion"
+        );
+        assert_eq!(
+            action_label("badge_revoked_by_recipient"),
+            "Badge revoked by recipient"
+        );
+        assert_eq!(action_label("badge_updated"), "Badge updated");
+    }
 
     #[test]
     fn test_action_label_community_custom_notification_sent() {
@@ -793,6 +904,55 @@ mod tests {
     }
 
     #[test]
+    fn test_action_label_ticket_offer_actions() {
+        assert_eq!(
+            action_label("admission_offer_expired"),
+            "Event ticket offer expired"
+        );
+        assert_eq!(
+            action_label("event_admission_offer_canceled"),
+            "Event ticket offer canceled"
+        );
+        assert_eq!(
+            action_label("event_admission_offer_declined"),
+            "Event ticket offer declined"
+        );
+        assert_eq!(
+            action_label("event_admission_offer_reissued"),
+            "Event ticket offer reissued"
+        );
+        assert_eq!(
+            action_label("event_ticket_waitlist_offer_created"),
+            "Event waitlist ticket offer created"
+        );
+    }
+
+    #[test]
+    fn test_badge_actions_are_group_scoped() {
+        // Collect the actions listed by each scope
+        let community_actions = scope_action_values(AuditScope::Community);
+        let group_actions = scope_action_values(AuditScope::Group);
+        let user_actions = scope_action_values(AuditScope::User);
+
+        // Check every badge action is listed only in the group scope
+        for action in [
+            "badge_added",
+            "badge_artwork_added",
+            "badge_artwork_deleted",
+            "badge_awarded",
+            "badge_deleted",
+            "badge_revoked",
+            "badge_revoked_account_deleted",
+            "badge_revoked_by_recipient",
+            "badge_updated",
+        ] {
+            assert!(group_actions.contains(action), "{action} missing in group");
+            assert!(!community_actions.contains(action), "{action} in community");
+            assert!(!user_actions.contains(action), "{action} in user");
+        }
+    }
+
+    #[test]
     fn test_event_survey_actions_are_group_scoped() {
         let group_actions: Vec<String> = AuditScope::Group
             .action_options()
@@ -807,6 +967,27 @@ mod tests {
 
         assert!(group_actions.contains(&"event_survey_marked_ready".to_string()));
         assert!(!community_actions.contains(&"event_survey_marked_ready".to_string()));
+    }
+
+    #[test]
+    fn test_hidden_actions_are_not_scoped() {
+        // Collect the actions listed by each scope
+        let scopes_actions = [
+            scope_action_values(AuditScope::Community),
+            scope_action_values(AuditScope::Group),
+            scope_action_values(AuditScope::User),
+        ];
+
+        // Check hidden actions are absent from every scope and keep the fallback label
+        for action in [
+            "admission_offer_canceled",
+            "event_registration_questions_answered",
+        ] {
+            for scope_actions in &scopes_actions {
+                assert!(!scope_actions.contains(action), "{action} is listed");
+            }
+            assert_eq!(action_label(action), "Audit action");
+        }
     }
 
     #[test]
@@ -833,7 +1014,82 @@ mod tests {
     }
 
     #[test]
+    fn test_resource_type_label_badge_and_ticket_offer_types() {
+        assert_eq!(resource_type_label("admission_offer"), "Ticket offer");
+        assert_eq!(resource_type_label("badge"), "Badge");
+        assert_eq!(resource_type_label("badge_artwork"), "Badge artwork");
+        assert_eq!(resource_type_label("user_badge"), "Badge award");
+    }
+
+    #[test]
     fn test_resource_type_label_event_survey() {
         assert_eq!(resource_type_label("event_survey"), "Event survey");
+    }
+
+    #[test]
+    fn test_scope_action_catalogs_match_sql_allow_lists() {
+        assert_eq!(
+            scope_action_values(AuditScope::Community),
+            sql_allow_list(COMMUNITY_AUDIT_LOGS_SQL)
+        );
+        assert_eq!(
+            scope_action_values(AuditScope::Group),
+            sql_allow_list(GROUP_AUDIT_LOGS_SQL)
+        );
+        assert_eq!(
+            scope_action_values(AuditScope::User),
+            sql_allow_list(USER_AUDIT_LOGS_SQL)
+        );
+    }
+
+    #[test]
+    fn test_ticket_offer_action_scopes() {
+        // Collect the actions listed by each scope
+        let community_actions = scope_action_values(AuditScope::Community);
+        let group_actions = scope_action_values(AuditScope::Group);
+        let user_actions = scope_action_values(AuditScope::User);
+
+        // Check offer declines are listed in the group and user scopes
+        assert!(group_actions.contains("event_admission_offer_declined"));
+        assert!(user_actions.contains("event_admission_offer_declined"));
+        assert!(!community_actions.contains("event_admission_offer_declined"));
+
+        // Check the remaining offer actions are listed only in the group scope
+        for action in [
+            "admission_offer_expired",
+            "event_admission_offer_canceled",
+            "event_admission_offer_reissued",
+            "event_ticket_waitlist_offer_created",
+        ] {
+            assert!(group_actions.contains(action), "{action} missing in group");
+            assert!(!community_actions.contains(action), "{action} in community");
+            assert!(!user_actions.contains(action), "{action} in user");
+        }
+    }
+
+    // Helpers.
+
+    /// Returns the action values listed by an audit scope.
+    fn scope_action_values(scope: AuditScope) -> BTreeSet<String> {
+        scope
+            .action_options()
+            .into_iter()
+            .map(|option| option.value)
+            .collect()
+    }
+
+    /// Extracts the quoted action literals of a SQL `array[...]::text[]` allow-list.
+    fn sql_allow_list(source: &str) -> BTreeSet<String> {
+        // Locate the allow-list array in the function source
+        let start = source.find("array[").expect("allow-list start") + "array[".len();
+        let end = start + source[start..].find("]::text[]").expect("allow-list end");
+
+        // Collect the literals found between single quotes
+        source[start..end]
+            .split('\'')
+            .skip(1)
+            .step_by(2)
+            .map(ToString::to_string)
+            .collect()
     }
 }

@@ -39,7 +39,7 @@ with unique_indexes as (
     and n.nspname = 'public'
     and c.relname not like 'version_%'
     -- Singleton configuration rows are shared by design
-    and c.relname <> 'external_payments_config'
+    and c.relname not in ('external_payments_config', 'site')
 )
 select string_agg(
     format(

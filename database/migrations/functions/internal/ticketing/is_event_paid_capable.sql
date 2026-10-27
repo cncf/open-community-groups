@@ -9,4 +9,4 @@ returns boolean as $$
         where ett.event_id = p_event_id
         and etpw.amount_minor > 0
     );
-$$ language sql;
+$$ language sql stable;

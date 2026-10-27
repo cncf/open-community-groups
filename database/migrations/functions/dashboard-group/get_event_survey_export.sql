@@ -17,22 +17,22 @@ returns json as $$
 declare
     v_answers_bytes bigint;
     v_event_survey event_survey;
+    v_record record;
     v_responses_count bigint;
 begin
     -- Load the survey of the group event
-    select s.*
-    into v_event_survey
-    from event e
-    join event_survey s on s.event_id = e.event_id
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and s.event_survey_id = p_event_survey_id;
+    select *
+    into v_record
+    from group_dashboard_event_surveys(p_group_id, p_event_id, p_event_survey_id)
+    where p_event_survey_id is not null;
 
-    -- Report nothing for missing or foreign surveys
+    -- Report nothing without a survey id or for missing or foreign surveys
     if not found then
         return null;
     end if;
+
+    -- Keep the survey row the export reads
+    v_event_survey := v_record.event_survey_row;
 
     -- Measure the export before building it
     select

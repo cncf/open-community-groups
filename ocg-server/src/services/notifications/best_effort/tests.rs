@@ -26,9 +26,9 @@ use crate::{
 };
 
 use super::{
-    CoSpeakerInvitationNotice, enqueue_cfs_submission_updated_best_effort,
-    enqueue_community_team_invitation_best_effort, enqueue_event_notification_best_effort,
-    enqueue_group_team_invitation_best_effort,
+    CfsSubmissionUpdatedNotice, CoSpeakerInvitationNotice,
+    enqueue_cfs_submission_updated_best_effort, enqueue_community_team_invitation_best_effort,
+    enqueue_event_notification_best_effort, enqueue_group_team_invitation_best_effort,
     enqueue_session_proposal_co_speaker_invitation_best_effort,
 };
 
@@ -36,6 +36,7 @@ use super::{
 async fn test_enqueue_cfs_submission_updated_best_effort_enqueues_once() {
     // Setup identifiers and notification context
     let cfs_submission_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let reviewer_id = Uuid::new_v4();
@@ -52,10 +53,16 @@ async fn test_enqueue_cfs_submission_updated_best_effort_enqueues_once() {
 
     // Setup database context reads
     let mut db = MockDB::new();
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
     db.expect_get_cfs_submission_notification_data()
         .times(1)
-        .withf(move |eid, sid| *eid == event_id && *sid == cfs_submission_id)
-        .returning(move |_, _| Ok(notification_data.clone()));
+        .withf(move |gid, eid, sid| {
+            *gid == group_id && *eid == event_id && *sid == cfs_submission_id
+        })
+        .returning(move |_, _, _| Ok(notification_data.clone()));
     db.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
@@ -88,26 +95,41 @@ async fn test_enqueue_cfs_submission_updated_best_effort_enqueues_once() {
         &db,
         &nm,
         &test_server_cfg(),
-        reviewer_id,
-        cfs_submission_id,
-        event,
+        CfsSubmissionUpdatedNotice {
+            cfs_submission_id,
+            community_id,
+            event_id,
+            group_id,
+            reviewer_id,
+        },
     )
     .await;
 }
 
 #[tokio::test]
 async fn test_enqueue_cfs_submission_updated_best_effort_swallows_context_load_failure() {
-    // Setup identifiers and notification context
+    // Setup identifiers
     let cfs_submission_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
 
-    // Setup a failing context load; the sibling read may be skipped by try_join!
+    // Setup a failing event load; the sibling reads may be skipped by try_join!
     let mut db = MockDB::new();
-    db.expect_get_cfs_submission_notification_data()
+    db.expect_get_event_summary()
         .times(1)
-        .returning(|_, _| Err(anyhow!("database unavailable")));
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(|_, _, _| Err(anyhow!("database unavailable")));
+    db.expect_get_cfs_submission_notification_data()
+        .times(0..=1)
+        .returning(|_, _, _| {
+            Ok(CfsSubmissionNotificationData {
+                status_id: "approved".to_string(),
+                status_name: "Approved".to_string(),
+                user_id: Uuid::new_v4(),
+                action_required_message: None,
+            })
+        });
     db.expect_get_site_settings()
         .times(0..=1)
         .returning(|| Ok(sample_site_settings()));
@@ -122,9 +144,13 @@ async fn test_enqueue_cfs_submission_updated_best_effort_swallows_context_load_f
         &db,
         &nm,
         &test_server_cfg(),
-        Uuid::new_v4(),
-        cfs_submission_id,
-        event,
+        CfsSubmissionUpdatedNotice {
+            cfs_submission_id,
+            community_id,
+            event_id,
+            group_id,
+            reviewer_id: Uuid::new_v4(),
+        },
     )
     .await;
 }
@@ -133,6 +159,7 @@ async fn test_enqueue_cfs_submission_updated_best_effort_swallows_context_load_f
 async fn test_enqueue_cfs_submission_updated_best_effort_swallows_enqueue_failure() {
     // Setup identifiers and notification context
     let cfs_submission_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let event = sample_event_summary(event_id, group_id);
@@ -145,9 +172,12 @@ async fn test_enqueue_cfs_submission_updated_best_effort_swallows_enqueue_failur
 
     // Setup database context reads
     let mut db = MockDB::new();
+    db.expect_get_event_summary()
+        .times(1)
+        .returning(move |_, _, _| Ok(event.clone()));
     db.expect_get_cfs_submission_notification_data()
         .times(1)
-        .returning(move |_, _| Ok(notification_data.clone()));
+        .returning(move |_, _, _| Ok(notification_data.clone()));
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -164,9 +194,13 @@ async fn test_enqueue_cfs_submission_updated_best_effort_swallows_enqueue_failur
         &db,
         &nm,
         &test_server_cfg(),
-        Uuid::new_v4(),
-        cfs_submission_id,
-        event,
+        CfsSubmissionUpdatedNotice {
+            cfs_submission_id,
+            community_id,
+            event_id,
+            group_id,
+            reviewer_id: Uuid::new_v4(),
+        },
     )
     .await;
 }

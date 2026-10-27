@@ -14,15 +14,11 @@ returns json as $$
         join "group" g using (group_id)
         join community c on c.community_id = g.community_id
         where c.active = true
-        and g.active = true
-        and e.published = true
-        and e.test_event = false
+        and is_event_listed(e, g)
         and e.event_kind_id = any(p_event_kind_ids)
         and e.starts_at is not null
         and e.starts_at > now()
-        and e.canceled = false
-        and e.deleted = false
         order by e.starts_at asc, e.event_id asc
         limit 8
     ) e;
-$$ language sql;
+$$ language sql stable;

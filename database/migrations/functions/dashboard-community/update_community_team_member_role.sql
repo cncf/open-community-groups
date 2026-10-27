@@ -6,7 +6,6 @@ create or replace function update_community_team_member_role(
     p_role text
 ) returns void as $$
 declare
-    v_accepted_admins integer;
     v_current_accepted boolean;
     v_current_role text;
 begin
@@ -41,17 +40,11 @@ begin
       and user_id = p_user_id;
 
     -- Prevent demoting the last accepted community admin
-    if v_current_accepted and v_current_role = 'admin' and p_role <> 'admin' then
-        select count(*)::int
-        into v_accepted_admins
-        from community_team ct
-        where ct.community_id = p_community_id
-          and ct.accepted = true
-          and ct.role = 'admin';
-
-        if v_accepted_admins = 0 then
-            raise exception 'cannot change role for the last accepted community admin' using errcode = 'OCG01';
-        end if;
+    if v_current_accepted
+       and v_current_role = 'admin'
+       and p_role <> 'admin'
+       and not community_team_has_other_accepted_admin(p_community_id, p_user_id) then
+        raise exception 'cannot change role for the last accepted community admin' using errcode = 'OCG01';
     end if;
 
     -- Track the role update

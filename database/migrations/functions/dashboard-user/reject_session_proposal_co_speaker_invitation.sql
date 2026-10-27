@@ -5,35 +5,11 @@ create or replace function reject_session_proposal_co_speaker_invitation(
 )
 returns void as $$
 begin
-    -- Ensure this proposal is currently assigned to the co-speaker
-    perform 1
-    from session_proposal sp
-    where sp.session_proposal_id = p_session_proposal_id
-    and sp.co_speaker_user_id = p_actor_user_id;
-
-    if not found then
-        raise exception 'session proposal invitation not found' using errcode = 'OCG01';
-    end if;
-
-    -- Mark proposal as declined by invited co-speaker, guarding on the
-    -- pending status to avoid racing a concurrent response
-    update session_proposal set
-        session_proposal_status_id = 'declined-by-co-speaker',
-        updated_at = current_timestamp
-    where session_proposal_id = p_session_proposal_id
-    and co_speaker_user_id = p_actor_user_id
-    and session_proposal_status_id = 'pending-co-speaker-response';
-
-    if not found then
-        raise exception 'session proposal is not awaiting co-speaker response' using errcode = 'OCG01';
-    end if;
-
-    -- Track the rejected invitation
-    perform insert_audit_log(
-        'session_proposal_co_speaker_invitation_rejected',
+    -- Record the co-speaker's rejection
+    perform respond_session_proposal_co_speaker_invitation(
         p_actor_user_id,
-        'session_proposal',
-        p_session_proposal_id
+        p_session_proposal_id,
+        false
     );
 end;
 $$ language plpgsql;

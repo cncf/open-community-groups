@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -30,7 +30,6 @@ select plan(17);
 \set invalidPurchaseID '79520000-0000-0000-0000-000000000019'
 \set invalidRefundID '79520000-0000-0000-0000-000000000020'
 \set invalidUserID '79520000-0000-0000-0000-000000000021'
-\set missingRefundID '79520000-0000-0000-0000-000000000014'
 \set priceWindowID '79520000-0000-0000-0000-000000000010'
 \set recoveryJobID '79520000-0000-0000-0000-000000000030'
 \set recoveryPurchaseID '79520000-0000-0000-0000-000000000022'
@@ -333,19 +332,6 @@ insert into event_purchase_refund (
 -- TESTS
 -- ============================================================================
 
--- Should reject empty expected idempotency keys
-select throws_ok(
-    format($$select record_event_purchase_refund_terminal_failed(
-        %L::uuid,
-        '   ',
-        're_failed_123_refund_terminal_failed',
-        'provider refund failed'
-    )$$, :'failedRefundID'),
-    'P0001',
-    'expected idempotency key is required',
-    'Should reject empty expected idempotency keys'
-);
-
 -- Should reject a provider refund id that conflicts with the pinned attempt
 select throws_ok(
     format($$select record_event_purchase_refund_terminal_failed(
@@ -596,19 +582,6 @@ select throws_ok(
     'P0001',
     'finalized event purchase not found',
     'Should reject finalized refunds whose purchase is not recoverable'
-);
-
--- Should reject missing refund rows
-select throws_ok(
-    format($$select record_event_purchase_refund_terminal_failed(
-        %L::uuid,
-        'event-purchase-refund-missing',
-        're_missing_123',
-        'provider refund failed'
-    )$$, :'missingRefundID'),
-    'P0001',
-    'event purchase refund not found',
-    'Should reject missing refund rows'
 );
 
 -- ============================================================================

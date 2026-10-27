@@ -10,27 +10,22 @@ returns table (
     group_id uuid,
     starts_at timestamptz
 ) as $$
-    with target_group as (
+    with
+    -- Resolve the publicly visible group whose page is listed
+    target_group as (
         select g.group_id
         from "group" g
         where g.community_id = p_community_id
         and (g.slug = p_group_slug or g.slug_pretty = p_group_slug)
-        and g.active = true
-        and g.deleted = false
+        and is_group_public(g)
     ),
+    -- Scope the page to the target group and its public subgroups
     scoped_groups as (
-        select tg.group_id
+        select s.group_id
         from target_group tg
-
-        union all
-
-        select child.group_id
-        from "group" child
-        join target_group tg on child.parent_group_id = tg.group_id
-        where child.community_id = p_community_id
-        and child.active = true
-        and child.deleted = false
+        cross join lateral list_group_scope_ids(p_community_id, tg.group_id, true) s
     ),
+    -- Collect listed events owned by the scoped groups
     owner_events as (
         select
             g.community_id,
@@ -40,13 +35,11 @@ returns table (
         from event e
         join scoped_groups sg using (group_id)
         join "group" g using (group_id)
-        where e.canceled = false
-        and e.deleted = false
+        where is_event_listed(e, g)
         and e.event_kind_id = any(p_event_kind_ids)
-        and e.published = true
         and e.starts_at is not null
-        and e.test_event = false
     ),
+    -- Collect listed events of public owners co-hosted by the target group
     cohosted_events as (
         select
             owner_community.community_id,
@@ -59,16 +52,12 @@ returns table (
         join "group" owner_group on owner_group.group_id = e.group_id
         join community owner_community on owner_community.community_id = owner_group.community_id
         where ec.event_cohost_status_id = 'approved'
-        and e.canceled = false
-        and e.deleted = false
+        and is_event_listed(e, owner_group)
         and e.event_kind_id = any(p_event_kind_ids)
-        and e.published = true
         and e.starts_at is not null
-        and e.test_event = false
         and owner_community.active = true
-        and owner_group.active = true
-        and owner_group.deleted = false
     )
+    -- Return each page event once with its owner community
     select distinct
         page_events.community_id,
         page_events.event_id,

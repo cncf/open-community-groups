@@ -4,13 +4,16 @@ create or replace function delete_session_proposal(
     p_session_proposal_id uuid
 )
 returns void as $$
+declare
+    v_title text;
 begin
-    -- Ensure the session proposal belongs to the user
-    perform 1
+    -- Lock the user's session proposal and snapshot its title for the audit row
+    select sp.title
+    into v_title
     from session_proposal sp
     where sp.session_proposal_id = p_session_proposal_id
     and sp.user_id = p_actor_user_id
-    for update;
+    for update of sp;
 
     -- Reject proposals outside the user's ownership
     if not found then
@@ -32,17 +35,13 @@ begin
     where session_proposal_id = p_session_proposal_id
     and user_id = p_actor_user_id;
 
-    -- Reject proposals removed after ownership validation
-    if not found then
-        raise exception 'session proposal not found' using errcode = 'OCG01';
-    end if;
-
-    -- Track the deleted session proposal
+    -- Track the deleted session proposal with its title
     perform insert_audit_log(
         'session_proposal_deleted',
         p_actor_user_id,
         'session_proposal',
-        p_session_proposal_id
+        p_session_proposal_id,
+        p_details => jsonb_build_object('title', v_title)
     );
 end;
 $$ language plpgsql;

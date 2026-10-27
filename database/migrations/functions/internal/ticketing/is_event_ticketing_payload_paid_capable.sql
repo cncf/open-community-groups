@@ -10,4 +10,4 @@ returns boolean as $$
         ) as price_windows(price_window)
         where (price_window->>'amount_minor')::bigint > 0
     );
-$$ language sql;
+$$ language sql immutable;

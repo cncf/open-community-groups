@@ -179,7 +179,8 @@ pub struct EventSummary {
     /// Full state or province name of the venue's location.
     pub venue_state_name: Option<String>,
     /// Venue zip code.
-    pub zip_code: Option<String>,
+    #[serde(alias = "zip_code")]
+    pub venue_zip_code: Option<String>,
 }
 
 impl EventSummary {
@@ -827,7 +828,7 @@ impl From<&EventFull> for EventSummary {
             venue_name: event.venue_name.clone(),
             venue_state_code: event.venue_state_code.clone(),
             venue_state_name: event.venue_state_name.clone(),
-            zip_code: event.venue_zip_code.clone(),
+            venue_zip_code: event.venue_zip_code.clone(),
         }
     }
 }

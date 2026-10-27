@@ -1,11 +1,11 @@
--- Tests organizer-driven attendee check-in transitions and auditing.
+-- Tests organizer-driven attendee check-in within the selected group.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,154 +15,136 @@ select plan(8);
 \set attendeeUserID '3a2a0000-0000-0000-0000-000000000002'
 \set canceledEventID '3a2a0000-0000-0000-0000-000000000003'
 \set communityID '3a2a0000-0000-0000-0000-000000000004'
+\set endedEventID '3a2a0000-0000-0000-0000-000000000010'
 \set eventCategoryID '3a2a0000-0000-0000-0000-000000000005'
 \set eventID '3a2a0000-0000-0000-0000-000000000006'
 \set groupCategoryID '3a2a0000-0000-0000-0000-000000000007'
 \set groupID '3a2a0000-0000-0000-0000-000000000008'
 \set missingUserID '3a2a0000-0000-0000-0000-000000000009'
+\set otherGroupEventID '3a2a0000-0000-0000-0000-000000000011'
+\set otherGroupID '3a2a0000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories and groups
+-- Community owning the groups
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
-
--- Organizer and attendee identities used by check-in scenarios
+-- Organizer performing the check-ins
 select fx_user(:'actorUserID', jsonb_build_object('username', 'actor-check-in-event'));
+
+-- Attendee confirmed on every event
 select fx_user(:'attendeeUserID', jsonb_build_object('username', 'attendee-check-in-event'));
+
+-- User without attendance
 select fx_user(:'missingUserID', jsonb_build_object('username', 'missing'));
 
--- Published event accepting organizer check-in at any time
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Selected group owning the checked-in events
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Another group of the same community
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
+
+-- Published upcoming event that was canceled
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '3 hours'
+));
+
+-- Published event whose scanner window has closed
+select fx_event(:'endedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp - interval '2 hours',
+    'published', true,
+    'published_at', current_timestamp - interval '1 day',
+    'starts_at', current_timestamp - interval '3 hours'
+));
+
+-- Published upcoming event of the selected group
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'published', true,
     'published_at', current_timestamp,
     'starts_at', current_timestamp + interval '3 hours'
 ));
 
--- Canceled event unavailable for check-in
-select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
+-- Published upcoming event of another group
+select fx_event(:'otherGroupEventID', :'otherGroupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', current_timestamp,
     'starts_at', current_timestamp + interval '3 hours'
 ));
 
--- Confirmed attendee eligible for organizer check-in
+-- Confirmed attendance on every event
 insert into event_attendee (event_id, user_id, status)
-values (:'eventID', :'attendeeUserID', 'confirmed');
-
--- Confirmed attendee attached to the canceled event
-insert into event_attendee (event_id, user_id, status)
-values (:'canceledEventID', :'attendeeUserID', 'confirmed');
+values
+    (:'canceledEventID', :'attendeeUserID', 'confirmed'),
+    (:'endedEventID', :'attendeeUserID', 'confirmed'),
+    (:'eventID', :'attendeeUserID', 'confirmed'),
+    (:'otherGroupEventID', :'attendeeUserID', 'confirmed');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return true for the first check-in transition
+-- Should allow manual check-in after the scanner window closes
 select is(
     check_in_event(
         :'actorUserID'::uuid,
         :'communityID'::uuid,
-        :'eventID'::uuid,
+        :'endedEventID'::uuid,
+        :'groupID'::uuid,
         :'attendeeUserID'::uuid
     ),
     true,
-    'Should return true for the first check-in transition'
+    'Should allow manual check-in after the scanner window closes'
 );
 
--- Should persist the checked-in state and timestamp
-select ok(
-    (
-        select checked_in and checked_in_at is not null
-        from event_attendee
-        where event_id = :'eventID'::uuid
-        and user_id = :'attendeeUserID'::uuid
-    ),
-    'Should persist the checked-in state and timestamp'
-);
-
--- Should create the scoped audit row
-select results_eq(
-    $$
-        select
-            action,
-            actor_user_id,
-            actor_username,
-            community_id,
-            event_id,
-            group_id,
-            resource_type,
-            resource_id
-        from audit_log
-    $$,
+-- Should reject an event outside the selected group
+select throws_ok(
     format(
-        $$ values (
-            'event_attendee_checked_in',
-            %L::uuid,
-            'actor-check-in-event',
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            'user',
-            %L::uuid
-        ) $$,
+        'select check_in_event(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid)',
         :'actorUserID',
         :'communityID',
-        :'eventID',
+        :'otherGroupEventID',
         :'groupID',
         :'attendeeUserID'
     ),
-    'Should create the scoped audit row'
+    'OCG01',
+    'event unavailable for check-in',
+    'Should reject an event outside the selected group'
 );
 
--- Capture the first transition timestamp for idempotency checks
-select checked_in_at as "checkedInAt"
-from event_attendee
-where event_id = :'eventID'::uuid
-and user_id = :'attendeeUserID'::uuid \gset firstCheckIn_
-
--- Should return false for a repeated check-in
-select is(
-    check_in_event(
-        :'actorUserID'::uuid,
-        :'communityID'::uuid,
-        :'eventID'::uuid,
-        :'attendeeUserID'::uuid
+-- Should reject events that are unavailable for check-in
+select throws_ok(
+    format(
+        'select check_in_event(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid)',
+        :'actorUserID',
+        :'communityID',
+        :'canceledEventID',
+        :'groupID',
+        :'attendeeUserID'
     ),
-    false,
-    'Should return false for a repeated check-in'
-);
-
--- Should preserve the original check-in timestamp on repetition
-select is(
-    (
-        select checked_in_at
-        from event_attendee
-        where event_id = :'eventID'::uuid
-        and user_id = :'attendeeUserID'::uuid
-    ),
-    :'firstCheckIn_checkedInAt'::timestamptz,
-    'Should preserve the original check-in timestamp on repetition'
-);
-
--- Should keep one audit row after a repeated check-in
-select is(
-    (select count(*)::int from audit_log),
-    1,
-    'Should keep one audit row after a repeated check-in'
+    'OCG01',
+    'event unavailable for check-in',
+    'Should reject events that are unavailable for check-in'
 );
 
 -- Should reject users without confirmed attendance
 select throws_ok(
     format(
-        'select check_in_event(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
+        'select check_in_event(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid)',
         :'actorUserID',
         :'communityID',
         :'eventID',
+        :'groupID',
         :'missingUserID'
     ),
     'OCG01',
@@ -170,18 +152,28 @@ select throws_ok(
     'Should reject users without confirmed attendance'
 );
 
--- Should reject events that are unavailable for check-in
-select throws_ok(
-    format(
-        'select check_in_event(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'actorUserID',
-        :'communityID',
-        :'canceledEventID',
-        :'attendeeUserID'
+-- Should return true for the first check-in transition
+select is(
+    check_in_event(
+        :'actorUserID'::uuid,
+        :'communityID'::uuid,
+        :'eventID'::uuid,
+        :'groupID'::uuid,
+        :'attendeeUserID'::uuid
     ),
-    'OCG01',
-    'event unavailable for check-in',
-    'Should reject events that are unavailable for check-in'
+    true,
+    'Should return true for the first check-in transition'
+);
+
+-- Should persist the checked-in state of the first transition
+select ok(
+    (
+        select ea.checked_in and ea.checked_in_at is not null
+        from event_attendee ea
+        where ea.event_id = :'eventID'::uuid
+        and ea.user_id = :'attendeeUserID'::uuid
+    ),
+    'Should persist the checked-in state of the first transition'
 );
 
 -- ============================================================================

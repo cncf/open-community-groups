@@ -8,20 +8,16 @@ create or replace function get_event_survey(
 )
 returns json as $$
     select (
-        event_survey_summary_json(s, e) || jsonb_build_object(
-            'created_at', epoch_seconds(s.created_at),
-            'questions', s.questions,
+        event_survey_summary_json(gs.event_survey_row, gs.event_row) || jsonb_build_object(
+            'created_at', epoch_seconds((gs.event_survey_row).created_at),
+            'questions', (gs.event_survey_row).questions,
 
-            'closed_at', epoch_seconds(s.closed_at),
-            'description', s.description,
-            'opens_at', epoch_seconds(s.opens_at),
-            'updated_at', epoch_seconds(s.updated_at)
+            'closed_at', epoch_seconds((gs.event_survey_row).closed_at),
+            'description', (gs.event_survey_row).description,
+            'opens_at', epoch_seconds((gs.event_survey_row).opens_at),
+            'updated_at', epoch_seconds((gs.event_survey_row).updated_at)
         )
     )::json
-    from event e
-    join event_survey s on s.event_id = e.event_id
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and s.event_survey_id = p_event_survey_id;
+    from group_dashboard_event_surveys(p_group_id, p_event_id, p_event_survey_id) gs
+    where p_event_survey_id is not null;
 $$ language sql stable;

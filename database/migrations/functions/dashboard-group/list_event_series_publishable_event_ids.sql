@@ -44,4 +44,4 @@ returns uuid[] as $$
         '{}'::uuid[]
     )
     from publishable_events;
-$$ language sql;
+$$ language sql stable;

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(7);
 
 -- ============================================================================
 -- SEED DATA
@@ -85,7 +85,7 @@ select is(
             'provider_tax_product_id', r.provider_tax_product_id
         )
         from test_venue v
-        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_tax_cache', v.cached, 'General admission') r
+        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_tax_cache', v.cached, 'General admission', 'txcd_50013001') r
     ),
     '{"provider_tax_location_id": "loc_tax_cache", "provider_tax_product_id": "prod_tax_cache"}'::jsonb,
     'Should return the cached location and product for a known venue and title'
@@ -100,7 +100,7 @@ select is(
             'provider_tax_product_id', r.provider_tax_product_id
         )
         from test_venue v
-        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_tax_cache', v.cached, 'VIP') r
+        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_tax_cache', v.cached, 'VIP', 'txcd_50013001') r
     ),
     '{"has_product_fingerprint": true, "provider_tax_location_id": "loc_tax_cache", "provider_tax_product_id": null}'::jsonb,
     'Should return the location without a product for an uncached title'
@@ -116,7 +116,7 @@ select is(
             'provider_tax_product_id', r.provider_tax_product_id
         )
         from test_venue v
-        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_tax_cache', v.uncached, 'General admission') r
+        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_tax_cache', v.uncached, 'General admission', 'txcd_50013001') r
     ),
     '{"has_location_fingerprint": true, "product_fingerprint": null, "provider_tax_location_id": null, "provider_tax_product_id": null}'::jsonb,
     'Should return only the location fingerprint for an uncached venue'
@@ -127,7 +127,7 @@ select is(
     (
         select r.provider_tax_location_id
         from test_venue v
-        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_other', v.cached, 'General admission') r
+        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_other', v.cached, 'General admission', 'txcd_50013001') r
     ),
     null::text,
     'Should scope the cache to the connected seller'
@@ -138,10 +138,35 @@ select is(
     (
         select r.performance_location_fingerprint
         from test_venue v
-        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_tax_cache', v.cached, 'General admission') r
+        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_tax_cache', v.cached, 'General admission', 'txcd_50013001') r
     ),
     (select fingerprint from payment_provider_tax_location where provider_tax_location_id = 'loc_tax_cache'),
     'Should fingerprint the venue with an empty subdivision code when it is missing'
+);
+
+-- Should fingerprint the ticket product with the provided tax code
+select is(
+    (
+        select r.product_fingerprint
+        from test_venue v
+        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_tax_cache', v.cached, 'General admission', 'txcd_50013001') r
+    ),
+    (select fingerprint from payment_provider_tax_product where provider_tax_product_id = 'prod_tax_cache'),
+    'Should fingerprint the ticket product with the provided tax code'
+);
+
+-- Should not reuse a cached product classified under another tax code
+select is(
+    (
+        select jsonb_build_object(
+            'provider_tax_location_id', r.provider_tax_location_id,
+            'provider_tax_product_id', r.provider_tax_product_id
+        )
+        from test_venue v
+        cross join prepare_event_checkout_lookup_tax_cache('stripe', 'acct_tax_cache', v.cached, 'General admission', 'txcd_10000000') r
+    ),
+    '{"provider_tax_location_id": "loc_tax_cache", "provider_tax_product_id": null}'::jsonb,
+    'Should not reuse a cached product classified under another tax code'
 );
 
 -- ============================================================================

@@ -5,7 +5,6 @@ create or replace function delete_community_team_member(
     p_user_id uuid
 ) returns void as $$
 declare
-    v_accepted_admins integer;
     v_is_accepted boolean;
     v_role text;
 begin
@@ -33,17 +32,10 @@ begin
     end if;
 
     -- Prevent removing the last accepted community admin
-    if v_is_accepted and v_role = 'admin' then
-        select count(*)::int
-        into v_accepted_admins
-        from community_team ct
-        where ct.community_id = p_community_id
-          and ct.accepted = true
-          and ct.role = 'admin';
-
-        if v_accepted_admins = 1 then
-            raise exception 'cannot remove the last accepted community admin' using errcode = 'OCG01';
-        end if;
+    if v_is_accepted
+       and v_role = 'admin'
+       and not community_team_has_other_accepted_admin(p_community_id, p_user_id) then
+        raise exception 'cannot remove the last accepted community admin' using errcode = 'OCG01';
     end if;
 
     -- Delete the membership record

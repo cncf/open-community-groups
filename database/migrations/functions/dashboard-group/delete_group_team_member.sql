@@ -5,7 +5,6 @@ create or replace function delete_group_team_member(
     p_user_id uuid
 ) returns void as $$
 declare
-    v_accepted_admins integer;
     v_is_accepted boolean;
     v_role text;
 begin
@@ -33,17 +32,10 @@ begin
     end if;
 
     -- Prevent removing the last accepted group admin
-    if v_is_accepted and v_role = 'admin' then
-        select count(*)::int
-        into v_accepted_admins
-        from group_team gt
-        where gt.group_id = p_group_id
-          and gt.accepted = true
-          and gt.role = 'admin';
-
-        if v_accepted_admins = 1 then
-            raise exception 'cannot remove the last accepted group admin' using errcode = 'OCG01';
-        end if;
+    if v_is_accepted
+       and v_role = 'admin'
+       and not group_team_has_other_accepted_admin(p_group_id, p_user_id) then
+        raise exception 'cannot remove the last accepted group admin' using errcode = 'OCG01';
     end if;
 
     -- Delete the membership record
@@ -57,8 +49,7 @@ begin
         p_actor_user_id,
         'user',
         p_user_id,
-        (select community_id from "group" where group_id = p_group_id),
-        p_group_id
+        p_group_id => p_group_id
     );
 end;
 $$ language plpgsql;

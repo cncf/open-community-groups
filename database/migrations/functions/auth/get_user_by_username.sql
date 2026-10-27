@@ -14,4 +14,4 @@ returns json as $$
         ),
         true
     );
-$$ language sql;
+$$ language sql stable;

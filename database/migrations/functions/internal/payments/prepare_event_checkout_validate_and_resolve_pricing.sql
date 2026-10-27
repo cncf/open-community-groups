@@ -1,4 +1,6 @@
--- Validates a ticket selection and resolves its checkout price.
+-- Validates a ticket selection and resolves its checkout price. Ticket
+-- selection conflicts are returned in the conflict column; attendee-state and
+-- discount code rejections raise. Callers lock and validate the admission offer.
 create or replace function prepare_event_checkout_validate_and_resolve_pricing(
     p_event_id uuid,
     p_event_ticket_type_id uuid,
@@ -7,6 +9,7 @@ create or replace function prepare_event_checkout_validate_and_resolve_pricing(
     p_admission_offer_id uuid default null
 )
 returns table (
+    conflict text,
     discount_amount_minor bigint,
     event_discount_code_id uuid,
     final_amount_minor bigint,
@@ -25,30 +28,15 @@ declare
     v_discount_total_available int;
     v_event_discount_code_id uuid;
     v_price_window_amount_minor bigint;
-    v_redemptions int;
     v_seats_total int;
     v_ticket_active boolean;
     v_ticket_availability text;
 begin
+    -- Start without a discount until a code is validated
     discount_amount_minor := 0;
 
     -- Reject attendee states that checkout completion cannot confirm
     perform prepare_event_checkout_validate_attendee_state(p_event_id, p_user_id);
-
-    -- Restrict offer pricing bypasses to the exact active owned reservation
-    if p_admission_offer_id is not null
-       and not exists (
-            select 1
-            from admission_offer ao
-            where ao.admission_offer_id = p_admission_offer_id
-            and ao.event_id = p_event_id
-            and ao.event_ticket_type_id = p_event_ticket_type_id
-            and admission_offer_is_active(ao.status)
-            and ao.user_id = p_user_id
-            and ao.expires_at > current_timestamp
-       ) then
-        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
-    end if;
 
     -- Resolve the selected ticket type and the currently active price window
     select
@@ -67,21 +55,32 @@ begin
     where ett.event_id = p_event_id
     and ett.event_ticket_type_id = p_event_ticket_type_id;
 
-    -- Reject missing, inactive, or unsellable ticket selections
+    -- Report missing ticket types
     if not found then
-        raise exception 'ticket type not found' using errcode = 'OCG01';
+        conflict := 'ticket-type-unavailable';
+        return next;
+        return;
     end if;
 
+    -- Report inactive ticket types
     if not v_ticket_active then
-        raise exception 'ticket type is not active' using errcode = 'OCG01';
+        conflict := 'ticket-type-inactive';
+        return next;
+        return;
     end if;
 
+    -- Report ticket types unavailable through direct checkout
     if p_admission_offer_id is null and v_ticket_availability <> 'public' then
-        raise exception 'ticket type is not available for direct checkout' using errcode = 'OCG01';
+        conflict := 'ticket-type-unavailable';
+        return next;
+        return;
     end if;
 
+    -- Report ticket types without an active price window
     if v_price_window_amount_minor is null then
-        raise exception 'ticket type does not have an active price window' using errcode = 'OCG01';
+        conflict := 'ticket-type-price-unavailable';
+        return next;
+        return;
     end if;
 
     -- Preserve FIFO priority when reconciliation leaves a blocked queue head
@@ -92,7 +91,9 @@ begin
             where ew.event_id = p_event_id
             and ew.event_ticket_type_id = p_event_ticket_type_id
        ) then
-        raise exception 'ticket type has queued users' using errcode = 'OCG01';
+        conflict := 'ticket-type-sold-out';
+        return next;
+        return;
     end if;
 
     -- Count allocated inventory before deciding whether the ticket is sold out
@@ -102,19 +103,23 @@ begin
     )
     into v_allocated_seat_count;
 
-    -- Reject sold-out ticket types after counting allocated inventory
+    -- Report sold-out ticket types after counting allocated inventory
     if p_admission_offer_id is null
        and v_seats_total is not null
        and v_allocated_seat_count >= v_seats_total then
-        raise exception 'ticket type is sold out' using errcode = 'OCG01';
+        conflict := 'ticket-type-sold-out';
+        return next;
+        return;
     end if;
 
     -- Validate the selected discount code before creating a new hold
     if p_discount_code is not null then
+        -- Reject discount codes on intrinsically free tickets
         if v_price_window_amount_minor = 0 then
             raise exception 'discount codes cannot be applied to free tickets' using errcode = 'OCG01';
         end if;
 
+        -- Load the selected discount code of the event
         select
             edc.active,
             edc.amount_minor,
@@ -141,11 +146,12 @@ begin
         where edc.event_id = p_event_id
         and upper(edc.code) = p_discount_code;
 
-        -- Reject missing or unavailable discount codes before pricing
+        -- Reject missing discount codes before pricing
         if not found then
             raise exception 'discount code not found' using errcode = 'OCG01';
         end if;
 
+        -- Reject inactive, out-of-window, or depleted discount codes
         if not v_discount_active
            or (v_discount_starts_at is not null and current_timestamp < v_discount_starts_at)
            or (v_discount_ends_at is not null and current_timestamp > v_discount_ends_at)
@@ -157,28 +163,19 @@ begin
             raise exception 'discount code is not available' using errcode = 'OCG01';
         end if;
 
-        if v_discount_total_available is not null then
-            -- Count active redemptions before applying the limited discount
-            select count(*)::int
-            into v_redemptions
-            from event_purchase ep
-            where ep.event_id = p_event_id
-            and ep.event_discount_code_id = v_event_discount_code_id
-            and (
-                ep.status in ('completed', 'refund-requested')
-                or (ep.status = 'pending' and ep.hold_expires_at > current_timestamp)
-            );
-
-            if v_redemptions >= v_discount_total_available then
-                raise exception 'discount code is no longer available' using errcode = 'OCG01';
-            end if;
+        -- Reject limited discount codes whose redemptions are exhausted
+        if v_discount_total_available is not null
+           and event_discount_code_redemption_count(v_event_discount_code_id) >= v_discount_total_available then
+            raise exception 'discount code is no longer available' using errcode = 'OCG01';
         end if;
 
-        -- Compute the discount amount using the configured discount strategy
+        -- Cap fixed-amount discounts at the ticket price
         if v_discount_kind = 'fixed_amount' then
             discount_amount_minor := least(v_amount_minor, v_price_window_amount_minor);
+        -- Truncate percentage discounts to whole minor units
         elsif v_discount_kind = 'percentage' then
             discount_amount_minor := v_price_window_amount_minor * v_discount_percentage / 100;
+        -- Reject discount kinds the schema does not allow
         else
             raise exception 'unsupported discount code kind';
         end if;
@@ -193,6 +190,7 @@ begin
     event_discount_code_id := v_event_discount_code_id;
     final_amount_minor := greatest(v_price_window_amount_minor - discount_amount_minor, 0);
 
+    -- Return the resolved pricing without a conflict
     return next;
 end;
 $$ language plpgsql;

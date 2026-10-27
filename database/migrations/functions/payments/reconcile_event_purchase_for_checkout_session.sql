@@ -20,7 +20,6 @@ declare
     v_group "group";
     v_hold_expired boolean;
     v_manually_invited boolean;
-    v_payment_job_id uuid;
     v_purchase event_purchase;
     v_requires_refund boolean;
     v_unfulfillable boolean;
@@ -49,13 +48,14 @@ begin
         return jsonb_build_object('outcome', 'noop');
     end if;
 
-    -- Lock the event, then the tiers, users, offers and purchases in the global order
+    -- Lock the event first to follow the global enrollment lock order
     select e.*
     into v_event
     from event e
     where e.event_id = v_purchase.event_id
     for update of e;
 
+    -- Lock the tiers, attendee, offers and purchases after the event
     perform lock_event_enrollment_rows(v_purchase.event_id, null, v_purchase.user_id);
 
     -- Lock the purchase before deciding how to reconcile the provider checkout
@@ -95,9 +95,9 @@ begin
             v_purchase.admission_offer_id is not null
             and (
                 v_admission_offer.status <> 'checkout_pending'
-                or (
-                    v_admission_offer.expires_at is not null
-                    and v_admission_offer.expires_at <= current_timestamp
+                or admission_offer_is_lapsed(
+                    v_admission_offer.status,
+                    v_admission_offer.expires_at
                 )
             )
         );
@@ -178,34 +178,12 @@ begin
         perform mark_event_purchase_refund_pending(v_purchase, p_provider_payment_reference);
     end if;
 
-    -- Queue the provider refund for workers before acknowledging the webhook
-    v_payment_job_id := enqueue_payment_job(
-        'event-purchase-refund',
-        p_provider,
-        v_purchase.event_purchase_id,
-        format('event-purchase-refund-%s', v_purchase.event_purchase_id)
+    -- Queue the provider refund for the authoritative total before acknowledging the webhook
+    perform enqueue_event_purchase_refund(
+        v_purchase,
+        'automatic-unfulfillable-checkout',
+        p_provider_total_minor
     );
-
-    -- Create the refund only when no durable work exists for the purchase
-    if v_payment_job_id is not null then
-        insert into event_purchase_refund (
-            amount_minor,
-            currency_code,
-            event_purchase_id,
-            kind,
-            payment_job_id,
-            payment_provider_id,
-            status
-        ) values (
-            p_provider_total_minor,
-            v_purchase.currency_code,
-            v_purchase.event_purchase_id,
-            'automatic-unfulfillable-checkout',
-            v_payment_job_id,
-            p_provider,
-            'provider-pending'
-        );
-    end if;
 
     -- Return the queued refund outcome
     return jsonb_build_object('outcome', 'refund_queued');

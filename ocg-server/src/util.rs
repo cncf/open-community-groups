@@ -383,7 +383,7 @@ mod tests {
             venue_name: Some("Test Venue".to_string()),
             venue_state_code: Some("CA".to_string()),
             venue_state_name: Some("California".to_string()),
-            zip_code: Some("94105".to_string()),
+            venue_zip_code: Some("94105".to_string()),
         }
     }
 }

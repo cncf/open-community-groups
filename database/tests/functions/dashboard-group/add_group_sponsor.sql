@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,14 +23,14 @@ select plan(3);
 -- Community
 select fx_community(:'communityID');
 
+-- Actor adding the sponsors
+select fx_user(:'actorUserID', jsonb_build_object('username', 'add-group-sponsor-actor'));
+
 -- Group category
 select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Group receiving the sponsors
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
-
--- Actor adding the sponsors
-select fx_user(:'actorUserID', jsonb_build_object('username', 'add-group-sponsor-actor'));
 
 -- ============================================================================
 -- TESTS
@@ -57,6 +57,17 @@ select add_group_sponsor(
         "name": "Zeta"
     }'::jsonb
 ) as "defaultSponsorID" \gset
+
+-- Add a sponsor with an empty website_url
+select add_group_sponsor(
+    :'actorUserID'::uuid,
+    :'groupID'::uuid,
+    '{
+        "logo_url": "https://ex.com/eta.png",
+        "name": "Eta",
+        "website_url": ""
+    }'::jsonb
+) as "emptyWebsiteSponsorID" \gset
 
 -- Should create the expected audit row
 select results_eq(
@@ -131,6 +142,25 @@ select results_eq(
         :'groupID'
     ),
     'Should persist the submitted sponsor fields'
+);
+
+-- Should store an empty website_url as null
+select results_eq(
+    format(
+        $$
+            select featured, group_id, logo_url, name, website_url
+            from group_sponsor
+            where group_sponsor_id = %L::uuid
+        $$,
+        :'emptyWebsiteSponsorID'
+    ),
+    format(
+        $$
+            values (true, %L::uuid, 'https://ex.com/eta.png', 'Eta', null::text)
+        $$,
+        :'groupID'
+    ),
+    'Should store an empty website_url as null'
 );
 
 -- ============================================================================

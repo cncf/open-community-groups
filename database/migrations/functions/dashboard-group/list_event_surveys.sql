@@ -6,14 +6,10 @@ create or replace function list_event_surveys(
 returns json as $$
     select coalesce(
         json_agg(
-            event_survey_summary_json(s, e)
-            order by s.created_at, s.event_survey_id
+            event_survey_summary_json(gs.event_survey_row, gs.event_row)
+            order by (gs.event_survey_row).created_at, (gs.event_survey_row).event_survey_id
         ),
         '[]'::json
     )
-    from event e
-    join event_survey s on s.event_id = e.event_id
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false;
+    from group_dashboard_event_surveys(p_group_id, p_event_id) gs;
 $$ language sql stable;

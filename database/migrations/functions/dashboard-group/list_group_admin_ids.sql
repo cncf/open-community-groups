@@ -8,4 +8,4 @@ returns uuid[] as $$
     and gt.accepted = true
     and gt.role = 'admin'
     and u.email_verified = true;
-$$ language sql;
+$$ language sql stable;

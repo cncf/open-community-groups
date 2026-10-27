@@ -20,27 +20,13 @@ begin
         raise exception 'event_ids cannot be empty' using errcode = 'OCG01';
     end if;
 
-    -- Validate event state
-    select count(*)::int
-    into v_found_events
-    from event
-    where event_id = any(v_event_ids)
-    and group_id = p_group_id
-    and deleted = false
-    and (
-        coalesce(p_require_not_canceled, false) = false
-        or canceled = false
-    );
-
-    if v_found_events <> cardinality(v_event_ids) then
-        raise exception 'one or more events were not found or inactive' using errcode = 'OCG01';
-    end if;
-
-    -- Validate series membership
+    -- Count the matching events and their series membership in one pass
     select
+        count(*)::int,
         count(distinct event_series_id)::int,
         (count(*) filter (where event_series_id is null))::int
     into
+        v_found_events,
         v_series_count,
         v_standalone_events
     from event
@@ -52,11 +38,17 @@ begin
         or canceled = false
     );
 
-    -- Validate series consistency
+    -- Reject missing or inactive events
+    if v_found_events <> cardinality(v_event_ids) then
+        raise exception 'one or more events were not found or inactive' using errcode = 'OCG01';
+    end if;
+
+    -- Reject events outside a single series
     if v_standalone_events > 0 or v_series_count <> 1 then
         raise exception 'events must belong to the same series' using errcode = 'OCG01';
     end if;
 
+    -- Return the deduplicated event ids
     return v_event_ids;
 end;
 $$ language plpgsql;

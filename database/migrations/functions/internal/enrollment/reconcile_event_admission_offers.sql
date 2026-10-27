@@ -18,8 +18,10 @@ begin
         order by ao.admission_offer_id
     loop
         -- Expire offers past their deadline
-        if v_admission_offer.expires_at is not null
-           and v_admission_offer.expires_at <= current_timestamp then
+        if admission_offer_is_lapsed(
+            v_admission_offer.status,
+            v_admission_offer.expires_at
+        ) then
             update admission_offer
             set
                 status = 'expired',
@@ -50,13 +52,7 @@ begin
                     select 1
                     from event_purchase ep
                     where ep.admission_offer_id = v_admission_offer.admission_offer_id
-                    and (
-                        event_purchase_holds_seat(ep.status)
-                        or (
-                            ep.status = 'pending'
-                            and ep.hold_expires_at > current_timestamp
-                        )
-                    )
+                    and event_purchase_reserves_seat(ep.status, ep.hold_expires_at)
               ) then
             update admission_offer
             set

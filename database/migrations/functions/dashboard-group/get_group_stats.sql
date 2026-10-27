@@ -25,6 +25,7 @@ create or replace function get_group_stats(
     p_include_subgroups boolean
 )
 returns json as $$
+-- Resolve the scope arguments and reporting windows
 with params as (
     select
         p_community_id as community_id,
@@ -33,27 +34,13 @@ with params as (
         current_date - interval '2 years' as period_start,
         current_date - interval '1 month' as recent_views_start
 ),
-target_group as (
-    select g.group_id, g.community_id
-    from "group" g
-    join params p on g.group_id = p.group_id and g.community_id = p.community_id
-    where g.active = true
-        and g.deleted = false
-),
+-- Resolve the target group and, when requested, its subgroups
 scoped_groups as (
-    select tg.group_id, tg.community_id
-    from target_group tg
-
-    union all
-
-    select child.group_id, child.community_id
-    from "group" child
-    join target_group tg on child.parent_group_id = tg.group_id
-    join params p on p.community_id = child.community_id
-    where p.include_subgroups = true
-        and child.active = true
-        and child.deleted = false
+    select s.group_id
+    from params p
+    cross join lateral list_group_scope_ids(p.community_id, p.group_id, p.include_subgroups) s
 ),
+-- Count each member once at their earliest membership in scope
 unique_members as (
     select
         gm.user_id,
@@ -62,17 +49,11 @@ unique_members as (
     join scoped_groups sg on sg.group_id = gm.group_id
     group by gm.user_id
 ),
-members as (
-    select
-        um.first_seen_at,
-        timezone('UTC', date_trunc('month', um.first_seen_at at time zone 'UTC')) as created_month
-    from unique_members um
-),
+-- Select published non-test events of the scope that were not canceled
 events as (
     select
         e.event_id,
-        e.starts_at,
-        timezone('UTC', date_trunc('month', e.starts_at at time zone 'UTC')) as starts_month
+        e.starts_at
     from event e
     join scoped_groups sg on sg.group_id = e.group_id
     where e.published = true
@@ -80,11 +61,11 @@ events as (
         and e.deleted = false
         and e.test_event = false
 ),
+-- Select approved co-hosted events owned by active groups outside the scope
 cohosted_events as (
     select distinct
         e.event_id,
-        e.starts_at,
-        timezone('UTC', date_trunc('month', e.starts_at at time zone 'UTC')) as starts_month
+        e.starts_at
     from event_cohost ec
     join scoped_groups sg on sg.group_id = ec.group_id
     join event e using (event_id)
@@ -104,6 +85,7 @@ cohosted_events as (
         and owner_group.active = true
         and owner_group.deleted = false
 ),
+-- Select published non-test events of the scope, canceled included, for views
 events_for_views as (
     select e.event_id
     from event e
@@ -112,293 +94,141 @@ events_for_views as (
         and e.published = true
         and e.test_event = false
 ),
-events_with_start as (
-    select *
-    from events
-    where starts_at is not null
-),
-cohosted_events_with_start as (
-    select *
-    from cohosted_events
-    where starts_at is not null
-),
+-- Select confirmed attendees of the scope events
 attendees as (
-    select
-        ea.created_at,
-        timezone('UTC', date_trunc('month', ea.created_at at time zone 'UTC')) as created_month
+    select ea.created_at
     from event_attendee ea
     join events e on e.event_id = ea.event_id
     where ea.status = 'confirmed'
 ),
-event_views_data as (
+-- Aggregate each domain once into monthly buckets split at the period start
+member_buckets as (
     select
-        ev.total,
-        timezone('UTC', date_trunc('month', ev.day::timestamp)) as viewed_month,
-        ev.day
-    from event_views ev
-    join events_for_views efv on efv.event_id = ev.event_id
-),
-group_views_data as (
-    select
-        gv.total,
-        timezone('UTC', date_trunc('month', gv.day::timestamp)) as viewed_month,
-        gv.day
-    from group_views gv
-    join scoped_groups sg on sg.group_id = gv.group_id
-),
-all_page_views_data as (
-    select total, viewed_month, day
-    from event_views_data
-    union all
-    select total, viewed_month, day
-    from group_views_data
-),
-domain_running_total_counts as (
-    select
-        'members' as domain,
-        m.created_month as bucket_start,
+        timezone(
+            'UTC',
+            date_trunc('month', um.first_seen_at at time zone 'UTC')
+        ) as bucket_start,
+        um.first_seen_at >= p.period_start as in_period,
         count(*)::int as count
-    from members m
-    group by m.created_month
-
-    union all
-
+    from unique_members um
+    cross join params p
+    group by 1, 2
+),
+event_buckets as (
+    -- Undated events land in a null bucket that only counts in totals
     select
-        'events' as domain,
-        e.starts_month as bucket_start,
+        timezone(
+            'UTC',
+            date_trunc('month', e.starts_at at time zone 'UTC')
+        ) as bucket_start,
+        e.starts_at >= p.period_start as in_period,
         count(*)::int as count
-    from events_with_start e
-    group by e.starts_month
-
-    union all
-
+    from events e
+    cross join params p
+    group by 1, 2
+),
+cohosted_event_buckets as (
+    -- Undated events land in a null bucket that only counts in totals
     select
-        'cohosted_events' as domain,
-        ce.starts_month as bucket_start,
+        timezone(
+            'UTC',
+            date_trunc('month', ce.starts_at at time zone 'UTC')
+        ) as bucket_start,
+        ce.starts_at >= p.period_start as in_period,
         count(*)::int as count
-    from cohosted_events_with_start ce
-    group by ce.starts_month
-
-    union all
-
+    from cohosted_events ce
+    cross join params p
+    group by 1, 2
+),
+attendee_buckets as (
     select
-        'attendees' as domain,
-        a.created_month as bucket_start,
+        timezone(
+            'UTC',
+            date_trunc('month', a.created_at at time zone 'UTC')
+        ) as bucket_start,
+        a.created_at >= p.period_start as in_period,
         count(*)::int as count
     from attendees a
-    group by a.created_month
+    cross join params p
+    group by 1, 2
 ),
-domain_monthly_counts as (
+-- Sum event page views by day into parallel arrays
+event_view_days as (
     select
-        'members' as domain,
-        to_char(m.created_month, 'YYYY-MM') as label,
-        count(*)::int as count
-    from members m
-    join params p on m.first_seen_at >= p.period_start
-    group by to_char(m.created_month, 'YYYY-MM')
-
-    union all
-
-    select
-        'events' as domain,
-        to_char(e.starts_month, 'YYYY-MM') as label,
-        count(*)::int as count
-    from events_with_start e
-    join params p on e.starts_at >= p.period_start
-    group by to_char(e.starts_month, 'YYYY-MM')
-
-    union all
-
-    select
-        'cohosted_events' as domain,
-        to_char(ce.starts_month, 'YYYY-MM') as label,
-        count(*)::int as count
-    from cohosted_events_with_start ce
-    join params p on ce.starts_at >= p.period_start
-    group by to_char(ce.starts_month, 'YYYY-MM')
-
-    union all
-
-    select
-        'attendees' as domain,
-        to_char(a.created_month, 'YYYY-MM') as label,
-        count(*)::int as count
-    from attendees a
-    join params p on a.created_at >= p.period_start
-    group by to_char(a.created_month, 'YYYY-MM')
+        array_agg(d.day) as days,
+        array_agg(d.total) as totals
+    from (
+        select
+            ev.day,
+            sum(ev.total)::int as total
+        from event_views ev
+        join events_for_views efv on efv.event_id = ev.event_id
+        group by ev.day
+    ) d
 ),
-page_view_total_counts as (
+-- Sum group page views by day into parallel arrays
+group_view_days as (
     select
-        'total' as scope,
-        coalesce(sum(apv.total), 0)::int as total_views
-    from all_page_views_data apv
-
-    union all
-
-    select
-        'events' as scope,
-        coalesce(sum(ev.total), 0)::int as total_views
-    from event_views_data ev
-
-    union all
-
-    select
-        'group' as scope,
-        coalesce(sum(gv.total), 0)::int as total_views
-    from group_views_data gv
+        array_agg(d.day) as days,
+        array_agg(d.total) as totals
+    from (
+        select
+            gv.day,
+            sum(gv.total)::int as total
+        from group_views gv
+        join scoped_groups sg on sg.group_id = gv.group_id
+        group by gv.day
+    ) d
 ),
-page_view_daily_counts as (
+-- Build the page views block of each scope, the total one from both scopes
+page_view_blocks as (
     select
-        'total' as scope,
-        to_char(apv.day, 'YYYY-MM-DD') as label,
-        sum(apv.total)::int as count
-    from all_page_views_data apv
-    join params p on apv.day >= p.recent_views_start
-    group by to_char(apv.day, 'YYYY-MM-DD')
-
-    union all
-
-    select
-        'events' as scope,
-        to_char(ev.day, 'YYYY-MM-DD') as label,
-        sum(ev.total)::int as count
-    from event_views_data ev
-    join params p on ev.day >= p.recent_views_start
-    group by to_char(ev.day, 'YYYY-MM-DD')
-
-    union all
-
-    select
-        'group' as scope,
-        to_char(gv.day, 'YYYY-MM-DD') as label,
-        sum(gv.total)::int as count
-    from group_views_data gv
-    join params p on gv.day >= p.recent_views_start
-    group by to_char(gv.day, 'YYYY-MM-DD')
-),
-page_view_monthly_counts as (
-    select
-        'total' as scope,
-        to_char(apv.viewed_month, 'YYYY-MM') as label,
-        sum(apv.total)::int as count
-    from all_page_views_data apv
-    join params p on apv.day >= p.period_start
-    group by to_char(apv.viewed_month, 'YYYY-MM')
-
-    union all
-
-    select
-        'events' as scope,
-        to_char(ev.viewed_month, 'YYYY-MM') as label,
-        sum(ev.total)::int as count
-    from event_views_data ev
-    join params p on ev.day >= p.period_start
-    group by to_char(ev.viewed_month, 'YYYY-MM')
-
-    union all
-
-    select
-        'group' as scope,
-        to_char(gv.viewed_month, 'YYYY-MM') as label,
-        sum(gv.total)::int as count
-    from group_views_data gv
-    join params p on gv.day >= p.period_start
-    group by to_char(gv.viewed_month, 'YYYY-MM')
+        stats_page_views(
+            evd.days,
+            evd.totals,
+            p.period_start::date,
+            p.recent_views_start::date
+        ) as events_block,
+        stats_page_views(
+            gvd.days,
+            gvd.totals,
+            p.period_start::date,
+            p.recent_views_start::date
+        ) as group_block,
+        stats_page_views(
+            evd.days || gvd.days,
+            evd.totals || gvd.totals,
+            p.period_start::date,
+            p.recent_views_start::date
+        ) as total_block
+    from params p
+    cross join event_view_days evd
+    cross join group_view_days gvd
 )
+-- Build each domain timeline and the page view metrics
 select json_strip_nulls(json_build_object(
-    'members', json_build_object(
-        'total', (select count(*)::int from members),
-        'running_total', stats_running_total_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_running_total_counts counts
-            where domain = 'members'
-        )),
-        'per_month', stats_label_count_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_monthly_counts counts
-            where domain = 'members'
-        ))
+    'attendees', stats_timeline(
+        (select jsonb_agg(to_jsonb(b)) from attendee_buckets b),
+        false
     ),
-    'events', json_build_object(
-        'total', (select count(*)::int from events),
-        'running_total', stats_running_total_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_running_total_counts counts
-            where domain = 'events'
-        )),
-        'per_month', stats_label_count_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_monthly_counts counts
-            where domain = 'events'
-        ))
+    'cohosted_events', stats_timeline(
+        (select jsonb_agg(to_jsonb(b)) from cohosted_event_buckets b),
+        false
     ),
-    'cohosted_events', json_build_object(
-        'total', (select count(*)::int from cohosted_events),
-        'running_total', stats_running_total_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_running_total_counts counts
-            where domain = 'cohosted_events'
-        )),
-        'per_month', stats_label_count_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_monthly_counts counts
-            where domain = 'cohosted_events'
-        ))
+    'events', stats_timeline(
+        (select jsonb_agg(to_jsonb(b)) from event_buckets b),
+        false
     ),
-    'attendees', json_build_object(
-        'total', (select count(*)::int from attendees),
-        'running_total', stats_running_total_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_running_total_counts counts
-            where domain = 'attendees'
-        )),
-        'per_month', stats_label_count_series((
-            select jsonb_agg(to_jsonb(counts))
-            from domain_monthly_counts counts
-            where domain = 'attendees'
-        ))
+    'members', stats_timeline(
+        (select jsonb_agg(to_jsonb(b)) from member_buckets b),
+        false
     ),
     'page_views', json_build_object(
-        'total_views', (select total_views from page_view_total_counts where scope = 'total'),
-        'total', json_build_object(
-            'total_views', (select total_views from page_view_total_counts where scope = 'total'),
-            'per_day_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_daily_counts counts
-                where scope = 'total'
-            )),
-            'per_month_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_monthly_counts counts
-                where scope = 'total'
-            ))
-        ),
-        'events', json_build_object(
-            'total_views', (select total_views from page_view_total_counts where scope = 'events'),
-            'per_day_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_daily_counts counts
-                where scope = 'events'
-            )),
-            'per_month_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_monthly_counts counts
-                where scope = 'events'
-            ))
-        ),
-        'group', json_build_object(
-            'total_views', (select total_views from page_view_total_counts where scope = 'group'),
-            'per_day_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_daily_counts counts
-                where scope = 'group'
-            )),
-            'per_month_views', stats_label_count_series((
-                select jsonb_agg(to_jsonb(counts))
-                from page_view_monthly_counts counts
-                where scope = 'group'
-            ))
-        )
+        'events', pvb.events_block,
+        'group', pvb.group_block,
+        'total', pvb.total_block,
+        'total_views', (pvb.total_block->>'total_views')::int
     )
-));
+))
+from page_view_blocks pvb;
 $$ language sql stable;

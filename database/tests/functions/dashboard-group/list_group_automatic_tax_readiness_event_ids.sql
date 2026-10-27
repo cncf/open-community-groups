@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -31,6 +31,9 @@ select plan(3);
 \set manualEventID '5f040000-0000-0000-0000-000000000016'
 \set manualPriceWindowID '5f040000-0000-0000-0000-000000000036'
 \set manualTicketTypeID '5f040000-0000-0000-0000-000000000026'
+\set ongoingEventID '5f040000-0000-0000-0000-000000000013'
+\set ongoingPriceWindowID '5f040000-0000-0000-0000-000000000033'
+\set ongoingTicketTypeID '5f040000-0000-0000-0000-000000000023'
 \set otherCommunityID '5f040000-0000-0000-0000-000000000006'
 \set pastEventID '5f040000-0000-0000-0000-000000000017'
 \set pastPriceWindowID '5f040000-0000-0000-0000-000000000037'
@@ -38,6 +41,7 @@ select plan(3);
 \set undatedEventID '5f040000-0000-0000-0000-000000000011'
 \set undatedPriceWindowID '5f040000-0000-0000-0000-000000000031'
 \set undatedTicketTypeID '5f040000-0000-0000-0000-000000000021'
+\set unknownGroupID '5f040000-0000-0000-0000-000000000007'
 \set unpublishedEventID '5f040000-0000-0000-0000-000000000018'
 \set unpublishedPriceWindowID '5f040000-0000-0000-0000-000000000038'
 \set unpublishedTicketTypeID '5f040000-0000-0000-0000-000000000028'
@@ -112,6 +116,15 @@ select fx_event(:'manualEventID', :'activeGroupID', :'eventCategoryID', jsonb_bu
     'tax_calculation_mode', 'manual'
 ));
 
+-- Published paid automatic-tax event already in progress
+select fx_event(:'ongoingEventID', :'activeGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '1 day',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp,
+    'tax_calculation_mode', 'automatic'
+));
+
 -- Published paid automatic-tax event that already ended
 select fx_event(:'pastEventID', :'activeGroupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', current_timestamp - interval '1 day',
@@ -151,6 +164,9 @@ select fx_event_ticket_type(:'freeTicketTypeID', :'freeEventID', jsonb_build_obj
 -- Ticket type for the manual event
 select fx_event_ticket_type(:'manualTicketTypeID', :'manualEventID', jsonb_build_object('seats_total', 10));
 
+-- Ticket type for the ongoing event
+select fx_event_ticket_type(:'ongoingTicketTypeID', :'ongoingEventID', jsonb_build_object('seats_total', 10));
+
 -- Ticket type for the past event
 select fx_event_ticket_type(:'pastTicketTypeID', :'pastEventID', jsonb_build_object('seats_total', 10));
 
@@ -174,6 +190,9 @@ select fx_event_ticket_price_window(:'freePriceWindowID', :'freeTicketTypeID', j
 
 -- Paid price window for the manual event
 select fx_event_ticket_price_window(:'manualPriceWindowID', :'manualTicketTypeID', jsonb_build_object('amount_minor', 2500));
+
+-- Paid price window for the ongoing event
+select fx_event_ticket_price_window(:'ongoingPriceWindowID', :'ongoingTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Paid price window for the past event
 select fx_event_ticket_price_window(:'pastPriceWindowID', :'pastTicketTypeID', jsonb_build_object('amount_minor', 2500));
@@ -205,8 +224,19 @@ select is(
 -- Should list only current published paid automatic-tax events
 select is(
     list_group_automatic_tax_readiness_event_ids(:'communityID', :'activeGroupID'),
-    array[:'eligibleEventID'::uuid, :'undatedEventID'::uuid],
+    array[
+        :'eligibleEventID'::uuid,
+        :'undatedEventID'::uuid,
+        :'ongoingEventID'::uuid
+    ],
     'Should list only current published paid automatic-tax events'
+);
+
+-- Should return an empty array for an unknown group
+select is(
+    list_group_automatic_tax_readiness_event_ids(:'communityID', :'unknownGroupID'),
+    '{}'::uuid[],
+    'Should return an empty array for an unknown group'
 );
 
 -- ============================================================================

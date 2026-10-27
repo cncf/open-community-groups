@@ -24,4 +24,4 @@ create or replace function get_group_past_events(
         order by page_events.starts_at desc, page_events.event_id asc
         limit p_limit
     ) e;
-$$ language sql;
+$$ language sql stable;

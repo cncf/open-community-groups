@@ -18,4 +18,4 @@ returns text as $$
         -- Report a full tier when no queued user was promoted
         else 'ticket-type-sold-out'
     end;
-$$ language sql;
+$$ language sql stable;

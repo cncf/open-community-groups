@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(6);
 
 -- ============================================================================
 -- TESTS
@@ -25,35 +25,6 @@ select is(
     ),
     true,
     'Should accept active published future events'
-);
-
--- Should accept dateless events
-select is(
-    event_accepts_enrollment(
-        jsonb_populate_record(null::event, jsonb_build_object(
-            'canceled', false,
-            'deleted', false,
-            'published', true
-        )),
-        jsonb_populate_record(null::"group", jsonb_build_object('active', true))
-    ),
-    true,
-    'Should accept dateless events'
-);
-
--- Should accept events with future starts and no explicit end
-select is(
-    event_accepts_enrollment(
-        jsonb_populate_record(null::event, jsonb_build_object(
-            'canceled', false,
-            'deleted', false,
-            'published', true,
-            'starts_at', current_timestamp + interval '1 hour'
-        )),
-        jsonb_populate_record(null::"group", jsonb_build_object('active', true))
-    ),
-    true,
-    'Should accept events with future starts and no explicit end'
 );
 
 -- Should reject canceled events

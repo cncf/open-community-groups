@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(23);
+select plan(30);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,7 +17,12 @@ select plan(23);
 \set groupID '3a150000-0000-0000-0000-000000000006'
 \set hostedEventID '3a150000-0000-0000-0000-000000000007'
 \set hostedSessionID '3a150000-0000-0000-0000-000000000008'
+\set keptMeetingID '3a150000-0000-0000-0000-000000000011'
+\set keptMeetingSessionID '3a150000-0000-0000-0000-000000000012'
+\set keptMeetingURL 'https://zoom.example/j/is-session-meeting-in-sync-kept'
 \set localFormat 'YYYY-MM-DD"T"HH24:MI:SS'
+\set recordedMeetingID '3a150000-0000-0000-0000-000000000013'
+\set recordedMeetingSessionID '3a150000-0000-0000-0000-000000000014'
 \set spokenEventID '3a150000-0000-0000-0000-000000000009'
 \set spokenSessionID '3a150000-0000-0000-0000-000000000010'
 \set user1ID '3a150000-0000-0000-0000-000000000001'
@@ -156,6 +161,67 @@ insert into session (
     true,
     'zoom',
     true
+);
+
+-- Synced meeting session whose linked meeting has no recordings
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'keptMeetingSessionID',
+    :'hostedEventID',
+    'Session One',
+    'virtual',
+    :'sessionStartsAt',
+    :'sessionEndsAt',
+    true,
+    'zoom',
+    true
+);
+
+-- Synced meeting session whose linked meeting has captured recordings
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'recordedMeetingSessionID',
+    :'hostedEventID',
+    'Session One',
+    'virtual',
+    :'sessionStartsAt',
+    :'sessionEndsAt',
+    true,
+    'zoom',
+    true
+);
+
+-- Linked session meeting without recordings
+insert into meeting (session_id, join_url, meeting_id, meeting_provider_id, provider_meeting_id)
+values (:'keptMeetingSessionID', :'keptMeetingURL', :'keptMeetingID', 'zoom', 'is-session-meeting-in-sync-kept');
+
+-- Linked session meeting with captured recordings
+insert into meeting (session_id, join_url, meeting_id, meeting_provider_id, provider_meeting_id, recording_urls)
+values (
+    :'recordedMeetingSessionID',
+    'https://zoom.example/j/is-session-meeting-in-sync-recorded',
+    :'recordedMeetingID',
+    'zoom',
+    'is-session-meeting-in-sync-recorded',
+    array['https://zoom.example/rec/is-session-meeting-in-sync-recorded']
 );
 
 -- Speaker of the spoken session
@@ -325,6 +391,30 @@ select is(
     'Should desync when the start time changes'
 );
 
+-- Should keep a meeting whose join URL stays as the manual link when the request is unset
+select is(
+    is_session_meeting_in_sync(
+        (select s from session s where s.session_id = :'keptMeetingSessionID'),
+        :'baseSessionAfter'::jsonb - 'meeting_requested' || jsonb_build_object('meeting_join_url', :'keptMeetingURL'),
+        jsonb_populate_record(null::event, :'baseEventBefore'::jsonb),
+        :'baseEventAfter'::jsonb
+    ),
+    null::boolean,
+    'Should keep a meeting whose join URL stays as the manual link when the request is unset'
+);
+
+-- Should keep a meeting with recordings when the request is unset
+select is(
+    is_session_meeting_in_sync(
+        (select s from session s where s.session_id = :'recordedMeetingSessionID'),
+        :'baseSessionAfter'::jsonb - 'meeting_requested' || '{"meeting_join_url": "https://meet.example/is-session-meeting-in-sync-other"}'::jsonb,
+        jsonb_populate_record(null::event, :'baseEventBefore'::jsonb),
+        :'baseEventAfter'::jsonb
+    ),
+    null::boolean,
+    'Should keep a meeting with recordings when the request is unset'
+);
+
 -- Should keep a started pending meeting out of sync
 select is(
     is_session_meeting_in_sync(
@@ -350,6 +440,36 @@ select is(
     ),
     true,
     'Should keep a started synced meeting in sync when its fields change'
+);
+
+-- Should keep pending deletion work when meeting_requested is omitted
+select is(
+    is_session_meeting_in_sync(
+        jsonb_populate_record(
+            null::session,
+            :'baseSessionBefore'::jsonb || '{"meeting_in_sync": false, "meeting_requested": false}'::jsonb
+        ),
+        :'baseSessionAfter'::jsonb - 'meeting_requested',
+        jsonb_populate_record(null::event, :'baseEventBefore'::jsonb),
+        :'baseEventAfter'::jsonb
+    ),
+    false,
+    'Should keep pending deletion work when meeting_requested is omitted'
+);
+
+-- Should keep pending deletion work when the meeting stays disabled
+select is(
+    is_session_meeting_in_sync(
+        jsonb_populate_record(
+            null::session,
+            :'baseSessionBefore'::jsonb || '{"meeting_in_sync": false, "meeting_requested": false}'::jsonb
+        ),
+        :'baseSessionAfter'::jsonb || '{"meeting_requested": false}'::jsonb,
+        jsonb_populate_record(null::event, :'baseEventBefore'::jsonb),
+        :'baseEventAfter'::jsonb
+    ),
+    false,
+    'Should keep pending deletion work when the meeting stays disabled'
 );
 
 -- Should keep sync when every field is unchanged
@@ -420,6 +540,18 @@ select is(
     'Should keep sync when the stored times carry sub-second precision'
 );
 
+-- Should return false when a disabled meeting keeps its join URL as the manual link
+select is(
+    is_session_meeting_in_sync(
+        (select s from session s where s.session_id = :'keptMeetingSessionID'),
+        :'baseSessionAfter'::jsonb || jsonb_build_object('meeting_join_url', :'keptMeetingURL', 'meeting_requested', false),
+        jsonb_populate_record(null::event, :'baseEventBefore'::jsonb),
+        :'baseEventAfter'::jsonb
+    ),
+    false,
+    'Should return false when a disabled meeting keeps its join URL as the manual link'
+);
+
 -- Should return false when a requested meeting is no longer requested
 select is(
     is_session_meeting_in_sync(
@@ -442,6 +574,18 @@ select is(
     ),
     false,
     'Should return false when a started meeting is no longer requested'
+);
+
+-- Should return false when an unset request leaves an unrelated manual URL
+select is(
+    is_session_meeting_in_sync(
+        (select s from session s where s.session_id = :'keptMeetingSessionID'),
+        :'baseSessionAfter'::jsonb - 'meeting_requested' || '{"meeting_join_url": "https://meet.example/is-session-meeting-in-sync-other"}'::jsonb,
+        jsonb_populate_record(null::event, :'baseEventBefore'::jsonb),
+        :'baseEventAfter'::jsonb
+    ),
+    false,
+    'Should return false when an unset request leaves an unrelated manual URL'
 );
 
 -- Should return false when meeting_requested is missing after a requested meeting
@@ -469,6 +613,21 @@ select is(
     ),
     null::boolean,
     'Should return null when no meeting is requested before or after'
+);
+
+-- Should stop pending work for a meeting whose join URL stays as the manual link
+select is(
+    is_session_meeting_in_sync(
+        jsonb_populate_record(
+            (select s from session s where s.session_id = :'keptMeetingSessionID'),
+            '{"meeting_in_sync": false}'::jsonb
+        ),
+        :'baseSessionAfter'::jsonb - 'meeting_requested' || jsonb_build_object('meeting_join_url', :'keptMeetingURL'),
+        jsonb_populate_record(null::event, :'baseEventBefore'::jsonb),
+        :'baseEventAfter'::jsonb
+    ),
+    null::boolean,
+    'Should stop pending work for a meeting whose join URL stays as the manual link'
 );
 
 -- ============================================================================

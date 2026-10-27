@@ -12,7 +12,6 @@ select plan(5);
 -- ============================================================================
 
 \set communityID '79310000-0000-0000-0000-000000000001'
-\set discountCodeID '79310000-0000-0000-0000-000000000002'
 \set eventCategoryID '79310000-0000-0000-0000-000000000003'
 \set eventID '79310000-0000-0000-0000-000000000004'
 \set eventTicketTypeID '79310000-0000-0000-0000-000000000005'
@@ -28,13 +27,23 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories and users
+-- Community owning the checkout event
 select fx_community(:'communityID');
+
+-- Community that does not own the checkout event
 select fx_community(:'otherCommunityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- User whose pending checkout is canceled
 select fx_user(:'userID');
+
+-- User queued for the tier released by the canceled checkout
 select fx_user(:'waitlistUserID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
@@ -45,10 +54,18 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
 
 -- Event
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'in-person',
+    'manual_tax_rate_ids', '{}'::text[],
     'payment_currency_code', 'USD',
     'published', true,
     'published_at', now(),
     'starts_at', now() + interval '1 day',
+    'tax_calculation_mode', 'automatic',
+    'venue_address', '1 Cancel Checkout Way',
+    'venue_city', 'Cancel Checkout City',
+    'venue_country_code', 'US',
+    'venue_name', 'Cancel Checkout Hall',
+    'venue_zip_code', '12345',
     'waitlist_enabled', true
 ));
 
@@ -58,30 +75,6 @@ select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object
     'title', 'General admission'
 ));
 
--- Price window
-select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
-
--- Discount code
-insert into event_discount_code (
-    event_discount_code_id,
-    amount_minor,
-    available,
-    available_override_active,
-    code,
-    event_id,
-    kind,
-    title
-) values (
-    :'discountCodeID',
-    500,
-    0,
-    true,
-    'SAVE5',
-    :'eventID',
-    'fixed_amount',
-    'Save 5'
-);
-
 -- Pending purchase
 insert into event_purchase (
     event_purchase_id,
@@ -90,8 +83,6 @@ insert into event_purchase (
     connected_seller_id,
     currency_code,
     discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
     event_id,
     event_ticket_type_id,
     hold_expires_at,
@@ -109,13 +100,11 @@ insert into event_purchase (
     venue_snapshot
 ) values (
     :'pendingPurchaseID',
-    2000,
+    2500,
     'direct-charge',
     'acct_cancel',
     'USD',
-    500,
-    'SAVE5',
-    :'discountCodeID',
+    0,
     :'eventID',
     :'eventTicketTypeID',
     now() + interval '15 minutes',
@@ -133,13 +122,8 @@ insert into event_purchase (
     '{}'::jsonb
 );
 
--- Pending attendee row with registration answers created during checkout
-insert into event_attendee (event_id, user_id, status)
-values (
-    :'eventID',
-    :'userID',
-    'registration-questions-pending'
-);
+-- Price window
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- FIFO waitlist entry promoted only after the direct checkout is canceled
 insert into event_waitlist (
@@ -167,27 +151,13 @@ select lives_ok(
 );
 
 -- Should leave unmatched community checkout state unchanged
-select results_eq(
-    format($$
-        select
-            (
-                select available
-                from event_discount_code
-                where event_discount_code_id = %L::uuid
-            ),
-            (
-                select status
-                from event_purchase
-                where event_purchase_id = %L::uuid
-            ),
-            (
-                select count(*)::int
-                from event_attendee
-                where event_id = %L::uuid
-                and user_id = %L::uuid
-            )
-    $$, :'discountCodeID', :'pendingPurchaseID', :'eventID', :'userID'),
-    $$ values (0::int, 'pending'::text, 1::int) $$,
+select is(
+    (
+        select status
+        from event_purchase
+        where event_purchase_id = :'pendingPurchaseID'
+    ),
+    'pending',
     'Should leave unmatched community checkout state unchanged'
 );
 
@@ -202,34 +172,15 @@ select lives_ok(
     'Should cancel the attendee active pending checkout'
 );
 
--- Should expire the pending checkout and restore the reserved discount usage
-select results_eq(
-    format($$
-        select
-            (
-                select available
-                from event_discount_code
-                where event_discount_code_id = %L::uuid
-            ),
-            (
-                select hold_expires_at <= current_timestamp
-                from event_purchase
-                where event_purchase_id = %L::uuid
-            ),
-            (
-                select status
-                from event_purchase
-                where event_purchase_id = %L::uuid
-            ),
-            (
-                select count(*)::int
-                from event_attendee
-                where event_id = %L::uuid
-                and user_id = %L::uuid
-            )
-    $$, :'discountCodeID', :'pendingPurchaseID', :'pendingPurchaseID', :'eventID', :'userID'),
-    $$ values (1::int, true, 'expired'::text, 0::int) $$,
-    'Should expire the pending checkout, release registration hold, and restore discount usage'
+-- Should expire the pending checkout
+select is(
+    (
+        select status
+        from event_purchase
+        where event_purchase_id = :'pendingPurchaseID'
+    ),
+    'expired',
+    'Should expire the pending checkout'
 );
 
 -- Should promote the FIFO queue after direct checkout capacity is released

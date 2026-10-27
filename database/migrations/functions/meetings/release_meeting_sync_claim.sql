@@ -1,4 +1,5 @@
--- release_meeting_sync_claim releases a retryable meeting sync claim.
+-- release_meeting_sync_claim releases a retryable meeting sync claim. Rows
+-- marked keep (null) while claimed are released too and stay null.
 create or replace function release_meeting_sync_claim(
     p_event_id uuid,
     p_meeting_id uuid,
@@ -13,7 +14,7 @@ begin
             meeting_provider_host_user = null,
             meeting_sync_claimed_at = null
         where event_id = p_event_id
-          and meeting_in_sync = false
+          and meeting_in_sync is distinct from true
           and meeting_sync_claimed_at = p_sync_claimed_at;
     -- Session meeting case
     elsif p_session_id is not null then
@@ -22,7 +23,7 @@ begin
             meeting_provider_host_user = null,
             meeting_sync_claimed_at = null
         where session_id = p_session_id
-          and meeting_in_sync = false
+          and meeting_in_sync is distinct from true
           and meeting_sync_claimed_at = p_sync_claimed_at;
     -- Orphan meeting case
     elsif p_meeting_id is not null then

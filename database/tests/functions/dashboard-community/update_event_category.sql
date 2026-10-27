@@ -22,25 +22,80 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community and event category
+-- Community owning the taxonomy under test
 select fx_community(:'communityID');
+
+-- Other community owning the foreign event category
+select fx_community(:'otherCommunityID');
+
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'update-event-category-audit-actor'));
+
+-- Event category updated by the scenarios
 select fx_event_category(:'eventCategory1ID', :'communityID');
 
 -- Second event category whose name the duplicate scenario reuses
 select fx_event_category(:'eventCategory2ID', :'communityID', jsonb_build_object('name', 'Conference'));
 
--- Other community with its own event category
-select fx_community(:'otherCommunityID');
+-- Event category owned by the other community
 select fx_event_category(:'foreignEventCategoryID', :'otherCommunityID');
-
--- Actor recorded in the audit row
-select fx_user(:'actorUserID', jsonb_build_object('username', 'update-event-category-audit-actor'));
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should update category name and regenerate slug
+-- Should fail when updating an event category from another community
+select throws_ok(
+    format(
+        $$ select update_event_category(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        jsonb_build_object('name', 'Workshops')
+    ) $$,
+        :'communityID',
+        :'foreignEventCategoryID'
+    ),
+    'OCG01',
+    'event category not found',
+    'Should fail when updating an event category from another community'
+);
+
+-- Should reject duplicate event category names
+select throws_ok(
+    format(
+        $$ select update_event_category(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        jsonb_build_object('name', 'Conference')
+    ) $$,
+        :'communityID',
+        :'eventCategory1ID'
+    ),
+    'OCG01',
+    'event category already exists',
+    'Should reject duplicate event category names'
+);
+
+-- Should reject event category names that generate empty slugs
+select throws_ok(
+    format(
+        $$ select update_event_category(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        jsonb_build_object('name', '!!!')
+    ) $$,
+        :'communityID',
+        :'eventCategory1ID'
+    ),
+    'OCG01',
+    'event category name is invalid',
+    'Should reject event category names that generate empty slugs'
+);
+
+-- Should update event category and regenerate slug
 select lives_ok(
     format(
         $$ select update_event_category(
@@ -98,57 +153,6 @@ select results_eq(
         :'eventCategory1ID'
     ),
     'Should create the expected audit row'
-);
-
--- Should reject duplicated slug in same community
-select throws_ok(
-    format(
-        $$ select update_event_category(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        jsonb_build_object('name', 'Conference')
-    ) $$,
-        :'communityID',
-        :'eventCategory1ID'
-    ),
-    'OCG01',
-    'event category already exists',
-    'Should reject duplicate event category names'
-);
-
--- Should reject names that generate an empty slug
-select throws_ok(
-    format(
-        $$ select update_event_category(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        jsonb_build_object('name', '!!!')
-    ) $$,
-        :'communityID',
-        :'eventCategory1ID'
-    ),
-    'OCG01',
-    'event category name is invalid',
-    'Should reject event category names that generate empty slugs'
-);
-
--- Should fail when target category belongs to another community
-select throws_ok(
-    format(
-        $$ select update_event_category(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        jsonb_build_object('name', 'Workshops')
-    ) $$,
-        :'communityID',
-        :'foreignEventCategoryID'
-    ),
-    'OCG01',
-    'event category not found',
-    'Should fail when updating an event category from another community'
 );
 
 -- ============================================================================

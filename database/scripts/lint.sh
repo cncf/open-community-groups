@@ -24,6 +24,10 @@
 #     crates never call them (contract tests excepted).
 #   - Every test under tests/schema/constraints is named after a table created
 #     or renamed by a schema migration.
+#   - Every language sql function declares its volatility (immutable, stable
+#     or volatile) on its language line.
+#   - The visibility predicates called from parallel-planned reads
+#     (is_event_listed, is_event_public, is_group_public) stay parallel safe.
 #
 # Test rules:
 #   - pgTAP schema and function tests run in parallel against one database, so
@@ -97,6 +101,25 @@ for file in $(find "$tests_dir/schema/constraints" -name '*.sql' | sort); do
     table=$(basename "$file" .sql)
     if ! grep -qE "^(create table (if not exists )?\"?$table\"? \(|alter table \"?[a-z_]+\"? rename to \"?$table\"?;)" "$schema_dir"/*.sql; then
         fail "$file is not named after a table created or renamed by a schema migration"
+    fi
+done
+
+# Every language sql function declares its volatility on its language line
+unmarked=$(grep -rnE '\blanguage sql\b' "$functions_dir" --include='*.sql' \
+    | grep -v "^$loader_file:" \
+    | grep -vE '^[^:]+:[0-9]+:[[:space:]]*--' \
+    | grep -vE '\b(immutable|stable|volatile)\b')
+if [ -n "$unmarked" ]; then
+    printf '%s\n' "$unmarked" | cut -d: -f1-2 | while read -r location; do
+        echo "error: $location: language sql function without a volatility marker" >&2
+    done
+    status=1
+fi
+
+# Visibility predicates called from parallel-planned reads stay parallel safe
+for file in internal/events/is_event_listed.sql internal/events/is_event_public.sql internal/groups/is_group_public.sql; do
+    if ! grep -qE '^\$\$ language sql [a-z]+ parallel safe;$' "$functions_dir/$file"; then
+        fail "$functions_dir/$file must stay parallel safe; parallel-planned reads call it"
     fi
 done
 

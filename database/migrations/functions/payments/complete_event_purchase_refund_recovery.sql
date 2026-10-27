@@ -57,15 +57,14 @@ begin
     where e.event_id = v_purchase.event_id
     for update of e;
 
-    -- Reconcile and serialize enrollment before locking recovery state
+    -- Reconcile and serialize enrollment with the checkout and enrollment paths
+    -- of the same attendee before locking recovery state
     perform reconcile_event_enrollment(
         v_purchase.event_id,
         v_purchase.event_ticket_type_id,
-        p_configured_provider
+        p_configured_provider,
+        v_purchase.user_id
     );
-
-    -- Serialize with the checkout and enrollment paths of the same attendee
-    perform pg_advisory_xact_lock(hashtext(v_purchase.event_id::text), hashtext(v_purchase.user_id::text));
 
     -- Lock the purchase and refund and load the event and group they belong to
     select ep, epr, e, g
@@ -83,6 +82,7 @@ begin
         raise exception 'recoverable event purchase refund not found' using errcode = 'OCG01';
     end if;
 
+    -- Keep the locked rows for the recovery checks below
     v_event := v_locked.e;
     v_group := v_locked.g;
     v_purchase := v_locked.ep;
@@ -170,34 +170,22 @@ begin
     if v_refund.finalized_at is null then
         -- Cancel the attendance an attendee-driven refund releases, unless a replacement purchase holds it
         if v_refund.kind in ('attendance-cancellation', 'refund-request-approval') then
-            update event_attendee
-            set
-                attendance_canceled_at = current_timestamp,
-                attendance_canceled_by_user_id = case
+            perform mark_event_attendance_canceled(
+                v_event.event_id,
+                v_purchase.user_id,
+                case
                     -- Attribute attendee cancellations to the attendee who requested them
                     when v_refund.kind = 'attendance-cancellation'
                         then coalesce(v_refund.initiated_by_user_id, p_actor_user_id)
                     -- Attribute approved refund requests to the operator
                     else p_actor_user_id
                 end,
-                checked_in = false,
-                checked_in_at = null,
-                status = 'attendance-canceled'
-            where event_id = v_event.event_id
-            and user_id = v_purchase.user_id
-            and status in ('confirmed', 'registration-questions-pending')
-            and not exists (
-                select 1
-                from event_purchase replacement
-                where replacement.event_id = v_event.event_id
-                and replacement.event_purchase_id <> v_purchase.event_purchase_id
-                and replacement.status in ('completed', 'refund-requested')
-                and replacement.user_id = v_purchase.user_id
+                v_purchase.event_purchase_id
             );
         end if;
 
         -- Restore the discount inventory held by refunded seats
-        if v_refund.kind in ('attendance-cancellation', 'event-cancellation', 'refund-request-approval')
+        if event_purchase_refund_releases_discount(v_refund.kind)
            and v_purchase.event_discount_code_id is not null then
             perform release_event_discount_code_availability(v_purchase.event_discount_code_id);
         end if;

@@ -4,7 +4,7 @@ returns json as $$
     select json_strip_nulls(json_build_object(
         'description', description,
         'site_id', site_id,
-        'theme', theme,
+        'theme', site_theme(),
         'title', title,
 
         'copyright_notice', copyright_notice,
@@ -13,6 +13,5 @@ returns json as $$
         'header_logo_url', header_logo_url,
         'og_image_url', og_image_url
     ))
-    from site
-    limit 1;
-$$ language sql;
+    from site;
+$$ language sql stable;

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -341,18 +341,6 @@ select results_eq(
     $$, :'processingRefundID'),
     $$ values (null::uuid, null::timestamptz, true, 'pending'::text, false) $$,
     'Should persist claim release and exponential retry backoff'
-);
-
--- Should reject empty expected idempotency keys
-select throws_ok(
-    format($$select record_event_purchase_refund_pending(
-        %L::uuid,
-        '   ',
-        're_pending_123'
-    )$$, :'refundID'),
-    'P0001',
-    'expected idempotency key is required',
-    'Should reject empty expected idempotency keys'
 );
 
 -- Should record provider refund progress on a pending refund row

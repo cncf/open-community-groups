@@ -42,7 +42,9 @@ Rust-facing function folders mirror the database traits in `ocg-server/src/db`
 (and `ocg-redirector/src/db.rs` for `redirector/`): a function called from
 `db/dashboard/group.rs` lives in `functions/dashboard-group/`, and so on.
 `triggers/` holds every trigger function. Operator-only entry points run
-through `psql` stay in the folder of the feature they serve.
+through `psql` stay in the folder of the feature they serve. Functions called
+only by external tools also live in a feature folder, with a header comment
+naming that caller.
 
 Helpers that are only called from other SQL functions live under
 `functions/internal/<concern>/`, grouped coarsely by the rule they own. The
@@ -299,6 +301,21 @@ less context, not that the caller became shorter.
     actual values.
 - The function's header comment states which reason applies; the
   measurement belongs in the pull request.
+- Every `language sql` function declares its volatility: `stable` for reads,
+  `immutable` for pure expressions of its arguments with only immutable
+  callees, and `volatile` for writes, locks and volatile builtins.
+  `just db-lint` checks this. A `stable` reader sees its calling statement's
+  snapshot, so a write and a `stable` read of its result run in separate
+  statements.
+- A helper whose result must reflect rows locked by a statement is evaluated
+  in a statement after the lock, never inside the locking statement. A
+  `stable` function there reads the statement's pre-wait snapshot. The same
+  applies to a `stable` function read inside a loop query whose body writes
+  the rows it reads.
+- A helper called from a read that relies on a parallel plan is declared
+  `parallel safe` when its body allows it, because the planner checks
+  parallel safety before inlining the helper. `just db-lint` checks this for
+  the shared visibility predicates.
 
 ## Inline SQL in Rust
 
@@ -323,7 +340,10 @@ parallel against one database. These rules apply to every file in it:
   its variables is used by no other file (`just db-lint`), and no two files
   seed the same value into a unique index (`just db-tests-seed-keys`, also
   run in CI). Two files inserting the same unique value block each other and
-  can deadlock under `pg_prove -j`.
+  can deadlock under `pg_prove -j`. Singleton configuration tables (`site`,
+  `external_payments_config`) hold one row and are exempt: files seeding one
+  run one at a time, so such a file seeds no other singleton and takes no
+  lock shared with other files.
 - A test asserts only values it wrote itself; any value a scenario depends
   on is written explicitly by the test, never inherited from a fixture
   default. Each scenario gets its own rows rather than mutating shared ones.

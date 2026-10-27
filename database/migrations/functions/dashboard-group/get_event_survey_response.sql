@@ -13,25 +13,21 @@ create or replace function get_event_survey_response(
 )
 returns json as $$
 declare
-    v_anonymous boolean;
+    v_record record;
 begin
     -- Load the survey of the group event
-    select s.anonymous
-    into v_anonymous
-    from event e
-    join event_survey s on s.event_id = e.event_id
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and s.event_survey_id = p_event_survey_id;
+    select *
+    into v_record
+    from group_dashboard_event_surveys(p_group_id, p_event_id, p_event_survey_id)
+    where p_event_survey_id is not null;
 
-    -- Report nothing for missing or foreign surveys
+    -- Report nothing without a survey id or for missing or foreign surveys
     if not found then
         return null;
     end if;
 
     -- Keep the respondents of anonymous surveys hidden
-    if v_anonymous then
+    if (v_record.event_survey_row).anonymous then
         raise exception 'responses of anonymous surveys cannot be viewed' using errcode = 'OCG01';
     end if;
 

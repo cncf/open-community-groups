@@ -1,11 +1,11 @@
--- enqueue_due_event_reminders enqueues reminders for events starting within 24h.
--- It returns the number of reminder recipients attempted, before recipient
--- preferences are applied.
-create or replace function enqueue_due_event_reminders(p_base_url text)
+-- Enqueues reminders for listed events starting within 24 hours. It returns
+-- the number of reminder recipients attempted, before recipient preferences
+-- are applied. The event and dashboard links are stored relative to the site
+-- root and completed by the server at delivery.
+create or replace function enqueue_due_event_reminders()
 returns int as $$
 declare
     v_attendee_recipients uuid[];
-    v_base_url text;
     v_event record;
     v_recipient_count int;
     v_reminders_enqueued int := 0;
@@ -13,13 +13,10 @@ declare
     v_template_data jsonb;
     v_theme jsonb;
 begin
-    -- Ensure only one worker enqueues due reminders per transaction window
+    -- Skip the run when another worker already holds the reminder enqueue lock
     if not pg_try_advisory_xact_lock(hashtextextended('ocg:event-reminder-enqueue', 0)) then
         return 0;
     end if;
-
-    -- Normalize base URL used to build event links
-    v_base_url := regexp_replace(coalesce(p_base_url, ''), '/+$', '');
 
     -- Read the site theme shared by every reminder of this run
     v_theme := site_theme();
@@ -39,12 +36,7 @@ begin
         join "group" g using (group_id)
         join community c on c.community_id = g.community_id
         where c.active = true
-        and e.deleted = false
-        and e.canceled = false
-        and e.published = true
-        and e.test_event = false
-        and g.active = true
-        and g.deleted = false
+        and is_event_listed(e, g)
         and e.starts_at is not null
         and e.event_reminder_enabled = true
         and e.event_reminder_sent_at is null
@@ -85,19 +77,19 @@ begin
             -- Build base template data shared by all reminder recipients
             v_template_data := jsonb_strip_nulls(
                 jsonb_build_object(
+                    'dashboard_link', '/dashboard/user?tab=events',
                     'event',
                         get_event_summary(
                             v_event.community_id,
                             v_event.group_id,
                             v_event.event_id
                         )::jsonb,
-                    'link', v_base_url || event_public_path(
+                    'link', event_public_path(
                         v_event.community_name,
                         v_event.group_slug,
                         v_event.group_slug_pretty,
                         v_event.event_slug
                     ),
-                    'dashboard_link', format('%s/dashboard/user?tab=events', v_base_url),
                     'theme', v_theme
                 )
             );

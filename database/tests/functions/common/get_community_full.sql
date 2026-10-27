@@ -1,9 +1,11 @@
+-- Tests returning full community information.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -32,6 +34,7 @@ insert into community (
     ad_banner_url,
     bluesky_url,
     community_site_layout_id,
+    created_at,
     extra_links,
     facebook_url,
     flickr_url,
@@ -60,6 +63,7 @@ insert into community (
     'https://example.com/ad-banner.png',
     'https://bsky.app/profile/testcommunity',
     'default',
+    '2024-01-01 10:00:00.750+00',
     '{"docs": "https://docs.example.com", "blog": "https://blog.example.com"}'::jsonb,
     'https://facebook.com/testcommunity',
     'https://flickr.com/testcommunity',
@@ -89,6 +93,13 @@ select fx_community(:'community2ID', jsonb_build_object(
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should encode created_at as whole epoch seconds
+select is(
+    (get_community_full(:'community1ID'::uuid)::jsonb->>'created_at')::bigint,
+    epoch_seconds('2024-01-01 10:00:00.750+00'::timestamptz),
+    'Should encode created_at as whole epoch seconds'
+);
 
 -- Should return correct data for community with all fields populated
 select is(

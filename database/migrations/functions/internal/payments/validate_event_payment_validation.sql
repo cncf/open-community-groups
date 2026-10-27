@@ -16,20 +16,13 @@ declare
     v_payment_validation jsonb := p_event->'_payment_validation';
 begin
     -- Reject snapshots missing, taken for another recipient, or contradicting the tax settings
-    if v_payment_validation is null
-       or not (v_payment_validation ? 'expected_payment_recipient')
-       or not (v_payment_validation ? 'validated_payment_recipient')
-       or not (v_payment_validation ? 'require_automatic_tax')
-       or p_payment_recipient is distinct from nullif(
-           v_payment_validation->'expected_payment_recipient',
-           'null'::jsonb
-       )
-       or p_payment_recipient is distinct from nullif(
-           v_payment_validation->'validated_payment_recipient',
-           'null'::jsonb
+    if not payment_validation_snapshot_matches(
+           v_payment_validation,
+           p_payment_recipient,
+           p_payment_recipient
        )
        or (
-           coalesce(nullif(p_event->>'tax_calculation_mode', ''), 'automatic') = 'automatic'
+           p_tax_calculation_mode = 'automatic'
            and not (v_payment_validation->>'require_automatic_tax')::boolean
        )
        or (

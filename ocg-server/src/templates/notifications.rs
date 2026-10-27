@@ -828,24 +828,36 @@ impl NotificationTemplate for EventRefundRequested {
 }
 
 /// Template for event reminder notification.
+///
+/// The template data is stored by the `enqueue_due_event_reminders` database
+/// function, with `link` and `dashboard_link` relative to the site root.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_reminder.html")]
 pub(crate) struct EventReminder {
     /// Event summary data.
     pub event: EventSummary,
-    /// Link to the event page.
+    /// Link to the event page, stored relative to the site root.
     pub link: String,
     /// Whether to show attendance cancellation copy.
     pub show_attendance_cancellation_copy: bool,
     /// Theme configuration for the community.
     pub theme: Theme,
 
-    /// Link to the user dashboard events page.
+    /// Link to the user dashboard events page, stored relative to the site
+    /// root.
     #[serde(default)]
     pub dashboard_link: Option<String>,
 }
 
 impl NotificationTemplate for EventReminder {
+    /// [`NotificationTemplate::complete_urls`].
+    fn complete_urls(&mut self, base_url: &str) {
+        complete_local_url(&mut self.link, base_url);
+        if let Some(dashboard_link) = self.dashboard_link.as_mut() {
+            complete_local_url(dashboard_link, base_url);
+        }
+    }
+
     /// [`NotificationTemplate::subject`].
     fn subject(&self) -> String {
         scoped_subject(

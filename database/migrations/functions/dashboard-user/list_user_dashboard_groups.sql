@@ -82,4 +82,4 @@ returns json as $$
         'total',
         (select count(*)::int from group_rows)
     );
-$$ language sql;
+$$ language sql stable;

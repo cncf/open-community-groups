@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(41);
+select plan(43);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,7 @@ select plan(41);
 \set communityID '3a020000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a020000-0000-0000-0000-000000000011'
 \set groupCategoryID '3a020000-0000-0000-0000-000000000010'
+\set groupDeletedID '3a020000-0000-0000-0000-0000000000c0'
 \set groupExternalID '3a020000-0000-0000-0000-0000000000a0'
 \set groupExternalNamelessID '3a020000-0000-0000-0000-0000000000b1'
 \set groupID '3a020000-0000-0000-0000-000000000002'
@@ -77,6 +78,13 @@ select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object(
 -- Group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_add_event", "seller_display_name": "Add Event Fiscal Sponsor"}'::jsonb));
 
+-- Soft-deleted group rejected before any event is created
+select fx_group(:'groupDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true,
+    'deleted_at', current_timestamp
+));
+
 -- Allowlisted group with external payments enabled for paid external creates
 select fx_group(:'groupExternalID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'country_code', 'KR',
@@ -113,6 +121,24 @@ values
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reject event creation in a soft-deleted group
+select throws_ok(
+    format(
+        $$select add_event(null::uuid, %L::uuid, %L::jsonb)$$,
+        :'groupDeletedID',
+        jsonb_build_object(
+            'category_id', :'eventCategoryID',
+            'description', 'Deleted group event',
+            'kind_id', 'in-person',
+            'name', 'Deleted Group Event',
+            'timezone', 'UTC'
+        )
+    ),
+    'OCG01',
+    'group not found or inactive',
+    'Should reject event creation in a soft-deleted group'
+);
 
 -- Should reject event creation validated against a stale sponsor
 select throws_ok(
@@ -162,22 +188,24 @@ select throws_ok(
 );
 
 -- Should create event with minimal required fields and return expected structure
+select add_event(
+    null::uuid,
+    :'groupID'::uuid,
+    jsonb_build_object(
+        'category_id', :'eventCategoryID',
+        'description', 'Learn the basics of Kubernetes deployment and management',
+        'kind_id', 'in-person',
+        'name', 'Kubernetes Fundamentals Workshop',
+        'timezone', 'America/New_York'
+    )
+) as "minimalEventID" \gset
+
 select ok(
     (select (
         get_event_full(
             :'communityID'::uuid,
             :'groupID'::uuid,
-            add_event(
-                null::uuid,
-                :'groupID'::uuid,
-                jsonb_build_object(
-                    'category_id', :'eventCategoryID',
-                    'description', 'Learn the basics of Kubernetes deployment and management',
-                    'kind_id', 'in-person',
-                    'name', 'Kubernetes Fundamentals Workshop',
-                    'timezone', 'America/New_York'
-                )
-            )
+            :'minimalEventID'::uuid
         )::jsonb - 'cohosts' - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'ticket_types'
     )) = '{
         "attendee_count": 0,
@@ -1097,6 +1125,76 @@ select is(
         "venue_zip_code": "94105"
     }'::jsonb,
     'Should persist paid hybrid ticketing and its complete physical venue'
+);
+
+-- Should normalize exclusive display on a paid event that collects no tax
+select add_event(
+    null::uuid,
+    :'groupID'::uuid,
+    format(
+        '{
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_add_event",
+                    "seller_display_name": "Add Event Fiscal Sponsor"
+                },
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_add_event",
+                    "seller_display_name": "Add Event Fiscal Sponsor"
+                }
+            },
+            "name": "Paid No-Tax Event",
+            "description": "Test",
+            "timezone": "UTC",
+            "category_id": "%s",
+            "kind_id": "in-person",
+            "payment_currency_code": "USD",
+            "tax_behavior": "exclusive",
+            "tax_calculation_mode": "none",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "event_ticket_type_id": "3a020000-0000-0000-0000-000000000099",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 2500,
+                            "event_ticket_price_window_id": "3a020000-0000-0000-0000-00000000009a"
+                        }
+                    ],
+                    "seats_total": 25,
+                    "title": "General admission"
+                }
+            ],
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_zip_code": "94105"
+        }',
+        :'eventCategoryID'
+    )::jsonb,
+    null::jsonb,
+    'stripe'
+) as "paidNoTaxEventID" \gset
+
+select is(
+    (
+        select jsonb_build_object(
+            'tax_behavior', e.tax_behavior,
+            'tax_calculation_mode', e.tax_calculation_mode
+        )
+        from event e
+        where e.event_id = :'paidNoTaxEventID'::uuid
+    ),
+    '{
+        "tax_behavior": "inclusive",
+        "tax_calculation_mode": "none"
+    }'::jsonb,
+    'Should normalize exclusive display on a paid event that collects no tax'
 );
 
 -- Should create an all-zero ticketed event without payment configuration

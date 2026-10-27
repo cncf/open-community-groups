@@ -396,9 +396,9 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         venue_name: Some("Sample Venue".to_string()),
         venue_state_code: Some("MA".to_string()),
         venue_state_name: Some("Massachusetts".to_string()),
+        venue_zip_code: Some("02101".to_string()),
         waitlist_count: 0,
         waitlist_enabled: false,
-        zip_code: Some("02101".to_string()),
     }
 }
 

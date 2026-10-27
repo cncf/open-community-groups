@@ -34,4 +34,4 @@ create or replace function user_has_group_permission(
           and ct.accepted = true
           and crgp.group_permission_id = p_permission
     );
-$$ language sql;
+$$ language sql stable;

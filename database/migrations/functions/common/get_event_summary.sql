@@ -17,6 +17,7 @@ returns json as $$
         'group_name', g.name,
         'group_slug', g.slug,
         'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
+        -- Report whether another live event shares the series
         'has_related_events', exists (
             select 1
             from event related_event
@@ -43,8 +44,25 @@ returns json as $$
         'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
         'longitude', st_x(e.location::geometry),
         'meeting_join_instructions', e.meeting_join_instructions,
-        'meeting_join_url', coalesce(m_event.join_url, e.meeting_join_url),
-        'meeting_password', m_event.password,
+        -- Show the provider link only while the automatic meeting is requested
+        'meeting_join_url', case
+            -- Use the provider link of a requested meeting
+            when e.meeting_requested
+            then m_event.join_url
+            -- Otherwise use the stored manual link
+            else e.meeting_join_url
+        end,
+        -- Show the provider password only alongside a link to the provider meeting
+        'meeting_password', case
+            -- Use the provider password of a requested meeting
+            when e.meeting_requested
+            then m_event.password
+            -- Keep the provider password of a manual link to the provider meeting
+            when e.meeting_join_url = m_event.join_url
+            then m_event.password
+            -- Otherwise hide the password of an unrelated or missing link
+            else null
+        end,
         'meeting_provider', e.meeting_provider_id,
         'payment_currency_code', e.payment_currency_code,
         'registration_ends_at', epoch_seconds(e.registration_ends_at),
@@ -58,14 +76,16 @@ returns json as $$
         'venue_name', e.venue_name,
         'venue_state_code', e.venue_state_code,
         'venue_state_name', e.venue_state_name,
+        'venue_zip_code', e.venue_zip_code,
         'waitlist_count', coalesce(ew.waitlist_count, 0),
         'waitlist_enabled', e.waitlist_enabled,
-        'zip_code', e.venue_zip_code,
 
         -- Include computed capacity values
         'remaining_capacity',
             case
+                -- Leave remaining capacity unset for unlimited events
                 when e.capacity is null then null
+                -- Otherwise subtract occupied seats without going negative
                 else greatest(e.capacity - coalesce(ea.attendee_count, 0), 0)
             end
     )) as json_data
@@ -83,4 +103,4 @@ returns json as $$
     where e.event_id = p_event_id
     and g.group_id = p_group_id
     and g.community_id = p_community_id;
-$$ language sql;
+$$ language sql stable;

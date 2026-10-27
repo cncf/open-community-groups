@@ -5,13 +5,15 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '3a170000-0000-0000-0000-000000000001'
+\set deletedEventID '3a170000-0000-0000-0000-000000000021'
+\set deletedEventSubmissionID '3a170000-0000-0000-0000-000000000022'
 \set eventCategoryID '3a170000-0000-0000-0000-000000000002'
 \set eventID '3a170000-0000-0000-0000-000000000003'
 \set eventNoApprovedID '3a170000-0000-0000-0000-000000000004'
@@ -19,6 +21,7 @@ select plan(2);
 \set groupID '3a170000-0000-0000-0000-000000000006'
 \set labelAlphaID '3a170000-0000-0000-0000-000000000019'
 \set labelZetaID '3a170000-0000-0000-0000-000000000018'
+\set otherGroupID '3a170000-0000-0000-0000-000000000020'
 \set proposal1ID '3a170000-0000-0000-0000-000000000007'
 \set proposal2ID '3a170000-0000-0000-0000-000000000008'
 \set proposal3ID '3a170000-0000-0000-0000-000000000009'
@@ -35,16 +38,23 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, event categories, users and groups
+-- Community
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'user3ID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Users
+-- Speaker of the alpha talk
 select fx_user(:'user1ID', jsonb_build_object('name', 'Alice'));
+
+-- Speaker of the beta talk
 select fx_user(:'user2ID', jsonb_build_object('name', 'Bob'));
+
+-- Speaker of the gamma talk
+select fx_user(:'user3ID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Session proposals
 insert into session_proposal (
@@ -84,6 +94,12 @@ insert into session_proposal (
         :'user3ID'
     );
 
+-- Group owning the events
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Group that owns none of the events
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
+
 -- Event
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'description', 'Event description',
@@ -96,6 +112,9 @@ select fx_event(:'eventNoApprovedID', :'groupID', :'eventCategoryID', jsonb_buil
     'published', true
 ));
 
+-- Deleted event of the owning group
+select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('deleted', true));
+
 -- CFS submissions
 insert into cfs_submission (
     cfs_submission_id,
@@ -107,7 +126,8 @@ insert into cfs_submission (
     (:'submission2ID', :'eventID', :'proposal2ID', 'approved'),
     (:'submission3ID', :'eventID', :'proposal3ID', 'rejected'),
     (:'submission4ID', :'eventNoApprovedID', :'proposal1ID', 'not-reviewed'),
-    (:'submission5ID', :'eventNoApprovedID', :'proposal2ID', 'rejected');
+    (:'submission5ID', :'eventNoApprovedID', :'proposal2ID', 'rejected'),
+    (:'deletedEventSubmissionID', :'deletedEventID', :'proposal1ID', 'approved');
 
 -- Label sorted first by name despite its larger identifier
 insert into event_label (event_label_id, color, event_id, name)
@@ -129,7 +149,7 @@ values
 
 -- Should list approved submissions with label IDs ordered by label name
 select is(
-    list_event_approved_cfs_submissions(:'eventID'::uuid)::jsonb,
+    list_event_approved_cfs_submissions(:'groupID'::uuid, :'eventID'::uuid)::jsonb,
     jsonb_build_array(
         jsonb_build_object(
             'cfs_submission_id', :'submission1ID'::uuid,
@@ -149,9 +169,23 @@ select is(
     'Should list approved submissions with label IDs ordered by label name'
 );
 
+-- Should return empty list for deleted events
+select is(
+    list_event_approved_cfs_submissions(:'groupID'::uuid, :'deletedEventID'::uuid)::jsonb,
+    '[]'::jsonb,
+    'Should return empty list for deleted events'
+);
+
+-- Should return empty list for events outside the group
+select is(
+    list_event_approved_cfs_submissions(:'otherGroupID'::uuid, :'eventID'::uuid)::jsonb,
+    '[]'::jsonb,
+    'Should return empty list for events outside the group'
+);
+
 -- Should return empty list when no submissions are approved
 select is(
-    list_event_approved_cfs_submissions(:'eventNoApprovedID'::uuid)::jsonb,
+    list_event_approved_cfs_submissions(:'groupID'::uuid, :'eventNoApprovedID'::uuid)::jsonb,
     '[]'::jsonb,
     'Should return empty list when no submissions are approved'
 );

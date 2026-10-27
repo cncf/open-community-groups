@@ -42,11 +42,12 @@ begin
             raise exception 'credit note has a different provider id';
         end if;
 
+        -- Keep the outcome already recorded for the same provider credit note
         return;
     end if;
 
     -- Validate claim ownership before issuing the credit note
-    if v_job.claim_id <> p_claim_id or v_job.status <> 'processing' then
+    if v_job.claim_id is distinct from p_claim_id or v_job.status <> 'processing' then
         raise exception 'credit-note claim is stale';
     end if;
 

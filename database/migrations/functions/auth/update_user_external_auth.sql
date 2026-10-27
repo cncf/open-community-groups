@@ -44,8 +44,10 @@ begin
         email_verified = true,
         name = coalesce(v_name, name),
         provider = case
+            -- Merge supplied provider metadata into the stored providers
             when p_user ? 'provider' and jsonb_typeof(v_provider) = 'object'
                 then coalesce(provider, '{}'::jsonb) || v_provider
+            -- Keep the stored providers when no metadata is supplied
             else provider
         end
     where user_id = p_user_id
@@ -58,10 +60,7 @@ begin
 
     -- Return an external-auth payload with required defaults
     return (
-        select (
-            get_user_by_id(u.user_id, false)::jsonb
-            || jsonb_build_object('name', coalesce(u.name, ''))
-        )::json
+        select external_auth_user_json(u)
         from "user" u
         where u.user_id = p_user_id
     );

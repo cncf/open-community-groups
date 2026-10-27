@@ -1,13 +1,10 @@
--- Locks an event that is still open to attendee and organizer actions and
--- returns its row. The event must belong to the given community or group,
--- its group must be active, and the event must not be deleted, canceled or
--- already over. Callers that only act on published events pass
--- p_require_published.
+-- Locks an event that accepts enrollment transitions, as defined by
+-- event_accepts_enrollment, and returns its row. The event must belong to the
+-- given community or group.
 create or replace function lock_active_event(
     p_community_id uuid,
     p_group_id uuid,
-    p_event_id uuid,
-    p_require_published boolean
+    p_event_id uuid
 )
 returns event as $$
 declare
@@ -18,6 +15,7 @@ begin
         raise exception 'lock_active_event requires a community or group scope';
     end if;
 
+    -- Lock the scoped event when it still accepts enrollment transitions
     select e.*
     into v_event
     from event e
@@ -25,20 +23,15 @@ begin
     where e.event_id = p_event_id
     and (p_community_id is null or g.community_id = p_community_id)
     and (p_group_id is null or e.group_id = p_group_id)
-    and g.active = true
-    and e.deleted = false
-    and e.canceled = false
-    and (not p_require_published or e.published = true)
-    and (
-        event_effective_ends_at(e) is null
-        or event_effective_ends_at(e) >= current_timestamp
-    )
+    and event_accepts_enrollment(e, g)
     for update of e;
 
+    -- Reject events outside the scope or no longer accepting enrollment
     if not found then
         raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
+    -- Return the locked event row
     return v_event;
 end;
 $$ language plpgsql;

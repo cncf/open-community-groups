@@ -588,8 +588,8 @@ async fn db_contracts_cfs_session_link_serializes_submission_rejection() -> Resu
     // Check a concurrent rejection cannot pass the session-link share lock
     let lock_err = review_client
         .query_one(
-            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, '{\"label_ids\": [], \"status_id\": \"rejected\"}'::jsonb)",
-            &[&organizer_id(), &event_id(), &cfs_submission_id()],
+            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid, '{\"label_ids\": [], \"status_id\": \"rejected\"}'::jsonb)",
+            &[&organizer_id(), &group_id(), &event_id(), &cfs_submission_id()],
         )
         .await
         .expect_err("submission rejection should wait for the session link lock");
@@ -601,8 +601,8 @@ async fn db_contracts_cfs_session_link_serializes_submission_rejection() -> Resu
     // Check the serialized rejection observes the committed session link
     let linked_err = review_client
         .query_one(
-            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, '{\"label_ids\": [], \"status_id\": \"rejected\"}'::jsonb)",
-            &[&organizer_id(), &event_id(), &cfs_submission_id()],
+            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid, '{\"label_ids\": [], \"status_id\": \"rejected\"}'::jsonb)",
+            &[&organizer_id(), &group_id(), &event_id(), &cfs_submission_id()],
         )
         .await
         .expect_err("linked submissions should remain approved");
@@ -731,6 +731,45 @@ async fn db_contracts_check_in_attendee_by_code_rejects_concurrently_revoked_cod
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_check_in_event_rejects_event_outside_group() -> Result<()> {
+    // Setup the contract database and a user without attendance, so neither
+    // call can mutate state
+    let db = contract_tests_db()?;
+    let non_attendee_user_id = Uuid::new_v4();
+
+    // Check the event passes the scope gate through its own group
+    let owner_err = db
+        .check_in_event(
+            organizer_id(),
+            community_id(),
+            event_id(),
+            group_id(),
+            non_attendee_user_id,
+        )
+        .await
+        .expect_err("users without attendance should be rejected");
+    assert_user_facing_error(&owner_err, "attendance is not confirmed");
+
+    // Check in through another group of the same community
+    let err = db
+        .check_in_event(
+            organizer_id(),
+            community_id(),
+            event_id(),
+            subgroup_id(),
+            non_attendee_user_id,
+        )
+        .await
+        .expect_err("events outside the selected group should be rejected");
+
+    // Check the rejection is user-facing
+    assert_user_facing_error(&err, "event unavailable for check-in");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_check_in_event_serializes_concurrent_transitions() -> Result<()> {
     // Seed one unchecked attendee and open two independent check-in connections
     let pool = contract_tests_pool()?;
@@ -741,6 +780,7 @@ async fn db_contracts_check_in_event_serializes_concurrent_transitions() -> Resu
     let attendee_user_id = cancellation_lock_attendee_id();
     let check_in_community_id = community_id();
     let check_in_event_id = cancellation_lock_event_id();
+    let check_in_group_id = subgroup_id();
     setup_client
         .execute(
             "insert into event_attendee (event_id, user_id, status) values ($1::uuid, $2::uuid, 'confirmed')",
@@ -749,19 +789,20 @@ async fn db_contracts_check_in_event_serializes_concurrent_transitions() -> Resu
         .await?;
 
     // Race both organizer transitions against the same attendee row
-    let check_in_params: [&(dyn ToSql + Sync); 4] = [
+    let check_in_params: [&(dyn ToSql + Sync); 5] = [
         &actor_user_id,
         &check_in_community_id,
         &check_in_event_id,
+        &check_in_group_id,
         &attendee_user_id,
     ];
     let (first_result, second_result) = tokio::join!(
         first_client.query_one(
-            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid)",
             &check_in_params,
         ),
         second_client.query_one(
-            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid)",
             &check_in_params,
         ),
     );
@@ -979,7 +1020,7 @@ async fn db_contracts_get_cfs_submission_notification_data_deserializes() -> Res
 
     // Load notification data through the Rust contract
     let data = db
-        .get_cfs_submission_notification_data(event_id(), cfs_submission_id())
+        .get_cfs_submission_notification_data(group_id(), event_id(), cfs_submission_id())
         .await?;
 
     // Check the submission status and recipient fields
@@ -1583,7 +1624,7 @@ async fn db_contracts_list_event_approved_cfs_submissions_deserializes() -> Resu
     let db = contract_tests_db()?;
 
     // Load approved submissions through the Rust contract
-    let submissions = db.list_event_approved_cfs_submissions(event_id()).await?;
+    let submissions = db.list_event_approved_cfs_submissions(group_id(), event_id()).await?;
 
     // Check proposal and speaker fields
     assert_eq!(submissions.len(), 1);
@@ -1625,7 +1666,9 @@ async fn db_contracts_list_event_cfs_submissions_deserializes() -> Result<()> {
     };
 
     // Load event submissions through the Rust contract
-    let output = db.list_event_cfs_submissions(event_id(), &filters).await?;
+    let output = db
+        .list_event_cfs_submissions(group_id(), event_id(), &filters)
+        .await?;
 
     // Check submission pagination totals and labels
     assert_eq!(output.total, 1);
@@ -2234,6 +2277,67 @@ async fn db_contracts_lock_group_events_serializes_update() -> Result<()> {
         )
         .await?;
     assert!(!updated.get::<_, bool>(0));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_publish_event_reads_group_payment_state_after_group_lock() -> Result<()> {
+    // Setup blocker, publisher, and probe connections
+    let pool = contract_tests_pool()?;
+    let blocker_client = pool.get().await?;
+    let probe_client = pool.get().await?;
+    let publish_uow = contract_unit_of_work().await?;
+    let blocker_backend_pid = blocker_client
+        .query_one("select pg_backend_pid()", &[])
+        .await?
+        .get::<_, i32>(0);
+    let publish_backend_pid: i32 =
+        publish_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+
+    // Clear the seller name while holding the group row lock
+    blocker_client.batch_execute("begin").await?;
+    blocker_client
+        .execute(
+            r#"update "group" set external_payments_seller_display_name = null where group_id = $1::uuid"#,
+            &[&payment_lock_group_id()],
+        )
+        .await?;
+
+    // Start publishing while the seller name change is still uncommitted
+    let publication = tokio::spawn(async move {
+        publish_uow
+            .publish_event(
+                payment_lock_admin_id(),
+                payment_lock_group_id(),
+                payment_lock_event_id(),
+                None,
+                None,
+            )
+            .await
+    });
+    wait_for_backend_blocker(&probe_client, blocker_backend_pid, publish_backend_pid).await?;
+
+    // Commit the change so the waiting publication observes it
+    blocker_client.batch_execute("commit").await?;
+    let err = publication
+        .await?
+        .expect_err("the committed missing seller name should block publication");
+
+    // Check the readiness helpers read the group state after the group lock
+    assert_user_facing_error(
+        &err,
+        "external payments require the legal name of the organization collecting payments",
+    );
+    let published = probe_client
+        .query_one(
+            "select published from event where event_id = $1::uuid",
+            &[&payment_lock_event_id()],
+        )
+        .await?
+        .get::<_, bool>(0);
+    assert!(!published);
 
     Ok(())
 }

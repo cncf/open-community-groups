@@ -21,4 +21,4 @@ returns jsonb as $$
     )
     select nullif(provider, '{}'::jsonb)
     from public_provider;
-$$ language sql;
+$$ language sql stable;

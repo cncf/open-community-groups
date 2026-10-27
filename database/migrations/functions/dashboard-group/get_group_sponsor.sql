@@ -15,4 +15,4 @@ returns json as $$
     from group_sponsor gs
     where gs.group_sponsor_id = p_group_sponsor_id
     and gs.group_id = p_group_id;
-$$ language sql;
+$$ language sql stable;

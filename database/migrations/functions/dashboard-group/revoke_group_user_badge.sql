@@ -70,7 +70,7 @@ begin
     returning * into v_user_badge;
 
     -- Load the site theme used by the notification
-    select theme into v_theme from site limit 1;
+    v_theme := site_theme();
 
     -- Enqueue the recipient notification inside the same database operation
     perform enqueue_notification(

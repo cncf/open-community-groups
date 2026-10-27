@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,8 @@ select plan(5);
 
 \set actorUserID '2c0b0000-0000-0000-0000-000000000007'
 \set communityID '2c0b0000-0000-0000-0000-000000000001'
+\set deletedGroupID '2c0b0000-0000-0000-0000-000000000009'
+\set deletedReferenceGroupCategoryID '2c0b0000-0000-0000-0000-000000000008'
 \set foreignGroupCategoryID '2c0b0000-0000-0000-0000-000000000004'
 \set groupID '2c0b0000-0000-0000-0000-000000000002'
 \set inUseGroupCategoryID '2c0b0000-0000-0000-0000-000000000003'
@@ -23,26 +25,43 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, group category and groups
+-- Community owning the taxonomy under test
 select fx_community(:'communityID');
+
+-- Other community owning the foreign group category
+select fx_community(:'otherCommunityID');
+
+-- Actor recorded in the audit row
+select fx_user(:'actorUserID', jsonb_build_object('username', 'delete-group-category-audit-actor'));
+
+-- Group category referenced only by a deleted group
+select fx_group_category(:'deletedReferenceGroupCategoryID', :'communityID');
+
+-- Group category owned by the other community
+select fx_group_category(:'foreignGroupCategoryID', :'otherCommunityID');
+
+-- Group category referenced by a live group
 select fx_group_category(:'inUseGroupCategoryID', :'communityID');
-select fx_group(:'groupID', :'communityID', :'inUseGroupCategoryID');
 
 -- Unused group category deleted by the success scenario
 select fx_group_category(:'unusedGroupCategoryID', :'communityID', jsonb_build_object('name', 'Security'));
 
--- Other community with its own group category
-select fx_community(:'otherCommunityID');
-select fx_group_category(:'foreignGroupCategoryID', :'otherCommunityID');
+-- Deleted group that still references its category
+select fx_group(
+    :'deletedGroupID',
+    :'communityID',
+    :'deletedReferenceGroupCategoryID',
+    jsonb_build_object('active', false, 'deleted', true)
+);
 
--- Actor recorded in the audit row
-select fx_user(:'actorUserID', jsonb_build_object('username', 'delete-group-category-audit-actor'));
+-- Live group referencing the in-use category
+select fx_group(:'groupID', :'communityID', :'inUseGroupCategoryID');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should block deleting category that is still referenced by groups
+-- Should block deleting group category referenced by groups
 select throws_ok(
     format(
         $$ select delete_group_category(
@@ -58,7 +77,23 @@ select throws_ok(
     'Should block deleting group category referenced by groups'
 );
 
--- Should delete category with no group references
+-- Should block deleting group category referenced only by deleted groups
+select throws_ok(
+    format(
+        $$ select delete_group_category(
+        null::uuid,
+        %L::uuid,
+        %L::uuid
+    ) $$,
+        :'communityID',
+        :'deletedReferenceGroupCategoryID'
+    ),
+    'OCG01',
+    'cannot delete group category in use by groups',
+    'Should block deleting group category referenced only by deleted groups'
+);
+
+-- Should delete an unused group category
 select lives_ok(
     format(
         $$ select delete_group_category(
@@ -117,7 +152,7 @@ select results_eq(
     'Should create the expected audit row'
 );
 
--- Should fail when target category belongs to another community
+-- Should fail when deleting a group category from another community
 select throws_ok(
     format(
         $$ select delete_group_category(

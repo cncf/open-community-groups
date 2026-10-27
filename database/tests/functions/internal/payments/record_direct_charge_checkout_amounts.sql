@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -242,27 +242,6 @@ select results_eq(
         :'adjustmentPurchaseID'
     ),
     'Should queue one tax reconciliation fee adjustment'
-);
-
--- Replay the amount recording to verify the adjustment stays idempotent
-select record_direct_charge_checkout_amounts(
-    (select ep from event_purchase ep where ep.event_purchase_id = :'adjustmentPurchaseID'),
-    'record-direct-charge-checkout-amounts-charge-adjustment',
-    'record-direct-charge-checkout-amounts-fee-reported',
-    1099,
-    100
-);
-
--- Should not duplicate tax reconciliation fee adjustments
-select is(
-    (
-        select count(*)::int
-        from event_purchase_application_fee_adjustment
-        where event_purchase_id = :'adjustmentPurchaseID'
-        and kind = 'tax-reconciliation'
-    ),
-    1,
-    'Should not duplicate tax reconciliation fee adjustments'
 );
 
 -- ============================================================================

@@ -5,21 +5,18 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID 'a5e00012-0000-0000-0000-000000000001'
-\set deletedEventID 'a5e00012-0000-0000-0000-000000000002'
-\set deletedEventSurveyID 'a5e00012-0000-0000-0000-000000000003'
 \set eventCategoryID 'a5e00012-0000-0000-0000-000000000004'
 \set eventID 'a5e00012-0000-0000-0000-000000000005'
 \set foreignGroupID 'a5e00012-0000-0000-0000-000000000006'
 \set groupCategoryID 'a5e00012-0000-0000-0000-000000000007'
 \set groupID 'a5e00012-0000-0000-0000-000000000008'
-\set otherEventID 'a5e00012-0000-0000-0000-000000000009'
 \set plainSurveyID 'a5e00012-0000-0000-0000-00000000000c'
 \set questionID 'a5e00012-0000-0000-0000-00000000000a'
 \set surveyID 'a5e00012-0000-0000-0000-00000000000b'
@@ -43,25 +40,12 @@ select fx_group(:'foreignGroupID', :'communityID', :'groupCategoryID');
 -- Group hosting the surveyed events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Deleted event whose survey is hidden
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'deleted_at', '2025-01-01 10:00:00+00'
-));
-
 -- Event owning the survey
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', '2025-01-01 12:00:00+00',
     'published', true,
     'starts_at', '2025-01-01 10:00:00+00'
 ));
-
--- Event of the same group that does not own the survey
-select fx_event(:'otherEventID', :'groupID', :'eventCategoryID');
-
--- Survey of the deleted event
-insert into event_survey (event_survey_id, event_id, title)
-values (:'deletedEventSurveyID', :'deletedEventID', 'Deleted event survey');
 
 -- Survey without description or opening
 insert into event_survey (event_survey_id, created_at, event_id, title)
@@ -121,25 +105,18 @@ select is(
     'Should return a null description and opening for surveys without them'
 );
 
--- Should return null for deleted events
-select is(
-    get_event_survey(:'groupID'::uuid, :'deletedEventID'::uuid, :'deletedEventSurveyID'::uuid)::jsonb,
-    null,
-    'Should return null for deleted events'
-);
-
--- Should return null for surveys of another event
-select is(
-    get_event_survey(:'groupID'::uuid, :'otherEventID'::uuid, :'surveyID'::uuid)::jsonb,
-    null,
-    'Should return null for surveys of another event'
-);
-
 -- Should return null for surveys of another group
 select is(
     get_event_survey(:'foreignGroupID'::uuid, :'eventID'::uuid, :'surveyID'::uuid)::jsonb,
     null,
     'Should return null for surveys of another group'
+);
+
+-- Should return null without a survey id
+select is(
+    get_event_survey(:'groupID'::uuid, :'eventID'::uuid, null)::jsonb,
+    null,
+    'Should return null without a survey id'
 );
 
 -- Should return the summary with the editor fields

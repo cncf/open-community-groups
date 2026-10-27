@@ -53,4 +53,4 @@ returns json as $$
         'total_admins_accepted', totals.total_admins_accepted
     )
     from totals, members_json;
-$$ language sql;
+$$ language sql stable;

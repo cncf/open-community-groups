@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,7 @@ select plan(21);
 \set eventExpiredOffersID '3a350000-0000-0000-0000-000000000022'
 \set eventID '3a350000-0000-0000-0000-000000000003'
 \set eventGuardedID '3a350000-0000-0000-0000-000000000018'
+\set eventLapsedOfferID '3a350000-0000-0000-0000-000000000030'
 \set eventProtectedID '3a350000-0000-0000-0000-000000000004'
 \set eventPurchaseKeptID '3a350000-0000-0000-0000-00000000002c'
 \set eventRequestedID '3a350000-0000-0000-0000-00000000001d'
@@ -28,6 +29,7 @@ select plan(21);
 \set ticketTypeExpiredOffersID '3a350000-0000-0000-0000-000000000023'
 \set ticketTypeGuardedID '3a350000-0000-0000-0000-000000000019'
 \set ticketTypeGuardedRetainedID '3a350000-0000-0000-0000-000000000028'
+\set ticketTypeLapsedOfferID '3a350000-0000-0000-0000-000000000031'
 \set ticketTypeProtectedID '3a350000-0000-0000-0000-000000000010'
 \set ticketTypeProtectedRetainedID '3a350000-0000-0000-0000-000000000029'
 \set ticketTypePurchaseKeptID '3a350000-0000-0000-0000-00000000002d'
@@ -39,12 +41,16 @@ select plan(21);
 \set offerGuardedID '3a350000-0000-0000-0000-00000000001a'
 \set offerExpiredCheckoutID '3a350000-0000-0000-0000-000000000024'
 \set offerExpiredPendingID '3a350000-0000-0000-0000-000000000025'
+\set offerLapsedID '3a350000-0000-0000-0000-000000000032'
 \set userOfferGuardedID '3a350000-0000-0000-0000-00000000001b'
 \set userQueueGuardedID '3a350000-0000-0000-0000-00000000001c'
 \set userRequestGuardedID '3a350000-0000-0000-0000-00000000001f'
 \set userCompletedID '3a350000-0000-0000-0000-000000000011'
 \set userExpiredCheckoutID '3a350000-0000-0000-0000-000000000026'
 \set userExpiredPendingID '3a350000-0000-0000-0000-000000000027'
+\set userLapsedOfferID '3a350000-0000-0000-0000-000000000033'
+\set userLapsedPurchase1ID '3a350000-0000-0000-0000-000000000034'
+\set userLapsedPurchase2ID '3a350000-0000-0000-0000-000000000035'
 \set userPurchaseKeptID '3a350000-0000-0000-0000-00000000002f'
 \set userRefundPendingID '3a350000-0000-0000-0000-000000000012'
 \set userRefundRecoveryID '3a350000-0000-0000-0000-000000000013'
@@ -70,6 +76,9 @@ select fx_user(:'userRequestGuardedID');
 select fx_user(:'userExpiredCheckoutID');
 select fx_user(:'userExpiredPendingID');
 select fx_user(:'userPurchaseKeptID');
+select fx_user(:'userLapsedOfferID');
+select fx_user(:'userLapsedPurchase1ID');
+select fx_user(:'userLapsedPurchase2ID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events
@@ -81,6 +90,9 @@ select fx_event(:'eventWaitlistRemovalID', :'groupID', :'eventCategoryID', jsonb
 
 -- Event whose only allocated ticket inventory is expired offers
 select fx_event(:'eventExpiredOffersID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+
+-- Event whose tier mixes completed purchases with an unswept lapsed offer
+select fx_event(:'eventLapsedOfferID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Approval event used for pending ticket request guards
 select fx_event(:'eventRequestedID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -149,6 +161,12 @@ select fx_event_ticket_type(:'ticketTypeExpiredOffersID', :'eventExpiredOffersID
     'title', 'Expired offer pass'
 ));
 
+-- Ticket type whose lapsed offer must not offset its purchased seats
+select fx_event_ticket_type(:'ticketTypeLapsedOfferID', :'eventLapsedOfferID', jsonb_build_object(
+    'seats_total', 3,
+    'title', 'Lapsed offer pass'
+));
+
 -- Ticket type owned by another event for cross-parent validation
 select fx_event_ticket_type(:'ticketType3ID', :'eventID', jsonb_build_object(
     'description', 'Workshop access',
@@ -161,63 +179,6 @@ select fx_event_ticket_type(:'ticketType3ID', :'eventID', jsonb_build_object(
 select fx_event_ticket_price_window(:'window1CurrentID', :'ticketType1ID', jsonb_build_object('amount_minor', 2000));
 select fx_event_ticket_price_window(:'window1OldID', :'ticketType1ID', jsonb_build_object('amount_minor', 2500));
 select fx_event_ticket_price_window(:'windowProtectedID', :'ticketTypeProtectedID', jsonb_build_object('amount_minor', 3000));
-
--- Purchases allocating protected ticket inventory
-insert into event_purchase (
-    amount_minor,
-    currency_code,
-    event_id,
-    event_ticket_type_id,
-    status,
-    ticket_title,
-    user_id
-) values
-    (
-        0,
-        'USD',
-        :'eventProtectedID',
-        :'ticketTypeProtectedID',
-        'completed',
-        'Protected pass',
-        :'userCompletedID'
-    ),
-    (
-        0,
-        'USD',
-        :'eventProtectedID',
-        :'ticketTypeProtectedID',
-        'refund-pending',
-        'Protected pass',
-        :'userRefundPendingID'
-    ),
-    (
-        0,
-        'USD',
-        :'eventProtectedID',
-        :'ticketTypeProtectedID',
-        'refund-recovery-pending',
-        'Protected pass',
-        :'userRefundRecoveryID'
-    );
-
--- Purchase on a kept ticket type while a sibling ticket type is removed
-insert into event_purchase (
-    amount_minor,
-    currency_code,
-    event_id,
-    event_ticket_type_id,
-    status,
-    ticket_title,
-    user_id
-) values (
-    0,
-    'USD',
-    :'eventPurchaseKeptID',
-    :'ticketTypePurchaseKeptID',
-    'completed',
-    'Kept pass',
-    :'userPurchaseKeptID'
-);
 
 -- Active offer that prevents deactivating its assigned tier
 insert into admission_offer (
@@ -279,16 +240,25 @@ insert into admission_offer (
         :'userExpiredPendingID'
     );
 
--- Queued user that keeps the selected tier active and public
-insert into event_waitlist (event_id, event_ticket_type_id, user_id)
-values (:'eventGuardedID', :'ticketTypeGuardedID', :'userQueueGuardedID');
-
--- Queued user that prevents removing the selected tier
-insert into event_waitlist (event_id, event_ticket_type_id, user_id)
-values (
-    :'eventWaitlistRemovalID',
-    :'ticketTypeWaitlistRemovalID',
-    :'userQueueGuardedID'
+-- Lapsed active offer without a purchase that reconciliation has not swept
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'offerLapsedID',
+    current_timestamp - interval '2 hours',
+    :'eventLapsedOfferID',
+    :'ticketTypeLapsedOfferID',
+    current_timestamp - interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'userLapsedOfferID'
 );
 
 -- Pending approval request that keeps its selected public tier available
@@ -302,6 +272,104 @@ insert into event_invitation_request (
     :'ticketTypeRequestedID',
     'pending',
     :'userRequestGuardedID'
+);
+
+-- Purchases allocating protected ticket inventory
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values
+    (
+        0,
+        'USD',
+        :'eventProtectedID',
+        :'ticketTypeProtectedID',
+        'completed',
+        'Protected pass',
+        :'userCompletedID'
+    ),
+    (
+        0,
+        'USD',
+        :'eventProtectedID',
+        :'ticketTypeProtectedID',
+        'refund-pending',
+        'Protected pass',
+        :'userRefundPendingID'
+    ),
+    (
+        0,
+        'USD',
+        :'eventProtectedID',
+        :'ticketTypeProtectedID',
+        'refund-recovery-pending',
+        'Protected pass',
+        :'userRefundRecoveryID'
+    );
+
+-- Purchase on a kept ticket type while a sibling ticket type is removed
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    'USD',
+    :'eventPurchaseKeptID',
+    :'ticketTypePurchaseKeptID',
+    'completed',
+    'Kept pass',
+    :'userPurchaseKeptID'
+);
+
+-- Completed purchases allocating the lapsed offer tier inventory
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values
+    (
+        0,
+        'USD',
+        :'eventLapsedOfferID',
+        :'ticketTypeLapsedOfferID',
+        'completed',
+        'Lapsed offer pass',
+        :'userLapsedPurchase1ID'
+    ),
+    (
+        0,
+        'USD',
+        :'eventLapsedOfferID',
+        :'ticketTypeLapsedOfferID',
+        'completed',
+        'Lapsed offer pass',
+        :'userLapsedPurchase2ID'
+    );
+
+-- Queued user that keeps the selected tier active and public
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (:'eventGuardedID', :'ticketTypeGuardedID', :'userQueueGuardedID');
+
+-- Queued user that prevents removing the selected tier
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'eventWaitlistRemovalID',
+    :'ticketTypeWaitlistRemovalID',
+    :'userQueueGuardedID'
 );
 
 -- ============================================================================
@@ -603,6 +671,21 @@ select throws_ok(
     'OCG01',
     'ticket type seats_total (0) cannot be less than current allocated seats (3)',
     'Should reject seat totals below current purchased inventory'
+);
+
+-- Should reject seat totals below purchases on a tier with a lapsed offer
+select throws_ok(
+    format(
+        $$select sync_event_ticket_types(
+            %L::uuid,
+            '[{"active": true, "availability": "public", "event_ticket_type_id": "%s", "order": 1, "price_windows": [], "seats_total": 1, "title": "Lapsed offer pass"}]'::jsonb
+        )$$,
+        :'eventLapsedOfferID',
+        :'ticketTypeLapsedOfferID'
+    ),
+    'OCG01',
+    'ticket type seats_total (1) cannot be less than current allocated seats (2)',
+    'Should reject seat totals below purchases on a tier with a lapsed offer'
 );
 
 -- Should reject deactivating a tier with an active offer

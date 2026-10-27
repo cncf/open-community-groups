@@ -19,6 +19,8 @@ use crate::{
 };
 
 const ACTIVATION_ID: &str = "00000000-0000-0000-0000-00000000c045";
+/// Pre-registered user activated by the email/password contract.
+const ACTIVATION_PASSWORD_ID: &str = "00000000-0000-0000-0000-00000000c048";
 const ACTIVE_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0bd";
 /// Past paid event used by the event analytics contracts.
 const ANALYTICS_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f205";
@@ -122,6 +124,14 @@ const DOCUMENT_CREDIT_NOTE_JOB_ID: &str = "00000000-0000-0000-0000-00000000c135"
 const DOCUMENT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c11b";
 const DOCUMENT_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c11c";
 const DOCUMENT_REFUND_JOB_ID: &str = "00000000-0000-0000-0000-00000000c136";
+/// User who attends the event raced against an offer decline.
+const ENROLLMENT_RACE_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000f370";
+/// User who declines the offer raced against another user's attendance.
+const ENROLLMENT_RACE_DECLINER_ID: &str = "00000000-0000-0000-0000-00000000f371";
+/// Free one-seat event used by the enrollment lock order race.
+const ENROLLMENT_RACE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f372";
+/// Pending approval offer holding the only seat of the enrollment race event.
+const ENROLLMENT_RACE_OFFER_ID: &str = "00000000-0000-0000-0000-00000000f375";
 const EVENT_CATEGORY_ID: &str = "00000000-0000-0000-0000-00000000c013";
 const EVENT_ID: &str = "00000000-0000-0000-0000-00000000c031";
 /// Label assigned to the contract event session and submission.
@@ -189,6 +199,12 @@ const PAID_CANCELLATION_USER_ID: &str = "00000000-0000-0000-0000-00000000c117";
 const PAID_TICKET_PRICE_WINDOW_ID: &str = "00000000-0000-0000-0000-00000000c0d2";
 const PAID_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c0d1";
 const PAST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c032";
+/// Admin of the group payment lock order fixture group.
+const PAYMENT_LOCK_ADMIN_ID: &str = "00000000-0000-0000-0000-00000000f408";
+/// Unpublished paid event of the group payment lock order fixture.
+const PAYMENT_LOCK_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f405";
+/// External-payments group of the group payment lock order fixture.
+const PAYMENT_LOCK_GROUP_ID: &str = "00000000-0000-0000-0000-00000000f404";
 const PRE_REGISTERED_ID: &str = "00000000-0000-0000-0000-00000000c044";
 /// Event fixture whose full capacity sends organizer invitations to the queue.
 const QUEUE_INVITE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c105";
@@ -311,6 +327,11 @@ const WAITLIST_ID: &str = "00000000-0000-0000-0000-00000000c043";
 /// Returns the activation identifier used by the contract fixture.
 pub(super) fn activation_id() -> Uuid {
     parse_uuid(ACTIVATION_ID)
+}
+
+/// Returns the pre-registered user activated by the email/password contract.
+pub(super) fn activation_password_id() -> Uuid {
+    parse_uuid(ACTIVATION_PASSWORD_ID)
 }
 
 /// Returns the active user badge identifier used by the contract fixture.
@@ -781,6 +802,26 @@ pub(super) async fn contract_unit_of_work() -> Result<crate::db::PgUnitOfWork> {
     })
 }
 
+/// Returns the user who attends the enrollment race event.
+pub(super) fn enrollment_race_attendee_id() -> Uuid {
+    parse_uuid(ENROLLMENT_RACE_ATTENDEE_ID)
+}
+
+/// Returns the user who declines the enrollment race offer.
+pub(super) fn enrollment_race_decliner_id() -> Uuid {
+    parse_uuid(ENROLLMENT_RACE_DECLINER_ID)
+}
+
+/// Returns the free one-seat event used by the enrollment lock order race.
+pub(super) fn enrollment_race_event_id() -> Uuid {
+    parse_uuid(ENROLLMENT_RACE_EVENT_ID)
+}
+
+/// Returns the pending approval offer declined by the enrollment race.
+pub(super) fn enrollment_race_offer_id() -> Uuid {
+    parse_uuid(ENROLLMENT_RACE_OFFER_ID)
+}
+
 /// Returns an environment value or its contract-test default.
 pub(super) fn env_or_default(name: &str, default: &str) -> String {
     env::var(name).unwrap_or_else(|_| default.to_string())
@@ -1098,6 +1139,21 @@ pub(super) fn parse_uuid(value: &str) -> Uuid {
 /// Returns the past event identifier used by the contract fixture.
 pub(super) fn past_event_id() -> Uuid {
     parse_uuid(PAST_EVENT_ID)
+}
+
+/// Returns the admin of the group payment lock order fixture group.
+pub(super) fn payment_lock_admin_id() -> Uuid {
+    parse_uuid(PAYMENT_LOCK_ADMIN_ID)
+}
+
+/// Returns the unpublished paid event of the group payment lock order fixture.
+pub(super) fn payment_lock_event_id() -> Uuid {
+    parse_uuid(PAYMENT_LOCK_EVENT_ID)
+}
+
+/// Returns the external-payments group of the group payment lock order fixture.
+pub(super) fn payment_lock_group_id() -> Uuid {
+    parse_uuid(PAYMENT_LOCK_GROUP_ID)
 }
 
 /// Returns the pre-registered attendee identifier used by the contract fixture.

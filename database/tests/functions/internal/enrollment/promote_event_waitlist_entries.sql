@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,15 +13,6 @@ select plan(15);
 
 \set communityID 'f3050000-0000-0000-0000-000000000001'
 \set eventCategoryID 'f3050000-0000-0000-0000-000000000002'
-\set externalGroupID 'f3050000-0000-0000-0000-00000000002b'
-\set externalReadyEventID 'f3050000-0000-0000-0000-00000000002c'
-\set externalReadyPriceWindowID 'f3050000-0000-0000-0000-00000000002d'
-\set externalReadyTicketTypeID 'f3050000-0000-0000-0000-00000000002e'
-\set externalReadyUserID 'f3050000-0000-0000-0000-00000000002f'
-\set externalUnreadyEventID 'f3050000-0000-0000-0000-000000000030'
-\set externalUnreadyPriceWindowID 'f3050000-0000-0000-0000-000000000031'
-\set externalUnreadyTicketTypeID 'f3050000-0000-0000-0000-000000000032'
-\set externalUnreadyUserID 'f3050000-0000-0000-0000-000000000033'
 \set freeEventID 'f3050000-0000-0000-0000-000000000003'
 \set freePriceWindowID 'f3050000-0000-0000-0000-000000000004'
 \set freeTicketTypeID 'f3050000-0000-0000-0000-000000000005'
@@ -71,8 +62,6 @@ select plan(15);
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'externalReadyUserID');
-select fx_user(:'externalUnreadyUserID');
 select fx_user(:'freeUserID');
 select fx_user(:'fullUserID');
 select fx_user(:'fullWaitlistUserID');
@@ -85,17 +74,6 @@ select fx_user(:'privateUserID');
 select fx_user(:'scopedBlockedUserID');
 select fx_user(:'scopedUserID');
 
--- Operator allowlist that makes the external group's country eligible
-insert into external_payments_config (
-    allowed_countries,
-    default_payment_window_hours,
-    max_payment_window_hours
-) values (
-    array['KR']::text[],
-    72,
-    336
-);
-
 -- Group with the matching Stripe recipient used by paid promotions
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'name', 'Promote Waitlist Group',
@@ -104,32 +82,6 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_obje
         'recipient_id', 'acct_promote_waitlist',
         'seller_display_name', 'Promote Waitlist Seller'
     )
-));
-
--- Allowlisted group with external payments ready
-select fx_group(:'externalGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'country_code', 'KR',
-    'external_payments_enabled', true,
-    'external_payments_seller_display_name', 'External Payee Co',
-    'name', 'Promote External Group'
-));
-
--- External-ready paid event promoted without a Stripe provider
-select fx_event(:'externalReadyEventID', :'externalGroupID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/ready-queue',
-    'name', 'Promote External Ready Event',
-    'payment_currency_code', 'KRW',
-    'starts_at', current_timestamp + interval '2 days',
-    'waitlist_enabled', true
-));
-
--- External-marked paid event on a Stripe-ready group that is not externally eligible
-select fx_event(:'externalUnreadyEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/unready-queue',
-    'name', 'Promote External Unready Event',
-    'payment_currency_code', 'USD',
-    'starts_at', current_timestamp + interval '2 days',
-    'waitlist_enabled', true
 ));
 
 -- Free event whose registration close bounds the offer expiry
@@ -161,19 +113,34 @@ select fx_event(:'noPriceEventID', :'groupID', :'eventCategoryID', jsonb_build_o
     'waitlist_enabled', true
 ));
 
--- Paid event blocked while no server provider is configured
+-- Stripe-paid event blocked while its venue is incomplete
 select fx_event(:'paidBlockedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'in-person',
+    'manual_tax_rate_ids', '{}'::text[],
     'name', 'Promote Paid Blocked Event',
     'payment_currency_code', 'USD',
     'starts_at', current_timestamp + interval '2 days',
+    'tax_calculation_mode', 'automatic',
+    'venue_address', '1 Blocked Way',
+    'venue_city', 'Blocked City',
+    'venue_country_code', 'US',
+    'venue_name', 'Blocked Hall',
     'waitlist_enabled', true
 ));
 
--- Paid event promoted when the configured provider matches the group recipient
+-- Stripe-paid event promoted when the full payment readiness rule passes
 select fx_event(:'paidReadyEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'in-person',
+    'manual_tax_rate_ids', '{}'::text[],
     'name', 'Promote Paid Ready Event',
     'payment_currency_code', 'USD',
     'starts_at', current_timestamp + interval '2 days',
+    'tax_calculation_mode', 'automatic',
+    'venue_address', '1 Ready Way',
+    'venue_city', 'Ready City',
+    'venue_country_code', 'US',
+    'venue_name', 'Ready Hall',
+    'venue_zip_code', '12345',
     'waitlist_enabled', true
 ));
 
@@ -190,12 +157,6 @@ select fx_event(:'scopedEventID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'starts_at', current_timestamp + interval '2 days',
     'waitlist_enabled', true
 ));
-
--- External-ready paid ticket tier
-select fx_event_ticket_type(:'externalReadyTicketTypeID', :'externalReadyEventID', jsonb_build_object('seats_total', 1));
-
--- External-marked unready paid ticket tier
-select fx_event_ticket_type(:'externalUnreadyTicketTypeID', :'externalUnreadyEventID', jsonb_build_object('seats_total', 1));
 
 -- Free ticket tier with one queued seat available
 select fx_event_ticket_type(:'freeTicketTypeID', :'freeEventID', jsonb_build_object(
@@ -215,7 +176,7 @@ select fx_event_ticket_type(:'inactiveTicketTypeID', :'inactiveEventID', jsonb_b
 -- No-price ticket tier that keeps the FIFO head queued
 select fx_event_ticket_type(:'noPriceTicketTypeID', :'noPriceEventID', jsonb_build_object('seats_total', 1));
 
--- Paid ticket tier blocked without a configured provider
+-- Paid ticket tier blocked by the incomplete venue
 select fx_event_ticket_type(:'paidBlockedTicketTypeID', :'paidBlockedEventID', jsonb_build_object('seats_total', 1));
 
 -- Paid ticket tier promoted with matching Stripe readiness
@@ -240,12 +201,6 @@ select fx_event_ticket_type(:'scopedBlockedTicketTypeID', :'scopedEventID', json
     'seats_total', 1
 ));
 
--- Paid current price collected through external payments
-select fx_event_ticket_price_window(:'externalReadyPriceWindowID', :'externalReadyTicketTypeID', jsonb_build_object('amount_minor', 5000));
-
--- Paid current price blocked while external payments are not ready
-select fx_event_ticket_price_window(:'externalUnreadyPriceWindowID', :'externalUnreadyTicketTypeID', jsonb_build_object('amount_minor', 5000));
-
 -- Free current price used by the free promotion
 select fx_event_ticket_price_window(:'freePriceWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
 
@@ -255,7 +210,7 @@ select fx_event_ticket_price_window(:'fullPriceWindowID', :'fullTicketTypeID', j
 -- Free current price used by the inactive-tier scenario
 select fx_event_ticket_price_window(:'inactivePriceWindowID', :'inactiveTicketTypeID', jsonb_build_object('amount_minor', 0));
 
--- Paid current price blocked without server payment configuration
+-- Paid current price blocked by the incomplete venue
 select fx_event_ticket_price_window(:'paidBlockedPriceWindowID', :'paidBlockedTicketTypeID', jsonb_build_object('amount_minor', 1000));
 
 -- Paid current price promoted with matching Stripe readiness
@@ -298,16 +253,6 @@ insert into event_waitlist (
     event_ticket_type_id,
     user_id
 ) values (
-    '2024-01-01 00:00:00+00',
-    :'externalReadyEventID',
-    :'externalReadyTicketTypeID',
-    :'externalReadyUserID'
-), (
-    '2024-01-01 00:00:00+00',
-    :'externalUnreadyEventID',
-    :'externalUnreadyTicketTypeID',
-    :'externalUnreadyUserID'
-), (
     '2024-01-01 00:00:00+00',
     :'freeEventID',
     :'freeTicketTypeID',
@@ -363,17 +308,17 @@ insert into event_waitlist (
 -- TESTS
 -- ============================================================================
 
--- Should keep paid queue heads while server payments are unavailable
+-- Should keep a Stripe-paid queue head while the event venue is incomplete
 select is(
     promote_event_waitlist_entries(
         (select e from event e where e.event_id = :'paidBlockedEventID'),
         (select g from "group" g where g.group_id = :'groupID'),
         null,
-        null,
+        'stripe',
         '{}'::jsonb
     ),
     array[]::uuid[],
-    'Should keep paid queue heads while server payments are unavailable'
+    'Should keep a Stripe-paid queue head while the event venue is incomplete'
 );
 
 -- Should keep queue heads whose offer would expire immediately
@@ -387,19 +332,6 @@ select is(
     ),
     array[]::uuid[],
     'Should keep queue heads whose offer would expire immediately'
-);
-
--- Should leave an external-marked unready queue idle even with Stripe configured
-select is(
-    promote_event_waitlist_entries(
-        (select e from event e where e.event_id = :'externalUnreadyEventID'),
-        (select g from "group" g where g.group_id = :'groupID'),
-        null,
-        'stripe',
-        '{}'::jsonb
-    ),
-    array[]::uuid[],
-    'Should leave an external-marked unready queue idle even with Stripe configured'
 );
 
 -- Should leave full ticket tiers queued
@@ -454,19 +386,6 @@ select is(
     'Should limit promotion to the scoped ticket tier'
 );
 
--- Should promote an external-ready paid queue without a Stripe provider
-select is(
-    promote_event_waitlist_entries(
-        (select e from event e where e.event_id = :'externalReadyEventID'),
-        (select g from "group" g where g.group_id = :'externalGroupID'),
-        null,
-        null,
-        '{}'::jsonb
-    ),
-    array[:'externalReadyUserID'::uuid],
-    'Should promote an external-ready paid queue without a Stripe provider'
-);
-
 -- Should promote free public queue heads into pending offers
 select is(
     promote_event_waitlist_entries(
@@ -507,9 +426,8 @@ select set_eq(
                 al.resource_type
             from audit_log al
             where al.action = 'event_ticket_waitlist_offer_created'
-            and al.group_id in (%L::uuid, %L::uuid)
+            and al.group_id = %L::uuid
         $$,
-        :'externalGroupID',
         :'groupID'
     ),
     format(
@@ -528,10 +446,9 @@ select set_eq(
                 'admission_offer'::text as resource_type
             from admission_offer ao
             join event e using (event_id)
-            where e.group_id in (%L::uuid, %L::uuid)
+            where e.group_id = %L::uuid
         $$,
         :'communityID',
-        :'externalGroupID',
         :'groupID'
     ),
     'Should audit every promoted waitlist offer as a system action'
@@ -546,15 +463,14 @@ select set_eq(
             where n.kind = 'event-ticket-waitlist-offer'
             and n.user_id in (%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid)
         $$,
-        :'externalReadyUserID',
         :'freeUserID',
+        :'paidBlockedUserID',
         :'paidReadyUserID',
         :'scopedBlockedUserID',
         :'scopedUserID'
     ),
     format(
-        $$ values (%L::uuid), (%L::uuid), (%L::uuid), (%L::uuid) $$,
-        :'externalReadyUserID',
+        $$ values (%L::uuid), (%L::uuid), (%L::uuid) $$,
         :'freeUserID',
         :'paidReadyUserID',
         :'scopedUserID'
@@ -569,20 +485,16 @@ select set_eq(
             select ao.event_id, ao.user_id, ao.status, ao.expires_at
             from admission_offer ao
             join event e using (event_id)
-            where e.group_id in (%L::uuid, %L::uuid)
+            where e.group_id = %L::uuid
         $$,
-        :'externalGroupID',
         :'groupID'
     ),
     format(
         $$ values
-            (%L::uuid, %L::uuid, 'pending'::text, current_timestamp + interval '24 hours'),
             (%L::uuid, %L::uuid, 'pending'::text, current_timestamp + interval '12 hours'),
             (%L::uuid, %L::uuid, 'pending'::text, current_timestamp + interval '24 hours'),
             (%L::uuid, %L::uuid, 'pending'::text, current_timestamp + interval '24 hours')
         $$,
-        :'externalReadyEventID',
-        :'externalReadyUserID',
         :'freeEventID',
         :'freeUserID',
         :'paidReadyEventID',
@@ -600,9 +512,8 @@ select set_eq(
             select ew.event_id, ew.user_id
             from event_waitlist ew
             join event e using (event_id)
-            where e.group_id in (%L::uuid, %L::uuid)
+            where e.group_id = %L::uuid
         $$,
-        :'externalGroupID',
         :'groupID'
     ),
     format(
@@ -613,11 +524,8 @@ select set_eq(
             (%L::uuid, %L::uuid),
             (%L::uuid, %L::uuid),
             (%L::uuid, %L::uuid),
-            (%L::uuid, %L::uuid),
             (%L::uuid, %L::uuid)
         $$,
-        :'externalUnreadyEventID',
-        :'externalUnreadyUserID',
         :'fullEventID',
         :'fullWaitlistUserID',
         :'inactiveEventID',

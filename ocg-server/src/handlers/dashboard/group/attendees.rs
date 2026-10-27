@@ -308,11 +308,8 @@ pub(crate) async fn manual_check_in(
     State(db): State<DynDB>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate event belongs to the selected group
-    db.get_event_summary(community_id, group_id, event_id).await?;
-
-    // Check in with shared idempotent auditing
-    db.check_in_event(user.user_id, community_id, event_id, user_id)
+    // Check in within the selected group with shared idempotent auditing
+    db.check_in_event(user.user_id, community_id, event_id, group_id, user_id)
         .await?;
 
     Ok(StatusCode::NO_CONTENT)

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(36);
+select plan(40);
 
 -- ============================================================================
 -- VARIABLES
@@ -56,43 +56,33 @@ select plan(36);
 \set group2ID '3a2e0000-0000-0000-0000-000000000012'
 \set groupCategoryID '3a2e0000-0000-0000-0000-000000000013'
 \set groupID '3a2e0000-0000-0000-0000-000000000014'
+\set lapsedExternalHoldEventID '3a2e0000-0000-0000-0000-000000000091'
+\set lapsedExternalHoldPurchaseID '3a2e0000-0000-0000-0000-000000000092'
+\set lapsedExternalHoldTicketTypeID '3a2e0000-0000-0000-0000-000000000093'
+\set lapsedExternalHoldUserID '3a2e0000-0000-0000-0000-000000000094'
 \set missingEventID '3a2e0000-0000-0000-0000-000000000015'
 \set pendingCheckoutUserID '3a2e0000-0000-0000-0000-000000000024'
 \set pendingInvitationOfferID '3a2e0000-0000-0000-0000-000000000063'
-\set progressClaimID '3a2e0000-0000-0000-0000-000000000060'
-\set progressPurchase1ID '3a2e0000-0000-0000-0000-000000000040'
-\set progressPurchase2ID '3a2e0000-0000-0000-0000-000000000041'
-\set progressPurchase3ID '3a2e0000-0000-0000-0000-000000000042'
-\set progressPurchase4ID '3a2e0000-0000-0000-0000-000000000043'
-\set progressPurchase5ID '3a2e0000-0000-0000-0000-000000000044'
-\set progressPurchase6ID '3a2e0000-0000-0000-0000-000000000045'
-\set progressPurchase7ID '3a2e0000-0000-0000-0000-000000000046'
-\set progressPurchase8ID '3a2e0000-0000-0000-0000-000000000047'
-\set progressPurchase9ID '3a2e0000-0000-0000-0000-000000000048'
-\set progressPurchase10ID '3a2e0000-0000-0000-0000-000000000049'
-\set progressPurchase11ID '3a2e0000-0000-0000-0000-000000000050'
-\set progressRefund1ID '3a2e0000-0000-0000-0000-000000000051'
-\set progressRefund1JobID '3a2e0000-0000-0000-0000-000000000080'
-\set progressRefund2ID '3a2e0000-0000-0000-0000-000000000052'
-\set progressRefund2JobID '3a2e0000-0000-0000-0000-000000000081'
-\set progressRefund3ID '3a2e0000-0000-0000-0000-000000000053'
-\set progressRefund3JobID '3a2e0000-0000-0000-0000-000000000082'
-\set progressRefund4ID '3a2e0000-0000-0000-0000-000000000054'
-\set progressRefund4JobID '3a2e0000-0000-0000-0000-000000000083'
-\set progressRefund5ID '3a2e0000-0000-0000-0000-000000000055'
-\set progressRefund5JobID '3a2e0000-0000-0000-0000-000000000084'
-\set progressRefund6ID '3a2e0000-0000-0000-0000-000000000056'
-\set progressRefund6JobID '3a2e0000-0000-0000-0000-000000000085'
-\set progressRefund7ID '3a2e0000-0000-0000-0000-000000000057'
-\set progressRefund7JobID '3a2e0000-0000-0000-0000-000000000086'
-\set progressRefund8ID '3a2e0000-0000-0000-0000-000000000058'
-\set progressRefund8JobID '3a2e0000-0000-0000-0000-000000000087'
-\set progressRefund9ID '3a2e0000-0000-0000-0000-000000000059'
-\set progressRefund9JobID '3a2e0000-0000-0000-0000-000000000088'
-\set progressUser7ID '3a2e0000-0000-0000-0000-000000000033'
-\set progressUser8ID '3a2e0000-0000-0000-0000-000000000034'
+\set progressAwaitingPurchaseID '3a2e0000-0000-0000-0000-000000000040'
+\set progressRecoveryJobID '3a2e0000-0000-0000-0000-000000000081'
+\set progressRecoveryPurchaseID '3a2e0000-0000-0000-0000-000000000041'
+\set progressRecoveryRefundID '3a2e0000-0000-0000-0000-000000000052'
+\set progressRefundedJobID '3a2e0000-0000-0000-0000-000000000080'
+\set progressRefundedPurchaseID '3a2e0000-0000-0000-0000-000000000042'
+\set progressRefundedRefundID '3a2e0000-0000-0000-0000-000000000051'
+\set progressRetryJobID '3a2e0000-0000-0000-0000-000000000083'
+\set progressRetryPurchaseID '3a2e0000-0000-0000-0000-000000000045'
+\set progressRetryRefundID '3a2e0000-0000-0000-0000-000000000054'
 \set questionsAttendeeUserID '3a2e0000-0000-0000-0000-000000000016'
 \set questionsInvitationOfferID '3a2e0000-0000-0000-0000-000000000066'
+\set rankingConfirmedEventID '3a2e0000-0000-0000-0000-000000000095'
+\set rankingConfirmedOfferID '3a2e0000-0000-0000-0000-000000000096'
+\set rankingConfirmedTicketTypeID '3a2e0000-0000-0000-0000-000000000097'
+\set rankingConfirmedUserID '3a2e0000-0000-0000-0000-000000000098'
+\set rankingQuestionsEventID '3a2e0000-0000-0000-0000-000000000099'
+\set rankingQuestionsOfferID '3a2e0000-0000-0000-0000-00000000009a'
+\set rankingQuestionsTicketTypeID '3a2e0000-0000-0000-0000-00000000009b'
+\set rankingQuestionsUserID '3a2e0000-0000-0000-0000-00000000009c'
 \set refundProgressEventID '3a2e0000-0000-0000-0000-000000000031'
 \set refundProgressTicketTypeID '3a2e0000-0000-0000-0000-000000000032'
 \set registrationQuestionID '3a2e0000-0000-0000-0000-000000000017'
@@ -109,21 +99,15 @@ select plan(36);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, users and groups
+-- Community owning the groups, categories and events
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Users exercising abandoned checkout, external offer and refund progress rows
 select fx_user(:'abandonedCheckoutUserID');
 select fx_user(:'externalOfferUserID');
 select fx_user(:'externalReplacementUserID');
 select fx_user(:'externalReregisterUserID');
 select fx_user(:'pendingCheckoutUserID');
-select fx_user(:'progressUser7ID');
-select fx_user(:'progressUser8ID');
-select fx_group(:'group2ID', :'communityID', :'groupCategoryID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
-
--- Event category
-select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
 
 -- Users
 select fx_user(:'user1ID', jsonb_build_object(
@@ -171,9 +155,39 @@ select fx_user(:'focusedEligibleUserID');
 select fx_user(:'focusedOwnerMutedUserID');
 select fx_user(:'focusedUnrelatedMutedUserID');
 
+-- Users used by external payment-pending and completed attendee search rows
+select fx_user(:'externalCompletedUserID', jsonb_build_object(
+    'email', 'external-completed@example.com',
+    'username', 'external-completed'
+));
+select fx_user(:'externalMarkedByUserID', jsonb_build_object('username', 'external-marked-by'));
+select fx_user(:'externalPendingUserID', jsonb_build_object(
+    'email', 'external-pending@example.com',
+    'username', 'external-pending'
+));
+
+-- User whose active attendance predates a declined organizer offer
+select fx_user(:'rankingConfirmedUserID');
+
+-- User whose pending registration questions predate an expired organizer offer
+select fx_user(:'rankingQuestionsUserID');
+
+-- User holding a lapsed external hold without attendance
+select fx_user(:'lapsedExternalHoldUserID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
+
 -- Organizer messages opt-out used by attendee email eligibility
 insert into user_notification_opt_out (notification_category_id, user_id)
 values ('organizer-messages', :'user2ID');
+
+-- Owner group and unrelated group
+select fx_group(:'group2ID', :'communityID', :'groupCategoryID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events
 select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -218,47 +232,37 @@ select fx_event(:'eventQuestionsID', :'groupID', :'eventCategoryID', jsonb_build
     'starts_at', '2030-01-01 10:00:00+00'
 ));
 
--- Ticket types
-select fx_event_ticket_type(:'eventTicketType1ID', :'event1ID', jsonb_build_object(
-    'seats_total', 100,
-    'title', 'General admission'
-));
-select fx_event_ticket_type(:'eventTicketType2ID', :'event2ID', jsonb_build_object(
-    'seats_total', 100,
-    'title', 'VIP'
-));
-select fx_event_ticket_type(:'eventTicketTypePendingCheckoutID', :'eventPendingCheckoutID', jsonb_build_object(
-    'seats_total', 100,
-    'title', 'General admission'
-));
-select fx_event_ticket_type(:'refundProgressTicketTypeID', :'refundProgressEventID', jsonb_build_object(
-    'seats_total', 100,
-    'title', 'Refund progress'
+-- External-marked event exposing payment-pending and externally paid attendees
+select fx_event(:'eventExternalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/search',
+    'published', true,
+    'starts_at', '2030-01-01 10:00:00+00'
 ));
 
--- Admission tiers for events whose ticket details are not under test
-select fx_event_ticket_type(:'attendanceFilterTicketTypeID', :'attendanceFilterEventID');
-select fx_event_ticket_type(:'eventQuestionsTicketTypeID', :'eventQuestionsID');
-select fx_event_ticket_type(:'eventStopwordSearchTicketTypeID', :'eventStopwordSearchID');
-select fx_event_ticket_type(:'focusedTicketTypeID', :'focusedEventID');
+-- External-marked event whose only enrollment is a lapsed external hold
+select fx_event(:'lapsedExternalHoldEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/lapsed',
+    'published', true,
+    'starts_at', '2030-01-01 10:00:00+00'
+));
 
--- Discount codes
-insert into event_discount_code (
-    event_discount_code_id,
-    amount_minor,
-    code,
-    event_id,
-    kind,
-    title
-)
-values (
-    :'eventDiscountCode1ID',
-    500,
-    'SAVE5',
-    :'event1ID',
-    'fixed_amount',
-    'Launch discount'
-);
+-- Event ranking active attendance against a newer declined offer
+select fx_event(:'rankingConfirmedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true
+));
+
+-- Event ranking pending registration questions against a newer expired offer
+select fx_event(:'rankingQuestionsEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true
+));
+
+-- Owner group mute excluding one focused attendee from organizer email
+insert into user_group_notification_mute (group_id, user_id)
+values (:'groupID', :'focusedOwnerMutedUserID');
+
+-- Unrelated group mute that should not exclude the focused attendee
+insert into user_group_notification_mute (group_id, user_id)
+values (:'group2ID', :'focusedUnrelatedMutedUserID');
 
 -- Attendees
 insert into event_attendee (
@@ -334,13 +338,166 @@ values
     (:'focusedEventID', 'confirmed', :'focusedOwnerMutedUserID'),
     (:'focusedEventID', 'confirmed', :'focusedUnrelatedMutedUserID');
 
--- Owner group mute excluding one focused attendee from organizer email
-insert into user_group_notification_mute (group_id, user_id)
-values (:'groupID', :'focusedOwnerMutedUserID');
+-- Attendee with registration answers returned by attendee search
+insert into event_attendee (event_id, user_id, status, registration_answers)
+values (
+    :'eventQuestionsID',
+    :'questionsAttendeeUserID',
+    'confirmed',
+    jsonb_build_object(
+        'answers',
+        jsonb_build_array(jsonb_build_object(
+            'question_id', :'registrationQuestionID',
+            'value', 'Attendee answer'
+        ))
+    )
+);
 
--- Unrelated group mute that should not exclude the focused attendee
-insert into user_group_notification_mute (group_id, user_id)
-values (:'group2ID', :'focusedUnrelatedMutedUserID');
+-- Active and canceled attendees used to verify attendance filters
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    status,
+    user_id
+) values
+    (null, null, :'attendanceFilterEventID', 'confirmed', :'user1ID'),
+    (current_timestamp, :'user2ID', :'attendanceFilterEventID', 'attendance-canceled', :'user2ID');
+
+-- Canceled attendees exposing refund progress and abandoned checkout states
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    status,
+    user_id
+) values
+    (current_timestamp, :'abandonedCheckoutUserID', :'refundProgressEventID', 'attendance-canceled', :'abandonedCheckoutUserID'),
+    (current_timestamp, :'user1ID', :'refundProgressEventID', 'attendance-canceled', :'user1ID'),
+    (current_timestamp, :'user2ID', :'refundProgressEventID', 'attendance-canceled', :'user2ID'),
+    (current_timestamp, :'user3ID', :'refundProgressEventID', 'attendance-canceled', :'user3ID'),
+    (current_timestamp, :'user6ID', :'refundProgressEventID', 'attendance-canceled', :'user6ID');
+
+-- Confirmed attendee holding the completed external purchase
+insert into event_attendee (
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-01-09 00:00:00+00',
+    :'eventExternalID',
+    'confirmed',
+    :'externalCompletedUserID'
+);
+
+-- Previously canceled attendee who later reserved a new external hold
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-01-07 00:00:00+00',
+    :'externalReregisterUserID',
+    '2024-01-07 00:00:00+00',
+    :'eventExternalID',
+    'attendance-canceled',
+    :'externalReregisterUserID'
+);
+
+-- Confirmed attendee who also holds a pending replacement purchase
+insert into event_attendee (
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-01-09 12:00:00+00',
+    :'eventExternalID',
+    'confirmed',
+    :'externalReplacementUserID'
+);
+
+-- Checked-in attendance revived to confirmed before the declined organizer offer
+insert into event_attendee (
+    checked_in,
+    checked_in_at,
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    true,
+    '2024-02-03 10:00:00+00',
+    '2024-02-01 00:00:00+00',
+    :'rankingConfirmedEventID',
+    'confirmed',
+    :'rankingConfirmedUserID'
+);
+
+-- Pending registration questions created before the expired organizer offer
+insert into event_attendee (created_at, event_id, status, user_id)
+values ('2024-02-01 00:00:00+00', :'rankingQuestionsEventID', 'registration-questions-pending', :'rankingQuestionsUserID');
+
+-- Discount codes
+insert into event_discount_code (
+    event_discount_code_id,
+    amount_minor,
+    code,
+    event_id,
+    kind,
+    title
+)
+values (
+    :'eventDiscountCode1ID',
+    500,
+    'SAVE5',
+    :'event1ID',
+    'fixed_amount',
+    'Launch discount'
+);
+
+-- Ticket types
+select fx_event_ticket_type(:'eventTicketType1ID', :'event1ID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'eventTicketType2ID', :'event2ID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'VIP'
+));
+select fx_event_ticket_type(:'eventTicketTypePendingCheckoutID', :'eventPendingCheckoutID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'refundProgressTicketTypeID', :'refundProgressEventID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'Refund progress'
+));
+
+-- Admission tiers for events whose ticket details are not under test
+select fx_event_ticket_type(:'attendanceFilterTicketTypeID', :'attendanceFilterEventID');
+select fx_event_ticket_type(:'eventQuestionsTicketTypeID', :'eventQuestionsID');
+select fx_event_ticket_type(:'eventStopwordSearchTicketTypeID', :'eventStopwordSearchID');
+select fx_event_ticket_type(:'focusedTicketTypeID', :'focusedEventID');
+
+-- Ticket type for the external attendee search event
+select fx_event_ticket_type(:'eventExternalTicketTypeID', :'eventExternalID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'External admission'
+));
+
+-- Ticket type for the lapsed external hold event
+select fx_event_ticket_type(:'lapsedExternalHoldTicketTypeID', :'lapsedExternalHoldEventID');
+
+-- Ticket type for the declined offer ranking event
+select fx_event_ticket_type(:'rankingConfirmedTicketTypeID', :'rankingConfirmedEventID');
+
+-- Ticket type for the expired offer ranking event
+select fx_event_ticket_type(:'rankingQuestionsTicketTypeID', :'rankingQuestionsEventID');
 
 -- Organizer invitation offers
 insert into admission_offer (
@@ -423,54 +580,79 @@ insert into admission_offer (
     :'user1ID'
 );
 
--- Attendee with registration answers returned by attendee search
-insert into event_attendee (event_id, user_id, status, registration_answers)
-values (
-    :'eventQuestionsID',
-    :'questionsAttendeeUserID',
-    'confirmed',
-    jsonb_build_object(
-        'answers',
-        jsonb_build_array(jsonb_build_object(
-            'question_id', :'registrationQuestionID',
-            'value', 'Attendee answer'
-        ))
-    )
+-- Organizer invitation claimed into a pending external hold
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'externalOfferAdmissionOfferID',
+    5000,
+    '2024-01-11 00:00:00+00',
+    'KRW',
+    0,
+    :'eventExternalID',
+    :'eventExternalTicketTypeID',
+    '2030-01-02 00:00:00+00',
+    'organizer_invitation',
+    'checkout_pending',
+    'External admission',
+    :'externalOfferUserID'
 );
 
--- Active and canceled attendees used to verify attendance filters
-insert into event_attendee (
-    attendance_canceled_at,
-    attendance_canceled_by_user_id,
+-- Declined organizer offer newer than the confirmed attendance
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
     event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
     status,
     user_id
-) values
-    (null, null, :'attendanceFilterEventID', 'confirmed', :'user1ID'),
-    (current_timestamp, :'user2ID', :'attendanceFilterEventID', 'attendance-canceled', :'user2ID');
+) values (
+    :'rankingConfirmedOfferID',
+    '2024-02-02 00:00:00+00',
+    :'rankingConfirmedEventID',
+    :'rankingConfirmedTicketTypeID',
+    '2099-02-02 00:00:00+00',
+    'organizer_invitation',
+    'declined',
+    :'rankingConfirmedUserID'
+);
 
--- Canceled attendees exposing refund progress and abandoned checkout states
-insert into event_attendee (
-    attendance_canceled_at,
-    attendance_canceled_by_user_id,
+-- Expired organizer offer newer than the pending registration questions
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
     event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
     status,
     user_id
-) values
-    (current_timestamp, :'abandonedCheckoutUserID', :'refundProgressEventID', 'attendance-canceled', :'abandonedCheckoutUserID'),
-    (current_timestamp, :'user1ID', :'refundProgressEventID', 'attendance-canceled', :'user1ID'),
-    (current_timestamp, :'user2ID', :'refundProgressEventID', 'attendance-canceled', :'user2ID'),
-    (current_timestamp, :'user3ID', :'refundProgressEventID', 'attendance-canceled', :'user3ID'),
-    (current_timestamp, :'user4ID', :'refundProgressEventID', 'attendance-canceled', :'user4ID'),
-    (current_timestamp, :'user5ID', :'refundProgressEventID', 'attendance-canceled', :'user5ID'),
-    (current_timestamp, :'user6ID', :'refundProgressEventID', 'attendance-canceled', :'user6ID'),
-    (current_timestamp, :'pendingCheckoutUserID', :'refundProgressEventID', 'attendance-canceled', :'pendingCheckoutUserID'),
-    (current_timestamp, :'questionsAttendeeUserID', :'refundProgressEventID', 'attendance-canceled', :'questionsAttendeeUserID'),
-    (current_timestamp, :'userStopwordSearchID', :'refundProgressEventID', 'attendance-canceled', :'userStopwordSearchID'),
-    (current_timestamp, :'progressUser7ID', :'refundProgressEventID', 'attendance-canceled', :'progressUser7ID'),
-    (current_timestamp, :'progressUser8ID', :'refundProgressEventID', 'attendance-canceled', :'progressUser8ID');
+) values (
+    :'rankingQuestionsOfferID',
+    '2024-02-02 00:00:00+00',
+    :'rankingQuestionsEventID',
+    :'rankingQuestionsTicketTypeID',
+    '2024-02-03 00:00:00+00',
+    'organizer_invitation',
+    'expired',
+    :'rankingQuestionsUserID'
+);
 
--- Checkout question row created after the active organizer offer
+-- Checkout question row created after its checkout-pending organizer offer,
+-- inserted after offers because the offer trigger rejects active offers over attendance
 insert into event_attendee (
     created_at,
     event_id,
@@ -640,20 +822,6 @@ insert into event_purchase (
     '{}'::jsonb
 );
 
--- Refund requests
-insert into event_refund_request (
-    event_refund_request_id,
-    event_purchase_id,
-    requested_by_user_id,
-    status
-)
-values (
-    :'eventRefundRequest2ID',
-    :'eventPurchase2ID',
-    :'user2ID',
-    'pending'
-);
-
 -- Purchases representing abandoned checkout, active checkout, and worker-controlled progress
 insert into event_purchase (
     event_purchase_id,
@@ -722,7 +890,7 @@ from (values
         null::timestamptz
     ),
     (
-        :'progressPurchase1ID'::uuid,
+        :'progressAwaitingPurchaseID'::uuid,
         'pending',
         :'user1ID'::uuid,
         current_timestamp + interval '10 minutes',
@@ -730,15 +898,15 @@ from (values
         null::timestamptz
     ),
     (
-        :'progressPurchase2ID'::uuid,
-        'refunded',
+        :'progressRecoveryPurchaseID'::uuid,
+        'refund-pending',
         :'user2ID'::uuid,
         null::timestamptz,
         'pi_progress_2',
-        current_timestamp
+        null::timestamptz
     ),
     (
-        :'progressPurchase3ID'::uuid,
+        :'progressRefundedPurchaseID'::uuid,
         'refunded',
         :'user3ID'::uuid,
         null::timestamptz,
@@ -746,67 +914,11 @@ from (values
         current_timestamp
     ),
     (
-        :'progressPurchase4ID'::uuid,
-        'refund-pending',
-        :'user4ID'::uuid,
-        null::timestamptz,
-        'pi_progress_4',
-        null::timestamptz
-    ),
-    (
-        :'progressPurchase5ID'::uuid,
-        'refund-pending',
-        :'user5ID'::uuid,
-        null::timestamptz,
-        'pi_progress_5',
-        null::timestamptz
-    ),
-    (
-        :'progressPurchase6ID'::uuid,
+        :'progressRetryPurchaseID'::uuid,
         'refund-pending',
         :'user6ID'::uuid,
         null::timestamptz,
         'pi_progress_6',
-        null::timestamptz
-    ),
-    (
-        :'progressPurchase7ID'::uuid,
-        'refund-pending',
-        :'pendingCheckoutUserID'::uuid,
-        null::timestamptz,
-        'pi_progress_7',
-        null::timestamptz
-    ),
-    (
-        :'progressPurchase8ID'::uuid,
-        'refund-pending',
-        :'questionsAttendeeUserID'::uuid,
-        null::timestamptz,
-        'pi_progress_8',
-        null::timestamptz
-    ),
-    (
-        :'progressPurchase9ID'::uuid,
-        'refund-recovery-pending',
-        :'userStopwordSearchID'::uuid,
-        null::timestamptz,
-        'pi_progress_9',
-        null::timestamptz
-    ),
-    (
-        :'progressPurchase10ID'::uuid,
-        'refund-pending',
-        :'progressUser7ID'::uuid,
-        null::timestamptz,
-        'pi_progress_10',
-        null::timestamptz
-    ),
-    (
-        :'progressPurchase11ID'::uuid,
-        'refund-pending',
-        :'progressUser8ID'::uuid,
-        null::timestamptz,
-        'pi_progress_11',
         null::timestamptz
     )
 ) as fixture(
@@ -817,82 +929,6 @@ from (values
     provider_payment_reference,
     refunded_at
 );
-
--- Durable refund jobs representing every provider progress branch
-insert into payment_job (
-    attempt_count,
-    event_purchase_id,
-    idempotency_key,
-    kind,
-    payment_job_id,
-    payment_provider_id,
-    status,
-
-    claim_id,
-    claimed_at,
-    completed_at,
-    failure_message,
-    next_attempt_at
-) values
-    (0, :'progressPurchase3ID', 'search-attendees-progress-refund-1-3a2e', 'event-purchase-refund', :'progressRefund1JobID', 'stripe', 'completed', null, null, current_timestamp, null, current_timestamp),
-    (1, :'progressPurchase4ID', 'search-attendees-progress-refund-2-3a2e', 'event-purchase-refund', :'progressRefund2JobID', 'stripe', 'processing', :'progressClaimID', current_timestamp, null, null, current_timestamp),
-    (1, :'progressPurchase5ID', 'search-attendees-progress-refund-3-3a2e', 'event-purchase-refund', :'progressRefund3JobID', 'stripe', 'pending', null, null, null, null, current_timestamp),
-    (10, :'progressPurchase6ID', 'search-attendees-progress-refund-4-3a2e', 'event-purchase-refund', :'progressRefund4JobID', 'stripe', 'failed', null, null, null, 'Provider refund attempts exhausted', now() + interval '100 years'),
-    (1, :'progressPurchase7ID', 'search-attendees-progress-refund-5-3a2e', 'event-purchase-refund', :'progressRefund5JobID', 'stripe', 'pending', null, null, null, null, now() + interval '100 years'),
-    (1, :'progressPurchase8ID', 'search-attendees-progress-refund-6-3a2e', 'event-purchase-refund', :'progressRefund6JobID', 'stripe', 'pending', null, null, null, null, now() + interval '100 years'),
-    (1, :'progressPurchase9ID', 'search-attendees-progress-refund-7-3a2e', 'event-purchase-refund', :'progressRefund7JobID', 'stripe', 'failed', null, null, null, 'Provider refund terminal failure', now() + interval '100 years'),
-    (10, :'progressPurchase10ID', 'search-attendees-progress-refund-8-3a2e', 'event-purchase-refund', :'progressRefund8JobID', 'stripe', 'failed', null, null, null, 'Provider refund attempts exhausted', now() + interval '100 years'),
-    (1, :'progressPurchase11ID', 'search-attendees-progress-refund-9-3a2e', 'event-purchase-refund', :'progressRefund9JobID', 'stripe', 'failed', null, null, null, 'Provider refund failed', now() + interval '100 years');
-
--- Durable refunds representing every provider progress branch
-insert into event_purchase_refund (
-    amount_minor,
-    currency_code,
-    event_purchase_id,
-    event_purchase_refund_id,
-    kind,
-    payment_job_id,
-    payment_provider_id,
-    status,
-    terminal_failure,
-
-    finalized_at,
-    provider_refund_id,
-    provider_refunded_at
-) values
-    (2500, 'USD', :'progressPurchase3ID', :'progressRefund1ID', 'event-cancellation', :'progressRefund1JobID', 'stripe', 'finalized', false, current_timestamp, 're_progress_1', current_timestamp),
-    (2500, 'USD', :'progressPurchase4ID', :'progressRefund2ID', 'event-cancellation', :'progressRefund2JobID', 'stripe', 'provider-pending', false, null, null, null),
-    (2500, 'USD', :'progressPurchase5ID', :'progressRefund3ID', 'event-cancellation', :'progressRefund3JobID', 'stripe', 'provider-succeeded', false, null, 're_progress_3', current_timestamp),
-    (2500, 'USD', :'progressPurchase6ID', :'progressRefund4ID', 'event-cancellation', :'progressRefund4JobID', 'stripe', 'provider-pending', false, null, null, null),
-    (2500, 'USD', :'progressPurchase7ID', :'progressRefund5ID', 'event-cancellation', :'progressRefund5JobID', 'stripe', 'provider-pending', false, null, 're_progress_5', null),
-    (2500, 'USD', :'progressPurchase8ID', :'progressRefund6ID', 'event-cancellation', :'progressRefund6JobID', 'stripe', 'provider-pending', false, null, null, null),
-    (2500, 'USD', :'progressPurchase9ID', :'progressRefund7ID', 'event-cancellation', :'progressRefund7JobID', 'stripe', 'provider-failed', true, null, 're_progress_7', null),
-    (2500, 'USD', :'progressPurchase10ID', :'progressRefund8ID', 'event-cancellation', :'progressRefund8JobID', 'stripe', 'provider-failed', false, null, null, null),
-    (2500, 'USD', :'progressPurchase11ID', :'progressRefund9ID', 'event-cancellation', :'progressRefund9JobID', 'stripe', 'provider-failed', false, null, null, null);
-
--- Users used by external payment-pending and completed attendee search rows
-select fx_user(:'externalCompletedUserID', jsonb_build_object(
-    'email', 'external-completed@example.com',
-    'username', 'external-completed'
-));
-select fx_user(:'externalMarkedByUserID', jsonb_build_object('username', 'external-marked-by'));
-select fx_user(:'externalPendingUserID', jsonb_build_object(
-    'email', 'external-pending@example.com',
-    'username', 'external-pending'
-));
-
--- External-marked event exposing payment-pending and externally paid attendees
-select fx_event(:'eventExternalID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/search',
-    'published', true,
-    'starts_at', '2030-01-01 10:00:00+00'
-));
-
--- Ticket type for the external attendee search event
-select fx_event_ticket_type(:'eventExternalTicketTypeID', :'eventExternalID', jsonb_build_object(
-    'seats_total', 50,
-    'title', 'External admission'
-));
 
 -- Pending external hold shown as payment-pending
 insert into event_purchase (
@@ -958,36 +994,6 @@ insert into event_purchase (
     :'externalCompletedUserID'
 );
 
--- Confirmed attendee holding the completed external purchase
-insert into event_attendee (
-    created_at,
-    event_id,
-    status,
-    user_id
-) values (
-    '2024-01-09 00:00:00+00',
-    :'eventExternalID',
-    'confirmed',
-    :'externalCompletedUserID'
-);
-
--- Previously canceled attendee who later reserved a new external hold
-insert into event_attendee (
-    attendance_canceled_at,
-    attendance_canceled_by_user_id,
-    created_at,
-    event_id,
-    status,
-    user_id
-) values (
-    '2024-01-07 00:00:00+00',
-    :'externalReregisterUserID',
-    '2024-01-07 00:00:00+00',
-    :'eventExternalID',
-    'attendance-canceled',
-    :'externalReregisterUserID'
-);
-
 -- Pending external hold after re-registration without questionnaire answers
 insert into event_purchase (
     amount_minor,
@@ -1019,19 +1025,6 @@ insert into event_purchase (
     :'externalReregisterUserID'
 );
 
--- Confirmed attendee who also holds a pending replacement purchase
-insert into event_attendee (
-    created_at,
-    event_id,
-    status,
-    user_id
-) values (
-    '2024-01-09 12:00:00+00',
-    :'eventExternalID',
-    'confirmed',
-    :'externalReplacementUserID'
-);
-
 -- Pending external hold that must not duplicate the confirmed attendee
 insert into event_purchase (
     amount_minor,
@@ -1061,35 +1054,6 @@ insert into event_purchase (
     'pending',
     'External admission',
     :'externalReplacementUserID'
-);
-
--- Organizer invitation claimed into a pending external hold
-insert into admission_offer (
-    admission_offer_id,
-    amount_minor,
-    created_at,
-    currency_code,
-    discount_amount_minor,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    ticket_title,
-    user_id
-) values (
-    :'externalOfferAdmissionOfferID',
-    5000,
-    '2024-01-11 00:00:00+00',
-    'KRW',
-    0,
-    :'eventExternalID',
-    :'eventExternalTicketTypeID',
-    '2030-01-02 00:00:00+00',
-    'organizer_invitation',
-    'checkout_pending',
-    'External admission',
-    :'externalOfferUserID'
 );
 
 -- Pending external purchase for the claimed organizer invitation
@@ -1125,6 +1089,91 @@ insert into event_purchase (
     :'externalOfferUserID'
 );
 
+-- Pending external hold that lapsed before being swept
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    '2024-02-01 00:00:00+00',
+    'KRW',
+    :'lapsedExternalHoldEventID',
+    :'lapsedExternalHoldPurchaseID',
+    :'lapsedExternalHoldTicketTypeID',
+    current_timestamp - interval '10 minutes',
+    0,
+    0,
+    'pending',
+    'External admission',
+    :'lapsedExternalHoldUserID'
+);
+
+-- Refund requests
+insert into event_refund_request (
+    event_refund_request_id,
+    event_purchase_id,
+    requested_by_user_id,
+    status
+)
+values (
+    :'eventRefundRequest2ID',
+    :'eventPurchase2ID',
+    :'user2ID',
+    'pending'
+);
+
+-- Durable refund jobs behind the finalized, terminally failed, and exhausted refunds
+insert into payment_job (
+    attempt_count,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status,
+
+    claim_id,
+    claimed_at,
+    completed_at,
+    failure_message,
+    next_attempt_at
+) values
+    (0, :'progressRefundedPurchaseID', 'search-attendees-progress-refund-1-3a2e', 'event-purchase-refund', :'progressRefundedJobID', 'stripe', 'completed', null, null, current_timestamp, null, current_timestamp),
+    (1, :'progressRecoveryPurchaseID', 'search-attendees-progress-refund-2-3a2e', 'event-purchase-refund', :'progressRecoveryJobID', 'stripe', 'failed', null, null, null, 'Provider refund terminal failure', now() + interval '100 years'),
+    (10, :'progressRetryPurchaseID', 'search-attendees-progress-refund-4-3a2e', 'event-purchase-refund', :'progressRetryJobID', 'stripe', 'failed', null, null, null, 'Provider refund attempts exhausted', now() + interval '100 years');
+
+-- Durable refunds exposing finalized, recovery-required, and exhausted refund progress
+insert into event_purchase_refund (
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    event_purchase_refund_id,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status,
+    terminal_failure,
+
+    finalized_at,
+    provider_refund_id,
+    provider_refunded_at
+) values
+    (2500, 'USD', :'progressRefundedPurchaseID', :'progressRefundedRefundID', 'event-cancellation', :'progressRefundedJobID', 'stripe', 'finalized', false, current_timestamp, 're_progress_1', current_timestamp),
+    (2500, 'USD', :'progressRecoveryPurchaseID', :'progressRecoveryRefundID', 'event-cancellation', :'progressRecoveryJobID', 'stripe', 'provider-failed', true, null, 're_progress_2', null),
+    (2500, 'USD', :'progressRetryPurchaseID', :'progressRetryRefundID', 'event-cancellation', :'progressRetryJobID', 'stripe', 'provider-pending', false, null, null, null);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -1155,11 +1204,11 @@ select is(
         :'refundProgressEventID'::uuid,
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb->>'total',
-    '12',
+    '5',
     'Should default to all enrollments for a canceled event'
 );
 
--- Should expose every refund progress state
+-- Should expose each attendee's refund progress
 select is(
     (
         select jsonb_object_agg(
@@ -1176,19 +1225,12 @@ select is(
     ),
     jsonb_build_object(
         :'abandonedCheckoutUserID', null,
-        :'pendingCheckoutUserID', 'processing',
-        :'progressUser7ID', 'retryable-failure',
-        :'progressUser8ID', 'queued',
-        :'questionsAttendeeUserID', 'queued',
         :'user1ID', 'awaiting-checkout',
-        :'user2ID', 'refunded',
+        :'user2ID', 'recovery-required',
         :'user3ID', 'refunded',
-        :'user4ID', 'processing',
-        :'user5ID', 'processing',
-        :'user6ID', 'retryable-failure',
-        :'userStopwordSearchID', 'recovery-required'
+        :'user6ID', 'retryable-failure'
     ),
-    'Should expose every refund progress state'
+    'Should expose each attendee''s refund progress'
 );
 
 -- Should expose refund payment job identifiers with refund progress
@@ -1208,17 +1250,10 @@ select is(
         where attendee ? 'refund_progress'
     ),
     jsonb_build_object(
-        :'pendingCheckoutUserID', :'progressRefund5JobID',
-        :'progressUser7ID', :'progressRefund8JobID',
-        :'progressUser8ID', :'progressRefund9JobID',
-        :'questionsAttendeeUserID', :'progressRefund6JobID',
         :'user1ID', null,
-        :'user2ID', null,
-        :'user3ID', :'progressRefund1JobID',
-        :'user4ID', :'progressRefund2JobID',
-        :'user5ID', :'progressRefund3JobID',
-        :'user6ID', :'progressRefund4JobID',
-        :'userStopwordSearchID', :'progressRefund7JobID'
+        :'user2ID', :'progressRecoveryJobID',
+        :'user3ID', :'progressRefundedJobID',
+        :'user6ID', :'progressRetryJobID'
     ),
     'Should expose refund payment job identifiers with refund progress'
 );
@@ -1345,7 +1380,7 @@ select is(
         :'refundProgressEventID'::uuid,
         '{"limit": 50, "offset": 0, "status": "unknown"}'::jsonb
     )::jsonb->>'total',
-    '12',
+    '5',
     'Should ignore an invalid enrollment status and use the event default'
 );
 
@@ -1770,6 +1805,32 @@ select ok(
     'Should exclude active pending checkout holds from email recipient eligibility'
 );
 
+-- Should exclude lapsed external holds without attendance from email recipients
+select is(
+    (
+        select jsonb_build_object(
+            'can_receive_attendee_email', (data#>>'{attendees,0,can_receive_attendee_email}')::boolean,
+            'enrollment_status', data#>>'{attendees,0,enrollment_status}',
+            'recipient_total', (data->>'all_attendees_email_recipient_total')::int,
+            'total', (data->>'total')::int
+        )
+        from (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'lapsedExternalHoldEventID'::uuid,
+                '{"limit": 50, "offset": 0}'::jsonb
+            )::jsonb as data
+        ) result
+    ),
+    jsonb_build_object(
+        'can_receive_attendee_email', false,
+        'enrollment_status', 'checkout-pending',
+        'recipient_total', 0,
+        'total', 1
+    ),
+    'Should exclude lapsed external holds without attendance from email recipients'
+);
+
 -- Should apply organizer opt-outs and owner group mutes to attendee email eligibility
 select is(
     (
@@ -1998,6 +2059,86 @@ select ok(
         cross join lateral jsonb_array_elements(data->'attendees') attendee
     ),
     'Should keep a confirmed attendee ahead of a replacement external hold'
+);
+
+-- Should keep active attendance ahead of a newer declined organizer offer
+select is(
+    (
+        select jsonb_build_object(
+            'admission_offer_id', data#>>'{attendees,0,admission_offer_id}',
+            'can_receive_attendee_email', (data#>>'{attendees,0,can_receive_attendee_email}')::boolean,
+            'enrollment_status', data#>>'{attendees,0,enrollment_status}',
+            'recipient_total', (data->>'all_attendees_email_recipient_total')::int,
+            'total', (data->>'total')::int,
+            'user_id', data#>>'{attendees,0,user,user_id}'
+        )
+        from (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'rankingConfirmedEventID'::uuid,
+                '{"limit": 50, "offset": 0}'::jsonb
+            )::jsonb as data
+        ) result
+    ),
+    jsonb_build_object(
+        'admission_offer_id', null,
+        'can_receive_attendee_email', true,
+        'enrollment_status', 'confirmed',
+        'recipient_total', 1,
+        'total', 1,
+        'user_id', :'rankingConfirmedUserID'
+    ),
+    'Should keep active attendance ahead of a newer declined organizer offer'
+);
+
+-- Should list active attendance with a newer declined organizer offer as checked in
+select is(
+    (
+        select jsonb_build_object(
+            'checked_in', (data#>>'{attendees,0,checked_in}')::boolean,
+            'enrollment_status', data#>>'{attendees,0,enrollment_status}',
+            'total', (data->>'total')::int,
+            'user_id', data#>>'{attendees,0,user,user_id}'
+        )
+        from (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'rankingConfirmedEventID'::uuid,
+                '{"checked_in": true, "limit": 50, "offset": 0}'::jsonb
+            )::jsonb as data
+        ) result
+    ),
+    jsonb_build_object(
+        'checked_in', true,
+        'enrollment_status', 'confirmed',
+        'total', 1,
+        'user_id', :'rankingConfirmedUserID'
+    ),
+    'Should list active attendance with a newer declined organizer offer as checked in'
+);
+
+-- Should keep pending registration questions ahead of a newer expired organizer offer
+select is(
+    (
+        select jsonb_build_object(
+            'admission_offer_id', data#>>'{attendees,0,admission_offer_id}',
+            'enrollment_status', data#>>'{attendees,0,enrollment_status}',
+            'total', (data->>'total')::int
+        )
+        from (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'rankingQuestionsEventID'::uuid,
+                '{"limit": 50, "offset": 0}'::jsonb
+            )::jsonb as data
+        ) result
+    ),
+    jsonb_build_object(
+        'admission_offer_id', null,
+        'enrollment_status', 'registration-pending',
+        'total', 1
+    ),
+    'Should keep pending registration questions ahead of a newer expired organizer offer'
 );
 
 -- ============================================================================

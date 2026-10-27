@@ -304,7 +304,7 @@ test.describe("notification preferences workflow", () => {
       });
 
       // Run the reminder enqueue step the server worker runs on its schedule.
-      queryE2eDatabase(`select enqueue_due_event_reminders('${buildE2eUrl("/")}');`);
+      queryE2eDatabase("select enqueue_due_event_reminders();");
 
       // Assert only Pending One receives the reminder.
       notificationIds = notificationIds.concat(

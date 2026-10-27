@@ -50,4 +50,4 @@ returns json as $$
         ),
         'total', (select count(*)::integer from filtered)
     );
-$$ language sql;
+$$ language sql stable;

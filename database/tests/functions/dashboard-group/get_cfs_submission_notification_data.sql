@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,11 +14,14 @@ select plan(3);
 \set approvedProposalID '3a0e0000-0000-0000-0000-000000000010'
 \set approvedSubmissionID '3a0e0000-0000-0000-0000-000000000011'
 \set communityID '3a0e0000-0000-0000-0000-000000000001'
+\set deletedEventID '3a0e0000-0000-0000-0000-000000000013'
+\set deletedEventSubmissionID '3a0e0000-0000-0000-0000-000000000014'
 \set eventCategoryID '3a0e0000-0000-0000-0000-000000000002'
 \set eventID '3a0e0000-0000-0000-0000-000000000003'
 \set groupCategoryID '3a0e0000-0000-0000-0000-000000000004'
 \set groupID '3a0e0000-0000-0000-0000-000000000005'
 \set otherEventID '3a0e0000-0000-0000-0000-000000000009'
+\set otherGroupID '3a0e0000-0000-0000-0000-000000000012'
 \set proposalID '3a0e0000-0000-0000-0000-000000000006'
 \set submissionID '3a0e0000-0000-0000-0000-000000000007'
 \set userID '3a0e0000-0000-0000-0000-000000000008'
@@ -27,18 +30,17 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories, users and groups
+-- Community
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Speaker of the submissions
 select fx_user(:'userID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Event receiving the submissions
-select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
 
--- Another event of the same group without submissions
-select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Session proposal with information requested
 insert into session_proposal (
@@ -78,6 +80,21 @@ insert into session_proposal (
     :'userID'
 );
 
+-- Group owning the events
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Group that owns none of the events
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
+
+-- Event receiving the submissions
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
+
+-- Another event of the same group without submissions
+select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
+
+-- Deleted event of the owning group
+select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('deleted', true));
+
 -- CFS submission with an action required message
 insert into cfs_submission (
     cfs_submission_id,
@@ -108,13 +125,26 @@ insert into cfs_submission (
     null
 );
 
+-- CFS submission of the deleted event
+insert into cfs_submission (
+    cfs_submission_id,
+    event_id,
+    session_proposal_id,
+    status_id
+) values (
+    :'deletedEventSubmissionID',
+    :'deletedEventID',
+    :'proposalID',
+    'approved'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should omit the action required message when it is null
 select is(
-    get_cfs_submission_notification_data(:'eventID'::uuid, :'approvedSubmissionID'::uuid)::jsonb,
+    get_cfs_submission_notification_data(:'groupID'::uuid, :'eventID'::uuid, :'approvedSubmissionID'::uuid)::jsonb,
     jsonb_build_object(
         'status_id', 'approved',
         'status_name', 'Approved',
@@ -123,16 +153,30 @@ select is(
     'Should omit the action required message when it is null'
 );
 
+-- Should return null when the event belongs to another group
+select is(
+    get_cfs_submission_notification_data(:'otherGroupID'::uuid, :'eventID'::uuid, :'submissionID'::uuid)::jsonb,
+    null::jsonb,
+    'Should return null when the event belongs to another group'
+);
+
+-- Should return null when the event is deleted
+select is(
+    get_cfs_submission_notification_data(:'groupID'::uuid, :'deletedEventID'::uuid, :'deletedEventSubmissionID'::uuid)::jsonb,
+    null::jsonb,
+    'Should return null when the event is deleted'
+);
+
 -- Should return null when the submission belongs to another event
 select is(
-    get_cfs_submission_notification_data(:'otherEventID'::uuid, :'submissionID'::uuid)::jsonb,
+    get_cfs_submission_notification_data(:'groupID'::uuid, :'otherEventID'::uuid, :'submissionID'::uuid)::jsonb,
     null::jsonb,
     'Should return null when the submission belongs to another event'
 );
 
 -- Should return submission notification data
 select is(
-    get_cfs_submission_notification_data(:'eventID'::uuid, :'submissionID'::uuid)::jsonb,
+    get_cfs_submission_notification_data(:'groupID'::uuid, :'eventID'::uuid, :'submissionID'::uuid)::jsonb,
     jsonb_build_object(
         'status_id', 'information-requested',
         'status_name', 'Information requested',

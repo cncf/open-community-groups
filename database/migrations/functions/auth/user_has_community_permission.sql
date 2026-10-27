@@ -13,4 +13,4 @@ create or replace function user_has_community_permission(
           and ct.accepted = true
           and crcp.community_permission_id = p_permission
     );
-$$ language sql;
+$$ language sql stable;

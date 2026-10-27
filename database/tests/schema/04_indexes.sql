@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(131);
+select plan(132);
 
 -- ============================================================================
 -- TESTS
@@ -313,6 +313,7 @@ select indexes_are('event_purchase', array[
     'event_purchase_event_id_status_idx',
     'event_purchase_event_id_user_id_active_idx',
     'event_purchase_event_ticket_type_id_idx',
+    'event_purchase_pending_hold_expires_at_idx',
     'event_purchase_provider_charge_id_idx',
     'event_purchase_provider_checkout_session_idx',
     'event_purchase_provider_invoice_id_idx',
@@ -338,6 +339,13 @@ select is(
     (select indexdef from pg_indexes where indexname = 'event_purchase_event_ticket_type_id_idx'),
     'CREATE INDEX event_purchase_event_ticket_type_id_idx ON public.event_purchase USING btree (event_ticket_type_id)',
     'event_purchase ticket type index should cover ticket type references'
+);
+
+-- Test: event_purchase pending hold index should be partial on pending purchases
+select is(
+    (select indexdef from pg_indexes where indexname = 'event_purchase_pending_hold_expires_at_idx'),
+    'CREATE INDEX event_purchase_pending_hold_expires_at_idx ON public.event_purchase USING btree (hold_expires_at) WHERE (status = ''pending''::text)',
+    'event_purchase pending hold index should be partial on pending purchases'
 );
 
 -- Test: external_payments_config indexes should match expected
@@ -735,7 +743,8 @@ select indexes_are('session_kind', array[
 
 -- Test: site indexes should match expected
 select indexes_are('site', array[
-    'site_pkey'
+    'site_pkey',
+    'site_singleton_idx'
 ]);
 
 -- Test: user indexes should match expected

@@ -8,7 +8,6 @@ create or replace function queue_event_refund_request_approval(
 returns void as $$
 declare
     v_existing_refund_kind text;
-    v_payment_job_id uuid;
     v_purchase event_purchase;
     v_refund_request_id uuid;
 begin
@@ -95,40 +94,15 @@ begin
         updated_at = current_timestamp
     where event_refund_request_id = v_refund_request_id;
 
-    -- Insert the durable worker job with a stable purchase idempotency key
-    v_payment_job_id := enqueue_payment_job(
-        'event-purchase-refund',
-        v_purchase.payment_provider_id,
-        v_purchase.event_purchase_id,
-        format('event-purchase-refund-%s', v_purchase.event_purchase_id)
+    -- Queue the provider refund unless durable work already exists for the purchase
+    perform enqueue_event_purchase_refund(
+        v_purchase,
+        'refund-request-approval',
+        v_purchase.provider_total_minor,
+        v_refund_request_id,
+        p_actor_user_id,
+        nullif(btrim(p_review_note), '')
     );
-
-    -- Create the refund only when no durable work exists for the purchase
-    if v_payment_job_id is not null then
-        insert into event_purchase_refund (
-            amount_minor,
-            currency_code,
-            event_purchase_id,
-            event_refund_request_id,
-            initiated_by_user_id,
-            kind,
-            payment_job_id,
-            payment_provider_id,
-            review_note,
-            status
-        ) values (
-            v_purchase.provider_total_minor,
-            v_purchase.currency_code,
-            v_purchase.event_purchase_id,
-            v_refund_request_id,
-            p_actor_user_id,
-            'refund-request-approval',
-            v_payment_job_id,
-            v_purchase.payment_provider_id,
-            nullif(btrim(p_review_note), ''),
-            'provider-pending'
-        );
-    end if;
 
     -- Reject a purchase already owned by another refund workflow
     perform 1

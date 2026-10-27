@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -553,6 +553,21 @@ select is(
     'Should return attendee stats excluding attendees of test and unpublished events'
 );
 
+-- Should return domain month labels at UTC under a non-UTC session time zone
+set local time zone 'UTC';
+select get_community_stats(:'communityID'::uuid)::jsonb - 'page_views' as "utcDomainStats" \gset
+
+-- Compare the domain stats, month labels included, with their UTC output
+set local time zone 'America/New_York';
+select is(
+    get_community_stats(:'communityID'::uuid)::jsonb - 'page_views',
+    :'utcDomainStats'::jsonb,
+    'Should return domain month labels at UTC under a non-UTC session time zone'
+);
+
+-- Restore the session time zone
+set local time zone default;
+
 -- Should return event stats excluding canceled, test and unpublished events and co-host credits
 select is(
     get_community_stats(:'communityID'::uuid)::jsonb->'events',
@@ -863,6 +878,32 @@ select is(
     'Should return member stats excluding members of inactive groups'
 );
 
+-- Should return page view month labels from the stored day under a non-UTC session time zone
+set local time zone 'America/New_York';
+select is(
+    get_community_stats(:'communityID'::uuid)::jsonb->'page_views'->'total'->'per_month_views',
+    (
+        -- Month labels of the seeded rows relative to current_timestamp at UTC
+        select jsonb_build_array(
+            jsonb_build_array(to_char(m.m0 - interval '10 months', 'YYYY-MM'), 33),
+            jsonb_build_array(to_char(m.m0 - interval '9 months', 'YYYY-MM'), 8),
+            jsonb_build_array(to_char(m.m0 - interval '8 months', 'YYYY-MM'), 17),
+            jsonb_build_array(to_char(m.m0 - interval '7 months', 'YYYY-MM'), 6),
+            jsonb_build_array(to_char(m.m0 - interval '6 months', 'YYYY-MM'), 6),
+            jsonb_build_array(to_char(m.m0 - interval '4 months', 'YYYY-MM'), 4),
+            jsonb_build_array(to_char(m.m0 - interval '3 months', 'YYYY-MM'), 7),
+            jsonb_build_array(to_char(m.m0, 'YYYY-MM'), 17)
+        )
+        from (
+            select date_trunc('month', current_timestamp at time zone 'UTC') as m0
+        ) m
+    ),
+    'Should return page view month labels from the stored day under a non-UTC session time zone'
+);
+
+-- Restore the session time zone
+set local time zone default;
+
 -- Should return page view stats excluding inactive groups, other communities, test and unpublished events
 select is(
     get_community_stats(:'communityID'::uuid)::jsonb->'page_views',
@@ -883,9 +924,44 @@ select is(
             select current_date as d0
         )
         select jsonb_build_object(
-            'total_views', 98,
+            'community', jsonb_build_object(
+                'per_day_views', jsonb_build_array(
+                    jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 5)
+                ),
+                'per_month_views', jsonb_build_array(
+                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 11),
+                    jsonb_build_array(to_char(m8, 'YYYY-MM'), 9),
+                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 5)
+                ),
+                'total_views', 25
+            ),
+            'events', jsonb_build_object(
+                'per_day_views', jsonb_build_array(
+                    jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 8)
+                ),
+                'per_month_views', jsonb_build_array(
+                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 12),
+                    jsonb_build_array(to_char(m8, 'YYYY-MM'), 8),
+                    jsonb_build_array(to_char(m6, 'YYYY-MM'), 6),
+                    jsonb_build_array(to_char(m4, 'YYYY-MM'), 4),
+                    jsonb_build_array(to_char(m3, 'YYYY-MM'), 7),
+                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 8)
+                ),
+                'total_views', 45
+            ),
+            'groups', jsonb_build_object(
+                'per_day_views', jsonb_build_array(
+                    jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 4)
+                ),
+                'per_month_views', jsonb_build_array(
+                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 10),
+                    jsonb_build_array(to_char(m9, 'YYYY-MM'), 8),
+                    jsonb_build_array(to_char(m7, 'YYYY-MM'), 6),
+                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 4)
+                ),
+                'total_views', 28
+            ),
             'total', jsonb_build_object(
-                'total_views', 98,
                 'per_day_views', jsonb_build_array(
                     jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 17)
                 ),
@@ -898,45 +974,10 @@ select is(
                     jsonb_build_array(to_char(m4, 'YYYY-MM'), 4),
                     jsonb_build_array(to_char(m3, 'YYYY-MM'), 7),
                     jsonb_build_array(to_char(m0, 'YYYY-MM'), 17)
-                )
-            ),
-            'community', jsonb_build_object(
-                'total_views', 25,
-                'per_day_views', jsonb_build_array(
-                    jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 5)
                 ),
-                'per_month_views', jsonb_build_array(
-                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 11),
-                    jsonb_build_array(to_char(m8, 'YYYY-MM'), 9),
-                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 5)
-                )
+                'total_views', 98
             ),
-            'events', jsonb_build_object(
-                'total_views', 45,
-                'per_day_views', jsonb_build_array(
-                    jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 8)
-                ),
-                'per_month_views', jsonb_build_array(
-                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 12),
-                    jsonb_build_array(to_char(m8, 'YYYY-MM'), 8),
-                    jsonb_build_array(to_char(m6, 'YYYY-MM'), 6),
-                    jsonb_build_array(to_char(m4, 'YYYY-MM'), 4),
-                    jsonb_build_array(to_char(m3, 'YYYY-MM'), 7),
-                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 8)
-                )
-            ),
-            'groups', jsonb_build_object(
-                'total_views', 28,
-                'per_day_views', jsonb_build_array(
-                    jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 4)
-                ),
-                'per_month_views', jsonb_build_array(
-                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 10),
-                    jsonb_build_array(to_char(m9, 'YYYY-MM'), 8),
-                    jsonb_build_array(to_char(m7, 'YYYY-MM'), 6),
-                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 4)
-                )
-            )
+            'total_views', 98
         )
         from months, days
     ),
@@ -999,27 +1040,27 @@ select is(
             "per_month_by_group_region": {}
         },
         "page_views": {
-            "total_views": 0,
-            "total": {
-                "total_views": 0,
-                "per_day_views": [],
-                "per_month_views": []
-            },
             "community": {
-                "total_views": 0,
                 "per_day_views": [],
-                "per_month_views": []
+                "per_month_views": [],
+                "total_views": 0
             },
             "events": {
-                "total_views": 0,
                 "per_day_views": [],
-                "per_month_views": []
+                "per_month_views": [],
+                "total_views": 0
             },
             "groups": {
-                "total_views": 0,
                 "per_day_views": [],
-                "per_month_views": []
-            }
+                "per_month_views": [],
+                "total_views": 0
+            },
+            "total": {
+                "per_day_views": [],
+                "per_month_views": [],
+                "total_views": 0
+            },
+            "total_views": 0
         }
     }
     $$::jsonb,

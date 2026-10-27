@@ -10,4 +10,4 @@ create or replace function group_belongs_to_community(
         and g.group_id = p_group_id
         and g.deleted = false
     );
-$$ language sql;
+$$ language sql stable;

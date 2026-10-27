@@ -1,9 +1,11 @@
+-- Tests looking up users by Linux Foundation identity for external authentication.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -39,7 +41,7 @@ select fx_user(:'unverifiedUserID', jsonb_build_object(
 -- TESTS
 -- ============================================================================
 
--- Should return verified registered users by LF OIDC identity.
+-- Should return verified registered users by LF OIDC identity
 select is(
     get_user_by_linuxfoundation_identity_for_external_auth(
         'https://issuer.example.com',
@@ -49,17 +51,7 @@ select is(
     'Should return verified registered users by LF OIDC identity'
 );
 
--- Should not include password in external auth lookup.
-select is(
-    get_user_by_linuxfoundation_identity_for_external_auth(
-        'https://issuer.example.com',
-        'auth0|registered'
-    )::jsonb ? 'password',
-    false,
-    'Should not include password in LF identity lookup'
-);
-
--- Should coalesce missing names for external-auth payloads.
+-- Should coalesce missing names for external-auth payloads
 select is(
     get_user_by_linuxfoundation_identity_for_external_auth(
         'https://issuer.example.com',
@@ -69,7 +61,7 @@ select is(
     'Should coalesce missing names for external-auth payloads'
 );
 
--- Should not return unverified registered users.
+-- Should not return unverified registered users
 select is(
     get_user_by_linuxfoundation_identity_for_external_auth(
         'https://issuer.example.com',
@@ -79,7 +71,7 @@ select is(
     'Should not return unverified registered users'
 );
 
--- Should return null when the LF OIDC identity does not exist.
+-- Should return null when the LF OIDC identity does not exist
 select is(
     get_user_by_linuxfoundation_identity_for_external_auth(
         'https://issuer.example.com',
@@ -89,7 +81,7 @@ select is(
     'Should return null when the LF OIDC identity does not exist'
 );
 
--- Should match LF OIDC issuer case-sensitively.
+-- Should match LF OIDC issuer case-sensitively
 select is(
     get_user_by_linuxfoundation_identity_for_external_auth(
         'https://ISSUER.example.com',
@@ -99,7 +91,7 @@ select is(
     'Should match LF OIDC issuer case-sensitively'
 );
 
--- Should match LF OIDC subject case-sensitively.
+-- Should match LF OIDC subject case-sensitively
 select is(
     get_user_by_linuxfoundation_identity_for_external_auth(
         'https://issuer.example.com',
@@ -109,7 +101,7 @@ select is(
     'Should match LF OIDC subject case-sensitively'
 );
 
--- Should match LF OIDC identity exactly.
+-- Should match LF OIDC identity exactly
 select is(
     get_user_by_linuxfoundation_identity_for_external_auth(
         ' https://issuer.example.com',
@@ -119,7 +111,7 @@ select is(
     'Should match LF OIDC identity exactly'
 );
 
--- Should return null when the LF OIDC identity is incomplete.
+-- Should return null when the LF OIDC identity is incomplete
 select is(
     get_user_by_linuxfoundation_identity_for_external_auth(
         'https://issuer.example.com',

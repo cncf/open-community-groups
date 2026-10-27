@@ -884,6 +884,6 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
         venue_name: None,
         venue_state_code: None,
         venue_state_name: None,
-        zip_code: None,
+        venue_zip_code: None,
     }
 }

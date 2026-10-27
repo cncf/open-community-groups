@@ -1,3 +1,5 @@
+-- Tests syncing verified external-auth identity details for registered users.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -60,27 +62,35 @@ select fx_user(:'userWithoutProviderID', jsonb_build_object(
 -- TESTS
 -- ============================================================================
 
--- Should sync verified external email and return the refreshed user.
+-- Should sync verified external email and return the refreshed user
 select is(
-    update_user_external_auth(
-        :'userID',
-        jsonb_build_object(
-            'email', 'New@Example.com',
-            'name', 'New Name',
-            'provider', jsonb_build_object(
-                'linuxfoundation', jsonb_build_object(
-                    'issuer', 'https://issuer.example.com',
-                    'subject', 'auth0|user',
-                    'username', 'lf-user'
-                )
-            )
+    (
+        select jsonb_build_object(
+            'email', result.payload->>'email',
+            'registration_status', result.payload->>'registration_status'
         )
-    )::jsonb->>'email',
-    'new@example.com',
+        from (
+            select update_user_external_auth(
+                :'userID',
+                jsonb_build_object(
+                    'email', 'New@Example.com',
+                    'name', 'New Name',
+                    'provider', jsonb_build_object(
+                        'linuxfoundation', jsonb_build_object(
+                            'issuer', 'https://issuer.example.com',
+                            'subject', 'auth0|user',
+                            'username', 'lf-user'
+                        )
+                    )
+                )
+            )::jsonb as payload
+        ) as result
+    ),
+    '{"email": "new@example.com", "registration_status": "registered"}'::jsonb,
     'Should sync verified external email and return the refreshed user'
 );
 
--- Should merge provider metadata across providers.
+-- Should merge provider metadata across providers
 select results_eq(
     format($$
         select
@@ -109,7 +119,7 @@ select results_eq(
     'Should merge provider metadata across providers'
 );
 
--- Should allow external email sync without provider metadata.
+-- Should allow external email sync without provider metadata
 select is(
     update_user_external_auth(
         :'userWithoutProviderID',
@@ -119,7 +129,7 @@ select is(
     'Should allow external email sync without provider metadata'
 );
 
--- Should coalesce missing names in returned external-auth payloads.
+-- Should coalesce missing names in returned external-auth payloads
 select is(
     update_user_external_auth(
         :'userWithoutNameID',
@@ -129,7 +139,7 @@ select is(
     'Should coalesce missing names in returned external-auth payloads'
 );
 
--- Should preserve existing values when metadata is not supplied.
+-- Should preserve existing values when metadata is not supplied
 select results_eq(
     format($$
         select
@@ -147,7 +157,7 @@ select results_eq(
     'Should preserve existing values when metadata is not supplied'
 );
 
--- Should reject syncing an email owned by another user.
+-- Should reject syncing an email owned by another user
 select throws_ok(
     format($$ select update_user_external_auth(
         %L::uuid,
@@ -158,7 +168,7 @@ select throws_ok(
     'Should reject syncing an email owned by another user'
 );
 
--- Should treat LF OIDC identity values as exact.
+-- Should treat LF OIDC identity values as exact
 select is(
     update_user_external_auth(
         :'userWithoutProviderID',
@@ -177,7 +187,7 @@ select is(
     'Should treat LF OIDC identity values as exact'
 );
 
--- Should reject syncing an LF OIDC identity owned by another user.
+-- Should reject syncing an LF OIDC identity owned by another user
 select throws_ok(
     format($$ select update_user_external_auth(
         %L::uuid,
@@ -197,7 +207,7 @@ select throws_ok(
     'Should reject syncing an LF OIDC identity owned by another user'
 );
 
--- Should reject pre-registered users.
+-- Should reject pre-registered users
 select throws_ok(
     format($$ select update_user_external_auth(
         %L::uuid,

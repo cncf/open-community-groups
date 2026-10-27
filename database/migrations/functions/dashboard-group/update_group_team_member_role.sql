@@ -6,7 +6,6 @@ create or replace function update_group_team_member_role(
     p_role text
 ) returns void as $$
 declare
-    v_accepted_admins integer;
     v_current_accepted boolean;
     v_current_role text;
 begin
@@ -41,17 +40,11 @@ begin
       and user_id = p_user_id;
 
     -- Prevent demoting the last accepted group admin
-    if v_current_accepted and v_current_role = 'admin' and p_role <> 'admin' then
-        select count(*)::int
-        into v_accepted_admins
-        from group_team gt
-        where gt.group_id = p_group_id
-          and gt.accepted = true
-          and gt.role = 'admin';
-
-        if v_accepted_admins = 0 then
-            raise exception 'cannot change role for the last accepted group admin' using errcode = 'OCG01';
-        end if;
+    if v_current_accepted
+       and v_current_role = 'admin'
+       and p_role <> 'admin'
+       and not group_team_has_other_accepted_admin(p_group_id, p_user_id) then
+        raise exception 'cannot change role for the last accepted group admin' using errcode = 'OCG01';
     end if;
 
     -- Track the role update
@@ -60,10 +53,8 @@ begin
         p_actor_user_id,
         'user',
         p_user_id,
-        (select community_id from "group" where group_id = p_group_id),
-        p_group_id,
-        null,
-        jsonb_build_object('role', p_role)
+        p_group_id => p_group_id,
+        p_details => jsonb_build_object('role', p_role)
     );
 end;
 $$ language plpgsql;

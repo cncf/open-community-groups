@@ -1,31 +1,30 @@
--- Validates payment readiness for paid-capable ticket configuration.
+-- Validates payment readiness for the paid-capable ticket configuration of
+-- an event row, as resolved for a mutation or locked from storage.
 create or replace function validate_event_ticketing_payment_readiness(
     p_configured_provider text,
     p_paid_capable boolean,
     p_payment_currency_code text,
     p_payment_recipient jsonb,
-    p_event_id uuid default null,
-    p_event_payload jsonb default null,
+    p_event event,
     p_external_mode boolean default false,
-    p_external_payment_url text default null,
-    p_external_window_hours int default null,
     p_group_country_code text default null
 )
 returns void as $$
 declare
-    v_event_kind_id text;
-    v_external_payment_url text := nullif(btrim(p_external_payment_url), '');
-    v_manual_tax_rate_ids text[];
+    v_event_kind_id text := p_event.event_kind_id;
+    v_external_payment_url text := nullif(btrim(p_event.external_payment_url), '');
+    v_external_window_hours int := p_event.external_payment_window_hours;
+    v_manual_tax_rate_ids text[] := coalesce(p_event.manual_tax_rate_ids, '{}'::text[]);
     v_max_window_hours int;
-    v_tax_behavior text;
-    v_tax_calculation_mode text;
-    v_venue_snapshot jsonb;
+    v_tax_behavior text := p_event.tax_behavior;
+    v_tax_calculation_mode text := p_event.tax_calculation_mode;
+    v_venue_snapshot jsonb := event_venue_snapshot(p_event);
 begin
     -- Reject leftover external fields when the group is not in external mode
     if p_external_mode is not true
        and (
            v_external_payment_url is not null
-           or p_external_window_hours is not null
+           or v_external_window_hours is not null
        ) then
         raise exception 'external payment fields require external payments mode' using errcode = 'OCG01';
     end if;
@@ -33,7 +32,7 @@ begin
     -- Skip payment requirements when every configured ticket price is zero
     if p_paid_capable is not true then
         -- Reject leftover external fields on unpaid events
-        if v_external_payment_url is not null or p_external_window_hours is not null then
+        if v_external_payment_url is not null or v_external_window_hours is not null then
             raise exception 'external payment fields require paid-capable ticketing' using errcode = 'OCG01';
         end if;
 
@@ -68,10 +67,10 @@ begin
         end if;
 
         -- Reject windows outside the operator-configured maximum
-        if p_external_window_hours is not null
+        if v_external_window_hours is not null
            and (
-               p_external_window_hours < 1
-               or p_external_window_hours > v_max_window_hours
+               v_external_window_hours < 1
+               or v_external_window_hours > v_max_window_hours
            ) then
             raise exception 'external payment window exceeds the configured maximum' using errcode = 'OCG01';
         end if;
@@ -102,54 +101,6 @@ begin
         if nullif(btrim(p_payment_recipient->>'seller_display_name'), '') is null then
             raise exception 'paid-capable events require a payment recipient seller name' using errcode = 'OCG01';
         end if;
-    end if;
-
-    -- Resolve the event and venue snapshot from a mutation payload or stored row
-    if p_event_payload is not null then
-        -- Read the event kind, tax settings and venue from the mutation payload
-        v_event_kind_id := p_event_payload->>'kind_id';
-        v_manual_tax_rate_ids := coalesce(
-            jsonb_text_array(p_event_payload->'manual_tax_rate_ids'),
-            '{}'::text[]
-        );
-        v_tax_behavior := coalesce(nullif(p_event_payload->>'tax_behavior', ''), 'inclusive');
-        v_tax_calculation_mode := coalesce(
-            nullif(p_event_payload->>'tax_calculation_mode', ''),
-            'automatic'
-        );
-        v_venue_snapshot := jsonb_build_object(
-            'address', nullif(btrim(p_event_payload->>'venue_address'), ''),
-            'city', nullif(btrim(p_event_payload->>'venue_city'), ''),
-            'country_code', upper(nullif(btrim(p_event_payload->>'venue_country_code'), '')),
-            'name', nullif(btrim(p_event_payload->>'venue_name'), ''),
-            'zip_code', nullif(btrim(p_event_payload->>'venue_zip_code'), '')
-        );
-
-    -- Load stored event context when the mutation did not include a payload
-    elsif p_event_id is not null then
-        select
-            e.event_kind_id,
-            e.manual_tax_rate_ids,
-            e.tax_behavior,
-            e.tax_calculation_mode,
-            event_venue_snapshot(e)
-        into
-            v_event_kind_id,
-            v_manual_tax_rate_ids,
-            v_tax_behavior,
-            v_tax_calculation_mode,
-            v_venue_snapshot
-        from event e
-        where e.event_id = p_event_id;
-
-        -- Reject missing events after the stored-context lookup
-        if not found then
-            raise exception 'event not found or inactive' using errcode = 'OCG01';
-        end if;
-
-    -- Reject paid-capable validation that cannot resolve event context
-    else
-        raise exception 'paid-capable event readiness requires event context';
     end if;
 
     -- Limit paid sales to event kinds with complete physical venues

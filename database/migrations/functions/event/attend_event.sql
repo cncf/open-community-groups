@@ -7,32 +7,22 @@ create or replace function attend_event(
     p_event_ticket_type_id uuid default null
 ) returns text as $$
 declare
+    v_allows_free_hold_reuse boolean;
     v_event event;
-    v_has_reusable_free_purchase boolean;
+    v_has_blocking_purchase boolean;
     v_has_registration_questions boolean;
+    v_has_reusable_free_purchase boolean;
     v_invitation_request_status text;
+    v_resolved_ticket_type_id uuid;
     v_selectable_public_ticket_count int;
     v_ticket_allocated_count int;
     v_ticket_seats_total int;
 begin
     -- Lock and validate the attendee-visible event
-    v_event := lock_active_event(p_community_id, null, p_event_id, true);
+    v_event := lock_active_event(p_community_id, null, p_event_id);
 
-    -- Lock tiers and reconcile stale reservations before serializing this attendee
-    perform 1
-    from event_ticket_type ett
-    where ett.event_id = p_event_id
-    order by ett.event_ticket_type_id
-    for update of ett;
-
-    perform reconcile_event_enrollment(
-        p_event_id,
-        null,
-        null
-    );
-
-    -- Serialize concurrent enrollment attempts by this attendee
-    perform pg_advisory_xact_lock(hashtext(p_event_id::text), hashtext(p_user_id::text));
+    -- Reconcile stale reservations under the global lock order, serializing this attendee
+    perform reconcile_event_enrollment(p_event_id, null, null, p_user_id);
 
     -- Require public registration for every new self-service enrollment
     if not is_registration_window_open(
@@ -60,11 +50,14 @@ begin
         from admission_offer ao
         where ao.event_id = p_event_id
         and ao.user_id = p_user_id
-        and admission_offer_is_active(ao.status)
-        and ao.expires_at > current_timestamp
+        and admission_offer_reserves_seat(ao.status, ao.expires_at)
     ) then
         raise exception 'user already has an active admission offer for this event' using errcode = 'OCG01';
     end if;
+
+    -- Allow reusing a live free hold only on direct simple RSVP events
+    v_allows_free_hold_reuse := not v_event.attendee_approval_required
+        and is_event_simple_rsvp(p_event_id);
 
     -- Reject purchases that already reserve enrollment
     if exists (
@@ -77,56 +70,54 @@ begin
             or (
                 ep.status = 'pending'
                 and ep.hold_expires_at > current_timestamp
-                and (v_event.attendee_approval_required or not is_event_simple_rsvp(p_event_id))
+                and not v_allows_free_hold_reuse
             )
         )
     ) then
         raise exception 'user already has an active purchase for this event' using errcode = 'OCG01';
     end if;
 
-    -- Resolve a selected public tier or preserve a fully private generic request
-    if p_event_ticket_type_id is null then
-        select
-            count(*)::int,
-            (array_agg(
-                ett.event_ticket_type_id
-                order by ett."order", ett.event_ticket_type_id
-            ))[1]
-        into
-            v_selectable_public_ticket_count,
-            p_event_ticket_type_id
-        from event_ticket_type ett
-        where ett.event_id = p_event_id
-        and ett.active = true
-        and ett.availability = 'public'
-        and event_ticket_type_current_price(ett.event_ticket_type_id) is not null;
+    -- Resolve the selected or sole selectable public tier and its capacity
+    select
+        count(*)::int,
+        (array_agg(
+            ett.event_ticket_type_id
+            order by ett."order", ett.event_ticket_type_id
+        ))[1],
+        (array_agg(
+            ett.seats_total
+            order by ett."order", ett.event_ticket_type_id
+        ))[1]
+    into
+        v_selectable_public_ticket_count,
+        v_resolved_ticket_type_id,
+        v_ticket_seats_total
+    from event_ticket_type ett
+    where ett.event_id = p_event_id
+    and (
+        p_event_ticket_type_id is null
+        or ett.event_ticket_type_id = p_event_ticket_type_id
+    )
+    and ett.active = true
+    and ett.availability = 'public'
+    and event_ticket_type_current_price(ett.event_ticket_type_id) is not null;
 
-        -- Require one public tier unless private approval requests are allowed
-        if v_selectable_public_ticket_count <> 1
-           and not (
-                v_event.attendee_approval_required
-                and v_selectable_public_ticket_count = 0
-           ) then
-            raise exception 'ticket type is required' using errcode = 'OCG01';
-        end if;
-    else
-        select count(*)::int
-        into v_selectable_public_ticket_count
-        from event_ticket_type ett
-        where ett.event_id = p_event_id
-        and ett.event_ticket_type_id = p_event_ticket_type_id
-        and ett.active = true
-        and ett.availability = 'public'
-        and event_ticket_type_current_price(ett.event_ticket_type_id) is not null;
-
-        -- Require the selected tier to be public and purchasable
-        if v_selectable_public_ticket_count <> 1 then
-            raise exception 'ticket type is required' using errcode = 'OCG01';
-        end if;
+    -- Require one selectable public tier unless a generic private approval request is allowed
+    if v_selectable_public_ticket_count <> 1
+       and not (
+            p_event_ticket_type_id is null
+            and v_event.attendee_approval_required
+            and v_selectable_public_ticket_count = 0
+       ) then
+        raise exception 'ticket type is required' using errcode = 'OCG01';
     end if;
+
+    -- Continue with the resolved tier, or none for a generic private request
+    p_event_ticket_type_id := v_resolved_ticket_type_id;
 
     -- Route approval-required enrollment into a public-tier or generic request
     if v_event.attendee_approval_required then
+        -- Detect whether the request collects attendee details
         v_has_registration_questions :=
             jsonb_array_length(coalesce(v_event.registration_questions, '[]'::jsonb)) > 0;
 
@@ -170,48 +161,31 @@ begin
             p_user_id
         );
 
+        -- Report the queued approval request
         return 'pending-approval';
     end if;
 
-    -- Load the capacity of the selected tier, already validated as public and purchasable
-    select ett.seats_total
-    into v_ticket_seats_total
-    from event_ticket_type ett
-    where ett.event_id = p_event_id
-    and ett.event_ticket_type_id = p_event_ticket_type_id;
-
-    -- Reuse interrupted zero-value checkout holds for the selected tier
-    select exists (
-        select 1
-        from event_purchase ep
-        where ep.event_id = p_event_id
-        and ep.event_ticket_type_id = p_event_ticket_type_id
-        and ep.user_id = p_user_id
-        and ep.amount_minor = 0
-        and ep.status = 'pending'
-        and ep.hold_expires_at > current_timestamp
-        and not v_event.attendee_approval_required
-    )
-    into v_has_reusable_free_purchase;
+    -- Classify the live checkout holds against the resolved free tier
+    select
+        coalesce(bool_or(
+            ep.event_ticket_type_id = p_event_ticket_type_id
+            and ep.amount_minor = 0
+        ), false),
+        coalesce(bool_or(not (
+            ep.event_ticket_type_id = p_event_ticket_type_id
+            and ep.amount_minor = 0
+        )), false)
+    into
+        v_has_reusable_free_purchase,
+        v_has_blocking_purchase
+    from event_purchase ep
+    where ep.event_id = p_event_id
+    and ep.user_id = p_user_id
+    and ep.status = 'pending'
+    and ep.hold_expires_at > current_timestamp;
 
     -- Reject purchase holds that cannot be safely reused
-    if exists (
-        select 1
-        from event_purchase ep
-        where ep.event_id = p_event_id
-        and ep.user_id = p_user_id
-        and (
-            event_purchase_holds_seat(ep.status)
-            or (
-                ep.status = 'pending'
-                and ep.hold_expires_at > current_timestamp
-                and not (
-                    ep.event_ticket_type_id = p_event_ticket_type_id
-                    and ep.amount_minor = 0
-                )
-            )
-        )
-    ) then
+    if v_has_blocking_purchase then
         raise exception 'user already has an active purchase for this event' using errcode = 'OCG01';
     end if;
 
@@ -248,16 +222,18 @@ begin
         return 'waitlisted';
     end if;
 
-    -- Replace inactive attendance or another queue position with this tier queue
+    -- Drop another queue position held by this attendee
     delete from event_waitlist
     where event_id = p_event_id
     and user_id = p_user_id;
 
+    -- Drop inactive attendance replaced by the queue position
     delete from event_attendee
     where event_id = p_event_id
     and user_id = p_user_id
     and status in ('attendance-canceled', 'invitation-canceled');
 
+    -- Queue the attendee for the selected tier
     insert into event_waitlist (
         event_id,
         event_ticket_type_id,
@@ -268,6 +244,7 @@ begin
         p_user_id
     );
 
+    -- Report the new queue position
     return 'waitlisted';
 end;
 $$ language plpgsql;

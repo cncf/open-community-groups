@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -61,6 +61,13 @@ select is(
     (select is_event_public(e, g) from event e join "group" g using (group_id) where e.event_id = :'eventID'),
     true,
     'Should accept published events of active groups'
+);
+
+-- Should be parallel safe so parallel queries can call it
+select is(
+    (select proparallel from pg_proc where proname = 'is_event_public'),
+    's'::"char",
+    'Should be parallel safe so parallel queries can call it'
 );
 
 -- Should reject deleted events

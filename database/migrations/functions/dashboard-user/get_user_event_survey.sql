@@ -38,4 +38,4 @@ returns json as $$
     join "group" g on g.group_id = e.group_id
     join community c on c.community_id = g.community_id
     where us.event_survey_id = p_event_survey_id;
-$$ language sql;
+$$ language sql stable;

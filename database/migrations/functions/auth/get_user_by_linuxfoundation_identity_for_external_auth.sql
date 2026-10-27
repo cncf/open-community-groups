@@ -15,13 +15,7 @@ begin
 
     -- Return an external-auth payload with required defaults
     return (
-        select (
-            get_user_by_id(u.user_id, false)::jsonb
-            || jsonb_build_object(
-                'name', coalesce(u.name, ''),
-                'registration_status', u.registration_status
-            )
-        )::json
+        select external_auth_user_json(u)
         from "user" u
         where u.provider #>> '{linuxfoundation,issuer}' = v_issuer
         and u.provider #>> '{linuxfoundation,subject}' = v_subject

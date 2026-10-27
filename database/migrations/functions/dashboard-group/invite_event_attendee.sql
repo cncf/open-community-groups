@@ -19,7 +19,7 @@ declare
     v_has_registration_questions boolean;
     v_is_simple_rsvp boolean;
     v_normalized_email text := lower(nullif(btrim(p_email), ''));
-    v_offer_expires_at timestamptz;
+    v_offer admission_offer;
     v_promoted_user_ids uuid[];
     v_selectable_ticket_type_count int;
     v_target_user "user";
@@ -35,7 +35,7 @@ begin
     end if;
 
     -- Lock and validate the event before ticket and attendee enrollment state
-    v_event := lock_active_event(null, p_group_id, p_event_id, true);
+    v_event := lock_active_event(null, p_group_id, p_event_id);
 
     -- Load group context needed for payment validation, notifications and audit
     select g.*
@@ -44,11 +44,7 @@ begin
     where g.group_id = v_event.group_id;
 
     -- Lock ticket tiers before reconciliation and target-user enrollment state
-    perform 1
-    from event_ticket_type ett
-    where ett.event_id = p_event_id
-    order by ett.event_ticket_type_id
-    for update of ett;
+    perform lock_event_ticket_types(p_event_id);
 
     -- Capture the registration-question and RSVP wording context for notifications
     v_has_registration_questions :=
@@ -69,6 +65,7 @@ begin
             raise exception 'registered user not found' using errcode = 'OCG01';
         end if;
 
+        -- Target the registered invitee
         v_target_user_id := v_target_user.user_id;
 
     -- Resolve or pre-register the email invitee
@@ -136,8 +133,10 @@ begin
         raise exception 'ticket type is not available' using errcode = 'OCG01';
     end if;
 
-    -- Reject tiers without a current price
+    -- Resolve the current price of the selected tier
     v_ticket_current_price := event_ticket_type_current_price(v_ticket_type.event_ticket_type_id);
+
+    -- Reject tiers without a current price
     if v_ticket_current_price is null then
         raise exception 'ticket type is not available' using errcode = 'OCG01';
     end if;
@@ -147,14 +146,12 @@ begin
         and v_ticket_type.availability = 'public'
         and v_ticket_current_price = 0;
 
-    -- Take the enrollment locks with the invitee in the global order before reconciliation
-    perform lock_event_enrollment_rows(p_event_id, p_event_ticket_type_id, v_target_user_id);
-
-    -- Reconcile stale reservations and public queue priority before allocation
+    -- Reconcile stale reservations and queue priority, locking the invitee in the global order
     v_promoted_user_ids := reconcile_event_enrollment(
         p_event_id,
         p_event_ticket_type_id,
-        p_configured_provider
+        p_configured_provider,
+        v_target_user_id
     );
 
     -- Reuse the queue promotion when reconciliation already seated the target
@@ -168,6 +165,7 @@ begin
         and ao.status = 'pending'
         and ao.user_id = v_target_user_id;
 
+        -- Report the queue offer created by the promotion
         return jsonb_build_object(
             'admission_offer_id', v_admission_offer_id,
             'outcome', 'queue-offer',
@@ -209,8 +207,10 @@ begin
         raise exception 'user already has a pending event invitation' using errcode = 'OCG01';
     end if;
 
-    -- Surface a conflict instead of overselling the target tier now that stale reservations are settled
+    -- Check the target tier capacity now that stale reservations are settled
     v_capacity_conflict := admission_offer_capacity_conflict(v_ticket_type, v_promoted_user_ids);
+
+    -- Surface a conflict instead of overselling the target tier
     if v_capacity_conflict is not null then
         return jsonb_build_object('conflict', v_capacity_conflict);
     end if;
@@ -251,62 +251,32 @@ begin
     where event_id = p_event_id
     and user_id = v_target_user_id;
 
-    -- Bound the invitation expiry to the remaining event window
-    v_offer_expires_at := resolve_organizer_offer_expiry(v_event);
-
     -- Create the time-limited organizer invitation reservation
-    insert into admission_offer (
-        amount_minor,
-        currency_code,
-        discount_amount_minor,
-        event_id,
-        event_ticket_type_id,
-        expires_at,
-        organizer_user_id,
-        source,
-        status,
-        ticket_title,
-        user_id
-    ) values (
-        v_ticket_current_price,
-        case
-            -- Keep intrinsic-free snapshots currency-free
-            when v_ticket_current_price > 0 then v_event.payment_currency_code
-            -- Drop event currency from free organizer invitations
-            else null
-        end,
-        0,
-        p_event_id,
-        p_event_ticket_type_id,
-        v_offer_expires_at,
+    v_offer := issue_organizer_admission_offer(
         p_actor_user_id,
-        'organizer_invitation',
-        'pending',
-        v_ticket_type.title,
-        v_target_user_id
-    )
-    returning admission_offer_id into v_admission_offer_id;
+        v_event,
+        v_ticket_type,
+        v_target_user_id,
+        v_ticket_current_price,
+        'organizer_invitation'
+    );
 
     -- Enqueue the invitation notification in the offer transaction
-    select s.theme
-    into v_theme
-    from site s
-    limit 1;
-
+    v_theme := site_theme();
     perform enqueue_notification(
         'event-admission-offer-created',
         jsonb_strip_nulls(jsonb_build_object(
-            'admission_offer_id', v_admission_offer_id,
+            'admission_offer_id', v_offer.admission_offer_id,
             'amount_minor', v_ticket_current_price,
             'currency_code', v_event.payment_currency_code,
             'dashboard_url', format(
                 '/dashboard/user?tab=invitations#event-offer-%s',
-                v_admission_offer_id
+                v_offer.admission_offer_id
             ),
             'event_id', p_event_id,
             'event_name', v_event.name,
             'event_ticket_type_id', p_event_ticket_type_id,
-            'expires_at', epoch_seconds(v_offer_expires_at),
+            'expires_at', epoch_seconds(v_offer.expires_at),
             'group_name', v_group.name,
             'is_simple_rsvp', v_is_simple_rsvp,
             'registration_questions_required', v_has_registration_questions,
@@ -329,7 +299,7 @@ begin
         p_group_id,
         p_event_id,
         jsonb_strip_nulls(jsonb_build_object(
-            'admission_offer_id', v_admission_offer_id,
+            'admission_offer_id', v_offer.admission_offer_id,
             'event_id', p_event_id,
             'event_ticket_type_id', p_event_ticket_type_id,
             'registration_questions_required', v_has_registration_questions,
@@ -339,7 +309,7 @@ begin
 
     -- Return the invitation outcome
     return jsonb_build_object(
-        'admission_offer_id', v_admission_offer_id,
+        'admission_offer_id', v_offer.admission_offer_id,
         'outcome', 'offer-created',
         'user_id', v_target_user_id
     );

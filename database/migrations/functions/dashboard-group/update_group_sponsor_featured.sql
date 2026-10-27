@@ -13,16 +13,18 @@ begin
     where group_id = p_group_id
     and group_sponsor_id = p_group_sponsor_id;
 
-    if found then
-        -- Track the sponsor update
-        perform insert_audit_log(
-            'group_sponsor_updated',
-            p_actor_user_id,
-            'group_sponsor',
-            p_group_sponsor_id,
-            (select community_id from "group" where group_id = p_group_id),
-            p_group_id
-        );
+    -- Reject sponsors outside the selected group
+    if not found then
+        raise exception 'sponsor not found' using errcode = 'OCG01';
     end if;
+
+    -- Track the sponsor update
+    perform insert_audit_log(
+        'group_sponsor_updated',
+        p_actor_user_id,
+        'group_sponsor',
+        p_group_sponsor_id,
+        p_group_id => p_group_id
+    );
 end;
 $$ language plpgsql;

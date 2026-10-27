@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +20,10 @@ select plan(4);
 \set groupID 'ea060000-0000-0000-0000-000000000007'
 \set offerActiveID 'ea060000-0000-0000-0000-000000000008'
 \set offerCheckoutID 'ea060000-0000-0000-0000-000000000009'
+\set sharedOfferEventID 'ea060000-0000-0000-0000-000000000017'
+\set sharedOfferID 'ea060000-0000-0000-0000-000000000018'
+\set sharedOfferTicketTypeID 'ea060000-0000-0000-0000-000000000019'
+\set sharedOfferUserID 'ea060000-0000-0000-0000-00000000001a'
 \set ticketTypeCompID 'ea060000-0000-0000-0000-00000000000a'
 \set ticketTypeGeneralID 'ea060000-0000-0000-0000-00000000000b'
 \set ticketTypeVipID 'ea060000-0000-0000-0000-00000000000c'
@@ -38,67 +42,60 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories, group and users
+-- Community owning the events
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- User whose refund-pending purchase shares an offer with its replacement
+select fx_user(:'sharedOfferUserID');
+
+-- User with a completed general purchase redeeming the code
 select fx_user(:'userCompletedID');
+
+-- User whose general checkout hold expired
 select fx_user(:'userExpiredHoldID');
+
+-- User whose discounted general purchase expired
 select fx_user(:'userExpiredID');
+
+-- User with a live discounted general checkout hold
 select fx_user(:'userLiveHoldID');
+
+-- User holding an active general offer
 select fx_user(:'userOfferActiveID');
+
+-- User checking out an active general offer
 select fx_user(:'userOfferCheckoutID');
+
+-- User whose discounted general purchase was refunded
 select fx_user(:'userRefundedID');
+
+-- User awaiting a refund of a discounted general purchase
 select fx_user(:'userRefundRequestedID');
+
+-- User with a completed VIP purchase
 select fx_user(:'userVipCompletedID');
+
+-- User whose VIP purchase refund is in flight
 select fx_user(:'userVipRefundPendingID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group owning the events
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Ticketed event whose usage is counted
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'payment_currency_code', 'USD'
 ));
 
--- General tickets with spare seats
-select fx_event_ticket_type(:'ticketTypeGeneralID', :'eventID', jsonb_build_object(
-    'order', 1,
-    'seats_total', 10,
-    'title', 'General'
+-- Ticketed event whose purchases share an admission offer
+select fx_event(:'sharedOfferEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD'
 ));
-
--- VIP tickets oversold beyond their seats
-select fx_event_ticket_type(:'ticketTypeVipID', :'eventID', jsonb_build_object(
-    'order', 2,
-    'seats_total', 1,
-    'title', 'VIP'
-));
-
--- Inactive complimentary tickets without seats
-select fx_event_ticket_type(:'ticketTypeCompID', :'eventID', jsonb_build_object(
-    'active', false,
-    'order', 3,
-    'seats_total', 0,
-    'title', 'Comp'
-));
-
--- Active general offers, one of them with a checkout in progress
-insert into admission_offer (
-    admission_offer_id,
-    created_at,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    user_id,
-
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    ticket_title
-) values
-    (:'offerActiveID', current_timestamp - interval '1 hour', :'eventID', :'ticketTypeGeneralID', current_timestamp + interval '1 day', 'waitlist', 'pending', :'userOfferActiveID', null, null, null, null),
-    (:'offerCheckoutID', current_timestamp - interval '1 hour', :'eventID', :'ticketTypeGeneralID', current_timestamp + interval '1 day', 'approval', 'checkout_pending', :'userOfferCheckoutID', 1000, 'USD', 0, 'General');
 
 -- Discount code with redemptions
 insert into event_discount_code (
@@ -146,6 +143,85 @@ insert into event_discount_code (
     500
 );
 
+-- General tickets with spare seats
+select fx_event_ticket_type(:'ticketTypeGeneralID', :'eventID', jsonb_build_object(
+    'order', 1,
+    'seats_total', 10,
+    'title', 'General'
+));
+
+-- VIP tickets oversold beyond their seats
+select fx_event_ticket_type(:'ticketTypeVipID', :'eventID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 1,
+    'title', 'VIP'
+));
+
+-- Inactive complimentary tickets without seats
+select fx_event_ticket_type(:'ticketTypeCompID', :'eventID', jsonb_build_object(
+    'active', false,
+    'order', 3,
+    'seats_total', 0,
+    'title', 'Comp'
+));
+
+-- Tier of the event whose purchases share an admission offer
+select fx_event_ticket_type(:'sharedOfferTicketTypeID', :'sharedOfferEventID', jsonb_build_object(
+    'order', 1,
+    'seats_total', 5,
+    'title', 'Shared'
+));
+
+-- Active general offers, one of them with a checkout in progress
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id,
+
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    ticket_title
+) values
+    (:'offerActiveID', current_timestamp - interval '1 hour', :'eventID', :'ticketTypeGeneralID', current_timestamp + interval '1 day', 'waitlist', 'pending', :'userOfferActiveID', null, null, null, null),
+    (:'offerCheckoutID', current_timestamp - interval '1 hour', :'eventID', :'ticketTypeGeneralID', current_timestamp + interval '1 day', 'approval', 'checkout_pending', :'userOfferCheckoutID', 1000, 'USD', 0, 'General');
+
+-- Completed offer claimed by a refund in flight and its replacement
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id,
+
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    ticket_title
+) values (
+    :'sharedOfferID',
+    current_timestamp - interval '3 days',
+    :'sharedOfferEventID',
+    :'sharedOfferTicketTypeID',
+    current_timestamp - interval '2 days',
+    'approval',
+    'completed',
+    :'sharedOfferUserID',
+
+    1000,
+    'USD',
+    0,
+    'Shared'
+);
+
 -- Purchases covering every status, discount code redemptions and an offer checkout
 insert into event_purchase (
     amount_minor,
@@ -172,6 +248,25 @@ insert into event_purchase (
     (900, 'external', 'USD', 100, :'eventID', :'ticketTypeGeneralID', 'refunded', 'General', :'userRefundedID', null, 'SAVE10', :'discountCodeSaveID', null),
     (2000, 'external', 'USD', 0, :'eventID', :'ticketTypeVipID', 'completed', 'VIP', :'userVipCompletedID', null, null, null, null),
     (2000, 'external', 'USD', 0, :'eventID', :'ticketTypeVipID', 'refund-pending', 'VIP', :'userVipRefundPendingID', null, null, null, null);
+
+-- Refund in flight and its completed replacement claiming the same offer
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+
+    admission_offer_id,
+    completed_at
+) values
+    (1000, 'external', current_timestamp - interval '2 days', 'USD', 0, :'sharedOfferEventID', :'sharedOfferTicketTypeID', 'refund-pending', 'Shared', :'sharedOfferUserID', :'sharedOfferID', current_timestamp - interval '2 days'),
+    (1000, 'external', current_timestamp - interval '1 day', 'USD', 0, :'sharedOfferEventID', :'sharedOfferTicketTypeID', 'completed', 'Shared', :'sharedOfferUserID', :'sharedOfferID', current_timestamp - interval '1 day');
 
 -- ============================================================================
 -- TESTS
@@ -203,6 +298,24 @@ select is(
         )
     ),
     'Should count discount code redemptions that still hold a seat'
+);
+
+-- Should count purchases sharing an admission offer as one sold seat
+select is(
+    (select stats_event_tickets(e)::jsonb->'ticket_types' from event e where e.event_id = :'sharedOfferEventID'),
+    jsonb_build_array(
+        jsonb_build_object(
+            'active', true,
+            'allocated', 1,
+            'event_ticket_type_id', :'sharedOfferTicketTypeID',
+            'order', 1,
+            'remaining', 4,
+            'seats_total', 5,
+            'sold', 1,
+            'title', 'Shared'
+        )
+    ),
+    'Should count purchases sharing an admission offer as one sold seat'
 );
 
 -- Should count sold and allocated seats per ticket type with a floored remainder

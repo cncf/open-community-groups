@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -95,6 +95,24 @@ values (:'eventID', :'ticketTypeID', :'waitlistUserID');
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should hold the extra user's advisory lock
+-- Take the lock within this scenario before reading pg_locks
+select 1 as "extraUserLocked" from lock_event_enrollment_rows(:'eventID', null, :'extraUserID') \gset
+
+select ok(
+    exists (
+        select 1
+        from pg_locks l
+        where l.locktype = 'advisory'
+        and l.pid = pg_backend_pid()
+        and l.classid = hashtext(:'eventID'::text)::oid
+        and l.objid = hashtext(:'extraUserID'::text)::oid
+        and l.objsubid = 2
+        and l.granted
+    ),
+    'Should hold the extra user''s advisory lock'
+);
 
 -- Should keep locked rows available to the current transaction
 select lives_ok(

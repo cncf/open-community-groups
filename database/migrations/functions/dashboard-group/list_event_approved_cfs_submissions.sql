@@ -1,5 +1,8 @@
--- Returns approved CFS submissions for an event.
-create or replace function list_event_approved_cfs_submissions(p_event_id uuid)
+-- Returns approved CFS submissions for an event owned by the group.
+create or replace function list_event_approved_cfs_submissions(
+    p_group_id uuid,
+    p_event_id uuid
+)
 returns json as $$
     select coalesce(
         json_agg(
@@ -22,8 +25,11 @@ returns json as $$
         '[]'::json
     )
     from cfs_submission cs
+    join event e on e.event_id = cs.event_id
     join session_proposal sp on sp.session_proposal_id = cs.session_proposal_id
     join "user" u on u.user_id = sp.user_id
     where cs.event_id = p_event_id
-    and cs.status_id = 'approved';
-$$ language sql;
+    and cs.status_id = 'approved'
+    and e.deleted = false
+    and e.group_id = p_group_id;
+$$ language sql stable;

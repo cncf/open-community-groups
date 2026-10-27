@@ -22,6 +22,57 @@ insert into external_payments_config (
     336
 );
 
+-- Resolved event rows: a Korean venue on the external rail and a complete
+-- US venue with automatic tax on the Stripe rail
+create temporary table test_event (external_event event not null, stripe_event event not null);
+insert into test_event (
+    external_event.event_kind_id,
+    external_event.external_payment_url,
+    external_event.manual_tax_rate_ids,
+    external_event.payment_currency_code,
+    external_event.tax_behavior,
+    external_event.tax_calculation_mode,
+    external_event.venue_address,
+    external_event.venue_city,
+    external_event.venue_country_code,
+    external_event.venue_name,
+    external_event.venue_zip_code,
+    stripe_event.event_kind_id,
+    stripe_event.manual_tax_rate_ids,
+    stripe_event.payment_currency_code,
+    stripe_event.tax_behavior,
+    stripe_event.tax_calculation_mode,
+    stripe_event.venue_address,
+    stripe_event.venue_city,
+    stripe_event.venue_country_code,
+    stripe_event.venue_name,
+    stripe_event.venue_state_code,
+    stripe_event.venue_zip_code
+) values (
+    'in-person',
+    'https://pay.example.test/ready',
+    array[]::text[],
+    'KRW',
+    'inclusive',
+    'automatic',
+    '1 Test Street',
+    'Seoul',
+    'KR',
+    'Test Hall',
+    '00000',
+    'in-person',
+    array[]::text[],
+    'USD',
+    'inclusive',
+    'automatic',
+    '123 Main St',
+    'San Francisco',
+    'US',
+    'Community Hall',
+    'CA',
+    '94105'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -31,8 +82,6 @@ select lives_ok(
     $$select validate_event_ticketing_payload(
         'stripe',
         null,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -47,17 +96,11 @@ select lives_ok(
                 "title": "General admission"
             }
         ]'::jsonb,
-        true,
+        (select t.stripe_event from test_event t),
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        false,
         null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_zip_code": "94105"
-        }'::jsonb
+        true
     )$$,
     'Should accept a Stripe-ready paid payload'
 );
@@ -65,8 +108,6 @@ select lives_ok(
 -- Should accept all-zero ticketing without payment configuration
 select lives_ok(
     $$select validate_event_ticketing_payload(
-        null,
-        null,
         null,
         null,
         '[
@@ -82,7 +123,12 @@ select lives_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb
+        ]'::jsonb,
+        (select jsonb_populate_record(t.stripe_event, '{"payment_currency_code": null}'::jsonb) from test_event t),
+        null,
+        false,
+        null,
+        true
     )$$,
     'Should accept all-zero ticketing without payment configuration'
 );
@@ -91,8 +137,6 @@ select lives_ok(
 select lives_ok(
     $$select validate_event_ticketing_payload(
         null,
-        null,
-        'KRW',
         null,
         '[
             {
@@ -108,19 +152,11 @@ select lives_ok(
                 "title": "General admission"
             }
         ]'::jsonb,
-        true,
+        (select t.external_event from test_event t),
         null,
-        '{
-            "external_mode": true,
-            "external_payment_url": "https://pay.example.test/ready",
-            "group_country_code": "KR",
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Seoul",
-            "venue_country_code": "KR",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "00000"
-        }'::jsonb
+        true,
+        'KR',
+        true
     )$$,
     'Should accept paid-capable external mode without a Stripe recipient'
 );
@@ -145,8 +181,6 @@ select throws_ok(
                 "title": "VIP discount"
             }
         ]'::jsonb,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -160,7 +194,12 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb
+        ]'::jsonb,
+        (select t.stripe_event from test_event t),
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        false,
+        null,
+        true
     )$$,
     'OCG01',
     'discount codes must be unique per event',
@@ -172,8 +211,6 @@ select throws_ok(
     $$select validate_event_ticketing_payload(
         'stripe',
         null,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
@@ -195,7 +232,12 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb
+        ]'::jsonb,
+        (select t.stripe_event from test_event t),
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        false,
+        null,
+        true
     )$$,
     'OCG01',
     'ticket price windows cannot overlap',
@@ -206,8 +248,6 @@ select throws_ok(
 select throws_ok(
     $$select validate_event_ticketing_payload(
         null,
-        null,
-        'KRW',
         null,
         '[
             {
@@ -223,19 +263,18 @@ select throws_ok(
                 "title": "General admission"
             }
         ]'::jsonb,
-        true,
+        (
+            select jsonb_populate_record(t.external_event, '{
+                "venue_city": "Tokyo",
+                "venue_country_code": "JP",
+                "venue_zip_code": "100-0001"
+            }'::jsonb)
+            from test_event t
+        ),
         null,
-        '{
-            "external_mode": true,
-            "external_payment_url": "https://pay.example.test/abroad",
-            "group_country_code": "KR",
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Tokyo",
-            "venue_country_code": "JP",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "100-0001"
-        }'::jsonb
+        true,
+        'KR',
+        true
     )$$,
     'OCG01',
     'external paid events require a venue in the group country',
@@ -247,8 +286,6 @@ select throws_ok(
     $$select validate_event_ticketing_payload(
         'stripe',
         null,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
@@ -263,17 +300,11 @@ select throws_ok(
                 "title": "General admission"
             }
         ]'::jsonb,
-        true,
+        (select t.stripe_event from test_event t),
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        false,
         null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_zip_code": "94105"
-        }'::jsonb
+        true
     )$$,
     'OCG01',
     'payment amount must be zero or at least Stripe minimum charge amount',
@@ -285,18 +316,25 @@ select throws_ok(
     $$select validate_event_ticketing_payload(
         null,
         null,
-        'USD',
+        '[
+            {
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 0,
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb,
+        (select t.stripe_event from test_event t),
         null,
-        '[{
-            "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
-            "order": 1,
-            "price_windows": [{
-                "amount_minor": 0,
-                "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
-            }],
-            "seats_total": 50,
-            "title": "General admission"
-        }]'::jsonb
+        false,
+        null,
+        true
     )$$,
     'OCG01',
     'payment_currency_code requires positive ticket pricing',
@@ -316,18 +354,25 @@ select throws_ok(
                 "title": "Launch discount"
             }
         ]'::jsonb,
+        '[
+            {
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 0,
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb,
+        (select jsonb_populate_record(t.stripe_event, '{"payment_currency_code": null}'::jsonb) from test_event t),
         null,
+        false,
         null,
-        '[{
-            "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
-            "order": 1,
-            "price_windows": [{
-                "amount_minor": 0,
-                "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
-            }],
-            "seats_total": 50,
-            "title": "General admission"
-        }]'::jsonb
+        true
     )$$,
     'OCG01',
     'discount_codes require positive ticket pricing',
@@ -347,8 +392,6 @@ select lives_ok(
                 "title": "Launch discount"
             }
         ]'::jsonb,
-        'USD',
-        null,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -363,6 +406,10 @@ select lives_ok(
                 "title": "General admission"
             }
         ]'::jsonb,
+        (select t.stripe_event from test_event t),
+        null,
+        false,
+        null,
         false
     )$$,
     'Should skip payment configuration checks when validation is disabled'

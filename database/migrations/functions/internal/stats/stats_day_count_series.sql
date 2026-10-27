@@ -27,4 +27,4 @@ left join (
     )
     group by count_row.day
 ) day_count on day_count.day = series_day.day::date;
-$$ language sql immutable;
+$$ language sql stable;

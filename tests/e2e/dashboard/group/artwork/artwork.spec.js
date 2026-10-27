@@ -82,45 +82,50 @@ test.describe("group badge artwork", () => {
     }
   });
 
-  test("organizer can upload artwork and save it to the library", async ({ organizerEmptyGroupPage }) => {
+  test("organizer can upload artwork and save it to the library", async ({ organizerExternalGroupPage }) => {
     let createdArtworkId;
 
     try {
-      // Use the empty group gallery because the uploaded asset is content
-      // addressed and already seeded in the primary group library.
-      await navigateToPath(organizerEmptyGroupPage, ARTWORK_PATH);
-      const dashboardContent = organizerEmptyGroupPage.locator("#dashboard-content");
+      // Use the external payments group gallery because the uploaded asset is
+      // content addressed and already seeded in the primary group library.
+      // The empty group is avoided because artwork changes are audited and
+      // the empty group must keep no audit history.
+      await navigateToPath(organizerExternalGroupPage, ARTWORK_PATH);
+      const dashboardContent = organizerExternalGroupPage.locator("#dashboard-content");
       const galleryItems = dashboardContent.locator("li:has(img[src^='/images/badges/'])");
       await expect(galleryItems).toHaveCount(0);
 
       // Upload a new artwork image through the upload field.
       await uploadImageField(
-        organizerEmptyGroupPage,
+        organizerExternalGroupPage,
         "badge_artwork_url",
         TEST_UPLOAD_ASSET_PATHS.badgeArtwork,
       );
-      const artworkUrl = await organizerEmptyGroupPage
+      const artworkUrl = await organizerExternalGroupPage
         .locator('image-field[name="badge_artwork_url"] input[name="badge_artwork_url"]')
         .inputValue();
       const artworkFileName = artworkUrl.split("/").filter(Boolean).pop();
 
       // Save the uploaded image to the artwork library.
-      const saveButton = organizerEmptyGroupPage.getByRole("button", {
+      const saveButton = organizerExternalGroupPage.getByRole("button", {
         name: "Save to library",
       });
       await expect(saveButton).toBeEnabled();
-      await waitForActionResponse(organizerEmptyGroupPage, () => saveButton.click(), {
+      await waitForActionResponse(organizerExternalGroupPage, () => saveButton.click(), {
         method: "POST",
         urlIncludes: "/dashboard/group/badges/artwork",
       });
 
       // Dismiss the success feedback before checking the refreshed gallery.
-      const successAlert = organizerEmptyGroupPage.locator(".swal2-popup");
+      const successAlert = organizerExternalGroupPage.locator(".swal2-popup");
       await expect(successAlert).toContainText("Artwork added to the gallery.");
       await successAlert.getByRole("button", { name: "OK" }).click();
 
       // Record the saved artwork ID for cleanup.
-      createdArtworkId = readBadgeArtwork(TEST_GROUP_IDS.community1.empty, artworkFileName).badgeArtworkId;
+      createdArtworkId = readBadgeArtwork(
+        TEST_GROUP_IDS.community1.externalPayments,
+        artworkFileName,
+      ).badgeArtworkId;
 
       // Verify the new artwork joined the gallery.
       const newArtworkItem = dashboardContent.locator(`li:has(img[src$="${artworkFileName}"])`);
@@ -130,8 +135,8 @@ test.describe("group badge artwork", () => {
       // Remove the temporary artwork to restore the empty gallery.
       await newArtworkItem.getByRole("button", { name: /Remove artwork/u }).click();
       await waitForActionResponse(
-        organizerEmptyGroupPage,
-        () => organizerEmptyGroupPage.getByRole("button", { name: "Remove", exact: true }).click(),
+        organizerExternalGroupPage,
+        () => organizerExternalGroupPage.getByRole("button", { name: "Remove", exact: true }).click(),
         {
           method: "DELETE",
           urlIncludes: "/dashboard/group/badges/artwork/",

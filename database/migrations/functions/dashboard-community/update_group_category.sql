@@ -7,21 +7,16 @@ create or replace function update_group_category(
 )
 returns void as $$
 begin
-    -- Ensure the target category exists in the selected community
-    perform 1
-    from group_category gc
-    where gc.community_id = p_community_id
-      and gc.group_category_id = p_group_category_id;
-
-    if not found then
-        raise exception 'group category not found' using errcode = 'OCG01';
-    end if;
-
     -- Update the category record
     update group_category set
         name = p_group_category->>'name'
     where community_id = p_community_id
       and group_category_id = p_group_category_id;
+
+    -- Reject targets outside the selected community
+    if not found then
+        raise exception 'group category not found' using errcode = 'OCG01';
+    end if;
 
     -- Track the updated category
     perform insert_audit_log(
@@ -31,7 +26,9 @@ begin
         p_group_category_id,
         p_community_id
     );
-exception when unique_violation then
-    raise exception 'group category already exists' using errcode = 'OCG01';
+exception
+    -- Translate duplicate category names
+    when unique_violation then
+        raise exception 'group category already exists' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

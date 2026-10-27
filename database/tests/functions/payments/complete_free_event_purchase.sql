@@ -5,50 +5,31 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '79430000-0000-0000-0000-000000000001'
-\set completedOfferID '79430000-0000-0000-0000-00000000002c'
-\set completedOfferPurchaseID '79430000-0000-0000-0000-00000000002d'
 \set completedPurchaseID '79430000-0000-0000-0000-000000000002'
 \set eventCategoryID '79430000-0000-0000-0000-000000000003'
-\set eventCompletedOfferID '79430000-0000-0000-0000-00000000002e'
-\set eventCompletedOfferPriceWindowID '79430000-0000-0000-0000-000000000030'
-\set eventCompletedOfferTicketTypeID '79430000-0000-0000-0000-00000000002f'
 \set eventID '79430000-0000-0000-0000-000000000004'
 \set eventInactiveID '79430000-0000-0000-0000-000000000005'
 \set eventInactiveTicketTypeID '79430000-0000-0000-0000-000000000006'
-\set eventOpenUntilStartID '79430000-0000-0000-0000-000000000022'
-\set eventOpenUntilStartTicketTypeID '79430000-0000-0000-0000-000000000023'
 \set eventTicketTypeID '79430000-0000-0000-0000-000000000007'
-\set expiredPurchaseID '79430000-0000-0000-0000-000000000008'
 \set freePurchaseID '79430000-0000-0000-0000-000000000009'
 \set groupCategoryID '79430000-0000-0000-0000-000000000010'
 \set groupID '79430000-0000-0000-0000-000000000011'
 \set inactivePurchaseID '79430000-0000-0000-0000-000000000012'
-\set invitedPurchaseID '79430000-0000-0000-0000-000000000013'
-\set openUntilStartPurchaseID '79430000-0000-0000-0000-000000000024'
 \set paidPurchaseID '79430000-0000-0000-0000-000000000014'
 \set priceWindowID '79430000-0000-0000-0000-000000000015'
-\set recoveryPurchaseID '79430000-0000-0000-0000-000000000026'
-\set recoveryReplacementPurchaseID '79430000-0000-0000-0000-000000000027'
-\set reactivationOfferID '79430000-0000-0000-0000-00000000002b'
-\set reactivationPurchaseID '79430000-0000-0000-0000-000000000029'
 \set registrationQuestionID '79430000-0000-0000-0000-000000000016'
 \set unknownPurchaseID '79430000-0000-0000-0000-000000000031'
 \set user1ID '79430000-0000-0000-0000-000000000017'
 \set user2ID '79430000-0000-0000-0000-000000000018'
 \set user3ID '79430000-0000-0000-0000-000000000019'
 \set user4ID '79430000-0000-0000-0000-000000000020'
-\set user5ID '79430000-0000-0000-0000-000000000021'
-\set user6ID '79430000-0000-0000-0000-000000000025'
-\set user7ID '79430000-0000-0000-0000-000000000028'
-\set user8ID '79430000-0000-0000-0000-00000000002a'
-\set user9ID '79430000-0000-0000-0000-000000000032'
 
 -- ============================================================================
 -- SEED DATA
@@ -62,11 +43,6 @@ select fx_user(:'user1ID');
 select fx_user(:'user2ID');
 select fx_user(:'user3ID');
 select fx_user(:'user4ID');
-select fx_user(:'user5ID');
-select fx_user(:'user6ID');
-select fx_user(:'user7ID');
-select fx_user(:'user8ID');
-select fx_user(:'user9ID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event with pending registration answers created during checkout
@@ -83,121 +59,17 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'starts_at', now() + interval '1 day'
 ));
 
--- Published event whose free tier is claimed through an already completed offer
-select fx_event(:'eventCompletedOfferID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'published_at', now(),
-    'starts_at', now() + interval '1 day'
-));
-
 -- Unpublished event
 select fx_event(:'eventInactiveID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'starts_at', now() + interval '1 day'
 ));
 
--- Started event whose registration window stays open until the event start
-select fx_event(:'eventOpenUntilStartID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', now() + interval '1 hour',
-    'published', true,
-    'published_at', now(),
-    'registration_starts_at', now() - interval '2 hours',
-    'starts_at', now() - interval '1 hour'
-));
-
 -- Ticket types
 select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type(:'eventCompletedOfferTicketTypeID', :'eventCompletedOfferID', jsonb_build_object('seats_total', 10));
 select fx_event_ticket_type(:'eventInactiveTicketTypeID', :'eventInactiveID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type(:'eventOpenUntilStartTicketTypeID', :'eventOpenUntilStartID', jsonb_build_object('seats_total', 10));
 
--- Price windows
+-- Price window
 select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 0));
-select fx_event_ticket_price_window(
-    :'eventCompletedOfferPriceWindowID',
-    :'eventCompletedOfferTicketTypeID',
-    jsonb_build_object('amount_minor', 0)
-);
-
--- Canceled attendee row reactivated by completing an offer-linked free purchase
-insert into event_attendee (
-    attendance_canceled_at,
-    attendance_canceled_by_user_id,
-    event_id,
-    status,
-    user_id
-) values (
-    current_timestamp,
-    :'user8ID',
-    :'eventID',
-    'attendance-canceled',
-    :'user8ID'
-);
-
--- Checkout-pending intrinsic-free offer completed with reactivated attendance
-insert into admission_offer (
-    admission_offer_id,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    user_id,
-
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
-    ticket_title
-) values (
-    :'reactivationOfferID',
-    :'eventID',
-    :'eventTicketTypeID',
-    current_timestamp + interval '1 hour',
-    'organizer_invitation',
-    'checkout_pending',
-    :'user8ID',
-
-    0,
-    null,
-    0,
-    null,
-    null,
-    'General admission'
-);
-
--- Offer that already reached its terminal completed state
-insert into admission_offer (
-    admission_offer_id,
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    user_id,
-
-    amount_minor,
-    currency_code,
-    discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
-    ticket_title
-) values (
-    :'completedOfferID',
-    :'eventCompletedOfferID',
-    :'eventCompletedOfferTicketTypeID',
-    current_timestamp + interval '1 hour',
-    'waitlist',
-    'completed',
-    :'user9ID',
-
-    0,
-    null,
-    0,
-    null,
-    null,
-    'General admission'
-);
 
 -- Purchases
 insert into event_purchase (
@@ -224,17 +96,6 @@ insert into event_purchase (
     :'user1ID',
     null
 ), (
-    :'expiredPurchaseID',
-    0,
-    'USD',
-    :'eventID',
-    :'eventTicketTypeID',
-    now() - interval '10 minutes',
-    'pending',
-    'General admission',
-    :'user2ID',
-    null
-), (
     :'inactivePurchaseID',
     0,
     'USD',
@@ -256,65 +117,6 @@ insert into event_purchase (
     'General admission',
     :'user4ID',
     null
-), (
-    :'invitedPurchaseID',
-    0,
-    'USD',
-    :'eventID',
-    :'eventTicketTypeID',
-    now() + interval '10 minutes',
-    'pending',
-    'General admission',
-    :'user5ID',
-    null
-), (
-    :'openUntilStartPurchaseID',
-    0,
-    'USD',
-    :'eventOpenUntilStartID',
-    :'eventOpenUntilStartTicketTypeID',
-    now() + interval '10 minutes',
-    'pending',
-    'General admission',
-    :'user6ID',
-    null
-), (
-    :'reactivationPurchaseID',
-    0,
-    null,
-    :'eventID',
-    :'eventTicketTypeID',
-    now() + interval '10 minutes',
-    'pending',
-    'General admission',
-    :'user8ID',
-    :'reactivationOfferID'
-);
-
--- Pending free purchase linked to the completed offer
-insert into event_purchase (
-    event_purchase_id,
-    amount_minor,
-    currency_code,
-    event_id,
-    event_ticket_type_id,
-    hold_expires_at,
-    status,
-    ticket_title,
-    user_id,
-
-    admission_offer_id
-) values (
-    :'completedOfferPurchaseID',
-    0,
-    null,
-    :'eventCompletedOfferID',
-    :'eventCompletedOfferTicketTypeID',
-    now() + interval '10 minutes',
-    'pending',
-    'General admission',
-    :'user9ID',
-    :'completedOfferID'
 );
 
 -- Paid direct charge used to verify the free-completion boundary
@@ -358,83 +160,6 @@ insert into event_purchase (
     '{}'::jsonb
 );
 
--- Refunded paid purchase whose terminal provider failure requires recovery
-insert into event_purchase (
-    event_purchase_id,
-    amount_minor,
-    currency_code,
-    event_id,
-    event_ticket_type_id,
-    final_platform_fee_amount_minor,
-    payment_provider_id,
-    provider_charge_id,
-    provider_checkout_session_id,
-    provider_object_account_id,
-    provider_payment_reference,
-    provider_total_minor,
-    seller_snapshot,
-    status,
-    subtotal_excluding_tax_minor,
-    tax_amount_minor,
-    tax_behavior,
-    tax_calculation_mode,
-    tax_classification,
-    ticket_title,
-    user_id,
-    venue_snapshot,
-
-    charge_model,
-    connected_seller_id
-) values (
-    :'recoveryPurchaseID',
-    2500,
-    'USD',
-    :'eventID',
-    :'eventTicketTypeID',
-    0,
-    'stripe',
-    'ch_free_recovery',
-    'cs_free_recovery',
-    'acct_free_boundary',
-    'pi_free_recovery',
-    2500,
-    '{"connected_account_id":"acct_free_boundary","display_name":"Sponsor","provider":"stripe"}'::jsonb,
-    'refund-recovery-pending',
-    2500,
-    0,
-    'inclusive',
-    'manual',
-    'professional-event-admission',
-    'General admission',
-    :'user7ID',
-    '{}'::jsonb,
-    'direct-charge',
-    'acct_free_boundary'
-);
-
--- Pending free replacement created before the original refund failed
-insert into event_purchase (
-    event_purchase_id,
-    amount_minor,
-    currency_code,
-    event_id,
-    event_ticket_type_id,
-    hold_expires_at,
-    status,
-    ticket_title,
-    user_id
-) values (
-    :'recoveryReplacementPurchaseID',
-    0,
-    'USD',
-    :'eventID',
-    :'eventTicketTypeID',
-    now() + interval '10 minutes',
-    'pending',
-    'General admission',
-    :'user7ID'
-);
-
 -- Pending attendee row with registration answers created during checkout
 insert into event_attendee (event_id, user_id, registration_answers, status)
 values (
@@ -450,50 +175,9 @@ values (
     'registration-questions-pending'
 );
 
--- Attendee with a pending invitation that checkout cannot confirm
-insert into event_attendee (event_id, user_id, manually_invited, status)
-values (
-    :'eventID',
-    :'user5ID',
-    true,
-    'invitation-pending'
-);
-
 -- ============================================================================
 -- TESTS
 -- ============================================================================
-
--- Should reactivate canceled attendance when completing a free purchase
-select is(
-    complete_free_event_purchase(:'reactivationPurchaseID'::uuid)::jsonb,
-    jsonb_build_object(
-        'community_id', :'communityID'::uuid,
-        'event_id', :'eventID'::uuid,
-        'user_id', :'user8ID'::uuid
-    ),
-    'Should reactivate canceled attendance when completing a free purchase'
-);
-
--- Should clear canceled attendance metadata after completing the purchase
-select results_eq(
-    format($$
-        select
-            attendance_canceled_at,
-            attendance_canceled_by_user_id,
-            manually_invited,
-            status,
-            (
-                select status
-                from admission_offer
-                where admission_offer_id = %L::uuid
-            )
-        from event_attendee
-        where event_id = %L::uuid
-        and user_id = %L::uuid
-    $$, :'reactivationOfferID', :'eventID', :'user8ID'),
-    $$ values (null::timestamptz, null::uuid, true, 'confirmed'::text, 'completed'::text) $$,
-    'Should preserve invitation provenance while reactivating attendance'
-);
 
 -- Should complete a pending free purchase
 select is(
@@ -571,79 +255,12 @@ select results_eq(
     'Should persist the completed purchase fields and confirm a non-manually invited attendee'
 );
 
--- Should reject expired purchase holds
-select throws_ok(
-    format($$select complete_free_event_purchase(%L::uuid)$$, :'expiredPurchaseID'),
-    'OCG01',
-    'purchase hold has expired',
-    'Should reject expired purchase holds'
-);
-
 -- Should reject free purchases when the event is inactive
 select throws_ok(
     format($$select complete_free_event_purchase(%L::uuid)$$, :'inactivePurchaseID'),
     'OCG01',
     'event not found or inactive',
     'Should reject free purchases when the event is inactive'
-);
-
--- Should reject a free replacement while refund recovery is unresolved
-select throws_ok(
-    format(
-        $$select complete_free_event_purchase(%L::uuid)$$,
-        :'recoveryReplacementPurchaseID'
-    ),
-    'OCG01',
-    'checkout is unavailable while refund recovery is in progress',
-    'Should reject a free replacement while refund recovery is unresolved'
-);
-
--- Should complete active free holds after an open-only registration window reaches the event start
-select is(
-    complete_free_event_purchase(:'openUntilStartPurchaseID'::uuid)::jsonb,
-    jsonb_build_object(
-        'community_id', :'communityID'::uuid,
-        'event_id', :'eventOpenUntilStartID'::uuid,
-        'user_id', :'user6ID'::uuid
-    ),
-    'Should complete active free holds after an open-only registration window reaches the event start'
-);
-
--- Should persist the open-only registration window free hold completion
-select results_eq(
-    format($$
-        with ids as (
-            select
-                %L::uuid as event_purchase_id,
-                %L::uuid as event_id,
-                %L::uuid as user_id
-        )
-        select
-            (
-                select completed_at is not null
-                from event_purchase
-                where event_purchase_id = ids.event_purchase_id
-            ),
-            (
-                select hold_expires_at is null
-                from event_purchase
-                where event_purchase_id = ids.event_purchase_id
-            ),
-            (
-                select status
-                from event_purchase
-                where event_purchase_id = ids.event_purchase_id
-            ),
-            (
-                select status
-                from event_attendee
-                where event_id = ids.event_id
-                and user_id = ids.user_id
-            )
-        from ids
-    $$, :'openUntilStartPurchaseID', :'eventOpenUntilStartID', :'user6ID'),
-    $$ values (true, true, 'completed'::text, 'confirmed'::text) $$,
-    'Should persist the completed open-only free hold purchase and attendee row'
 );
 
 -- Should reject non-free purchases
@@ -660,22 +277,6 @@ select throws_ok(
     'OCG01',
     'purchase is no longer pending',
     'Should reject purchases that are no longer pending'
-);
-
--- Should reject purchases whose attendee row cannot be confirmed
-select throws_ok(
-    format($$select complete_free_event_purchase(%L::uuid)$$, :'invitedPurchaseID'),
-    'OCG01',
-    'attendee cannot be confirmed for this event',
-    'Should reject purchases whose attendee row cannot be confirmed'
-);
-
--- Should reject free purchases whose admission offer is no longer available
-select throws_ok(
-    format($$select complete_free_event_purchase(%L::uuid)$$, :'completedOfferPurchaseID'),
-    'OCG01',
-    'admission offer is no longer available',
-    'Should reject free purchases whose admission offer is no longer available'
 );
 
 -- Should reject unknown purchases

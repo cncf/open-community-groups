@@ -11,4 +11,4 @@ returns json as $$
                 'sw_lon', st_xmin(p_extent)
             )
     end;
-$$ language sql immutable;
+$$ language sql stable;

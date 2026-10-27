@@ -9,4 +9,4 @@ returns json as $$
     and (g.slug = p_group_slug or g.slug_pretty = p_group_slug)
     and e.slug = p_event_slug
     and is_event_public(e, g);
-$$ language sql;
+$$ language sql stable;

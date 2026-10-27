@@ -143,8 +143,8 @@ select is(
     'Should return attendee details for the first scan'
 );
 
--- Should return a durable check-in timestamp
-select ok(
+-- Should return the persisted check-in timestamp
+select is(
     (
         check_in_attendee_by_code(
             :'actorUserID'::uuid,
@@ -153,8 +153,14 @@ select ok(
             :'eventID'::uuid,
             :'groupID'::uuid
         )::jsonb->>'checked_in_at'
-    )::bigint > 0,
-    'Should return a durable check-in timestamp'
+    )::bigint,
+    (
+        select epoch_seconds(ea.checked_in_at)
+        from event_attendee ea
+        where ea.event_id = :'eventID'::uuid
+        and ea.user_id = :'attendeeUserID'::uuid
+    ),
+    'Should return the persisted check-in timestamp'
 );
 
 -- Should return the neutral outcome for a duplicate scan

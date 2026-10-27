@@ -10,4 +10,4 @@ create or replace function release_meeting_auto_end_check_claim(
     where meeting_id = p_meeting_id
       and auto_end_check_at is null
       and auto_end_check_claimed_at = p_claimed_at;
-$$ language sql;
+$$ language sql volatile;

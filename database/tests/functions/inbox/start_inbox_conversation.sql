@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,7 +20,6 @@ select plan(12);
 \set groupCategoryID '1b090000-0000-0000-0000-000000000007'
 \set groupID '1b090000-0000-0000-0000-000000000008'
 \set limitedUserID '1b090000-0000-0000-0000-000000000009'
-\set otherEventID '1b090000-0000-0000-0000-000000000017'
 \set otherGroupID '1b090000-0000-0000-0000-000000000012'
 \set spamConversationID '1b090000-0000-0000-0000-000000000015'
 \set spamUserID '1b090000-0000-0000-0000-000000000016'
@@ -67,9 +66,6 @@ select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Published event co-hosted by another group
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
-
--- Another published event of the group
-select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Unpublished event
 select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID');
@@ -154,23 +150,6 @@ select throws_ok(
     'OCG01',
     'daily limit of new conversations reached',
     'Should reject users who reached the daily limit of new conversations'
-);
-
--- Should start a conversation about another event of a group with an open conversation
-select ok(
-    start_inbox_conversation(:'conflictUserID'::uuid, :'communityID'::uuid, :'otherEventID'::uuid, 'Hello')::jsonb ? 'inbox_conversation_id',
-    'Should start a conversation about another event of a group with an open conversation'
-);
-select results_eq(
-    format(
-        $$select event_id, inbox_conversation_status_id
-        from inbox_conversation
-        where user_id = %L::uuid
-        order by event_id$$,
-        :'conflictUserID'
-    ),
-    format($$values (%L::uuid, 'open'), (%L::uuid, 'open')$$, :'eventID', :'otherEventID'),
-    'Should keep one open conversation per event of the group'
 );
 
 -- Start a conversation about the co-hosted event

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,6 +28,14 @@ select plan(6);
 \set groupID '0c160000-0000-0000-0000-000000000005'
 \set inactivePublicTicketTypeID '0c160000-0000-0000-0000-000000000015'
 \set inactivePublicWindowID '0c160000-0000-0000-0000-000000000016'
+\set manualSessionID '0c160000-0000-0000-0000-00000000001e'
+\set meetingDiscountCodeID '0c160000-0000-0000-0000-00000000001c'
+\set meetingEventID '0c160000-0000-0000-0000-000000000019'
+\set meetingSessionID '0c160000-0000-0000-0000-00000000001d'
+\set meetingTicketTypeID '0c160000-0000-0000-0000-00000000001a'
+\set meetingWindowID '0c160000-0000-0000-0000-00000000001b'
+\set organizerOnlyEventKeys '{discount_codes,manual_tax_rate_ids,meeting_error,meeting_hosts,meeting_in_sync,meeting_password,meeting_recording_raw_urls,meeting_recording_requested,meeting_recording_url,meeting_requested,registration_questions_locked}'
+\set organizerOnlySessionKeys '{meeting_error,meeting_hosts,meeting_in_sync,meeting_password,meeting_recording_raw_urls,meeting_recording_url,meeting_requested}'
 \set pendingRequestUserID '0c160000-0000-0000-0000-000000000014'
 \set privateOnlyTicketTypeID '0c160000-0000-0000-0000-00000000000b'
 \set privateOnlyWindowID '0c160000-0000-0000-0000-00000000000c'
@@ -66,7 +74,42 @@ select fx_event(:'eventPrivateID', :'groupID', :'eventCategoryID', jsonb_build_o
     'published', true
 ));
 
--- Public and invitation-only ticket types
+-- Paid manual-tax event with an automatic meeting and organizer sync state
+select fx_event(:'meetingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 50,
+    'ends_at', '2030-05-01 12:00:00+00',
+    'event_kind_id', 'virtual',
+    'manual_tax_rate_ids', array['txr_0c16_manual'],
+    'meeting_error', 'provider timeout',
+    'meeting_hosts', array['host-0c16@example.com'],
+    'meeting_in_sync', false,
+    'meeting_provider_id', 'zoom',
+    'meeting_recording_url', 'https://video.example.com/0c16-unpublished',
+    'meeting_requested', true,
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', '2030-05-01 09:00:00+00',
+    'tax_calculation_mode', 'manual'
+));
+
+-- Discount code configured by organizers on the meeting event
+insert into event_discount_code (
+    event_discount_code_id,
+    amount_minor,
+    code,
+    event_id,
+    kind,
+    title
+) values (
+    :'meetingDiscountCodeID',
+    500,
+    '0C16-SAVE',
+    :'meetingEventID',
+    'fixed_amount',
+    'Organizer discount'
+);
+
+-- Public and invitation-only ticket types for each event
 select fx_event_ticket_type(:'publicTicketTypeID', :'eventID', jsonb_build_object(
     'seats_total', 10,
     'title', 'Public pass'
@@ -89,16 +132,79 @@ select fx_event_ticket_type(:'privateOnlyTicketTypeID', :'eventPrivateID', jsonb
     'availability', 'invitation_only',
     'seats_total', 5
 ));
-
--- Current and future prices for public and invitation-only ticket types
-select fx_event_ticket_price_window(:'futurePublicWindowID', :'futurePublicTicketTypeID', jsonb_build_object(
-    'amount_minor', 2500,
-    'starts_at', current_timestamp + interval '1 day'
+select fx_event_ticket_type(:'meetingTicketTypeID', :'meetingEventID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'Meeting pass'
 ));
-select fx_event_ticket_price_window(:'inactivePublicWindowID', :'inactivePublicTicketTypeID', jsonb_build_object('amount_minor', 2500));
-select fx_event_ticket_price_window(:'privateOnlyWindowID', :'privateOnlyTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(:'privateWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 5000));
-select fx_event_ticket_price_window(:'publicWindowID', :'publicTicketTypeID', jsonb_build_object('amount_minor', 2500));
+
+-- Provider meeting with secrets linked to the meeting event
+insert into meeting (
+    event_id,
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    recording_urls
+) values (
+    :'meetingEventID',
+    'https://zoom.example.com/0c16-event',
+    'zoom',
+    'event-secret',
+    '0c16-event-meeting',
+    array['https://zoom.example.com/0c16-event-recording']::text[]
+);
+
+-- Automatic-meeting session with organizer sync state
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_error,
+    meeting_hosts,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'meetingSessionID',
+    :'meetingEventID',
+    'Automatic meeting session',
+    'virtual',
+    '2030-05-01 09:00:00+00',
+    '2030-05-01 10:00:00+00',
+    'session provider timeout',
+    array['session-host-0c16@example.com'],
+    false,
+    'zoom',
+    true
+);
+
+-- Manual-meeting session with a published recording
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_join_url,
+    meeting_recording_published,
+    meeting_recording_url,
+    meeting_requested
+) values (
+    :'manualSessionID',
+    :'meetingEventID',
+    'Manual meeting session',
+    'virtual',
+    '2030-05-01 10:00:00+00',
+    '2030-05-01 11:00:00+00',
+    'https://stream.example.com/0c16-manual',
+    true,
+    'https://video.example.com/0c16-manual-recording',
+    false
+);
 
 -- Active and expired organizer invitations for public inventory
 insert into admission_offer (
@@ -187,6 +293,34 @@ insert into event_purchase (
         :'expiredHoldUserID'
     );
 
+-- Current and future prices for public and invitation-only ticket types of each event
+select fx_event_ticket_price_window(:'futurePublicWindowID', :'futurePublicTicketTypeID', jsonb_build_object(
+    'amount_minor', 2500,
+    'starts_at', current_timestamp + interval '1 day'
+));
+select fx_event_ticket_price_window(:'inactivePublicWindowID', :'inactivePublicTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'meetingWindowID', :'meetingTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'privateOnlyWindowID', :'privateOnlyTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'privateWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'publicWindowID', :'publicTicketTypeID', jsonb_build_object('amount_minor', 2500));
+
+-- Provider meeting with secrets linked to the automatic-meeting session
+insert into meeting (
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    recording_urls,
+    session_id
+) values (
+    'https://zoom.example.com/0c16-session',
+    'zoom',
+    'session-secret',
+    '0c16-session-meeting',
+    array['https://zoom.example.com/0c16-session-recording']::text[],
+    :'meetingSessionID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -217,6 +351,34 @@ select is(
     'Should calculate remaining capacity from canonical public ticket allocations'
 );
 
+-- Should keep attendee-facing meeting fields
+select is(
+    jsonb_build_object(
+        'event_meeting_join_url', public_event->'meeting_join_url',
+        'session_meeting_join_url', manual_session->'meeting_join_url',
+        'session_meeting_recording_public_url', manual_session->'meeting_recording_public_url'
+    ),
+    jsonb_build_object(
+        'event_meeting_join_url', 'https://zoom.example.com/0c16-event',
+        'session_meeting_join_url', 'https://stream.example.com/0c16-manual',
+        'session_meeting_recording_public_url', 'https://video.example.com/0c16-manual-recording'
+    ),
+    'Should keep attendee-facing meeting fields'
+)
+from (
+    select get_public_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'meetingEventID'::uuid
+    )::jsonb as public_event
+) public_event_projection
+cross join lateral (
+    select public_session.value as manual_session
+    from jsonb_each(public_event->'sessions') as day(key, value)
+    cross join lateral jsonb_array_elements(day.value) as public_session(value)
+    where public_session.value->>'session_id' = :'manualSessionID'
+) manual_session_projection;
+
 -- Should keep organizer inventory across all ticket types unchanged
 select is(
     jsonb_build_object(
@@ -236,6 +398,77 @@ from (
         :'eventID'::uuid
     )::jsonb as organizer_event
 ) organizer_event_projection;
+
+-- Should keep organizer-only configuration and secrets in the organizer projection
+select is(
+    jsonb_build_object(
+        'missing_event_keys', (
+            select coalesce(jsonb_agg(event_key order by event_key), '[]'::jsonb)
+            from unnest(:'organizerOnlyEventKeys'::text[]) as event_key
+            where not (organizer_event ? event_key)
+        ),
+        'missing_session_keys', (
+            -- Require each session key on at least one organizer session
+            select coalesce(jsonb_agg(session_key order by session_key), '[]'::jsonb)
+            from unnest(:'organizerOnlySessionKeys'::text[]) as session_key
+            where not exists (
+                select 1
+                from jsonb_each(organizer_event->'sessions') as day(key, value)
+                cross join lateral jsonb_array_elements(day.value) as organizer_session(value)
+                where organizer_session.value ? session_key
+            )
+        )
+    ),
+    jsonb_build_object(
+        'missing_event_keys', '[]'::jsonb,
+        'missing_session_keys', '[]'::jsonb
+    ),
+    'Should keep organizer-only configuration and secrets in the organizer projection'
+)
+from (
+    select get_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'meetingEventID'::uuid
+    )::jsonb as organizer_event
+) organizer_event_projection;
+
+-- Should omit organizer-only configuration and secrets
+select is(
+    jsonb_build_object(
+        'leaked_event_keys', (
+            select coalesce(jsonb_agg(event_key order by event_key), '[]'::jsonb)
+            from unnest(:'organizerOnlyEventKeys'::text[]) as event_key
+            where public_event ? event_key
+        ),
+        'leaked_session_keys', (
+            select coalesce(jsonb_agg(distinct session_key order by session_key), '[]'::jsonb)
+            from jsonb_each(public_event->'sessions') as day(key, value)
+            cross join lateral jsonb_array_elements(day.value) as public_session(value)
+            cross join unnest(:'organizerOnlySessionKeys'::text[]) as session_key
+            where public_session.value ? session_key
+        ),
+        'session_count', (
+            -- Count every session so an empty projection cannot pass
+            select count(*)
+            from jsonb_each(public_event->'sessions') as day(key, value)
+            cross join lateral jsonb_array_elements(day.value) as public_session(value)
+        )
+    ),
+    jsonb_build_object(
+        'leaked_event_keys', '[]'::jsonb,
+        'leaked_session_keys', '[]'::jsonb,
+        'session_count', 2
+    ),
+    'Should omit organizer-only configuration and secrets'
+)
+from (
+    select get_public_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'meetingEventID'::uuid
+    )::jsonb as public_event
+) public_event_projection;
 
 -- Should omit public inventory for fully invitation-only events
 select ok(

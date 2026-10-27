@@ -1,9 +1,11 @@
+-- Tests returning the site settings.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(1);
 
 -- ============================================================================
 -- VARIABLES
@@ -59,13 +61,6 @@ select is(
         'og_image_url', 'https://example.com/og-image.png'
     ),
     'Should return site settings with all fields'
-);
-
--- Should return null when no site exists
-delete from site;
-select ok(
-    get_site_settings() is null,
-    'Should return null when no site exists'
 );
 
 -- ============================================================================

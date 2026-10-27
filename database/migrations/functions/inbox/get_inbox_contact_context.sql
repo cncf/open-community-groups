@@ -32,15 +32,10 @@ returns json as $$
                 'is_blocked', is_inbox_user_blocked(g.group_id, p_user_id),
                 'is_group_team_member', user_is_group_team_member(g.group_id, p_user_id),
 
-                'open_inbox_conversation_id', (
-                    select ic.inbox_conversation_id
-                    from inbox_conversation ic
-                    where ic.event_id = e.event_id
-                    and ic.group_id = g.group_id
-                    and ic.user_id = p_user_id
-                    and ic.inbox_conversation_status_id = 'open'
-                    order by ic.last_message_at desc, ic.inbox_conversation_id desc
-                    limit 1
+                'open_inbox_conversation_id', user_open_inbox_conversation_id(
+                    g.group_id,
+                    e.event_id,
+                    p_user_id
                 )
             )
         end

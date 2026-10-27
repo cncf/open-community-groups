@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -123,6 +123,17 @@ select throws_ok(
     'P0001',
     'application-fee adjustment claim is stale',
     'Should reject a stale application-fee adjustment claim'
+);
+
+-- Should reject a null application-fee adjustment claim
+select throws_ok(
+    format(
+        'select record_event_purchase_application_fee_adjustment_succeeded(%L, null, %L)',
+        :'adjustmentID', 'fr_adjust'
+    ),
+    'P0001',
+    'application-fee adjustment claim is stale',
+    'Should reject a null application-fee adjustment claim'
 );
 
 -- Should complete a claimed application-fee adjustment

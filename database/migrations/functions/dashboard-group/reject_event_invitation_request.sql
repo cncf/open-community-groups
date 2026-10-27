@@ -6,23 +6,9 @@ create or replace function reject_event_invitation_request(
     p_user_id uuid
 )
 returns void as $$
-declare
-    v_community_id uuid;
 begin
     -- Lock the event and verify it belongs to the selected group
-    select g.community_id
-    into v_community_id
-    from event e
-    join "group" g on g.group_id = e.group_id
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and e.canceled = false
-    for update of e;
-
-    if not found then
-        raise exception 'event not found or inactive' using errcode = 'OCG01';
-    end if;
+    perform lock_manageable_event(p_group_id, p_event_id, false);
 
     -- Mark only pending requests as rejected
     update event_invitation_request
@@ -34,6 +20,7 @@ begin
     and user_id = p_user_id
     and status = 'pending';
 
+    -- Reject requests that are missing or already reviewed
     if not found then
         raise exception 'pending invitation request not found' using errcode = 'OCG01';
     end if;
@@ -44,10 +31,9 @@ begin
         p_actor_user_id,
         'user',
         p_user_id,
-        v_community_id,
-        p_group_id,
-        p_event_id,
-        jsonb_build_object('event_id', p_event_id, 'user_id', p_user_id)
+        p_group_id => p_group_id,
+        p_event_id => p_event_id,
+        p_details => jsonb_build_object('event_id', p_event_id, 'user_id', p_user_id)
     );
 end;
 $$ language plpgsql;

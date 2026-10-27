@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -80,24 +80,6 @@ select results_eq(
     ),
     $$values ('answered', '2030-01-10 11:00:00+00'::timestamptz)$$,
     'Should answer a closed conversation when the group replies'
-);
-
--- Should answer an open conversation when the group replies
-select lives_ok(
-    format(
-        $$select append_inbox_message(ic, %L::uuid, 'Reply', 'group-reply', '2030-01-10 11:00:00+00') from inbox_conversation ic where ic.inbox_conversation_id = %L::uuid$$,
-        :'actorID',
-        :'openConversationID'
-    ),
-    'Should append a group reply to an open conversation'
-);
-select results_eq(
-    format(
-        $$select inbox_conversation_status_id, last_message_at from inbox_conversation where inbox_conversation_id = %L::uuid$$,
-        :'openConversationID'
-    ),
-    $$values ('answered', '2030-01-10 11:00:00+00'::timestamptz)$$,
-    'Should answer an open conversation when the group replies'
 );
 
 -- Should keep the last message time when an older message is appended

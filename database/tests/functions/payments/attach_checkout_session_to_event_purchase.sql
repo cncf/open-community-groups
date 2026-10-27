@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,8 @@ select plan(6);
 
 \set attachedPendingPurchaseID '79410000-0000-0000-0000-000000000001'
 \set attachedUserID '79410000-0000-0000-0000-000000000002'
+\set automaticTaxPurchaseID '79410000-0000-0000-0000-000000000014'
+\set automaticTaxUserID '79410000-0000-0000-0000-000000000015'
 \set communityID '79410000-0000-0000-0000-000000000003'
 \set completedPurchaseID '79410000-0000-0000-0000-000000000004'
 \set completedUserID '79410000-0000-0000-0000-000000000005'
@@ -29,22 +31,50 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories and users
+-- Community owning the ticketed event
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- User holding the pending purchase that already has a checkout session
 select fx_user(:'attachedUserID');
+
+-- User holding the pending automatic-tax purchase
+select fx_user(:'automaticTaxUserID');
+
+-- User holding the completed purchase
 select fx_user(:'completedUserID');
+
+-- User holding the pending purchase awaiting a checkout session
 select fx_user(:'userID');
 
--- Group
+-- Event category for the ticketed event
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category for the organizing group
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Cached tax location of the seller with a stale provider resource and venue
+insert into payment_provider_tax_location (
+    connected_seller_id,
+    fingerprint,
+    payment_provider_id,
+    provider_tax_location_id,
+    venue_snapshot
+) values (
+    'acct_attach',
+    'fp_attach_location',
+    'stripe',
+    'loc_attach_stale',
+    '{"name": "Stale Attach Venue"}'::jsonb
+);
+
+-- Group organizing the ticketed event
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
         'provider', 'stripe',
         'recipient_id', 'acct_test_group',
         'seller_display_name', 'Checkout Session Fiscal Sponsor'
     )));
 
--- Event
+-- Event owning the purchases
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'payment_currency_code', 'USD',
     'published', true,
@@ -52,16 +82,16 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'starts_at', now() + interval '1 day'
 ));
 
--- Ticket type
+-- Ticket type of the purchases
 select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
     'seats_total', 10,
     'title', 'General admission'
 ));
 
--- Price window
+-- Price window of the ticket type
 select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
--- Purchases
+-- Pending purchase awaiting a checkout session and completed purchase
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
@@ -118,7 +148,7 @@ insert into event_purchase (
     null
 );
 
--- Completed purchase that must reject checkout-session attachment
+-- Pending purchase that already has a checkout session
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
@@ -161,6 +191,47 @@ insert into event_purchase (
     'manual',
     'professional-event-admission',
     '{}'::jsonb
+);
+
+-- Pending automatic-tax purchase whose venue refreshes the cached tax location
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    charge_model,
+    connected_seller_id,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_object_account_id,
+    provider_tax_code,
+    seller_snapshot,
+    status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot
+) values (
+    :'automaticTaxPurchaseID',
+    2500,
+    'direct-charge',
+    'acct_attach',
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'stripe',
+    'acct_attach',
+    'txcd_50013001',
+    '{"connected_account_id":"acct_attach","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    'pending',
+    'inclusive',
+    'automatic',
+    'professional-event-admission',
+    'General admission',
+    :'automaticTaxUserID',
+    '{"name": "Current Attach Venue"}'::jsonb
 );
 
 -- ============================================================================
@@ -261,6 +332,37 @@ select results_eq(
         )
     $$,
     'Should keep the original checkout session details when already attached'
+);
+
+-- Should attach a checkout session with automatic-tax resources
+select lives_ok(
+    format($$
+        select attach_checkout_session_to_event_purchase(
+            %L::uuid,
+            'stripe',
+            'acct_attach',
+            'cs_automatic_tax',
+            'https://example.com/automatic-tax',
+            'loc_attach_current',
+            'fp_attach_location',
+            'prod_attach_current',
+            'fp_attach_product'
+        )
+    $$, :'automaticTaxPurchaseID'),
+    'Should attach a checkout session with automatic-tax resources'
+);
+
+-- Should refresh the cached tax location and venue of an existing fingerprint
+select results_eq(
+    $$
+        select provider_tax_location_id, venue_snapshot
+        from payment_provider_tax_location
+        where payment_provider_id = 'stripe'
+        and connected_seller_id = 'acct_attach'
+        and fingerprint = 'fp_attach_location'
+    $$,
+    $$ values ('loc_attach_current'::text, '{"name": "Current Attach Venue"}'::jsonb) $$,
+    'Should refresh the cached tax location and venue of an existing fingerprint'
 );
 
 -- ============================================================================

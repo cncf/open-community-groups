@@ -10,4 +10,4 @@ returns boolean as $$
         and e.external_payment_url is not null
         and is_group_external_payments_ready(e.group_id)
     );
-$$ language sql;
+$$ language sql stable;

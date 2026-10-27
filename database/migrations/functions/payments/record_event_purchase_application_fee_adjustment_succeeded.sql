@@ -41,11 +41,12 @@ begin
             raise exception 'application-fee adjustment has a different provider refund';
         end if;
 
+        -- Keep the outcome already recorded for the same provider refund
         return;
     end if;
 
     -- Validate claim ownership before completing the adjustment
-    if v_job.claim_id <> p_claim_id or v_job.status <> 'processing' then
+    if v_job.claim_id is distinct from p_claim_id or v_job.status <> 'processing' then
         raise exception 'application-fee adjustment claim is stale';
     end if;
 

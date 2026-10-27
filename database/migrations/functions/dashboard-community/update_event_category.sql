@@ -7,21 +7,16 @@ create or replace function update_event_category(
 )
 returns void as $$
 begin
-    -- Ensure the target category exists in the selected community
-    perform 1
-    from event_category ec
-    where ec.community_id = p_community_id
-      and ec.event_category_id = p_event_category_id;
-
-    if not found then
-        raise exception 'event category not found' using errcode = 'OCG01';
-    end if;
-
     -- Update the category record
     update event_category set
         name = p_event_category->>'name'
     where community_id = p_community_id
       and event_category_id = p_event_category_id;
+
+    -- Reject targets outside the selected community
+    if not found then
+        raise exception 'event category not found' using errcode = 'OCG01';
+    end if;
 
     -- Track the updated category
     perform insert_audit_log(
@@ -32,8 +27,11 @@ begin
         p_community_id
     );
 exception
+    -- Translate duplicate category names
     when unique_violation then
         raise exception 'event category already exists' using errcode = 'OCG01';
+
+    -- Translate names that generate an invalid slug
     when check_violation then
         raise exception 'event category name is invalid' using errcode = 'OCG01';
 end;

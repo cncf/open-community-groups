@@ -5,11 +5,27 @@
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(23);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should accept empty submissions when questions are not configured
+select lives_ok(
+    $$
+        select
+            validate_questionnaire_answers_payload('[]'::jsonb, null::jsonb),
+            validate_questionnaire_answers_payload('[]'::jsonb, '{}'::jsonb),
+            validate_questionnaire_answers_payload(
+                '[]'::jsonb,
+                '{
+                    "answers": []
+                }'::jsonb
+            )
+    $$,
+    'Should accept empty submissions when questions are not configured'
+);
 
 -- Should accept free-text answers at the length limit in characters
 select lives_ok(
@@ -134,6 +150,36 @@ select lives_ok(
         )
     $$,
     'Should accept valid answers for all supported question types'
+);
+
+-- Should reject a null answers value when questions are not configured
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[]'::jsonb,
+            '{
+                "answers": null
+            }'::jsonb
+        )
+    $$,
+    'OCG01',
+    'questionnaire answers cannot be submitted when questions are not configured',
+    'Should reject a null answers value when questions are not configured'
+);
+
+-- Should reject an answers object when questions are not configured
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[]'::jsonb,
+            '{
+                "answers": {}
+            }'::jsonb
+        )
+    $$,
+    'OCG01',
+    'questionnaire answers cannot be submitted when questions are not configured',
+    'Should reject an answers object when questions are not configured'
 );
 
 -- Should reject answers for unknown questions

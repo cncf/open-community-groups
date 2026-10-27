@@ -3,6 +3,8 @@ create or replace function claim_meeting_out_of_sync()
 returns jsonb as $$
 declare
     v_claimed_meeting jsonb;
+    v_event event;
+    v_session session;
 begin
     -- Case 1: Event needing create/update
     with next_event as (
@@ -17,49 +19,18 @@ begin
           and e.starts_at > current_timestamp
         for update skip locked
         limit 1
-    ),
-    claimed_event as (
-        update event e
-        set
-            meeting_error = null,
-            meeting_sync_claimed_at = current_timestamp
-        from next_event ne
-        where e.event_id = ne.event_id
-        returning e.*
     )
-    select jsonb_strip_nulls(jsonb_build_object(
-        'delete', false,
-        'duration_secs', extract(epoch from ce.ends_at - ce.starts_at)::double precision,
-        'event_id', ce.event_id,
-        'hosts', (
-            select array_agg(distinct email order by email) filter (where email is not null)
-            from (
-                select unnest(ce.meeting_hosts) as email
-                union
-                select u.email from event_host eh join "user" u using (user_id) where eh.event_id = ce.event_id
-                union
-                select u.email from event_speaker es join "user" u using (user_id) where es.event_id = ce.event_id
-            ) combined
-        ),
-        'join_url', m.join_url,
-        'meeting_id', m.meeting_id,
-        'meeting_provider_id', ce.meeting_provider_id,
-        'meeting_recording_requested', ce.meeting_recording_requested,
-        'password', m.password,
-        'provider_host_user_id', ce.meeting_provider_host_user,
-        'provider_meeting_id', m.provider_meeting_id,
-        'starts_at', ce.starts_at,
-        'sync_claimed_at', ce.meeting_sync_claimed_at,
-        'sync_state_hash', get_event_meeting_sync_state_hash(ce.event_id),
-        'timezone', ce.timezone,
-        'topic', ce.name
-    ))
-    into v_claimed_meeting
-    from claimed_event ce
-    left join meeting m on m.event_id = ce.event_id;
+    update event e
+    set
+        meeting_error = null,
+        meeting_sync_claimed_at = current_timestamp
+    from next_event ne
+    where e.event_id = ne.event_id
+    returning e.* into v_event;
 
-    if v_claimed_meeting is not null then
-        return v_claimed_meeting;
+    -- Return the claimed event's create/update payload
+    if found then
+        return event_meeting_sync_payload(v_event, false);
     end if;
 
     -- Case 2: Session needing create/update
@@ -76,50 +47,18 @@ begin
           and s.starts_at > current_timestamp
         for update of s skip locked
         limit 1
-    ),
-    claimed_session as (
-        update session s
-        set
-            meeting_error = null,
-            meeting_sync_claimed_at = current_timestamp
-        from next_session ns
-        where s.session_id = ns.session_id
-        returning s.*
     )
-    select jsonb_strip_nulls(jsonb_build_object(
-        'delete', false,
-        'duration_secs', extract(epoch from cs.ends_at - cs.starts_at)::double precision,
-        'hosts', (
-            select array_agg(distinct email order by email) filter (where email is not null)
-            from (
-                select unnest(cs.meeting_hosts) as email
-                union
-                select u.email from event_host eh join "user" u using (user_id) where eh.event_id = cs.event_id
-                union
-                select u.email from session_speaker ss join "user" u using (user_id) where ss.session_id = cs.session_id
-            ) combined
-        ),
-        'join_url', m.join_url,
-        'meeting_id', m.meeting_id,
-        'meeting_provider_id', cs.meeting_provider_id,
-        'meeting_recording_requested', e.meeting_recording_requested,
-        'password', m.password,
-        'provider_host_user_id', cs.meeting_provider_host_user,
-        'provider_meeting_id', m.provider_meeting_id,
-        'session_id', cs.session_id,
-        'starts_at', cs.starts_at,
-        'sync_claimed_at', cs.meeting_sync_claimed_at,
-        'sync_state_hash', get_session_meeting_sync_state_hash(cs.session_id),
-        'timezone', e.timezone,
-        'topic', cs.name
-    ))
-    into v_claimed_meeting
-    from claimed_session cs
-    join event e on e.event_id = cs.event_id
-    left join meeting m on m.session_id = cs.session_id;
+    update session s
+    set
+        meeting_error = null,
+        meeting_sync_claimed_at = current_timestamp
+    from next_session ns
+    where s.session_id = ns.session_id
+    returning s.* into v_session;
 
-    if v_claimed_meeting is not null then
-        return v_claimed_meeting;
+    -- Return the claimed session's create/update payload
+    if found then
+        return session_meeting_sync_payload(v_session, false);
     end if;
 
     -- Case 3: Event needing delete
@@ -130,38 +69,22 @@ begin
           and e.meeting_sync_claimed_at is null
           and (
               (e.meeting_requested = true and (e.deleted = true or e.canceled = true or e.published = false))
-              or e.meeting_requested = false
+              or e.meeting_requested is distinct from true
           )
         for update of e skip locked
         limit 1
-    ),
-    claimed_event as (
-        update event e
-        set
-            meeting_error = null,
-            meeting_sync_claimed_at = current_timestamp
-        from next_event ne
-        where e.event_id = ne.event_id
-        returning e.*
     )
-    select jsonb_strip_nulls(jsonb_build_object(
-        'delete', true,
-        'event_id', ce.event_id,
-        'join_url', m.join_url,
-        'meeting_id', m.meeting_id,
-        'meeting_provider_id', m.meeting_provider_id,
-        'password', m.password,
-        'provider_host_user_id', ce.meeting_provider_host_user,
-        'provider_meeting_id', m.provider_meeting_id,
-        'sync_claimed_at', ce.meeting_sync_claimed_at,
-        'sync_state_hash', get_event_meeting_sync_state_hash(ce.event_id)
-    ))
-    into v_claimed_meeting
-    from claimed_event ce
-    left join meeting m on m.event_id = ce.event_id;
+    update event e
+    set
+        meeting_error = null,
+        meeting_sync_claimed_at = current_timestamp
+    from next_event ne
+    where e.event_id = ne.event_id
+    returning e.* into v_event;
 
-    if v_claimed_meeting is not null then
-        return v_claimed_meeting;
+    -- Return the claimed event's delete payload
+    if found then
+        return event_meeting_sync_payload(v_event, true);
     end if;
 
     -- Case 4: Session needing delete
@@ -173,38 +96,22 @@ begin
           and s.meeting_sync_claimed_at is null
           and (
             (s.meeting_requested = true and (e.deleted = true or e.canceled = true or e.published = false))
-            or s.meeting_requested = false
+            or s.meeting_requested is distinct from true
           )
         for update of s skip locked
         limit 1
-    ),
-    claimed_session as (
-        update session s
-        set
-            meeting_error = null,
-            meeting_sync_claimed_at = current_timestamp
-        from next_session ns
-        where s.session_id = ns.session_id
-        returning s.*
     )
-    select jsonb_strip_nulls(jsonb_build_object(
-        'delete', true,
-        'join_url', m.join_url,
-        'meeting_id', m.meeting_id,
-        'meeting_provider_id', m.meeting_provider_id,
-        'password', m.password,
-        'provider_host_user_id', cs.meeting_provider_host_user,
-        'provider_meeting_id', m.provider_meeting_id,
-        'session_id', cs.session_id,
-        'sync_claimed_at', cs.meeting_sync_claimed_at,
-        'sync_state_hash', get_session_meeting_sync_state_hash(cs.session_id)
-    ))
-    into v_claimed_meeting
-    from claimed_session cs
-    left join meeting m on m.session_id = cs.session_id;
+    update session s
+    set
+        meeting_error = null,
+        meeting_sync_claimed_at = current_timestamp
+    from next_session ns
+    where s.session_id = ns.session_id
+    returning s.* into v_session;
 
-    if v_claimed_meeting is not null then
-        return v_claimed_meeting;
+    -- Return the claimed session's delete payload
+    if found then
+        return session_meeting_sync_payload(v_session, true);
     end if;
 
     -- Case 5: Orphan meetings
@@ -239,10 +146,12 @@ begin
     into v_claimed_meeting
     from claimed_meeting cm;
 
+    -- Return the claimed orphan meeting's delete payload
     if v_claimed_meeting is not null then
         return v_claimed_meeting;
     end if;
 
+    -- Report that no meeting needs synchronization
     return null;
 end;
 $$ language plpgsql;

@@ -25,4 +25,4 @@ returns json as $$
     left join "user" u on u.user_id = e.created_by
     where e.event_id = p_event_id
     and e.group_id = p_group_id;
-$$ language sql;
+$$ language sql stable;

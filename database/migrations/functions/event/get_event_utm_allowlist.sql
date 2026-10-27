@@ -19,4 +19,4 @@ returns json as $$
     where e.event_id = p_event_id
     and e.deleted = false
     and e.published = true;
-$$ language sql;
+$$ language sql stable;

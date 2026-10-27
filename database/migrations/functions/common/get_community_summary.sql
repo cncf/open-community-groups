@@ -15,4 +15,4 @@ returns json as $$
     ))
     from community
     where community_id = p_community_id;
-$$ language sql;
+$$ language sql stable;

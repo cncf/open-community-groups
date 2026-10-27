@@ -12,4 +12,4 @@ returns json as $$
         '[]'::json
     )
     from session_proposal_level spl;
-$$ language sql;
+$$ language sql stable;

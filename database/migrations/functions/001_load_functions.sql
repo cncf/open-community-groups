@@ -5,44 +5,68 @@
 
 {{ template "internal/audit/audit_log_resource_name.sql" }}
 {{ template "internal/audit/insert_audit_log.sql" }}
+{{ template "internal/audit/search_audit_logs.sql" }}
+
+{{ template "internal/badges/normalize_badge_image_file_name.sql" }}
+{{ template "internal/badges/user_badge_json.sql" }}
 
 {{ template "internal/cohosts/close_event_cohosts.sql" }}
 {{ template "internal/cohosts/event_cohosts_json.sql" }}
 {{ template "internal/cohosts/event_has_pending_cohosts.sql" }}
 {{ template "internal/cohosts/insert_event_cohost_audit.sql" }}
+{{ template "internal/cohosts/transition_event_cohost.sql" }}
 
 {{ template "internal/enrollment/admission_offer_is_active.sql" }}
+{{ template "internal/enrollment/admission_offer_reserves_seat.sql" }} -- Dependency for admission_offer_is_claimable
+{{ template "internal/enrollment/admission_offer_is_claimable.sql" }}
+{{ template "internal/enrollment/admission_offer_is_lapsed.sql" }}
+{{ template "internal/enrollment/check_in_event_attendee.sql" }}
 {{ template "internal/enrollment/close_event_enrollment.sql" }}
 {{ template "internal/enrollment/complete_event_purchase_admission_offer.sql" }}
 {{ template "internal/enrollment/confirm_event_purchase_attendee.sql" }}
 {{ template "internal/enrollment/event_purchase_holds_seat.sql" }}
+{{ template "internal/enrollment/event_purchase_reserves_seat.sql" }}
+{{ template "internal/enrollment/event_seat_purchases.sql" }}
+{{ template "internal/enrollment/event_attendee_ticket_title.sql" }} -- Depends on event_seat_purchases
 {{ template "internal/enrollment/event_user_enrollment.sql" }}
 {{ template "internal/enrollment/event_user_enrollment_conflict.sql" }}
 {{ template "internal/enrollment/get_event_occupied_seat_count.sql" }}
+{{ template "internal/enrollment/is_admission_offer_payment_ready.sql" }}
 {{ template "internal/enrollment/is_event_enrollment_superseded.sql" }}
 {{ template "internal/enrollment/registration_window_closes_at.sql" }} -- Dependency for is_registration_window_open
 {{ template "internal/enrollment/is_registration_window_open.sql" }}
+{{ template "internal/enrollment/issue_organizer_admission_offer.sql" }}
 {{ template "internal/enrollment/lock_event_enrollment_rows.sql" }}
+{{ template "internal/enrollment/lock_event_ticket_types.sql" }}
+{{ template "internal/enrollment/lock_event_user.sql" }}
+{{ template "internal/enrollment/mark_event_attendance_canceled.sql" }}
 {{ template "internal/enrollment/promote_event_waitlist_entries.sql" }}
 {{ template "internal/enrollment/questionnaire_answers_exist_for_event.sql" }}
 {{ template "internal/enrollment/reconcile_event_admission_offers.sql" }}
 {{ template "internal/enrollment/reconcile_event_enrollment.sql" }}
+{{ template "internal/enrollment/release_event_admission_offer.sql" }}
 {{ template "internal/enrollment/release_event_checkout_attendee_hold.sql" }}
 {{ template "internal/enrollment/resolve_organizer_offer_expiry.sql" }}
 {{ template "internal/enrollment/upsert_pending_registration_answers.sql" }}
 {{ template "internal/enrollment/validate_admission_offer_payment_readiness.sql" }}
 
 {{ template "internal/events/event_effective_ends_at.sql" }}
-{{ template "internal/enrollment/event_accepts_enrollment.sql" }} -- Depends on event_effective_ends_at
+{{ template "internal/events/event_is_past.sql" }}
+{{ template "internal/enrollment/event_accepts_enrollment.sql" }} -- Depends on event_is_past
+{{ template "internal/enrollment/event_accepts_waitlist_promotion.sql" }} -- Depends on event_accepts_enrollment
 {{ template "internal/events/event_labels_json.sql" }}
 {{ template "internal/events/event_public_path.sql" }}
 {{ template "internal/events/event_venue_snapshot.sql" }}
 {{ template "internal/events/get_event_delete_eligibility.sql" }}
 {{ template "internal/groups/is_group_public.sql" }} -- Dependency for is_event_public
 {{ template "internal/events/is_event_public.sql" }}
+{{ template "internal/events/is_event_check_in_open.sql" }} -- Depends on is_event_public
+{{ template "internal/events/is_event_listed.sql" }} -- Depends on is_event_public
 {{ template "internal/events/lock_active_event.sql" }}
+{{ template "internal/events/lock_manageable_event.sql" }}
 {{ template "internal/events/resolve_event_payload.sql" }}
 {{ template "internal/events/resolve_event_payment_rail.sql" }}
+{{ template "internal/events/respond_session_proposal_co_speaker_invitation.sql" }}
 {{ template "internal/events/sync_cfs_submission_labels.sql" }}
 {{ template "internal/events/sync_event_hosts_speakers_sponsors.sql" }}
 {{ template "internal/events/sync_event_labels.sql" }}
@@ -57,25 +81,36 @@
 {{ template "internal/events/validate_event_series_action_event_ids.sql" }}
 {{ template "internal/events/validate_update_event_dates.sql" }}
 
+{{ template "internal/groups/community_has_public_group.sql" }}
+{{ template "internal/groups/group_category_json.sql" }}
+{{ template "internal/groups/group_region_json.sql" }}
+{{ template "internal/groups/list_group_scope_ids.sql" }} -- Dependency for list_group_page_events
 {{ template "internal/groups/list_group_page_events.sql" }}
 {{ template "internal/groups/lock_active_group.sql" }}
 {{ template "internal/groups/user_is_group_team_member.sql" }}
 
 {{ template "internal/inbox/append_inbox_message.sql" }}
+{{ template "internal/inbox/inbox_conversation_status_for_message_kind.sql" }}
 {{ template "internal/inbox/inbox_user_rate_limits.sql" }}
+{{ template "internal/inbox/insert_inbox_conversation_audit.sql" }}
 {{ template "internal/inbox/is_inbox_user_blocked.sql" }}
+{{ template "internal/inbox/lock_group_inbox_conversation.sql" }}
 {{ template "internal/inbox/resolve_inbox_contact_event.sql" }}
 {{ template "internal/inbox/search_inbox_conversations.sql" }}
+{{ template "internal/inbox/user_open_inbox_conversation_id.sql" }}
 
 {{ template "internal/json/epoch_seconds.sql" }}
 {{ template "internal/json/jsonb_geography_point.sql" }}
 {{ template "internal/json/jsonb_text_array.sql" }}
 
-{{ template "internal/meetings/get_event_meeting_sync_state_hash.sql" }}
+{{ template "internal/meetings/get_event_meeting_sync_state_hash.sql" }} -- Dependency for event_meeting_sync_payload
+{{ template "internal/meetings/event_meeting_sync_payload.sql" }}
 {{ template "internal/meetings/get_session_meeting_sync_state_hash.sql" }}
 {{ template "internal/meetings/is_event_meeting_in_sync.sql" }}
 {{ template "internal/meetings/is_session_meeting_in_sync.sql" }}
+{{ template "internal/meetings/mark_event_meetings_out_of_sync.sql" }}
 {{ template "internal/meetings/release_meeting_sync.sql" }}
+{{ template "internal/meetings/session_meeting_sync_payload.sql" }}
 {{ template "internal/meetings/validate_event_meeting_durations.sql" }}
 
 {{ template "internal/notifications/community_contact_filter_values.sql" }}
@@ -84,47 +119,53 @@
 {{ template "internal/notifications/community_contact_team_seats.sql" }}
 {{ template "internal/notifications/describe_community_contact_filters.sql" }}
 {{ template "internal/notifications/list_user_notification_group_ids.sql" }}
-{{ template "internal/notifications/site_theme.sql" }}
 {{ template "internal/notifications/track_custom_notification.sql" }}
 {{ template "internal/notifications/users_accepting_notification.sql" }}
+{{ template "internal/notifications/event_custom_notification_recipients.sql" }} -- Depends on users_accepting_notification
 {{ template "internal/notifications/validate_community_contact_filters.sql" }}
 
 {{ template "internal/payments/apply_event_purchase_application_fee_adjustment_outcome.sql" }}
 {{ template "internal/payments/apply_event_purchase_credit_note_outcome.sql" }}
 {{ template "internal/payments/complete_payment_job.sql" }}
+{{ template "internal/payments/enqueue_event_purchase_application_fee_adjustment.sql" }}
+{{ template "internal/payments/enqueue_event_purchase_credit_note.sql" }}
+{{ template "internal/payments/enqueue_event_purchase_refund.sql" }}
 {{ template "internal/payments/enqueue_payment_job.sql" }}
-{{ template "internal/payments/ensure_event_purchase_refund_claim.sql" }}
 {{ template "internal/payments/event_has_pending_refund_recovery.sql" }}
+{{ template "internal/payments/event_purchase_external_payment_json.sql" }}
+{{ template "internal/payments/event_purchase_external_reminder_is_due.sql" }}
+{{ template "internal/payments/event_purchase_refund_releases_discount.sql" }}
 {{ template "internal/payments/event_purchase_refund_to_json.sql" }}
+{{ template "internal/payments/expire_event_checkout_hold.sql" }}
 {{ template "internal/payments/expire_event_checkout_holds.sql" }}
 {{ template "internal/payments/external_payment_notification_payload.sql" }}
+{{ template "internal/payments/fulfill_event_purchase_seat.sql" }}
 {{ template "internal/payments/is_country_external_payments_allowlisted.sql" }}
 {{ template "internal/payments/is_group_external_payments_selected.sql" }} -- Dependency for is_group_external_payments_ready
 {{ template "internal/payments/is_group_external_payments_ready.sql" }} -- Dependency for is_event_external_payments_ready
 {{ template "internal/payments/is_event_external_payments_ready.sql" }}
-{{ template "internal/payments/load_checkout_context.sql" }}
+{{ template "internal/payments/lock_event_purchase_for_completion.sql" }}
+{{ template "internal/payments/lock_event_purchase_refund_result.sql" }}
 {{ template "internal/payments/mark_event_purchase_refund_pending.sql" }}
 {{ template "internal/payments/payment_job_max_attempts.sql" }} -- Dependency for payment_job_is_exhausted
 {{ template "internal/payments/payment_job_is_exhausted.sql" }}
+{{ template "internal/payments/event_purchase_refund_progress.sql" }} -- Depends on payment_job_is_exhausted
 {{ template "internal/payments/payment_job_is_ready.sql" }}
 {{ template "internal/payments/payment_job_payload.sql" }}
 {{ template "internal/payments/payment_job_retry_delay.sql" }}
 {{ template "internal/payments/payment_job_to_json.sql" }}
-{{ template "internal/payments/prepare_event_checkout_expire_previous_hold.sql" }}
+{{ template "internal/payments/payment_validation_snapshot_matches.sql" }}
 {{ template "internal/payments/prepare_event_checkout_find_existing_purchase.sql" }}
 {{ template "internal/payments/prepare_event_checkout_lookup_tax_cache.sql" }}
-{{ template "internal/payments/prepare_event_checkout_reserve_discount_code_availability.sql" }}
 {{ template "internal/payments/prepare_event_checkout_resolve_offer_pricing.sql" }}
 {{ template "internal/payments/prepare_event_checkout_validate_and_resolve_pricing.sql" }}
 {{ template "internal/payments/prepare_event_checkout_validate_attendee_state.sql" }}
-{{ template "internal/payments/prepare_event_checkout_validate_event.sql" }}
 {{ template "internal/payments/record_direct_charge_checkout_amounts.sql" }}
 {{ template "internal/payments/record_payment_job_recovery.sql" }}
-{{ template "internal/payments/refund_free_event_purchase.sql" }}
+{{ template "internal/payments/refund_event_purchase_locally.sql" }}
 {{ template "internal/payments/remind_event_external_payment_holds.sql" }}
 {{ template "internal/payments/validate_direct_charge_checkout_amounts.sql" }}
 {{ template "internal/payments/validate_event_payment_validation.sql" }}
-{{ template "internal/payments/validate_event_purchase_refund_result.sql" }}
 {{ template "internal/payments/validate_event_ticketing_payment_readiness.sql" }}
 {{ template "internal/payments/validate_payment_amount.sql" }}
 {{ template "internal/payments/validate_payment_currency_code.sql" }}
@@ -137,12 +178,15 @@
 {{ template "internal/questionnaire/validate_questionnaire_questions_payload.sql" }}
 
 {{ template "internal/search/escape_ilike_pattern.sql" }}
+{{ template "internal/search/parse_explore_filters.sql" }}
 {{ template "internal/search/prefix_tsquery.sql" }} -- Dependency for parse_search_filters
 {{ template "internal/search/parse_search_filters.sql" }}
 {{ template "internal/search/search_bbox_envelope.sql" }}
 {{ template "internal/search/search_bbox_json.sql" }}
 {{ template "internal/search/search_events_matches.sql" }}
 {{ template "internal/search/search_groups_matches.sql" }}
+
+{{ template "internal/site/site_theme.sql" }}
 
 {{ template "internal/stats/stats_day_count_series.sql" }}
 {{ template "internal/stats/stats_event_audience.sql" }}
@@ -152,8 +196,10 @@
 {{ template "internal/stats/stats_event_utm.sql" }}
 {{ template "internal/stats/stats_label_count_series.sql" }}
 {{ template "internal/stats/stats_label_count_series_by_name.sql" }}
+{{ template "internal/stats/stats_page_views.sql" }}
 {{ template "internal/stats/stats_running_total_series.sql" }}
 {{ template "internal/stats/stats_running_total_series_by_name.sql" }}
+{{ template "internal/stats/stats_timeline.sql" }}
 
 {{ template "internal/surveys/event_survey_effective_opens_at.sql" }}
 {{ template "internal/surveys/event_survey_eligible_users.sql" }}
@@ -162,6 +208,7 @@
 {{ template "internal/surveys/event_survey_summary_json.sql" }}
 {{ template "internal/stats/stats_event_surveys.sql" }} -- Depends on event_survey_summary_json
 {{ template "internal/surveys/event_survey_text_answers.sql" }}
+{{ template "internal/surveys/group_dashboard_event_surveys.sql" }}
 {{ template "internal/surveys/is_event_survey_public.sql" }}
 {{ template "internal/surveys/lock_event_for_surveys.sql" }}
 {{ template "internal/surveys/lock_event_survey.sql" }}
@@ -170,15 +217,20 @@
 {{ template "internal/surveys/validate_event_survey_revision.sql" }}
 {{ template "internal/surveys/validate_event_survey_schedule.sql" }}
 
-{{ template "internal/text/generate_slug.sql" }}
-{{ template "internal/text/generate_slug_from_source.sql" }}
+{{ template "internal/teams/community_team_has_other_accepted_admin.sql" }}
+{{ template "internal/teams/group_team_has_other_accepted_admin.sql" }}
 
+{{ template "internal/text/generate_slug.sql" }}
+
+{{ template "internal/ticketing/event_discount_code_redemption_count.sql" }}
 {{ template "internal/ticketing/normalize_ticketing_schedule.sql" }} -- Dependency for event_discount_codes_configuration and event_ticket_types_configuration
 {{ template "internal/ticketing/resolve_event_discount_code_available_override.sql" }} -- Dependency for event_discount_codes_configuration
 {{ template "internal/ticketing/event_discount_codes_configuration.sql" }}
+{{ template "internal/ticketing/event_ticket_type_current_price_window.sql" }} -- Dependency for event_ticket_type_current_price
 {{ template "internal/ticketing/event_ticket_type_current_price.sql" }}
 {{ template "internal/enrollment/admission_offer_display_price.sql" }} -- Depends on event_ticket_type_current_price
 {{ template "internal/ticketing/event_ticket_types_configuration.sql" }}
+{{ template "internal/ticketing/event_ticket_types_public_json.sql" }}
 {{ template "internal/ticketing/get_event_ticket_capacity.sql" }}
 {{ template "internal/ticketing/get_event_ticket_type_allocated_seat_count.sql" }}
 {{ template "internal/enrollment/admission_offer_capacity_conflict.sql" }} -- Depends on get_event_ticket_type_allocated_seat_count
@@ -190,6 +242,7 @@
 {{ template "internal/ticketing/list_event_ticket_types.sql" }}
 {{ template "internal/ticketing/list_public_event_ticket_types.sql" }}
 {{ template "internal/ticketing/release_event_discount_code_availability.sql" }}
+{{ template "internal/ticketing/reserve_event_discount_code_availability.sql" }}
 {{ template "internal/ticketing/sync_event_discount_codes.sql" }}
 {{ template "internal/ticketing/sync_event_ticket_types.sql" }}
 {{ template "internal/ticketing/validate_event_capacity.sql" }}
@@ -198,16 +251,24 @@
 {{ template "internal/ticketing/validate_event_ticketing_payload.sql" }}
 
 {{ template "internal/users/get_public_user_provider.sql" }}
+{{ template "internal/users/issue_email_verification.sql" }}
+{{ template "internal/users/public_user_profile.sql" }}
 {{ template "internal/users/public_user_summary.sql" }}
+{{ template "internal/events/session_proposal_json.sql" }} -- Depends on public_user_summary
 {{ template "internal/inbox/inbox_conversation_json.sql" }} -- Depends on public_user_summary
 {{ template "internal/surveys/event_survey_response_details.sql" }} -- Depends on public_user_summary
 {{ template "internal/users/resolve_unique_username.sql" }}
 
-{{ template "auth/get_user_by_id.sql" }} -- Dependency for get_user_by_email and get_user_by_email_for_external_auth
+{{ template "activity-tracker/update_community_views.sql" }}
+{{ template "activity-tracker/update_event_views.sql" }}
+{{ template "activity-tracker/update_event_views_utm.sql" }}
+{{ template "activity-tracker/update_group_views.sql" }}
+
+{{ template "auth/get_user_by_id.sql" }} -- Dependency for external_auth_user_json
+{{ template "internal/users/external_auth_user_json.sql" }} -- Depends on get_user_by_id
 {{ template "auth/activate_pre_registered_user_email_password.sql" }}
 {{ template "auth/activate_pre_registered_user_external_provider.sql" }}
 {{ template "auth/get_auth_session.sql" }}
-{{ template "auth/get_user_by_email.sql" }}
 {{ template "auth/get_user_by_email_for_external_auth.sql" }}
 {{ template "auth/get_user_by_id_verified.sql" }}
 {{ template "auth/get_user_by_linuxfoundation_identity_for_external_auth.sql" }}
@@ -222,6 +283,14 @@
 {{ template "auth/user_has_group_permission.sql" }}
 {{ template "auth/verify_email.sql" }}
 
+{{ template "badges/claim_badge_award_job.sql" }}
+{{ template "badges/cleanup_badge_award_jobs.sql" }}
+{{ template "badges/process_badge_award_job_batch.sql" }}
+{{ template "badges/record_badge_award_job_failure.sql" }}
+{{ template "badges/recover_stale_badge_award_jobs.sql" }}
+{{ template "badges/requeue_badge_award_job.sql" }}
+
+{{ template "common/generate_slug_from_source.sql" }}
 {{ template "common/get_badge_status_list.sql" }}
 {{ template "common/get_community_full.sql" }}
 {{ template "common/get_community_summary.sql" }}
@@ -242,7 +311,6 @@
 {{ template "community/get_community_recently_added_groups.sql" }}
 {{ template "community/get_community_site_stats.sql" }}
 {{ template "community/get_community_upcoming_events.sql" }}
-{{ template "community/update_community_views.sql" }}
 
 {{ template "dashboard-common/group_has_active_subgroups.sql" }}
 {{ template "dashboard-common/group_has_child_links.sql" }}
@@ -296,8 +364,6 @@
 {{ template "dashboard-group/change_event_survey_status.sql" }}
 {{ template "dashboard-group/check_in_attendee_by_code.sql" }}
 {{ template "dashboard-group/check_in_event.sql" }}
-{{ template "dashboard-group/claim_badge_award_job.sql" }}
-{{ template "dashboard-group/cleanup_badge_award_jobs.sql" }}
 {{ template "dashboard-group/delete_badge.sql" }}
 {{ template "dashboard-group/delete_badge_artwork.sql" }}
 {{ template "dashboard-group/delete_event.sql" }}
@@ -320,8 +386,6 @@
 {{ template "dashboard-group/get_group_stats.sql" }}
 {{ template "dashboard-group/get_group_utm_settings.sql" }}
 {{ template "dashboard-group/group_has_event.sql" }}
-{{ template "dashboard-group/list_group_automatic_tax_readiness_event_ids.sql" }} -- Dependency for group_requires_automatic_tax_readiness
-{{ template "dashboard-group/group_requires_automatic_tax_readiness.sql" }}
 {{ template "dashboard-group/invite_event_attendee.sql" }}
 {{ template "dashboard-group/list_awarded_badges.sql" }}
 {{ template "dashboard-group/list_badge_artwork.sql" }}
@@ -342,32 +406,28 @@
 {{ template "dashboard-group/list_event_survey_text_answers.sql" }}
 {{ template "dashboard-group/list_event_surveys.sql" }}
 {{ template "dashboard-group/list_event_waitlist_ids.sql" }}
-{{ template "dashboard-group/list_group_audit_logs.sql" }}
 {{ template "dashboard-group/list_group_admin_ids.sql" }}
+{{ template "dashboard-group/list_group_audience_ids.sql" }}
+{{ template "dashboard-group/list_group_audit_logs.sql" }}
+{{ template "dashboard-group/list_group_automatic_tax_readiness_event_ids.sql" }}
 {{ template "dashboard-group/list_group_check_in_events.sql" }}
 {{ template "dashboard-group/list_group_cohosted_events.sql" }}
 {{ template "dashboard-group/list_group_events.sql" }}
 {{ template "dashboard-group/list_group_members.sql" }}
-{{ template "dashboard-group/list_group_members_ids.sql" }}
 {{ template "dashboard-group/list_group_refunds.sql" }}
 {{ template "dashboard-group/list_group_roles.sql" }}
 {{ template "dashboard-group/list_group_sponsors.sql" }}
 {{ template "dashboard-group/list_group_team_members.sql" }}
-{{ template "dashboard-group/list_group_team_members_ids.sql" }}
 {{ template "dashboard-group/list_payment_currency_codes.sql" }}
 {{ template "dashboard-group/list_session_kinds.sql" }}
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/lock_events_for_cancellation.sql" }}
 {{ template "dashboard-group/lock_event_cohost_groups.sql" }}
 {{ template "dashboard-group/lock_group_events.sql" }}
-{{ template "dashboard-group/process_badge_award_job_batch.sql" }}
 {{ template "dashboard-group/publish_event.sql" }}
 {{ template "dashboard-group/publish_event_series_events.sql" }}
-{{ template "dashboard-group/record_badge_award_job_failure.sql" }}
-{{ template "dashboard-group/recover_stale_badge_award_jobs.sql" }}
 {{ template "dashboard-group/reject_event_cohost.sql" }}
 {{ template "dashboard-group/reject_event_invitation_request.sql" }}
-{{ template "dashboard-group/requeue_badge_award_job.sql" }}
 {{ template "dashboard-group/resolve_event_custom_notification_recipient_ids.sql" }}
 {{ template "dashboard-group/revoke_group_user_badge.sql" }}
 {{ template "dashboard-group/search_event_attendees.sql" }}
@@ -436,9 +496,6 @@
 {{ template "event/get_event_utm_allowlist.sql" }}
 {{ template "event/leave_event.sql" }}
 {{ template "event/list_user_session_proposals_for_cfs_event.sql" }}
-{{ template "event/reconcile_next_event_enrollment.sql" }}
-{{ template "event/update_event_views.sql" }}
-{{ template "event/update_event_views_utm.sql" }}
 
 {{ template "group/get_group_full_by_slug.sql" }}
 {{ template "group/get_group_past_events.sql" }}
@@ -446,7 +503,6 @@
 {{ template "group/is_group_member.sql" }}
 {{ template "group/join_group.sql" }}
 {{ template "group/leave_group.sql" }}
-{{ template "group/update_group_views.sql" }}
 
 {{ template "images/is_badge_image.sql" }}
 {{ template "images/is_open_graph_image.sql" }}
@@ -514,6 +570,7 @@
 {{ template "payments/prepare_event_checkout_purchase.sql" }}
 {{ template "payments/queue_event_refund_request_approval.sql" }}
 {{ template "payments/reconcile_event_purchase_for_checkout_session.sql" }}
+{{ template "payments/reconcile_next_event_enrollment.sql" }}
 {{ template "payments/record_event_purchase_application_fee_adjustment_succeeded.sql" }}
 {{ template "payments/record_event_purchase_credit_note_succeeded.sql" }}
 {{ template "payments/record_event_purchase_refund_pending.sql" }}
@@ -548,7 +605,6 @@
 {{ template "triggers/check_event_category_community.sql" }}
 {{ template "triggers/check_event_cohost_group.sql" }}
 {{ template "triggers/check_event_external_payment_url.sql" }}
-{{ template "triggers/check_event_has_ticket_type.sql" }}
 {{ template "triggers/check_event_purchase_admission_offer.sql" }}
 {{ template "triggers/check_event_sponsor_group.sql" }}
 {{ template "triggers/check_event_ticketing_consistency.sql" }}

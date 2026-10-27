@@ -11,4 +11,4 @@ returns boolean as $$
         and ett.availability = 'public'
     ) public_ticket
     where public_ticket.amount_minor is not null;
-$$ language sql;
+$$ language sql stable;

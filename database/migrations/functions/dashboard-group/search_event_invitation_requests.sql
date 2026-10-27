@@ -46,20 +46,10 @@ returns json as $$
                 u.user_id,
                 u.username,
 
-                u.bio,
-                u.bluesky_url,
-                u.company,
-                u.facebook_url,
-                u.github_url,
-                u.linkedin_url,
                 u.name,
-                u.photo_url,
-                get_public_user_provider(u.provider) as provider,
                 epoch_seconds(eir.reviewed_at) as reviewed_at,
-                u.twitter_url,
                 u.tsdoc,
-                u.title,
-                u.website_url
+                u.title
             from event_invitation_request eir
             join event e on e.event_id = eir.event_id
             join "user" u on u.user_id = eir.user_id
@@ -127,23 +117,11 @@ returns json as $$
                 registration_answers,
                 requested_event_ticket_type_id,
                 requested_ticket_title,
-                json_strip_nulls(json_build_object(
-                    'user_id', user_id,
-                    'username', username,
-
-                    'bio', bio,
-                    'bluesky_url', bluesky_url,
-                    'company', company,
-                    'facebook_url', facebook_url,
-                    'github_url', github_url,
-                    'linkedin_url', linkedin_url,
-                    'name', name,
-                    'photo_url', photo_url,
-                    'provider', provider,
-                    'title', title,
-                    'twitter_url', twitter_url,
-                    'website_url', website_url
-                )) as "user",
+                (
+                    select public_user_profile(u)
+                    from "user" u
+                    where u.user_id = filtered_invitation_requests.user_id
+                ) as "user",
 
                 reviewed_at
             from filtered_invitation_requests
@@ -201,4 +179,4 @@ returns json as $$
         'total', totals.total
     )
     from invitation_requests_json, totals;
-$$ language sql;
+$$ language sql stable;

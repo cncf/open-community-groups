@@ -12,4 +12,4 @@ returns json as $$
         '[]'
     )
     from session_kind sk;
-$$ language sql;
+$$ language sql stable;

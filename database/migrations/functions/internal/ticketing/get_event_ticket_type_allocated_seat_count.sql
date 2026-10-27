@@ -6,12 +6,12 @@ create or replace function get_event_ticket_type_allocated_seat_count(
 returns int as $$
     select (
         (
+            -- Count live offers reserving the tier
             select count(*)
             from admission_offer ao
             where ao.event_id = p_event_id
             and ao.event_ticket_type_id = p_event_ticket_type_id
-            and admission_offer_is_active(ao.status)
-            and ao.expires_at > current_timestamp
+            and admission_offer_reserves_seat(ao.status, ao.expires_at)
         )
         +
         (
@@ -23,20 +23,14 @@ returns int as $$
             from event_purchase ep
             where ep.event_id = p_event_id
             and ep.event_ticket_type_id = p_event_ticket_type_id
-            and (
-                event_purchase_holds_seat(ep.status)
-                or (
-                    ep.status = 'pending'
-                    and ep.hold_expires_at > current_timestamp
-                )
-            )
+            and event_purchase_reserves_seat(ep.status, ep.hold_expires_at)
+            -- Skip purchases whose offer is already counted
             and not exists (
                 select 1
                 from admission_offer ao
                 where ao.admission_offer_id = ep.admission_offer_id
-                and admission_offer_is_active(ao.status)
-                and ao.expires_at > current_timestamp
+                and admission_offer_reserves_seat(ao.status, ao.expires_at)
             )
         )
     )::int;
-$$ language sql;
+$$ language sql stable;

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -24,14 +24,20 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, group category and groups
+-- Community
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
-select fx_group(:'wrongGroupID', :'communityID', :'groupCategoryID');
 
 -- Actor updating the featured flags
 select fx_user(:'actorUserID', jsonb_build_object('username', 'update-group-sponsor-featured-actor'));
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group owning the sponsors
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
+-- Group that does not own the sponsors
+select fx_group(:'wrongGroupID', :'communityID', :'groupCategoryID');
 
 -- Featured sponsor disabled by the unfeature scenario
 insert into group_sponsor (featured, group_id, group_sponsor_id, logo_url, name, website_url)
@@ -48,6 +54,17 @@ values (false, :'groupID', :'sponsorWrongGroupID', 'https://ex.com/lambda.png', 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reject featured updates for a sponsor outside the selected group
+select throws_ok(
+    format(
+        $$select update_group_sponsor_featured(%L::uuid, %L::uuid, %L::uuid, true)$$,
+        :'actorUserID', :'wrongGroupID', :'sponsorWrongGroupID'
+    ),
+    'OCG01',
+    'sponsor not found',
+    'Should reject featured updates for a sponsor outside the selected group'
+);
 
 -- Should update the featured flag to true
 select lives_ok(
@@ -133,30 +150,6 @@ select results_eq(
         :'actorUserID'
     ),
     'Should create an audit row when disabling the featured flag'
-);
-
--- Should silently ignore updates for a sponsor outside the selected group
-select lives_ok(
-    format(
-        $$select update_group_sponsor_featured(%L::uuid, %L::uuid, %L::uuid, true)$$,
-        :'actorUserID', :'wrongGroupID', :'sponsorWrongGroupID'
-    ),
-    'Should accept featured updates for a sponsor outside the selected group without error'
-);
-
-select results_eq(
-    format(
-        $$select featured from group_sponsor where group_sponsor_id = %L::uuid$$,
-        :'sponsorWrongGroupID'
-    ),
-    $$values (false)$$,
-    'Should leave the featured flag unchanged when sponsor belongs to another group'
-);
-
-select is(
-    (select count(*) from audit_log where resource_id = :'sponsorWrongGroupID'::uuid),
-    0::bigint,
-    'Should not create an audit row when sponsor belongs to another group'
 );
 
 -- ============================================================================

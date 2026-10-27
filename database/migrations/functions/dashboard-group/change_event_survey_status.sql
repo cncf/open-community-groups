@@ -140,10 +140,9 @@ begin
         p_actor_user_id,
         'event_survey',
         p_event_survey_id,
-        (select g.community_id from "group" g where g.group_id = v_event.group_id),
-        v_event.group_id,
-        p_event_id,
-        jsonb_build_object('title', v_event_survey.title)
+        p_group_id => v_event.group_id,
+        p_event_id => p_event_id,
+        p_details => jsonb_build_object('title', v_event_survey.title)
     );
 end;
 $$ language plpgsql;

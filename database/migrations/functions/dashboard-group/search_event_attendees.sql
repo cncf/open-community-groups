@@ -68,7 +68,14 @@ returns json as $$
                 ea.manually_invited,
                 null::timestamptz as offer_expires_at,
                 ea.registration_answers,
-                0 as source_priority,
+                case
+                    when ea.status in (
+                        'confirmed',
+                        'invitation-pending',
+                        'registration-questions-pending'
+                    ) then 1
+                    else 0
+                end as source_priority,
                 case
                     when ea.status = 'invitation-rejected' then 'invitation-declined'
                     when ea.status = 'registration-questions-pending' then 'registration-pending'
@@ -139,6 +146,7 @@ returns json as $$
 
             union all
 
+            -- Include organizer invitation offers
             select
                 ao.admission_offer_id,
                 ao.source as admission_offer_source,
@@ -152,7 +160,7 @@ returns json as $$
                 ao.expires_at as offer_expires_at,
                 null::jsonb as registration_answers,
                 case
-                    when admission_offer_is_active(ao.status) then 1
+                    when admission_offer_is_active(ao.status) then 2
                     else 0
                 end as source_priority,
                 case
@@ -169,7 +177,7 @@ returns json as $$
             where ao.source = 'organizer_invitation'
             and ao.status in ('canceled', 'checkout_pending', 'declined', 'expired', 'pending')
         ),
-        -- Keep the latest attendee or organizer-offer state for each user
+        -- Keep one row per user: active offers first, then active attendance, then the latest inactive state
         enrollment_rows as (
             select
                 admission_offer_id,
@@ -196,6 +204,11 @@ returns json as $$
                 from enrollment_candidates
             ) ranked_enrollment
             where enrollment_rank = 1
+        ),
+        -- Users who can receive organizer event emails
+        email_recipients as (
+            select r.user_id
+            from event_custom_notification_recipients(p_group_id, p_event_id) r
         ),
         -- Select visible attendee and invitation rows
         base_attendees as (
@@ -227,7 +240,6 @@ returns json as $$
                 ep.amount_minor,
                 ep.charge_model,
                 epoch_seconds(ep.completed_at) as completed_at,
-                u.company,
                 ep.currency_code,
                 ep.discount_code,
                 case
@@ -248,51 +260,18 @@ returns json as $$
                     as event_ticket_type_id,
                 epoch_seconds(er.offer_expires_at) as offer_expires_at,
                 coalesce(ep.ticket_title, er.ticket_title) as ticket_title,
-                u.bio,
-                u.bluesky_url,
                 u.name,
-                u.facebook_url,
-                u.github_url,
-                u.linkedin_url,
-                u.photo_url,
-                get_public_user_provider(u.provider) as provider,
-                case
-                    when ep.purchase_status = 'pending'
-                        and e.canceled
-                        and (
-                            ep.hold_expires_at > current_timestamp
-                            or ep.provider_checkout_session_id is not null
-                        ) then 'awaiting-checkout'
-                    when epr.status = 'finalized' or ep.purchase_status = 'refunded' then 'refunded'
-                    when epr.status = 'provider-failed'
-                        and epr.terminal_failure then 'recovery-required'
-                    when payment_job_is_exhausted(pj) then 'retryable-failure'
-                    when pj.status = 'processing'
-                        or epr.status = 'provider-succeeded'
-                        or epr.provider_refund_id is not null then 'processing'
-                    when pj.status in ('failed', 'pending') then 'queued'
-                    else null
-                end as refund_progress,
+                event_purchase_refund_progress(ep.purchase_row, e.canceled, epr, pj)
+                    as refund_progress,
                 epr.payment_job_id as refund_payment_job_id,
                 err.status as refund_request_status,
-                u.twitter_url,
                 u.tsdoc,
                 u.title,
-                u.website_url,
 
-                (
-                    er.enrollment_status in ('confirmed', 'registration-pending')
-                    and er.admission_offer_id is null
-                    and u.email_verified = true
-                    and exists (
-                        select 1
-                        from users_accepting_notification(
-                            'event-custom',
-                            array[er.user_id],
-                            array[e.group_id]
-                        )
-                    )
-                    and pending_ep.event_purchase_id is null
+                exists (
+                    select 1
+                    from email_recipients rc
+                    where rc.user_id = er.user_id
                 ) as can_receive_attendee_email
             from enrollment_rows er
             join event e on e.event_id = er.event_id
@@ -312,7 +291,7 @@ returns json as $$
                     external_payment_details,
                     external_payment_marked_by_user_id,
                     hold_expires_at,
-                    provider_checkout_session_id
+                    event_purchase as purchase_row
                 from event_purchase
                 where event_id = er.event_id
                 and user_id = er.user_id
@@ -332,16 +311,6 @@ returns json as $$
             ) err on true
             left join event_purchase_refund epr on epr.event_purchase_id = ep.event_purchase_id
             left join payment_job pj on pj.payment_job_id = epr.payment_job_id
-            left join lateral (
-                select event_purchase_id
-                from event_purchase
-                where event_id = er.event_id
-                and user_id = er.user_id
-                and status = 'pending'
-                and hold_expires_at > current_timestamp
-                order by created_at desc, event_purchase_id desc
-                limit 1
-            ) pending_ep on true
             left join "user" marked_by
                 on marked_by.user_id = ep.external_payment_marked_by_user_id
             where e.group_id = p_group_id
@@ -414,23 +383,11 @@ returns json as $$
                 email,
                 enrollment_status,
                 manually_invited,
-                json_strip_nulls(json_build_object(
-                    'user_id', user_id,
-                    'username', username,
-
-                    'bio', bio,
-                    'bluesky_url', bluesky_url,
-                    'company', company,
-                    'facebook_url', facebook_url,
-                    'github_url', github_url,
-                    'linkedin_url', linkedin_url,
-                    'name', name,
-                    'photo_url', photo_url,
-                    'provider', provider,
-                    'title', title,
-                    'twitter_url', twitter_url,
-                    'website_url', website_url
-                )) as "user",
+                (
+                    select public_user_profile(u)
+                    from "user" u
+                    where u.user_id = filtered_attendees.user_id
+                ) as "user",
 
                 admission_offer_id,
                 admission_offer_source,
@@ -478,8 +435,7 @@ returns json as $$
             select
                 (
                     select count(*)::int
-                    from base_attendees
-                    where can_receive_attendee_email = true
+                    from email_recipients
                 ) as all_attendees_email_recipient_total,
                 count(*)::int as total
             from filtered_attendees
@@ -506,4 +462,4 @@ returns json as $$
         'total', totals.total
     )
     from attendees_json, totals;
-$$ language sql;
+$$ language sql stable;

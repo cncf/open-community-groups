@@ -1,4 +1,6 @@
--- Enforces the settled ticketing shape of every event affected by a ticketing write.
+-- Enforces the settled ticketing shape of every event affected by a ticketing
+-- write: at least one ticket type, positive pricing requires a currency, and
+-- discount codes and a currency require positive pricing.
 create or replace function check_event_ticketing_consistency()
 returns trigger as $$
 declare
@@ -6,6 +8,7 @@ declare
     v_event_ids uuid[];
     v_has_discount_codes boolean;
     v_has_positive_pricing boolean;
+    v_has_ticket_types boolean;
     v_payment_currency_code text;
 begin
     -- Resolve affected events from tables that carry the event identifier
@@ -60,7 +63,7 @@ begin
             continue;
         end if;
 
-        -- Load the event's discount, pricing, and currency state
+        -- Load the event's discount, pricing, ticket type, and currency state
         select
             exists(
                 select 1
@@ -74,10 +77,16 @@ begin
                 where ett.event_id = e.event_id
                 and etpw.amount_minor > 0
             ),
+            exists(
+                select 1
+                from event_ticket_type ett
+                where ett.event_id = e.event_id
+            ),
             e.payment_currency_code
         into
             v_has_discount_codes,
             v_has_positive_pricing,
+            v_has_ticket_types,
             v_payment_currency_code
         from event e
         where e.event_id = v_event_id;
@@ -85,6 +94,11 @@ begin
         -- Skip events deleted within the same statement
         if not found then
             continue;
+        end if;
+
+        -- Reject events left without any ticket type
+        if not v_has_ticket_types then
+            raise exception 'events require at least one ticket type' using errcode = 'OCG01';
         end if;
 
         -- Reject paid pricing without a currency

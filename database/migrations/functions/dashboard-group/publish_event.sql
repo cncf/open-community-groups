@@ -8,75 +8,25 @@ create or replace function publish_event(
 )
 returns void as $$
 declare
-    v_community_id uuid;
+    v_event event;
     v_external_mode boolean := false;
-    v_external_payment_url text;
-    v_external_payment_window_hours int;
-    v_group_country_code text;
-    v_group_external_ready boolean := false;
-    v_group_external_selected boolean := false;
+    v_group "group";
+    v_group_external_ready boolean;
+    v_group_external_selected boolean;
     v_paid_capable boolean;
-    v_payment_currency_code text;
-    v_payment_recipient jsonb;
-    v_published boolean;
-    v_starts_at timestamptz;
-    v_tax_calculation_mode text;
 begin
     -- Lock the group payment state before the event so recipient changes and
-    -- publication cannot invalidate each other
-    select
-        g.community_id,
-        g.country_code,
-        is_group_external_payments_ready(g.group_id),
-        is_group_external_payments_selected(g.group_id),
-        g.payment_recipient
-    into
-        v_community_id,
-        v_group_country_code,
-        v_group_external_ready,
-        v_group_external_selected,
-        v_payment_recipient
-    from "group" g
-    where g.group_id = p_group_id
-    and g.deleted = false
-    for update;
+    -- paid ticket or publication updates cannot invalidate each other
+    v_group := lock_active_group(null, p_group_id);
+    v_group_external_ready := is_group_external_payments_ready(p_group_id);
+    v_group_external_selected := is_group_external_payments_selected(p_group_id);
 
-    -- Reject missing or inactive groups before loading the event
-    if not found then
-        raise exception 'event not found or inactive' using errcode = 'OCG01';
-    end if;
-
-    -- Check if the event is active and lock it for publication
-    select
-        e.external_payment_url,
-        e.external_payment_window_hours,
-        e.published,
-        e.payment_currency_code,
-        e.starts_at,
-        e.tax_calculation_mode,
-        is_event_paid_capable(e.event_id)
-    into
-        v_external_payment_url,
-        v_external_payment_window_hours,
-        v_published,
-        v_payment_currency_code,
-        v_starts_at,
-        v_tax_calculation_mode,
-        v_paid_capable
-    from event e
-    where event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and e.canceled = false
-    for update of e;
-
-    -- Reject missing or inactive events before resolving publication
-    if not found then
-        raise exception 'event not found or inactive' using errcode = 'OCG01';
-    end if;
+    -- Lock the event, if not deleted or canceled, and read its paid capability
+    v_event := lock_manageable_event(p_group_id, p_event_id, false);
+    v_paid_capable := is_event_paid_capable(p_event_id);
 
     -- Return early when the event is already published
-    if v_published then
+    if v_event.published then
         return;
     end if;
 
@@ -86,7 +36,7 @@ begin
     end if;
 
     -- Reject publishing an external-marked event while the group has not selected the rail
-    if v_external_payment_url is not null and not v_group_external_selected then
+    if v_event.external_payment_url is not null and not v_group_external_selected then
         raise exception 'external payments are not available for this event' using errcode = 'OCG01';
     end if;
 
@@ -100,7 +50,7 @@ begin
 
     -- Clear leftover windows only when the event is not on the external rail
     if not v_external_mode then
-        v_external_payment_window_hours := null;
+        v_event.external_payment_window_hours := null;
     end if;
 
     -- Bind provider validation to the recipient protected by the group lock
@@ -108,20 +58,13 @@ begin
        and v_paid_capable
        and not v_external_mode
        and (
-           p_payment_validation is null
-           or not (p_payment_validation ? 'expected_payment_recipient')
-           or not (p_payment_validation ? 'validated_payment_recipient')
-           or not (p_payment_validation ? 'require_automatic_tax')
-           or v_payment_recipient is distinct from nullif(
-               p_payment_validation->'expected_payment_recipient',
-               'null'::jsonb
-           )
-           or v_payment_recipient is distinct from nullif(
-               p_payment_validation->'validated_payment_recipient',
-               'null'::jsonb
+           not payment_validation_snapshot_matches(
+               p_payment_validation,
+               v_group.payment_recipient,
+               v_group.payment_recipient
            )
            or (
-               v_tax_calculation_mode = 'automatic'
+               v_event.tax_calculation_mode = 'automatic'
                and not (p_payment_validation->>'require_automatic_tax')::boolean
            )
        ) then
@@ -132,39 +75,37 @@ begin
     perform validate_event_ticketing_payment_readiness(
         p_configured_provider,
         v_paid_capable,
-        v_payment_currency_code,
-        v_payment_recipient,
-        p_event_id,
-        null,
+        v_event.payment_currency_code,
+        v_group.payment_recipient,
+        v_event,
         v_external_mode,
-        v_external_payment_url,
-        v_external_payment_window_hours,
-        v_group_country_code
+        v_group.country_code
     );
 
     -- Check that the event has a start date
-    if v_starts_at is null then
+    if v_event.starts_at is null then
         raise exception 'event must have a start date to be published' using errcode = 'OCG01';
     end if;
 
     -- Update event to mark as published
-    -- Also set meeting_in_sync to false to trigger meeting setup when applicable
     update event set
         external_payment_instructions = case
+            -- Keep external payment details on the external rail
             when v_external_mode then external_payment_instructions
+            -- Clear external payment details on the provider rail
             else null
         end,
         external_payment_url = case
+            -- Keep external payment details on the external rail
             when v_external_mode then external_payment_url
+            -- Clear external payment details on the provider rail
             else null
         end,
         external_payment_window_hours = case
+            -- Keep external payment details on the external rail
             when v_external_mode then external_payment_window_hours
+            -- Clear external payment details on the provider rail
             else null
-        end,
-        meeting_in_sync = case
-            when meeting_requested = true then false
-            else meeting_in_sync
         end,
         published = true,
         published_at = now(),
@@ -185,10 +126,8 @@ begin
     and deleted = false
     and canceled = false;
 
-    -- Mark sessions as out of sync to trigger meeting creation
-    update session set meeting_in_sync = false
-    where event_id = p_event_id
-    and meeting_requested = true;
+    -- Request provider setup of the event and session meetings
+    perform mark_event_meetings_out_of_sync(p_event_id);
 
     -- Track the publish action
     perform insert_audit_log(
@@ -196,7 +135,7 @@ begin
         p_actor_user_id,
         'event',
         p_event_id,
-        v_community_id,
+        v_group.community_id,
         p_group_id,
         p_event_id
     );

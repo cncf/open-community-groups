@@ -2,9 +2,10 @@
 -- (or of one scoped tier) from each tier's FIFO waitlist, turning queue heads
 -- into pending admission offers bounded by registration close and event
 -- start. A queue head stays in place while its tier has no price or a paid
--- price cannot be collected yet. Returns the promoted user identifiers.
+-- price cannot be collected yet under the organizer offer readiness rule.
+-- Returns the promoted user identifiers.
 -- Callers hold the event enrollment locks and have verified the event accepts
--- enrollment.
+-- waitlist promotion.
 create or replace function promote_event_waitlist_entries(
     p_event event,
     p_group "group",
@@ -17,6 +18,7 @@ declare
     v_is_simple_rsvp boolean := is_event_simple_rsvp(p_event.event_id);
     v_offer_expires_at timestamptz;
     v_offer_id uuid;
+    v_paid_seat_ready boolean;
     v_price_amount_minor bigint;
     v_promoted_user_ids uuid[] := array[]::uuid[];
     v_ticket_type event_ticket_type;
@@ -35,6 +37,7 @@ begin
         )
         order by ett.event_ticket_type_id
     loop
+        -- Promote the tier's queue heads until its capacity or queue runs out
         loop
             -- Stop when the tier has no remaining seats
             if get_event_ticket_type_allocated_seat_count(p_event.event_id, v_ticket_type.event_ticket_type_id)
@@ -57,27 +60,28 @@ begin
                 exit;
             end if;
 
-            -- Keep the queue head in place while the tier has no active price
+            -- Resolve the tier's current price
             v_price_amount_minor := event_ticket_type_current_price(v_ticket_type.event_ticket_type_id);
+
+            -- Keep the queue head in place while the tier has no active price
             if v_price_amount_minor is null then
                 exit;
             end if;
 
-            -- Keep a paid queue head in place until payment configuration is ready
+            -- Keep a paid queue head in place until its seat can be collected
             if v_price_amount_minor > 0 then
-                -- External-marked events promote only while external payments remain ready
-                if p_event.external_payment_url is not null then
-                    -- Pause the queue head when the group is no longer eligible
-                    if not is_event_external_payments_ready(p_event.event_id) then
-                        exit;
-                    end if;
+                -- Resolve paid-seat readiness once per event
+                if v_paid_seat_ready is null then
+                    v_paid_seat_ready := is_admission_offer_payment_ready(
+                        p_event,
+                        p_group,
+                        v_price_amount_minor,
+                        p_configured_provider
+                    );
+                end if;
 
-                -- Stripe-marked events keep the provider-readiness gate
-                elsif p_configured_provider is null
-                   or p_event.payment_currency_code is null
-                   or p_group.payment_recipient is null
-                   or coalesce(p_group.payment_recipient->>'provider', '') <> p_configured_provider
-                   or nullif(btrim(p_group.payment_recipient->>'recipient_id'), '') is null then
+                -- Pause the queue head while paid seats cannot be collected
+                if not v_paid_seat_ready then
                     exit;
                 end if;
             end if;
@@ -105,6 +109,7 @@ begin
                 continue;
             end if;
 
+            -- Reserve the released seat with a pending waitlist offer
             insert into admission_offer (
                 event_id,
                 event_ticket_type_id,
@@ -160,6 +165,7 @@ begin
                 array[v_waitlist_entry.user_id]
             );
 
+            -- Record the promoted user
             v_promoted_user_ids := array_append(v_promoted_user_ids, v_waitlist_entry.user_id);
         end loop;
     end loop;

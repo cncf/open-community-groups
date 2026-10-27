@@ -1808,7 +1808,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         venue_name: None,
         venue_state_code: None,
         venue_state_name: None,
-        zip_code: None,
+        venue_zip_code: None,
     }
 }
 

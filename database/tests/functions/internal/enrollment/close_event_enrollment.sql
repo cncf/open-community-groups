@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,7 +20,6 @@ select plan(11);
 \set confirmedUserID '5e030000-0000-0000-0000-000000000016'
 \set directPurchaseID '5e030000-0000-0000-0000-000000000006'
 \set directUserID '5e030000-0000-0000-0000-000000000007'
-\set discountCodeID '5e030000-0000-0000-0000-000000000008'
 \set eventCategoryID '5e030000-0000-0000-0000-000000000009'
 \set externalEventID '5e030000-0000-0000-0000-000000000017'
 \set externalPurchaseID '5e030000-0000-0000-0000-000000000018'
@@ -43,21 +42,49 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline communities, group categories, event categories and users
+-- Community owning every closed event
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Organizer who closes enrollment and issued the invitation offer
 select fx_user(:'actorUserID');
+
+-- User holding the checkout-pending approval offer
 select fx_user(:'checkoutUserID');
+
+-- User whose completed purchase survives the closure
 select fx_user(:'confirmedUserID');
+
+-- User holding a direct pending checkout
 select fx_user(:'directUserID');
+
+-- User holding the external payment hold
 select fx_user(:'externalUserID');
+
+-- User holding the pending invitation offer
 select fx_user(:'offerUserID');
+
+-- User with a pending approval request
 select fx_user(:'requestUserID');
+
+-- User waiting in the FIFO queue
 select fx_user(:'waitlistUserID');
 
--- Group that owns both enrollment closure events
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group that owns every enrollment closure event
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_close", "seller_display_name": "Close Event Fiscal Sponsor"}'::jsonb));
+
+-- External-payment event with a pending hold
+select fx_event(:'externalEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/close',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
 
 -- Ticketed waitlist event with active offers and checkouts
 select fx_event(:'queueEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -77,44 +104,27 @@ select fx_event(:'requestEventID', :'groupID', :'eventCategoryID', jsonb_build_o
     'starts_at', current_timestamp + interval '2 days'
 ));
 
--- External-payment event with a pending hold
-select fx_event(:'externalEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'external_payment_url', 'https://pay.example.test/close',
-    'payment_currency_code', 'KRW',
-    'published', true,
-    'starts_at', current_timestamp + interval '2 days'
-));
-
--- Ticket tiers used by the queue and request events
-select fx_event_ticket_type(:'queueTicketTypeID', :'queueEventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type(:'requestTicketTypeID', :'requestEventID', jsonb_build_object('seats_total', 10));
-select fx_event_ticket_type(:'externalTicketTypeID', :'externalEventID', jsonb_build_object('seats_total', 10));
-
--- Current price used by the active checkout snapshots
-select fx_event_ticket_price_window(:'priceWindowID', :'queueTicketTypeID', jsonb_build_object('amount_minor', 1000));
-
--- Discount reserved by both active checkout purchases
-insert into event_discount_code (
-    event_discount_code_id,
-    amount_minor,
-    available,
-    available_override_active,
-    code,
+-- Confirmed attendee preserved when enrollment closes
+insert into event_attendee (
     event_id,
-    kind,
-    title
+    status,
+    user_id
 ) values (
-    :'discountCodeID',
-    500,
-    0,
-    true,
-    'CLOSE5',
     :'queueEventID',
-    'fixed_amount',
-    'Closure discount'
+    'confirmed',
+    :'confirmedUserID'
 );
 
--- Active pending and checkout-pending admission offers
+-- Ticket tier used by the external event
+select fx_event_ticket_type(:'externalTicketTypeID', :'externalEventID', jsonb_build_object('seats_total', 10));
+
+-- Ticket tier used by the queue event
+select fx_event_ticket_type(:'queueTicketTypeID', :'queueEventID', jsonb_build_object('seats_total', 10));
+
+-- Ticket tier used by the request event
+select fx_event_ticket_type(:'requestTicketTypeID', :'requestEventID', jsonb_build_object('seats_total', 10));
+
+-- Checkout-pending approval offer and pending organizer invitation offer
 insert into admission_offer (
     admission_offer_id,
     event_id,
@@ -127,8 +137,7 @@ insert into admission_offer (
     amount_minor,
     currency_code,
     discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
+    organizer_user_id,
     ticket_title
 ) values
     (
@@ -140,11 +149,10 @@ insert into admission_offer (
         'checkout_pending',
         :'checkoutUserID',
 
-        500,
-        'USD',
-        500,
-        'CLOSE5',
-        :'discountCodeID',
+        0,
+        null,
+        0,
+        null,
         'Queue admission'
     ),
     (
@@ -152,17 +160,43 @@ insert into admission_offer (
         :'queueEventID',
         :'queueTicketTypeID',
         current_timestamp + interval '1 hour',
-        'waitlist',
+        'organizer_invitation',
         'pending',
         :'offerUserID',
 
         null,
         null,
         null,
-        null,
-        null,
+        :'actorUserID',
         null
     );
+
+-- Pending approval request cleared when enrollment closes
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    status,
+    user_id
+) values (
+    :'requestEventID',
+    :'requestTicketTypeID',
+    'pending',
+    :'requestUserID'
+);
+
+-- Free price used by the active checkout snapshots
+select fx_event_ticket_price_window(:'priceWindowID', :'queueTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- FIFO queue cleared when enrollment closes
+insert into event_waitlist (
+    event_id,
+    event_ticket_type_id,
+    user_id
+) values (
+    :'queueEventID',
+    :'queueTicketTypeID',
+    :'waitlistUserID'
+);
 
 -- Offer-linked and direct pending checkout purchases
 insert into event_purchase (
@@ -170,8 +204,6 @@ insert into event_purchase (
     amount_minor,
     currency_code,
     discount_amount_minor,
-    discount_code,
-    event_discount_code_id,
     event_id,
     event_purchase_id,
     event_ticket_type_id,
@@ -184,9 +216,7 @@ insert into event_purchase (
         :'checkoutOfferID',
         0,
         'USD',
-        500,
-        'CLOSE5',
-        :'discountCodeID',
+        0,
         :'queueEventID',
         :'checkoutPurchaseID',
         :'queueTicketTypeID',
@@ -199,9 +229,7 @@ insert into event_purchase (
         null,
         0,
         'USD',
-        500,
-        'CLOSE5',
-        :'discountCodeID',
+        0,
         :'queueEventID',
         :'directPurchaseID',
         :'queueTicketTypeID',
@@ -263,58 +291,6 @@ insert into event_purchase (
     :'externalUserID'
 );
 
--- Checkout-created attendee holds released when pending purchases expire
-insert into event_attendee (
-    event_id,
-    status,
-    user_id
-) values
-    (
-        :'queueEventID',
-        'registration-questions-pending',
-        :'checkoutUserID'
-    ),
-    (
-        :'queueEventID',
-        'registration-questions-pending',
-        :'directUserID'
-    );
-
--- Confirmed attendee preserved when enrollment closes
-insert into event_attendee (
-    event_id,
-    status,
-    user_id
-) values (
-    :'queueEventID',
-    'confirmed',
-    :'confirmedUserID'
-);
-
--- FIFO queue cleared when enrollment closes
-insert into event_waitlist (
-    event_id,
-    event_ticket_type_id,
-    user_id
-) values (
-    :'queueEventID',
-    :'queueTicketTypeID',
-    :'waitlistUserID'
-);
-
--- Pending approval request cleared when enrollment closes
-insert into event_invitation_request (
-    event_id,
-    event_ticket_type_id,
-    status,
-    user_id
-) values (
-    :'requestEventID',
-    :'requestTicketTypeID',
-    'pending',
-    :'requestUserID'
-);
-
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -326,6 +302,7 @@ select is(
     'Should cancel active offers and clear checkout and queue reservations'
 );
 
+-- Should expire checkouts and clear the queue
 select results_eq(
     format(
         $$
@@ -341,17 +318,6 @@ select results_eq(
                     where event_id = %L::uuid
                 ),
                 (
-                    select available
-                    from event_discount_code
-                    where event_discount_code_id = %L::uuid
-                ),
-                (
-                    select count(*)
-                    from event_attendee
-                    where event_id = %L::uuid
-                    and status = 'registration-questions-pending'
-                ),
-                (
                     select count(*)
                     from event_waitlist
                     where event_id = %L::uuid
@@ -359,18 +325,14 @@ select results_eq(
         $$,
         :'queueEventID',
         :'queueEventID',
-        :'discountCodeID',
-        :'queueEventID',
         :'queueEventID'
     ),
     $$ values (
         array['canceled', 'canceled']::text[],
         array['expired', 'expired', 'completed']::text[],
-        2,
-        0::bigint,
         0::bigint
     ) $$,
-    'Should expire checkouts, release discounts and attendee holds, and clear the queue'
+    'Should expire checkouts and clear the queue'
 );
 
 -- Should preserve confirmed attendees and completed purchases
@@ -396,6 +358,81 @@ select results_eq(
     'Should preserve confirmed attendees and completed purchases'
 );
 
+-- Should audit each canceled admission offer
+select results_eq(
+    format(
+        $$
+            select
+                action,
+                actor_user_id,
+                community_id,
+                group_id,
+                resource_type,
+                resource_id,
+                details
+            from audit_log
+            where event_id = %L::uuid
+            and action in (
+                'event_admission_offer_canceled',
+                'event_attendee_invitation_canceled'
+            )
+            order by details->>'admission_offer_id'
+        $$,
+        :'queueEventID'
+    ),
+    format(
+        $$
+            values
+                (
+                    'event_admission_offer_canceled'::text,
+                    %L::uuid,
+                    %L::uuid,
+                    %L::uuid,
+                    'user'::text,
+                    %L::uuid,
+                    jsonb_build_object(
+                        'admission_offer_id', %L::uuid,
+                        'event_id', %L::uuid,
+                        'event_ticket_type_id', %L::uuid,
+                        'user_id', %L::uuid
+                    )
+                ),
+                (
+                    'event_attendee_invitation_canceled'::text,
+                    %L::uuid,
+                    %L::uuid,
+                    %L::uuid,
+                    'user'::text,
+                    %L::uuid,
+                    jsonb_build_object(
+                        'admission_offer_id', %L::uuid,
+                        'event_id', %L::uuid,
+                        'event_ticket_type_id', %L::uuid,
+                        'user_id', %L::uuid
+                    )
+                )
+        $$,
+        :'actorUserID',
+        :'communityID',
+        :'groupID',
+        :'checkoutUserID',
+        :'checkoutOfferID',
+        :'queueEventID',
+        :'queueTicketTypeID',
+        :'checkoutUserID',
+        :'actorUserID',
+        :'communityID',
+        :'groupID',
+        :'offerUserID',
+        :'offerID',
+        :'queueEventID',
+        :'queueTicketTypeID',
+        :'offerUserID'
+    ),
+    'Should audit each canceled admission offer'
+);
+
+-- Should not write admission_offer_canceled audit rows
 select is(
     (
         select count(*)::int
@@ -403,10 +440,11 @@ select is(
         where event_id = :'queueEventID'::uuid
         and action = 'admission_offer_canceled'
     ),
-    2,
-    'Should audit each canceled admission offer'
+    0,
+    'Should not write admission_offer_canceled audit rows'
 );
 
+-- Should enqueue one cancellation notification per canceled offer
 select is(
     (
         select count(*)::int
@@ -425,29 +463,52 @@ select is(
     'Should expire pending external purchases and enqueue a do-not-pay notice'
 );
 
-select ok(
-    exists(
-        select 1
-        from event_purchase ep
-        join notification n
-            on n.user_id = ep.user_id
-            and n.kind = 'event-external-payment-expired'
-        join notification_template_data ntd using (notification_template_data_id)
-        where ep.event_purchase_id = :'externalPurchaseID'::uuid
-        and ep.status = 'expired'
-        and (ntd.data->>'do_not_pay')::boolean = true
-        and (ntd.data->>'event_purchase_id')::uuid = :'externalPurchaseID'::uuid
+-- Should enqueue a do-not-pay notice with the original hold details
+select results_eq(
+    format(
+        $$
+            select
+                ep.status,
+                (ntd.data->>'do_not_pay')::boolean,
+                (ntd.data->>'event_purchase_id')::uuid,
+                (ntd.data->>'amount_minor')::bigint,
+                ntd.data->>'currency_code',
+                ntd.data->>'ticket_title',
+                (ntd.data->>'deadline')::bigint
+            from event_purchase ep
+            join notification n
+                on n.user_id = ep.user_id
+                and n.kind = 'event-external-payment-expired'
+            join notification_template_data ntd using (notification_template_data_id)
+            where ep.event_purchase_id = %L::uuid
+        $$,
+        :'externalPurchaseID'
     ),
-    'Should expire pending external purchases and enqueue a do-not-pay notice'
+    format(
+        $$
+            values (
+                'expired'::text,
+                true,
+                %L::uuid,
+                5000::bigint,
+                'KRW'::text,
+                'External admission'::text,
+                epoch_seconds(current_timestamp + interval '2 days')
+            )
+        $$,
+        :'externalPurchaseID'
+    ),
+    'Should enqueue a do-not-pay notice with the original hold details'
 );
 
--- Should clear pending approval requests
+-- Should close an event that only has pending approval requests
 select is(
     close_event_enrollment(:'actorUserID', :'requestEventID'),
     array[]::uuid[],
     'Should close an event that only has pending approval requests'
 );
 
+-- Should clear pending approval requests
 select is(
     (
         select count(*)::int

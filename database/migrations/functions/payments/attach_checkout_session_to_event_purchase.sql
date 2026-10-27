@@ -14,17 +14,19 @@ returns void as $$
 declare
     v_purchase event_purchase%rowtype;
 begin
-    -- Lock and validate the immutable seller scope before attaching provider objects
+    -- Lock the purchase before attaching provider objects
     select ep.*
     into v_purchase
     from event_purchase ep
     where ep.event_purchase_id = p_event_purchase_id
     for update;
 
+    -- Reject unknown purchases
     if not found then
         raise exception 'event purchase not found';
     end if;
 
+    -- Ignore purchases that are no longer awaiting checkout
     if v_purchase.status <> 'pending' then
         return;
     end if;
@@ -55,25 +57,13 @@ begin
 
     -- Preserve the provider tax location for account-scoped reuse
     if p_provider_tax_location_id is not null then
-        insert into payment_provider_tax_location (
-            connected_seller_id,
-            fingerprint,
-            payment_provider_id,
-            provider_tax_location_id,
-            venue_snapshot
-        ) values (
+        perform upsert_payment_provider_tax_location(
+            p_provider,
             p_provider_object_account_id,
             p_performance_location_fingerprint,
-            p_provider,
             p_provider_tax_location_id,
             v_purchase.venue_snapshot
-        )
-        on conflict (
-            payment_provider_id,
-            connected_seller_id,
-            fingerprint
-        ) do update
-        set provider_tax_location_id = excluded.provider_tax_location_id;
+        );
     end if;
 
     -- Preserve the provider tax product for account-scoped reuse
@@ -116,6 +106,5 @@ begin
         updated_at = current_timestamp
     where event_purchase_id = p_event_purchase_id
     and provider_checkout_session_id is null;
-
 end;
 $$ language plpgsql;

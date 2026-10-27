@@ -132,13 +132,12 @@ impl PgNotificationsManager {
         email_sender: &DynEmailSender,
         background_tasks: &BackgroundTasks,
     ) -> Self {
-        // Normalize the shared base URL before cloning it into workers
+        // Normalize the base URL before cloning it into delivery workers
         let base_url = base_url_without_trailing_slash(base_url).to_string();
 
         // Setup and run workers to enqueue due notifications
         for _ in 1..=NUM_ENQUEUE_WORKERS {
             let worker = EnqueueWorker {
-                base_url: base_url.clone(),
                 cancellation_token: background_tasks.cancellation_token(),
                 db: db.clone(),
             };
@@ -186,8 +185,6 @@ impl NotificationsManager for PgNotificationsManager {
 
 /// Worker responsible for enqueuing due notifications.
 struct EnqueueWorker {
-    /// Base URL used for generated links in reminders.
-    base_url: String,
     /// Token to signal worker shutdown.
     cancellation_token: CancellationToken,
     /// Database handle for notification queries.
@@ -221,7 +218,7 @@ impl EnqueueWorker {
         let results = [
             (
                 "event-reminders",
-                self.db.enqueue_due_event_reminders(&self.base_url).await,
+                self.db.enqueue_due_event_reminders().await,
             ),
             (
                 "event-survey-notifications",

@@ -230,7 +230,7 @@ insert into event_speaker (event_id, user_id, featured) values
 
 -- Should enqueue reminders for verified attendees and speakers on due events
 select is(
-    enqueue_due_event_reminders('https://example.test/'),
+    enqueue_due_event_reminders(),
     4,
     'Should enqueue reminders for verified attendees and speakers on due events'
 );
@@ -271,30 +271,32 @@ select is(
     'Should not enqueue reminders for pending invitation rows'
 );
 
--- Should build reminder link using the provided base URL
+-- Should store the reminder event link relative to the site root
 select is(
     (
         select ntd.data->>'link'
         from notification n
         join notification_template_data ntd using (notification_template_data_id)
         where n.kind = 'event-reminder'
+        and ntd.data->'event'->>'event_id' = :'eventDueID'
         limit 1
     ),
-    'https://example.test/event-reminders-community/group/test-group-pretty/event/due-event',
-    'Should build reminder link using the provided base URL'
+    '/event-reminders-community/group/test-group-pretty/event/due-event',
+    'Should store the reminder event link relative to the site root'
 );
 
--- Should build dashboard link using the provided base URL
+-- Should store the reminder dashboard link relative to the site root
 select is(
     (
         select ntd.data->>'dashboard_link'
         from notification n
         join notification_template_data ntd using (notification_template_data_id)
         where n.kind = 'event-reminder'
+        and ntd.data->'event'->>'event_id' = :'eventDueID'
         limit 1
     ),
-    'https://example.test/dashboard/user?tab=events',
-    'Should build dashboard link using the provided base URL'
+    '/dashboard/user?tab=events',
+    'Should store the reminder dashboard link relative to the site root'
 );
 
 -- Should show attendance cancellation copy for attendee recipients
@@ -339,7 +341,7 @@ select is(
     'Should include waitlist fields in reminder template data'
 );
 
--- Should include the latest site theme in reminder template data
+-- Should include the site theme in reminder template data
 select is(
     (
         select ntd.data->'theme'
@@ -349,7 +351,7 @@ select is(
         limit 1
     ),
     '{"primary_color": "#2563eb"}'::jsonb,
-    'Should include the latest site theme in reminder template data'
+    'Should include the site theme in reminder template data'
 );
 
 -- Should mark due event as evaluated for its current start date
@@ -430,7 +432,7 @@ select is(
 
 -- Should enqueue no additional notifications when run again
 select is(
-    enqueue_due_event_reminders('https://example.test'),
+    enqueue_due_event_reminders(),
     0,
     'Should enqueue no additional notifications when run again'
 );
@@ -439,7 +441,7 @@ select is(
 insert into event_attendee (event_id, user_id)
 values (:'eventNoRecipientsID', :'userVerifiedLateSignupID');
 select is(
-    enqueue_due_event_reminders('https://example.test'),
+    enqueue_due_event_reminders(),
     0,
     'Should keep no-recipients event ignored after late signup'
 );

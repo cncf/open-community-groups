@@ -9,12 +9,14 @@ create or replace function stats_event_traffic(
     p_end_day date
 )
 returns json as $$
+-- Keep the requested day range only when its bounds are ordered
 with bounds as (
     select
         p_end_day as end_day,
         p_start_day as start_day
     where p_start_day <= p_end_day
 ),
+-- Total the event views of each day
 daily_views as (
     select
         ev.day,
@@ -23,6 +25,7 @@ daily_views as (
     where ev.event_id = p_event.event_id
     group by ev.day
 ),
+-- Load the event views attributed to a UTM source
 tagged_views as (
     select
         evu.day,
@@ -31,6 +34,7 @@ tagged_views as (
     from event_views_utm evu
     where evu.event_id = p_event.event_id
 ),
+-- Total the tagged views of each day
 daily_tagged_views as (
     select
         tv.day,
@@ -38,6 +42,7 @@ daily_tagged_views as (
     from tagged_views tv
     group by tv.day
 ),
+-- Derive the untagged views of each day
 untagged_counts as (
     select
         coalesce(dv.day, dtv.day) as day,
@@ -45,6 +50,7 @@ untagged_counts as (
     from daily_views dv
     full join daily_tagged_views dtv on dtv.day = dv.day
 ),
+-- Keep the tagged views inside the day range
 range_tagged_views as (
     select
         tv.day,
@@ -53,6 +59,7 @@ range_tagged_views as (
     from tagged_views tv
     join bounds b on tv.day between b.start_day and b.end_day
 ),
+-- Rank the named sources by their views inside the day range
 ranked_sources as (
     select
         rtv.utm_source,
@@ -61,24 +68,35 @@ ranked_sources as (
     where rtv.utm_source <> ''
     group by rtv.utm_source
 ),
+-- Classify the tagged views into top sources, other sources and no source
 classified_tagged_views as (
     select
         case
+            -- Group views tagged without a source
             when rtv.utm_source = '' then 'no-source'
+            -- Keep each of the top three sources apart
             when rs.rank <= 3 then 'source'
+            -- Group the remaining sources
             else 'other-sources'
         end as kind,
         case
+            -- Place views without a source after the other sources
             when rtv.utm_source = '' then 5
+            -- Place the top three sources by rank
             when rs.rank <= 3 then rs.rank
+            -- Place the remaining sources after the top three
             else 4
         end as position,
-        case when rs.rank <= 3 then rtv.utm_source end as source,
+        case
+            -- Name only the top three sources
+            when rs.rank <= 3 then rtv.utm_source
+        end as source,
         rtv.day,
         rtv.total
     from range_tagged_views rtv
     left join ranked_sources rs on rs.utm_source = rtv.utm_source
 ),
+-- Collect the daily counts of each tagged series with views
 tagged_series_counts as (
     select
         ctv.kind,
@@ -89,7 +107,9 @@ tagged_series_counts as (
     group by ctv.kind, ctv.position, ctv.source
     having sum(ctv.total) > 0
 ),
+-- Build the daily series of each tagged group and of the untagged views
 views_series as (
+    -- Fill the day range of each tagged series
     select
         tsc.kind,
         tsc.position,
@@ -100,6 +120,7 @@ views_series as (
 
     union all
 
+    -- Fill the day range of the untagged views
     select
         'untagged' as kind,
         6 as position,
@@ -111,19 +132,7 @@ views_series as (
         )) as series
     from bounds b
 ),
-seat_purchases as (
-    select distinct on (ep.user_id)
-        ep.event_ticket_type_id,
-        ep.user_id
-    from event_purchase ep
-    where ep.event_id = p_event.event_id
-    and event_purchase_holds_seat(ep.status)
-    order by
-        ep.user_id,
-        ep.completed_at desc nulls last,
-        ep.created_at desc,
-        ep.event_purchase_id desc
-),
+-- Date each confirmed registration and tag it with its seat purchase tier
 registrations as (
     select
         (ea.created_at at time zone 'UTC')::date as day,
@@ -131,11 +140,12 @@ registrations as (
         ett."order",
         ett.title
     from event_attendee ea
-    left join seat_purchases sp on sp.user_id = ea.user_id
+    left join event_seat_purchases(p_event.event_id) sp on sp.user_id = ea.user_id
     left join event_ticket_type ett on ett.event_ticket_type_id = sp.event_ticket_type_id
     where ea.event_id = p_event.event_id
     and ea.status = 'confirmed'
 ),
+-- Count the registrations of each day and tier inside the day range
 registration_day_counts as (
     select
         r.day,
@@ -147,9 +157,15 @@ registration_day_counts as (
     join bounds b on r.day between b.start_day and b.end_day
     group by r.day, r.event_ticket_type_id, r."order", r.title
 ),
+-- Fill the day range of each tier's registrations
 registration_series as (
     select
-        case when rdc.event_ticket_type_id is null then 'unknown' else 'ticket-type' end as kind,
+        case
+            -- Report registrations without a seat purchase tier as unknown
+            when rdc.event_ticket_type_id is null then 'unknown'
+            -- Report registrations attributed to a tier
+            else 'ticket-type'
+        end as kind,
         rdc.event_ticket_type_id,
         rdc."order",
         rdc.title,
@@ -162,11 +178,13 @@ registration_series as (
     cross join bounds b
     group by rdc.event_ticket_type_id, rdc."order", rdc.title, b.start_day, b.end_day
 ),
+-- Count the registrations before the day range
 registrations_baseline as (
     select count(*)::bigint as total
     from registrations r
     join bounds b on r.day < b.start_day
 ),
+-- Accumulate the registrations of each day of the range
 registrations_running_total as (
     select
         series_day.day,
@@ -183,6 +201,7 @@ registrations_running_total as (
     left join registrations r on r.day = series_day.day::date
     group by series_day.day
 )
+-- Build the traffic payload
 select json_build_object(
     'attribution_consistent', (
         coalesce((select sum(dtv.total) from daily_tagged_views dtv), 0)

@@ -5,7 +5,11 @@ use chrono::{DateTime, Utc};
 use tokio_postgres::error::{DbError, SqlState};
 
 use crate::{
-    db::{DB, USER_FACING_DB_ERROR_CODE, event::DBEvent},
+    db::{
+        DB, USER_FACING_DB_ERROR_CODE,
+        dashboard::user::DBDashboardUser,
+        event::{AttendEventResult, DBEvent},
+    },
     types::{
         event::{EventEnrollmentStatus, EventKind},
         payments::{
@@ -58,6 +62,56 @@ async fn db_contracts_add_cfs_submission_blocks_no_key_updates() -> Result<()> {
     // Check the explicit share lock blocks a competing non-key update
     let lock_err = lock_result.expect_err("proposal update should wait for the submission lock");
     assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_attend_event_and_decline_event_admission_offer_complete_concurrently()
+-> Result<()> {
+    // Setup the contract database and a client to read the race outcome
+    let db = contract_tests_db()?;
+    let state_client = contract_tests_pool()?.get().await?;
+
+    // Race the attendee enrollment against the offer decline on separate connections
+    let (attend_result, decline_result) = tokio::join!(
+        db.attend_event(
+            community_id(),
+            enrollment_race_event_id(),
+            enrollment_race_attendee_id(),
+            None,
+            None,
+        ),
+        db.decline_event_admission_offer(
+            enrollment_race_decliner_id(),
+            enrollment_race_offer_id(),
+            None,
+        ),
+    );
+
+    // Check both transitions completed without a deadlock or other error
+    let attend_result = attend_result?;
+    decline_result?;
+    assert!(
+        matches!(
+            attend_result,
+            AttendEventResult::Enrollment(
+                EventEnrollmentStatus::PendingPayment | EventEnrollmentStatus::Waitlisted
+            )
+        ),
+        "unexpected attend result: {attend_result:?}"
+    );
+
+    // Check the offer recipient's decision persisted
+    let offer_status: String = state_client
+        .query_one(
+            "select status from admission_offer where admission_offer_id = $1::uuid",
+            &[&enrollment_race_offer_id()],
+        )
+        .await?
+        .get(0);
+    assert_eq!(offer_status, "declined");
 
     Ok(())
 }

@@ -5,41 +5,11 @@
 -- ============================================================================
 
 begin;
-select plan(36);
-
--- ============================================================================
--- VARIABLES
--- ============================================================================
-
-\set communityID '79550000-0000-0000-0000-000000000001'
-\set eventCategoryID '79550000-0000-0000-0000-000000000002'
-\set eventID '79550000-0000-0000-0000-000000000003'
-\set groupCategoryID '79550000-0000-0000-0000-000000000004'
-\set groupID '79550000-0000-0000-0000-000000000005'
-\set missingEventID '79550000-0000-0000-0000-000000000006'
+select plan(34);
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
-
--- Baseline community, categories and group
-select fx_community(:'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID');
-
--- Stored in-person event with a complete venue and automatic tax
-select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'event_kind_id', 'in-person',
-    'manual_tax_rate_ids', array[]::text[],
-    'tax_behavior', 'inclusive',
-    'tax_calculation_mode', 'automatic',
-    'venue_address', '123 Main St',
-    'venue_city', 'San Francisco',
-    'venue_country_code', 'US',
-    'venue_name', 'Community Hall',
-    'venue_zip_code', '94105'
-));
 
 -- Operator allowlist and window limits used by external-mode readiness scenarios
 insert into external_payments_config (
@@ -52,225 +22,71 @@ insert into external_payments_config (
     336
 );
 
+-- Baseline event rows: a Korean venue on the external rail and a complete
+-- US venue with automatic tax on the Stripe rail
+create temporary table test_event (external_event event not null, stripe_event event not null);
+insert into test_event (
+    external_event.event_kind_id,
+    external_event.external_payment_url,
+    external_event.manual_tax_rate_ids,
+    external_event.payment_currency_code,
+    external_event.tax_behavior,
+    external_event.tax_calculation_mode,
+    external_event.venue_address,
+    external_event.venue_city,
+    external_event.venue_country_code,
+    external_event.venue_name,
+    external_event.venue_zip_code,
+    stripe_event.event_kind_id,
+    stripe_event.manual_tax_rate_ids,
+    stripe_event.payment_currency_code,
+    stripe_event.tax_behavior,
+    stripe_event.tax_calculation_mode,
+    stripe_event.venue_address,
+    stripe_event.venue_city,
+    stripe_event.venue_country_code,
+    stripe_event.venue_name,
+    stripe_event.venue_state_code,
+    stripe_event.venue_zip_code
+) values (
+    'in-person',
+    'https://pay.example.test/ready',
+    array[]::text[],
+    'KRW',
+    'inclusive',
+    'automatic',
+    '1 Test Street',
+    'Seoul',
+    'KR',
+    'Test Hall',
+    '00000',
+    'in-person',
+    array[]::text[],
+    'USD',
+    'inclusive',
+    'automatic',
+    '123 Main St',
+    'San Francisco',
+    'US',
+    'Community Hall',
+    'CA',
+    '94105'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should accept matching payment configuration for paid-capable events
+-- Should accept a missing state code for automatic ticket tax
 select lives_ok(
     $$select validate_event_ticketing_payment_readiness(
         'stripe',
         true,
         'USD',
         '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_zip_code": "94105"
-        }'::jsonb
+        (select jsonb_populate_record(t.stripe_event, '{"venue_state_code": null}'::jsonb) from test_event t)
     )$$,
-    'Should accept matching payment configuration for paid-capable events'
-);
-
--- Should accept paid-capable hybrid events with a complete physical venue
-select lives_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "hybrid",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_state_name": "California",
-            "venue_zip_code": "94105"
-        }'::jsonb
-    )$$,
-    'Should accept paid-capable hybrid events with a complete physical venue'
-);
-
--- Should accept a stored in-person event with a complete venue
-select lives_ok(
-    format(
-        $$select validate_event_ticketing_payment_readiness(
-            'stripe',
-            true,
-            'USD',
-            '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-            %L::uuid,
-            null
-        )$$,
-        :'eventID'
-    ),
-    'Should accept a stored in-person event with a complete venue'
-);
-
--- Should reject a missing stored event
-select throws_ok(
-    format(
-        $$select validate_event_ticketing_payment_readiness(
-            'stripe',
-            true,
-            'USD',
-            '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-            %L::uuid,
-            null
-        )$$,
-        :'missingEventID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Should reject a missing stored event'
-);
-
--- Should reject paid-capable readiness without event context
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        null
-    )$$,
-    'P0001',
-    'paid-capable event readiness requires event context',
-    'Should reject paid-capable readiness without event context'
-);
-
--- Should allow provider-free configuration for all-zero events
-select lives_ok(
-    $$select validate_event_ticketing_payment_readiness(null, false, null, null)$$,
-    'Should allow provider-free configuration for all-zero events'
-);
-
--- Should accept multiple manual Tax Rates for paid events
-select lives_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "in-person",
-            "manual_tax_rate_ids": ["txr_state", "txr_local"],
-            "tax_behavior": "exclusive",
-            "tax_calculation_mode": "manual",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_zip_code": "94105"
-        }'::jsonb
-    )$$,
-    'Should accept multiple manual Tax Rates for paid events'
-);
-
--- Should reject paid manual-tax events without a selected rate
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "in-person",
-            "tax_calculation_mode": "manual",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_zip_code": "94105"
-        }'::jsonb
-    )$$,
-    'OCG01',
-    'manual ticket tax requires at least one unique Stripe Tax Rate',
-    'Should reject paid manual-tax events without a selected rate'
-);
-
--- Should reject duplicate manual Tax Rate identifiers
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "in-person",
-            "manual_tax_rate_ids": ["txr_state", "txr_state"],
-            "tax_calculation_mode": "manual",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_zip_code": "94105"
-        }'::jsonb
-    )$$,
-    'OCG01',
-    'manual ticket tax requires at least one unique Stripe Tax Rate',
-    'Should reject duplicate manual Tax Rate identifiers'
-);
-
--- Should reject manual Tax Rate identifiers with surrounding whitespace
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "in-person",
-            "manual_tax_rate_ids": [" txr_state "],
-            "tax_calculation_mode": "manual",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_zip_code": "94105"
-        }'::jsonb
-    )$$,
-    'OCG01',
-    'manual ticket tax requires at least one unique Stripe Tax Rate',
-    'Should reject manual Tax Rate identifiers with surrounding whitespace'
-);
-
--- Should reject manual Tax Rate identifiers in automatic mode
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "in-person",
-            "manual_tax_rate_ids": ["txr_stale"],
-            "tax_calculation_mode": "automatic",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_zip_code": "94105"
-        }'::jsonb
-    )$$,
-    'OCG01',
-    'automatic ticket tax cannot include manual Tax Rates',
-    'Should reject manual Tax Rate identifiers in automatic mode'
+    'Should accept a missing state code for automatic ticket tax'
 );
 
 -- Should accept an explicitly normalized no-tax event
@@ -280,89 +96,139 @@ select lives_ok(
         true,
         'USD',
         '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "in-person",
-            "manual_tax_rate_ids": [],
-            "tax_behavior": "inclusive",
-            "tax_calculation_mode": "none",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_zip_code": "94105"
-        }'::jsonb
+        (select jsonb_populate_record(t.stripe_event, '{"tax_calculation_mode": "none"}'::jsonb) from test_event t)
     )$$,
     'Should accept an explicitly normalized no-tax event'
 );
 
--- Should reject exclusive display for no-tax events
-select throws_ok(
+-- Should accept an external payment window within the configured maximum
+select lives_ok(
     $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         null,
-        '{
-            "kind_id": "in-person",
-            "manual_tax_rate_ids": [],
-            "tax_behavior": "exclusive",
-            "tax_calculation_mode": "none",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_zip_code": "94105"
-        }'::jsonb
+        true,
+        'KRW',
+        null,
+        (
+            select jsonb_populate_record(t.external_event, '{
+                "external_payment_url": "https://pay.example.test/window",
+                "external_payment_window_hours": 168
+            }'::jsonb)
+            from test_event t
+        ),
+        true,
+        'KR'
     )$$,
-    'OCG01',
-    'events that do not collect tax require inclusive display and no Tax Rates',
-    'Should reject exclusive display for no-tax events'
+    'Should accept an external payment window within the configured maximum'
 );
 
--- Should reject an unsupported tax calculation mode
-select throws_ok(
+-- Should accept an external venue whose country matches the group country in another case
+select lives_ok(
     $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         null,
-        '{
-            "kind_id": "in-person",
-            "tax_calculation_mode": "bogus",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_zip_code": "94105"
-        }'::jsonb
+        true,
+        'KRW',
+        null,
+        (
+            select jsonb_populate_record(t.external_event, '{
+                "external_payment_url": "https://pay.example.test/case",
+                "venue_country_code": "kr"
+            }'::jsonb)
+            from test_event t
+        ),
+        true,
+        ' KR '
     )$$,
-    'P0001',
-    'unsupported ticket tax calculation mode',
-    'Should reject an unsupported tax calculation mode'
+    'Should accept an external venue whose country matches the group country in another case'
 );
 
--- Should reject paid-capable hybrid events with an incomplete physical venue
+-- Should accept external mode without a Stripe recipient when the URL is valid
+select lives_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        null,
+        true,
+        'KRW',
+        null,
+        (select t.external_event from test_event t),
+        true,
+        'KR'
+    )$$,
+    'Should accept external mode without a Stripe recipient when the URL is valid'
+);
+
+-- Should accept matching payment configuration for paid-capable events
+select lives_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (select t.stripe_event from test_event t)
+    )$$,
+    'Should accept matching payment configuration for paid-capable events'
+);
+
+-- Should accept multiple manual Tax Rates for paid events
+select lives_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (
+            select jsonb_populate_record(t.stripe_event, '{
+                "manual_tax_rate_ids": ["txr_state", "txr_local"],
+                "tax_behavior": "exclusive",
+                "tax_calculation_mode": "manual"
+            }'::jsonb)
+            from test_event t
+        )
+    )$$,
+    'Should accept multiple manual Tax Rates for paid events'
+);
+
+-- Should accept paid-capable hybrid events with a complete physical venue
+select lives_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (
+            select jsonb_populate_record(t.stripe_event, '{
+                "event_kind_id": "hybrid",
+                "venue_state_name": "California"
+            }'::jsonb)
+            from test_event t
+        )
+    )$$,
+    'Should accept paid-capable hybrid events with a complete physical venue'
+);
+
+-- Should allow provider-free configuration for all-zero events
+select lives_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        null,
+        false,
+        null,
+        null,
+        (select t.stripe_event from test_event t)
+    )$$,
+    'Should allow provider-free configuration for all-zero events'
+);
+
+-- Should reject a leftover external window when the group is not in external mode
 select throws_ok(
     $$select validate_event_ticketing_payment_readiness(
         'stripe',
         true,
         'USD',
         '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "hybrid",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall"
-        }'::jsonb
+        (select jsonb_populate_record(t.stripe_event, '{"external_payment_window_hours": 24}'::jsonb) from test_event t),
+        false
     )$$,
     'OCG01',
-    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
-    'Should reject paid-capable hybrid events with an incomplete physical venue'
+    'external payment fields require external payments mode',
+    'Should reject a leftover external window when the group is not in external mode'
 );
 
 -- Should reject a missing payment currency for paid-capable events
@@ -371,36 +237,23 @@ select throws_ok(
         'stripe',
         true,
         null,
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (select t.stripe_event from test_event t)
     )$$,
     'OCG01',
     'paid-capable events require payment_currency_code',
     'Should reject a missing payment currency for paid-capable events'
 );
 
--- Should accept a missing state code for automatic ticket tax
-select lives_ok(
+-- Should reject a missing payment recipient for paid-capable events
+select throws_ok(
     $$select validate_event_ticketing_payment_readiness(
         'stripe',
         true,
         'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_zip_code": "94105"
-        }'::jsonb
+        (select t.stripe_event from test_event t)
     )$$,
-    'Should accept a missing state code for automatic ticket tax'
-);
-
--- Should reject a missing payment recipient for paid-capable events
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness('stripe', true, 'USD', null)$$,
     'OCG01',
     'paid-capable events require a payment recipient',
     'Should reject a missing payment recipient for paid-capable events'
@@ -412,11 +265,26 @@ select throws_ok(
         null,
         true,
         'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (select t.stripe_event from test_event t)
     )$$,
     'OCG01',
     'payments are not configured on this server',
     'Should reject a missing server payment provider for paid-capable events'
+);
+
+-- Should reject a payment recipient without a seller name
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
+        (select t.stripe_event from test_event t)
+    )$$,
+    'OCG01',
+    'paid-capable events require a payment recipient seller name',
+    'Should reject a payment recipient without a seller name'
 );
 
 -- Should reject a recipient for another payment provider
@@ -425,7 +293,8 @@ select throws_ok(
         'stripe',
         true,
         'USD',
-        '{"provider": "other", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb
+        '{"provider": "other", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (select t.stripe_event from test_event t)
     )$$,
     'OCG01',
     'paid-capable events require a payment recipient for the server payments provider',
@@ -438,201 +307,12 @@ select throws_ok(
         'stripe',
         true,
         'USD',
-        '{"provider": "stripe", "recipient_id": " ", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb
+        '{"provider": "stripe", "recipient_id": " ", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (select t.stripe_event from test_event t)
     )$$,
     'OCG01',
     'paid-capable events require a valid payment recipient',
     'Should reject an empty recipient identifier'
-);
-
--- Should reject an unsupported payment currency for paid-capable events
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USDD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb
-    )$$,
-    'OCG01',
-    'payment_currency_code must be a supported currency code',
-    'Should reject an unsupported payment currency for paid-capable events'
-);
-
--- Should reject a payment recipient without an attendee-visible seller name
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb
-    )$$,
-    'OCG01',
-    'paid-capable events require a payment recipient seller name',
-    'Should reject a payment recipient without a seller name'
-);
-
--- Should reject paid-capable virtual events even when a physical venue is present
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "virtual",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_state_code": "CA",
-            "venue_state_name": "California",
-            "venue_zip_code": "94105"
-        }'::jsonb
-    )$$,
-    'OCG01',
-    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
-    'Should reject paid-capable virtual events even when a physical venue is present'
-);
-
--- Should accept external mode without a Stripe recipient when the URL is valid
-select lives_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        null,
-        true,
-        'KRW',
-        null,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Seoul",
-            "venue_country_code": "KR",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "00000"
-        }'::jsonb,
-        true,
-        'https://pay.example.test/ready',
-        null,
-        'KR'
-    )$$,
-    'Should accept external mode without a Stripe recipient when the URL is valid'
-);
-
--- Should accept an external venue whose country matches the group country in another case
-select lives_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        null,
-        true,
-        'KRW',
-        null,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Seoul",
-            "venue_country_code": "kr",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "00000"
-        }'::jsonb,
-        true,
-        'https://pay.example.test/case',
-        null,
-        ' KR '
-    )$$,
-    'Should accept an external venue whose country matches the group country in another case'
-);
-
--- Should accept an external payment window within the configured maximum
-select lives_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        null,
-        true,
-        'KRW',
-        null,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Seoul",
-            "venue_country_code": "KR",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "00000"
-        }'::jsonb,
-        true,
-        'https://pay.example.test/window',
-        168,
-        'KR'
-    )$$,
-    'Should accept an external payment window within the configured maximum'
-);
-
--- Should reject external fields on unpaid events
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        null,
-        false,
-        null,
-        null,
-        null,
-        null,
-        true,
-        'https://pay.example.test/unpaid',
-        null
-    )$$,
-    'OCG01',
-    'external payment fields require paid-capable ticketing',
-    'Should reject external fields on unpaid events'
-);
-
--- Should reject external fields when the group is not in external mode
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        'stripe',
-        true,
-        'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_name": "Community Hall",
-            "venue_zip_code": "94105"
-        }'::jsonb,
-        false,
-        'https://pay.example.test/leftover',
-        null
-    )$$,
-    'OCG01',
-    'external payment fields require external payments mode',
-    'Should reject external fields when the group is not in external mode'
-);
-
--- Should reject external mode without a valid payment URL
-select throws_ok(
-    $$select validate_event_ticketing_payment_readiness(
-        null,
-        true,
-        'KRW',
-        null,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Seoul",
-            "venue_country_code": "KR",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "00000"
-        }'::jsonb,
-        true,
-        'ftp://pay.example.test/invalid',
-        null
-    )$$,
-    'OCG01',
-    'paid-capable events require a valid external payment url',
-    'Should reject external mode without a valid payment URL'
 );
 
 -- Should reject an external payment window above the configured maximum
@@ -642,18 +322,15 @@ select throws_ok(
         true,
         'KRW',
         null,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Seoul",
-            "venue_country_code": "KR",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "00000"
-        }'::jsonb,
+        (
+            select jsonb_populate_record(t.external_event, '{
+                "external_payment_url": "https://pay.example.test/window",
+                "external_payment_window_hours": 337
+            }'::jsonb)
+            from test_event t
+        ),
         true,
-        'https://pay.example.test/window',
-        337
+        'KR'
     )$$,
     'OCG01',
     'external payment window exceeds the configured maximum',
@@ -667,98 +344,167 @@ select throws_ok(
         true,
         'KRW',
         null,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Seoul",
-            "venue_country_code": "KR",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "00000"
-        }'::jsonb,
+        (
+            select jsonb_populate_record(t.external_event, '{
+                "external_payment_url": "https://pay.example.test/window",
+                "external_payment_window_hours": 0
+            }'::jsonb)
+            from test_event t
+        ),
         true,
-        'https://pay.example.test/window',
-        0
+        'KR'
     )$$,
     'OCG01',
     'external payment window exceeds the configured maximum',
     'Should reject an external payment window below one hour'
 );
 
--- Should reject paid external virtual events even with a complete venue
+-- Should reject an unsupported payment currency for paid-capable events
 select throws_ok(
     $$select validate_event_ticketing_payment_readiness(
-        null,
+        'stripe',
         true,
-        'KRW',
-        null,
-        null,
-        '{
-            "kind_id": "virtual",
-            "venue_address": "1 Test Street",
-            "venue_city": "Seoul",
-            "venue_country_code": "KR",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "00000"
-        }'::jsonb,
-        true,
-        'https://pay.example.test/virtual',
-        null
+        'USDD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (select t.stripe_event from test_event t)
     )$$,
     'OCG01',
-    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
-    'Should reject paid external virtual events even with a complete venue'
+    'payment_currency_code must be a supported currency code',
+    'Should reject an unsupported payment currency for paid-capable events'
 );
 
--- Should reject paid external mode when the payment URL is missing
+-- Should reject an unsupported tax calculation mode
 select throws_ok(
     $$select validate_event_ticketing_payment_readiness(
-        null,
+        'stripe',
         true,
-        'KRW',
-        null,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Seoul",
-            "venue_country_code": "KR",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "00000"
-        }'::jsonb,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (select jsonb_populate_record(t.stripe_event, '{"tax_calculation_mode": "bogus"}'::jsonb) from test_event t)
+    )$$,
+    'P0001',
+    'unsupported ticket tax calculation mode',
+    'Should reject an unsupported tax calculation mode'
+);
+
+-- Should reject duplicate manual Tax Rate identifiers
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
         true,
-        null,
-        null
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (
+            select jsonb_populate_record(t.stripe_event, '{
+                "manual_tax_rate_ids": ["txr_state", "txr_state"],
+                "tax_calculation_mode": "manual"
+            }'::jsonb)
+            from test_event t
+        )
     )$$,
     'OCG01',
-    'paid-capable events require a valid external payment url',
-    'Should reject paid external mode when the payment URL is missing'
+    'manual ticket tax requires at least one unique Stripe Tax Rate',
+    'Should reject duplicate manual Tax Rate identifiers'
 );
 
--- Should reject paid external events with a venue outside the group country
+-- Should reject exclusive display for no-tax events
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (
+            select jsonb_populate_record(t.stripe_event, '{
+                "tax_behavior": "exclusive",
+                "tax_calculation_mode": "none"
+            }'::jsonb)
+            from test_event t
+        )
+    )$$,
+    'OCG01',
+    'events that do not collect tax require inclusive display and no Tax Rates',
+    'Should reject exclusive display for no-tax events'
+);
+
+-- Should reject external fields on unpaid events
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        null,
+        false,
+        null,
+        null,
+        (select t.external_event from test_event t),
+        true
+    )$$,
+    'OCG01',
+    'external payment fields require paid-capable ticketing',
+    'Should reject external fields on unpaid events'
+);
+
+-- Should reject external fields when the group is not in external mode
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (select jsonb_populate_record(t.stripe_event, '{"external_payment_url": "https://pay.example.test/leftover"}'::jsonb) from test_event t),
+        false
+    )$$,
+    'OCG01',
+    'external payment fields require external payments mode',
+    'Should reject external fields when the group is not in external mode'
+);
+
+-- Should reject external mode without a valid payment URL
 select throws_ok(
     $$select validate_event_ticketing_payment_readiness(
         null,
         true,
         'KRW',
         null,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Tokyo",
-            "venue_country_code": "JP",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "100-0001"
-        }'::jsonb,
+        (select jsonb_populate_record(t.external_event, '{"external_payment_url": "ftp://pay.example.test/invalid"}'::jsonb) from test_event t),
         true,
-        'https://pay.example.test/abroad',
-        null,
         'KR'
     )$$,
     'OCG01',
-    'external paid events require a venue in the group country',
-    'Should reject paid external events with a venue outside the group country'
+    'paid-capable events require a valid external payment url',
+    'Should reject external mode without a valid payment URL'
+);
+
+-- Should reject manual Tax Rate identifiers in automatic mode
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (select jsonb_populate_record(t.stripe_event, '{"manual_tax_rate_ids": ["txr_stale"]}'::jsonb) from test_event t)
+    )$$,
+    'OCG01',
+    'automatic ticket tax cannot include manual Tax Rates',
+    'Should reject manual Tax Rate identifiers in automatic mode'
+);
+
+-- Should reject manual Tax Rate identifiers with surrounding whitespace
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (
+            select jsonb_populate_record(t.stripe_event, '{
+                "manual_tax_rate_ids": [" txr_state "],
+                "tax_calculation_mode": "manual"
+            }'::jsonb)
+            from test_event t
+        )
+    )$$,
+    'OCG01',
+    'manual ticket tax requires at least one unique Stripe Tax Rate',
+    'Should reject manual Tax Rate identifiers with surrounding whitespace'
 );
 
 -- Should reject paid external events when the group country is unknown
@@ -768,23 +514,122 @@ select throws_ok(
         true,
         'KRW',
         null,
-        null,
-        '{
-            "kind_id": "in-person",
-            "venue_address": "1 Test Street",
-            "venue_city": "Seoul",
-            "venue_country_code": "KR",
-            "venue_name": "Test Hall",
-            "venue_zip_code": "00000"
-        }'::jsonb,
+        (select t.external_event from test_event t),
         true,
-        'https://pay.example.test/no-country',
-        null,
         null
     )$$,
     'OCG01',
     'external paid events require a venue in the group country',
     'Should reject paid external events when the group country is unknown'
+);
+
+-- Should reject paid external events with a venue outside the group country
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        null,
+        true,
+        'KRW',
+        null,
+        (
+            select jsonb_populate_record(t.external_event, '{
+                "venue_city": "Tokyo",
+                "venue_country_code": "JP",
+                "venue_zip_code": "100-0001"
+            }'::jsonb)
+            from test_event t
+        ),
+        true,
+        'KR'
+    )$$,
+    'OCG01',
+    'external paid events require a venue in the group country',
+    'Should reject paid external events with a venue outside the group country'
+);
+
+-- Should reject paid external mode when the payment URL is missing
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        null,
+        true,
+        'KRW',
+        null,
+        (select jsonb_populate_record(t.external_event, '{"external_payment_url": null}'::jsonb) from test_event t),
+        true,
+        'KR'
+    )$$,
+    'OCG01',
+    'paid-capable events require a valid external payment url',
+    'Should reject paid external mode when the payment URL is missing'
+);
+
+-- Should reject paid external virtual events even with a complete venue
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        null,
+        true,
+        'KRW',
+        null,
+        (select jsonb_populate_record(t.external_event, '{"event_kind_id": "virtual"}'::jsonb) from test_event t),
+        true,
+        'KR'
+    )$$,
+    'OCG01',
+    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
+    'Should reject paid external virtual events even with a complete venue'
+);
+
+-- Should reject paid manual-tax events without a selected rate
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (select jsonb_populate_record(t.stripe_event, '{"tax_calculation_mode": "manual"}'::jsonb) from test_event t)
+    )$$,
+    'OCG01',
+    'manual ticket tax requires at least one unique Stripe Tax Rate',
+    'Should reject paid manual-tax events without a selected rate'
+);
+
+-- Should reject paid-capable hybrid events with an incomplete physical venue
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (
+            select jsonb_populate_record(t.stripe_event, '{
+                "event_kind_id": "hybrid",
+                "venue_zip_code": null
+            }'::jsonb)
+            from test_event t
+        )
+    )$$,
+    'OCG01',
+    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
+    'Should reject paid-capable hybrid events with an incomplete physical venue'
+);
+
+-- Should reject paid-capable virtual events even when a physical venue is present
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        (
+            select jsonb_populate_record(t.stripe_event, '{
+                "event_kind_id": "virtual",
+                "venue_state_name": "California"
+            }'::jsonb)
+            from test_event t
+        )
+    )$$,
+    'OCG01',
+    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
+    'Should reject paid-capable virtual events even when a physical venue is present'
 );
 
 -- ============================================================================

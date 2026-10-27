@@ -13,4 +13,4 @@ returns jsonb as $$
     join "group" g on g.group_id = e.group_id
     where ep.event_purchase_id = p_event_purchase_id
     and e.group_id = p_group_id;
-$$ language sql;
+$$ language sql stable;

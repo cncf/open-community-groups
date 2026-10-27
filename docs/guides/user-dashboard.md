@@ -455,6 +455,7 @@ trail for actions you performed from the user dashboard and account settings.
 Coverage in this view includes:
 
 - Invitation accept and reject actions.
+- Ticket offer declines.
 - Inbox conversations you started and messages you sent.
 - Session proposal create, update, delete, and co-speaker invitation decisions.
 - Submission resubmits and withdrawals.

@@ -36,4 +36,4 @@ returns json as $$
             where uo.user_id = p_user_id
         )
     );
-$$ language sql;
+$$ language sql stable;

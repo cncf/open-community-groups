@@ -36,7 +36,6 @@ begin
         p_community_id,
         null,
         null,
-        cardinality(v_recipients),
         p_subject,
         p_body,
         p_filters

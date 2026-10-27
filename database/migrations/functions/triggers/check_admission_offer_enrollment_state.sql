@@ -10,7 +10,7 @@ begin
     end if;
 
     -- Serialize writes for the same event-user enrollment boundary
-    perform pg_advisory_xact_lock(hashtext(new.event_id::text), hashtext(new.user_id::text));
+    perform lock_event_user(new.event_id, new.user_id);
 
     -- Resolve the enrollment the user already holds, ignoring the purchase linked to this offer
     v_conflict := event_user_enrollment_conflict(new.event_id, new.user_id, new.admission_offer_id);

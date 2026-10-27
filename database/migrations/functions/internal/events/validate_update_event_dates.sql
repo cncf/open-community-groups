@@ -9,7 +9,6 @@ create or replace function validate_update_event_dates(
 )
 returns void as $$
 declare
-    v_before_ends_at timestamptz := date_trunc('second', p_before.ends_at);
     v_before_starts_at timestamptz := date_trunc('second', p_before.starts_at);
     v_is_past_event boolean;
     v_new_ends_at timestamptz;
@@ -37,8 +36,8 @@ begin
         v_new_starts_at
     );
 
-    -- Detect whether the current event is already over, treating dateless events as non-past
-    v_is_past_event := coalesce(coalesce(v_before_ends_at, v_before_starts_at) < current_timestamp, false);
+    -- Detect whether the current event is already over
+    v_is_past_event := event_is_past(p_before);
 
     -- Keep past events in the past
     if v_is_past_event then

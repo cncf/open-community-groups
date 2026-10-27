@@ -8,12 +8,7 @@ returns json as $$
     select json_strip_nulls(json_build_object(
         -- Include core group fields
         'active', g.active,
-        'category', json_build_object(
-            'group_category_id', gc.group_category_id,
-            'name', gc.name,
-            'normalized_name', gc.normalized_name,
-            'order', gc.order
-        ),
+        'category', group_category_json(gc),
         'created_at', epoch_seconds(g.created_at),
         'external_payments_enabled', g.external_payments_enabled,
         'group_id', g.group_id,
@@ -47,14 +42,7 @@ returns json as $$
         'og_image_url', g.og_image_url,
         'payment_recipient', g.payment_recipient,
         'photos_urls', g.photos_urls,
-        'region', case when r.region_id is not null then
-            json_build_object(
-                'region_id', r.region_id,
-                'name', r.name,
-                'normalized_name', r.normalized_name,
-                'order', r.order
-            )
-        else null end,
+        'region', group_region_json(r),
         'slack_url', g.slack_url,
         'slug_pretty', g.slug_pretty,
         'state', g.state,
@@ -115,4 +103,4 @@ returns json as $$
     left join region r using (region_id)
     where g.group_id = p_group_id
     and g.community_id = p_community_id;
-$$ language sql;
+$$ language sql stable;

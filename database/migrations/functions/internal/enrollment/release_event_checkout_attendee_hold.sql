@@ -22,4 +22,4 @@ returns void as $$
             )
         )
     );
-$$ language sql;
+$$ language sql volatile;

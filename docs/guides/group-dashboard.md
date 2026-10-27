@@ -652,6 +652,9 @@ Coverage in this view includes:
 - Event lifecycle actions such as add, update, publish, unpublish, cancel, and delete.
 - Event survey changes: add, update, mark ready, move to draft, close, reopen, and delete. Survey
   responses are never logged.
+- Ticket offer cancellations, reissues, declines, and expirations, and ticket offers created from
+  the waitlist.
+- Badge definition and artwork changes, badge awards, and badge revocations.
 - Check-ins, CFS submission reviews, and custom notification sends.
 - Payment actions such as refund requests, approvals, rejections, recoveries, and external
   payments marked as received.
@@ -664,7 +667,8 @@ When an audit row has extra metadata, such as a role or notification subject, `D
 popover with it.
 
 For each entry, OCG shows the resource type plus the current resource name. If the resource no
-longer exists, the audit entry still remains and falls back to the stored resource identifier.
+longer exists, the audit entry still remains and falls back to the name recorded when the action
+happened when available, or to the stored resource identifier.
 
 This screen is group-dashboard focused, but some overlapping actions, such as `group_updated`,
 can also appear in the community dashboard audit view when they match that dashboard's accepted

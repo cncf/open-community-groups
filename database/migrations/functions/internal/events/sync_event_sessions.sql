@@ -24,11 +24,8 @@ declare
     v_session_starts_at timestamptz;
     v_timezone text := p_event->>'timezone';
 begin
-    -- Remove every session when the payload omits them
+    -- Remove every session (speakers and labels cascade) when the payload omits them
     if p_event->'sessions' is null then
-        delete from session_speaker
-        where session_id in (select session_id from session where event_id = p_event_id);
-
         delete from session where event_id = p_event_id;
 
         return;
@@ -71,14 +68,7 @@ begin
                 ends_at = v_session_ends_at,
                 location = nullif(v_session->>'location', ''),
                 meeting_hosts = v_session_meeting_hosts,
-                meeting_in_sync = case
-                    -- Preserve pending meeting work while the meeting stays requested
-                    when v_session_before.meeting_in_sync = false
-                         and (v_session->>'meeting_requested')::boolean is distinct from false
-                    then false
-                    -- Recompute meeting synchronization for other updates
-                    else is_session_meeting_in_sync(v_session_before, v_session, p_before, p_event)
-                end,
+                meeting_in_sync = is_session_meeting_in_sync(v_session_before, v_session, p_before, p_event),
                 meeting_join_instructions = nullif(v_session->>'meeting_join_instructions', ''),
                 meeting_join_url = nullif(v_session->>'meeting_join_url', ''),
                 meeting_provider_id = nullif(v_session->>'meeting_provider_id', ''),
@@ -184,15 +174,7 @@ begin
         end if;
     end loop;
 
-    -- Remove sessions omitted from the payload
-    delete from session_speaker
-    where session_id in (
-        select s.session_id
-        from session s
-        where s.event_id = p_event_id
-        and not (s.session_id = any(v_processed_session_ids))
-    );
-
+    -- Remove sessions omitted from the payload; their speakers and labels cascade
     delete from session
     where event_id = p_event_id
     and not (session_id = any(v_processed_session_ids));

@@ -1,4 +1,5 @@
 -- Inserts an audit log entry for a successful mutation at the given or transaction time.
+-- Group-scoped entries inherit the group community when no community is given.
 create or replace function insert_audit_log(
     p_action text,
     p_actor_user_id uuid,
@@ -13,6 +14,7 @@ create or replace function insert_audit_log(
 returns void as $$
 declare
     v_actor_username text;
+    v_community_id uuid := p_community_id;
 begin
     -- Snapshot the actor username so audit rows remain readable if user records change
     if p_actor_user_id is not null then
@@ -20,6 +22,14 @@ begin
         into v_actor_username
         from "user"
         where user_id = p_actor_user_id;
+    end if;
+
+    -- Derive the community of group-scoped rows when the caller omits it
+    if v_community_id is null and p_group_id is not null then
+        select g.community_id
+        into v_community_id
+        from "group" g
+        where g.group_id = p_group_id;
     end if;
 
     -- Store the audit row
@@ -38,7 +48,7 @@ begin
         p_action,
         p_actor_user_id,
         v_actor_username,
-        p_community_id,
+        v_community_id,
         coalesce(p_created_at, current_timestamp),
         coalesce(p_details, '{}'::jsonb),
         p_event_id,

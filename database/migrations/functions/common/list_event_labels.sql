@@ -8,4 +8,4 @@ returns json as $$
             where el.event_id = p_event_id
         )
     );
-$$ language sql;
+$$ language sql stable;

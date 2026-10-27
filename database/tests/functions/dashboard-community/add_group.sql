@@ -53,20 +53,22 @@ values (:'regionID', :'communityID', 'North America');
 -- ============================================================================
 
 -- Should create group with minimal required fields and return expected structure
+select add_group(
+    :'groupAdminID'::uuid,
+    :'communityID'::uuid,
+    jsonb_build_object(
+        'name', 'Simple Test Group',
+        'category_id', :'groupCategoryID',
+        'description', 'A simple test group',
+        'description_short', 'Brief overview of the test group'
+    )
+) as "minimalGroupID" \gset
+
 select is(
     (select (
         get_group_full(
             :'communityID'::uuid,
-            add_group(
-                :'groupAdminID'::uuid,
-                :'communityID'::uuid,
-                jsonb_build_object(
-                    'name', 'Simple Test Group',
-                    'category_id', :'groupCategoryID',
-                    'description', 'A simple test group',
-                    'description_short', 'Brief overview of the test group'
-                )
-            )
+            :'minimalGroupID'::uuid
         )::jsonb - 'active' - 'community' - 'created_at' - 'members_count' - 'group_id' - 'slug'
     )),
     format(
@@ -123,66 +125,70 @@ select results_eq(
 );
 
 -- Should auto-generate a valid slug
+select add_group(
+    null::uuid,
+    :'communityID'::uuid,
+    jsonb_build_object(
+        'name', 'Slug Test Group',
+        'category_id', :'groupCategoryID',
+        'description', 'Testing slug generation',
+        'description_short', 'Brief'
+    )
+) as "slugGroupID" \gset
+
 select ok(
     (select (
         get_group_full(
             :'communityID'::uuid,
-            add_group(
-                null::uuid,
-                :'communityID'::uuid,
-                jsonb_build_object(
-                    'name', 'Slug Test Group',
-                    'category_id', :'groupCategoryID',
-                    'description', 'Testing slug generation',
-                    'description_short', 'Brief'
-                )
-            )
+            :'slugGroupID'::uuid
         )::jsonb->>'slug'
     ) ~ '^[23456789abcdefghjkmnpqrstuvwxyz]{7}$'),
     'Should auto-generate a valid 7-character slug'
 );
 
 -- Should create group with all fields and return expected structure
+select add_group(
+    null::uuid,
+    :'communityID'::uuid,
+    format(
+        '{
+            "name": "Full Test Group",
+            "category_id": "%s",
+            "description": "A fully populated test group",
+            "description_short": "Cloud native community group in Seattle",
+            "banner_url": "https://example.com/banner.jpg",
+            "city": "San Francisco",
+            "country_code": "US",
+            "country_name": "United States",
+            "state": "CA",
+            "region_id": "%s",
+            "logo_url": "https://example.com/logo.png",
+            "website_url": "https://example.com",
+            "bluesky_url": "https://bsky.app/profile/testgroup",
+            "facebook_url": "https://facebook.com/testgroup",
+            "twitter_url": "https://twitter.com/testgroup",
+            "linkedin_url": "https://linkedin.com/testgroup",
+            "github_url": "https://github.com/testgroup",
+            "slack_url": "https://testgroup.slack.com",
+            "youtube_url": "https://youtube.com/testgroup",
+            "instagram_url": "https://instagram.com/testgroup",
+            "flickr_url": "https://flickr.com/testgroup",
+            "wechat_url": "https://wechat.com/testgroup",
+            "og_image_url": "https://example.com/group-og.png",
+            "tags": ["technology", "community", "open-source"],
+            "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
+            "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}]
+        }',
+        :'groupCategoryID',
+        :'regionID'
+    )::jsonb
+) as "fullGroupID" \gset
+
 select is(
     (select (
         get_group_full(
             :'communityID'::uuid,
-            add_group(
-                null::uuid,
-                :'communityID'::uuid,
-                format(
-                    '{
-                "name": "Full Test Group",
-                "category_id": "%s",
-                "description": "A fully populated test group",
-                "description_short": "Cloud native community group in Seattle",
-                "banner_url": "https://example.com/banner.jpg",
-                "city": "San Francisco",
-                "country_code": "US",
-                "country_name": "United States",
-                "state": "CA",
-                "region_id": "%s",
-                "logo_url": "https://example.com/logo.png",
-                "website_url": "https://example.com",
-                "bluesky_url": "https://bsky.app/profile/testgroup",
-                "facebook_url": "https://facebook.com/testgroup",
-                "twitter_url": "https://twitter.com/testgroup",
-                "linkedin_url": "https://linkedin.com/testgroup",
-                "github_url": "https://github.com/testgroup",
-                "slack_url": "https://testgroup.slack.com",
-                "youtube_url": "https://youtube.com/testgroup",
-                "instagram_url": "https://instagram.com/testgroup",
-                "flickr_url": "https://flickr.com/testgroup",
-                "wechat_url": "https://wechat.com/testgroup",
-                "og_image_url": "https://example.com/group-og.png",
-                "tags": ["technology", "community", "open-source"],
-                "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
-                "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}]
-            }',
-                    :'groupCategoryID',
-                    :'regionID'
-                )::jsonb
-            )
+            :'fullGroupID'::uuid
         )::jsonb - 'active' - 'community' - 'created_at' - 'members_count' - 'group_id' - 'slug'
     )),
     format(
@@ -392,20 +398,22 @@ select throws_ok(
 -- Should retry generated slugs matching existing pretty slugs
 select setseed(:slugSeed);
 
+select add_group(
+    null::uuid,
+    :'communityID'::uuid,
+    jsonb_build_object(
+        'name', 'Pretty Slug Retry Group',
+        'category_id', :'groupCategoryID',
+        'description', 'Testing pretty slug retry',
+        'description_short', 'Brief'
+    )
+) as "prettySlugRetryGroupID" \gset
+
 select is(
     (
         select get_group_full(
             :'communityID'::uuid,
-            add_group(
-                null::uuid,
-                :'communityID'::uuid,
-                jsonb_build_object(
-                    'name', 'Pretty Slug Retry Group',
-                    'category_id', :'groupCategoryID',
-                    'description', 'Testing pretty slug retry',
-                    'description_short', 'Brief'
-                )
-            )
+            :'prettySlugRetryGroupID'::uuid
         )::jsonb->>'slug'
     ),
     :'retriedSlug',

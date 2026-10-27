@@ -19,7 +19,6 @@ declare
     v_cached_provider_tax_product_id text;
     v_charge_model text;
     v_community community;
-    v_context record;
     v_currency_code text;
     v_discount_amount_minor bigint;
     v_event event;
@@ -31,6 +30,8 @@ declare
     v_is_external_paid boolean := false;
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
     v_offer_pricing record;
+    v_pricing record;
+    v_provider_tax_code text;
     v_purchase event_purchase;
     v_recipient jsonb;
     v_route_summary jsonb;
@@ -48,7 +49,7 @@ begin
 
     -- Lock the event first to keep a consistent event -> purchase -> attendee
     -- lock order with attend_event, then validate its current state
-    v_event := prepare_event_checkout_validate_event(p_community_id, p_event_id);
+    v_event := lock_active_event(p_community_id, null, p_event_id);
     v_currency_code := v_event.payment_currency_code;
 
     -- Report stale ticket selections before reconciliation scopes to the tier
@@ -61,22 +62,26 @@ begin
         return jsonb_build_object('conflict', 'ticket-type-unavailable');
     end if;
 
-    -- Reconcile the selected tier before direct checkout can reserve capacity
+    -- Reconcile the selected tier before direct checkout can reserve capacity,
+    -- serializing this attendee under the global lock order
     perform reconcile_event_enrollment(
         p_event_id,
         p_event_ticket_type_id,
-        p_configured_provider
+        p_configured_provider,
+        p_user_id
     );
 
-    -- Serialize this attendee after the event and ticket-tier locks
-    perform pg_advisory_xact_lock(hashtext(p_event_id::text), hashtext(p_user_id::text));
-
     -- Load the group and community details needed by the checkout provider
-    select *
-    into v_context
-    from load_checkout_context(p_event_id);
-    v_community := v_context.community_row;
-    v_group := v_context.group_row;
+    select g.*
+    into v_group
+    from "group" g
+    where g.group_id = v_event.group_id;
+    select c.*
+    into v_community
+    from community c
+    where c.community_id = v_group.community_id;
+
+    -- Derive the seller, venue and route context from the loaded rows
     v_recipient := v_group.payment_recipient;
     v_venue_snapshot := event_venue_snapshot(v_event);
     v_route_summary := jsonb_build_object(
@@ -105,10 +110,9 @@ begin
 
         -- Reject missing, inactive, or expired admission offers
         if not found
-           or not admission_offer_is_active(v_admission_offer.status)
-           or (
-                v_admission_offer.expires_at is not null
-                and v_admission_offer.expires_at <= current_timestamp
+           or not admission_offer_reserves_seat(
+               v_admission_offer.status,
+               v_admission_offer.expires_at
            ) then
             return jsonb_build_object('conflict', 'admission-offer-unavailable');
         end if;
@@ -143,8 +147,7 @@ begin
         from admission_offer ao
         where ao.event_id = p_event_id
         and ao.user_id = p_user_id
-        and admission_offer_is_active(ao.status)
-        and ao.expires_at > current_timestamp
+        and admission_offer_reserves_seat(ao.status, ao.expires_at)
     ) then
         return jsonb_build_object('conflict', 'admission-offer-required');
     end if;
@@ -180,6 +183,7 @@ begin
             );
         end if;
 
+        -- Return the reused purchase with its route context
         return prepare_event_checkout_get_purchase_summary(v_existing_purchase.event_purchase_id)
             || v_route_summary;
     end if;
@@ -194,85 +198,61 @@ begin
         raise exception 'event registration is not open' using errcode = 'OCG01';
     end if;
 
-    -- Use the immutable snapshot for a frozen offer claim
+    -- Resolve current ticket pricing for pending offers and direct checkout
+    if not v_use_offer_snapshot then
+        select *
+        into v_pricing
+        from prepare_event_checkout_validate_and_resolve_pricing(
+            p_event_id,
+            p_event_ticket_type_id,
+            p_user_id,
+            v_normalized_discount_code,
+            p_admission_offer_id
+        );
+
+        -- Fall back to a stored offer snapshot when live pricing is gone
+        if v_pricing.conflict = 'ticket-type-price-unavailable' then
+            -- Report ticket types without an active price or stored snapshot
+            if p_admission_offer_id is null
+               or v_admission_offer.amount_minor is null
+               or v_admission_offer.source not in ('approval', 'organizer_invitation') then
+                return jsonb_build_object('conflict', 'ticket-type-price-unavailable');
+            end if;
+
+            -- Use stored approval and organizer-invitation snapshots
+            select *
+            into v_offer_pricing
+            from prepare_event_checkout_resolve_offer_pricing(v_admission_offer, v_normalized_discount_code);
+
+            -- Reject attempts to replace the snapshotted discount code
+            if v_offer_pricing.price_locked then
+                return jsonb_build_object('conflict', 'admission-offer-price-locked');
+            end if;
+
+            -- Price the claim from the stored offer snapshot
+            v_use_offer_snapshot := true;
+
+        -- Report the remaining ticket selection conflicts
+        elsif v_pricing.conflict is not null then
+            return jsonb_build_object('conflict', v_pricing.conflict);
+
+        -- Use the current ticket pricing
+        else
+            v_discount_amount_minor := v_pricing.discount_amount_minor;
+            v_event_discount_code_id := v_pricing.event_discount_code_id;
+            v_final_amount_minor := v_pricing.final_amount_minor;
+            v_ticket_title := v_pricing.ticket_title;
+        end if;
+    end if;
+
+    -- Use the immutable offer snapshot for frozen claims and price fallbacks
     if v_use_offer_snapshot then
         v_currency_code := v_offer_pricing.currency_code;
         v_discount_amount_minor := v_offer_pricing.discount_amount_minor;
         v_event_discount_code_id := v_offer_pricing.event_discount_code_id;
         v_final_amount_minor := v_offer_pricing.final_amount_minor;
+        v_normalized_discount_code := v_offer_pricing.discount_code;
         v_ticket_title := v_offer_pricing.ticket_title;
-
-    -- Resolve current ticket pricing for pending offers and direct checkout,
-    -- translating expected failures into stable conflicts without rolling
-    -- back the queue reconciliation
-    else
-        begin
-            select
-                discount_amount_minor,
-                event_discount_code_id,
-                final_amount_minor,
-                ticket_title
-            into
-                v_discount_amount_minor,
-                v_event_discount_code_id,
-                v_final_amount_minor,
-                v_ticket_title
-            from prepare_event_checkout_validate_and_resolve_pricing(
-                p_event_id,
-                p_event_ticket_type_id,
-                p_user_id,
-                v_normalized_discount_code,
-                p_admission_offer_id
-            );
-        exception
-            -- Translate expected pricing failures into stable conflict results
-            when sqlstate 'OCG01' then
-                -- Report admission offers that became unavailable
-                if sqlerrm = 'admission offer is no longer available' then
-                    return jsonb_build_object('conflict', 'admission-offer-unavailable');
-                -- Fall back to a stored offer snapshot when live pricing is gone
-                elsif sqlerrm = 'ticket type does not have an active price window' then
-                    -- Report ticket types without an active price or stored snapshot
-                    if p_admission_offer_id is null
-                       or v_admission_offer.amount_minor is null
-                       or v_admission_offer.source not in ('approval', 'organizer_invitation') then
-                        return jsonb_build_object('conflict', 'ticket-type-price-unavailable');
-                    end if;
-
-                    -- Use stored approval and organizer-invitation snapshots
-                    select *
-                    into v_offer_pricing
-                    from prepare_event_checkout_resolve_offer_pricing(v_admission_offer, v_normalized_discount_code);
-
-                    -- Reject attempts to replace the snapshotted discount code
-                    if v_offer_pricing.price_locked then
-                        return jsonb_build_object('conflict', 'admission-offer-price-locked');
-                    end if;
-
-                    -- Use the stored offer snapshot pricing
-                    v_currency_code := v_offer_pricing.currency_code;
-                    v_discount_amount_minor := v_offer_pricing.discount_amount_minor;
-                    v_event_discount_code_id := v_offer_pricing.event_discount_code_id;
-                    v_final_amount_minor := v_offer_pricing.final_amount_minor;
-                    v_normalized_discount_code := v_offer_pricing.discount_code;
-                    v_ticket_title := v_offer_pricing.ticket_title;
-                -- Report inactive ticket types
-                elsif sqlerrm = 'ticket type is not active' then
-                    return jsonb_build_object('conflict', 'ticket-type-inactive');
-                -- Report ticket types unavailable through direct checkout
-                elsif sqlerrm in (
-                    'ticket type is not available for direct checkout',
-                    'ticket type not found'
-                ) then
-                    return jsonb_build_object('conflict', 'ticket-type-unavailable');
-                -- Report exhausted ticket inventory and queued-user priority over direct checkout
-                elsif sqlerrm in ('ticket type is sold out', 'ticket type has queued users') then
-                    return jsonb_build_object('conflict', 'ticket-type-sold-out');
-                -- Propagate unexpected pricing failures
-                else
-                    raise;
-                end if;
-        end;
     end if;
 
     -- Require payment configuration only when the final amount needs a provider
@@ -329,7 +309,7 @@ begin
                     true,
                     v_currency_code,
                     v_recipient,
-                    p_event_id
+                    v_event
                 );
             exception
                 -- Hide provider-readiness details behind the stable checkout conflict
@@ -373,8 +353,13 @@ begin
             'provider', v_recipient->>'provider'
         );
 
-        -- Reuse immutable automatic-tax resources within the seller account
+        -- Classify automatic-tax purchases and reuse their immutable
+        -- resources within the seller account
         if v_event.tax_calculation_mode = 'automatic' then
+            -- Classify automatic-tax Stripe purchases as professional event admission
+            v_provider_tax_code := 'txcd_50013001';
+
+            -- Reuse the cached tax location and ticket product for the tax code
             select *
             into
                 v_cached_performance_location_fingerprint,
@@ -385,24 +370,22 @@ begin
                 p_configured_provider,
                 v_recipient->>'recipient_id',
                 v_venue_snapshot,
-                v_ticket_title
+                v_ticket_title,
+                v_provider_tax_code
             );
         end if;
     end if;
 
     -- Release any replaced pending selection before creating the new hold
     if v_existing_purchase.event_purchase_id is not null and v_existing_purchase.status = 'pending' then
-        perform prepare_event_checkout_expire_previous_hold(v_existing_purchase.event_purchase_id);
+        perform expire_event_checkout_hold(v_existing_purchase.event_purchase_id);
     end if;
 
     -- Snapshot the pending offer claim and move its reservation into checkout
     if p_admission_offer_id is not null then
         -- Keep the 15-minute Stripe hold from outliving a shorter offer deadline
         if not v_is_external_paid then
-            v_hold_expires_at := least(
-                v_hold_expires_at,
-                coalesce(v_admission_offer.expires_at, 'infinity'::timestamptz)
-            );
+            v_hold_expires_at := least(v_hold_expires_at, v_admission_offer.expires_at);
         end if;
 
         -- Replace the issue snapshot with the claimed price on first checkout
@@ -460,7 +443,7 @@ begin
 
     -- Reserve the chosen discount usage for the new pending purchase
     if v_event_discount_code_id is not null then
-        perform prepare_event_checkout_reserve_discount_code_availability(v_event_discount_code_id);
+        perform reserve_event_discount_code_availability(v_event_discount_code_id);
     end if;
 
     -- Insert the new pending purchase, snapshotting provider settings for
@@ -525,11 +508,7 @@ begin
             -- Bind provider objects to the connected seller for Stripe purchases
             when v_charge_model = 'direct-charge' then v_recipient->>'recipient_id'
         end,
-        case
-            -- Classify automatic-tax Stripe purchases as professional event admission
-            when v_charge_model = 'direct-charge' and v_event.tax_calculation_mode = 'automatic'
-                then 'txcd_50013001'
-        end,
+        v_provider_tax_code,
         case
             -- External purchases never collect a platform fee
             when v_is_external_paid then 0
@@ -562,10 +541,7 @@ begin
     -- Enqueue pending-payment instructions only when a new external hold is created
     if v_is_external_paid then
         -- Load the site theme used by the notification template
-        select s.theme
-        into v_theme
-        from site s
-        limit 1;
+        v_theme := site_theme();
 
         -- Notify the buyer with the instructions built from the stored hold
         perform enqueue_notification(

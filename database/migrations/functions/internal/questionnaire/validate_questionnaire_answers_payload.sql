@@ -9,7 +9,6 @@ create or replace function validate_questionnaire_answers_payload(
 returns void as $$
 declare
     v_answer jsonb;
-    v_answer_count int;
     v_answer_question_id uuid;
     v_answer_question_ids uuid[] := array[]::uuid[];
     v_answer_value jsonb;
@@ -26,7 +25,7 @@ begin
     -- Accept only an empty submission when no questions are configured
     if jsonb_array_length(p_questions) = 0 then
         -- Reject answers submitted without questions
-        if p_answers is not null and coalesce(jsonb_array_length(p_answers->'answers'), 0) > 0 then
+        if p_answers->'answers' is not null and p_answers->'answers' <> '[]'::jsonb then
             raise exception 'questionnaire answers cannot be submitted when questions are not configured' using errcode = 'OCG01';
         end if;
 
@@ -69,6 +68,8 @@ begin
         if v_answer_question_id = any(v_answer_question_ids) then
             raise exception 'questionnaire answers must include each question at most once' using errcode = 'OCG01';
         end if;
+
+        -- Track the answered question
         v_answer_question_ids := array_append(v_answer_question_ids, v_answer_question_id);
 
         -- Reject answers for questions that are not configured
@@ -84,15 +85,15 @@ begin
     -- Validate answers against each configured question
     for v_question in select jsonb_array_elements(p_questions)
     loop
-        -- Count the answers submitted for this question
+        -- Load the answer submitted for this question
         v_question_id := (v_question->>'id')::uuid;
-        select count(*)
-        into v_answer_count
+        select answer->'value'
+        into v_answer_value
         from jsonb_array_elements(p_answers->'answers') answer
         where (answer->>'question_id')::uuid = v_question_id;
 
         -- Handle unanswered questions
-        if v_answer_count = 0 then
+        if not found then
             -- Reject unanswered required questions
             if (v_question->>'required')::boolean then
                 raise exception 'required questionnaire answer is missing' using errcode = 'OCG01';
@@ -100,13 +101,6 @@ begin
 
             continue;
         end if;
-
-        -- Load the submitted answer value
-        select answer->'value'
-        into v_answer_value
-        from jsonb_array_elements(p_answers->'answers') answer
-        where (answer->>'question_id')::uuid = v_question_id
-        limit 1;
 
         -- Validate a free-text answer value
         if v_question->>'kind' = 'free-text' then
@@ -167,6 +161,8 @@ begin
                 select (option->>'id')::uuid
                 from jsonb_array_elements(v_question->'options') option
             );
+
+            -- Reset the options selected in this answer
             v_selected_option_ids := array[]::uuid[];
 
             -- Validate each selected option id
@@ -198,6 +194,7 @@ begin
                     raise exception 'multi-select questionnaire answers cannot repeat options' using errcode = 'OCG01';
                 end if;
 
+                -- Track the selected option
                 v_selected_option_ids := array_append(v_selected_option_ids, v_selected_option_id);
             end loop;
         end if;

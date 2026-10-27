@@ -7,10 +7,6 @@ create or replace function update_group(
 )
 returns void as $$
 declare
-    v_current_country_code text;
-    v_current_external_payments_enabled boolean;
-    v_current_external_payments_seller_display_name text;
-    v_current_parent_group_id uuid;
     v_external_payments_changed boolean := false;
     v_group "group";
     v_new_country_code text;
@@ -24,17 +20,14 @@ declare
     v_parent_group_id_present boolean := false;
     v_payment_recipient_changed boolean := false;
     v_payment_validation jsonb;
-    v_previous_payment_recipient jsonb;
     v_provider_account_changed boolean := false;
+    v_recipient_id text;
+    v_recipient_provider text;
+    v_recipient_seller_display_name text;
     v_utm_present boolean := false;
 begin
     -- Lock and load existing values to compare against the update payload
     v_group := lock_active_group(p_community_id, p_group_id);
-    v_current_country_code := v_group.country_code;
-    v_current_external_payments_enabled := v_group.external_payments_enabled;
-    v_current_external_payments_seller_display_name := v_group.external_payments_seller_display_name;
-    v_current_parent_group_id := v_group.parent_group_id;
-    v_previous_payment_recipient := v_group.payment_recipient;
 
     -- Resolve the requested parent value
     v_parent_group_id_present := coalesce((p_group->>'parent_group_id_present')::boolean, false);
@@ -42,13 +35,13 @@ begin
         -- Use the explicitly submitted parent, including an explicit clear
         when v_parent_group_id_present then nullif(p_group->>'parent_group_id', '')::uuid
         -- Preserve the parent omitted from a partial payload
-        else v_current_parent_group_id
+        else v_group.parent_group_id
     end;
 
     -- Require permission on a newly selected parent, but not for no-op saves or clears
     if v_parent_group_id_present
        and v_new_parent_group_id is not null
-       and v_new_parent_group_id is distinct from v_current_parent_group_id
+       and v_new_parent_group_id is distinct from v_group.parent_group_id
        and not user_has_group_permission(
            p_community_id,
            v_new_parent_group_id,
@@ -58,9 +51,12 @@ begin
         raise exception 'you must be able to manage the selected parent group' using errcode = 'OCG01';
     end if;
 
-    -- Resolve the requested UTM values, treating omitted lists as cleared
+    -- Detect whether the payload addresses the UTM values
     v_utm_present := coalesce((p_group->>'utm_present')::boolean, false);
+
+    -- Normalize the submitted UTM lists when the payload addressed them
     if v_utm_present then
+        -- Read the submitted lists, treating omitted ones as cleared
         v_new_utm_campaigns := coalesce(jsonb_text_array(p_group->'utm_campaigns'), '{}');
         v_new_utm_mediums := coalesce(jsonb_text_array(p_group->'utm_mediums'), '{}');
         v_new_utm_sources := coalesce(jsonb_text_array(p_group->'utm_sources'), '{}');
@@ -80,26 +76,26 @@ begin
         -- Use an explicitly submitted country
         when p_group ? 'country_code' then nullif(p_group->>'country_code', '')
         -- Preserve the country omitted from a partial payload
-        else v_current_country_code
+        else v_group.country_code
     end;
     v_new_external_payments_enabled := case
         -- Use an explicitly submitted toggle, treating an invalid value as off
         when p_group ? 'external_payments_enabled' then
             coalesce((p_group->>'external_payments_enabled')::boolean, false)
         -- Preserve the toggle omitted from a partial payload
-        else v_current_external_payments_enabled
+        else v_group.external_payments_enabled
     end;
     v_new_external_payments_seller_display_name := case
         -- Use an explicitly submitted legal name, treating blank as a clear
         when p_group ? 'external_payments_seller_display_name' then
             nullif(btrim(p_group->>'external_payments_seller_display_name'), '')
         -- Preserve the legal name omitted from a partial payload
-        else v_current_external_payments_seller_display_name
+        else v_group.external_payments_seller_display_name
     end;
     v_external_payments_changed :=
-        v_new_external_payments_enabled is distinct from v_current_external_payments_enabled
+        v_new_external_payments_enabled is distinct from v_group.external_payments_enabled
         or v_new_external_payments_seller_display_name
-            is distinct from v_current_external_payments_seller_display_name;
+            is distinct from v_group.external_payments_seller_display_name;
 
     -- Require the legal name of the external payee while payloads addressing
     -- external payments keep the rail enabled
@@ -112,59 +108,50 @@ begin
         raise exception 'external payments require the legal name of the organization collecting payments' using errcode = 'OCG01';
     end if;
 
-    -- Require the provider account and attendee-visible seller name together
-    if p_group ? 'payment_recipient'
-       and nullif(btrim(coalesce(p_group->'payment_recipient'->>'recipient_id', '')), '')
-           is not null
-       and (
-           nullif(btrim(coalesce(p_group->'payment_recipient'->>'provider', '')), '')
-               is null
-           or nullif(
-               btrim(coalesce(p_group->'payment_recipient'->>'seller_display_name', '')),
-               ''
-           ) is null
-       ) then
-        raise exception 'payment recipient account and seller name must be provided together' using errcode = 'OCG01';
+    -- Read the submitted payment recipient fields, treating blank values as omitted
+    if p_group ? 'payment_recipient' then
+        v_recipient_id := nullif(btrim(p_group->'payment_recipient'->>'recipient_id'), '');
+        v_recipient_provider := nullif(btrim(p_group->'payment_recipient'->>'provider'), '');
+        v_recipient_seller_display_name := nullif(
+            btrim(p_group->'payment_recipient'->>'seller_display_name'),
+            ''
+        );
     end if;
 
-    -- Reject a seller name submitted without a provider account
+    -- Require the provider account and attendee-visible seller name together
     if p_group ? 'payment_recipient'
-       and nullif(
-           btrim(coalesce(p_group->'payment_recipient'->>'seller_display_name', '')),
-           ''
-       ) is not null
-       and nullif(btrim(coalesce(p_group->'payment_recipient'->>'recipient_id', '')), '')
-           is null then
+       and (
+           (
+               v_recipient_id is not null
+               and (v_recipient_provider is null or v_recipient_seller_display_name is null)
+           )
+           or (v_recipient_seller_display_name is not null and v_recipient_id is null)
+       ) then
         raise exception 'payment recipient account and seller name must be provided together' using errcode = 'OCG01';
     end if;
 
     -- Normalize the optional payment recipient before persisting it
     v_new_payment_recipient := case
-        -- Resolve the submitted recipient
-        when p_group ? 'payment_recipient' then case
-            -- Trim the recipient fields when an account is provided
-            when nullif(btrim(coalesce(p_group->'payment_recipient'->>'recipient_id', '')), '') is not null
-            then jsonb_build_object(
-                'provider', btrim(p_group->'payment_recipient'->>'provider'),
-                'recipient_id', btrim(p_group->'payment_recipient'->>'recipient_id'),
-                'seller_display_name',
-                    btrim(p_group->'payment_recipient'->>'seller_display_name')
-            )
-            -- Treat an empty account as clearing the recipient
-            else null
-        end
+        -- Store the trimmed recipient fields when an account is provided
+        when v_recipient_id is not null then jsonb_build_object(
+            'provider', v_recipient_provider,
+            'recipient_id', v_recipient_id,
+            'seller_display_name', v_recipient_seller_display_name
+        )
+        -- Treat an empty or omitted account as no recipient
+        else null
     end;
 
     -- Determine if the payment recipient is changing with the update
     v_payment_recipient_changed := p_group ? 'payment_recipient'
-        and v_previous_payment_recipient is distinct from v_new_payment_recipient;
+        and v_group.payment_recipient is distinct from v_new_payment_recipient;
     v_provider_account_changed := v_payment_recipient_changed
         and v_new_payment_recipient is not null
         and (
-            v_previous_payment_recipient is null
-            or v_previous_payment_recipient->>'provider' is distinct from
+            v_group.payment_recipient is null
+            or v_group.payment_recipient->>'provider' is distinct from
                 v_new_payment_recipient->>'provider'
-            or v_previous_payment_recipient->>'recipient_id' is distinct from
+            or v_group.payment_recipient->>'recipient_id' is distinct from
                 v_new_payment_recipient->>'recipient_id'
         );
 
@@ -177,24 +164,20 @@ begin
 
     -- Bind external provider validation to the payment state locked above
     if v_provider_account_changed then
+        -- Read the validation snapshot captured by the provider check
         v_payment_validation := p_group->'_payment_validation';
 
         -- Reject validation snapshots that do not match the locked payment state
-        if v_payment_validation is null
-           or not (v_payment_validation ? 'expected_payment_recipient')
-           or not (v_payment_validation ? 'validated_payment_recipient')
-           or not (v_payment_validation ? 'require_automatic_tax')
-           or v_previous_payment_recipient is distinct from nullif(
-               v_payment_validation->'expected_payment_recipient',
-               'null'::jsonb
+        if not payment_validation_snapshot_matches(
+               v_payment_validation,
+               v_group.payment_recipient,
+               v_new_payment_recipient
            )
-           or v_new_payment_recipient is distinct from nullif(
-               v_payment_validation->'validated_payment_recipient',
-               'null'::jsonb
-           )
-           or group_requires_automatic_tax_readiness(
-               p_community_id,
-               p_group_id
+           or (
+               cardinality(list_group_automatic_tax_readiness_event_ids(
+                   p_community_id,
+                   p_group_id
+               )) > 0
            ) is distinct from (v_payment_validation->>'require_automatic_tax')::boolean
         then
             raise exception 'payment configuration changed during provider validation' using errcode = 'OCG01';
@@ -213,17 +196,14 @@ begin
            and e.published = true
            and e.external_payment_url is null
            and is_event_paid_capable(e.event_id)
-           and (
-               event_effective_ends_at(e) is null
-               or event_effective_ends_at(e) > current_timestamp
-           )
+           and not event_is_past(e)
        ) then
         raise exception 'paid-capable events require a payment recipient' using errcode = 'OCG01';
     end if;
 
     -- Block account replacement while published manual-tax sales remain active
     if v_provider_account_changed
-       and v_previous_payment_recipient is not null
+       and v_group.payment_recipient is not null
        and exists (
             select 1
             from event e
@@ -234,19 +214,16 @@ begin
             and e.external_payment_url is null
             and e.tax_calculation_mode = 'manual'
             and is_event_paid_capable(e.event_id)
-            and (
-                event_effective_ends_at(e) is null
-                or event_effective_ends_at(e) > current_timestamp
-            )
+            and not event_is_past(e)
        ) then
         raise exception 'fiscal sponsor cannot be replaced while published manual-tax events are upcoming' using errcode = 'OCG01';
     end if;
 
     -- Keep upcoming published external sales on their payment rail while the
     -- group can still collect externally
-    if v_current_external_payments_enabled
+    if v_group.external_payments_enabled
        and not v_new_external_payments_enabled
-       and is_country_external_payments_allowlisted(v_current_country_code)
+       and is_country_external_payments_allowlisted(v_group.country_code)
        and exists (
            select 1
            from event e
@@ -256,10 +233,7 @@ begin
            and e.published = true
            and e.external_payment_url is not null
            and is_event_paid_capable(e.event_id)
-           and (
-               event_effective_ends_at(e) is null
-               or event_effective_ends_at(e) > current_timestamp
-           )
+           and not event_is_past(e)
        ) then
         raise exception 'external payments cannot be disabled while published external paid events are upcoming' using errcode = 'OCG01';
     end if;
@@ -267,8 +241,8 @@ begin
     -- Reject enabling the toggle or moving off the allowlist while it stays on
     if v_new_external_payments_enabled
        and (
-           not v_current_external_payments_enabled
-           or v_new_country_code is distinct from v_current_country_code
+           not v_group.external_payments_enabled
+           or v_new_country_code is distinct from v_group.country_code
        )
        and not is_country_external_payments_allowlisted(v_new_country_code) then
         raise exception 'external payments are not available for this group country' using errcode = 'OCG01';
@@ -277,8 +251,8 @@ begin
     -- Keep upcoming published external sales inside the group country
     if v_new_external_payments_enabled
        and (
-           not v_current_external_payments_enabled
-           or v_new_country_code is distinct from v_current_country_code
+           not v_group.external_payments_enabled
+           or v_new_country_code is distinct from v_group.country_code
        )
        and exists (
            select 1
@@ -289,10 +263,7 @@ begin
            and e.published = true
            and e.external_payment_url is not null
            and upper(e.venue_country_code) is distinct from upper(v_new_country_code)
-           and (
-               event_effective_ends_at(e) is null
-               or event_effective_ends_at(e) > current_timestamp
-           )
+           and not event_is_past(e)
        ) then
         raise exception 'published external paid events require a venue in the group country' using errcode = 'OCG01';
     end if;
@@ -300,9 +271,9 @@ begin
     -- Require draft manual-tax events to reselect rates in the new account
     if v_payment_recipient_changed
        and (
-           coalesce(v_previous_payment_recipient->>'provider', '') is distinct from
+           coalesce(v_group.payment_recipient->>'provider', '') is distinct from
                coalesce(v_new_payment_recipient->>'provider', '')
-           or coalesce(v_previous_payment_recipient->>'recipient_id', '') is distinct from
+           or coalesce(v_group.payment_recipient->>'recipient_id', '') is distinct from
                coalesce(v_new_payment_recipient->>'recipient_id', '')
        ) then
         update event
@@ -323,12 +294,7 @@ begin
         banner_url = nullif(p_group->>'banner_url', ''),
         bluesky_url = nullif(p_group->>'bluesky_url', ''),
         city = nullif(p_group->>'city', ''),
-        country_code = case
-            -- Use an explicitly submitted country
-            when p_group ? 'country_code' then nullif(p_group->>'country_code', '')
-            -- Preserve the country omitted from a partial payload
-            else country_code
-        end,
+        country_code = v_new_country_code,
         country_name = nullif(p_group->>'country_name', ''),
         description = nullif(p_group->>'description', ''),
         description_short = nullif(p_group->>'description_short', ''),
@@ -343,12 +309,7 @@ begin
         location = jsonb_geography_point(p_group),
         logo_url = nullif(p_group->>'logo_url', ''),
         og_image_url = nullif(p_group->>'og_image_url', ''),
-        parent_group_id = case
-            -- Apply the resolved parent when the payload addressed it
-            when v_parent_group_id_present then v_new_parent_group_id
-            -- Preserve the parent omitted from a partial payload
-            else parent_group_id
-        end,
+        parent_group_id = v_new_parent_group_id,
         payment_recipient = case
             -- Apply the normalized recipient when the payload addressed it
             when p_group ? 'payment_recipient' then v_new_payment_recipient

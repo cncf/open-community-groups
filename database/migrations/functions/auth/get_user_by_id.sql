@@ -59,4 +59,4 @@ returns json as $$
     ))
     from "user" u
     where u.user_id = p_user_id;
-$$ language sql;
+$$ language sql stable;

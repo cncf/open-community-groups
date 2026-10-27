@@ -24,30 +24,20 @@ returns json as $$
         -- Gather paginated session proposals
         session_proposals as (
             select
-                sp.description,
-                sp.session_proposal_id,
-                sp.session_proposal_level_id,
-                spl.display_name as session_proposal_level_name,
-                sp.session_proposal_status_id as session_proposal_status_id,
-                sps.display_name as status_name,
-                sp.title,
+                session_proposal_json(sp) || jsonb_build_object(
+                    'session_proposal_status_id', sp.session_proposal_status_id,
+                    'status_name', sps.display_name,
 
-                case
-                    when co.user_id is null then null
-                    else public_user_summary(co)
-                end as co_speaker,
-                pl.linked_session_id,
+                    'linked_session_id', pl.linked_session_id,
 
-                epoch_seconds(sp.created_at) as created_at,
-                floor(extract(epoch from sp.duration) / 60)::int as duration_minutes,
-                (pl.submission_count > 0) as has_submissions,
-                epoch_seconds(sp.updated_at) as updated_at
+                    'created_at', epoch_seconds(sp.created_at),
+                    'has_submissions', (pl.submission_count > 0),
+                    'updated_at', epoch_seconds(sp.updated_at)
+                ) as session_proposal
             from session_proposal sp
-            join session_proposal_level spl using (session_proposal_level_id)
             join session_proposal_status sps
                 on sps.session_proposal_status_id = sp.session_proposal_status_id
             left join session_proposal_links pl on pl.session_proposal_id = sp.session_proposal_id
-            left join "user" co on co.user_id = sp.co_speaker_user_id
             where sp.user_id = p_user_id
             order by coalesce(sp.updated_at, sp.created_at) desc, sp.title asc, sp.session_proposal_id asc
             offset (select offset_value from filters)
@@ -61,7 +51,7 @@ returns json as $$
         ),
         -- Aggregate session proposals to JSON
         session_proposals_json as (
-            select coalesce(json_agg(row_to_json(session_proposals)), '[]'::json) as session_proposals
+            select coalesce(json_agg(session_proposal), '[]'::json) as session_proposals
             from session_proposals
         )
     select json_build_object(
@@ -69,4 +59,4 @@ returns json as $$
         'total', totals.total
     )
     from session_proposals_json, totals;
-$$ language sql;
+$$ language sql stable;

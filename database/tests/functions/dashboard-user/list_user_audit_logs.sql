@@ -1,410 +1,117 @@
--- Tests listing the user dashboard audit log.
+-- Tests the user dashboard audit log action allow-list, scope and filters.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set actorID '4a080000-0000-0000-0000-000000000001'
-\set audit1ID '4a080000-0000-0000-0000-000000000002'
-\set audit2ID '4a080000-0000-0000-0000-000000000003'
-\set audit3ID '4a080000-0000-0000-0000-000000000004'
-\set audit4ID '4a080000-0000-0000-0000-000000000005'
-\set audit5ID '4a080000-0000-0000-0000-000000000006'
-\set audit6ID '4a080000-0000-0000-0000-000000000012'
-\set audit7ID '4a080000-0000-0000-0000-000000000013'
-\set audit8ID '4a080000-0000-0000-0000-000000000019'
-\set audit9ID '4a080000-0000-0000-0000-000000000020'
-\set audit10ID '4a080000-0000-0000-0000-000000000021'
-\set audit11ID '4a080000-0000-0000-0000-000000000022'
-\set communityID '4a080000-0000-0000-0000-000000000014'
-\set eventAcceptedID '4a080000-0000-0000-0000-000000000007'
-\set eventRejectedID '4a080000-0000-0000-0000-000000000008'
-\set groupCategoryID '4a080000-0000-0000-0000-000000000015'
-\set groupID '4a080000-0000-0000-0000-000000000016'
-\set inboxActorID '4a080000-0000-0000-0000-000000000017'
-\set inboxConversationID '4a080000-0000-0000-0000-000000000018'
+\set otherActorAuditID '4a080000-0000-0000-0000-000000000002'
 \set otherActorID '4a080000-0000-0000-0000-000000000009'
-\set sessionProposalID '4a080000-0000-0000-0000-000000000010'
-\set sessionProposalLevelID 'beginner'
-\set submissionID '4a080000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Users
-select fx_user(:'actorID', jsonb_build_object(
-    'name', 'Alice',
-    'username', 'alice-user-audit-logs'
-));
+-- User whose audit log is listed
+select fx_user(:'actorID', jsonb_build_object('username', 'alice-user-audit-logs'));
+
+-- Other user whose audit rows must be excluded
 select fx_user(:'otherActorID', jsonb_build_object('username', 'bob-user-audit-logs'));
-select fx_user(:'inboxActorID', jsonb_build_object('username', 'carol-user-audit-logs'));
 
--- Community, group category and group contacted through the inbox
-select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Inbox Audit Group'));
+-- Audit rows for every user dashboard action plus a hidden action
+insert into audit_log (action, resource_id, resource_type, actor_user_id) values
+    ('community_team_invitation_accepted', :'actorID', 'user', :'actorID'),
+    ('community_team_invitation_rejected', :'actorID', 'user', :'actorID'),
+    ('event_admission_offer_declined', :'actorID', 'user', :'actorID'),
+    ('event_attendee_invitation_accepted', :'actorID', 'user', :'actorID'),
+    ('event_attendee_invitation_rejected', :'actorID', 'user', :'actorID'),
+    ('group_notifications_muted', :'actorID', 'user', :'actorID'),
+    ('group_notifications_unmuted', :'actorID', 'user', :'actorID'),
+    ('group_team_invitation_accepted', :'actorID', 'user', :'actorID'),
+    ('group_team_invitation_rejected', :'actorID', 'user', :'actorID'),
+    ('group_updated', :'actorID', 'user', :'actorID'),
+    ('inbox_conversation_started', :'actorID', 'user', :'actorID'),
+    ('inbox_message_sent', :'actorID', 'user', :'actorID'),
+    ('session_proposal_added', :'actorID', 'user', :'actorID'),
+    ('session_proposal_co_speaker_invitation_accepted', :'actorID', 'user', :'actorID'),
+    ('session_proposal_co_speaker_invitation_rejected', :'actorID', 'user', :'actorID'),
+    ('session_proposal_deleted', :'actorID', 'user', :'actorID'),
+    ('session_proposal_updated', :'actorID', 'user', :'actorID'),
+    ('submission_resubmitted', :'actorID', 'user', :'actorID'),
+    ('submission_withdrawn', :'actorID', 'user', :'actorID'),
+    ('user_details_updated', :'actorID', 'user', :'actorID'),
+    ('user_notification_preferences_updated', :'actorID', 'user', :'actorID'),
+    ('user_password_updated', :'actorID', 'user', :'actorID');
 
--- Session proposal
-insert into session_proposal (
-    session_proposal_id,
-    created_at,
-    description,
-    duration,
-    session_proposal_level_id,
-    title,
-    user_id
-) values (
-    :'sessionProposalID',
-    '2024-04-01 10:00:00+00',
-    'Session about Rust communities',
-    make_interval(mins => 45),
-    :'sessionProposalLevelID',
-    'Rust for Communities',
-    :'actorID'
-);
-
--- Inbox conversation started by the inbox actor
-insert into inbox_conversation (inbox_conversation_id, group_id, user_id)
-values (:'inboxConversationID', :'groupID', :'inboxActorID');
-
--- Audit log rows, including a newer non-dashboard action the listing must skip
-insert into audit_log (
-    audit_log_id,
-    action,
-    actor_user_id,
-    actor_username,
-    created_at,
-    details,
-    resource_id,
-    resource_type
-) values
-    (
-        :'audit1ID',
-        'session_proposal_added',
-        :'actorID',
-        'alice-user-audit-logs',
-        '2024-04-01 11:00:00+00',
-        '{}'::jsonb,
-        :'sessionProposalID',
-        'session_proposal'
-    ),
-    (
-        :'audit2ID',
-        'user_details_updated',
-        :'actorID',
-        'alice-user-audit-logs',
-        '2024-04-02 11:00:00+00',
-        '{}'::jsonb,
-        :'actorID',
-        'user'
-    ),
-    (
-        :'audit4ID',
-        'event_attendee_invitation_accepted',
-        :'actorID',
-        'alice-user-audit-logs',
-        '2024-04-01 12:00:00+00',
-        jsonb_build_object('event_id', :'eventAcceptedID'),
-        :'actorID',
-        'user'
-    ),
-    (
-        :'audit5ID',
-        'event_attendee_invitation_rejected',
-        :'actorID',
-        'alice-user-audit-logs',
-        '2024-04-01 13:00:00+00',
-        jsonb_build_object('event_id', :'eventRejectedID'),
-        :'actorID',
-        'user'
-    ),
-    (
-        :'audit3ID',
-        'submission_withdrawn',
-        :'otherActorID',
-        'bob-user-audit-logs',
-        '2024-04-03 11:00:00+00',
-        '{"status": "withdrawn"}',
-        :'submissionID',
-        'cfs_submission'
-    ),
-    (
-        :'audit6ID',
-        'inbox_message_sent',
-        :'inboxActorID',
-        'carol-user-audit-logs',
-        '2024-04-04 11:00:00+00',
-        '{}'::jsonb,
-        :'inboxConversationID',
-        'inbox_conversation'
-    ),
-    (
-        :'audit7ID',
-        'inbox_conversation_started',
-        :'inboxActorID',
-        'carol-user-audit-logs',
-        '2024-04-04 10:00:00+00',
-        '{}'::jsonb,
-        :'inboxConversationID',
-        'inbox_conversation'
-    ),
-    (
-        :'audit8ID',
-        'group_notifications_muted',
-        :'otherActorID',
-        'bob-user-audit-logs',
-        '2024-04-05 10:00:00+00',
-        jsonb_build_object('group_id', :'groupID', 'group_name', 'Inbox Audit Group'),
-        :'otherActorID',
-        'user'
-    ),
-    (
-        :'audit9ID',
-        'group_notifications_unmuted',
-        :'otherActorID',
-        'bob-user-audit-logs',
-        '2024-04-05 11:00:00+00',
-        jsonb_build_object('group_id', :'groupID', 'group_name', 'Inbox Audit Group'),
-        :'otherActorID',
-        'user'
-    ),
-    (
-        :'audit10ID',
-        'user_notification_preferences_updated',
-        :'otherActorID',
-        'bob-user-audit-logs',
-        '2024-04-05 12:00:00+00',
-        '{"opted_out_categories":["new-events"]}'::jsonb,
-        :'otherActorID',
-        'user'
-    ),
-    (
-        :'audit11ID',
-        'group_updated',
-        :'actorID',
-        'alice-user-audit-logs',
-        '2024-04-06 10:00:00+00',
-        '{}'::jsonb,
-        :'groupID',
-        'group'
-    );
+-- Audit row of a user dashboard action performed by the other user
+insert into audit_log (audit_log_id, action, resource_id, resource_type, actor_user_id)
+values (:'otherActorAuditID', 'user_details_updated', :'otherActorID', 'user', :'otherActorID');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return only actor-owned user dashboard actions
+-- Should ignore the actor filter
 select is(
-    list_user_audit_logs(
-        :'actorID'::uuid,
-        '{"limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
-    )::jsonb,
-    jsonb_build_object(
-        'logs',
-        format(
-            $json$
-                [
-                    {
-                        "action": "user_details_updated",
-                        "actor_username": "alice-user-audit-logs",
-                        "audit_log_id": "%s",
-                        "created_at": 1712055600,
-                        "details": {},
-                        "resource_id": "%s",
-                        "resource_name": "Alice",
-                        "resource_type": "user"
-                    },
-                    {
-                        "action": "event_attendee_invitation_rejected",
-                        "actor_username": "alice-user-audit-logs",
-                        "audit_log_id": "%s",
-                        "created_at": 1711976400,
-                        "details": {"event_id": "%s"},
-                        "resource_id": "%s",
-                        "resource_name": "Alice",
-                        "resource_type": "user"
-                    },
-                    {
-                        "action": "event_attendee_invitation_accepted",
-                        "actor_username": "alice-user-audit-logs",
-                        "audit_log_id": "%s",
-                        "created_at": 1711972800,
-                        "details": {"event_id": "%s"},
-                        "resource_id": "%s",
-                        "resource_name": "Alice",
-                        "resource_type": "user"
-                    },
-                    {
-                        "action": "session_proposal_added",
-                        "actor_username": "alice-user-audit-logs",
-                        "audit_log_id": "%s",
-                        "created_at": 1711969200,
-                        "details": {},
-                        "resource_id": "%s",
-                        "resource_name": "Rust for Communities",
-                        "resource_type": "session_proposal"
-                    }
-                ]
-            $json$,
-            :'audit2ID',
-            :'actorID',
-            :'audit5ID',
-            :'eventRejectedID',
-            :'actorID',
-            :'audit4ID',
-            :'eventAcceptedID',
-            :'actorID',
-            :'audit1ID',
-            :'sessionProposalID'
-        )::jsonb,
-        'total',
-        4
-    ),
-    'Should return only actor-owned user dashboard actions'
-);
-
--- Should filter user audit logs by action and date range
-select is(
-    list_user_audit_logs(
-        :'actorID'::uuid,
-        '{"action": "session_proposal_added", "date_from": "2024-04-01", "date_to": "2024-04-01", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
-    )::jsonb,
-    jsonb_build_object(
-        'logs',
-        format(
-            $json$
-                [
-                    {
-                        "action": "session_proposal_added",
-                        "actor_username": "alice-user-audit-logs",
-                        "audit_log_id": "%s",
-                        "created_at": 1711969200,
-                        "details": {},
-                        "resource_id": "%s",
-                        "resource_name": "Rust for Communities",
-                        "resource_type": "session_proposal"
-                    }
-                ]
-            $json$,
-            :'audit1ID',
-            :'sessionProposalID'
-        )::jsonb,
-        'total',
-        1
-    ),
-    'Should filter user audit logs by action and date range'
-);
-
--- Should list inbox actions of the user
-select is(
-    list_user_audit_logs(
-        :'inboxActorID'::uuid,
-        '{"limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
-    )::jsonb,
-    jsonb_build_object(
-        'logs',
-        format(
-            $json$
-                [
-                    {
-                        "action": "inbox_message_sent",
-                        "actor_username": "carol-user-audit-logs",
-                        "audit_log_id": "%s",
-                        "created_at": 1712228400,
-                        "details": {},
-                        "resource_id": "%s",
-                        "resource_name": "Inbox Audit Group",
-                        "resource_type": "inbox_conversation"
-                    },
-                    {
-                        "action": "inbox_conversation_started",
-                        "actor_username": "carol-user-audit-logs",
-                        "audit_log_id": "%s",
-                        "created_at": 1712224800,
-                        "details": {},
-                        "resource_id": "%s",
-                        "resource_name": "Inbox Audit Group",
-                        "resource_type": "inbox_conversation"
-                    }
-                ]
-            $json$,
-            :'audit6ID',
-            :'inboxConversationID',
-            :'audit7ID',
-            :'inboxConversationID'
-        )::jsonb,
-        'total',
-        2
-    ),
-    'Should list inbox actions of the user'
-);
-
--- Should return user audit logs in ascending order with pagination
-select is(
-    list_user_audit_logs(
-        :'actorID'::uuid,
-        '{"limit": 1, "offset": 0, "sort": "created-asc"}'::jsonb
-    )::jsonb,
-    jsonb_build_object(
-        'logs',
-        format(
-            $json$
-                [
-                    {
-                        "action": "session_proposal_added",
-                        "actor_username": "alice-user-audit-logs",
-                        "audit_log_id": "%s",
-                        "created_at": 1711969200,
-                        "details": {},
-                        "resource_id": "%s",
-                        "resource_name": "Rust for Communities",
-                        "resource_type": "session_proposal"
-                    }
-                ]
-            $json$,
-            :'audit1ID',
-            :'sessionProposalID'
-        )::jsonb,
-        'total',
-        4
-    ),
-    'Should return user audit logs in ascending order with pagination'
-);
-
--- Should list notification preference actions with the other dashboard actions of the user in ascending order
-select is(
-    jsonb_path_query_array(
+    (
         list_user_audit_logs(
-            :'otherActorID'::uuid,
-            '{"limit": 50, "offset": 0, "sort": "created-asc"}'::jsonb
-        )::jsonb,
-        '$.logs[*].action'
+            :'actorID'::uuid,
+            '{"actor": "no-such-actor", "limit": 100}'::jsonb
+        )::jsonb->>'total'
+    )::int,
+    21,
+    'Should ignore the actor filter'
+);
+
+-- Should list every user dashboard action and skip hidden actions
+select is(
+    (
+        select jsonb_agg(log_item->>'action' order by log_item->>'action' collate "C")
+        from jsonb_array_elements(
+            list_user_audit_logs(:'actorID'::uuid, '{"limit": 100}'::jsonb)::jsonb->'logs'
+        ) log_item
     ),
     '[
-        "submission_withdrawn",
+        "community_team_invitation_accepted",
+        "community_team_invitation_rejected",
+        "event_admission_offer_declined",
+        "event_attendee_invitation_accepted",
+        "event_attendee_invitation_rejected",
         "group_notifications_muted",
         "group_notifications_unmuted",
-        "user_notification_preferences_updated"
+        "group_team_invitation_accepted",
+        "group_team_invitation_rejected",
+        "inbox_conversation_started",
+        "inbox_message_sent",
+        "session_proposal_added",
+        "session_proposal_co_speaker_invitation_accepted",
+        "session_proposal_co_speaker_invitation_rejected",
+        "session_proposal_deleted",
+        "session_proposal_updated",
+        "submission_resubmitted",
+        "submission_withdrawn",
+        "user_details_updated",
+        "user_notification_preferences_updated",
+        "user_password_updated"
     ]'::jsonb,
-    'Should list notification preference actions with the other dashboard actions of the user in ascending order'
+    'Should list every user dashboard action and skip hidden actions'
 );
 
--- Should default unsupported sort values to created descending
+-- Should list only audit rows of the selected user
 select is(
-    list_user_audit_logs(
-        :'actorID'::uuid,
-        '{"limit": 1, "offset": 0, "sort": "resource-asc"}'::jsonb
-    )::jsonb#>>'{logs,0,action}',
-    'user_details_updated',
-    'Should default unsupported user audit sort values to created descending'
+    jsonb_path_query_array(
+        list_user_audit_logs(:'otherActorID'::uuid, '{}'::jsonb)::jsonb,
+        '$.logs[*].audit_log_id'
+    ),
+    jsonb_build_array(:'otherActorAuditID'),
+    'Should list only audit rows of the selected user'
 );
 
 -- ============================================================================

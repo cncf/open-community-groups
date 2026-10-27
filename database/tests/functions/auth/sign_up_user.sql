@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,7 +13,6 @@ select plan(19);
 
 \set defaultVerificationCodeID '0a000000-0000-0000-0000-000000000001'
 \set existingEmailUserID '0a000000-0000-0000-0000-000000000005'
-\set missingTemplateVerificationCodeID '0a000000-0000-0000-0000-000000000002'
 \set takenUsernameUserID '0a000000-0000-0000-0000-000000000004'
 \set unverifiedVerificationCodeID '0a000000-0000-0000-0000-000000000003'
 
@@ -61,12 +60,17 @@ select is(
         "email": "verified-sign-up@example.com",
         "email_verified": true,
         "name": "Verified User",
+        "username": "verifieduser",
+
+        "has_password": true,
         "provider": {
             "github": {
                 "username": "verifieduser-gh"
             }
         },
-        "username": "verifieduser"
+
+        "belongs_to_any_group_team": false,
+        "belongs_to_community_team": false
     }'::jsonb,
     'Should return the verified user'
 );
@@ -127,7 +131,12 @@ select is(
         "email": "unverified-sign-up@example.com",
         "email_verified": false,
         "name": "Unverified User",
-        "username": "unverifieduser"
+        "username": "unverifieduser",
+
+        "has_password": true,
+
+        "belongs_to_any_group_team": false,
+        "belongs_to_community_team": false
     }'::jsonb,
     'Should return the unverified user'
 );
@@ -205,7 +214,12 @@ select is(
         "email": "default@example.com",
         "email_verified": false,
         "name": "Default User",
-        "username": "defaultuser"
+        "username": "defaultuser",
+
+        "has_password": true,
+
+        "belongs_to_any_group_team": false,
+        "belongs_to_community_team": false
     }'::jsonb,
     'Should default to false when email_verified is omitted'
 );
@@ -261,29 +275,6 @@ select throws_ok(
     'P0001',
     'verification code is required to send verification email',
     'Should reject unverified signup without a verification code'
-);
-
--- Should reject unverified signup without verification template data
-select throws_ok(
-    format(
-        $$
-            select * from sign_up_user(
-                jsonb_build_object(
-                    'email', 'missing-template@example.com',
-                    'username', 'missingtemplate',
-                    'name', 'Missing Template',
-                    'password', 'hashedpassword000'
-                ),
-                false,
-                %L::uuid,
-                null::jsonb
-            )
-        $$,
-        :'missingTemplateVerificationCodeID'
-    ),
-    'P0001',
-    'verification template data is required to send verification email',
-    'Should reject unverified signup without verification template data'
 );
 
 -- Should resolve a unique username when the requested one is taken

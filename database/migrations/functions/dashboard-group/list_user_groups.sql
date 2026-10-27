@@ -60,4 +60,4 @@ returns json as $$
         order by community_name asc
     ), '[]')
     from groups_by_community;
-$$ language sql;
+$$ language sql stable;

@@ -63,9 +63,6 @@ select is(
 
             'badge_id', null,
             'event_id', null,
-            'event_name', null,
-            'recipient_name', null,
-            'recipient_username', null,
             'revocation_reason', null,
             'revoked_at', null,
             'revoked_by_user_id', null,
@@ -83,9 +80,6 @@ select is(
 
             'badge_id', null,
             'event_id', null,
-            'event_name', null,
-            'recipient_name', null,
-            'recipient_username', null,
             'revocation_reason', null,
             'revoked_at', null,
             'revoked_by_user_id', null,

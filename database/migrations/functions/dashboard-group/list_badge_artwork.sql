@@ -13,4 +13,4 @@ returns json as $$
     )
     from badge_artwork ba
     where ba.group_id = p_group_id;
-$$ language sql;
+$$ language sql stable;

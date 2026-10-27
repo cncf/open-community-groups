@@ -12,4 +12,4 @@ returns json as $$
         '[]'
     )
     from event_kind ek;
-$$ language sql;
+$$ language sql stable;

@@ -23,4 +23,4 @@ returns boolean as $$
         ),
         false
     );
-$$ language sql;
+$$ language sql stable;

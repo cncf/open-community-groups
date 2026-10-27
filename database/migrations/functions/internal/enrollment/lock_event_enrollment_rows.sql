@@ -1,8 +1,10 @@
--- Takes the enrollment locks of an event in the global order used by every
--- enrollment mutation: ticket tiers, one advisory lock per affected user
--- (active offers, pending purchases, queued users of the scoped tier and the
--- optional extra user), then active offers and pending purchases. Callers lock
--- the event row first. Rejects a scoped tier that belongs to another event.
+-- Takes the enrollment locks of an event in the preferred enrollment lock
+-- order: ticket tiers, one advisory lock per affected user (active offers,
+-- pending purchases, queued users of the scoped tier and the optional extra
+-- user), then active offers and pending purchases. Callers lock the event row
+-- first; that lock serializes every enrollment writer of the event, so
+-- callers that already hold their own enrollment row locks stay deadlock
+-- free. Rejects a scoped tier that belongs to another event.
 create or replace function lock_event_enrollment_rows(
     p_event_id uuid,
     p_event_ticket_type_id uuid,
@@ -13,11 +15,7 @@ declare
     v_user_id uuid;
 begin
     -- Lock every ticket tier in stable identifier order
-    perform 1
-    from event_ticket_type ett
-    where ett.event_id = p_event_id
-    order by ett.event_ticket_type_id
-    for update of ett;
+    perform lock_event_ticket_types(p_event_id);
 
     -- Reject a scoped ticket type that does not belong to the event
     if p_event_ticket_type_id is not null
@@ -63,10 +61,11 @@ begin
         ) affected_user
         order by affected_user.user_id
     loop
-        perform pg_advisory_xact_lock(hashtext(p_event_id::text), hashtext(v_user_id::text));
+        -- Serialize the enrollment of each affected user
+        perform lock_event_user(p_event_id, v_user_id);
     end loop;
 
-    -- Lock active offers and pending purchases in stable identifier order
+    -- Lock active offers in stable identifier order
     perform 1
     from admission_offer ao
     where ao.event_id = p_event_id
@@ -74,6 +73,7 @@ begin
     order by ao.admission_offer_id
     for update of ao;
 
+    -- Lock pending purchases in stable identifier order
     perform 1
     from event_purchase ep
     where ep.event_id = p_event_id

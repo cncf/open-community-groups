@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(30);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,11 @@ select plan(21);
 \set eventGroupLogoFallbackID '0c060000-0000-0000-0000-000000000005'
 \set eventID '0c060000-0000-0000-0000-000000000006'
 \set eventInactiveGroupID '0c060000-0000-0000-0000-000000000007'
+\set eventMeetingDisabledID '0c060000-0000-0000-0000-00000000002d'
+\set eventMeetingDisabledNoUrlID '0c060000-0000-0000-0000-00000000002e'
+\set eventMeetingMatchingUrlID '0c060000-0000-0000-0000-000000000035'
+\set eventMeetingRequestedID '0c060000-0000-0000-0000-00000000002f'
+\set eventMeetingUnsetRequestID '0c060000-0000-0000-0000-000000000033'
 \set eventPaidID '0c060000-0000-0000-0000-000000000008'
 \set eventPurchasedID '0c060000-0000-0000-0000-000000000029'
 \set eventRecordingOverrideID '0c060000-0000-0000-0000-000000000009'
@@ -41,6 +46,11 @@ select plan(21);
 \set session1ID '0c060000-0000-0000-0000-000000000018'
 \set session2ID '0c060000-0000-0000-0000-000000000019'
 \set session3ID '0c060000-0000-0000-0000-00000000001a'
+\set sessionMeetingDisabledID '0c060000-0000-0000-0000-000000000030'
+\set sessionMeetingDisabledNoUrlID '0c060000-0000-0000-0000-000000000031'
+\set sessionMeetingMatchingUrlID '0c060000-0000-0000-0000-000000000036'
+\set sessionMeetingRequestedID '0c060000-0000-0000-0000-000000000032'
+\set sessionMeetingUnsetRequestID '0c060000-0000-0000-0000-000000000034'
 \set sessionOverrideID '0c060000-0000-0000-0000-00000000001b'
 \set sessionProposalID '0c060000-0000-0000-0000-00000000001c'
 \set sponsor1ID '0c060000-0000-0000-0000-00000000001d'
@@ -187,7 +197,7 @@ select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_bu
 -- Event series linking the occurrences
 select fx_event_series(:'eventSeriesID', :'groupID');
 
--- Event
+-- Event whose manual join URL matches its linked meeting
 insert into event (
     event_id,
     name,
@@ -264,7 +274,7 @@ insert into event (
         ST_MakePoint(-122.3321, 47.6062),
         4326
     ),  -- Seattle coordinates (different from group)
-    null,
+    'https://meeting.example.com/event',
     true,
     null,
     false,
@@ -365,6 +375,201 @@ insert into event (
     true,
     'https://youtube.com/watch?v=event-override',
     true
+);
+
+-- Event whose disabled meeting awaits deletion and has a manual link
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    timezone,
+
+    capacity,
+    ends_at,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_requested,
+    published,
+    starts_at
+) values (
+    :'eventMeetingDisabledID',
+    'An event used to verify the projected meeting join URL',
+    :'eventCategoryID',
+    'virtual',
+    :'groupID',
+    'Disabled Meeting Event',
+    'event-full-meeting-disabled',
+    'America/New_York',
+
+    100,
+    '2024-06-21 11:00:00+00',
+    false,
+    'https://meet.example.com/manual-event',
+    'zoom',
+    false,
+    true,
+    '2024-06-21 09:00:00+00'
+);
+
+-- Event whose disabled meeting awaits deletion without a manual link
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    timezone,
+
+    capacity,
+    ends_at,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_requested,
+    published,
+    starts_at
+) values (
+    :'eventMeetingDisabledNoUrlID',
+    'An event used to verify the projected meeting join URL',
+    :'eventCategoryID',
+    'virtual',
+    :'groupID',
+    'Disabled Meeting Without Link Event',
+    'event-full-meeting-disabled-no-url',
+    'America/New_York',
+
+    100,
+    '2024-06-22 11:00:00+00',
+    false,
+    null,
+    'zoom',
+    false,
+    true,
+    '2024-06-22 09:00:00+00'
+);
+
+-- Event whose disabled meeting was kept because its manual link is the provider link
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    timezone,
+
+    capacity,
+    ends_at,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_requested,
+    published,
+    starts_at
+) values (
+    :'eventMeetingMatchingUrlID',
+    'An event used to verify the projected meeting password',
+    :'eventCategoryID',
+    'virtual',
+    :'groupID',
+    'Matching Meeting Link Event',
+    'event-full-meeting-matching-url',
+    'America/New_York',
+
+    100,
+    '2024-06-24 11:00:00+00',
+    null,
+    'https://meeting.example.com/matching-url-event',
+    'zoom',
+    false,
+    true,
+    '2024-06-24 09:00:00+00'
+);
+
+-- Event with a requested meeting
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    timezone,
+
+    capacity,
+    ends_at,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_requested,
+    published,
+    starts_at
+) values (
+    :'eventMeetingRequestedID',
+    'An event used to verify the projected meeting join URL',
+    :'eventCategoryID',
+    'virtual',
+    :'groupID',
+    'Requested Meeting Event',
+    'event-full-meeting-requested',
+    'America/New_York',
+
+    100,
+    '2024-06-19 11:00:00+00',
+    true,
+    null,
+    'zoom',
+    true,
+    true,
+    '2024-06-19 09:00:00+00'
+);
+
+-- Event whose meeting with an unset request awaits deletion and has a manual link
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    timezone,
+
+    capacity,
+    ends_at,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_requested,
+    published,
+    starts_at
+) values (
+    :'eventMeetingUnsetRequestID',
+    'An event used to verify the projected meeting join URL',
+    :'eventCategoryID',
+    'virtual',
+    :'groupID',
+    'Unset Meeting Request Event',
+    'event-full-meeting-unset-request',
+    'America/New_York',
+
+    100,
+    '2024-06-23 11:00:00+00',
+    false,
+    'https://meet.example.com/manual-unset-request-event',
+    'zoom',
+    null,
+    true,
+    '2024-06-23 09:00:00+00'
 );
 
 -- Session proposal linked to a session
@@ -562,6 +767,141 @@ insert into session (
     true
 );
 
+-- Session whose disabled meeting awaits deletion and has a manual link
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+
+    ends_at,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionMeetingDisabledID',
+    :'eventMeetingDisabledID',
+    'Disabled Meeting Session',
+    'virtual',
+    '2024-06-21 09:30:00+00',
+
+    '2024-06-21 10:30:00+00',
+    false,
+    'https://meet.example.com/manual-session',
+    'zoom',
+    false
+);
+
+-- Session whose disabled meeting awaits deletion without a manual link
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+
+    ends_at,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionMeetingDisabledNoUrlID',
+    :'eventMeetingDisabledNoUrlID',
+    'Disabled Meeting Without Link Session',
+    'virtual',
+    '2024-06-22 09:30:00+00',
+
+    '2024-06-22 10:30:00+00',
+    false,
+    null,
+    'zoom',
+    false
+);
+
+-- Session whose disabled meeting was kept because its manual link is the provider link
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+
+    ends_at,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionMeetingMatchingUrlID',
+    :'eventMeetingMatchingUrlID',
+    'Matching Meeting Link Session',
+    'virtual',
+    '2024-06-24 09:30:00+00',
+
+    '2024-06-24 10:30:00+00',
+    null,
+    'https://meeting.example.com/matching-url-session',
+    'zoom',
+    false
+);
+
+-- Session with a requested meeting
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+
+    ends_at,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionMeetingRequestedID',
+    :'eventMeetingRequestedID',
+    'Requested Meeting Session',
+    'virtual',
+    '2024-06-19 09:30:00+00',
+
+    '2024-06-19 10:30:00+00',
+    true,
+    null,
+    'zoom',
+    true
+);
+
+-- Session whose meeting with an unset request awaits deletion and has a manual link
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+
+    ends_at,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionMeetingUnsetRequestID',
+    :'eventMeetingUnsetRequestID',
+    'Unset Meeting Request Session',
+    'virtual',
+    '2024-06-23 09:30:00+00',
+
+    '2024-06-23 10:30:00+00',
+    false,
+    'https://meet.example.com/manual-unset-request-session',
+    'zoom',
+    null
+);
+
 -- Link meeting to event
 insert into meeting (
     event_id,
@@ -640,6 +980,156 @@ insert into meeting (
         'https://meeting.example.com/session-override-recording-early-joiner'
     ]::text[],
     :'sessionOverrideID'
+);
+
+-- Provider meeting of the event awaiting meeting deletion with a manual link
+insert into meeting (
+    event_id,
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id
+) values (
+    :'eventMeetingDisabledID',
+    'https://meeting.example.com/disabled-event',
+    'zoom',
+    'meeting-disabled-event-001-secret',
+    'meeting-disabled-event-001'
+);
+
+-- Provider meeting of the event awaiting meeting deletion without a manual link
+insert into meeting (
+    event_id,
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id
+) values (
+    :'eventMeetingDisabledNoUrlID',
+    'https://meeting.example.com/disabled-no-url-event',
+    'zoom',
+    'meeting-disabled-no-url-event-001-secret',
+    'meeting-disabled-no-url-event-001'
+);
+
+-- Provider meeting of the event whose manual link is the provider link
+insert into meeting (
+    event_id,
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id
+) values (
+    :'eventMeetingMatchingUrlID',
+    'https://meeting.example.com/matching-url-event',
+    'zoom',
+    'meeting-matching-url-event-001-secret',
+    'meeting-matching-url-event-001'
+);
+
+-- Provider meeting of the event with a requested meeting
+insert into meeting (
+    event_id,
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id
+) values (
+    :'eventMeetingRequestedID',
+    'https://meeting.example.com/requested-event',
+    'zoom',
+    'meeting-requested-event-001-secret',
+    'meeting-requested-event-001'
+);
+
+-- Provider meeting of the event with an unset meeting request awaiting deletion
+insert into meeting (
+    event_id,
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id
+) values (
+    :'eventMeetingUnsetRequestID',
+    'https://meeting.example.com/unset-request-event',
+    'zoom',
+    'meeting-unset-request-event-001-secret',
+    'meeting-unset-request-event-001'
+);
+
+-- Provider meeting of the session awaiting meeting deletion with a manual link
+insert into meeting (
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    session_id
+) values (
+    'https://meeting.example.com/disabled-session',
+    'zoom',
+    'meeting-disabled-session-001-secret',
+    'meeting-disabled-session-001',
+    :'sessionMeetingDisabledID'
+);
+
+-- Provider meeting of the session awaiting meeting deletion without a manual link
+insert into meeting (
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    session_id
+) values (
+    'https://meeting.example.com/disabled-no-url-session',
+    'zoom',
+    'meeting-disabled-no-url-session-001-secret',
+    'meeting-disabled-no-url-session-001',
+    :'sessionMeetingDisabledNoUrlID'
+);
+
+-- Provider meeting of the session whose manual link is the provider link
+insert into meeting (
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    session_id
+) values (
+    'https://meeting.example.com/matching-url-session',
+    'zoom',
+    'meeting-matching-url-session-001-secret',
+    'meeting-matching-url-session-001',
+    :'sessionMeetingMatchingUrlID'
+);
+
+-- Provider meeting of the session with a requested meeting
+insert into meeting (
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    session_id
+) values (
+    'https://meeting.example.com/requested-session',
+    'zoom',
+    'meeting-requested-session-001-secret',
+    'meeting-requested-session-001',
+    :'sessionMeetingRequestedID'
+);
+
+-- Provider meeting of the session with an unset meeting request awaiting deletion
+insert into meeting (
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    session_id
+) values (
+    'https://meeting.example.com/unset-request-session',
+    'zoom',
+    'meeting-unset-request-session-001-secret',
+    'meeting-unset-request-session-001',
+    :'sessionMeetingUnsetRequestID'
 );
 
 -- Label of the session linked to the CFS submission
@@ -1561,6 +2051,276 @@ select ok(
         :'eventID'::uuid
     ) is null,
     'Should return null when community does not match event'
+);
+
+-- Should omit the join URL of meetings no longer requested without a manual URL
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventMeetingDisabledNoUrlID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'event_has_meeting_join_url',
+            event_json ? 'meeting_join_url',
+            'session_has_meeting_join_url',
+            (
+                select session_json ? 'meeting_join_url'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionMeetingDisabledNoUrlID'
+            )
+        )
+        from payload
+    ),
+    '{
+        "event_has_meeting_join_url": false,
+        "session_has_meeting_join_url": false
+    }'::jsonb,
+    'Should omit the join URL of meetings no longer requested without a manual URL'
+);
+
+-- Should return the provider join URL of requested meetings
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventMeetingRequestedID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'event_meeting_join_url',
+            event_json->>'meeting_join_url',
+            'session_meeting_join_url',
+            (
+                select session_json->>'meeting_join_url'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionMeetingRequestedID'
+            )
+        )
+        from payload
+    ),
+    '{
+        "event_meeting_join_url": "https://meeting.example.com/requested-event",
+        "session_meeting_join_url": "https://meeting.example.com/requested-session"
+    }'::jsonb,
+    'Should return the provider join URL of requested meetings'
+);
+
+-- Should return the stored manual join URL of meetings no longer requested
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventMeetingDisabledID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'event_meeting_join_url',
+            event_json->>'meeting_join_url',
+            'session_meeting_join_url',
+            (
+                select session_json->>'meeting_join_url'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionMeetingDisabledID'
+            )
+        )
+        from payload
+    ),
+    '{
+        "event_meeting_join_url": "https://meet.example.com/manual-event",
+        "session_meeting_join_url": "https://meet.example.com/manual-session"
+    }'::jsonb,
+    'Should return the stored manual join URL of meetings no longer requested'
+);
+
+-- Should return the stored manual join URL of meetings with an unset request
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventMeetingUnsetRequestID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'event_meeting_join_url',
+            event_json->>'meeting_join_url',
+            'session_meeting_join_url',
+            (
+                select session_json->>'meeting_join_url'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionMeetingUnsetRequestID'
+            )
+        )
+        from payload
+    ),
+    '{
+        "event_meeting_join_url": "https://meet.example.com/manual-unset-request-event",
+        "session_meeting_join_url": "https://meet.example.com/manual-unset-request-session"
+    }'::jsonb,
+    'Should return the stored manual join URL of meetings with an unset request'
+);
+
+-- Should omit the provider meeting password of meetings no longer requested with an unrelated manual URL
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventMeetingDisabledID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'event_has_meeting_password',
+            event_json ? 'meeting_password',
+            'session_has_meeting_password',
+            (
+                select session_json ? 'meeting_password'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionMeetingDisabledID'
+            )
+        )
+        from payload
+    ),
+    '{
+        "event_has_meeting_password": false,
+        "session_has_meeting_password": false
+    }'::jsonb,
+    'Should omit the provider meeting password of meetings no longer requested with an unrelated manual URL'
+);
+
+-- Should omit the provider meeting password of meetings no longer requested without a manual URL
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventMeetingDisabledNoUrlID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'event_has_meeting_password',
+            event_json ? 'meeting_password',
+            'session_has_meeting_password',
+            (
+                select session_json ? 'meeting_password'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionMeetingDisabledNoUrlID'
+            )
+        )
+        from payload
+    ),
+    '{
+        "event_has_meeting_password": false,
+        "session_has_meeting_password": false
+    }'::jsonb,
+    'Should omit the provider meeting password of meetings no longer requested without a manual URL'
+);
+
+-- Should omit the provider meeting password of meetings with an unset request and an unrelated manual URL
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventMeetingUnsetRequestID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'event_has_meeting_password',
+            event_json ? 'meeting_password',
+            'session_has_meeting_password',
+            (
+                select session_json ? 'meeting_password'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionMeetingUnsetRequestID'
+            )
+        )
+        from payload
+    ),
+    '{
+        "event_has_meeting_password": false,
+        "session_has_meeting_password": false
+    }'::jsonb,
+    'Should omit the provider meeting password of meetings with an unset request and an unrelated manual URL'
+);
+
+-- Should return the provider meeting password of meetings no longer requested whose manual URL is the provider link
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventMeetingMatchingUrlID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'event_meeting_password',
+            event_json->>'meeting_password',
+            'session_meeting_password',
+            (
+                select session_json->>'meeting_password'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionMeetingMatchingUrlID'
+            )
+        )
+        from payload
+    ),
+    '{
+        "event_meeting_password": "meeting-matching-url-event-001-secret",
+        "session_meeting_password": "meeting-matching-url-session-001-secret"
+    }'::jsonb,
+    'Should return the provider meeting password of meetings no longer requested whose manual URL is the provider link'
+);
+
+-- Should return the provider meeting password of requested meetings
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventMeetingRequestedID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'event_meeting_password',
+            event_json->>'meeting_password',
+            'session_meeting_password',
+            (
+                select session_json->>'meeting_password'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionMeetingRequestedID'
+            )
+        )
+        from payload
+    ),
+    '{
+        "event_meeting_password": "meeting-requested-event-001-secret",
+        "session_meeting_password": "meeting-requested-session-001-secret"
+    }'::jsonb,
+    'Should return the provider meeting password of requested meetings'
 );
 
 -- Should prefer organizer recording overrides over synced meeting recordings

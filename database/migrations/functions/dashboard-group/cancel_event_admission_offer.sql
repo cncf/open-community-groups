@@ -8,12 +8,11 @@ create or replace function cancel_event_admission_offer(
 returns json as $$
 declare
     v_community_id uuid;
-    v_event_discount_code_id uuid;
     v_event_id uuid;
     v_event_name text;
     v_event_ticket_type_id uuid;
     v_group_name text;
-    v_source text;
+    v_offer admission_offer;
     v_theme jsonb;
     v_ticket_title text;
     v_user_id uuid;
@@ -30,11 +29,12 @@ begin
     from admission_offer ao
     where ao.admission_offer_id = p_admission_offer_id;
 
+    -- Reject missing offers
     if not found then
         raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
-    -- Lock the organizer-owned event and ticket inventory
+    -- Lock the organizer-owned event before ticket inventory and user enrollment state
     select g.community_id
     into v_community_id
     from event e
@@ -43,81 +43,18 @@ begin
     and e.group_id = p_group_id
     for update of e;
 
+    -- Reject offers whose event is outside the organizer group
     if not found then
         raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
-    perform 1
-    from event_ticket_type ett
-    where ett.event_id = v_event_id
-    order by ett.event_ticket_type_id
-    for update of ett;
-
-    -- Expire stale reservations before selecting the requested offer
-    perform reconcile_event_enrollment(
+    -- Release the active offer and fill the released tier seat
+    v_offer := release_event_admission_offer(
         v_event_id,
         v_event_ticket_type_id,
-        p_configured_provider
-    );
-
-    perform pg_advisory_xact_lock(
-        hashtext(v_event_id::text),
-        hashtext(v_user_id::text)
-    );
-
-    -- Lock and validate the active group-scoped offer
-    select ao.source
-    into v_source
-    from admission_offer ao
-    where ao.admission_offer_id = p_admission_offer_id
-    and ao.event_id = v_event_id
-    and admission_offer_is_active(ao.status)
-    and ao.expires_at > current_timestamp
-    for update of ao;
-
-    if not found then
-        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
-    end if;
-
-    -- Expire any linked checkout and release its discount and attendee hold
-    select ep.event_discount_code_id
-    into v_event_discount_code_id
-    from event_purchase ep
-    where ep.admission_offer_id = p_admission_offer_id
-    and ep.status = 'pending'
-    for update of ep;
-
-    if found then
-        update event_purchase
-        set
-            hold_expires_at = current_timestamp,
-            status = 'expired',
-            updated_at = current_timestamp
-        where admission_offer_id = p_admission_offer_id
-        and status = 'pending';
-
-        if v_event_discount_code_id is not null then
-            perform release_event_discount_code_availability(v_event_discount_code_id);
-        end if;
-
-        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
-    end if;
-
-    -- Persist the organizer cancellation and fill the released tier seat
-    update admission_offer
-    set
-        status = 'canceled',
-        updated_at = current_timestamp
-    where admission_offer_id = p_admission_offer_id
-    and admission_offer_is_active(status);
-
-    if not found then
-        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
-    end if;
-
-    perform reconcile_event_enrollment(
-        v_event_id,
-        v_event_ticket_type_id,
+        v_user_id,
+        p_admission_offer_id,
+        'canceled',
         p_configured_provider
     );
 
@@ -125,7 +62,7 @@ begin
     select
         e.name,
         g.name,
-        s.theme,
+        site_theme(),
         coalesce(ao.ticket_title, ett.title)
     into
         v_event_name,
@@ -136,12 +73,6 @@ begin
     join "group" g using (group_id)
     join admission_offer ao on ao.admission_offer_id = p_admission_offer_id
     join event_ticket_type ett using (event_ticket_type_id)
-    left join lateral (
-        select site.theme
-        from site
-        order by site.created_at desc
-        limit 1
-    ) s on true
     where e.event_id = v_event_id;
 
     -- Notify the recipient in the same transaction as the released reservation
@@ -165,8 +96,10 @@ begin
     -- Track the organizer decision after queue reconciliation succeeds
     perform insert_audit_log(
         case
-            when v_source = 'organizer_invitation'
+            -- Record organizer invitations as canceled invitations
+            when v_offer.source = 'organizer_invitation'
                 then 'event_attendee_invitation_canceled'
+            -- Record every other offer as a canceled admission offer
             else 'event_admission_offer_canceled'
         end,
         p_actor_user_id,

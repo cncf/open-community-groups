@@ -4,6 +4,13 @@ create or replace function get_filters_options(
     p_entity_kind text default null
 )
 returns json as $$
+    -- Resolve the requested community once, only when it is active
+    with selected_community as (
+        select c.community_id
+        from community c
+        where c.name = p_community_name
+          and c.active = true
+    )
     select json_strip_nulls(json_build_object(
         -- Global filters
         'communities', (
@@ -13,6 +20,7 @@ returns json as $$
             ) order by display_name), '[]')
             from community
             where active = true
+              and community_has_public_group(community_id)
         ),
         'distance', json_build_array(
             json_build_object(
@@ -40,58 +48,36 @@ returns json as $$
         -- Community-specific filters
         'event_category', case when p_community_name is not null then (
             select coalesce(json_agg(json_build_object(
-                'name', name,
-                'value', slug
-            )), '[]')
-            from (
-                select ec.name, ec.slug
-                from event_category ec
-                join community c using (community_id)
-                where c.name = p_community_name
-                order by ec."order" asc nulls last
-            ) as event_categories
+                'name', ec.name,
+                'value', ec.slug
+            ) order by ec."order" asc nulls last, ec.name asc), '[]')
+            from event_category ec
+            join selected_community sc using (community_id)
         ) end,
         'group_category', case when p_community_name is not null then (
             select coalesce(json_agg(json_build_object(
-                'name', name,
-                'value', normalized_name
-            )), '[]')
-            from (
-                select gc.name, gc.normalized_name
-                from group_category gc
-                join community c using (community_id)
-                where c.name = p_community_name
-                order by gc."order" asc nulls last
-            ) as group_categories
+                'name', gc.name,
+                'value', gc.normalized_name
+            ) order by gc."order" asc nulls last, gc.name asc), '[]')
+            from group_category gc
+            join selected_community sc using (community_id)
         ) end,
         'groups', case when p_community_name is not null and p_entity_kind = 'events' then (
             select coalesce(json_agg(json_build_object(
-                'name', name,
-                'value', slug
-            )), '[]')
-            from (
-                select
-                    g.name,
-                    coalesce(g.slug_pretty, g.slug) as slug
-                from "group" g
-                join community c using (community_id)
-                where c.name = p_community_name
-                and g.active = true
-                order by g.name
-            ) as groups
+                'name', g.name,
+                'value', coalesce(g.slug_pretty, g.slug)
+            ) order by g.name asc, g.group_id asc), '[]')
+            from "group" g
+            join selected_community sc using (community_id)
+            where is_group_public(g)
         ) end,
         'region', case when p_community_name is not null then (
             select coalesce(json_agg(json_build_object(
-                'name', name,
-                'value', normalized_name
-            )), '[]')
-            from (
-                select r.name, r.normalized_name
-                from region r
-                join community c using (community_id)
-                where c.name = p_community_name
-                order by r."order" asc nulls last
-            ) as regions
+                'name', r.name,
+                'value', r.normalized_name
+            ) order by r."order" asc nulls last, r.name asc), '[]')
+            from region r
+            join selected_community sc using (community_id)
         ) end
     ));
-$$ language sql;
+$$ language sql stable;

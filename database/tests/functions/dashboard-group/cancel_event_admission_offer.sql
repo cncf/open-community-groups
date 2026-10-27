@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,6 +23,8 @@ select plan(9);
 \set priceWindowID '4a150000-0000-0000-0000-000000000008'
 \set recipientID '4a150000-0000-0000-0000-000000000009'
 \set siteID '4a150000-0000-0000-0000-00000000000c'
+\set terminalOfferID '4a150000-0000-0000-0000-00000000000f'
+\set terminalRecipientID '4a150000-0000-0000-0000-000000000010'
 \set ticketTypeID '4a150000-0000-0000-0000-00000000000a'
 \set unknownGroupID '4a150000-0000-0000-0000-00000000000b'
 
@@ -30,14 +32,10 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories and users
+-- Community owning the organizer group
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'approvalRecipientID');
 
-
--- Site
+-- Site providing the notification theme
 insert into site (description, site_id, theme, title)
 values (
     'Offer cancellation site',
@@ -46,10 +44,23 @@ values (
     'Offer Cancellation Site'
 );
 
--- Users: organizer actor and both offer recipients
+-- Organizer canceling the offers
 select fx_user(:'actorID', jsonb_build_object('username', 'actor-cancel-event-admission-offer'));
 
+-- Recipient of the approval offer
+select fx_user(:'approvalRecipientID');
+
+-- Recipient of the organizer invitation
 select fx_user(:'recipientID', jsonb_build_object('username', 'recipient-cancel-event-admission-offer'));
+
+-- Recipient of the already canceled offer
+select fx_user(:'terminalRecipientID');
+
+-- Event category
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Offer Cancellation Group'));
@@ -68,10 +79,7 @@ select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
     'title', 'Private admission'
 ));
 
--- Free price window for the ticket type
-select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
-
--- Pending organizer-invitation and approval offers to cancel
+-- Pending organizer-invitation and approval offers to cancel, and a canceled offer
 insert into admission_offer (
     admission_offer_id,
     event_id,
@@ -99,11 +107,36 @@ insert into admission_offer (
     'approval',
     'pending',
     :'approvalRecipientID'
+), (
+    :'terminalOfferID',
+    :'eventID',
+    :'ticketTypeID',
+    current_timestamp + interval '1 hour',
+    :'actorID',
+    'approval',
+    'canceled',
+    :'terminalRecipientID'
 );
+
+-- Free price window for the ticket type
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reject canceling a terminal offer
+select throws_ok(
+    format(
+        $$ select cancel_event_admission_offer(%L, %L, %L) $$,
+        :'actorID',
+        :'groupID',
+        :'terminalOfferID'
+    ),
+    'OCG01',
+    'admission offer is no longer available',
+    'Should reject canceling a terminal offer'
+);
 
 -- Should reject offers outside the selected group
 select throws_ok(

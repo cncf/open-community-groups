@@ -975,8 +975,9 @@ configured close, and cut-short closes are drawn with a dashed border and named 
 
 #### Tickets
 
-Paid events add seat usage per ticket type: seats sold (purchases that hold a seat), seats reserved
-(checkout holds and admission offers in progress), and seats remaining of the total. Ticket types
+Paid events add seat usage per ticket type: seats sold (seats held by purchases; a purchase whose
+refund is in progress and its replacement through the same admission offer count as one seat),
+seats reserved (checkout holds and admission offers in progress), and seats remaining of the total. Ticket types
 without seats show `No seats configured`. Discount codes show their redemptions, counting purchases
 that still hold a seat, and the redemptions still available.
 

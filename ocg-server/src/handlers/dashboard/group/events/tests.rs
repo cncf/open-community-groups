@@ -2542,8 +2542,8 @@ fn expect_update_page_reads(
         .returning(move |_, _, _| Ok(event_full.clone()));
     db.expect_list_event_approved_cfs_submissions()
         .times(1)
-        .withf(move |eid| *eid == event_id)
-        .returning(|_| Ok(vec![]));
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
     db.expect_list_event_categories()
         .times(1)
         .withf(move |cid| *cid == community_id)

@@ -1,108 +1,35 @@
 -- Returns paginated audit log rows for the community dashboard.
 create or replace function list_community_audit_logs(p_community_id uuid, p_filters jsonb)
 returns json as $$
-    with
-        -- Parse the supported audit log filters
-        filters as (
-            select
-                nullif(p_filters->>'action', '') as action_value,
-                nullif(p_filters->>'actor', '') as actor_value,
-                f.date_from as date_from_value,
-                f.date_to as date_to_value,
-                coalesce(f.limit_value, 50) as limit_value,
-                coalesce(f.offset_value, 0) as offset_value,
-                case
-                    when f.sort in ('created-asc', 'created-desc') then f.sort
-                    else 'created-desc'
-                end as sort_value
-            from parse_search_filters(p_filters) f
-        ),
-        -- Filter rows before pagination
-        filtered_logs as (
-            select al.*
-            from audit_log al
-            cross join filters f
-            where al.community_id = p_community_id
-            and al.action = any(array[
-                'community_custom_notification_sent',
-                'community_team_invitation_accepted',
-                'community_team_invitation_rejected',
-                'community_team_member_added',
-                'community_team_member_removed',
-                'community_team_member_role_updated',
-                'community_updated',
-                'event_category_added',
-                'event_category_deleted',
-                'event_category_updated',
-                'group_activated',
-                'group_added',
-                'group_category_added',
-                'group_category_deleted',
-                'group_category_updated',
-                'group_deactivated',
-                'group_deleted',
-                'group_external_payments_updated',
-                'group_payment_recipient_updated',
-                'group_updated',
-                'region_added',
-                'region_deleted',
-                'region_updated'
-            ]::text[])
-            and (f.action_value is null or al.action = f.action_value)
-            and (
-                f.actor_value is null
-                or coalesce(al.actor_username, '') ilike (
-                    '%' || escape_ilike_pattern(f.actor_value) || '%'
-                ) escape '\'
-            )
-            and (
-                f.date_from_value is null
-                or al.created_at >= (f.date_from_value::timestamp at time zone 'UTC')
-            )
-            and (
-                f.date_to_value is null
-                or al.created_at < (((f.date_to_value + 1)::timestamp) at time zone 'UTC')
-            )
-        ),
-        -- Count total rows before pagination
-        totals as (
-            select count(*)::int as total
-            from filtered_logs
-        ),
-        -- Select the paginated audit log rows
-        logs as (
-            select
-                fl.action,
-                fl.audit_log_id,
-                epoch_seconds(fl.created_at) as created_at,
-                fl.details,
-                fl.resource_id,
-                fl.resource_type,
-
-                fl.actor_username,
-                coalesce(
-                    audit_log_resource_name(fl.resource_type, fl.resource_id),
-                    fl.details->>'name'
-                ) as resource_name
-            from filtered_logs fl
-            cross join filters f
-            order by
-                case when f.sort_value = 'created-asc' then fl.created_at end asc,
-                case when f.sort_value = 'created-asc' then fl.audit_log_id end asc,
-                case when f.sort_value <> 'created-asc' then fl.created_at end desc,
-                case when f.sort_value <> 'created-asc' then fl.audit_log_id end desc
-            offset (select offset_value from filters)
-            limit (select limit_value from filters)
-        ),
-        -- Render rows as JSON
-        logs_json as (
-            select coalesce(json_agg(row_to_json(logs)), '[]'::json) as logs
-            from logs
-        )
-    -- Build final payload
-    select json_build_object(
-        'logs', logs_json.logs,
-        'total', totals.total
-    )
-    from logs_json, totals;
-$$ language sql;
+    select search_audit_logs(
+        p_community_id,
+        null,
+        null,
+        array[
+            'community_custom_notification_sent',
+            'community_team_invitation_accepted',
+            'community_team_invitation_rejected',
+            'community_team_member_added',
+            'community_team_member_removed',
+            'community_team_member_role_updated',
+            'community_updated',
+            'event_category_added',
+            'event_category_deleted',
+            'event_category_updated',
+            'group_activated',
+            'group_added',
+            'group_category_added',
+            'group_category_deleted',
+            'group_category_updated',
+            'group_deactivated',
+            'group_deleted',
+            'group_external_payments_updated',
+            'group_payment_recipient_updated',
+            'group_updated',
+            'region_added',
+            'region_deleted',
+            'region_updated'
+        ]::text[],
+        p_filters
+    );
+$$ language sql stable;

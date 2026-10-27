@@ -24,7 +24,7 @@ begin
             p_amount_minor > 0,
             p_event.payment_currency_code,
             p_group.payment_recipient,
-            p_event.event_id
+            p_event
         );
     end if;
 end;

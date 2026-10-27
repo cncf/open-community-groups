@@ -523,6 +523,7 @@ mock! {
             actor_user_id: Uuid,
             community_id: Uuid,
             event_id: Uuid,
+            group_id: Uuid,
             user_id: Uuid,
         ) -> Result<bool>;
         async fn delete_badge(
@@ -574,6 +575,7 @@ mock! {
         ) -> Result<bool>;
         async fn get_cfs_submission_notification_data(
             &self,
+            group_id: Uuid,
             event_id: Uuid,
             cfs_submission_id: Uuid,
         ) -> Result<crate::types::dashboard::group::submissions::CfsSubmissionNotificationData>;
@@ -653,11 +655,6 @@ mock! {
             group_id: Uuid,
         ) -> Result<crate::types::utm::GroupUtmSettings>;
         async fn group_has_event(&self, group_id: Uuid, event_id: Uuid) -> Result<bool>;
-        async fn group_requires_automatic_tax_readiness(
-            &self,
-            community_id: Uuid,
-            group_id: Uuid,
-        ) -> Result<bool>;
         async fn invite_event_attendee(
             &self,
             actor_user_id: Uuid,
@@ -704,10 +701,12 @@ mock! {
         ) -> Result<Vec<crate::types::event::EventCategory>>;
         async fn list_event_approved_cfs_submissions(
             &self,
+            group_id: Uuid,
             event_id: Uuid,
         ) -> Result<Vec<crate::types::dashboard::group::events::ApprovedSubmissionSummary>>;
         async fn list_event_cfs_submissions(
             &self,
+            group_id: Uuid,
             event_id: Uuid,
             filters: &crate::types::dashboard::group::submissions::CfsSubmissionsFilters,
         ) -> Result<crate::types::dashboard::group::submissions::CfsSubmissionsOutput>;
@@ -759,6 +758,7 @@ mock! {
             event_id: Uuid,
         ) -> Result<Vec<Uuid>>;
         async fn list_group_admin_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
+        async fn list_group_audience_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
         async fn list_group_audit_logs(
             &self,
             group_id: Uuid,
@@ -788,10 +788,6 @@ mock! {
             group_id: Uuid,
             filters: &crate::types::dashboard::group::members::GroupMembersFilters,
         ) -> Result<crate::types::dashboard::group::members::GroupMembersOutput>;
-        async fn list_group_members_ids(
-            &self,
-            group_id: Uuid,
-        ) -> Result<Vec<Uuid>>;
         async fn list_group_refunds(
             &self,
             group_id: Uuid,
@@ -810,10 +806,6 @@ mock! {
             group_id: Uuid,
             filters: &crate::types::dashboard::group::team::GroupTeamFilters,
         ) -> Result<crate::types::dashboard::group::team::GroupTeamOutput>;
-        async fn list_group_team_members_ids(
-            &self,
-            group_id: Uuid,
-        ) -> Result<Vec<Uuid>>;
         async fn list_payment_currency_codes(&self) -> Result<Vec<String>>;
         async fn list_session_kinds(&self)
             -> Result<Vec<crate::types::event::SessionKindSummary>>;
@@ -921,6 +913,7 @@ mock! {
         async fn update_cfs_submission(
             &self,
             reviewer_id: Uuid,
+            group_id: Uuid,
             event_id: Uuid,
             cfs_submission_id: Uuid,
             submission: &crate::types::dashboard::group::submissions::CfsSubmissionUpdate,
@@ -1459,10 +1452,7 @@ mock! {
         async fn claim_pending_notification(
             &self,
         ) -> Result<Option<crate::types::notifications::Notification>>;
-        async fn enqueue_due_event_reminders(
-            &self,
-            base_url: &str,
-        ) -> Result<usize>;
+        async fn enqueue_due_event_reminders(&self) -> Result<usize>;
         async fn enqueue_due_event_survey_notifications(&self) -> Result<usize>;
         async fn enqueue_notification(
             &self,

@@ -47,4 +47,4 @@ returns jsonb as $$
     from event_purchase ep
     join event e using (event_id)
     where ep.event_purchase_id = p_event_purchase_id;
-$$ language sql;
+$$ language sql stable;

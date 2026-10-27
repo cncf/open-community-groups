@@ -15,9 +15,7 @@ select plan(7);
 \set communityID '9a060000-0000-0000-0000-000000000002'
 \set event1ID '9a060000-0000-0000-0000-000000000003'
 \set event2ID '9a060000-0000-0000-0000-000000000004'
-\set event3ID '9a060000-0000-0000-0000-000000000005'
 \set event4ID '9a060000-0000-0000-0000-000000000006'
-\set event5ID '9a060000-0000-0000-0000-000000000007'
 \set event6ID '9a060000-0000-0000-0000-000000000008'
 \set event7ID '9a060000-0000-0000-0000-000000000009'
 \set event8ID '9a060000-0000-0000-0000-000000000010'
@@ -33,15 +31,23 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline active community and categories for site upcoming events
+-- Active community owning the listed events
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategory1ID', :'communityID');
-select fx_event_category(:'eventCategory1ID', :'communityID');
 
 -- Inactive community whose events are excluded
 select fx_community(:'community2ID', jsonb_build_object('active', false));
-select fx_group_category(:'groupCategory2ID', :'community2ID');
+
+-- Event category in the active community
+select fx_event_category(:'eventCategory1ID', :'communityID');
+
+-- Event category in the inactive community
 select fx_event_category(:'eventCategory2ID', :'community2ID');
+
+-- Group category in the active community
+select fx_group_category(:'groupCategory1ID', :'communityID');
+
+-- Group category in the inactive community
+select fx_group_category(:'groupCategory2ID', :'community2ID');
 
 -- Group with location data used by upcoming event summaries
 select fx_group(:'group1ID', :'communityID', :'groupCategory1ID', jsonb_build_object(
@@ -57,52 +63,50 @@ select fx_group(:'group2ID', :'communityID', :'groupCategory1ID', jsonb_build_ob
 -- Group in an inactive community
 select fx_group(:'group3ID', :'community2ID', :'groupCategory2ID', jsonb_build_object('logo_url', 'https://example.com/inactive-community-group-logo.png'));
 
--- Events covering upcoming filters, inactive communities and ordering
+-- Past published event
 select fx_event(:'event1ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
     'ends_at', now() - interval '1 year' + interval '2 hours',
     'published', true,
     'starts_at', now() - interval '1 year'
 ));
+
+-- Future published virtual event co-hosted by another group
 select fx_event(:'event2ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
     'ends_at', now() + interval '1 month' + interval '2 hours',
     'event_kind_id', 'virtual',
     'published', true,
     'starts_at', now() + interval '1 month'
 ));
-select fx_event(:'event3ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
-    'ends_at', now() + interval '3 months' + interval '2 hours',
-    'event_kind_id', 'virtual',
-    'starts_at', now() + interval '3 months'
-));
+
+-- Future published event that was canceled
 select fx_event(:'event4ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
     'canceled', true,
     'ends_at', now() + interval '2 weeks' + interval '2 hours',
+    'published', true,
     'starts_at', now() + interval '2 weeks'
 ));
-select fx_event(:'event5ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
-    'ends_at', now() + interval '1 month' + interval '1 day' + interval '2 hours',
+
+-- Future published virtual event tied with another event's start time
+select fx_event(:'event6ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'ends_at', now() + interval '1 month' + interval '4 hours',
+    'event_kind_id', 'virtual',
     'published', true,
-    'starts_at', now() + interval '1 month' + interval '1 day',
-    'test_event', true
+    'starts_at', now() + interval '1 month'
 ));
+
+-- Future published virtual event of the group without location data
 select fx_event(:'event7ID', :'group2ID', :'eventCategory1ID', jsonb_build_object(
     'ends_at', now() + interval '3 months' + interval '2 hours',
     'event_kind_id', 'virtual',
     'published', true,
     'starts_at', now() + interval '3 months'
 ));
+
+-- Future published event in the inactive community
 select fx_event(:'event8ID', :'group3ID', :'eventCategory2ID', jsonb_build_object(
     'ends_at', now() + interval '1 week' + interval '2 hours',
     'published', true,
     'starts_at', now() + interval '1 week'
-));
-
--- Future event tied with another event's start time
-select fx_event(:'event6ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
-    'ends_at', now() + interval '1 month' + interval '4 hours',
-    'event_kind_id', 'virtual',
-    'published', true,
-    'starts_at', now() + interval '1 month'
 ));
 
 -- Nine distant future hybrid events exceeding the upcoming events limit
@@ -148,15 +152,14 @@ insert into event_cohost (
 -- TESTS
 -- ============================================================================
 
--- Should return published non-test future events
-select is(
-    get_site_upcoming_events(array['in-person', 'virtual'])::jsonb,
-    jsonb_build_array(
-        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event6ID'::uuid)::jsonb,
-        get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
+-- Should include virtual events for groups without location data
+select ok(
+    exists (
+        select 1
+        from jsonb_array_elements(get_site_upcoming_events(array['virtual'])::jsonb) event_item
+        where event_item->>'event_id' = :'event7ID'
     ),
-    'Should return published non-test future events'
+    'Should include virtual events for groups without location data'
 );
 
 -- Should not include events from inactive communities
@@ -169,18 +172,14 @@ select ok(
     'Should not include events from inactive communities'
 );
 
--- Should show a co-hosted event once under its owner
+-- Should order tied future events by event ID
 select is(
     (
-        select count(*)::int
-        from jsonb_array_elements(
-            get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb
-        ) event_item
-        where event_item->>'event_id' = :'event2ID'
-        and event_item->>'group_slug' = (select slug from "group" where group_id = :'group1ID'::uuid)
+        select jsonb_agg(event_item->>'event_id')
+        from jsonb_array_elements(get_site_upcoming_events(array['virtual'])::jsonb) event_item
     ),
-    1,
-    'Should show a co-hosted event once under its owner'
+    jsonb_build_array(:'event2ID', :'event6ID', :'event7ID'),
+    'Should order tied future events by event ID'
 );
 
 -- Should return empty array when no events match the filter
@@ -188,6 +187,17 @@ select is(
     get_site_upcoming_events(array['in-person'])::jsonb,
     '[]'::jsonb,
     'Should return empty array when no events match the filter'
+);
+
+-- Should return listed future events of the requested kinds
+select is(
+    get_site_upcoming_events(array['in-person', 'virtual'])::jsonb,
+    jsonb_build_array(
+        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event6ID'::uuid)::jsonb,
+        get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
+    ),
+    'Should return listed future events of the requested kinds'
 );
 
 -- Should return only the first eight upcoming events
@@ -203,24 +213,18 @@ select is(
     'Should return only the first eight upcoming events'
 );
 
--- Should order tied future events by event ID
+-- Should show a co-hosted event once under its owner
 select is(
     (
-        select jsonb_agg(event_item->>'event_id')
-        from jsonb_array_elements(get_site_upcoming_events(array['virtual'])::jsonb) event_item
+        select count(*)::int
+        from jsonb_array_elements(
+            get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb
+        ) event_item
+        where event_item->>'event_id' = :'event2ID'
+        and event_item->>'group_slug' = (select slug from "group" where group_id = :'group1ID'::uuid)
     ),
-    jsonb_build_array(:'event2ID', :'event6ID', :'event7ID'),
-    'Should order tied future events by event ID'
-);
-
--- Should include virtual events for groups without location data
-select ok(
-    exists (
-        select 1
-        from jsonb_array_elements(get_site_upcoming_events(array['virtual'])::jsonb) event_item
-        where event_item->>'event_id' = :'event7ID'
-    ),
-    'Should include virtual events for groups without location data'
+    1,
+    'Should show a co-hosted event once under its owner'
 );
 
 -- ============================================================================

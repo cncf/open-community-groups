@@ -23,7 +23,7 @@ pub struct CommunityFull {
     /// Layout identifier for the community site.
     pub community_site_layout_id: String,
     /// When the community was created.
-    #[serde(with = "chrono::serde::ts_milliseconds")]
+    #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
     /// Brief description of the community's purpose or focus.
     pub description: String,
