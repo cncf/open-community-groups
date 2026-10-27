@@ -19,7 +19,10 @@ import {
   navigateToPath,
   waitForActionResponse,
 } from "../../../utils.js";
-import { openGroupEventsTabWithEvent } from "./helpers.js";
+import { openEventUpdateFormByName, openGroupEventsTabWithEvent } from "./helpers.js";
+
+// Seeded past event listed in the alpha group's past events tab.
+const PAST_EVENT_NAME = "Past Event For Filtering";
 
 test.describe("group dashboard Events tab", () => {
   test("empty state covers both event list tabs", async ({ organizerEmptyGroupPage }) => {
@@ -124,6 +127,53 @@ test.describe("group dashboard Events tab", () => {
     await expect(upcomingContent).toBeVisible();
     await expect(pastContent).toBeHidden();
     await expect(upcomingContent.locator("tr", { hasText: TEST_EVENT_NAMES.alpha[0] })).toBeVisible();
+  });
+
+  test("event editor back link returns to the upcoming events tab", async ({ organizerGroupPage }) => {
+    // Open an upcoming event editor from the events list.
+    await openEventUpdateFormByName(organizerGroupPage, TEST_EVENT_NAMES.alpha[0]);
+
+    // Go back and verify the upcoming tab is active.
+    await clickEventBackLink(organizerGroupPage);
+    await expectActiveEventsTab(organizerGroupPage, "upcoming", TEST_EVENT_NAMES.alpha[0]);
+  });
+
+  test("event editor back link returns to the past events tab for past events", async ({
+    organizerGroupPage,
+  }) => {
+    // Open a past event editor from the past events list.
+    await openEventUpdateFormByName(organizerGroupPage, PAST_EVENT_NAME, undefined, { eventsTab: "past" });
+
+    // Go back and verify the past tab stays active.
+    await clickEventBackLink(organizerGroupPage);
+    await expectActiveEventsTab(organizerGroupPage, "past", PAST_EVENT_NAME);
+  });
+
+  test("event editor back link asks to confirm leaving pending changes", async ({ organizerGroupPage }) => {
+    // Open an upcoming event editor and make an unsaved change.
+    await openEventUpdateFormByName(organizerGroupPage, TEST_EVENT_NAMES.alpha[0]);
+    await organizerGroupPage.locator("#name").fill(`${TEST_EVENT_NAMES.alpha[0]} draft`);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
+
+    // Dismiss the confirmation and verify the editor keeps the change.
+    const backLink = organizerGroupPage.getByRole("link", { name: "Back to events" });
+    const confirmAlert = organizerGroupPage.locator(".swal2-popup");
+    await backLink.click();
+    await expect(confirmAlert).toContainText("You have pending changes.");
+    await confirmAlert.getByRole("button", { name: "No", exact: true }).click();
+    await expect(confirmAlert).toBeHidden();
+    await expect(organizerGroupPage.locator('[data-event-page="update"]')).toBeVisible();
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(`${TEST_EVENT_NAMES.alpha[0]} draft`);
+
+    // Confirm leaving and verify the events list loads without saving.
+    await backLink.click();
+    await expect(confirmAlert).toContainText("You have pending changes.");
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => confirmAlert.getByRole("button", { name: "Leave", exact: true }).click(),
+      { method: "GET", urlEndsWith: "/dashboard/group?tab=events" },
+    );
+    await expectActiveEventsTab(organizerGroupPage, "upcoming", TEST_EVENT_NAMES.alpha[0]);
   });
 
   test("organizer sees attendee count and capacity for capped events", async ({ organizerGroupPage }) => {
@@ -365,3 +415,31 @@ test.describe("group dashboard Events tab", () => {
     await expect(eventRow).toContainText("Published");
   });
 });
+
+/**
+ * Clicks the event editor back link and waits for the events list request.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ */
+const clickEventBackLink = async (page) => {
+  await waitForActionResponse(page, () => page.getByRole("link", { name: "Back to events" }).click(), {
+    method: "GET",
+    urlIncludes: "/dashboard/group?tab=events",
+  });
+};
+
+/**
+ * Verifies the active events list tab and one of its rows.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @param {"upcoming"|"past"} eventsTab - Expected active tab.
+ * @param {string} eventName - Event name expected in the active tab.
+ */
+const expectActiveEventsTab = async (page, eventsTab, eventName) => {
+  const dashboardContent = page.locator("#dashboard-content");
+  const inactiveTab = eventsTab === "past" ? "upcoming" : "past";
+
+  await expect(dashboardContent.locator(`#${eventsTab}-tab`)).toHaveAttribute("data-active", "true");
+  await expect(dashboardContent.locator(`#${inactiveTab}-tab`)).toHaveAttribute("data-active", "false");
+  await expect(dashboardContent.locator(`#${eventsTab}-content`)).toBeVisible();
+  await expect(dashboardContent.locator(`#${inactiveTab}-content`)).toBeHidden();
+  await expect(dashboardContent.locator(`#${eventsTab}-content tr`, { hasText: eventName })).toBeVisible();
+};

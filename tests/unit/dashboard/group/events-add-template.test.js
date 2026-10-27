@@ -46,33 +46,41 @@ describe("dashboard group event add template", () => {
     expect(eventNameIndex).to.be.greaterThan(copySelectorIndex);
   });
 
-  it("shows a draft event title header above add tabs and content", async () => {
-    // Load the event add template before checking the draft event reminder.
+  it("shows a back link and boxed draft event header above add tabs and content", async () => {
+    // Load the event add template before checking the draft event header.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Assert the draft reminder starts with clear fallback copy.
-    expect(template).to.include('id="draft-event-title"');
-    expect(template).to.include("Untitled event");
-    expect(template).to.include('id="draft-event-date"');
-    expect(template).to.include("Date not set yet");
-    expect(template).to.include('class="col-span-full min-w-0"');
-    expect(template).to.include('class="min-w-0 flex-1"');
-    expect(template).to.include('class="mt-1 text-xs text-stone-500"');
+    // Assert the back link returns to the events list behind the pending changes guard.
+    expect(template).to.include('class="col-span-full min-w-0 space-y-4"');
+    expect(template).to.include('<a id="event-back-link" href="/dashboard/group?tab=events"');
     expect(template).to.include(
-      'class="truncate text-xl font-semibold text-stone-900"',
+      'hx-get="/dashboard/group?tab=events" hx-trigger="click, confirmed" hx-target="body" hx-indicator="#dashboard-spinner" data-pending-changes-guard',
     );
+    expect(template).to.include("Back to events");
+
+    // Assert the boxed header starts with clear fallback copy and the preview action.
+    expect(template).to.include('<header class="rounded-lg border border-stone-200 bg-white">');
+    expect(template).to.include(
+      '<h1 id="draft-event-title" class="break-words text-xl font-semibold leading-tight text-stone-900 lg:text-2xl">Untitled event</h1>',
+    );
+    expect(template).to.include('<span id="draft-event-date">Date not set yet</span>');
     expect(template).to.not.include("overflow-hidden");
     expect(template).to.include('class="col-span-full min-w-0 xl:col-span-3"');
     expect(template).to.include(
-      'class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4"',
-    );
-    expect(template).to.include('id="event-preview-button"');
-    expect(template).to.include(
-      'class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs disabled:cursor-not-allowed disabled:opacity-50"',
+      'class="group btn-primary-outline btn-mini h-7! inline-flex items-center justify-center gap-1.5 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"',
     );
     expect(template).to.not.include(
       'class="mt-8 flex flex-row items-stretch gap-2 lg:flex-col"',
     );
+
+    const backLinkIndex = template.indexOf('id="event-back-link"');
+    const titleIndex = template.indexOf('id="draft-event-title"');
+    const dateIndex = template.indexOf('id="draft-event-date"');
+    const previewIndex = template.indexOf('id="event-preview-button"');
+
+    expect(titleIndex).to.be.greaterThan(backLinkIndex);
+    expect(dateIndex).to.be.greaterThan(titleIndex);
+    expect(previewIndex).to.be.greaterThan(dateIndex);
   });
 
   it("places the pending changes alert under the draft event header", async () => {

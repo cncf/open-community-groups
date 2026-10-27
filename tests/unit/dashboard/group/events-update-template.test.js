@@ -10,6 +10,10 @@ const loadTemplate = async () => {
   return response.text();
 };
 
+// Boxed header title shared by the header placement assertions.
+const EVENT_TITLE =
+  '<h1 class="min-w-0 break-words text-xl font-semibold leading-tight text-stone-900 lg:text-2xl">{{ event.name }}</h1>';
+
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group event update template", () => {
@@ -91,42 +95,37 @@ describe("dashboard group event update template", () => {
     );
   });
 
-  it("shows an event title header above update tabs and content", async () => {
-    // Load the event update template before checking the event reminder.
+  it("shows a back link and boxed event header above update tabs and content", async () => {
+    // Load the event update template before checking the event header.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Assert the reminder spans the form layout without sticking to the viewport.
+    // Assert the back link returns to the event's list tab behind the pending changes guard.
     expect(template).to.include('class="col-span-full min-w-0 space-y-4"');
+    expect(template).to.include('<a id="event-back-link" href="/dashboard/group?tab=events{% if event.is_past() %}&events_tab={{ EventsTab::Past }}{% endif %}"');
+    expect(template).to.include(
+      'hx-get="/dashboard/group?tab=events{% if event.is_past() %}&events_tab={{ EventsTab::Past }}{% endif %}" hx-trigger="click, confirmed" hx-target="body" hx-indicator="#dashboard-spinner" data-pending-changes-guard',
+    );
+    expect(template).to.include("Back to events");
+
+    // Assert the boxed header shows the title with publish, then the date facts with secondary actions.
+    expect(template).to.include('<header class="rounded-lg border border-stone-200 bg-white">');
+    expect(template).to.include(EVENT_TITLE);
     expect(template).to.not.include('style="top: 6.25rem"');
     expect(template).to.not.include("Editing event");
     expect(template).to.include(
-      '<div class="truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>',
-    );
-    expect(template).to.include('class="min-w-0 flex-1"');
-    expect(template).to.not.include("overflow-hidden");
-    expect(template).to.include('class="col-span-full min-w-0 2xl:col-span-3"');
-    expect(template).to.include(
-      "{% if let Some(starts_at) = &event.starts_at -%}",
-    );
-    expect(template).to.include(
       '{{ starts_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p") }}',
     );
-    expect(template).to.include("{% if let Some(ends_at) = &event.ends_at -%}");
     expect(template).to.include('<span class="text-stone-400">-</span>');
     expect(template).to.include(
       '{{ ends_at.with_timezone(event.timezone).format("%-I:%M %p %Z") }}',
     );
-    expect(template).to.include('class="mt-1 text-xs text-stone-500"');
     expect(template).to.include(
-      'class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4"',
+      '<span>Ends {{ ends_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p %Z") }}</span>',
     );
-    expect(template).to.include('id="event-preview-button"');
-    expect(template).to.include('id="event-public-page-link"');
-    expect(template).to.include('id="publish-event-button"');
+    expect(template).to.include("<span>Date not set yet</span>");
     expect(template).to.include(
       'hx-put="/dashboard/group/events/{{ event.event_id }}/publish"',
     );
-    expect(template).to.include('hx-swap="none"');
     expect(template).to.include(
       'data-has-related-events="{{ event.has_related_events }}"',
     );
@@ -136,40 +135,30 @@ describe("dashboard group event update template", () => {
     expect(template.indexOf("{% if event.canceled -%}")).to.be.lessThan(
       template.indexOf("{% else if event.published -%}"),
     );
-    expect(template.indexOf('id="publish-event-button"')).to.be.greaterThan(
-      template.indexOf('id="event-public-page-link"'),
-    );
     expect(template).to.include(
-      'class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-xl:size-10 max-xl:gap-0 max-xl:p-0 disabled:cursor-not-allowed disabled:opacity-50"',
+      'class="group btn-primary inline-flex shrink-0 items-center justify-center gap-2 self-start whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 sm:self-center"',
     );
-    expect(template).to.include(
-      'class="group btn-primary-outline-anchor inline-flex items-center justify-center gap-2 whitespace-nowrap max-xl:size-10 max-xl:gap-0 max-xl:p-0"',
-    );
-    expect(template).to.include(
-      '<span class="hidden xl:inline">Preview</span>',
-    );
-    expect(
-      template.match(/<span class="hidden xl:inline">Public page<\/span>/gu) ??
-        [],
-    ).to.have.lengthOf(2);
-    expect(template).to.include(
-      '<span class="hidden xl:inline">Publish</span>',
-    );
-    expect(template).to.include(
-      'Ends {{ ends_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p %Z") }}',
-    );
-    expect(template).to.include(
-      '<div class="mt-1 text-xs text-stone-500">Date not set yet</div>',
-    );
-    const eventTitleIndex = template.indexOf(
-      '<div class="truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>',
-    );
+    expect(template).to.include("<span>Preview</span>");
+    expect(template.match(/<span>Public page<\/span>/gu) ?? []).to.have.lengthOf(2);
+    expect(template).to.include("<span>Publish</span>");
+
+    const backLinkIndex = template.indexOf('id="event-back-link"');
+    const eventTitleIndex = template.indexOf(EVENT_TITLE);
+    const publishIndex = template.indexOf('id="publish-event-button"');
+    const dateIndex = template.indexOf("icon-calendar");
+    const previewIndex = template.indexOf('id="event-preview-button"');
+    const publicPageIndex = template.indexOf('id="event-public-page-link"');
     const canceledWarningIndex = template.indexOf("This event is canceled.");
     const eventContentIndex = template.indexOf(
       'class="col-span-full row-start-2 grid h-full content-start',
     );
 
-    expect(canceledWarningIndex).to.be.greaterThan(eventTitleIndex);
+    expect(eventTitleIndex).to.be.greaterThan(backLinkIndex);
+    expect(publishIndex).to.be.greaterThan(eventTitleIndex);
+    expect(dateIndex).to.be.greaterThan(publishIndex);
+    expect(previewIndex).to.be.greaterThan(dateIndex);
+    expect(publicPageIndex).to.be.greaterThan(previewIndex);
+    expect(canceledWarningIndex).to.be.greaterThan(publicPageIndex);
     expect(eventContentIndex).to.be.greaterThan(canceledWarningIndex);
   });
 
@@ -178,9 +167,7 @@ describe("dashboard group event update template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert the save alert follows the title reminder and uses compact actions.
-    const eventTitleIndex = template.indexOf(
-      '<div class="truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>',
-    );
+    const eventTitleIndex = template.indexOf(EVENT_TITLE);
     const alertIndex = template.indexOf('id="pending-changes-alert"');
 
     expect(alertIndex).to.be.greaterThan(eventTitleIndex);

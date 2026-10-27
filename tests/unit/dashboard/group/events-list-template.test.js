@@ -16,7 +16,7 @@ describe("dashboard group events list template", () => {
     expect(toolbar.classList.contains("flex-col")).to.equal(true);
     expect(toolbar.classList.contains("gap-3")).to.equal(true);
     expect(toolbar.classList.contains("my-5")).to.equal(true);
-    expect(button.classList.contains("sm:mb-3")).to.equal(true);
+    expect(button.classList.contains("sm:mb-4")).to.equal(true);
     expect(button.classList.contains("shrink-0")).to.equal(true);
   });
 
