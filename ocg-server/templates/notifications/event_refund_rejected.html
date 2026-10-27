@@ -18,10 +18,15 @@
     Your attendance is still active, and you can continue managing the event from its page.
   </p>
 
-  <p class="default mb-30" style="margin-bottom: 30px">
-    <strong>Reason:</strong>
-    <span style="white-space: pre-wrap; overflow-wrap: anywhere">{{ rejection_reason }}</span>
+  <p class="default mb-15" style="margin-bottom: 15px">
+    Reason from <strong>{{ event.group_name }}</strong>:
   </p>
+  <blockquote class="quote"
+              style="margin: 0 0 30px;
+                     overflow-wrap: anywhere;
+                     white-space: pre-wrap">
+    {{- rejection_reason -}}
+  </blockquote>
 
   {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
 {% endblock content -%}
