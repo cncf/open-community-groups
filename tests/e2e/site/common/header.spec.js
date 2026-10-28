@@ -37,7 +37,7 @@ test.describe("site header", () => {
     await expect(userMenu.getByRole("menuitem", { name: "Log in" })).toHaveAttribute("href", "/log-in");
   });
 
-  test("user menu closes with Escape and restores trigger focus", async ({ page }) => {
+  test("user menu closes with Escape and restores trigger focus @smoke", async ({ page }) => {
     // Load a public page with the global user menu.
     await navigateToSiteHome(page);
 

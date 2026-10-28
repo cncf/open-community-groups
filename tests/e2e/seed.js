@@ -170,6 +170,7 @@ export const TEST_SEARCH_QUERY = "Test";
 export const TEST_SITE_TITLE = "E2E Test Site";
 export const TEST_COMMUNITY_TITLE = "Platform Engineering Community";
 export const TEST_COMMUNITY_TITLE_2 = "Developer Experience Community";
+export const TEST_COMMUNITY_TITLE_EMPTY = "Empty Coverage Community";
 
 /** Community details for assertions. */
 export const TEST_COMMUNITY_DESCRIPTION = "Platform engineering community used for end-to-end coverage.";
@@ -177,14 +178,32 @@ export const TEST_COMMUNITY_AD_BANNER_LINK_URL_2 = "https://example.com/e2e-adve
 export const TEST_COMMUNITY_AD_BANNER_URL_2 = "/static/images/e2e/event-banner.svg";
 export const TEST_COMMUNITY_BANNER_URL = "/static/images/e2e/community-primary-banner.svg";
 export const TEST_COMMUNITY_BANNER_MOBILE_URL = "/static/images/e2e/community-primary-banner-mobile.svg";
+export const TEST_COMMUNITY_LOGO_URL = "/static/images/e2e/community-primary-logo.svg";
 
-/** Group names organized by community. */
+/** Event category ids (10_catalog.sql); meetups belongs to the second community. */
+export const TEST_EVENT_CATEGORY_IDS = {
+  general: "33333333-3333-3333-3333-333333333331",
+  meetups: "33333333-3333-3333-3333-333333333332",
+  workshops: "33333333-3333-3333-3333-333333333333",
+};
+
+/** Group category ids (10_catalog.sql); two belongs to the second community, unused has no groups. */
+export const TEST_GROUP_CATEGORY_IDS = {
+  one: "22222222-2222-2222-2222-222222222221",
+  two: "22222222-2222-2222-2222-222222222222",
+  unused: "22222222-2222-2222-2222-222222222223",
+};
+
+/** Group names (20_groups.sql). */
 export const TEST_GROUP_NAMES = {
   alpha: "Platform Ops Meetup",
   beta: "Inactive Local Chapter",
+  delta: "E2E Second Group Delta",
   empty: "Empty Coverage Group",
+  epsilon: "E2E Second Group Epsilon",
   externalPayments: "External Payments Lab",
   gamma: "Observability Guild",
+  zeta: "E2E Second Group Zeta",
 };
 
 /** Event names organized by group. */
@@ -491,20 +510,38 @@ export const TEST_EVENT_SLUGS = {
   alphaDashboard: ["alpha-cfs-summit", "alpha-past-roundup"],
 };
 
-/** Pre-seeded user ids for state resets and dashboard assertions. */
+/** Pre-seeded user ids for state resets and dashboard assertions (40_users_badges.sql). */
 export const TEST_USER_IDS = {
   admin1: "77777777-7777-7777-7777-777777777701",
   admin2: "77777777-7777-7777-7777-777777777702",
   checkInManager1: "77777777-7777-7777-7777-777777777715",
-  communityGroupsManager1: "77777777-7777-7777-7777-777777777709",
+  communityViewer1: "77777777-7777-7777-7777-777777777710",
+  empty: "77777777-7777-7777-7777-777777777713",
   eventsManager1: "77777777-7777-7777-7777-777777777711",
+  groupsManager1: "77777777-7777-7777-7777-777777777709",
   groupViewer1: "77777777-7777-7777-7777-777777777712",
   member1: "77777777-7777-7777-7777-777777777705",
   member2: "77777777-7777-7777-7777-777777777706",
+  member3: "77777777-7777-7777-7777-777777777714",
   organizer1: "77777777-7777-7777-7777-777777777703",
   organizer2: "77777777-7777-7777-7777-777777777704",
   pending1: "77777777-7777-7777-7777-777777777707",
   pending2: "77777777-7777-7777-7777-777777777708",
+};
+
+/**
+ * Users notified about group-wide activity (event published, custom group notifications):
+ * group members plus group team (40_users_badges.sql, 50_membership_cfs.sql).
+ */
+export const TEST_GROUP_AUDIENCE_IDS = {
+  alpha: [
+    TEST_USER_IDS.organizer1,
+    TEST_USER_IDS.member1,
+    TEST_USER_IDS.eventsManager1,
+    TEST_USER_IDS.groupViewer1,
+    TEST_USER_IDS.member3,
+    TEST_USER_IDS.checkInManager1,
+  ],
 };
 
 /** Answered inbox conversation between the second member and the primary group. */

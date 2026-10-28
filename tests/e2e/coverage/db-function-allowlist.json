@@ -1,0 +1,188 @@
+[
+  {
+    "function": "activate_pre_registered_user_external_provider",
+    "reason": "OAuth2 and OIDC log-in are disabled in e2e (server.yml login.github and login.linuxfoundation are false).",
+    "coveredBy": "pgtap:database/tests/functions/auth/activate_pre_registered_user_external_provider.sql"
+  },
+  {
+    "function": "add_meeting",
+    "reason": "Records a Zoom meeting created by the meetings worker; e2e uses fake Zoom credentials and never reaches the Zoom API.",
+    "coveredBy": "pgtap:database/tests/functions/meetings/add_meeting.sql"
+  },
+  {
+    "function": "apply_event_purchase_application_fee_adjustment_outcome",
+    "reason": "Stripe application-fee refund outcome; e2e never reaches Stripe, so no direct-charge purchase has an adjustment to apply.",
+    "coveredBy": "pgtap:database/tests/functions/internal/payments/apply_event_purchase_application_fee_adjustment_outcome.sql"
+  },
+  {
+    "function": "assign_zoom_host_user",
+    "reason": "Reserves a Zoom host while the meetings worker creates a Zoom meeting; the worker reaches it only when it claims the published automatic-meeting event of events.spec.js before the test unpublishes it, so some runs call it and others do not.",
+    "coveredBy": "pgtap:database/tests/functions/meetings/assign_zoom_host_user.sql",
+    "intermittent": true
+  },
+  {
+    "function": "attach_application_fee_to_event_purchase",
+    "reason": "Stripe connected-account webhook for direct-charge application fees; e2e cannot complete a Stripe checkout.",
+    "coveredBy": "pgtap:database/tests/functions/payments/attach_application_fee_to_event_purchase.sql"
+  },
+  {
+    "function": "attach_checkout_session_to_event_purchase",
+    "reason": "Stores the Stripe checkout session created by the provider; e2e never reaches Stripe.",
+    "coveredBy": "pgtap:database/tests/functions/payments/attach_checkout_session_to_event_purchase.sql"
+  },
+  {
+    "function": "delete_meeting",
+    "reason": "The meetings worker deletes the meeting of an event whose meeting a test turned off only when it claims the event before the test cleanup deletes it, so some runs call it and others do not.",
+    "coveredBy": "pgtap:database/tests/functions/meetings/delete_meeting.sql",
+    "intermittent": true
+  },
+  {
+    "function": "enqueue_event_purchase_application_fee_adjustment",
+    "reason": "Queued only for provider-paid direct-charge purchases; e2e cannot complete a Stripe checkout.",
+    "coveredBy": "pgtap:database/tests/functions/internal/payments/enqueue_event_purchase_application_fee_adjustment.sql"
+  },
+  {
+    "function": "enqueue_event_purchase_credit_note",
+    "reason": "Queued only for provider-paid purchases with an invoice; e2e cannot complete a Stripe checkout.",
+    "coveredBy": "pgtap:database/tests/functions/internal/payments/enqueue_event_purchase_credit_note.sql"
+  },
+  {
+    "function": "get_user_by_linuxfoundation_identity_for_external_auth",
+    "reason": "Linux Foundation OIDC log-in is disabled in e2e (server.yml login.linuxfoundation is false).",
+    "coveredBy": "pgtap:database/tests/functions/auth/get_user_by_linuxfoundation_identity_for_external_auth.sql"
+  },
+  {
+    "function": "is_admission_offer_payment_ready",
+    "reason": "Evaluated only when a paid seat heads a waitlist or offer queue; no e2e flow promotes a paid seat.",
+    "coveredBy": "pgtap:database/tests/functions/internal/enrollment/is_admission_offer_payment_ready.sql"
+  },
+  {
+    "function": "manual_requeue_notifications",
+    "reason": "Operator-only function run through psql; no server route or worker calls it.",
+    "coveredBy": "pgtap:database/tests/functions/notifications/manual_requeue_notifications.sql"
+  },
+  {
+    "function": "mark_event_purchase_refund_pending",
+    "reason": "Reached when a completed Stripe checkout session can no longer be fulfilled; e2e cannot complete a Stripe checkout.",
+    "coveredBy": "pgtap:database/tests/functions/internal/payments/mark_event_purchase_refund_pending.sql"
+  },
+  {
+    "function": "mark_notification_delivery_unknown",
+    "reason": "Records an ambiguous SMTP delivery outcome; e2e has no SMTP server, so delivery fails before sending.",
+    "coveredBy": "pgtap:database/tests/functions/notifications/mark_notification_delivery_unknown.sql"
+  },
+  {
+    "function": "opt_out_user_from_optional_notifications",
+    "reason": "Operator-only function run through psql for SMTP suppression lists; no server route or worker calls it.",
+    "coveredBy": "pgtap:database/tests/functions/notifications/opt_out_user_from_optional_notifications.sql"
+  },
+  {
+    "function": "prepare_event_checkout_lookup_tax_cache",
+    "reason": "Used only by automatic-tax Stripe direct-charge checkouts, which no e2e flow starts.",
+    "coveredBy": "pgtap:database/tests/functions/internal/payments/prepare_event_checkout_lookup_tax_cache.sql"
+  },
+  {
+    "function": "prevent_audit_log_mutation",
+    "reason": "Guard trigger that fires only on audit_log updates or deletes, which the application never issues.",
+    "coveredBy": "pgtap:database/tests/functions/triggers/prevent_audit_log_mutation.sql"
+  },
+  {
+    "function": "queue_event_refund_request_approval",
+    "reason": "Approves refund requests of provider-paid purchases; e2e cannot complete a Stripe checkout.",
+    "coveredBy": "pgtap:database/tests/functions/payments/queue_event_refund_request_approval.sql"
+  },
+  {
+    "function": "reconcile_event_purchase_for_checkout_session",
+    "reason": "Stripe checkout.session.completed reconciliation; the README keeps that webhook out of e2e scope.",
+    "coveredBy": "pgtap:database/tests/functions/payments/reconcile_event_purchase_for_checkout_session.sql"
+  },
+  {
+    "function": "record_badge_award_job_failure",
+    "reason": "Badge award worker failure path; e2e badge awards succeed.",
+    "coveredBy": "pgtap:database/tests/functions/badges/record_badge_award_job_failure.sql"
+  },
+  {
+    "function": "record_direct_charge_checkout_amounts",
+    "reason": "Called while reconciling a completed Stripe checkout session; e2e cannot complete a Stripe checkout.",
+    "coveredBy": "pgtap:database/tests/functions/internal/payments/record_direct_charge_checkout_amounts.sql"
+  },
+  {
+    "function": "record_event_purchase_application_fee_adjustment_succeeded",
+    "reason": "Stripe application-fee refund success recorded by the payment worker; e2e never reaches Stripe.",
+    "coveredBy": "pgtap:database/tests/functions/payments/record_event_purchase_application_fee_adjustment_succeeded.sql"
+  },
+  {
+    "function": "record_event_purchase_credit_note_succeeded",
+    "reason": "Stripe credit-note success recorded by the payment worker; e2e never reaches Stripe.",
+    "coveredBy": "pgtap:database/tests/functions/payments/record_event_purchase_credit_note_succeeded.sql"
+  },
+  {
+    "function": "record_payment_job_failure",
+    "reason": "Payment worker retry path after a Stripe error; e2e payment jobs never reach Stripe.",
+    "coveredBy": "pgtap:database/tests/functions/payments/record_payment_job_failure.sql"
+  },
+  {
+    "function": "release_meeting_sync",
+    "reason": "Internal helper of delete_meeting, the only meetings worker outcome e2e reaches; called only when delete_meeting is.",
+    "coveredBy": "pgtap:database/tests/functions/internal/meetings/release_meeting_sync.sql",
+    "intermittent": true
+  },
+  {
+    "function": "release_meeting_sync_claim",
+    "reason": "Meetings worker retry path after a Zoom API error; e2e has no Zoom API, so it is called only when the worker claims the published automatic-meeting event of events.spec.js before the test unpublishes it.",
+    "coveredBy": "pgtap:database/tests/functions/meetings/release_meeting_sync_claim.sql",
+    "intermittent": true
+  },
+  {
+    "function": "release_notification",
+    "reason": "Releases a delivery claim when the server stops during the in-process SMTP retry pause; e2e has no SMTP server, so it depends on where shutdown lands.",
+    "coveredBy": "pgtap:database/tests/functions/notifications/release_notification.sql",
+    "intermittent": true
+  },
+  {
+    "function": "requeue_badge_award_job",
+    "reason": "Operator-only function run through psql; no server route or worker calls it.",
+    "coveredBy": "pgtap:database/tests/functions/badges/requeue_badge_award_job.sql"
+  },
+  {
+    "function": "requeue_notification",
+    "reason": "e2e has no SMTP server, so the delivery worker requeues after about 10s of in-process retries; test cleanup usually deletes the notification first and the call fails, which pg_stat_user_functions does not count.",
+    "coveredBy": "pgtap:database/tests/functions/notifications/requeue_notification.sql",
+    "intermittent": true
+  },
+  {
+    "function": "set_meeting_error",
+    "reason": "Records a Zoom sync error returned by the Zoom API; e2e never reaches the Zoom API.",
+    "coveredBy": "pgtap:database/tests/functions/meetings/set_meeting_error.sql"
+  },
+  {
+    "function": "update_meeting",
+    "reason": "Records a Zoom meeting updated by the meetings worker; e2e never reaches the Zoom API.",
+    "coveredBy": "pgtap:database/tests/functions/meetings/update_meeting.sql"
+  },
+  {
+    "function": "update_notification",
+    "reason": "Records a sent or permanently failed email; e2e has no SMTP server, so delivery attempts are requeued.",
+    "coveredBy": "pgtap:database/tests/functions/notifications/update_notification.sql"
+  },
+  {
+    "function": "update_user_external_auth",
+    "reason": "OAuth2 and OIDC log-in are disabled in e2e (server.yml login.github and login.linuxfoundation are false).",
+    "coveredBy": "pgtap:database/tests/functions/auth/update_user_external_auth.sql"
+  },
+  {
+    "function": "upsert_payment_provider_tax_location",
+    "reason": "Caches a Stripe tax location for automatic-tax checkouts; e2e never reaches Stripe.",
+    "coveredBy": "pgtap:database/tests/functions/payments/upsert_payment_provider_tax_location.sql"
+  },
+  {
+    "function": "validate_direct_charge_checkout_amounts",
+    "reason": "Called while reconciling a completed Stripe checkout session; e2e cannot complete a Stripe checkout.",
+    "coveredBy": "pgtap:database/tests/functions/internal/payments/validate_direct_charge_checkout_amounts.sql"
+  },
+  {
+    "function": "validate_event_payment_validation",
+    "reason": "Checks the Stripe validation snapshot the server takes before saving a paid-capable event; e2e never reaches Stripe.",
+    "coveredBy": "pgtap:database/tests/functions/internal/payments/validate_event_payment_validation.sql"
+  }
+]

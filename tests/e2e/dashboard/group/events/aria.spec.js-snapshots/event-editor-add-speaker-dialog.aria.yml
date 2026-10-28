@@ -1,0 +1,7 @@
+- heading "Add speaker" [level=3]
+- button "Close modal"
+- textbox "Search speaker by username"
+- paragraph: Search by name or username to add a speaker to this session.
+- checkbox "Featured speaker" [disabled]
+- text: Featured speaker
+- button "Add speaker" [disabled]

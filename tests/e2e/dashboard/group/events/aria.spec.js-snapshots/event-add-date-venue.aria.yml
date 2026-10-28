@@ -1,0 +1,92 @@
+- text: Date & Venue
+- paragraph: When will this event take place?
+- text: Timezone *
+- button "Select a timezone"
+- paragraph: Timezone for event times (e.g. America/New_York, Europe/Amsterdam).
+- text: Start Date & Time
+- textbox "Start Date & Time"
+- paragraph: When the event starts.
+- text: End Date & Time
+- textbox "End Date & Time"
+- paragraph: When the event ends.
+- text: Registration Opens
+- textbox "Registration Opens"
+- paragraph: Leave blank to allow registration immediately.
+- text: Registration Closes
+- textbox "Registration Closes"
+- paragraph: Must be after the open date. Leave blank with an open date to close at event start. Leave both fields blank for no window.
+- text: A registration window limits attendee self-registration, ticket checkout, new invitation requests, waitlist promotion, and registration-question answers. Organizers can still accept pending invitation requests and reissue expired approval offers outside the window. Rejecting requests and inviting attendees manually still work; those invitees can complete required registration questions. Recurrence
+- combobox "Recurrence":
+  - option "Just once" [selected]
+  - option "Weekly"
+  - option "Every two weeks"
+  - option "Monthly"
+- paragraph: Create linked events from this event's dates and schedule.
+- checkbox "Send Event Reminder" [checked]
+- text: Send Event Reminder
+- paragraph: /Send a reminder email \d+ hours before the event starts\./
+- text: Venue Information
+- paragraph: Location details for in-person and hybrid events.
+- button "Clear location details"
+- textbox "Search for a location":
+  - /placeholder: Search for a venue or address...
+- button "Search" [disabled]
+- paragraph: If any fields remain empty or incomplete after the search, fill in the missing details manually.
+- text: Venue Name
+- textbox "Venue Name"
+- paragraph: Name of the venue where the event takes place.
+- text: Address
+- textbox "Address"
+- paragraph: Street address of the venue.
+- text: City
+- textbox "City"
+- paragraph: City where the venue is located.
+- text: Zip Code
+- textbox "Zip Code"
+- paragraph: Postal/zip code of the venue.
+- text: State/Province
+- textbox "State/Province"
+- paragraph: State, province, or region.
+- text: Country
+- textbox "Country"
+- paragraph: Country where the venue is located.
+- text: State/Province Code
+- textbox "State/Province Code"
+- paragraph: State or province code used to calculate taxes.
+- text: Country Code *
+- superscript: (required for paid tickets)
+- textbox "Country Code * (required for paid tickets)"
+- paragraph: Country code used to calculate taxes.
+- text: Latitude
+- spinbutton "Latitude"
+- text: Longitude
+- spinbutton "Longitude"
+- text: Online Event Details
+- paragraph: Meeting information for virtual and hybrid events.
+- radio "Use my own meeting link Paste a Zoom, Teams, Meet, or other link." [checked]
+- text: Use my own meeting link
+- paragraph: Paste a Zoom, Teams, Meet, or other link.
+- 'radio /Create meeting automatically We will create and manage a meeting when you save this event\. Complete these requirements to enable this option: Automatic meeting capacity is based on total seats across all ticket types\. Event must be virtual or hybrid\. Set start and end times\. Total ticket seats \(\d+\) exceed the meeting limit \(\d+\)\. Reduce ticket seats in Tickets\./ [disabled]'
+- text: Create meeting automatically
+- paragraph: We will create and manage a meeting when you save this event.
+- paragraph: "Complete these requirements to enable this option:"
+- paragraph: Automatic meeting capacity is based on total seats across all ticket types.
+- list:
+  - listitem: Event must be virtual or hybrid.
+  - listitem: Set start and end times.
+  - listitem: /Total ticket seats \(\d+\) exceed the meeting limit \(\d+\)\. Reduce ticket seats in Tickets\./
+- text: Meeting URL
+- textbox "Meeting URL":
+  - /placeholder: https://meet.example.com/123456789
+- paragraph: Zoom, Teams, Meet, or any other video link.
+- text: Join instructions (optional)
+- textbox "Join instructions (optional)":
+  - /placeholder: Add passcodes, waiting room details, or other attendee instructions.
+- paragraph: Shown with the meeting details on the public event page.
+- text: Final public recording URL (optional)
+- textbox "Final public recording URL (optional)":
+  - /placeholder: https://youtube.com/watch?v=...
+- paragraph: Optional final recording URL, such as a processed upload or a reviewed provider recording.
+- checkbox "Publish recording publicly"
+- text: Publish recording publicly
+- paragraph: Controls whether public visitors can see the final public recording URL.

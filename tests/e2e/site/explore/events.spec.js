@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
-import { queryE2eDatabase } from "../../database.js";
+import { expect, test } from "../../fixtures.js";
+import { cleanupEventsByIds, insertOwnedEvent } from "../../data-graphs/events.js";
+import { getSeedClock } from "../../database.js";
 import {
   TEST_CALENDAR_EVENTS,
   TEST_COHOSTED_EVENT,
@@ -21,13 +22,10 @@ import {
 } from "../../utils.js";
 
 // Approved co-host names in their alphabetical display order.
-const COHOSTED_EVENT_COHOST_NAMES = [
-  "E2E Second Group Delta",
-  "E2E Second Group Zeta",
-  TEST_GROUP_NAMES.gamma,
-];
+const COHOSTED_EVENT_COHOST_NAMES = [TEST_GROUP_NAMES.delta, TEST_GROUP_NAMES.zeta, TEST_GROUP_NAMES.gamma];
 
-const SORT_EVENT_CATEGORY_ID = "33333333-3333-3333-3333-333333333331";
+// Path of the explore event card requested when a calendar event opens its tooltip.
+const EVENT_CARD_PATHNAME = /^\/explore\/events\/[0-9a-f-]+\/card$/;
 
 // Date filter values `SearchEventsFilters` rejects: unparsable, out-of-range and non-`YYYY` years.
 const INVALID_DATE_FILTERS = ["not-a-date", "2031-13-45", "2031/01/15", "0000-01-01", "-5000-01-01"];
@@ -77,10 +75,12 @@ test.describe("site explore events page", () => {
     // Verify the calendar popover loads the calendar card and omits free price badges.
     const calendarEvent = page.locator(".fc-daygrid-event").filter({ hasText: freeEventName }).first();
     await expect(calendarEvent).toBeVisible();
-    await Promise.all([
-      page.waitForResponse((response) => isEventCardUrl(response.url(), "calendar") && response.ok()),
-      calendarEvent.hover(),
-    ]);
+    await waitForActionResponse(page, () => calendarEvent.hover(), {
+      method: "GET",
+      params: { view_mode: "calendar" },
+      pathname: EVENT_CARD_PATHNAME,
+      status: 200,
+    });
     const calendarPopover = page.locator('[data-popover="true"]').filter({ hasText: freeEventName });
     await expect(calendarPopover).toBeVisible();
     await expect(calendarPopover.getByText("Free", { exact: true })).toHaveCount(0);
@@ -212,19 +212,15 @@ test.describe("site explore events page", () => {
         endsAt: futureDate({ days: 181, hour: 12 }),
         id: randomUUID(),
         name: `${sortToken} Earlier`,
-        priceWindowId: randomUUID(),
         slug: slugify(`${sortToken} earlier`),
         startsAt: futureDate({ days: 181, hour: 10 }),
-        ticketTypeId: randomUUID(),
       },
       {
         endsAt: futureDate({ days: 182, hour: 12 }),
         id: randomUUID(),
         name: `${sortToken} Later`,
-        priceWindowId: randomUUID(),
         slug: slugify(`${sortToken} later`),
         startsAt: futureDate({ days: 182, hour: 10 }),
-        ticketTypeId: randomUUID(),
       },
     ];
 
@@ -250,16 +246,12 @@ test.describe("site explore events page", () => {
       await expect(eventCards.locator(".card-title")).toHaveText(sortEvents.map((event) => event.name));
 
       // Switch to descending dates and wait for the event list to refresh.
-      await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.request().method() === "GET" &&
-            response.url().includes("/explore/events-section") &&
-            response.url().includes("sort_direction=desc") &&
-            response.ok(),
-        ),
-        page.locator("#sort_selector").selectOption("date-desc"),
-      ]);
+      await waitForActionResponse(page, () => page.locator("#sort_selector").selectOption("date-desc"), {
+        method: "GET",
+        params: { sort_direction: "desc" },
+        pathname: "/explore/events-section",
+        status: 200,
+      });
 
       // Verify descending order by exact identity.
       await expect(page.locator("#sort_selector")).toHaveValue("date-desc");
@@ -270,7 +262,7 @@ test.describe("site explore events page", () => {
       );
     } finally {
       // Remove owned sorting fixtures.
-      deleteSortEvents(sortEvents.map((event) => event.slug));
+      cleanupEventsByIds(sortEvents.map((event) => event.id));
     }
   });
 
@@ -300,10 +292,7 @@ test.describe("site explore events page", () => {
     const resetResponse = await waitForActionResponse(
       page,
       () => drawer.getByRole("button", { name: "Reset", exact: true }).last().click(),
-      {
-        method: "GET",
-        urlIncludes: "/explore/events-section",
-      },
+      { method: "GET", pathname: "/explore/events-section", status: 200 },
     );
     const resetRequestUrl = resetResponse.url();
 
@@ -319,42 +308,55 @@ test.describe("site explore events page", () => {
     await expect(backdrop).toHaveClass(/hidden/);
   });
 
-  test("supports kind filtering and switching to calendar view", async ({ page }) => {
+  test("pushes the kind filter to the URL and restores the results on back navigation @smoke", async ({
+    page,
+  }) => {
     // Load the events explore page with the community filter applied.
     await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    const initialUrl = page.url();
 
-    // Verify events render before applying filters.
-    await expect(page.getByPlaceholder("Search events")).toBeVisible();
+    // Verify every seeded alpha event kind renders before filtering.
+    const desktopForm = page.locator("#events-form");
+    const inPersonInput = desktopForm.locator('input[name="kind[]"][value="in-person"]');
+    const [inPersonEvent, virtualEvent, hybridEvent] = TEST_EVENT_NAMES.alpha.map((name) =>
+      page.getByText(name, { exact: true }),
+    );
+    await expect(inPersonEvent).toBeVisible();
+    await expect(virtualEvent).toBeVisible();
+    await expect(hybridEvent).toBeVisible();
+    await expect(inPersonInput).not.toBeChecked();
+
+    // Select in-person through its visible label and wait for the pushed URL.
+    await desktopForm.getByText("In-person", { exact: true }).click();
+    await expect(page).toHaveURL((url) => url.searchParams.get("kind[0]") === "in-person");
+
+    // Verify only the in-person event remains and the filter stays selected.
+    await expect(inPersonEvent).toBeVisible();
+    await expect(virtualEvent).toHaveCount(0);
+    await expect(hybridEvent).toHaveCount(0);
+    await expect(inPersonInput).toBeChecked();
+
+    // Go back and verify the URL, results and checkbox return to the unfiltered state.
+    await page.goBack();
+    await expect(page).toHaveURL(initialUrl);
+    await expect(inPersonEvent).toBeVisible();
+    await expect(virtualEvent).toBeVisible();
+    await expect(hybridEvent).toBeVisible();
+    await expect(inPersonInput).not.toBeChecked();
+  });
+
+  test("switches event results to the calendar view @smoke", async ({ page }) => {
+    // Load the events explore page with the community filter applied.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
     await expect(page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true })).toBeVisible();
-    await expect(page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true })).toBeVisible();
-
-    // Apply the in-person filter and wait for the event list to narrow.
-    const inPersonFilter = page.locator('input[name="kind[]"][value="in-person"]').first();
-    await inPersonFilter.evaluate((input) => {
-      if (!(input instanceof HTMLInputElement)) {
-        throw new Error("in-person filter input not found");
-      }
-
-      // Select the answer option.
-      input.checked = true;
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-
-    // Verify only matching in-person events remain visible.
-    await expect(page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true })).toBeVisible();
-    await expect(page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true })).toHaveCount(0);
 
     // Switch to the calendar view and wait for the results to refresh.
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/explore/events-section") &&
-          response.url().includes("view_mode=calendar") &&
-          response.ok(),
-      ),
-      page.locator('label[for="calendar"]').click(),
-    ]);
+    await waitForActionResponse(page, () => page.locator('label[for="calendar"]').click(), {
+      method: "GET",
+      params: { view_mode: "calendar" },
+      pathname: "/explore/events-section",
+      status: 200,
+    });
 
     // Verify calendar controls appear after switching views.
     await expect(page.locator("#calendar-box")).toBeVisible();
@@ -372,16 +374,16 @@ test.describe("site explore events page", () => {
     await expect(searchInput).toBeVisible();
 
     // Submit the unmatched search query and wait for filtered results.
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/explore/events-section") &&
-          response.url().includes("ts_query=No%20matching%20event") &&
-          response.ok(),
-      ),
-      searchInput.fill("No matching event").then(() => searchInput.press("Enter")),
-    ]);
+    await waitForActionResponse(
+      page,
+      () => searchInput.fill("No matching event").then(() => searchInput.press("Enter")),
+      {
+        method: "GET",
+        params: { ts_query: "No matching event" },
+        pathname: "/explore/events-section",
+        status: 200,
+      },
+    );
 
     // Find the filtered empty state.
     const filteredEmptyState = page.locator(".no-results-filtered:not(.hidden)");
@@ -396,16 +398,12 @@ test.describe("site explore events page", () => {
     ).toBeVisible();
 
     // Switch to calendar view and wait for the empty state to refresh.
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/explore/events-section") &&
-          response.url().includes("view_mode=calendar") &&
-          response.ok(),
-      ),
-      page.locator('label[for="calendar"]').click(),
-    ]);
+    await waitForActionResponse(page, () => page.locator('label[for="calendar"]').click(), {
+      method: "GET",
+      params: { view_mode: "calendar" },
+      pathname: "/explore/events-section",
+      status: 200,
+    });
 
     // Verify calendar mode keeps the filtered empty state visible.
     await expect(page.locator("#calendar-box")).toBeVisible();
@@ -415,7 +413,7 @@ test.describe("site explore events page", () => {
 
   test("hides the empty state after navigating from an empty month to one with events", async ({ page }) => {
     // Load the calendar one month before the seeded current-month event.
-    const currentMonth = getMonthStart(new Date());
+    const currentMonth = getSeedMonthStart();
     const emptyMonth = addMonths(currentMonth, -1);
     await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, emptyMonth));
 
@@ -432,7 +430,7 @@ test.describe("site explore events page", () => {
     const response = await waitForActionResponse(
       page,
       () => page.getByRole("button", { name: "Next month" }).click(),
-      { method: "GET", urlIncludes: "/explore/events/search" },
+      { method: "GET", pathname: "/explore/events/search", status: 200 },
     );
     expectWidgetMonthRequest(response, populatedRange);
 
@@ -464,7 +462,7 @@ test.describe("site explore events page", () => {
 
   test("shows the empty state after navigating from a populated month to an empty one", async ({ page }) => {
     // Load the calendar on the seeded next-month event.
-    const nextMonth = addMonths(getMonthStart(new Date()), 1);
+    const nextMonth = addMonths(getSeedMonthStart(), 1);
     const emptyMonth = addMonths(nextMonth, 1);
     await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.nextMonth, nextMonth));
 
@@ -482,7 +480,7 @@ test.describe("site explore events page", () => {
     const response = await waitForActionResponse(
       page,
       () => page.getByRole("button", { name: "Next month" }).click(),
-      { method: "GET", urlIncludes: "/explore/events/search" },
+      { method: "GET", pathname: "/explore/events/search", status: 200 },
     );
     expectWidgetMonthRequest(response, emptyRange);
 
@@ -513,7 +511,7 @@ test.describe("site explore events page", () => {
 
   test("opens a calendar event card on keyboard focus and closes it with Escape", async ({ page }) => {
     // Load the calendar on the seeded current-month event.
-    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getSeedMonthStart()));
     const calendarEvent = page
       .locator(".fc-daygrid-event")
       .filter({ hasText: TEST_CALENDAR_EVENTS.thisMonth.name })
@@ -521,15 +519,12 @@ test.describe("site explore events page", () => {
     await expect(calendarEvent).toBeVisible();
 
     // Focus the event link and wait for its card to load.
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          isEventCardUrl(response.url(), "calendar") &&
-          response.url().includes(TEST_CALENDAR_EVENTS.thisMonth.id) &&
-          response.ok(),
-      ),
-      calendarEvent.focus(),
-    ]);
+    await waitForActionResponse(page, () => calendarEvent.focus(), {
+      method: "GET",
+      params: { view_mode: "calendar" },
+      pathname: `/explore/events/${TEST_CALENDAR_EVENTS.thisMonth.id}/card`,
+      status: 200,
+    });
 
     // Verify the focused event is described by its card tooltip.
     const tooltip = page.getByRole("tooltip").filter({ hasText: TEST_CALENDAR_EVENTS.thisMonth.name });
@@ -547,7 +542,7 @@ test.describe("site explore events page", () => {
 
   test("opens a calendar event in a new tab on a modified click", async ({ page }) => {
     // Load the calendar on the seeded current-month event.
-    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getSeedMonthStart()));
     const calendarEvent = page
       .locator(".fc-daygrid-event")
       .filter({ hasText: TEST_CALENDAR_EVENTS.thisMonth.name })
@@ -571,16 +566,18 @@ test.describe("site explore events page", () => {
 
   test("opens a calendar event card link in a new tab on a modified click", async ({ page }) => {
     // Load the calendar on the seeded current-month event and open its card.
-    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getSeedMonthStart()));
     const calendarEvent = page
       .locator(".fc-daygrid-event")
       .filter({ hasText: TEST_CALENDAR_EVENTS.thisMonth.name })
       .first();
     await expect(calendarEvent).toBeVisible();
-    await Promise.all([
-      page.waitForResponse((response) => isEventCardUrl(response.url(), "calendar") && response.ok()),
-      calendarEvent.hover(),
-    ]);
+    await waitForActionResponse(page, () => calendarEvent.hover(), {
+      method: "GET",
+      params: { view_mode: "calendar" },
+      pathname: EVENT_CARD_PATHNAME,
+      status: 200,
+    });
     const tooltip = page.getByRole("tooltip").filter({ hasText: TEST_CALENDAR_EVENTS.thisMonth.name });
     await expect(tooltip).toBeVisible();
     const calendarUrl = page.url();
@@ -599,7 +596,7 @@ test.describe("site explore events page", () => {
     page,
   }) => {
     // Serve next month's events and their cards from routed responses.
-    const nextMonth = addMonths(getMonthStart(new Date()), 1);
+    const nextMonth = addMonths(getSeedMonthStart(), 1);
     const crowdedEvents = Array.from({ length: 6 }, (_, index) =>
       buildMinimalEvent(
         `Crowded day event ${index + 1}`,
@@ -625,10 +622,11 @@ test.describe("site explore events page", () => {
     });
 
     // Load the calendar and move to the routed month.
-    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getSeedMonthStart()));
     await waitForActionResponse(page, () => page.getByRole("button", { name: "Next month" }).click(), {
       method: "GET",
-      urlIncludes: "/explore/events/search",
+      pathname: "/explore/events/search",
+      status: 200,
     });
 
     // Hover two segments of the multi-week event.
@@ -673,7 +671,7 @@ test.describe("site explore events page", () => {
 
   test("keeps one calendar card open and closes hovered cards with Escape", async ({ page }) => {
     // Serve two next-month events and their cards from routed responses.
-    const nextMonth = addMonths(getMonthStart(new Date()), 1);
+    const nextMonth = addMonths(getSeedMonthStart(), 1);
     const focusedEvent = buildMinimalEvent(
       "Focused card event",
       getMonthDayAt(nextMonth, 8, 9),
@@ -695,10 +693,11 @@ test.describe("site explore events page", () => {
     });
 
     // Load the calendar and move to the routed month.
-    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getSeedMonthStart()));
     await waitForActionResponse(page, () => page.getByRole("button", { name: "Next month" }).click(), {
       method: "GET",
-      urlIncludes: "/explore/events/search",
+      pathname: "/explore/events/search",
+      status: 200,
     });
 
     // Open the card of a focused event.
@@ -722,7 +721,7 @@ test.describe("site explore events page", () => {
 
   test("scrolls long more-events lists and closes them when another day card opens", async ({ page }) => {
     // Serve a crowded next-month day, an event on an earlier day, and their cards.
-    const nextMonth = addMonths(getMonthStart(new Date()), 1);
+    const nextMonth = addMonths(getSeedMonthStart(), 1);
     const crowdedEvents = Array.from({ length: 30 }, (_, index) =>
       buildMinimalEvent(
         `Long day event ${String(index + 1).padStart(2, "0")}`,
@@ -746,10 +745,11 @@ test.describe("site explore events page", () => {
     });
 
     // Load the calendar, move to the routed month, and open the crowded day list.
-    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getSeedMonthStart()));
     await waitForActionResponse(page, () => page.getByRole("button", { name: "Next month" }).click(), {
       method: "GET",
-      urlIncludes: "/explore/events/search",
+      pathname: "/explore/events/search",
+      status: 200,
     });
     const moreLink = page.locator(".fc-daygrid-more-link").first();
     await moreLink.click();
@@ -785,12 +785,12 @@ test.describe("site explore events page", () => {
 
   test("shows how many events the calendar draws when the month is capped", async ({ page }) => {
     // Load the calendar and verify the notice starts hidden for uncapped results.
-    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getMonthStart(new Date())));
+    await navigateToPath(page, buildCalendarPath(TEST_CALENDAR_EVENTS.thisMonth, getSeedMonthStart()));
     const notice = page.locator("[data-explore-truncation-notice]");
     await expect(notice).toBeHidden();
 
     // Answer the next month with capped results.
-    const nextMonth = addMonths(getMonthStart(new Date()), 1);
+    const nextMonth = addMonths(getSeedMonthStart(), 1);
     const routedEvents = [
       buildMinimalEvent(
         "Capped month event",
@@ -803,7 +803,8 @@ test.describe("site explore events page", () => {
     );
     await waitForActionResponse(page, () => page.getByRole("button", { name: "Next month" }).click(), {
       method: "GET",
-      urlIncludes: "/explore/events/search",
+      pathname: "/explore/events/search",
+      status: 200,
     });
 
     // Verify the notice reports the drawn and matching counts inside its status region.
@@ -865,38 +866,6 @@ const buildMinimalEvent = (name, startsAt, endsAt) => ({
   starts_at: Math.floor(startsAt.getTime() / 1000),
 });
 
-/** Deletes sort fixtures from event, event_ticket_type, and event_ticket_price_window. */
-const deleteSortEvents = (slugs) => {
-  if (slugs.length === 0) {
-    return;
-  }
-
-  queryE2eDatabase(
-    `
-      delete from event_ticket_price_window
-      where event_ticket_type_id in (
-        select event_ticket_type_id
-        from event_ticket_type
-        where event_id in (
-          select event_id
-          from event
-          where slug in (${slugs.map((slug) => `'${escapeSql(slug)}'`).join(", ")})
-        )
-      );
-      delete from event_ticket_type
-      where event_id in (
-        select event_id
-        from event
-        where slug in (${slugs.map((slug) => `'${escapeSql(slug)}'`).join(", ")})
-      );
-      delete from event where slug in (${slugs.map((slug) => `'${escapeSql(slug)}'`).join(", ")});
-    `,
-  );
-};
-
-/** Escapes a value for embedding in E2E SQL. */
-const escapeSql = (value) => value.replace(/'/g, "''");
-
 /** Verifies a calendar search request covers the expected month. */
 const expectWidgetMonthRequest = (response, range) => {
   const url = new URL(response.url());
@@ -930,53 +899,33 @@ const getMonthRange = (date) => ({
 /** Returns the first day of the UTC month. */
 const getMonthStart = (date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 
-/** Checks whether a URL requests an explore event card for a view. */
-const isEventCardUrl = (url, view) => {
-  const parsedUrl = new URL(url);
-  return (
-    /\/explore\/events\/[0-9a-f-]+\/card$/.test(parsedUrl.pathname) &&
-    parsedUrl.searchParams.get("view_mode") === view
-  );
-};
+/** Returns the first day of the seed's current month, which holds the this-month calendar event. */
+const getSeedMonthStart = () => getSeedClock(TEST_CALENDAR_EVENTS.thisMonth.id).monthStart;
 
-/** Inserts sort fixtures into event, event_ticket_type, and event_ticket_price_window. */
-const insertSortEvent = ({ id, name, priceWindowId, slug, startsAt, endsAt, ticketTypeId }) => {
-  queryE2eDatabase(`
-    insert into event (
-      event_id, name, slug, description, timezone, event_category_id,
-      event_kind_id, group_id, published, starts_at, ends_at
-    ) values (
-      '${escapeSql(id)}',
-      '${escapeSql(name)}',
-      '${escapeSql(slug)}',
-      '${escapeSql(`${name} generated for deterministic sorting coverage.`)}',
-      'UTC',
-      '${SORT_EVENT_CATEGORY_ID}',
-      'in-person',
-      '${TEST_GROUP_IDS.community1.alpha}',
-      true,
-      '${escapeSql(startsAt)}'::timestamp at time zone 'UTC',
-      '${escapeSql(endsAt)}'::timestamp at time zone 'UTC'
-    );
-    insert into event_ticket_type (
-      event_ticket_type_id, active, event_id, "order", seats_total, title, description
-    ) values (
-      '${escapeSql(ticketTypeId)}',
-      true,
-      '${escapeSql(id)}',
-      1,
-      30,
-      'General admission',
-      'Default ticket type for deterministic sorting coverage.'
-    );
-    insert into event_ticket_price_window (
-      amount_minor, event_ticket_price_window_id, event_ticket_type_id
-    ) values (
-      0,
-      '${escapeSql(priceWindowId)}',
-      '${escapeSql(ticketTypeId)}'
-    );
-  `);
+/** Inserts a published in-person alpha sort fixture without a publish timestamp or publisher. */
+const insertSortEvent = ({ id, name, slug, startsAt, endsAt }) => {
+  insertOwnedEvent({
+    description: `${name} generated for deterministic sorting coverage.`,
+    descriptionShort: null,
+    endsAt,
+    eventId: id,
+    groupId: TEST_GROUP_IDS.community1.alpha,
+    kind: "in-person",
+    name,
+    organizerUserIds: [],
+    publishedAgo: null,
+    publishedBy: null,
+    slug,
+    startsAt,
+    tiers: [
+      {
+        description: "Default ticket type for deterministic sorting coverage.",
+        key: "general",
+        seats: 30,
+        title: "General admission",
+      },
+    ],
+  });
 };
 
 /** Hovers a calendar event, waits for its card, and returns the tooltip id. */

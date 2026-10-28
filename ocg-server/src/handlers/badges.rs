@@ -17,6 +17,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
+    config::HttpServerConfig,
     db::DynDB,
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
     router::{CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
@@ -55,6 +56,7 @@ pub(super) const USER_PROFILE_BADGES_LIMIT: usize = 50;
 pub(crate) async fn credential(
     State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(user_badge_id): Path<Uuid>,
     headers: HeaderMap,
     uri: Uri,
@@ -92,6 +94,7 @@ pub(crate) async fn credential(
     let revoked = award.revoked_at.is_some();
     let page = CredentialPage {
         award,
+        base_url: server_cfg.base_url,
         image_url,
         path: uri.path().to_string(),
         revoked,
@@ -237,28 +240,10 @@ pub(crate) async fn verify(
     // Collect only the supported local reference or bounded PNG fields
     let mut credential_reference = None;
     let mut png_bytes = None;
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|error| HandlerError::Other(error.into()))?
-    {
+    while let Some(field) = multipart.next_field().await? {
         match field.name() {
-            Some("credential") => {
-                credential_reference = Some(
-                    field
-                        .text()
-                        .await
-                        .map_err(|error| HandlerError::Other(error.into()))?,
-                );
-            }
-            Some("png") if field.file_name().is_some() => {
-                png_bytes = Some(
-                    field
-                        .bytes()
-                        .await
-                        .map_err(|error| HandlerError::Other(error.into()))?,
-                );
-            }
+            Some("credential") => credential_reference = Some(field.text().await?),
+            Some("png") if field.file_name().is_some() => png_bytes = Some(field.bytes().await?),
             _ => {}
         }
     }

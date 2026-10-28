@@ -1,0 +1,23 @@
+- text: Events
+- link "Open documentation":
+  - /url: /docs#/guides/event-operations?id=events-list-work-queue
+- list:
+  - listitem:
+    - button "Upcoming events"
+  - listitem:
+    - button "Past events"
+- button "Add Event"
+- text: 0 events
+- table "Upcoming events list":
+  - rowgroup:
+    - row "Name Date Type Status Actions":
+      - columnheader "Name"
+      - columnheader "Date"
+      - columnheader "Type"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "It looks like you don't have any upcoming events. You can create a new event by clicking on the Add Event button in the top right corner.":
+      - cell "It looks like you don't have any upcoming events. You can create a new event by clicking on the Add Event button in the top right corner.":
+        - text: ""
+        - paragraph: You can create a new event by clicking on the Add Event button in the top right corner.

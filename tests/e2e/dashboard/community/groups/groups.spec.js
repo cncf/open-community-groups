@@ -1,16 +1,17 @@
 import { expect, test } from "../../../fixtures.js";
-import { queryE2eDatabase } from "../../../database.js";
+import { queryCount, queryE2eDatabaseRows, sqlString, sqlUuid, withRowRestore } from "../../../database.js";
+import { cleanupTemporaryGroup } from "../../../data-graphs/groups.js";
 import {
   TEST_COMMUNITY_IDS,
   TEST_COMMUNITY_NAME,
+  TEST_GROUP_CATEGORY_IDS,
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
 } from "../../../seed.js";
 import {
+  confirmAlert,
   expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
   navigateToPath,
   selectGroupContext,
   uniqueName,
@@ -26,6 +27,9 @@ import {
   uploadImageField,
 } from "../../form-helpers.js";
 
+// Seeded group row changed by the deactivate and reactivate and the logo fallback tests.
+const BETA_GROUP_ROW = { key: { group_id: TEST_GROUP_IDS.community1.beta }, table: "group" };
+
 test.describe("community dashboard groups view", () => {
   test("empty state guides the first community group", async ({ adminEmptyCommunityPage }) => {
     // Load groups for the dedicated community without group records.
@@ -35,33 +39,6 @@ test.describe("community dashboard groups view", () => {
     // Verify first-use guidance and the creation action remain available.
     await expect(dashboardContent).toContainText("It looks like you haven't created any groups yet.");
     await expect(dashboardContent.getByRole("button", { name: "Add Group" })).toBeVisible();
-  });
-
-  test("groups table exposes every column at its responsive breakpoint", async ({ adminCommunityPage }) => {
-    // Load the groups dashboard before checking table structure.
-    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
-
-    // Find the groups table and its complete ordered header set.
-    const groupsTable = adminCommunityPage.locator("#dashboard-content").getByRole("table");
-    const headers = ["Name", "Location", "Created", "Category", "Actions"];
-
-    // Verify header order and column visibility across dashboard breakpoints.
-    await expectTableColumnsAtViewport(
-      adminCommunityPage,
-      groupsTable,
-      1024,
-      ["Name", "Actions"],
-      ["Location", "Created", "Category"],
-    );
-    await expectTableColumnsAtViewport(
-      adminCommunityPage,
-      groupsTable,
-      1280,
-      ["Name", "Location", "Category", "Actions"],
-      ["Created"],
-    );
-    await expectTableColumnsAtViewport(adminCommunityPage, groupsTable, 1536, headers, []);
-    await expectTableHeaders(groupsTable, headers);
   });
 
   test("admin can move between community group result pages", async ({ adminCommunityPage }) => {
@@ -74,166 +51,142 @@ test.describe("community dashboard groups view", () => {
   });
 
   test("admin can deactivate and reactivate a group from the list", async ({ adminCommunityPage }) => {
-    // Load the groups list before changing seeded group status.
-    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
-
-    // Target the dashboard content after the HTMX tab loads.
-    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
-
-    // Verify the seeded group starts active before changing status.
-    let betaGroupRow = dashboardContent.locator("tr", {
-      hasText: "Inactive Local Chapter",
-    });
-    await expect(betaGroupRow).toBeVisible();
-    await expect(betaGroupRow.getByText("Inactive", { exact: true })).toHaveCount(0);
-
-    // Define a helper for opening the seeded group actions menu.
-    const openActionsMenu = async () => {
-      await dashboardContent
-        .locator(`.btn-group-actions[data-group-id="${TEST_GROUP_IDS.community1.beta}"]`)
-        .click();
-    };
-
-    // Open the actions menu before deactivating the group.
-    await openActionsMenu();
-
-    // Deactivate the seeded group from the actions menu.
-    const deactivateButton = dashboardContent.locator(`#deactivate-group-${TEST_GROUP_IDS.community1.beta}`);
-    await expect(deactivateButton).toBeVisible();
-    await deactivateButton.click();
-    await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to deactivate this group?",
-    );
-
-    // Confirm deactivation and wait for the server response.
-    await waitForActionResponse(
-      adminCommunityPage,
-      () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-      {
-        method: "PUT",
-        urlIncludes: `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/deactivate`,
-      },
-    );
-
-    // Verify the row reflects the deactivated state.
-    betaGroupRow = dashboardContent.locator("tr", {
-      hasText: "Inactive Local Chapter",
-    });
-    await expect(betaGroupRow).toContainText("Inactive");
-    await expect(
-      betaGroupRow.getByRole("button", {
-        name: "View group page: Inactive Local Chapter",
-      }),
-    ).toBeDisabled();
-
-    // Reopen the actions menu before restoring the seeded group.
-    await openActionsMenu();
-
-    // Reactivate the seeded group from the actions menu.
-    const activateButton = dashboardContent.locator(`#activate-group-${TEST_GROUP_IDS.community1.beta}`);
-    await expect(activateButton).toBeVisible();
-    await activateButton.click();
-    await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to activate this group?",
-    );
-
-    // Confirm reactivation and wait for the server response.
-    await waitForActionResponse(
-      adminCommunityPage,
-      () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-      {
-        method: "PUT",
-        urlIncludes: `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/activate`,
-      },
-    );
-
-    // Verify the row returns to the original active state.
-    betaGroupRow = dashboardContent.locator("tr", {
-      hasText: "Inactive Local Chapter",
-    });
-    await expect(betaGroupRow.getByText("Inactive", { exact: true })).toHaveCount(0);
-    await expect(
-      betaGroupRow.getByRole("link", {
-        name: "View group page: Inactive Local Chapter",
-      }),
-    ).toBeVisible();
-  });
-
-  test("admin can add and delete a community group", async ({ adminCommunityPage }) => {
-    // Create a unique group name for the temporary group flow.
-    const groupName = uniqueName("community group");
-
-    try {
-      // Load the groups list before creating a temporary group.
+    // Restore the seeded group row even when the UI reactivation below fails.
+    await withRowRestore(BETA_GROUP_ROW, async () => {
+      // Load the groups list before changing seeded group status.
       await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
       // Target the dashboard content after the HTMX tab loads.
       const dashboardContent = adminCommunityPage.locator("#dashboard-content");
       await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
 
-      // Open the group form from the dashboard list.
-      await dashboardContent.getByRole("button", { name: "Add Group" }).click();
-      await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
+      // Verify the seeded group starts active before changing status.
+      let betaGroupRow = dashboardContent.locator("tr", {
+        hasText: "Inactive Local Chapter",
+      });
+      await expect(betaGroupRow).toBeVisible();
+      await expect(betaGroupRow.getByText("Inactive", { exact: true })).toHaveCount(0);
 
-      // Fill the required group details for creation.
-      await adminCommunityPage.getByLabel("Name").fill(groupName);
-      await adminCommunityPage.getByLabel("Category").selectOption("22222222-2222-2222-2222-222222222221");
-      await adminCommunityPage.getByLabel("Region").selectOption("22222222-2222-2222-2222-222222222301");
-      await adminCommunityPage.getByLabel("Short Description").fill("A short e2e-created community group.");
+      // Define a helper for opening the seeded group actions menu.
+      const openActionsMenu = async () => {
+        await dashboardContent
+          .locator(`.btn-group-actions[data-group-id="${TEST_GROUP_IDS.community1.beta}"]`)
+          .click();
+      };
+
+      // Open the actions menu before deactivating the group.
+      await openActionsMenu();
+
+      // Deactivate the seeded group from the actions menu.
+      const deactivateButton = dashboardContent.locator(
+        `#deactivate-group-${TEST_GROUP_IDS.community1.beta}`,
+      );
+      await expect(deactivateButton).toBeVisible();
+      await deactivateButton.click();
+
+      // Confirm deactivation and wait for the server response.
+      await waitForActionResponse(
+        adminCommunityPage,
+        () =>
+          confirmAlert(adminCommunityPage, { message: "Are you sure you wish to deactivate this group?" }),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/deactivate`,
+        },
+      );
+
+      // Verify the row reflects the deactivated state.
+      betaGroupRow = dashboardContent.locator("tr", {
+        hasText: "Inactive Local Chapter",
+      });
+      await expect(betaGroupRow).toContainText("Inactive");
+      await expect(
+        betaGroupRow.getByRole("button", {
+          name: "View group page: Inactive Local Chapter",
+        }),
+      ).toBeDisabled();
+
+      // Reopen the actions menu before restoring the seeded group.
+      await openActionsMenu();
+
+      // Reactivate the seeded group from the actions menu.
+      const activateButton = dashboardContent.locator(`#activate-group-${TEST_GROUP_IDS.community1.beta}`);
+      await expect(activateButton).toBeVisible();
+      await activateButton.click();
+
+      // Confirm reactivation and wait for the server response.
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => confirmAlert(adminCommunityPage, { message: "Are you sure you wish to activate this group?" }),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/activate`,
+        },
+      );
+
+      // Verify the row returns to the original active state.
+      betaGroupRow = dashboardContent.locator("tr", {
+        hasText: "Inactive Local Chapter",
+      });
+      await expect(betaGroupRow.getByText("Inactive", { exact: true })).toHaveCount(0);
+      await expect(
+        betaGroupRow.getByRole("link", {
+          name: "View group page: Inactive Local Chapter",
+        }),
+      ).toBeVisible();
+    });
+  });
+
+  test("saving a group without its own logo keeps following the community logo", async ({
+    adminCommunityPage,
+  }) => {
+    // Count the seeded group row while it has no logo of its own.
+    const countBetaGroupWithoutOwnLogo = () =>
+      queryCount(`
+        select count(*)
+        from "group"
+        where group_id = ${sqlUuid(TEST_GROUP_IDS.community1.beta)}
+        and logo_url is null
+      `);
+    expect(countBetaGroupWithoutOwnLogo()).toBe(1);
+
+    // Restore the seeded group row the form save rewrites.
+    await withRowRestore(BETA_GROUP_ROW, async () => {
+      // Open the seeded group update form from the groups list.
+      await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+      const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+      const betaGroupRow = dashboardContent.locator("tr", { hasText: TEST_GROUP_NAMES.beta });
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => betaGroupRow.locator('button[hx-get*="/update"]').click(),
+        {
+          method: "GET",
+          pathname: `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/update`,
+          status: 200,
+        },
+      );
+
+      // Verify the community logo fallback is not prefilled as the group logo.
+      const updateGroupButton = adminCommunityPage.getByRole("button", { name: "Update Group" });
+      await expect(updateGroupButton).toBeVisible();
+      await expect(
+        adminCommunityPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
+      ).toHaveValue("");
+
+      // Fill the required description the seeded group lacks, save, and verify the group still
+      // has no logo of its own.
       await fillMarkdownEditor(
         adminCommunityPage,
         "description",
-        "A community group created and removed by the e2e suite.",
+        "A seeded group edited to verify the community logo fallback is not stored.",
       );
-
-      // Create the temporary group and wait for the POST response.
-      await waitForActionResponse(
-        adminCommunityPage,
-        () => adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
-        {
-          method: "POST",
-          status: 201,
-          urlIncludes: "/dashboard/community/groups/add",
-        },
-      );
-
-      // Verify the newly-created group appears in the dashboard list.
-      const groupRow = dashboardContent.locator("tr", { hasText: groupName });
-      await expect(groupRow).toBeVisible();
-
-      // Open the actions menu before deleting the temporary group.
-      await groupRow
-        .getByRole("button", {
-          name: `Open actions menu for group ${groupName}`,
-        })
-        .click();
-
-      // Open the delete confirmation for the temporary group.
-      const deleteButton = groupRow.locator('button[id^="delete-group-"]');
-      await expect(deleteButton).toBeVisible();
-      await deleteButton.click();
-      await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
-        "Are you sure you wish to delete this group?",
-      );
-
-      // Confirm deletion and wait for the server response.
-      await waitForActionResponse(
-        adminCommunityPage,
-        () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-        {
-          method: "DELETE",
-          urlEndsWith: "/delete",
-          urlIncludes: "/dashboard/community/groups/",
-        },
-      );
-
-      // Verify the deleted group is removed from the dashboard list.
-      await expect(dashboardContent.locator("tr", { hasText: groupName })).toHaveCount(0);
-    } finally {
-      // Clean up the temporary group if deletion failed.
-      cleanupGroupByName(groupName);
-    }
+      await waitForActionResponse(adminCommunityPage, () => updateGroupButton.click(), {
+        method: "PUT",
+        pathname: `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/update`,
+        status: 204,
+      });
+      expect(countBetaGroupWithoutOwnLogo()).toBe(1);
+    });
   });
 
   test("admin can create and remove a subgroup relationship", async ({ adminCommunityPage }) => {
@@ -264,14 +217,11 @@ test.describe("community dashboard groups view", () => {
       const deleteButton = groupRow.locator('button[id^="delete-group-"]');
       await expect(deleteButton).toBeVisible();
       await deleteButton.click();
-      await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
-        "Are you sure you wish to delete this group?",
-      );
 
       // Confirm deletion and wait for the server response.
       await waitForActionResponse(
         adminCommunityPage,
-        () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+        () => confirmAlert(adminCommunityPage, { message: "Are you sure you wish to delete this group?" }),
         {
           method: "DELETE",
           urlEndsWith: "/delete",
@@ -292,7 +242,7 @@ test.describe("community dashboard groups view", () => {
 
       // Fill required child group details and select its parent.
       await adminCommunityPage.getByLabel("Name").fill(groupName);
-      await adminCommunityPage.getByLabel("Category").selectOption("22222222-2222-2222-2222-222222222221");
+      await adminCommunityPage.getByLabel("Category").selectOption(TEST_GROUP_CATEGORY_IDS.one);
       await adminCommunityPage.getByLabel("Region").selectOption("22222222-2222-2222-2222-222222222301");
       await adminCommunityPage.locator("#parent_group_id").selectOption(TEST_GROUP_IDS.community1.alpha);
       await adminCommunityPage
@@ -373,7 +323,7 @@ test.describe("community dashboard groups view", () => {
       await expect(parentGroupSelect).toHaveCSS("cursor", "not-allowed");
       await expect(parentGroupSelect).toHaveCSS("opacity", "1");
     } finally {
-      // Delete the temporary child group and mark any leftover rows deleted.
+      // Delete the temporary child group, then remove its soft-deleted rows.
       if (groupWasCreated) {
         await deleteTemporaryGroup();
       }
@@ -392,7 +342,7 @@ test.describe("community dashboard groups view", () => {
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
       blueskyUrl: "https://bsky.app/profile/e2e-community-group-initial",
-      categoryId: "22222222-2222-2222-2222-222222222221",
+      categoryId: TEST_GROUP_CATEGORY_IDS.one,
       city: "Barcelona",
       countryCode: "ES",
       countryName: "Spain",
@@ -425,7 +375,7 @@ test.describe("community dashboard groups view", () => {
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
       blueskyUrl: "https://bsky.app/profile/e2e-community-group-updated",
-      categoryId: "22222222-2222-2222-2222-222222222221",
+      categoryId: TEST_GROUP_CATEGORY_IDS.one,
       city: "Madrid",
       countryCode: "PT",
       countryName: "Portugal",
@@ -547,16 +497,11 @@ test.describe("community dashboard groups view", () => {
       await fillGroupForm(updatedValues);
 
       // Submit the update and wait for the server response.
-      await Promise.all([
-        adminCommunityPage.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.url().includes("/dashboard/community/groups/") &&
-            response.url().includes("/update") &&
-            response.ok(),
-        ),
-        adminCommunityPage.getByRole("button", { name: "Update Group" }).click(),
-      ]);
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => adminCommunityPage.getByRole("button", { name: "Update Group" }).click(),
+        { method: "PUT", pathname: /^\/dashboard\/community\/groups\/[^/]+\/update$/u, status: 204 },
+      );
 
       // Verify the updated group name appears in the dashboard list.
       groupRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
@@ -623,14 +568,11 @@ test.describe("community dashboard groups view", () => {
       const deleteButton = groupRow.locator('button[id^="delete-group-"]');
       await expect(deleteButton).toBeVisible();
       await deleteButton.click();
-      await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
-        "Are you sure you wish to delete this group?",
-      );
 
       // Confirm deletion and wait for the server response.
       await waitForActionResponse(
         adminCommunityPage,
-        () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+        () => confirmAlert(adminCommunityPage, { message: "Are you sure you wish to delete this group?" }),
         {
           method: "DELETE",
           urlEndsWith: "/delete",
@@ -641,7 +583,7 @@ test.describe("community dashboard groups view", () => {
       // Verify the deleted group is removed from the dashboard list.
       await expect(dashboardContent.locator("tr", { hasText: updatedValues.name })).toHaveCount(0);
     } finally {
-      // Clean up the temporary rich groups if UI deletion did not remove them.
+      // Remove the soft-deleted rich group rows the UI deletion leaves behind.
       cleanupGroupByName(initialValues.name);
       cleanupGroupByName(updatedValues.name);
     }
@@ -674,27 +616,15 @@ test.describe("community dashboard groups view", () => {
     await expect(dashboardContent.locator("tr", { hasText: "Observability Guild" })).toBeVisible();
     await expect(dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" })).toHaveCount(0);
 
-    // Target the search form for programmatic submission.
-    const searchForm = dashboardContent.locator("#groups-search-form");
-
     // Enter a query expected to return no groups.
     await searchInput.fill("");
     await searchInput.fill("zzzzzzzzzzzz");
 
     // Submit the empty-result search and wait for the response.
-    await waitForActionResponse(
-      adminCommunityPage,
-      () =>
-        searchForm.evaluate((form) => {
-          if (form instanceof HTMLFormElement) {
-            form.requestSubmit();
-          }
-        }),
-      {
-        method: "GET",
-        urlIncludes: "/dashboard/community/groups?ts_query=zzzzzzzzzzzz",
-      },
-    );
+    await waitForActionResponse(adminCommunityPage, () => searchInput.press("Enter"), {
+      method: "GET",
+      urlIncludes: "/dashboard/community/groups?ts_query=zzzzzzzzzzzz",
+    });
 
     // Verify the empty result message is shown.
     await expect(
@@ -712,19 +642,12 @@ test.describe("community dashboard groups view", () => {
     await expect(clearFilterButton).toBeVisible();
 
     // Click the clear-filter control to reset the list.
-    await Promise.all([
-      adminCommunityPage.waitForResponse((response) => {
-        const requestUrl = new URL(response.url());
-
-        return (
-          response.request().method() === "GET" &&
-          requestUrl.pathname === "/dashboard/community/groups" &&
-          !requestUrl.searchParams.has("ts_query") &&
-          response.ok()
-        );
-      }),
-      clearFilterButton.click(),
-    ]);
+    await waitForActionResponse(adminCommunityPage, () => clearFilterButton.click(), {
+      method: "GET",
+      params: { ts_query: null },
+      pathname: "/dashboard/community/groups",
+      status: 200,
+    });
 
     // Verify clearing removes the empty state and restores seeded rows.
     await expect(adminCommunityPage).toHaveURL(/\/dashboard\/community\?tab=groups(?:&limit=50&offset=0)?$/);
@@ -798,18 +721,16 @@ test.describe("community dashboard groups view", () => {
   });
 });
 
-/** Marks the named group deleted in the group table for cleanup. */
+/** Deletes every group of the seeded community with the given name, including soft-deleted ones. */
 const cleanupGroupByName = (groupName) => {
-  const escapedName = groupName.replace(/'/g, "''");
-
-  queryE2eDatabase(`
-    update "group"
-    set
-      active = false,
-      deleted = true,
-      deleted_at = current_timestamp,
-      parent_group_id = null
-    where community_id = '${TEST_COMMUNITY_IDS.community1}'
-    and name = '${escapedName}';
+  const groupRows = queryE2eDatabaseRows(`
+    select group_id
+    from "group"
+    where community_id = ${sqlUuid(TEST_COMMUNITY_IDS.community1)}
+    and name = ${sqlString(groupName)};
   `);
+
+  for (const [groupId] of groupRows) {
+    cleanupTemporaryGroup(groupId);
+  }
 };

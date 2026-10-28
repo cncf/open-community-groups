@@ -7,6 +7,7 @@ import {
   bindModalDismissListeners,
   closeModalBodyScroll,
   openModalBodyScroll,
+  trapModalFocus,
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { speakerKey } from "/static/js/dashboard/event/sessions/speaker-utils.js";
@@ -42,6 +43,7 @@ export class SessionSpeakerModal extends LitWrapper {
     this._isOpen = false;
     this._selectedUser = null;
     this._featured = false;
+    this._focusOrigin = null;
     this._handleKeydown = this._handleKeydown.bind(this);
     this._removeDismissListeners = null;
   }
@@ -69,6 +71,8 @@ export class SessionSpeakerModal extends LitWrapper {
    */
   open() {
     if (this.disabled) return;
+    const activeElement = document.activeElement;
+    this._focusOrigin = activeElement instanceof HTMLElement ? activeElement : null;
     this._resetState();
     this._isOpen = openModalBodyScroll(this._isOpen);
     this.updateComplete.then(() => {
@@ -77,11 +81,12 @@ export class SessionSpeakerModal extends LitWrapper {
   }
 
   /**
-   * Closes modal and clears selection state.
+   * Closes modal, clears selection state, and refocuses the trigger.
    */
   close() {
     this._isOpen = closeModalBodyScroll(this._isOpen);
     this._resetState();
+    this._restoreFocus();
   }
 
   /**
@@ -94,14 +99,28 @@ export class SessionSpeakerModal extends LitWrapper {
   }
 
   /**
-   * Handles escape key to close the modal.
+   * Restores focus to the control that opened the modal when it is still present.
+   * @private
+   */
+  _restoreFocus() {
+    if (this._focusOrigin instanceof HTMLElement && document.contains(this._focusOrigin)) {
+      this._focusOrigin.focus();
+    }
+    this._focusOrigin = null;
+  }
+
+  /**
+   * Closes the modal on escape and keeps Tab navigation inside it while open.
    * @param {KeyboardEvent} event
    * @private
    */
   _handleKeydown(event) {
-    if (isEscapeEvent(event) && this._isOpen) {
+    if (!this._isOpen) return;
+    if (isEscapeEvent(event)) {
       this.close();
+      return;
     }
+    trapModalFocus(event, this.querySelector('[role="dialog"]'));
   }
 
   /**
@@ -188,7 +207,12 @@ export class SessionSpeakerModal extends LitWrapper {
     if (!this._isOpen) return html``;
 
     return html`
-      <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden">
+      <div
+        class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="session-speaker-modal-title"
+      >
         <div
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"
           @click=${() => this.close()}
@@ -196,7 +220,9 @@ export class SessionSpeakerModal extends LitWrapper {
         <div class="modal-panel p-4 max-w-2xl">
           <div class="modal-card rounded-lg">
             <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-              <h3 class="text-xl font-semibold text-stone-900">Add speaker</h3>
+              <h3 id="session-speaker-modal-title" class="text-xl font-semibold text-stone-900">
+                Add speaker
+              </h3>
               <button
                 type="button"
                 class="group bg-transparent hover:bg-stone-200 rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center cursor-pointer"

@@ -1,10 +1,12 @@
 import { expect, test } from "../../../fixtures.js";
+import { cleanupGroupMember } from "../../../data-graphs/groups.js";
 import {
   TEST_COMMUNITY_NAME,
   TEST_COMMUNITY_TITLE,
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
+  TEST_USER_IDS,
 } from "../../../seed.js";
 import {
   expectPaginationNavigation,
@@ -50,16 +52,16 @@ test.describe("user dashboard my groups view", () => {
     ).toBeVisible();
   });
 
-  test("member can leave a group from My Groups", async ({ pending2Page }) => {
-    // Load the public group and reset the reusable user's membership
+  test("member can leave a group from My Groups", async ({ owned, pending2Page }) => {
+    // Remove the membership even if the leave flow fails before it does
+    owned.defer(() => cleanupGroupMember({ groupId, userId: TEST_USER_IDS.pending2 }));
+
+    // Load the public group as a non-member
     await navigateToGroup(pending2Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
-    await waitForMembershipState(pending2Page);
-    if (await getMembershipContainer(pending2Page).locator("#leave-btn").isVisible()) {
-      await leavePublicGroup(pending2Page);
-    }
+    const joinButton = pending2Page.locator("#membership-container #join-btn");
+    await expect(joinButton).toBeVisible();
 
     // Join the group through the public membership action
-    const joinButton = getMembershipContainer(pending2Page).locator("#join-btn");
     await waitForActionResponse(pending2Page, () => joinButton.click(), {
       method: "POST",
       urlIncludes: `/group/${groupId}/join`,
@@ -122,31 +124,3 @@ test.describe("user dashboard my groups view", () => {
     await expect(groupLinks).toHaveText([TEST_GROUP_NAMES.beta, TEST_GROUP_NAMES.alpha]);
   });
 });
-
-/** Returns the public membership container for the current group page. */
-const getMembershipContainer = (page) => page.locator("#membership-container");
-
-/** Leaves the public group when the reusable user is already a member. */
-const leavePublicGroup = async (page) => {
-  const leaveButton = getMembershipContainer(page).locator("#leave-btn");
-
-  await leaveButton.click();
-  await expect(page.getByRole("button", { name: "Yes" })).toBeVisible();
-  await waitForActionResponse(page, () => page.getByRole("button", { name: "Yes" }).click(), {
-    method: "DELETE",
-    urlIncludes: `/group/${groupId}/leave`,
-  });
-  await expect(getMembershipContainer(page).locator("#join-btn")).toBeVisible();
-};
-
-/** Waits until the public membership widget resolves. */
-const waitForMembershipState = async (page) => {
-  await Promise.race([
-    getMembershipContainer(page).locator("#join-btn").waitFor({
-      state: "visible",
-    }),
-    getMembershipContainer(page).locator("#leave-btn").waitFor({
-      state: "visible",
-    }),
-  ]);
-};

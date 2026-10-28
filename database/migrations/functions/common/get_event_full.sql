@@ -38,6 +38,8 @@ returns json as $$
             'cfs_enabled', e.cfs_enabled,
             'cfs_ends_at', epoch_seconds(e.cfs_ends_at),
             'cfs_starts_at', epoch_seconds(e.cfs_starts_at),
+            -- Expose the event's own logo so editors do not persist the fallback
+            'custom_logo_url', e.logo_url,
             'description_short', e.description_short,
             'discount_codes', list_event_discount_codes(e.event_id),
             'ends_at', epoch_seconds(e.ends_at),

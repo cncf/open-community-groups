@@ -1,0 +1,8 @@
+- row "E2E ARIA session proposal Ready for submission":
+  - cell "E2E ARIA session proposal"
+  - cell
+  - cell "Ready for submission"
+  - cell:
+    - button "Edit proposal"
+    - button "View proposal"
+    - button "Delete proposal"

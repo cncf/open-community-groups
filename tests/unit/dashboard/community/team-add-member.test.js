@@ -10,8 +10,7 @@ import {
 } from "/tests/unit/test-utils/lit.js";
 
 describe("team-add-member", () => {
-  const userSearchFieldPrototype =
-    customElements.get("user-search-field").prototype;
+  const userSearchFieldPrototype = customElements.get("user-search-field").prototype;
   const originalFocusInput = userSearchFieldPrototype.focusInput;
 
   const env = useDashboardTestEnv({
@@ -79,8 +78,7 @@ describe("team-add-member", () => {
 
   it("renders the configured disabled tooltip", async () => {
     // Prepare tooltip for rendering the configured disabled tooltip.
-    const tooltip =
-      "Only community admins and groups managers can manage this group's team.";
+    const tooltip = "Only community admins and groups managers can manage this group's team.";
     const element = await mountLitComponentWithAttributes("team-add-member", {
       attributes: {
         "can-manage-team": "false",
@@ -107,9 +105,7 @@ describe("team-add-member", () => {
     // Call mount lit component with attributes.
     const element = await mountLitComponentWithAttributes("team-add-member", {
       attributes: {
-        "role-options": JSON.stringify([
-          { display_name: "Maintainer", community_role_id: "role-1" },
-        ]),
+        "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
       },
     });
 
@@ -128,15 +124,55 @@ describe("team-add-member", () => {
     expect(form).to.not.equal(null);
     expect(processCalls).to.deep.equal([form]);
     expect(focusCalls).to.equal(1);
+
+    // Verify the modal is exposed as a dialog named by its title.
+    const dialog = element.querySelector('[role="dialog"]');
+    expect(dialog.getAttribute("aria-modal")).to.equal("true");
+    expect(element.querySelector(`#${dialog.getAttribute("aria-labelledby")}`).textContent.trim()).to.equal(
+      "Add member",
+    );
+  });
+
+  it("keeps Tab inside the open modal and refocuses the trigger on close", async () => {
+    // Open the modal from its trigger so the focus origin is recorded.
+    const element = await mountLitComponentWithAttributes("team-add-member", {
+      attributes: {
+        "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
+      },
+    });
+    const trigger = element.querySelector("button.btn-primary");
+    trigger.focus();
+    element._open();
+    await element.updateComplete;
+    await element.querySelector("user-search-field").updateComplete;
+    const dialog = element.querySelector('[role="dialog"]');
+    const closeButton = dialog.querySelector("button");
+
+    // Verify opening moves focus into the search field.
+    expect(document.activeElement).to.equal(dialog.querySelector("[data-user-search-input]"));
+    const pressKey = (key, shiftKey = false) => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key, shiftKey, bubbles: true, cancelable: true }));
+    };
+
+    // Verify Shift+Tab on the first control wraps to the last one and Tab wraps back.
+    closeButton.focus();
+    pressKey("Tab", true);
+    expect(document.activeElement).to.equal(element.querySelector("#team-add-role"));
+    pressKey("Tab");
+    expect(document.activeElement).to.equal(closeButton);
+
+    // Verify Escape closes the modal and returns focus to the trigger.
+    pressKey("Escape");
+    await element.updateComplete;
+    expect(element._isOpen).to.equal(false);
+    expect(document.activeElement).to.equal(trigger);
   });
 
   it("keeps the modal content inside the scrolling modal body", async () => {
     // Call mount lit component with attributes.
     const element = await mountLitComponentWithAttributes("team-add-member", {
       attributes: {
-        "role-options": JSON.stringify([
-          { display_name: "Maintainer", community_role_id: "role-1" },
-        ]),
+        "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
       },
     });
 
@@ -155,9 +191,7 @@ describe("team-add-member", () => {
     // Call mount lit component with attributes.
     const element = await mountLitComponentWithAttributes("team-add-member", {
       attributes: {
-        "role-options": JSON.stringify([
-          { display_name: "Maintainer", community_role_id: "role-1" },
-        ]),
+        "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
       },
     });
 
@@ -205,8 +239,7 @@ describe("team-add-member", () => {
   const dismissActions = [
     {
       name: "close button",
-      dismiss: (element) =>
-        element.querySelector("button:has(.icon-close)").click(),
+      dismiss: (element) => element.querySelector("button:has(.icon-close)").click(),
     },
     {
       name: "overlay click",
@@ -214,8 +247,7 @@ describe("team-add-member", () => {
     },
     {
       name: "Escape key",
-      dismiss: () =>
-        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
+      dismiss: () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
     },
   ];
 
@@ -224,9 +256,7 @@ describe("team-add-member", () => {
       // Render the component and open the modal.
       const element = await mountLitComponentWithAttributes("team-add-member", {
         attributes: {
-          "role-options": JSON.stringify([
-            { display_name: "Maintainer", community_role_id: "role-1" },
-          ]),
+          "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
         },
       });
       element._open();
@@ -276,9 +306,7 @@ describe("team-add-member", () => {
     // Call mount lit component with attributes.
     const element = await mountLitComponentWithAttributes("team-add-member", {
       attributes: {
-        "role-options": JSON.stringify([
-          { display_name: "Maintainer", community_role_id: "role-1" },
-        ]),
+        "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
       },
     });
 

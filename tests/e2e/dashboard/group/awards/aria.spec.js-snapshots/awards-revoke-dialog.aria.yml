@@ -1,0 +1,9 @@
+- dialog "Revoke E2E ARIA badge":
+  - heading "Revoke E2E ARIA badge" [level=3]
+  - button "Close modal"
+  - paragraph: This cannot be undone. The credential remains public, but it will permanently verify as revoked.
+  - text: Internal reason *
+  - textbox "Internal reason *":
+    - /placeholder: Visible only to authorized group managers
+  - button "Cancel"
+  - button "Permanently revoke"

@@ -1,0 +1,16 @@
+- dialog "Add question":
+  - heading "Add question" [level=3]
+  - button "Close modal"
+  - text: Question
+  - textbox "Question":
+    - /placeholder: e.g. Company name
+  - text: Type
+  - combobox "Type":
+    - option "Free text" [selected]
+    - option "Single select"
+    - option "Multi select"
+  - checkbox "Required"
+  - text: Required
+  - paragraph: Required answers are collected with a ticket request, RSVP, checkout, or offer claim. Optional questions can be skipped.
+  - button "Cancel"
+  - button "Add question"

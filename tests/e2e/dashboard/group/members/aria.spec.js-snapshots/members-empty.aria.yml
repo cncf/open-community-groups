@@ -1,0 +1,16 @@
+- text: Members
+- link "Open documentation":
+  - /url: /docs#/guides/group-dashboard?id=members-communication
+- text: 0 members
+- button "Send email" [disabled]
+- table "Members list":
+  - rowgroup:
+    - row "Member Position Joined":
+      - columnheader "Member"
+      - columnheader "Position"
+      - columnheader "Joined"
+  - rowgroup:
+    - row "No members yet. Members of this group will appear here once users join.":
+      - cell "No members yet. Members of this group will appear here once users join.":
+        - text: ""
+        - paragraph: Members of this group will appear here once users join.

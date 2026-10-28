@@ -1,6 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 import { queryE2eDatabase } from "../../../database.js";
 import { cleanupEventsByIds, setupOrganizerEvent } from "../../../data-graphs/events.js";
+import { cleanupEventEnrollment } from "../../../data-graphs/invitations.js";
 import { openEventUpdateFormByName, waitForEventEditorAfterSave } from "../../group/events/helpers.js";
 import {
   TEST_COMMUNITY_NAME,
@@ -14,6 +15,7 @@ import {
   TEST_USER_IDS,
 } from "../../../seed.js";
 import {
+  confirmAlert,
   expectPaginationNavigation,
   navigateToEvent,
   navigateToPath,
@@ -114,6 +116,16 @@ test.describe("user dashboard my events view", () => {
       name: "Request refund",
     });
 
+    // Paid attendance is canceled through refunds, not from My Events.
+    const cancelAttendanceAction = refundEventRow.getByRole("menuitem", {
+      name: "Cancel attendance",
+    });
+    await expect(cancelAttendanceAction).toBeDisabled();
+    await expect(cancelAttendanceAction).toHaveAttribute(
+      "title",
+      "This attendance cannot be canceled from My Events.",
+    );
+
     // The eligible action opens the event's refund control in a new tab.
     await expect(refundAction).toBeVisible();
     const popupPromise = organizerGroupPage.waitForEvent("popup");
@@ -125,7 +137,18 @@ test.describe("user dashboard my events view", () => {
     await refundPage.close();
   });
 
-  test("my events actions update registration answers and cancel attendance", async ({ pending2Page }) => {
+  test("my events actions update registration answers and cancel attendance", async ({
+    owned,
+    pending2Page,
+  }) => {
+    // Cancelling keeps the attendee and a refunded purchase, so remove the pair's enrollment rows.
+    owned.defer(() =>
+      cleanupEventEnrollment({
+        eventId: TEST_REGISTRATION_QUESTIONS_EVENT.id,
+        userId: TEST_USER_IDS.pending2,
+      }),
+    );
+
     // Load the registration-questions event before creating attendance.
     await navigateToEvent(
       pending2Page,
@@ -134,13 +157,8 @@ test.describe("user dashboard my events view", () => {
       TEST_REGISTRATION_QUESTIONS_EVENT.slug,
     );
 
-    // Reset any leftover attendance for this reusable user.
-    await waitForAttendanceState(pending2Page);
-    if (await getLeaveButton(pending2Page).isVisible()) {
-      await cancelPublicAttendance(pending2Page, TEST_REGISTRATION_QUESTIONS_EVENT.id);
-    }
-
     // Attend the event through the required questions modal.
+    await waitForAttendanceState(pending2Page);
     await getAttendButton(pending2Page).click();
     const publicRegistrationModal = pending2Page.locator('[data-attendance-role="registration-modal"]');
     await expect(publicRegistrationModal).toBeVisible();
@@ -197,14 +215,11 @@ test.describe("user dashboard my events view", () => {
     // Reopen the row menu and cancel attendance from My Events.
     await eventRow.getByLabel("Open event actions").click();
     await eventRow.getByRole("menuitem", { name: "Cancel attendance" }).click();
-    await expect(pending2Page.locator(".swal2-popup")).toContainText(
-      "Are you sure you want to cancel your attendance?",
-    );
 
     // Confirm cancellation and verify the dashboard row disappears.
     await waitForActionResponse(
       pending2Page,
-      () => pending2Page.getByRole("button", { name: "Yes" }).click(),
+      () => confirmAlert(pending2Page, { message: "Are you sure you want to cancel your attendance?" }),
       {
         method: "DELETE",
         urlIncludes: `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attendance`,
@@ -219,98 +234,94 @@ test.describe("user dashboard my events view", () => {
 
   test("attendee who also organizes can cancel attendance and keeps the organizer role", async ({
     member2Page,
+    owned,
   }) => {
     // Create an event where Member Two attends and is listed as an organizer.
-    const event = setupOrganizerEvent({
-      attendeeUserIds: [TEST_USER_IDS.member2],
-      groupId: TEST_GROUP_IDS.community1.alpha,
-      organizerUserIds: [TEST_USER_IDS.member2],
-    });
+    const event = owned.track(
+      setupOrganizerEvent({
+        attendeeUserIds: [TEST_USER_IDS.member2],
+        groupId: TEST_GROUP_IDS.community1.alpha,
+        organizerUserIds: [TEST_USER_IDS.member2],
+      }),
+      ({ eventId }) => cleanupEventsByIds([eventId]),
+    );
 
-    try {
-      // Load My Events and verify both roles are listed.
-      await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
-      const dashboardContent = member2Page.locator("#dashboard-content");
-      const eventRow = dashboardContent.locator("tr", { hasText: event.name });
-      await expect(eventRow).toContainText("Attendee");
-      await expect(eventRow).toContainText("Organizer");
+    // Load My Events and verify both roles are listed.
+    await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
+    const dashboardContent = member2Page.locator("#dashboard-content");
+    const eventRow = dashboardContent.locator("tr", { hasText: event.name });
+    await expect(eventRow).toContainText("Attendee");
+    await expect(eventRow).toContainText("Organizer");
 
-      // Cancel attendance from the row actions.
-      await openEventActions(eventRow);
-      await eventRow.getByRole("menuitem", { name: "Cancel attendance" }).click();
-      await expect(member2Page.locator(".swal2-popup")).toContainText(
-        "Are you sure you want to cancel your attendance?",
-      );
-      await waitForActionResponse(
-        member2Page,
-        () => member2Page.getByRole("button", { name: "Yes" }).click(),
-        {
-          method: "DELETE",
-          urlIncludes: `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${event.eventId}/attendance`,
-        },
-      );
+    // Cancel attendance from the row actions.
+    await openEventActions(eventRow);
+    await eventRow.getByRole("menuitem", { name: "Cancel attendance" }).click();
+    await waitForActionResponse(
+      member2Page,
+      () => confirmAlert(member2Page, { message: "Are you sure you want to cancel your attendance?" }),
+      {
+        method: "DELETE",
+        urlIncludes: `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${event.eventId}/attendance`,
+      },
+    );
 
-      // Reload My Events and verify only the organizer role remains.
-      await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
-      const reloadedRow = dashboardContent.locator("tr", { hasText: event.name });
-      await expect(reloadedRow).toContainText("Organizer");
-      await expect(reloadedRow.getByText("Attendee", { exact: true })).toHaveCount(0);
-      await openEventActions(reloadedRow);
-      await expect(reloadedRow.getByRole("menuitem", { name: "Cancel attendance" })).toBeDisabled();
-    } finally {
-      // Delete the event used for the organizer attendance checks.
-      cleanupEventsByIds([event.eventId]);
-    }
+    // Reload My Events and verify only the organizer role remains.
+    await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
+    const reloadedRow = dashboardContent.locator("tr", { hasText: event.name });
+    await expect(reloadedRow).toContainText("Organizer");
+    await expect(reloadedRow.getByText("Attendee", { exact: true })).toHaveCount(0);
+    await openEventActions(reloadedRow);
+    await expect(reloadedRow.getByRole("menuitem", { name: "Cancel attendance" })).toBeDisabled();
   });
 
   test("organizer-only participation disappears after an editor removes the organizer", async ({
     member2Page,
     organizerGroupPage,
+    owned,
   }) => {
     // Create an event where Member Two is only listed as an organizer.
-    const event = setupOrganizerEvent({
-      groupId: TEST_GROUP_IDS.community1.alpha,
-      organizerUserIds: [TEST_USER_IDS.organizer1, TEST_USER_IDS.member2],
+    const event = owned.track(
+      setupOrganizerEvent({
+        groupId: TEST_GROUP_IDS.community1.alpha,
+        organizerUserIds: [TEST_USER_IDS.organizer1, TEST_USER_IDS.member2],
+      }),
+      ({ eventId }) => cleanupEventsByIds([eventId]),
+    );
+
+    // Load My Events and verify the organizer-only row.
+    await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
+    const dashboardContent = member2Page.locator("#dashboard-content");
+    const eventRow = dashboardContent.locator("tr", { hasText: event.name });
+    await expect(eventRow).toContainText("Organizer");
+    await expect(eventRow.getByText("Attendee", { exact: true })).toHaveCount(0);
+
+    // Remove Member Two, who is not on the group team, and save the event.
+    await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
+    await organizerGroupPage.locator('button[data-section="contributors"]').click();
+    const organizerRow = organizerGroupPage.locator("#event-organizers-selector tr", {
+      hasText: "E2E Member Two",
+    });
+    await organizerRow.locator('summary[aria-label="Open organizer actions for E2E Member Two"]').click();
+    await organizerRow.getByRole("menuitem", { name: "Delete" }).click();
+    await confirmAlert(organizerGroupPage, {
+      message: "E2E Member Two is no longer on the group team",
+      button: "Remove",
+    });
+    await expect(organizerRow).toHaveCount(0);
+    const visibleSaveButton = organizerGroupPage.locator(
+      "#pending-changes-alert:not(.hidden) #update-event-button",
+    );
+    await expect(visibleSaveButton).toBeVisible();
+    await waitForEventEditorAfterSave(organizerGroupPage, () => visibleSaveButton.click(), {
+      eventId: event.eventId,
+      method: "PUT",
+      urlIncludes: `/dashboard/group/events/${event.eventId}/update`,
     });
 
-    try {
-      // Load My Events and verify the organizer-only row.
-      await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
-      const dashboardContent = member2Page.locator("#dashboard-content");
-      const eventRow = dashboardContent.locator("tr", { hasText: event.name });
-      await expect(eventRow).toContainText("Organizer");
-      await expect(eventRow.getByText("Attendee", { exact: true })).toHaveCount(0);
-
-      // Remove Member Two, who is not on the group team, and save the event.
-      await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
-      await organizerGroupPage.locator('button[data-section="contributors"]').click();
-      const organizerRow = organizerGroupPage.locator("#event-organizers-selector tr", {
-        hasText: "E2E Member Two",
-      });
-      await organizerRow.locator('summary[aria-label="Open organizer actions for E2E Member Two"]').click();
-      await organizerRow.getByRole("menuitem", { name: "Delete" }).click();
-      const confirmAlert = organizerGroupPage.locator(".swal2-popup");
-      await expect(confirmAlert).toContainText("E2E Member Two is no longer on the group team");
-      await confirmAlert.getByRole("button", { name: "Remove" }).click();
-      await expect(organizerRow).toHaveCount(0);
-      const visibleSaveButton = organizerGroupPage.locator(
-        "#pending-changes-alert:not(.hidden) #update-event-button",
-      );
-      await expect(visibleSaveButton).toBeVisible();
-      await waitForEventEditorAfterSave(organizerGroupPage, () => visibleSaveButton.click(), {
-        eventId: event.eventId,
-        method: "PUT",
-        urlIncludes: `/dashboard/group/events/${event.eventId}/update`,
-      });
-
-      // Reload My Events and verify the event is no longer listed.
-      await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
-      await expect(dashboardContent.getByText("My Events", { exact: true })).toBeVisible();
-      await expect(dashboardContent.locator("tr", { hasText: event.name })).toHaveCount(0);
-    } finally {
-      // Delete the event used for the organizer removal checks.
-      cleanupEventsByIds([event.eventId]);
-    }
+    // Reload My Events and verify the event is no longer listed.
+    await navigateToPath(member2Page, MY_EVENTS_ALL_PATH);
+    await expect(dashboardContent.getByText("My Events", { exact: true })).toBeVisible();
+    await expect(dashboardContent.locator("tr", { hasText: event.name })).toHaveCount(0);
   });
 
   test("my events exposes offers and active checkout actions after registration closes", async ({
@@ -463,18 +474,6 @@ test("member can move between event result pages", async ({ member1Page }) => {
     "#dashboard-content tbody tr",
   );
 });
-
-/** Cancels attendance from the public event page when a reusable user is registered. */
-const cancelPublicAttendance = async (page, eventId) => {
-  const leaveButton = getLeaveButton(page);
-  await leaveButton.click();
-  await expect(page.getByRole("button", { name: "Yes" })).toBeVisible();
-
-  await waitForActionResponse(page, () => page.getByRole("button", { name: "Yes" }).click(), {
-    method: "DELETE",
-    urlIncludes: `/event/${eventId}/leave`,
-  });
-};
 
 /** Closes the actions menu for a My Events row. */
 const closeEventActions = async (eventRow) => {

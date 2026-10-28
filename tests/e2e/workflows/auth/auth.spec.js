@@ -1,8 +1,14 @@
-import { expect, test } from "@playwright/test";
-import { queryE2eDatabase } from "../../database.js";
-import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
+import { expect, test } from "../../fixtures.js";
 import { TEST_USER_CREDENTIALS } from "../../seed.js";
-import { buildAuthUser, logInWithSeededUser, navigateToPath } from "../../utils.js";
+import { buildAuthUser, buildE2eUrl, logInWithSeededUser, navigateToPath } from "../../utils.js";
+import {
+  deleteUserByUsername,
+  fillSignUpForm,
+  logInWithEmail,
+  readUserIdByUsername,
+  signUpWithEmail,
+  waitForEmailVerificationCode,
+} from "./helpers.js";
 
 const USER_DASHBOARD_EVENTS_PATH = "/dashboard/user?tab=events";
 
@@ -150,38 +156,32 @@ test.describe("authentication", () => {
     await expect(page.getByRole("button", { name: "Create Account" })).toBeInViewport();
   });
 
-  test("email sign up requires verification before log in", async ({ page }) => {
+  test("email sign up requires verification before log in", async ({ notifications, owned, page }) => {
     // Create a unique email user for the verification-gated login flow.
     const user = buildAuthUser();
-    let notificationIds = [];
+    owned.defer(() => deleteUserByUsername(user.username));
 
-    try {
-      // Complete the sign-up flow for the test user and assert verification fan-out.
-      const snapshot = snapshotNotifications();
-      await signUpWithEmail(page, user);
-      const userId = readUserIdByUsername(user.username);
-      expect(userId).not.toBeNull();
-      notificationIds = expectNewNotifications(snapshot, [
-        {
-          kind: "email-verification",
-          userIds: [userId],
-        },
-      ]);
-      await logInWithEmail(page, user);
+    // Complete the sign-up flow for the test user and assert verification fan-out.
+    await signUpWithEmail(page, user);
+    const userId = readUserIdByUsername(user.username);
+    expect(userId).not.toBeNull();
+    notifications.expectNew([
+      {
+        kind: "email-verification",
+        userIds: [userId],
+      },
+    ]);
+    await logInWithEmail(page, user);
 
-      // Verify email sign up requires verification before log in.
-      await expect(page).toHaveURL(/\/log-in/);
-      await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
-    } finally {
-      // Remove the generated verification notifications and user.
-      deleteNotifications(notificationIds);
-      deleteUserByUsername(user.username);
-    }
+    // Verify email sign up requires verification before log in.
+    await expect(page).toHaveURL(/\/log-in/);
+    await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
   });
 
-  test("email sign up can verify and then log in", async ({ page }) => {
+  test("email sign up can verify and then log in", async ({ owned, page }) => {
     // Create a unique email user for the verification flow.
     const user = buildAuthUser();
+    owned.defer(() => deleteUserByUsername(user.username));
 
     // Complete the sign-up flow for the test user.
     await signUpWithEmail(page, user);
@@ -217,9 +217,10 @@ test.describe("authentication", () => {
     await expect(page.locator("#dashboard-content")).toBeVisible();
   });
 
-  test("used verification links cannot be replayed", async ({ page }) => {
+  test("used verification links cannot be replayed", async ({ owned, page }) => {
     // Create a unique email user for the replay verification flow.
     const user = buildAuthUser();
+    owned.defer(() => deleteUserByUsername(user.username));
 
     // Complete the sign-up flow for the test user.
     await signUpWithEmail(page, user);
@@ -244,7 +245,7 @@ test.describe("authentication", () => {
     ).toBeVisible();
   });
 
-  test("seeded user can log in and is redirected to the requested page", async ({ page }) => {
+  test("seeded user can log in and is redirected to the requested page @smoke", async ({ page }) => {
     // Open a protected page to capture the redirect target.
     await navigateToPath(page, USER_DASHBOARD_EVENTS_PATH);
 
@@ -265,7 +266,25 @@ test.describe("authentication", () => {
     await expect(page.locator("#dashboard-content").getByText("My Events", { exact: true })).toBeVisible();
   });
 
-  test("logged in user can log out from the header menu", async ({ page }) => {
+  test("login ignores an off-site backslash next_url", async ({ request }) => {
+    // Browsers treat a backslash as "/", so this destination would leave the site.
+    const nextUrl = "/\\evil.example";
+
+    // Log in with a seeded user and keep the redirect response.
+    const response = await request.post(buildE2eUrl(`/log-in?next_url=${encodeURIComponent(nextUrl)}`), {
+      form: TEST_USER_CREDENTIALS.member1,
+      maxRedirects: 0,
+    });
+
+    // Verify the redirect falls back to the same-origin home page.
+    const baseUrl = new URL(buildE2eUrl("/"));
+    const location = new URL(response.headers().location, baseUrl);
+    expect(response.status()).toBe(303);
+    expect(location.origin).toBe(baseUrl.origin);
+    expect(location.pathname).toBe("/");
+  });
+
+  test("logged in user can log out from the header menu @smoke", async ({ page }) => {
     // Log in with a seeded member before using the header menu.
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.member1);
 
@@ -292,81 +311,3 @@ test.describe("authentication", () => {
     await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
   });
 });
-
-/** Deletes a browser-created auth user by exact username. */
-const deleteUserByUsername = (username) => {
-  const escapedUsername = username.replace(/'/g, "''");
-
-  queryE2eDatabase(`delete from "user" where username = '${escapedUsername}'`);
-};
-
-/** Fills the email sign-up form using the provided account details. */
-const fillSignUpForm = async (page, user) => {
-  await page.getByLabel("Full Name").fill(user.name);
-  await page.getByLabel("Email Address").fill(user.email);
-  await page.getByLabel("Username").fill(user.username);
-  await page.getByRole("textbox", { name: "Password required", exact: true }).fill(user.password);
-  await page.getByRole("textbox", { name: "Confirm Password required" }).fill(user.password);
-};
-
-/** Logs in using email username and password credentials. */
-const logInWithEmail = async (page, user) => {
-  await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
-  await page.getByLabel("Username").fill(user.username);
-  await page.getByRole("textbox", { name: "Password required" }).fill(user.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
-};
-
-/** Reads the email verification code for a newly created user from the E2E DB. */
-const readEmailVerificationCode = (email) => {
-  const escapedEmail = email.replace(/'/g, "''");
-  const sql = `
-    select evc.email_verification_code_id
-    from email_verification_code evc
-    join "user" u on u.user_id = evc.user_id
-    where u.email = '${escapedEmail}'
-  `;
-
-  const output = queryE2eDatabase(sql);
-
-  return output || null;
-};
-
-/** Reads the created user id for notification assertions. */
-const readUserIdByUsername = (username) => {
-  const escapedUsername = username.replace(/'/g, "''");
-
-  return queryE2eDatabase(`select user_id from "user" where username = '${escapedUsername}'`) || null;
-};
-
-/** Completes the sign-up form using email and password credentials. */
-const signUpWithEmail = async (page, user) => {
-  await navigateToPath(page, "/sign-up");
-
-  await expect(page.getByRole("heading", { name: "Sign Up" })).toBeVisible();
-  await fillSignUpForm(page, user);
-
-  await page.getByRole("button", { name: "Create Account" }).click();
-  await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
-};
-
-/** Waits until sign-up persistence creates an email verification code. */
-const waitForEmailVerificationCode = async (email) => {
-  let verificationCode = null;
-
-  await expect
-    .poll(
-      () => {
-        verificationCode = readEmailVerificationCode(email);
-        return verificationCode;
-      },
-      {
-        intervals: [250],
-        message: `Timed out waiting for verification code for ${email}`,
-        timeout: 10_000,
-      },
-    )
-    .not.toBeNull();
-
-  return verificationCode;
-};

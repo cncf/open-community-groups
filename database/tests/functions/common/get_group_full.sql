@@ -270,6 +270,7 @@ select is(
         "city": "New York",
         "country_code": "US",
         "country_name": "United States",
+        "custom_logo_url": "https://example.com/group-logo.png",
         "description": "A technology group focused on Kubernetes and cloud native technologies",
         "description_short": "A brief overview of the Seattle Kubernetes group",
         "external_payments_seller_display_name": "Seattle External Payee Co",
@@ -420,15 +421,24 @@ select is(
     'Should include only active visible parent and subgroup summaries'
 );
 
--- Should use community logo when group has no logo
+-- Should use community logo without an own logo when group has no logo
 select is(
-    (get_group_full(
+    jsonb_build_object(
+        'custom_logo_url', group_json->'custom_logo_url',
+        'logo_url', group_json->'logo_url'
+    ),
+    jsonb_build_object(
+        'custom_logo_url', null,
+        'logo_url', 'https://example.com/logo.png'
+    ),
+    'Should use community logo without an own logo when group has no logo'
+)
+from (
+    select get_group_full(
         :'communityID'::uuid,
         :'groupNoLogoID'::uuid
-    )::jsonb)->>'logo_url',
-    'https://example.com/logo.png',
-    'Should use community logo when group has no logo'
-);
+    )::jsonb as group_json
+) group_projection;
 
 -- Should include pretty slug when available
 select is(

@@ -1,39 +1,26 @@
 import { expect, test } from "../../fixtures.js";
-import { queryE2eDatabase } from "../../database.js";
-import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
+import { resetWaitlistLab } from "../../data-graphs/waitlist.js";
 import { TEST_COMMUNITY_NAME, TEST_EVENT_IDS, TEST_GROUP_SLUGS, TEST_USER_IDS } from "../../seed.js";
-import {
-  getAttendButton,
-  getLeaveButton,
-  restoreSeededWaitlistEvent,
-  waitForAttendanceState,
-} from "../../site/event/helpers.js";
-import { navigateToEvent, navigateToPath, waitForActionResponse } from "../../utils.js";
+import { getAttendButton, getLeaveButton, waitForAttendanceState } from "../../site/event/helpers.js";
+import { confirmAlert, navigateToEvent, navigateToPath, waitForActionResponse } from "../../utils.js";
 
 const WAITLIST_EVENT_NAME = "Full Event With Waitlist";
 
 const WAITLIST_EVENT_SLUG = "alpha-waitlist-lab";
 
-const ORGANIZER_USER_ID = "77777777-7777-7777-7777-777777777703";
-
 const WAITLIST_PROMOTION_KIND = "event-ticket-waitlist-offer";
 
 test.describe("event waitlist promotion workflow", () => {
-  test.beforeEach(async ({ member2Page, organizerGroupPage }) => {
-    await restoreSeededWaitlistEvent(member2Page, organizerGroupPage);
-  });
-
-  test.afterEach(async ({ member2Page, organizerGroupPage }) => {
-    await restoreSeededWaitlistEvent(member2Page, organizerGroupPage);
+  test.afterEach(() => {
+    resetWaitlistLab();
   });
 
   test("a waitlisted user is promoted when the attendee leaves", async ({
     member2Page,
+    notifications,
     organizerGroupPage,
     page,
   }) => {
-    let notificationIds = [];
-
     // The public page starts sold out while the only seeded seat is occupied.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, WAITLIST_EVENT_SLUG);
     const soldOutRibbon = page.locator("[data-availability-sold-out-ribbon]");
@@ -56,12 +43,10 @@ test.describe("event waitlist promotion workflow", () => {
     await waitForAttendanceState(member2Page);
 
     // Join the waitlist and wait for the attendance record to be created.
-    const joinedSnapshot = snapshotNotifications();
     await waitForActionResponse(member2Page, () => getAttendButton(member2Page).click(), {
       method: "POST",
       urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`,
     });
-    deleteNotificationsSince(joinedSnapshot, "event-waitlist-joined", [TEST_USER_IDS.member2]);
 
     // Verify the member is waiting before the attendee leaves.
     await expect(getLeaveButton(member2Page)).toContainText("Leave waiting list");
@@ -90,25 +75,24 @@ test.describe("event waitlist promotion workflow", () => {
     await expect(organizerGroupPage.getByRole("button", { name: "Yes" })).toBeVisible();
 
     // Cancel the organizer attendance to promote the waitlisted member.
-    const promotionSnapshot = snapshotNotifications();
+    const promotionCheckpoint = notifications.checkpoint();
     await waitForActionResponse(
       organizerGroupPage,
-      () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+      () => confirmAlert(organizerGroupPage, { message: "Are you sure you want to cancel your attendance?" }),
       {
         method: "DELETE",
         urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
       },
     );
-    deleteNotificationsSince(promotionSnapshot, "event-attendance-canceled", [ORGANIZER_USER_ID]);
-    try {
-      // Waitlist promotion creates the ticket-offer notification kind used by the enqueue function.
-      notificationIds = expectNewNotifications(promotionSnapshot, [
+
+    // Waitlist promotion creates the ticket-offer notification kind used by the enqueue function.
+    notifications.expectNew(
+      [
+        { kind: "event-attendance-canceled", userIds: [TEST_USER_IDS.organizer1] },
         { kind: WAITLIST_PROMOTION_KIND, userIds: [TEST_USER_IDS.member2] },
-      ]);
-    } finally {
-      // Remove the waitlist promotion notification.
-      deleteNotifications(notificationIds);
-    }
+      ],
+      { since: promotionCheckpoint },
+    );
 
     // Promotion reserves the released seat and empties the queue.
     await reloadWithAvailability(page);
@@ -131,7 +115,6 @@ test.describe("event waitlist promotion workflow", () => {
       name: "Claim offer",
     });
     await expect(claimModal).toBeVisible();
-    const claimSnapshot = snapshotNotifications();
     await waitForActionResponse(
       member2Page,
       () => claimModal.getByRole("button", { name: "Claim offer", exact: true }).click(),
@@ -140,7 +123,6 @@ test.describe("event waitlist promotion workflow", () => {
         urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/checkout`,
       },
     );
-    deleteNotificationsSince(claimSnapshot, "event-welcome", [TEST_USER_IDS.member2]);
     await expect(offerRow).toHaveCount(0);
 
     // Claiming the promoted offer keeps the single seat allocated.
@@ -161,12 +143,14 @@ test.describe("event waitlist promotion workflow", () => {
 
     // Cancel the claimed attendance and verify the public capacity reopens.
     await getLeaveButton(member2Page).click();
-    const cancellationSnapshot = snapshotNotifications();
-    await waitForActionResponse(member2Page, () => member2Page.getByRole("button", { name: "Yes" }).click(), {
-      method: "DELETE",
-      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
-    });
-    deleteNotificationsSince(cancellationSnapshot, "event-attendance-canceled", [TEST_USER_IDS.member2]);
+    await waitForActionResponse(
+      member2Page,
+      () => confirmAlert(member2Page, { message: "Are you sure you want to cancel your attendance?" }),
+      {
+        method: "DELETE",
+        urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
+      },
+    );
     await reloadWithAvailability(page);
     await expect(soldOutRibbon).toBeHidden();
 
@@ -176,16 +160,6 @@ test.describe("event waitlist promotion workflow", () => {
     await expect(waitlistCaption).toBeHidden();
   });
 });
-
-/** Deletes matching notification table rows created after the snapshot. */
-const deleteNotificationsSince = (snapshot, kind, userIds) => {
-  queryE2eDatabase(`
-    delete from notification
-    where created_at >= '${snapshot.createdAfter}'::timestamptz
-    and kind = '${kind}'
-    and user_id in (${userIds.map((userId) => `'${userId}'::uuid`).join(", ")});
-  `);
-};
 
 /** Reloads the page and waits for the refreshed public availability. */
 const reloadWithAvailability = async (page) => {

@@ -8,7 +8,6 @@ import {
   showInvitationApprovedAttendanceState,
   showPendingApprovalAttendanceState,
   showPendingPaymentState,
-  showRegistrationQuestionsPendingState,
   showRejectedInvitationState,
   showWaitlistedAttendanceState,
 } from "/static/js/event/attendance-view.js";
@@ -53,11 +52,6 @@ export const renderAttendanceCheckResponse = (container, event) => {
 
   if (response.admission_offer_id) {
     showAdmissionOfferState(container, meta, response);
-    return;
-  }
-
-  if (response.status === "registration-questions-pending") {
-    showRegistrationQuestionsPendingState(container, meta, response);
     return;
   }
 

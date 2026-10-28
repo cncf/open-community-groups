@@ -1,0 +1,14 @@
+- text: 0 events
+- table "Past events list":
+  - rowgroup:
+    - row "Name Date Type Status Actions":
+      - columnheader "Name"
+      - columnheader "Date"
+      - columnheader "Type"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "It looks like you don't have any past events. Past events will appear here once your upcoming events have concluded.":
+      - cell "It looks like you don't have any past events. Past events will appear here once your upcoming events have concluded.":
+        - text: ""
+        - paragraph: Past events will appear here once your upcoming events have concluded.

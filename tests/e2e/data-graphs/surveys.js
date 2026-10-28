@@ -1,10 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { queryE2eDatabase } from "../database.js";
+import { queryE2eDatabase, sqlString, sqlTextArray, sqlUuidArray } from "../database.js";
 import { TEST_GROUP_IDS } from "../seed.js";
-
-// Event category of the alpha group community used by owned survey events.
-const EVENT_CATEGORY_ID = "33333333-3333-3333-3333-333333333331";
+import { insertOwnedEvent } from "./events.js";
 
 /**
  * Seeded surveys of the past analytics event from database/tests/data/e2e/66_event_surveys.sql.
@@ -285,49 +283,22 @@ export const setupOwnedSurveyEvent = ({ attendeeUserIds }) => {
   const id = randomUUID();
   const suffix = id.slice(0, 8);
   const name = `E2E survey event ${suffix}`;
-  const ticketTypeId = randomUUID();
 
-  queryE2eDatabase(`
-    insert into event (
-      event_id,
-      name,
-      slug,
-      description,
-      timezone,
-      event_category_id,
-      event_kind_id,
-      group_id,
-      published,
-      published_at,
-      test_event,
-      starts_at,
-      ends_at
-    ) values (
-      ${sqlString(id)}::uuid,
-      ${sqlString(name)},
-      ${sqlString(`e2e-survey-event-${suffix}`)},
-      'Owned past event used by E2E survey coverage.',
-      'UTC',
-      ${sqlString(EVENT_CATEGORY_ID)}::uuid,
-      'virtual',
-      ${sqlString(TEST_GROUP_IDS.community1.alpha)}::uuid,
-      true,
-      current_timestamp - interval '10 days',
-      true,
-      current_timestamp - interval '2 days',
-      current_timestamp - interval '2 days' + interval '2 hours'
-    );
-
-    insert into event_ticket_type (event_ticket_type_id, active, event_id, "order", seats_total, title)
-    values (${sqlString(ticketTypeId)}::uuid, true, ${sqlString(id)}::uuid, 1, 50, 'General admission');
-
-    insert into event_ticket_price_window (event_ticket_price_window_id, amount_minor, event_ticket_type_id)
-    values (${sqlString(randomUUID())}::uuid, 0, ${sqlString(ticketTypeId)}::uuid);
-
-    insert into event_attendee (event_id, user_id, status)
-    select ${sqlString(id)}::uuid, user_id, 'confirmed'
-    from unnest(${sqlUuidArray(attendeeUserIds)}) as user_id;
-  `);
+  insertOwnedEvent({
+    attendeeUserIds,
+    description: "Owned past event used by E2E survey coverage.",
+    descriptionShort: null,
+    eventId: id,
+    groupId: TEST_GROUP_IDS.community1.alpha,
+    name,
+    organizerUserIds: [],
+    publishedAgo: "10 days",
+    publishedBy: null,
+    slug: `e2e-survey-event-${suffix}`,
+    startsIn: "-2 days",
+    testEvent: true,
+    tiers: [{ key: "general", seats: 50, title: "General admission" }],
+  });
 
   return { id, name };
 };
@@ -424,12 +395,3 @@ export const setupOwnedSurveyTextAnswers = ({ answers, questionId, surveyId }) =
     where event_survey_id = ${sqlString(surveyId)}::uuid;
   `);
 };
-
-/** Escapes a value for embedding in E2E SQL. */
-const sqlString = (value) => `'${String(value).replaceAll("'", "''")}'`;
-
-/** Builds a text array literal for E2E SQL queries. */
-const sqlTextArray = (values) => `array[${values.map((value) => sqlString(value)).join(", ")}]::text[]`;
-
-/** Builds a UUID array literal for E2E SQL queries. */
-const sqlUuidArray = (values) => `array[${values.map((value) => `${sqlString(value)}::uuid`).join(", ")}]`;

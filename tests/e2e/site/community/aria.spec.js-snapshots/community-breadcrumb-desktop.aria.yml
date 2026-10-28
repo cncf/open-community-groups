@@ -1,0 +1,7 @@
+- /children: deep-equal
+- navigation "Breadcrumb":
+  - list:
+    - listitem:
+      - link "Home":
+        - /url: /
+    - listitem: Platform Engineering Community

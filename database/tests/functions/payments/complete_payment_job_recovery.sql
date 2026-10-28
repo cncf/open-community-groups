@@ -253,7 +253,7 @@ select throws_ok(
         $$select complete_payment_job_recovery(%L::uuid, %L::uuid, %L::uuid, 're_recovered_d4120000', 'case-d4120000', 'Verified Stripe activity')$$,
         :'actorID', :'groupID', :'refundJobID'
     ),
-    'P0001',
+    'OCG01',
     'payment job kind does not support provider object recovery',
     'Should reject a refund payment job'
 );

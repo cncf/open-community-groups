@@ -1,7 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../fixtures.js";
 
 import { TEST_COMMUNITY_NAME, TEST_GROUP_NAMES, TEST_GROUP_SLUGS } from "../../seed.js";
-import { expectPaginationNavigation, navigateToPath, routeEmptyBasemap } from "../../utils.js";
+import {
+  expectPaginationNavigation,
+  navigateToPath,
+  routeEmptyBasemap,
+  waitForActionResponse,
+} from "../../utils.js";
+
+// Path of the explore group card requested when a map marker opens its tooltip.
+const GROUP_CARD_PATHNAME = /^\/explore\/groups\/[0-9a-f-]+\/card$/;
 
 test.describe("site explore groups page", () => {
   test("moves between group result pages and restores the first card", async ({ page }) => {
@@ -54,31 +62,23 @@ test.describe("site explore groups page", () => {
 
     // Switch to date sorting and wait for the group list to refresh.
     await expect(page.locator("#sort_selector")).toHaveValue("name");
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/explore/groups-section") &&
-          response.url().includes("sort_by=date") &&
-          response.ok(),
-      ),
-      page.locator("#sort_selector").selectOption("date"),
-    ]);
+    await waitForActionResponse(page, () => page.locator("#sort_selector").selectOption("date"), {
+      method: "GET",
+      params: { sort_by: "date" },
+      pathname: "/explore/groups-section",
+      status: 200,
+    });
     await expect(page.locator("#sort_selector")).toHaveValue("date");
 
     // Switch to events and verify the existing search value is preserved.
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/explore/events-section") &&
-          response.url().includes("ts_query=Observability") &&
-          response.ok(),
-      ),
-      // The entity selector renders in both drawer and sidebar, so click the
-      // desktop sidebar instance that is actually visible at this viewport.
-      page.locator("#explore-filters #events-button").click(),
-    ]);
+    // The entity selector renders in both drawer and sidebar, so click the
+    // desktop sidebar instance that is actually visible at this viewport.
+    await waitForActionResponse(page, () => page.locator("#explore-filters #events-button").click(), {
+      method: "GET",
+      params: { ts_query: "Observability" },
+      pathname: "/explore/events-section",
+      status: 200,
+    });
     await expect(page.getByPlaceholder("Search events")).toHaveValue("Observability");
     await expect(page.locator("#events-form")).toBeAttached();
   });
@@ -90,7 +90,7 @@ test.describe("site explore groups page", () => {
     // Open the filter drawer and verify its mobile form is available.
     const drawer = page.locator("#drawer-filters");
     const backdrop = page.locator("#drawer-backdrop");
-    await page.locator("#open-filters").click();
+    await page.getByRole("button", { name: "Open filters" }).click();
     await expect(drawer).not.toHaveClass(/-translate-x-full/);
     await expect(page.locator("#groups-form-mobile")).toBeAttached();
 
@@ -142,32 +142,28 @@ test.describe("site explore groups page", () => {
     await expect(page.getByText(TEST_GROUP_NAMES.gamma, { exact: true })).toBeVisible();
 
     // Submit a group search and wait for the results to refresh.
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/explore/groups-section") &&
-          response.url().includes("ts_query=Observability") &&
-          response.ok(),
-      ),
-      searchInput.fill("Observability").then(() => searchInput.press("Enter")),
-    ]);
+    await waitForActionResponse(
+      page,
+      () => searchInput.fill("Observability").then(() => searchInput.press("Enter")),
+      {
+        method: "GET",
+        params: { ts_query: "Observability" },
+        pathname: "/explore/groups-section",
+        status: 200,
+      },
+    );
 
     // Verify the search narrows the list to the matching group.
     await expect(page.getByText(TEST_GROUP_NAMES.gamma, { exact: true })).toBeVisible();
     await expect(page.getByText(TEST_GROUP_NAMES.alpha, { exact: true })).toHaveCount(0);
 
     // Switch to the map view and wait for list controls to refresh.
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/explore/groups-section") &&
-          response.url().includes("view_mode=map") &&
-          response.ok(),
-      ),
-      page.locator('label[for="map"]').click(),
-    ]);
+    await waitForActionResponse(page, () => page.locator('label[for="map"]').click(), {
+      method: "GET",
+      params: { view_mode: "map" },
+      pathname: "/explore/groups-section",
+      status: 200,
+    });
 
     // Verify map mode renders the map and hides sorting controls.
     await expect(page.locator("#map-box")).toBeVisible();
@@ -177,13 +173,11 @@ test.describe("site explore groups page", () => {
     // Verify hovering the filtered group marker loads its card on demand.
     const groupMarker = page.locator(`.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.gamma}`);
     await expect(groupMarker).toBeVisible();
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" && isGroupCardUrl(response.url()) && response.ok(),
-      ),
-      groupMarker.hover(),
-    ]);
+    await waitForActionResponse(page, () => groupMarker.hover(), {
+      method: "GET",
+      pathname: GROUP_CARD_PATHNAME,
+      status: 200,
+    });
     const tooltip = page.locator(".maplibregl-popup.explore-map-tooltip");
     await expect(tooltip).toHaveAttribute("role", "tooltip");
     await expect(tooltip).toContainText(TEST_GROUP_NAMES.gamma);
@@ -221,15 +215,11 @@ test.describe("site explore groups page", () => {
     await expect(gammaMarker).toBeVisible();
 
     // Zoom out and wait for the viewport search to refresh the locations.
-    const [searchResponse] = await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/explore/groups/search") &&
-          response.ok(),
-      ),
-      page.getByRole("button", { name: "Zoom out" }).click(),
-    ]);
+    const searchResponse = await waitForActionResponse(
+      page,
+      () => page.getByRole("button", { name: "Zoom out" }).click(),
+      { method: "GET", pathname: "/explore/groups/search", status: 200 },
+    );
 
     // Verify the refresh uses map mode and keeps both located groups.
     const searchUrl = new URL(searchResponse.url());
@@ -248,7 +238,7 @@ test.describe("site explore groups page", () => {
     // Keep the real map runtime and make every group card unavailable.
     await routeEmptyBasemap(page);
     await page.route(
-      (url) => isGroupCardUrl(url.href),
+      (url) => GROUP_CARD_PATHNAME.test(url.pathname),
       (route) => route.fulfill({ status: 404, body: "" }),
     );
 
@@ -285,10 +275,11 @@ test.describe("site explore groups page", () => {
         await route.fulfill({ response, json: { ...data, total: 1284, truncated: true } });
       },
     );
-    await Promise.all([
-      page.waitForResponse((response) => response.url().includes("/explore/groups/search")),
-      page.getByRole("button", { name: "Zoom out" }).click(),
-    ]);
+    await waitForActionResponse(page, () => page.getByRole("button", { name: "Zoom out" }).click(), {
+      method: "GET",
+      pathname: "/explore/groups/search",
+      status: 200,
+    });
 
     // Verify the notice reports the drawn and matching counts.
     await expect(notice).toBeVisible();
@@ -305,16 +296,16 @@ test.describe("site explore groups page", () => {
     await expect(searchInput).toBeVisible();
 
     // Submit the unmatched search query and wait for filtered results.
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/explore/groups-section") &&
-          response.url().includes("ts_query=No%20matching%20group") &&
-          response.ok(),
-      ),
-      searchInput.fill("No matching group").then(() => searchInput.press("Enter")),
-    ]);
+    await waitForActionResponse(
+      page,
+      () => searchInput.fill("No matching group").then(() => searchInput.press("Enter")),
+      {
+        method: "GET",
+        params: { ts_query: "No matching group" },
+        pathname: "/explore/groups-section",
+        status: 200,
+      },
+    );
 
     // Verify the filtered empty state explains the missing matches.
     await expect(page.getByText("We're sorry!", { exact: true })).toBeVisible();
@@ -325,10 +316,3 @@ test.describe("site explore groups page", () => {
     ).toBeVisible();
   });
 });
-
-/**
- * Checks whether a URL requests an explore group card.
- * @param {string} url Request URL.
- * @returns {boolean} Whether the URL is a group card request.
- */
-const isGroupCardUrl = (url) => /\/explore\/groups\/[0-9a-f-]+\/card$/.test(new URL(url).pathname);

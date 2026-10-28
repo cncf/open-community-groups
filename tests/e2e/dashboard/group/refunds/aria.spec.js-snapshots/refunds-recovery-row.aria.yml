@@ -1,0 +1,8 @@
+- row /EO E2E Pending One e2e-pending-1@example\.com E2E ARIA event \$\d+\.\d+ Recovery required/:
+  - cell "EO E2E Pending One e2e-pending-1@example.com"
+  - cell "E2E ARIA event"
+  - cell /\$\d+\.\d+/:
+    - button /\$\d+\.\d+/
+  - cell "Recovery required"
+  - cell:
+    - group

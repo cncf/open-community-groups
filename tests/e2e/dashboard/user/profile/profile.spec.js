@@ -1,6 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { withRowRestore } from "../../../database.js";
+import { expect, test } from "../../../fixtures.js";
 
-import { TEST_USER_CREDENTIALS } from "../../../seed.js";
+import { TEST_USER_CREDENTIALS, TEST_USER_IDS } from "../../../seed.js";
 import {
   logInWithSeededUser,
   navigateToPath,
@@ -8,24 +9,6 @@ import {
   waitForActionResponse,
 } from "../../../utils.js";
 import { fillMultipleInputs, setImageFieldValue } from "../../form-helpers.js";
-
-const BASELINE_DETAILS = {
-  bio: "Baseline profile bio for account view coverage.",
-  blueskyUrl: "https://bsky.app/profile/e2e-admin-two-baseline",
-  city: "Barcelona",
-  company: "Open Community Groups",
-  country: "Spain",
-  facebookUrl: "https://facebook.com/e2e.admin.two.baseline",
-  githubUrl: "https://github.com/e2e-admin-two-baseline",
-  interests: ["platform engineering", "community operations"],
-  linkedinUrl: "https://linkedin.com/in/e2e-admin-two-baseline",
-  name: "E2E Admin Two Baseline",
-  photoUrl: "/static/images/e2e/community-secondary-logo.svg",
-  timezone: "Europe/Madrid",
-  title: "Community Administrator",
-  twitterUrl: "https://x.com/e2e_admin_two_baseline",
-  websiteUrl: "https://baseline-admin-two.example.com",
-};
 
 const UPDATED_DETAILS = {
   bio: "Updated profile bio for account view coverage.",
@@ -46,12 +29,10 @@ const UPDATED_DETAILS = {
 };
 
 const ACCOUNT_PATH = "/dashboard/user?tab=account";
+const ADMIN2_USER_ROW = { key: { user_id: TEST_USER_IDS.admin2 }, table: "user" };
 
 test.describe("user dashboard profile view", () => {
-  test("user can update and restore profile details", async ({ page }) => {
-    // Allow enough time for the full profile update and restore flow.
-    test.setTimeout(60_000);
-
+  test("user can update profile details", async ({ page }) => {
     // Select the requested timezone only when it differs from the current value.
     const setTimezoneIfNeeded = async (timezone) => {
       const timezoneInput = page.locator('timezone-selector[name="timezone"] input[name="timezone"]');
@@ -140,7 +121,7 @@ test.describe("user dashboard profile view", () => {
       expect(successAlertMessages).toEqual(["User details updated successfully."]);
     };
 
-    // Verify profile detail values after saving or restoring them.
+    // Verify profile detail values after saving them.
     const expectProfileDetails = async (values) => {
       await navigateToPath(page, ACCOUNT_PATH);
 
@@ -174,18 +155,11 @@ test.describe("user dashboard profile view", () => {
     // Log in before continuing the scenario.
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin2);
 
-    try {
-      // Save updated profile details and verify persistence.
+    // Save updated profile details and verify persistence, restoring the seeded row afterwards.
+    await withRowRestore(ADMIN2_USER_ROW, async () => {
       await saveProfileDetails(UPDATED_DETAILS);
       await expectProfileDetails(UPDATED_DETAILS);
-
-      // Restore the baseline profile details.
-      await saveProfileDetails(BASELINE_DETAILS);
-      await expectProfileDetails(BASELINE_DETAILS);
-    } finally {
-      // Restore the baseline profile details if the main flow failed early.
-      await saveProfileDetails(BASELINE_DETAILS);
-    }
+    });
   });
 
   test("failed profile save preserves the entered details for retry", async ({ page }) => {
@@ -282,13 +256,12 @@ test.describe("user dashboard profile view", () => {
   });
 
   test("user can replace the password and is logged out from the current session", async ({ page }) => {
-    // Use a temporary replacement and track whether cleanup must restore it.
+    // Use a temporary replacement; the row restore puts the seeded password hash back.
     const originalCredentials = TEST_USER_CREDENTIALS.admin2;
     const temporaryCredentials = {
       ...originalCredentials,
       password: "TemporaryPassword123!",
     };
-    let passwordChanged = false;
 
     // Submit one password replacement through the account form.
     const replacePassword = async (currentPassword, replacementPassword) => {
@@ -299,16 +272,12 @@ test.describe("user dashboard profile view", () => {
       await passwordForm.locator("#new_password").fill(replacementPassword);
       await passwordForm.locator("#password_confirmation").fill(replacementPassword);
 
-      await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.url().includes("/dashboard/account/update/password") &&
-            // The server invalidates the session and redirects to log in.
-            response.status() < 400,
-        ),
-        passwordForm.getByRole("button", { name: "Save" }).click(),
-      ]);
+      // The server invalidates the session and redirects to log in.
+      await waitForActionResponse(page, () => passwordForm.getByRole("button", { name: "Save" }).click(), {
+        method: "PUT",
+        pathname: "/dashboard/account/update/password",
+        status: 303,
+      });
     };
 
     // Submit credentials without assuming that authentication succeeds.
@@ -319,12 +288,11 @@ test.describe("user dashboard profile view", () => {
       await page.getByRole("button", { name: "Sign In" }).click();
     };
 
-    // Restore the seeded password after exercising both authentication outcomes.
-    try {
+    // Restore the seeded password hash after exercising both authentication outcomes.
+    await withRowRestore(ADMIN2_USER_ROW, async () => {
       // Replace the seeded password with a temporary password.
       await logInWithSeededUser(page, originalCredentials);
       await replacePassword(originalCredentials.password, temporaryCredentials.password);
-      passwordChanged = true;
       await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
 
       // Verify protected navigation now requires a new authenticated session.
@@ -339,19 +307,6 @@ test.describe("user dashboard profile view", () => {
       // Verify the replacement password authenticates successfully.
       await logInWithSeededUser(page, temporaryCredentials);
       await expect(page).not.toHaveURL(/\/log-in/);
-
-      // Restore the original password through the same user-facing flow.
-      await replacePassword(temporaryCredentials.password, originalCredentials.password);
-      passwordChanged = false;
-      await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
-      await logInWithSeededUser(page, originalCredentials);
-      await expect(page).not.toHaveURL(/\/log-in/);
-    } finally {
-      // Restore the seeded password if the replacement is still active.
-      if (passwordChanged && !page.isClosed()) {
-        await logInWithSeededUser(page, temporaryCredentials);
-        await replacePassword(temporaryCredentials.password, originalCredentials.password);
-      }
-    }
+    });
   });
 });

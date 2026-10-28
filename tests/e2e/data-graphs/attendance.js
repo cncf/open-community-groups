@@ -1,4 +1,5 @@
-import { queryE2eDatabase } from "../database.js";
+import { queryE2eDatabase, sqlString } from "../database.js";
+import { setupCompletedFreePurchases } from "./events.js";
 
 /**
  * Deletes one owned attendee row.
@@ -46,5 +47,17 @@ export const setupOwnedAttendee = ({ checkedIn = false, eventId, userId }) => {
   return { eventId, userId };
 };
 
-/** Escapes a value for embedding in E2E SQL. */
-const sqlString = (value) => `'${String(value).replaceAll("'", "''")}'`;
+/**
+ * Creates one confirmed attendee holding a free ticket tier through a completed zero-amount
+ * purchase, as attending a ticketed event does. Create the event with `owned.event`, whose
+ * cleanup removes the attendee and purchase rows.
+ * @param {{ checkedIn?: boolean, eventId: string, ticketTypeId: string, userId: string }} input -
+ *   Attendee fields and the free tier the attendee holds.
+ * @returns {{ eventId: string, ticketTypeId: string, userId: string }}
+ */
+export const setupOwnedTicketedAttendee = ({ checkedIn = false, eventId, ticketTypeId, userId }) => {
+  setupOwnedAttendee({ checkedIn, eventId, userId });
+  setupCompletedFreePurchases({ eventId, ticketTypeId, userIds: [userId] });
+
+  return { eventId, ticketTypeId, userId };
+};

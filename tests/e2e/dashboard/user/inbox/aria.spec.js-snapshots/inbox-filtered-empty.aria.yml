@@ -1,0 +1,22 @@
+- region "Inbox":
+  - text: ""
+  - link "Open documentation":
+    - /url: /docs#/guides/user-dashboard?id=inbox-conversations-with-organizers
+  - paragraph: Your conversations with group organizers.
+  - text: "Active filters Status: Answered"
+  - button "Reset status filter"
+  - button "Reset all"
+  - text: 0 conversations
+  - table "Inbox conversations":
+    - rowgroup:
+      - row "Group Event Last message":
+        - columnheader "Group"
+        - columnheader "Event"
+        - columnheader "Last message"
+        - columnheader:
+          - group: Status
+    - rowgroup:
+      - row "No conversations with this status Choose another status to see more conversations.":
+        - cell "No conversations with this status Choose another status to see more conversations.":
+          - text: ""
+          - paragraph: Choose another status to see more conversations.

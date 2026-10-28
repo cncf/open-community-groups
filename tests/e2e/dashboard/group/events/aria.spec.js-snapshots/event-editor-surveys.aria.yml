@@ -1,0 +1,18 @@
+- text: Surveys
+- link "Open documentation":
+  - /url: /docs#/guides/event-operations?id=surveys
+- paragraph: Ready surveys open when the event ends, or later at a custom time, and eligible attendees get one email when they open.
+- paragraph: /0 of \d+ surveys/
+- button "Add survey"
+- table "Event surveys list":
+  - rowgroup:
+    - row "Survey Status Responses Actions":
+      - columnheader "Survey"
+      - columnheader "Status"
+      - columnheader "Responses"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "This event does not have any surveys yet. You can add a survey by clicking on the Add survey button. Drafts never email anyone.":
+      - cell "This event does not have any surveys yet. You can add a survey by clicking on the Add survey button. Drafts never email anyone.":
+        - text: ""
+        - paragraph: You can add a survey by clicking on the Add survey button. Drafts never email anyone.

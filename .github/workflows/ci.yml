@@ -75,6 +75,7 @@ jobs:
               - 'ocg-common/**'
               - 'ocg-redirector/**'
               - 'ocg-server/**'
+              - 'tests/e2e/coverage/route-manifest.json'
             templates:
               - '.github/workflows/ci.yml'
               - 'ocg-server/templates/**'

@@ -2,6 +2,7 @@
 //! in handlers.
 
 use axum::{
+    extract::multipart::MultipartError,
     http::StatusCode,
     response::{IntoResponse, Response},
 };
@@ -22,6 +23,9 @@ mod tests;
 
 /// Body returned for every request payload that cannot be deserialized.
 pub(crate) const INVALID_REQUEST_PAYLOAD: &str = "invalid request payload";
+
+/// Body returned for every request payload over the request body limit.
+pub(crate) const REQUEST_PAYLOAD_TOO_LARGE: &str = "request payload too large";
 
 /// Represents all possible errors that can occur in a handler.
 ///
@@ -50,6 +54,14 @@ pub(crate) enum HandlerError {
     /// Access denied, user does not have permission.
     #[error("forbidden")]
     Forbidden,
+
+    /// Error reading a multipart request body.
+    ///
+    /// The response status is the one axum assigns to the error: 413 over the
+    /// request body limit, 400 for a malformed body, and 500 when the body
+    /// stream fails. The parser detail is logged and never returned.
+    #[error("multipart error: {0}")]
+    Multipart(#[from] MultipartError),
 
     /// Resource was not found.
     #[error("not found")]
@@ -88,11 +100,15 @@ impl HandlerError {
             Self::Other(_) | Self::Serde(_) | Self::Session(_) | Self::Template(_) => {
                 error!(error = %format_args!("{self:#}"), "handler error");
             }
+            Self::Multipart(err) if err.status().is_server_error() => {
+                error!(error = %format_args!("{self:#}"), "handler error");
+            }
             // Client rejections are expected traffic
             Self::Auth
             | Self::Database(_)
             | Self::Deserialization(_)
             | Self::Forbidden
+            | Self::Multipart(_)
             | Self::NotFound
             | Self::Rejected(_)
             | Self::Validation(_) => warn!(error = %self, "request rejected"),
@@ -116,6 +132,16 @@ impl IntoResponse for HandlerError {
                 (StatusCode::UNPROCESSABLE_ENTITY, INVALID_REQUEST_PAYLOAD).into_response()
             }
             HandlerError::Forbidden => StatusCode::FORBIDDEN.into_response(),
+            // Answer with axum's status for the error and a fixed body
+            HandlerError::Multipart(err) => match err.status() {
+                StatusCode::PAYLOAD_TOO_LARGE => {
+                    (StatusCode::PAYLOAD_TOO_LARGE, REQUEST_PAYLOAD_TOO_LARGE).into_response()
+                }
+                status if status.is_client_error() => {
+                    (status, INVALID_REQUEST_PAYLOAD).into_response()
+                }
+                status => status.into_response(),
+            },
             HandlerError::NotFound => StatusCode::NOT_FOUND.into_response(),
             HandlerError::Validation(report) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, report.to_string()).into_response()

@@ -1,0 +1,16 @@
+- text: Session proposals
+- link "Open documentation":
+  - /url: /docs#/guides/user-dashboard?id=session-proposals-reusable-talks
+- paragraph: Create reusable session proposals to submit to events.
+- text: 0 session proposals
+- button "New proposal"
+- table:
+  - rowgroup:
+    - row "Proposal Co-speaker Status Actions":
+      - columnheader "Proposal"
+      - columnheader "Co-speaker"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "You don't have any session proposals yet.":
+      - cell "You don't have any session proposals yet."

@@ -414,6 +414,7 @@ describe("event-selector", () => {
       name: "Cloud Native Málaga",
       category_name: "Conference",
       kind: "workshop",
+      custom_logo_url: "https://example.com/logo.png",
       logo_url: "https://example.com/logo.png",
       banner_url: "https://example.com/banner.png",
       banner_mobile_url: "https://example.com/banner-mobile.png",

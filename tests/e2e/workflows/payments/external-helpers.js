@@ -1,9 +1,15 @@
 import { expect } from "../../fixtures.js";
 
+import { openAttendeesTab } from "../../dashboard/group/events/attendees-helpers.js";
 import { queryE2eDatabase } from "../../database.js";
 import { TEST_COMMUNITY_NAME, TEST_EXTERNAL_PAYMENT_EVENTS, TEST_GROUP_SLUGS } from "../../seed.js";
-import { getAttendButton, waitForAttendanceState } from "../../site/event/helpers.js";
-import { navigateToEvent, navigateToPath, waitForActionResponse } from "../../utils.js";
+import {
+  getAttendButton,
+  getCheckoutButton,
+  getTicketModal,
+  waitForAttendanceState,
+} from "../../site/event/helpers.js";
+import { navigateToEvent, waitForActionResponse, waitForActionResponses } from "../../utils.js";
 
 /** Seeded external-payment group id. */
 export const EXTERNAL_GROUP_ID = "44444444-4444-4444-4444-444444444448";
@@ -12,41 +18,18 @@ export const EXTERNAL_GROUP_SLUG = TEST_GROUP_SLUGS.community1.externalPayments;
 // Seeded external-payment event ids used by fixture reset.
 const EXTERNAL_EVENT_IDS = Object.values(TEST_EXTERNAL_PAYMENT_EVENTS).map(({ id }) => id);
 
-/** Locates the shared checkout button used by public external-payment flows. */
-export const getCheckoutButton = (page) => page.locator('[data-attendance-role="checkout-btn"]');
-/** Locates the shared refund button used by public external-payment flows. */
-export const getRefundButton = (page) => page.locator('[data-attendance-role="refund-btn"]');
-/** Locates the shared ticket modal used by public external-payment flows. */
-export const getTicketModal = (page) => page.locator('[data-attendance-role="ticket-modal"]');
-
-/** Dismiss a visible SweetAlert and wait until it no longer blocks the page. */
-export const dismissAlert = async (page) => {
-  const confirmButton = page.locator(".swal2-confirm");
-  if (await confirmButton.isVisible()) {
-    await confirmButton.click();
-    await expect(page.locator(".swal2-popup")).toBeHidden();
-  }
-};
-
 /** Completes an external purchase from the organizer attendee table. */
 export const markExternalPurchasePaid = async (page, event, attendeeName, note) => {
-  const attendeesContent = await openAttendeesTab(page, event);
+  const attendeesContent = await openExternalAttendeesTab(page, event);
   const { dialog } = await openMarkPaidDialog(page, attendeesContent, attendeeName);
   await dialog.getByLabel("Payment details").fill(note);
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/external-payment") &&
-        response.ok(),
-    ),
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response.url().includes(`/events/${event.id}/attendees`) &&
-        response.ok(),
-    ),
-    dialog.getByRole("button", { name: "Mark paid" }).click(),
+  await waitForActionResponses(page, () => dialog.getByRole("button", { name: "Mark paid" }).click(), [
+    {
+      method: "POST",
+      pathname: new RegExp(`^/dashboard/group/events/${event.id}/purchases/[^/]+/external-payment$`, "u"),
+      status: 204,
+    },
+    { method: "GET", pathname: `/dashboard/group/events/${event.id}/attendees`, status: 200 },
   ]);
   await expect(dialog).toBeHidden();
 };
@@ -90,35 +73,8 @@ export const startExternalCheckout = async (page, event, discountCode = "") => {
   return response;
 };
 
-/** Opens an event's attendees section from the desktop group dashboard. */
-export const openAttendeesTab = async (page, event) => {
-  await navigateToPath(page, "/dashboard/group?tab=events");
-  const eventRow = page.locator("#dashboard-content tbody tr", {
-    hasText: event.name,
-  });
-  await expect(eventRow).toBeVisible();
-  await waitForActionResponse(page, () => eventRow.locator('button[aria-label^="Edit event:"]').click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${event.id}/update`,
-  });
-  const attendeesTab = page.locator('button[data-section="attendees"]');
-  const openAttendeesSection = async () => {
-    if (await attendeesTab.isVisible()) {
-      await attendeesTab.click();
-      return;
-    }
-
-    await page.locator("[data-section-select]").selectOption("attendees");
-  };
-  await waitForActionResponse(page, openAttendeesSection, {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${event.id}/attendees`,
-  });
-
-  const attendeesContent = page.locator("#attendees-content");
-  await expect(attendeesContent.getByRole("table", { name: "Attendees list" })).toBeVisible();
-  return attendeesContent;
-};
+/** Opens an event's attendees section from the group dashboard. */
+export const openExternalAttendeesTab = (page, event) => openAttendeesTab(page, event.name, event.id);
 
 /** Opens a seeded external-payment event and waits for its attendance controls. */
 export const openExternalEvent = async (page, event) => {

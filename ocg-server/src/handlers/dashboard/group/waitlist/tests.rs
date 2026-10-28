@@ -106,6 +106,43 @@ async fn test_list_page_rejects_zero_pagination_limit() {
 }
 
 #[tokio::test]
+async fn test_list_page_returns_not_found_for_event_of_another_group() {
+    // Setup identifiers and data structures
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let output = WaitlistOutput {
+        total: 1,
+        waitlist: vec![sample_waitlist_entry()],
+    };
+
+    // Setup database mock without an event summary for the selected group
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, true);
+    db.expect_find_event_summary_dashboard()
+        .times(1)
+        .withf(move |cid, gid, eid| {
+            *cid == ids.community_id && *gid == ids.group_id && *eid == event_id
+        })
+        .returning(|_, _, _| Ok(None));
+    db.expect_search_event_waitlist()
+        .times(1)
+        .withf(move |gid, eid, _| *gid == ids.group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(output.clone()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/waitlist"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the page is not found
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn test_list_page_steps_back_to_last_page_when_offset_is_past_end() {
     // Setup identifiers and data structures
     let ids = DashboardIds::new();
@@ -217,10 +254,10 @@ fn expect_list_page_context(db: &mut MockDB, ids: &DashboardIds, event_id: Uuid)
 
     expect_group_access(db, &ids, GroupPermission::Read);
     expect_group_permission_result(db, &ids, GroupPermission::EventsWrite, true);
-    db.expect_get_event_summary_dashboard()
+    db.expect_find_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == ids.community_id && *gid == ids.group_id && *eid == event_id
         })
-        .returning(move |_, _, _| Ok(event.clone()));
+        .returning(move |_, _, _| Ok(Some(event.clone())));
 }

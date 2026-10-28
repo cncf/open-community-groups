@@ -1,0 +1,9 @@
+- /children: deep-equal
+- contentinfo "Site footer":
+  - link "GitHub":
+    - /url: https://github.com/cncf/open-community-groups
+  - paragraph:
+    - text: Powered by
+    - link "CNCF Open Community Groups":
+      - /url: https://github.com/cncf/open-community-groups
+    - text: .

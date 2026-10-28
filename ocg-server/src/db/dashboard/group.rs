@@ -301,6 +301,16 @@ pub(crate) trait DBDashboardGroup {
         event: &serde_json::Value,
     ) -> Result<bool>;
 
+    /// Finds summary event details extended with dashboard-only information.
+    ///
+    /// Returns `None` when the event does not belong to the community group.
+    async fn find_event_summary_dashboard(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Option<EventSummary>>;
+
     /// Gets submission notification data for an event owned by the group.
     async fn get_cfs_submission_notification_data(
         &self,
@@ -327,14 +337,6 @@ pub(crate) trait DBDashboardGroup {
         &self,
         items: &[EventCohostRef],
     ) -> Result<Vec<EventCohostNotificationData>>;
-
-    /// Gets summary event details extended with dashboard-only information.
-    async fn get_event_summary_dashboard(
-        &self,
-        community_id: Uuid,
-        group_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<EventSummary>;
 
     /// Retrieves an event survey with the settings the editor needs.
     ///
@@ -1361,6 +1363,21 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::find_event_summary_dashboard`].
+    #[instrument(skip(self), err)]
+    async fn find_event_summary_dashboard(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Option<EventSummary>> {
+        self.fetch_json_opt(
+            "select get_event_summary_dashboard($1::uuid, $2::uuid, $3::uuid)",
+            &[&community_id, &group_id, &event_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::get_cfs_submission_notification_data`]
     #[instrument(skip(self), err)]
     async fn get_cfs_submission_notification_data(
@@ -1421,21 +1438,6 @@ where
         self.fetch_json_one(
             "select get_event_cohost_notification_data($1::jsonb)",
             &[&Json(items)],
-        )
-        .await
-    }
-
-    /// [`DBDashboardGroup::get_event_summary_dashboard`].
-    #[instrument(skip(self), err)]
-    async fn get_event_summary_dashboard(
-        &self,
-        community_id: Uuid,
-        group_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<EventSummary> {
-        self.fetch_json_one(
-            "select get_event_summary_dashboard($1::uuid, $2::uuid, $3::uuid)",
-            &[&community_id, &group_id, &event_id],
         )
         .await
     }

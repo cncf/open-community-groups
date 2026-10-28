@@ -1,0 +1,7 @@
+- /children: deep-equal
+- region "Site introduction":
+  - heading "E2E Test Site" [level=1]
+  - paragraph: Site for E2E testing
+  - text: /Groups \d+ Members \d+ Events \d+ Attendees \d+/
+  - link "Explore groups and events":
+    - /url: /explore?community[0]=cncf&entity=events

@@ -86,7 +86,7 @@
           {% endif -%}
           <th scope="col" class="px-3 xl:px-5 py-1.5">Last message</th>
           <th scope="col" class="px-3 xl:px-5 py-1.5">
-            {% call dashboard::table_filter_menu(id = "inbox-status-filter-options", label = "Status", is_active = !is_unfiltered()) -%}
+            {% call dashboard::table_filter_menu(id = "inbox-status-filter-options", label = "Status", is_active = !is_unfiltered(), dropdown_classes = "end-0") -%}
             <div class="py-2">
               <form hx-get="{{ scope.list_url() }}"
                     hx-target="#dashboard-content"

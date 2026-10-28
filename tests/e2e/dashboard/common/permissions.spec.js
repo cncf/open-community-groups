@@ -1,35 +1,48 @@
-import { randomUUID } from "node:crypto";
 import { expect, test } from "../../fixtures.js";
-import { queryE2eDatabase, queryE2eDatabaseRows } from "../../database.js";
-import { cleanupCohostEvents, readCohostStatus, setupCohostEvent } from "../../data-graphs/cohosts.js";
-import { cleanupEventsByIds } from "../../data-graphs/events.js";
-import { cleanupOwnedPaymentPurchase, setupExternalRefundRequestGraph } from "../../data-graphs/payments.js";
 import {
+  queryCount,
+  queryE2eDatabase,
+  queryE2eDatabaseRows,
+  queryScalar,
+  sqlString,
+  sqlUuid,
+} from "../../database.js";
+import { cleanupCohostEvents, readCohostStatus, setupCohostEvent } from "../../data-graphs/cohosts.js";
+import { cleanupTemporaryCommunity, setupTemporaryCommunity } from "../../data-graphs/communities.js";
+import { cleanupEventsByIds, setupCheckInEventGraph } from "../../data-graphs/events.js";
+import {
+  BADGE_ARTWORK_FILE_NAME,
+  cleanupGroupCustomNotificationsBySubject,
+  cleanupTemporaryGroup,
+  setupTemporaryGroup,
+} from "../../data-graphs/groups.js";
+import { cleanupInboxConversations, setupInboxConversation } from "../../data-graphs/inbox.js";
+import { cleanupOwnedPaymentPurchase, setupExternalRefundRequestGraph } from "../../data-graphs/payments.js";
+import { TEST_EVENT_SURVEYS } from "../../data-graphs/surveys.js";
+import { cleanupTemporaryUser, setupTemporaryUser } from "../../data-graphs/users.js";
+import {
+  TEST_COMMUNITY_BANNER_MOBILE_URL,
+  TEST_COMMUNITY_BANNER_URL,
   TEST_COMMUNITY_DESCRIPTION,
   TEST_COMMUNITY_IDS,
+  TEST_COMMUNITY_LOGO_URL,
   TEST_COMMUNITY_TITLE,
+  TEST_EVENT_CATEGORY_IDS,
+  TEST_EVENT_IDS,
+  TEST_GROUP_CATEGORY_IDS,
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
+  TEST_INBOX_CONVERSATION,
   TEST_PAYMENT_EVENT_IDS,
   TEST_USER_IDS,
 } from "../../seed.js";
-import { buildE2eUrl, futureDate, uniqueName } from "../../utils.js";
-
-const ADMIN1_USER_ID = "77777777-7777-7777-7777-777777777701";
-
-const BADGE_ARTWORK_FILE_NAME = "e2e-disposable-badge.png";
-
-const COMMUNITY_BANNER_MOBILE_URL = "/static/images/e2e/community-primary-banner-mobile.svg";
-
-const COMMUNITY_BANNER_URL = "/static/images/e2e/community-primary-banner.svg";
-
-const COMMUNITY_LOGO_URL = "/static/images/e2e/community-primary-logo.svg";
-
-const EVENT_CATEGORY_ID = "33333333-3333-3333-3333-333333333331";
-
-const EVENTS_MANAGER_USER_ID = "77777777-7777-7777-7777-777777777711";
-
-const GROUP_CATEGORY_ID = "22222222-2222-2222-2222-222222222221";
+import {
+  buildE2eUrl,
+  futureDate,
+  selectCommunityContext,
+  selectGroupContext,
+  uniqueName,
+} from "../../utils.js";
 
 const INVITATION_REDIRECT_STATUS = 303;
 
@@ -37,8 +50,10 @@ const PRIMARY_COMMUNITY_ID = TEST_COMMUNITY_IDS.community1;
 
 const PRIMARY_GROUP_ID = TEST_GROUP_IDS.community1.alpha;
 
-const TEMP_PASSWORD_HASH =
-  "$argon2id$v=19$m=19456,t=2,p=1$q55jlxUx8bffhFM3xN36ZA$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g";
+// Seeded primary community region and primary group sponsor (10_catalog.sql, 50_membership_cfs.sql).
+const PRIMARY_REGION_ID = "22222222-2222-2222-2222-222222222301";
+
+const PRIMARY_SPONSOR_ID = "66666666-6666-6666-6666-666666666601";
 
 const COMMUNITY_ROLES = {
   adminCommunityPage: {
@@ -48,8 +63,9 @@ const COMMUNITY_ROLES = {
       taxonomy: true,
       team: true,
     },
+    communityRole: "admin",
     roleName: "community admin",
-    userId: ADMIN1_USER_ID,
+    userId: TEST_USER_IDS.admin1,
   },
   communityViewerPage: {
     buckets: {
@@ -67,8 +83,9 @@ const COMMUNITY_ROLES = {
       taxonomy: false,
       team: false,
     },
+    communityRole: "groups-manager",
     roleName: "groups-manager",
-    userId: TEST_USER_IDS.communityGroupsManager1,
+    userId: TEST_USER_IDS.groupsManager1,
   },
   member2Page: {
     buckets: {
@@ -88,6 +105,7 @@ const GROUP_ROLES = {
       badges: true,
       checkIns: true,
       events: true,
+      inbox: true,
       notifications: true,
       refunds: true,
       settings: true,
@@ -101,6 +119,7 @@ const GROUP_ROLES = {
       badges: false,
       checkIns: true,
       events: false,
+      inbox: false,
       notifications: false,
       refunds: false,
       settings: false,
@@ -111,11 +130,26 @@ const GROUP_ROLES = {
     roleName: "check-in manager",
     userId: TEST_USER_IDS.checkInManager1,
   },
+  communityViewerPage: {
+    buckets: {
+      badges: false,
+      checkIns: false,
+      events: false,
+      inbox: false,
+      notifications: false,
+      refunds: false,
+      settings: false,
+      sponsors: false,
+      team: false,
+    },
+    roleName: "community viewer",
+  },
   eventsManagerGroupPage: {
     buckets: {
       badges: true,
       checkIns: true,
       events: true,
+      inbox: true,
       notifications: false,
       refunds: true,
       settings: false,
@@ -124,13 +158,14 @@ const GROUP_ROLES = {
     },
     groupRole: "events-manager",
     roleName: "events-manager",
-    userId: EVENTS_MANAGER_USER_ID,
+    userId: TEST_USER_IDS.eventsManager1,
   },
   groupViewerPage: {
     buckets: {
       badges: false,
       checkIns: false,
       events: false,
+      inbox: false,
       notifications: false,
       refunds: false,
       settings: false,
@@ -144,6 +179,7 @@ const GROUP_ROLES = {
       badges: true,
       checkIns: true,
       events: true,
+      inbox: true,
       notifications: true,
       refunds: true,
       settings: true,
@@ -157,6 +193,7 @@ const GROUP_ROLES = {
       badges: false,
       checkIns: false,
       events: false,
+      inbox: false,
       notifications: false,
       refunds: false,
       settings: false,
@@ -171,6 +208,7 @@ const GROUP_ROLES = {
       badges: true,
       checkIns: true,
       events: true,
+      inbox: true,
       notifications: true,
       refunds: true,
       settings: true,
@@ -224,6 +262,12 @@ const GROUP_BUCKETS = [
     createOperation: createGroupEventsOperation,
   },
   {
+    key: "inbox",
+    name: "inbox",
+    successStatus: 200,
+    createOperation: createGroupInboxOperation,
+  },
+  {
     key: "notifications",
     name: "notifications",
     successStatus: 204,
@@ -275,37 +319,90 @@ const GROUP_BUCKETS = [
   },
 ];
 
-/** Returns community permission cases for the requested fixture. */
-const communityCasesForFixture = (fixture) =>
-  COMMUNITY_BUCKETS.map((bucket) => ({
-    bucket,
-    expectedStatus: expectedCommunityStatus(COMMUNITY_ROLES[fixture], bucket),
-    fixture,
-    role: COMMUNITY_ROLES[fixture],
-  }));
+// Community Read bucket GET routes, checked against the selected primary community.
+const COMMUNITY_READ_ROUTES = [
+  { path: "/dashboard/community/analytics" },
+  { path: "/dashboard/community/contact" },
+  { path: "/dashboard/community/event-categories" },
+  { path: "/dashboard/community/event-categories/add" },
+  { path: `/dashboard/community/event-categories/${TEST_EVENT_CATEGORY_IDS.general}/update` },
+  { path: "/dashboard/community/group-categories" },
+  { path: "/dashboard/community/group-categories/add" },
+  { path: `/dashboard/community/group-categories/${TEST_GROUP_CATEGORY_IDS.one}/update` },
+  { path: "/dashboard/community/groups" },
+  { path: "/dashboard/community/groups/add" },
+  { path: `/dashboard/community/groups/${PRIMARY_GROUP_ID}/update` },
+  { path: "/dashboard/community/logs" },
+  { path: "/dashboard/community/regions" },
+  { path: "/dashboard/community/regions/add" },
+  { path: `/dashboard/community/regions/${PRIMARY_REGION_ID}/update` },
+  { path: "/dashboard/community/settings/update" },
+  { path: "/dashboard/community/team" },
+];
 
-/** Returns group permission cases for the requested fixture. */
-const groupCasesForFixture = (fixture) =>
-  GROUP_BUCKETS.map((bucket) => ({
-    bucket,
-    expectedStatus: expectedGroupStatus(GROUP_ROLES[fixture], bucket),
-    fixture,
-    role: GROUP_ROLES[fixture],
-  }));
+// Group GET routes guarded by Read or by the bucket named in `bucket`, checked against the
+// selected primary group. The CSV exports are covered by their own specs, and `events/tax-rates`
+// is left out because it calls Stripe, which the e2e stack does not configure.
+const GROUP_READ_ROUTES = (() => {
+  const eventId = TEST_EVENT_IDS.alpha.one;
+  const { attendeeIds, event, surveys } = TEST_EVENT_SURVEYS;
+  const surveyPath = `/dashboard/group/events/${event.id}/surveys/${surveys.openIdentified.id}`;
+
+  return [
+    { path: "/dashboard/group" },
+    { path: "/dashboard/group/analytics" },
+    { path: "/dashboard/group/cohosts" },
+    { path: "/dashboard/group/events" },
+    { path: "/dashboard/group/events/add" },
+    { path: "/dashboard/group/events/search" },
+    { path: `/dashboard/group/events/${eventId}/analytics` },
+    { path: `/dashboard/group/events/${eventId}/attendees` },
+    { path: `/dashboard/group/events/${eventId}/details` },
+    { path: `/dashboard/group/events/${eventId}/invitation-requests` },
+    { path: `/dashboard/group/events/${eventId}/submissions` },
+    { path: `/dashboard/group/events/${eventId}/update` },
+    { path: `/dashboard/group/events/${eventId}/waitlist` },
+    { path: `/dashboard/group/events/${event.id}/surveys` },
+    { path: `/dashboard/group/events/${event.id}/surveys/add` },
+    { path: `/dashboard/group/events/${event.id}/surveys/${surveys.draft.id}/update` },
+    { path: `${surveyPath}/responses` },
+    { path: `${surveyPath}/responses/${attendeeIds.checkedIn1}` },
+    { path: `${surveyPath}/results` },
+    { path: `${surveyPath}/results/questions/${surveys.openIdentified.questionIds.improve}/answers` },
+    { path: "/dashboard/group/logs" },
+    { path: "/dashboard/group/members" },
+    { path: "/dashboard/group/refunds" },
+    { path: "/dashboard/group/settings/update" },
+    { path: "/dashboard/group/sponsors" },
+    { path: "/dashboard/group/sponsors/add" },
+    { path: `/dashboard/group/sponsors/${PRIMARY_SPONSOR_ID}/update` },
+    { path: "/dashboard/group/team" },
+    { bucket: "badges", path: "/dashboard/group/artwork" },
+    { bucket: "badges", path: "/dashboard/group/awards" },
+    { bucket: "badges", path: "/dashboard/group/badges" },
+    { bucket: "badges", path: "/dashboard/group/badges/options" },
+    { bucket: "badges", path: `/dashboard/group/events/${eventId}/badges/recipients?scope=all-attendees` },
+    { bucket: "checkIns", path: "/dashboard/group/check-in" },
+    { bucket: "inbox", path: "/dashboard/group/inbox" },
+    { bucket: "inbox", path: `/dashboard/group/inbox/${TEST_INBOX_CONVERSATION.id}` },
+  ];
+})();
 
 /** Builds a community group POST operation that creates or preserves a group and cleans up. */
 function createCommunityGroupOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const community = allowed ? setupTemporaryCommunity(role, "community group") : null;
+  const community = allowed
+    ? setupTemporaryCommunity({ label: "community group", teamRole: role.communityRole, userId: role.userId })
+    : null;
   const name = uniqueName("permission community group");
   let groupId;
 
   return {
     communityId: community?.communityId ?? (role.redirectsWithoutContext ? null : PRIMARY_COMMUNITY_ID),
-    form: communityGroupForm(name, community?.groupCategoryId ?? GROUP_CATEGORY_ID),
+    form: communityGroupForm(name, community?.groupCategoryId ?? TEST_GROUP_CATEGORY_IDS.one),
     method: "POST",
     path: "/dashboard/community/groups/add",
-    assertEffect: async (before, page) => {
+    assertEffect: async (before, { page }) => {
       const after = countGroupsByName(name);
       if (!allowed) {
         expect(after).toBe(before);
@@ -327,7 +424,9 @@ function createCommunityGroupOperation(role, expectedStatus) {
       if (groupId) {
         cleanupTemporaryGroup(groupId);
       }
-      community?.cleanup();
+      if (community) {
+        cleanupTemporaryCommunity(community.communityId);
+      }
     },
     readEffect: () => countGroupsByName(name),
   };
@@ -336,7 +435,13 @@ function createCommunityGroupOperation(role, expectedStatus) {
 /** Builds a community settings PUT operation that updates new group details and cleans up. */
 function createCommunitySettingsOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const community = allowed ? setupTemporaryCommunity(role, "community settings") : null;
+  const community = allowed
+    ? setupTemporaryCommunity({
+        label: "community settings",
+        teamRole: role.communityRole,
+        userId: role.userId,
+      })
+    : null;
   const communityId = community?.communityId ?? PRIMARY_COMMUNITY_ID;
   const newGroupDetails = uniqueName("permission community settings");
 
@@ -349,7 +454,11 @@ function createCommunitySettingsOperation(role, expectedStatus) {
       const after = communityNewGroupDetails(communityId);
       expect(after).toBe(allowed ? newGroupDetails : before);
     },
-    cleanup: () => community?.cleanup(),
+    cleanup: () => {
+      if (community) {
+        cleanupTemporaryCommunity(community.communityId);
+      }
+    },
     readEffect: () => communityNewGroupDetails(communityId),
   };
 }
@@ -357,7 +466,13 @@ function createCommunitySettingsOperation(role, expectedStatus) {
 /** Builds a community taxonomy POST operation that creates a category and cleans up. */
 function createCommunityTaxonomyOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const community = allowed ? setupTemporaryCommunity(role, "community taxonomy") : null;
+  const community = allowed
+    ? setupTemporaryCommunity({
+        label: "community taxonomy",
+        teamRole: role.communityRole,
+        userId: role.userId,
+      })
+    : null;
   const name = uniqueName("permission event category");
   let eventCategoryId;
 
@@ -381,19 +496,22 @@ function createCommunityTaxonomyOperation(role, expectedStatus) {
       if (eventCategoryId) {
         queryE2eDatabase(`delete from event_category where event_category_id = ${sqlUuid(eventCategoryId)};`);
       }
-      community?.cleanup();
+      if (community) {
+        cleanupTemporaryCommunity(community.communityId);
+      }
     },
     readEffect: () => countEventCategoriesByName(name),
   };
 }
 
-/** Builds a community team POST operation that invites a user and cleans up notifications. */
+/** Builds a community team POST operation that invites a user and cleans up. */
 function createCommunityTeamOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const community = allowed ? setupTemporaryCommunity(role, "community team") : null;
+  const community = allowed
+    ? setupTemporaryCommunity({ label: "community team", teamRole: role.communityRole, userId: role.userId })
+    : null;
   const communityId = community?.communityId ?? PRIMARY_COMMUNITY_ID;
-  const targetUser = setupTemporaryUser("community-team-target");
-  let newNotificationIds = [];
+  const targetUser = setupTemporaryUser({ label: "community-team-target" });
 
   return {
     communityId: role.redirectsWithoutContext ? null : communityId,
@@ -402,34 +520,29 @@ function createCommunityTeamOperation(role, expectedStatus) {
     path: "/dashboard/community/team/add",
     assertEffect: (before) => {
       const after = countCommunityTeamMember(communityId, targetUser.userId);
-      expect(after).toBe(allowed ? 1 : before.count);
-      newNotificationIds = newNotificationIdsForUser(
-        before.notificationIds,
-        targetUser.userId,
-        "community-team-invitation",
-      );
+      expect(after).toBe(allowed ? 1 : before);
     },
     cleanup: () => {
-      deleteNotificationsByIds(newNotificationIds);
       queryE2eDatabase(`
         delete from community_team
         where community_id = ${sqlUuid(communityId)}
         and user_id = ${sqlUuid(targetUser.userId)};
       `);
-      community?.cleanup();
-      targetUser.cleanup();
+      if (community) {
+        cleanupTemporaryCommunity(community.communityId);
+      }
+      cleanupTemporaryUser(targetUser.userId);
     },
-    readEffect: () => ({
-      count: countCommunityTeamMember(communityId, targetUser.userId),
-      notificationIds: notificationIdsForUser(targetUser.userId, "community-team-invitation"),
-    }),
+    readEffect: () => countCommunityTeamMember(communityId, targetUser.userId),
   };
 }
 
 /** Builds a group badges POST operation that creates a badge and cleans up. */
 function createGroupBadgesOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const group = allowed ? setupTemporaryGroup(role, { withArtwork: true }) : null;
+  const group = allowed
+    ? setupTemporaryGroup({ teamRole: role.groupRole, teamUserId: role.userId, withArtwork: true })
+    : null;
   const badgeName = uniqueName("permission badge");
   let badgeId;
 
@@ -458,7 +571,9 @@ function createGroupBadgesOperation(role, expectedStatus) {
       if (badgeId) {
         queryE2eDatabase(`delete from badge where badge_id = ${sqlUuid(badgeId)};`);
       }
-      group?.cleanup();
+      if (group) {
+        cleanupTemporaryGroup(group.groupId);
+      }
     },
     readEffect: () => countBadgesByName(badgeName),
   };
@@ -467,7 +582,7 @@ function createGroupBadgesOperation(role, expectedStatus) {
 /** Builds a group events POST operation that creates an event and cleans up. */
 function createGroupEventsOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const group = allowed ? setupTemporaryGroup(role) : null;
+  const group = allowed ? setupTemporaryGroup({ teamRole: role.groupRole, teamUserId: role.userId }) : null;
   const eventName = uniqueName("permission event");
   let eventIds = [];
 
@@ -489,7 +604,9 @@ function createGroupEventsOperation(role, expectedStatus) {
     },
     cleanup: () => {
       cleanupEventsByIds(eventIds);
-      group?.cleanup();
+      if (group) {
+        cleanupTemporaryGroup(group.groupId);
+      }
     },
     readEffect: () => countEventsByName(eventName),
   };
@@ -498,7 +615,7 @@ function createGroupEventsOperation(role, expectedStatus) {
 /** Builds a co-host group options GET operation that lists another community's groups. */
 function createGroupCohostOptionsOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const group = allowed ? setupTemporaryGroup(role) : null;
+  const group = allowed ? setupTemporaryGroup({ teamRole: role.groupRole, teamUserId: role.userId }) : null;
   const communityId = TEST_COMMUNITY_IDS.community2;
   let optionIds = [];
 
@@ -515,7 +632,11 @@ function createGroupCohostOptionsOperation(role, expectedStatus) {
       optionIds = (await response.json()).map((option) => option.group_id);
       expect(optionIds).toContain(TEST_GROUP_IDS.community2.delta);
     },
-    cleanup: () => group?.cleanup(),
+    cleanup: () => {
+      if (group) {
+        cleanupTemporaryGroup(group.groupId);
+      }
+    },
     readEffect: () => null,
   };
 }
@@ -523,7 +644,7 @@ function createGroupCohostOptionsOperation(role, expectedStatus) {
 /** Builds a co-host response PUT operation that rejects a pending invitation and cleans up. */
 function createGroupCohostResponseOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const group = allowed ? setupTemporaryGroup(role) : null;
+  const group = allowed ? setupTemporaryGroup({ teamRole: role.groupRole, teamUserId: role.userId }) : null;
   const cohostGroupId = group?.groupId ?? PRIMARY_GROUP_ID;
   const scenario = setupCohostEvent({
     cohosts: [{ groupId: cohostGroupId }],
@@ -540,19 +661,55 @@ function createGroupCohostResponseOperation(role, expectedStatus) {
     },
     cleanup: () => {
       cleanupCohostEvents([scenario.eventId]);
-      group?.cleanup();
+      if (group) {
+        cleanupTemporaryGroup(group.groupId);
+      }
     },
     readEffect: () => readCohostStatus(scenario.eventId, cohostGroupId),
+  };
+}
+
+/** Builds a group inbox PUT operation that closes a conversation and cleans up. */
+function createGroupInboxOperation(role, expectedStatus) {
+  const allowed = isAllowed(expectedStatus);
+  const group = allowed ? setupTemporaryGroup({ teamRole: role.groupRole, teamUserId: role.userId }) : null;
+  const groupId = group?.groupId ?? PRIMARY_GROUP_ID;
+  // Denied roles target a primary group conversation, which must stay open.
+  const conversation = setupInboxConversation({
+    groupId,
+    messages: [{ body: uniqueName("permission inbox message") }],
+  });
+
+  return {
+    groupId: role.redirectsWithoutContext ? null : groupId,
+    method: "PUT",
+    path: `/dashboard/group/inbox/${conversation.id}/close`,
+    assertEffect: (before) => {
+      const after = inboxConversationStatus(conversation.id);
+      expect(after).toBe(allowed ? "closed" : before);
+    },
+    cleanup: () => {
+      cleanupInboxConversations([conversation.id]);
+      if (group) {
+        cleanupTemporaryGroup(group.groupId);
+      }
+    },
+    readEffect: () => inboxConversationStatus(conversation.id),
   };
 }
 
 /** Builds a group notifications POST operation that sends notices and cleans up. */
 function createGroupNotificationsOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const notificationTarget = allowed ? setupTemporaryUser("group-notification-target") : null;
-  const group = allowed ? setupTemporaryGroup(role, { memberUserId: notificationTarget.userId }) : null;
+  const notificationTarget = allowed ? setupTemporaryUser({ label: "group-notification-target" }) : null;
+  const group = allowed
+    ? setupTemporaryGroup({
+        memberUserId: notificationTarget.userId,
+        teamRole: role.groupRole,
+        teamUserId: role.userId,
+      })
+    : null;
   const subject = uniqueName("permission notification");
-  let newNotificationIds = [];
 
   return {
     form: {
@@ -562,7 +719,7 @@ function createGroupNotificationsOperation(role, expectedStatus) {
     groupId: group?.groupId ?? (role.redirectsWithoutContext ? null : PRIMARY_GROUP_ID),
     method: "POST",
     path: "/dashboard/group/notifications",
-    assertEffect: (before) => {
+    assertEffect: (before, { notifications }) => {
       const after = countGroupCustomNotificationsBySubject(subject);
       if (!allowed) {
         expect(after).toBe(before);
@@ -570,14 +727,17 @@ function createGroupNotificationsOperation(role, expectedStatus) {
       }
 
       expect(after).toBe(1);
-      newNotificationIds = notificationIdsForTemplateSubject(subject);
-      expect(newNotificationIds.length).toBeGreaterThan(0);
+      const sent = notifications.list().filter(({ templateData }) => templateData?.subject === subject);
+      expect(sent.length).toBeGreaterThan(0);
     },
     cleanup: () => {
-      deleteNotificationsByIds(newNotificationIds);
-      deleteGroupCustomNotificationBySubject(subject);
-      group?.cleanup();
-      notificationTarget?.cleanup();
+      cleanupGroupCustomNotificationsBySubject(subject);
+      if (group) {
+        cleanupTemporaryGroup(group.groupId);
+      }
+      if (notificationTarget) {
+        cleanupTemporaryUser(notificationTarget.userId);
+      }
     },
     readEffect: () => countGroupCustomNotificationsBySubject(subject),
   };
@@ -586,13 +746,13 @@ function createGroupNotificationsOperation(role, expectedStatus) {
 /** Builds a group settings PUT operation that updates the description and cleans up. */
 function createGroupSettingsOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const group = allowed ? setupTemporaryGroup(role) : null;
+  const group = allowed ? setupTemporaryGroup({ teamRole: role.groupRole, teamUserId: role.userId }) : null;
   const groupId = group?.groupId ?? PRIMARY_GROUP_ID;
   const description = uniqueName("permission group settings");
 
   return {
     form: groupForm({
-      categoryId: GROUP_CATEGORY_ID,
+      categoryId: TEST_GROUP_CATEGORY_IDS.one,
       description,
       name: group?.groupName ?? TEST_GROUP_NAMES.alpha,
     }),
@@ -603,7 +763,11 @@ function createGroupSettingsOperation(role, expectedStatus) {
       const after = groupDescription(groupId);
       expect(after).toBe(allowed ? description : before);
     },
-    cleanup: () => group?.cleanup(),
+    cleanup: () => {
+      if (group) {
+        cleanupTemporaryGroup(group.groupId);
+      }
+    },
     readEffect: () => groupDescription(groupId),
   };
 }
@@ -611,7 +775,7 @@ function createGroupSettingsOperation(role, expectedStatus) {
 /** Builds a group sponsors POST operation that creates a sponsor and cleans up. */
 function createGroupSponsorsOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const group = allowed ? setupTemporaryGroup(role) : null;
+  const group = allowed ? setupTemporaryGroup({ teamRole: role.groupRole, teamUserId: role.userId }) : null;
   const sponsorName = uniqueName("permission sponsor");
   let sponsorId;
 
@@ -640,19 +804,20 @@ function createGroupSponsorsOperation(role, expectedStatus) {
       if (sponsorId) {
         queryE2eDatabase(`delete from group_sponsor where group_sponsor_id = ${sqlUuid(sponsorId)};`);
       }
-      group?.cleanup();
+      if (group) {
+        cleanupTemporaryGroup(group.groupId);
+      }
     },
     readEffect: () => countSponsorsByName(sponsorName),
   };
 }
 
-/** Builds a group team POST operation that invites a user and cleans up notifications. */
+/** Builds a group team POST operation that invites a user and cleans up. */
 function createGroupTeamOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const group = allowed ? setupTemporaryGroup(role) : null;
+  const group = allowed ? setupTemporaryGroup({ teamRole: role.groupRole, teamUserId: role.userId }) : null;
   const groupId = group?.groupId ?? PRIMARY_GROUP_ID;
-  const targetUser = setupTemporaryUser("group-team-target");
-  let newNotificationIds = [];
+  const targetUser = setupTemporaryUser({ label: "group-team-target" });
 
   return {
     form: { role: "viewer", user_id: targetUser.userId },
@@ -661,34 +826,27 @@ function createGroupTeamOperation(role, expectedStatus) {
     path: "/dashboard/group/team/add",
     assertEffect: (before) => {
       const after = countGroupTeamMember(groupId, targetUser.userId);
-      expect(after).toBe(allowed ? 1 : before.count);
-      newNotificationIds = newNotificationIdsForUser(
-        before.notificationIds,
-        targetUser.userId,
-        "group-team-invitation",
-      );
+      expect(after).toBe(allowed ? 1 : before);
     },
     cleanup: () => {
-      deleteNotificationsByIds(newNotificationIds);
       queryE2eDatabase(`
         delete from group_team
         where group_id = ${sqlUuid(groupId)}
         and user_id = ${sqlUuid(targetUser.userId)};
       `);
-      group?.cleanup();
-      targetUser.cleanup();
+      if (group) {
+        cleanupTemporaryGroup(group.groupId);
+      }
+      cleanupTemporaryUser(targetUser.userId);
     },
-    readEffect: () => ({
-      count: countGroupTeamMember(groupId, targetUser.userId),
-      notificationIds: notificationIdsForUser(targetUser.userId, "group-team-invitation"),
-    }),
+    readEffect: () => countGroupTeamMember(groupId, targetUser.userId),
   };
 }
 
 /** Builds a group check-in POST operation that marks attendance and cleans up. */
 function createGroupCheckInsOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const graph = setupCheckInGraph();
+  const graph = setupCheckInEventGraph({ groupId: PRIMARY_GROUP_ID });
 
   return {
     groupId: role.redirectsWithoutContext ? null : PRIMARY_GROUP_ID,
@@ -698,7 +856,10 @@ function createGroupCheckInsOperation(role, expectedStatus) {
       const after = attendeeCheckedIn(graph.eventId, graph.userId);
       expect(after).toBe(allowed ? "true" : before);
     },
-    cleanup: () => graph.cleanup(),
+    cleanup: () => {
+      cleanupEventsByIds([graph.eventId]);
+      cleanupTemporaryUser(graph.userId);
+    },
     readEffect: () => attendeeCheckedIn(graph.eventId, graph.userId),
   };
 }
@@ -706,14 +867,12 @@ function createGroupCheckInsOperation(role, expectedStatus) {
 /** Builds a group refunds PUT operation that approves a refund and cleans up. */
 function createGroupRefundsOperation(role, expectedStatus) {
   const allowed = isAllowed(expectedStatus);
-  const refundUser = setupTemporaryUser("refund-request-owner");
-  const notificationIds = notificationIdsForUser(refundUser.userId, "event-refund-approved");
+  const refundUser = setupTemporaryUser({ label: "refund-request-owner" });
   const graph = setupExternalRefundRequestGraph({
     eventId: TEST_PAYMENT_EVENT_IDS.refunds,
     requestedReason: uniqueName("permission refund"),
     userId: refundUser.userId,
   });
-  let newNotificationIds = [];
 
   return {
     form: { review_note: "Approved by permission matrix" },
@@ -723,16 +882,10 @@ function createGroupRefundsOperation(role, expectedStatus) {
     assertEffect: (before) => {
       const after = refundRequestStatus(graph.purchaseId);
       expect(after).toBe(allowed ? "approved" : before);
-      newNotificationIds = newNotificationIdsForUser(
-        notificationIds,
-        refundUser.userId,
-        "event-refund-approved",
-      );
     },
     cleanup: () => {
-      deleteNotificationsByIds(newNotificationIds);
       cleanupOwnedPaymentPurchase(graph);
-      refundUser.cleanup();
+      cleanupTemporaryUser(refundUser.userId);
     },
     readEffect: () => refundRequestStatus(graph.purchaseId),
   };
@@ -773,92 +926,86 @@ test.describe("dashboard permission matrix", () => {
     expect(response.status()).toBe(403);
   });
 
-  for (const matrixCase of communityCasesForFixture("adminCommunityPage")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} community ${matrixCase.bucket.name} writes`, async ({
-      adminCommunityPage,
-    }) => {
-      await runCommunityCase(matrixCase, adminCommunityPage);
+  test("community select forbids a pending community invitation", async ({ pending1Page }) => {
+    // The first pending user only holds an unaccepted primary community team invitation.
+    const response = await pending1Page.request.put(
+      buildE2eUrl(`/dashboard/community/${PRIMARY_COMMUNITY_ID}/select`),
+    );
+
+    // Verify a pending community_team row grants no community read access.
+    expect(response.status()).toBe(403);
+  });
+
+  test("group community select forbids a user with only pending group invitations", async ({
+    pending2Page,
+  }) => {
+    // The second pending user only holds an unaccepted primary group team invitation.
+    const response = await pending2Page.request.put(
+      buildE2eUrl(`/dashboard/group/community/${PRIMARY_COMMUNITY_ID}/select`),
+    );
+
+    // Verify a pending group_team row leaves no selectable group in the community.
+    expect(response.status()).toBe(403);
+  });
+
+  for (const [fixture, role] of Object.entries(COMMUNITY_ROLES)) {
+    test(`${role.roleName} gets its bucket status from every community read route`, async ({ pageAs }) => {
+      const page = await pageAs(fixture);
+      if (!role.redirectsWithoutContext) {
+        await selectCommunityContext(page, PRIMARY_COMMUNITY_ID);
+      }
+
+      // Request every route without following redirects and report all mismatches together.
+      for (const route of COMMUNITY_READ_ROUTES) {
+        const response = await page.request.get(buildE2eUrl(route.path), { maxRedirects: 0 });
+        expect.soft(response.status(), `GET ${route.path}`).toBe(expectedReadStatus(role, route));
+      }
     });
   }
 
-  for (const matrixCase of communityCasesForFixture("communityViewerPage")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} community ${matrixCase.bucket.name} writes`, async ({
-      communityViewerPage,
-    }) => {
-      await runCommunityCase(matrixCase, communityViewerPage);
+  for (const [fixture, role] of Object.entries(GROUP_ROLES)) {
+    test(`${role.roleName} gets its bucket status from every group read route`, async ({ pageAs }) => {
+      const page = await pageAs(fixture);
+      if (!role.redirectsWithoutContext) {
+        await selectGroupContext(page, PRIMARY_COMMUNITY_ID, PRIMARY_GROUP_ID);
+      }
+
+      // Request every route without following redirects and report all mismatches together.
+      for (const route of GROUP_READ_ROUTES) {
+        const response = await page.request.get(buildE2eUrl(route.path), { maxRedirects: 0 });
+        expect.soft(response.status(), `GET ${route.path}`).toBe(expectedReadStatus(role, route));
+      }
     });
   }
 
-  for (const matrixCase of communityCasesForFixture("groupsManagerPage")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} community ${matrixCase.bucket.name} writes`, async ({
-      groupsManagerPage,
-    }) => {
-      await runCommunityCase(matrixCase, groupsManagerPage);
-    });
+  for (const [fixture, role] of Object.entries(COMMUNITY_ROLES)) {
+    for (const bucket of COMMUNITY_BUCKETS) {
+      const status = expectedStatus(role, bucket);
+
+      test(`${role.roleName} ${statusLabel(status)} community ${bucket.name} writes`, async ({
+        notifications,
+        pageAs,
+      }) => {
+        await runCommunityCase(
+          { bucket, expectedStatus: status, role },
+          await pageAs(fixture),
+          notifications,
+        );
+      });
+    }
   }
 
-  for (const matrixCase of communityCasesForFixture("member2Page")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} community ${matrixCase.bucket.name} writes`, async ({
-      member2Page,
-    }) => {
-      await runCommunityCase(matrixCase, member2Page);
-    });
-  }
+  for (const [fixture, role] of Object.entries(GROUP_ROLES)) {
+    for (const bucket of GROUP_BUCKETS) {
+      const status = expectedStatus(role, bucket);
 
-  for (const matrixCase of groupCasesForFixture("adminCommunityPage")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} group ${matrixCase.bucket.name} writes`, async ({
-      adminCommunityPage,
-    }) => {
-      await runGroupCase(matrixCase, adminCommunityPage);
-    });
-  }
-
-  for (const matrixCase of groupCasesForFixture("checkInManagerGroupPage")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} group ${matrixCase.bucket.name} writes`, async ({
-      checkInManagerGroupPage,
-    }) => {
-      await runGroupCase(matrixCase, checkInManagerGroupPage);
-    });
-  }
-
-  for (const matrixCase of groupCasesForFixture("eventsManagerGroupPage")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} group ${matrixCase.bucket.name} writes`, async ({
-      eventsManagerGroupPage,
-    }) => {
-      await runGroupCase(matrixCase, eventsManagerGroupPage);
-    });
-  }
-
-  for (const matrixCase of groupCasesForFixture("groupViewerPage")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} group ${matrixCase.bucket.name} writes`, async ({
-      groupViewerPage,
-    }) => {
-      await runGroupCase(matrixCase, groupViewerPage);
-    });
-  }
-
-  for (const matrixCase of groupCasesForFixture("groupsManagerPage")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} group ${matrixCase.bucket.name} writes`, async ({
-      groupsManagerPage,
-    }) => {
-      await runGroupCase(matrixCase, groupsManagerPage);
-    });
-  }
-
-  for (const matrixCase of groupCasesForFixture("member1Page")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} group ${matrixCase.bucket.name} writes`, async ({
-      member1Page,
-    }) => {
-      await runGroupCase(matrixCase, member1Page);
-    });
-  }
-
-  for (const matrixCase of groupCasesForFixture("organizerGroupPage")) {
-    test(`${matrixCase.role.roleName} ${statusLabel(matrixCase.expectedStatus)} group ${matrixCase.bucket.name} writes`, async ({
-      organizerGroupPage,
-    }) => {
-      await runGroupCase(matrixCase, organizerGroupPage);
-    });
+      test(`${role.roleName} ${statusLabel(status)} group ${bucket.name} writes`, async ({
+        notifications,
+        pageAs,
+      }) => {
+        await runGroupCase({ bucket, expectedStatus: status, role }, await pageAs(fixture), notifications);
+      });
+    }
   }
 });
 
@@ -869,49 +1016,6 @@ function attendeeCheckedIn(eventId, userId) {
     from event_attendee
     where event_id = ${sqlUuid(eventId)}
     and user_id = ${sqlUuid(userId)}
-  `);
-}
-
-/** Deletes community, community_team, event_category, region, and group_category rows. */
-function cleanupTemporaryCommunity(communityId) {
-  for (const groupId of groupIdsByCommunity(communityId)) {
-    cleanupTemporaryGroup(groupId);
-  }
-
-  queryE2eDatabase(`
-    delete from community_team where community_id = ${sqlUuid(communityId)};
-    delete from event_category where community_id = ${sqlUuid(communityId)};
-    delete from region where community_id = ${sqlUuid(communityId)};
-    delete from group_category where community_id = ${sqlUuid(communityId)};
-    delete from community where community_id = ${sqlUuid(communityId)};
-  `);
-}
-
-/** Deletes group rows and dependent badge, sponsor, notification, member, and team rows. */
-function cleanupTemporaryGroup(groupId) {
-  const eventIds = eventIdsByGroup(groupId);
-  cleanupEventsByIds(eventIds);
-
-  queryE2eDatabase(`
-    delete from badge where group_id = ${sqlUuid(groupId)};
-    delete from badge_artwork where group_id = ${sqlUuid(groupId)};
-    delete from group_sponsor where group_id = ${sqlUuid(groupId)};
-    delete from custom_notification where group_id = ${sqlUuid(groupId)};
-    delete from group_member where group_id = ${sqlUuid(groupId)};
-    delete from group_team where group_id = ${sqlUuid(groupId)};
-    delete from "group" where group_id = ${sqlUuid(groupId)};
-  `);
-}
-
-/** Deletes notification, event_attendee, group_member, group_team, community_team, and user rows. */
-function cleanupTemporaryUser(userId) {
-  queryE2eDatabase(`
-    delete from notification where user_id = ${sqlUuid(userId)};
-    delete from event_attendee where user_id = ${sqlUuid(userId)};
-    delete from group_member where user_id = ${sqlUuid(userId)};
-    delete from group_team where user_id = ${sqlUuid(userId)};
-    delete from community_team where user_id = ${sqlUuid(userId)};
-    delete from "user" where user_id = ${sqlUuid(userId)};
   `);
 }
 
@@ -936,12 +1040,12 @@ function communityNewGroupDetails(communityId) {
 /** Builds the community settings form payload. */
 function communitySettingsForm(newGroupDetails, community) {
   return {
-    banner_mobile_url: community ? COMMUNITY_BANNER_MOBILE_URL : COMMUNITY_BANNER_MOBILE_URL,
-    banner_url: community ? COMMUNITY_BANNER_URL : COMMUNITY_BANNER_URL,
+    banner_mobile_url: community ? TEST_COMMUNITY_BANNER_MOBILE_URL : TEST_COMMUNITY_BANNER_MOBILE_URL,
+    banner_url: community ? TEST_COMMUNITY_BANNER_URL : TEST_COMMUNITY_BANNER_URL,
     description: community?.displayName ?? TEST_COMMUNITY_DESCRIPTION,
     display_name: community?.displayName ?? TEST_COMMUNITY_TITLE,
     group_team_management_restricted: "false",
-    logo_url: COMMUNITY_LOGO_URL,
+    logo_url: TEST_COMMUNITY_LOGO_URL,
     new_group_details: newGroupDetails,
   };
 }
@@ -996,24 +1100,10 @@ function countSponsorsByName(name) {
   return queryCount(`select count(*) from group_sponsor where name = ${sqlString(name)};`);
 }
 
-/** Deletes custom_notification rows matching a subject. */
-function deleteGroupCustomNotificationBySubject(subject) {
-  queryE2eDatabase(`delete from custom_notification where subject = ${sqlString(subject)};`);
-}
-
-/** Deletes notification rows matching notification IDs. */
-function deleteNotificationsByIds(notificationIds) {
-  if (notificationIds.length === 0) {
-    return;
-  }
-
-  queryE2eDatabase(`delete from notification where notification_id in (${sqlUuidList(notificationIds)});`);
-}
-
 /** Builds the event creation form payload. */
 function eventForm(name) {
   return {
-    category_id: EVENT_CATEGORY_ID,
+    category_id: TEST_EVENT_CATEGORY_IDS.general,
     description: "Temporary event created by dashboard permission coverage.",
     description_short: "Temporary event created by permission coverage.",
     // The server parses timestamps with seconds, as the event form JS submits them.
@@ -1032,24 +1122,17 @@ function eventForm(name) {
   };
 }
 
-/** Returns event IDs from event rows for a group. */
-function eventIdsByGroup(groupId) {
-  return queryE2eDatabaseRows(`select event_id from event where group_id = ${sqlUuid(groupId)};`).map(
-    ([eventId]) => eventId,
-  );
-}
-
-/** Returns the expected community permission status for a role and bucket. */
-function expectedCommunityStatus(role, bucket) {
+/** Returns the expected status of a read route: Read, or the route bucket when it names one. */
+function expectedReadStatus(role, route) {
   if (role.redirectsWithoutContext) {
     return INVITATION_REDIRECT_STATUS;
   }
 
-  return role.buckets[bucket.key] ? bucket.successStatus : 403;
+  return !route.bucket || role.buckets[route.bucket] ? 200 : 403;
 }
 
-/** Returns the expected group permission status for a role and bucket. */
-function expectedGroupStatus(role, bucket) {
+/** Returns the expected permission status for a role and bucket. */
+function expectedStatus(role, bucket) {
   if (role.redirectsWithoutContext) {
     return INVITATION_REDIRECT_STATUS;
   }
@@ -1098,55 +1181,18 @@ function groupForm({ categoryId, description, name }) {
   };
 }
 
-/** Returns group IDs from group rows for a community. */
-function groupIdsByCommunity(communityId) {
-  return queryE2eDatabaseRows(
-    `select group_id from "group" where community_id = ${sqlUuid(communityId)};`,
-  ).map(([groupId]) => groupId);
+/** Returns the inbox_conversation_status_id value from inbox_conversation. */
+function inboxConversationStatus(conversationId) {
+  return queryScalar(`
+    select inbox_conversation_status_id
+    from inbox_conversation
+    where inbox_conversation_id = ${sqlUuid(conversationId)};
+  `);
 }
 
 /** Returns whether a response status represents an allowed write. */
 function isAllowed(status) {
   return status === 200 || status === 201 || status === 204;
-}
-
-/** Returns notification IDs for a user and kind that were not present before. */
-function newNotificationIdsForUser(beforeIds, userId, kind) {
-  const before = new Set(beforeIds);
-
-  return notificationIdsForUser(userId, kind).filter((notificationId) => !before.has(notificationId));
-}
-
-/** Returns notification IDs joined through notification_template_data for a subject. */
-function notificationIdsForTemplateSubject(subject) {
-  return queryE2eDatabaseRows(`
-    select n.notification_id
-    from notification n
-    join notification_template_data ntd using (notification_template_data_id)
-    where ntd.data->>'subject' = ${sqlString(subject)}
-    order by n.notification_id;
-  `).map(([notificationId]) => notificationId);
-}
-
-/** Returns notification IDs from notification for a user and kind. */
-function notificationIdsForUser(userId, kind) {
-  return queryE2eDatabaseRows(`
-    select notification_id
-    from notification
-    where user_id = ${sqlUuid(userId)}
-    and kind = ${sqlString(kind)}
-    order by notification_id;
-  `).map(([notificationId]) => notificationId);
-}
-
-/** Returns a numeric count from a scalar SQL query. */
-function queryCount(sql) {
-  return Number(queryScalar(sql));
-}
-
-/** Returns the first scalar value from an E2E SQL query. */
-function queryScalar(sql) {
-  return queryE2eDatabaseRows(sql).at(0)?.at(0) ?? "";
 }
 
 /** Returns the status from event_refund_request for a purchase. */
@@ -1159,13 +1205,13 @@ function refundRequestStatus(purchaseId) {
 }
 
 /** Runs a community permission request and cleans up its representative effect. */
-const runCommunityCase = async (matrixCase, page) => {
+const runCommunityCase = async (matrixCase, page, notifications) => {
   const operation = matrixCase.bucket.createOperation(matrixCase.role, matrixCase.expectedStatus);
   let before;
 
   try {
     if (operation.communityId) {
-      await selectCommunityForRequest(page, operation.communityId);
+      await selectCommunityContext(page, operation.communityId);
     }
 
     before = operation.readEffect();
@@ -1174,20 +1220,20 @@ const runCommunityCase = async (matrixCase, page) => {
     const response = await sendDashboardRequest(page, operation, matrixCase.expectedStatus);
 
     expect(response.status(), await response.text()).toBe(matrixCase.expectedStatus);
-    await operation.assertEffect(before, page, matrixCase.expectedStatus);
+    await operation.assertEffect(before, { notifications, page });
   } finally {
     operation.cleanup?.();
   }
 };
 
 /** Runs a group permission request and cleans up its representative effect. */
-const runGroupCase = async (matrixCase, page) => {
+const runGroupCase = async (matrixCase, page, notifications) => {
   const operation = matrixCase.bucket.createOperation(matrixCase.role, matrixCase.expectedStatus);
   let before;
 
   try {
     if (operation.groupId) {
-      await selectGroupForRequest(page, operation.groupId);
+      await selectGroupContext(page, PRIMARY_COMMUNITY_ID, operation.groupId);
     }
 
     before = operation.readEffect();
@@ -1197,28 +1243,11 @@ const runGroupCase = async (matrixCase, page) => {
 
     expect(response.status(), await response.text()).toBe(matrixCase.expectedStatus);
     await operation.assertResponse?.(response);
-    operation.assertEffect(before, matrixCase.expectedStatus);
+    await operation.assertEffect(before, { notifications, page });
   } finally {
     operation.cleanup?.();
   }
 };
-
-/** Selects the community context required before sending a dashboard request. */
-async function selectCommunityForRequest(page, communityId) {
-  const response = await page.request.put(buildE2eUrl(`/dashboard/community/${communityId}/select`));
-  expect(response.status()).toBe(204);
-}
-
-/** Selects the community and group contexts before sending a dashboard request. */
-async function selectGroupForRequest(page, groupId) {
-  const communityResponse = await page.request.put(
-    buildE2eUrl(`/dashboard/group/community/${PRIMARY_COMMUNITY_ID}/select`),
-  );
-  expect(communityResponse.status()).toBe(204);
-
-  const groupResponse = await page.request.put(buildE2eUrl(`/dashboard/group/${groupId}/select`));
-  expect(groupResponse.status()).toBe(204);
-}
 
 /** Sends a dashboard request with form data and redirect handling. */
 async function sendDashboardRequest(page, operation, expectedStatus) {
@@ -1232,232 +1261,4 @@ async function sendDashboardRequest(page, operation, expectedStatus) {
   }
 
   return page.request.fetch(buildE2eUrl(operation.path), options);
-}
-
-/** Creates event, event_ticket_type, event_ticket_price_window, and event_attendee rows. */
-function setupCheckInGraph() {
-  const eventId = randomUUID();
-  const attendee = setupTemporaryUser("check-in-attendee");
-  const ticketPriceWindowId = randomUUID();
-  const ticketTypeId = randomUUID();
-  const userId = attendee.userId;
-  const name = uniqueName("permission check-in");
-  const slug = `permission-check-in-${shortId(eventId)}`;
-
-  queryE2eDatabase(`
-    insert into event (
-      event_id,
-      group_id,
-      name,
-      slug,
-      description,
-      description_short,
-      timezone,
-      event_category_id,
-      event_kind_id,
-      published,
-      published_at,
-      starts_at,
-      ends_at,
-      created_by
-    ) values (
-      ${sqlUuid(eventId)},
-      ${sqlUuid(PRIMARY_GROUP_ID)},
-      ${sqlString(name)},
-      ${sqlString(slug)},
-      'Temporary event owned by dashboard permission coverage.',
-      'Temporary event owned by dashboard permission coverage.',
-      'UTC',
-      ${sqlUuid(EVENT_CATEGORY_ID)},
-      'virtual',
-      true,
-      current_timestamp,
-      current_timestamp + interval '1 day',
-      current_timestamp + interval '1 day 2 hours',
-      ${sqlUuid(ADMIN1_USER_ID)}
-    );
-
-    insert into event_ticket_type (
-      event_ticket_type_id,
-      active,
-      availability,
-      event_id,
-      "order",
-      seats_total,
-      title,
-      description
-    ) values (
-      ${sqlUuid(ticketTypeId)},
-      true,
-      'public',
-      ${sqlUuid(eventId)},
-      1,
-      500,
-      'General Admission',
-      'Temporary free admission used by dashboard permission coverage.'
-    );
-
-    insert into event_ticket_price_window (
-      event_ticket_price_window_id,
-      amount_minor,
-      event_ticket_type_id
-    ) values (
-      ${sqlUuid(ticketPriceWindowId)},
-      0,
-      ${sqlUuid(ticketTypeId)}
-    );
-
-    insert into event_attendee (event_id, user_id, status)
-    values (${sqlUuid(eventId)}, ${sqlUuid(userId)}, 'confirmed');
-  `);
-
-  return {
-    eventId,
-    userId,
-    cleanup: () => {
-      cleanupEventsByIds([eventId]);
-      attendee.cleanup();
-    },
-  };
-}
-
-/** Creates community, group_category, and community_team rows for permission tests. */
-function setupTemporaryCommunity(role, label) {
-  const communityId = randomUUID();
-  const groupCategoryId = randomUUID();
-  const communityName = `e2e-${label.replace(/\s+/gu, "-")}-${shortId(communityId)}`;
-  const displayName = uniqueName(label);
-
-  queryE2eDatabase(`
-    insert into community (
-      community_id,
-      name,
-      display_name,
-      description,
-      banner_url,
-      banner_mobile_url,
-      logo_url
-    ) values (
-      ${sqlUuid(communityId)},
-      ${sqlString(communityName)},
-      ${sqlString(displayName)},
-      'Temporary community owned by dashboard permission coverage.',
-      ${sqlString(COMMUNITY_BANNER_URL)},
-      ${sqlString(COMMUNITY_BANNER_MOBILE_URL)},
-      ${sqlString(COMMUNITY_LOGO_URL)}
-    );
-
-    insert into group_category (group_category_id, name, community_id)
-    values (${sqlUuid(groupCategoryId)}, ${sqlString(uniqueName("permission group category"))}, ${sqlUuid(communityId)});
-
-    insert into community_team (community_id, user_id, accepted, role)
-    values (${sqlUuid(communityId)}, ${sqlUuid(role.userId)}, true, ${sqlString(role.roleName === "groups-manager" ? "groups-manager" : "admin")});
-  `);
-
-  return {
-    communityId,
-    displayName,
-    groupCategoryId,
-    cleanup: () => cleanupTemporaryCommunity(communityId),
-  };
-}
-
-/** Creates group, group_team, group_member, and optional badge_artwork rows. */
-function setupTemporaryGroup(role, { memberUserId, withArtwork = false } = {}) {
-  const groupId = randomUUID();
-  const groupName = uniqueName("permission group");
-  const slug = `permission-group-${shortId(groupId)}`;
-  const roleInsert = role.groupRole
-    ? `insert into group_team (group_id, user_id, accepted, role, "order")
-       values (${sqlUuid(groupId)}, ${sqlUuid(role.userId)}, true, ${sqlString(role.groupRole)}, 1);`
-    : "";
-  const memberInsert = memberUserId
-    ? `insert into group_member (group_id, user_id) values (${sqlUuid(groupId)}, ${sqlUuid(memberUserId)});`
-    : "";
-  const artworkInsert = withArtwork
-    ? `insert into badge_artwork (badge_artwork_id, file_name, group_id)
-       values (${sqlUuid(randomUUID())}, ${sqlString(BADGE_ARTWORK_FILE_NAME)}, ${sqlUuid(groupId)});`
-    : "";
-
-  queryE2eDatabase(`
-    insert into "group" (
-      group_id,
-      community_id,
-      group_category_id,
-      name,
-      slug,
-      description,
-      active
-    ) values (
-      ${sqlUuid(groupId)},
-      ${sqlUuid(PRIMARY_COMMUNITY_ID)},
-      ${sqlUuid(GROUP_CATEGORY_ID)},
-      ${sqlString(groupName)},
-      ${sqlString(slug)},
-      'Temporary group owned by dashboard permission coverage.',
-      true
-    );
-
-    ${roleInsert}
-    ${memberInsert}
-    ${artworkInsert}
-  `);
-
-  return {
-    groupId,
-    groupName,
-    cleanup: () => cleanupTemporaryGroup(groupId),
-  };
-}
-
-/** Creates a temporary user row for permission test ownership. */
-function setupTemporaryUser(label) {
-  const userId = randomUUID();
-  const suffix = shortId(userId);
-  const username = `e2e-${label}-${suffix}`;
-
-  queryE2eDatabase(`
-    insert into "user" (
-      user_id,
-      username,
-      email,
-      email_verified,
-      name,
-      password,
-      auth_hash
-    ) values (
-      ${sqlUuid(userId)},
-      ${sqlString(username)},
-      ${sqlString(`${username}@example.com`)},
-      true,
-      ${sqlString(`E2E ${label} ${suffix}`)},
-      ${sqlString(TEMP_PASSWORD_HASH)},
-      ${sqlString(`permission-${suffix}`)}
-    );
-  `);
-
-  return {
-    userId,
-    cleanup: () => cleanupTemporaryUser(userId),
-  };
-}
-
-/** Returns a compact ID suffix from a UUID string. */
-function shortId(value) {
-  return value.replace(/-/gu, "").slice(0, 12);
-}
-
-/** Escapes a value as a SQL string literal. */
-function sqlString(value) {
-  return `'${String(value).replaceAll("'", "''")}'`;
-}
-
-/** Escapes a value as a SQL uuid literal. */
-function sqlUuid(value) {
-  return `${sqlString(value)}::uuid`;
-}
-
-/** Returns comma-separated SQL uuid literals. */
-function sqlUuidList(values) {
-  return values.map((value) => sqlUuid(value)).join(", ");
 }

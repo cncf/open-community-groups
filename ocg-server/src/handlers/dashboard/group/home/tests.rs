@@ -664,30 +664,47 @@ async fn test_page_warns_when_selected_group_is_inactive() {
 }
 
 #[tokio::test]
-async fn test_page_without_tab_defaults_to_settings() {
-    // Setup database mock without badge, check-in or settings management
-    let ids = DashboardIds::new();
-    let mut db = MockDB::new();
-    expect_home_context(&mut db, &ids);
-    expect_group_permission_result(&mut db, &ids, GroupPermission::BadgesWrite, false);
-    expect_group_permission_result(&mut db, &ids, GroupPermission::CheckInsWrite, false);
-    expect_group_permission_result(&mut db, &ids, GroupPermission::InboxWrite, false);
-    expect_settings_content(&mut db, &ids, false);
-    db.expect_get_group_stats().never();
-    db.expect_group_has_active_subgroups().never();
+async fn test_page_without_known_tab_defaults_to_settings() {
+    // Setup requests without a known tab
+    let cases = [
+        ("missing tab", "/dashboard/group"),
+        ("unknown tab", "/dashboard/group?tab=bogus"),
+    ];
 
-    // Setup router and send request without selecting a tab
-    let router = TestRouterBuilder::new(db).build().await;
-    let request = get_request("/dashboard/group", ids.session_id);
-    let (parts, bytes) = send(router, request).await;
+    for (case, uri) in cases {
+        // Setup database mock without badge, check-in or settings management
+        let ids = DashboardIds::new();
+        let mut db = MockDB::new();
+        expect_home_context(&mut db, &ids);
+        expect_group_permission_result(&mut db, &ids, GroupPermission::BadgesWrite, false);
+        expect_group_permission_result(&mut db, &ids, GroupPermission::CheckInsWrite, false);
+        expect_group_permission_result(&mut db, &ids, GroupPermission::InboxWrite, false);
+        expect_settings_content(&mut db, &ids, false);
+        db.expect_get_group_stats().never();
+        db.expect_group_has_active_subgroups().never();
 
-    // Check the read-only settings tab is rendered instead of analytics
-    assert_html_response(&parts, &bytes, StatusCode::OK);
-    let body = std::str::from_utf8(&bytes).unwrap();
-    assert!(body.contains("hx-get=\"/dashboard/group/settings\""));
-    assert!(body.contains("Your role cannot update group settings."));
-    assert!(!body.contains("hx-get=\"/dashboard/group/analytics\""));
-    assert!(!body.contains("This group has been deactivated."));
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db).build().await;
+        let request = get_request(uri, ids.session_id);
+        let (parts, bytes) = send(router, request).await;
+
+        // Check the read-only settings tab is rendered instead of analytics
+        assert_eq!(parts.status, StatusCode::OK, "{case}");
+        let body = std::str::from_utf8(&bytes).unwrap();
+        assert!(
+            body.contains("hx-get=\"/dashboard/group/settings/update\""),
+            "{case}"
+        );
+        assert!(
+            body.contains("Your role cannot update group settings."),
+            "{case}"
+        );
+        assert!(
+            !body.contains("hx-get=\"/dashboard/group/analytics\""),
+            "{case}"
+        );
+        assert!(!body.contains("This group has been deactivated."), "{case}");
+    }
 }
 
 // Helpers.

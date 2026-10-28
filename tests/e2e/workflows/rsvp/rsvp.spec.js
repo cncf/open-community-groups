@@ -1,6 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
-import { createApprovalRequiredEvent, deleteEventFromList } from "../../dashboard/group/events/helpers.js";
+import { createApprovalRequiredEvent } from "../../dashboard/group/events/helpers.js";
+import { cleanupEventsByIds } from "../../data-graphs/events.js";
 import { TEST_COMMUNITY_NAME, TEST_USER_IDS } from "../../seed.js";
 import { buildE2eUrl, navigateToPath, uniqueName, waitForActionResponse } from "../../utils.js";
 
@@ -49,7 +50,7 @@ test.describe("rsvp approval workflow", () => {
       await expect(approvedOfferRow).toHaveCount(0);
     } finally {
       // Delete the temporary approval-required event.
-      await deleteEventFromList(organizerGroupPage, eventId);
+      cleanupEventsByIds([eventId]);
     }
   });
 });

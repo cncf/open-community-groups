@@ -1,5 +1,9 @@
 -- E2E seed: events.
 -- Depends on: 20_groups.sql (groups and group catalog links).
+--
+-- Scheduled events start at 10:00 in their timezone on a date relative to the seed day (or month),
+-- so a single-day event never crosses midnight whatever time the seed is loaded. Only the live and
+-- starting-soon fixtures stay relative to now().
 
 -- ============================================================================
 -- EVENTS
@@ -24,8 +28,8 @@ insert into event (
     'in-person',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() + interval '10 days',
-    now() + interval '10 days 2 hours',
+    date_trunc('day', now()) + interval '10 days 10 hours',
+    date_trunc('day', now()) + interval '10 days 12 hours',
     'Tech Conference Center',
     '123 Main Street',
     'New York',
@@ -46,6 +50,10 @@ insert into event (
     '{"/static/images/e2e/missing-event-gallery-photo.svg", "/static/images/e2e/event-photo-2.svg"}'
 );
 
+-- Legacy URL for alpha.one so list_redirects (redirector) returns it.
+update event
+set legacy_url = 'https://legacy.example.com/events/alpha-event-1?ref=e2e'
+where event_id = '55555555-5555-5555-5555-555555555501';
 
 -- Upcoming virtual event with recording
 insert into event (
@@ -62,8 +70,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() + interval '20 days',
-    now() + interval '20 days 2 hours',
+    date_trunc('day', now()) + interval '20 days 10 hours',
+    date_trunc('day', now()) + interval '20 days 12 hours',
     'San Francisco',
     'https://www.youtube.com/watch?v=test123'
 );
@@ -82,8 +90,8 @@ insert into event (
     'hybrid',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() + interval '30 days',
-    now() + interval '30 days 2 hours',
+    date_trunc('day', now()) + interval '30 days 10 hours',
+    date_trunc('day', now()) + interval '30 days 12 hours',
     null
 );
 
@@ -102,8 +110,8 @@ insert into event (
     'in-person',
     '44444444-4444-4444-4444-444444444442',
     false,
-    now() + interval '11 days',
-    now() + interval '11 days 2 hours',
+    date_trunc('day', now()) + interval '11 days 10 hours',
+    date_trunc('day', now()) + interval '11 days 12 hours',
     'Los Angeles',
     true
 );
@@ -122,8 +130,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444442',
     true,
-    now() + interval '21 days',
-    now() + interval '21 days 2 hours',
+    date_trunc('day', now()) + interval '21 days 10 hours',
+    date_trunc('day', now()) + interval '21 days 12 hours',
     'Los Angeles'
 ), (
     '55555555-5555-5555-5555-555555555506',
@@ -135,8 +143,8 @@ insert into event (
     'hybrid',
     '44444444-4444-4444-4444-444444444442',
     true,
-    now() + interval '31 days',
-    now() + interval '31 days 2 hours',
+    date_trunc('day', now()) + interval '31 days 10 hours',
+    date_trunc('day', now()) + interval '31 days 12 hours',
     null
 );
 
@@ -155,8 +163,8 @@ insert into event (
     'in-person',
     '44444444-4444-4444-4444-444444444443',
     true,
-    now() + interval '12 days',
-    now() + interval '12 days 2 hours',
+    date_trunc('day', now()) + interval '12 days 10 hours',
+    date_trunc('day', now()) + interval '12 days 12 hours',
     'Chicago'
 ), (
     '55555555-5555-5555-5555-555555555508',
@@ -168,8 +176,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444443',
     true,
-    now() + interval '22 days',
-    now() + interval '22 days 2 hours',
+    date_trunc('day', now()) + interval '22 days 10 hours',
+    date_trunc('day', now()) + interval '22 days 12 hours',
     'Chicago'
 ), (
     '55555555-5555-5555-5555-555555555509',
@@ -181,8 +189,8 @@ insert into event (
     'hybrid',
     '44444444-4444-4444-4444-444444444443',
     true,
-    now() + interval '32 days',
-    now() + interval '32 days 2 hours',
+    date_trunc('day', now()) + interval '32 days 10 hours',
+    date_trunc('day', now()) + interval '32 days 12 hours',
     null
 );
 
@@ -201,8 +209,8 @@ insert into event (
     'in-person',
     '44444444-4444-4444-4444-444444444444',
     true,
-    now() - interval '13 days',
-    now() - interval '13 days' + interval '2 hours'
+    date_trunc('day', now()) - interval '13 days' + interval '10 hours',
+    date_trunc('day', now()) - interval '13 days' + interval '12 hours'
 ), (
     '55555555-5555-5555-5555-555555555511',
     'Delta Event Two',
@@ -213,8 +221,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444444',
     true,
-    now() + interval '23 days',
-    now() + interval '23 days 2 hours'
+    date_trunc('day', now()) + interval '23 days 10 hours',
+    date_trunc('day', now()) + interval '23 days 12 hours'
 ), (
     '55555555-5555-5555-5555-555555555512',
     'Delta Event Three',
@@ -225,8 +233,8 @@ insert into event (
     'hybrid',
     '44444444-4444-4444-4444-444444444444',
     true,
-    now() + interval '33 days',
-    now() + interval '33 days 2 hours'
+    date_trunc('day', now()) + interval '33 days 10 hours',
+    date_trunc('day', now()) + interval '33 days 12 hours'
 );
 
 -- Epsilon group events
@@ -244,8 +252,8 @@ insert into event (
     'in-person',
     '44444444-4444-4444-4444-444444444445',
     true,
-    now() - interval '14 days',
-    now() - interval '14 days' + interval '2 hours'
+    date_trunc('day', now()) - interval '14 days' + interval '10 hours',
+    date_trunc('day', now()) - interval '14 days' + interval '12 hours'
 ), (
     '55555555-5555-5555-5555-555555555514',
     'Epsilon Event Two',
@@ -256,8 +264,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444445',
     true,
-    now() + interval '24 days',
-    now() + interval '24 days 2 hours'
+    date_trunc('day', now()) + interval '24 days 10 hours',
+    date_trunc('day', now()) + interval '24 days 12 hours'
 ), (
     '55555555-5555-5555-5555-555555555515',
     'Epsilon Event Three',
@@ -268,8 +276,8 @@ insert into event (
     'hybrid',
     '44444444-4444-4444-4444-444444444445',
     true,
-    now() + interval '34 days',
-    now() + interval '34 days 2 hours'
+    date_trunc('day', now()) + interval '34 days 10 hours',
+    date_trunc('day', now()) + interval '34 days 12 hours'
 );
 
 -- Zeta group events
@@ -287,8 +295,8 @@ insert into event (
     'in-person',
     '44444444-4444-4444-4444-444444444446',
     true,
-    now() - interval '15 days',
-    now() - interval '15 days' + interval '2 hours'
+    date_trunc('day', now()) - interval '15 days' + interval '10 hours',
+    date_trunc('day', now()) - interval '15 days' + interval '12 hours'
 ), (
     '55555555-5555-5555-5555-555555555517',
     'Zeta Event Two',
@@ -299,8 +307,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444446',
     true,
-    now() + interval '25 days',
-    now() + interval '25 days 2 hours'
+    date_trunc('day', now()) + interval '25 days 10 hours',
+    date_trunc('day', now()) + interval '25 days 12 hours'
 ), (
     '55555555-5555-5555-5555-555555555518',
     'Zeta Event Three',
@@ -311,8 +319,8 @@ insert into event (
     'hybrid',
     '44444444-4444-4444-4444-444444444446',
     true,
-    now() + interval '35 days',
-    now() + interval '35 days 2 hours'
+    date_trunc('day', now()) + interval '35 days 10 hours',
+    date_trunc('day', now()) + interval '35 days 12 hours'
 );
 
 -- Primary group events for CFS, filtering, and waitlist coverage
@@ -349,8 +357,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() - interval '5 days',
-    now() - interval '5 days' + interval '2 hours',
+    date_trunc('day', now()) - interval '5 days' + interval '10 hours',
+    date_trunc('day', now()) - interval '5 days' + interval '12 hours',
     null,
     null,
     null,
@@ -377,8 +385,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() - interval '20 days',
-    now() - interval '20 days' + interval '2 hours'
+    date_trunc('day', now()) - interval '20 days' + interval '10 hours',
+    date_trunc('day', now()) - interval '20 days' + interval '12 hours'
 );
 
 -- Events reserved for call-for-speakers window coverage.
@@ -396,8 +404,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() + interval '400 days',
-    now() + interval '400 days 2 hours',
+    date_trunc('day', now()) + interval '400 days 10 hours',
+    date_trunc('day', now()) + interval '400 days 12 hours',
     true,
     'Speaker submissions will open later for this event.',
     now() + interval '300 days',
@@ -412,8 +420,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() + interval '400 days',
-    now() + interval '400 days 2 hours',
+    date_trunc('day', now()) + interval '400 days 10 hours',
+    date_trunc('day', now()) + interval '400 days 12 hours',
     true,
     'Speaker submissions are closed for this event.',
     now() - interval '30 days',
@@ -434,8 +442,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() + interval '60 days',
-    now() + interval '60 days 2 hours',
+    date_trunc('day', now()) + interval '60 days 10 hours',
+    date_trunc('day', now()) + interval '60 days 12 hours',
     1,
     true
 ), (
@@ -448,8 +456,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() + interval '59 days',
-    now() + interval '59 days 2 hours',
+    date_trunc('day', now()) + interval '59 days 10 hours',
+    date_trunc('day', now()) + interval '59 days 12 hours',
     1,
     true
 ), (
@@ -462,8 +470,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() + interval '58 days',
-    now() + interval '58 days 2 hours',
+    date_trunc('day', now()) + interval '58 days 10 hours',
+    date_trunc('day', now()) + interval '58 days 12 hours',
     3,
     true
 );
@@ -488,7 +496,7 @@ values (
     '55555555-5555-5555-5555-555555555527',
     false,
     'Future event used to verify attendee state transitions after event cancellation.',
-    now() + interval '62 days 2 hours',
+    date_trunc('day', now()) + interval '62 days 12 hours',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
     '44444444-4444-4444-4444-444444444441',
@@ -496,13 +504,13 @@ values (
     true,
     '[{"id":"57555555-5555-5555-5555-555555555527","kind":"free-text","prompt":"What should the organizers know?","required":true,"options":[]}]'::jsonb,
     'alpha-event-cancellation-lifecycle',
-    now() + interval '62 days',
+    date_trunc('day', now()) + interval '62 days 10 hours',
     'UTC'
 ), (
     '55555555-5555-5555-5555-555555555528',
     true,
     'Canceled event used to preserve canceled invitation history in the dashboard.',
-    now() + interval '63 days 2 hours',
+    date_trunc('day', now()) + interval '63 days 12 hours',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
     '44444444-4444-4444-4444-444444444441',
@@ -510,7 +518,7 @@ values (
     true,
     '[]'::jsonb,
     'alpha-canceled-invitation-history',
-    now() + interval '63 days',
+    date_trunc('day', now()) + interval '63 days 10 hours',
     'UTC'
 );
 
@@ -530,8 +538,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     true,
     true,
-    now() + interval '70 days',
-    now() + interval '70 days 2 hours'
+    date_trunc('day', now()) + interval '70 days 10 hours',
+    date_trunc('day', now()) + interval '70 days 12 hours'
 );
 
 -- Registration questions event with answered attendees.
@@ -550,8 +558,8 @@ insert into event (
     'hybrid',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() + interval '80 days',
-    now() + interval '80 days 2 hours',
+    date_trunc('day', now()) + interval '80 days 10 hours',
+    date_trunc('day', now()) + interval '80 days 12 hours',
     60,
     '[
         {
@@ -628,8 +636,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     true,
     true,
-    now() + interval '120 days',
-    now() + interval '120 days 2 hours',
+    date_trunc('day', now()) + interval '120 days 10 hours',
+    date_trunc('day', now()) + interval '120 days 12 hours',
     true,
     now() - interval '1 day',
     now() + interval '100 days'
@@ -660,8 +668,8 @@ insert into event (
     true,
     true,
     true,
-    now() + interval '30 days',
-    now() + interval '30 days 2 hours',
+    date_trunc('day', now()) + interval '30 days 10 hours',
+    date_trunc('day', now()) + interval '30 days 12 hours',
     true,
     'Speaker submissions would be open if the event were active.',
     now() - interval '1 day',
@@ -681,8 +689,8 @@ insert into event (
     false,
     true,
     false,
-    now() + interval '31 days',
-    now() + interval '31 days 2 hours',
+    date_trunc('day', now()) + interval '31 days 10 hours',
+    date_trunc('day', now()) + interval '31 days 12 hours',
     false,
     null,
     null,
@@ -710,8 +718,8 @@ insert into event (
     true,
     true,
     false,
-    now() + interval '40 days',
-    now() + interval '41 days 2 hours',
+    date_trunc('day', now()) + interval '40 days 10 hours',
+    date_trunc('day', now()) + interval '41 days 12 hours',
     false,
     null,
     null,
@@ -736,8 +744,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     'USD',
     true,
-    now() + interval '90 days',
-    now() + interval '90 days 3 hours',
+    date_trunc('day', now()) + interval '90 days 10 hours',
+    date_trunc('day', now()) + interval '90 days 13 hours',
     false
 ), (
     '55555555-5555-5555-5555-555555555523',
@@ -750,8 +758,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     'USD',
     true,
-    now() + interval '95 days',
-    now() + interval '95 days 2 hours',
+    date_trunc('day', now()) + interval '95 days 10 hours',
+    date_trunc('day', now()) + interval '95 days 12 hours',
     false
 );
 
@@ -771,8 +779,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     'USD',
     false,
-    now() + interval '92 days',
-    now() + interval '92 days 2 hours',
+    date_trunc('day', now()) + interval '92 days 10 hours',
+    date_trunc('day', now()) + interval '92 days 12 hours',
     false,
     'inclusive',
     'manual',
@@ -799,8 +807,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '100 days',
-    now() + interval '100 days 2 hours',
+    date_trunc('day', now()) + interval '100 days 10 hours',
+    date_trunc('day', now()) + interval '100 days 12 hours',
     null,
     false,
     false,
@@ -820,8 +828,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '101 days',
-    now() + interval '101 days 2 hours',
+    date_trunc('day', now()) + interval '101 days 10 hours',
+    date_trunc('day', now()) + interval '101 days 12 hours',
     null,
     false,
     false,
@@ -841,8 +849,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '102 days',
-    now() + interval '102 days 2 hours',
+    date_trunc('day', now()) + interval '102 days 10 hours',
+    date_trunc('day', now()) + interval '102 days 12 hours',
     null,
     false,
     false,
@@ -862,8 +870,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '103 days',
-    now() + interval '103 days 2 hours',
+    date_trunc('day', now()) + interval '103 days 10 hours',
+    date_trunc('day', now()) + interval '103 days 12 hours',
     null,
     false,
     false,
@@ -883,8 +891,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '104 days',
-    now() + interval '104 days 2 hours',
+    date_trunc('day', now()) + interval '104 days 10 hours',
+    date_trunc('day', now()) + interval '104 days 12 hours',
     null,
     false,
     true,
@@ -904,8 +912,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '105 days',
-    now() + interval '105 days 2 hours',
+    date_trunc('day', now()) + interval '105 days 10 hours',
+    date_trunc('day', now()) + interval '105 days 12 hours',
     1,
     true,
     false,
@@ -925,8 +933,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '106 days',
-    now() + interval '106 days 2 hours',
+    date_trunc('day', now()) + interval '106 days 10 hours',
+    date_trunc('day', now()) + interval '106 days 12 hours',
     null,
     false,
     false,
@@ -967,8 +975,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '107 days',
-    now() + interval '107 days 2 hours',
+    date_trunc('day', now()) + interval '107 days 10 hours',
+    date_trunc('day', now()) + interval '107 days 12 hours',
     null,
     false,
     false,
@@ -988,8 +996,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '108 days',
-    now() + interval '108 days 2 hours',
+    date_trunc('day', now()) + interval '108 days 10 hours',
+    date_trunc('day', now()) + interval '108 days 12 hours',
     null,
     false,
     false,
@@ -1009,8 +1017,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '109 days',
-    now() + interval '109 days 2 hours',
+    date_trunc('day', now()) + interval '109 days 10 hours',
+    date_trunc('day', now()) + interval '109 days 12 hours',
     null,
     false,
     false,
@@ -1030,8 +1038,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '120 days',
-    now() + interval '120 days 2 hours',
+    date_trunc('day', now()) + interval '120 days 10 hours',
+    date_trunc('day', now()) + interval '120 days 12 hours',
     null,
     false,
     true,
@@ -1051,8 +1059,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '121 days',
-    now() + interval '121 days 2 hours',
+    date_trunc('day', now()) + interval '121 days 10 hours',
+    date_trunc('day', now()) + interval '121 days 12 hours',
     null,
     false,
     true,
@@ -1080,8 +1088,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '110 days',
-    now() + interval '110 days 2 hours',
+    date_trunc('day', now()) + interval '110 days 10 hours',
+    date_trunc('day', now()) + interval '110 days 12 hours',
     false,
     false,
     '[]'::jsonb
@@ -1098,8 +1106,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '111 days',
-    now() + interval '111 days 2 hours',
+    date_trunc('day', now()) + interval '111 days 10 hours',
+    date_trunc('day', now()) + interval '111 days 12 hours',
     false,
     true,
     '[{"id":"57555555-5555-5555-5555-555555555913","kind":"free-text","prompt":"Why would you like this ticket?","required":true,"options":[]}]'::jsonb
@@ -1116,8 +1124,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '112 days',
-    now() + interval '112 days 2 hours',
+    date_trunc('day', now()) + interval '112 days 10 hours',
+    date_trunc('day', now()) + interval '112 days 12 hours',
     false,
     true,
     '[]'::jsonb
@@ -1134,8 +1142,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '113 days',
-    now() + interval '113 days 2 hours',
+    date_trunc('day', now()) + interval '113 days 10 hours',
+    date_trunc('day', now()) + interval '113 days 12 hours',
     false,
     true,
     '[]'::jsonb
@@ -1152,8 +1160,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '114 days',
-    now() + interval '114 days 2 hours',
+    date_trunc('day', now()) + interval '114 days 10 hours',
+    date_trunc('day', now()) + interval '114 days 12 hours',
     false,
     false,
     '[]'::jsonb
@@ -1170,8 +1178,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '115 days',
-    now() + interval '115 days 2 hours',
+    date_trunc('day', now()) + interval '115 days 10 hours',
+    date_trunc('day', now()) + interval '115 days 12 hours',
     false,
     false,
     '[{"id":"57555555-5555-5555-5555-555555555917","kind":"free-text","prompt":"What should the organizers prepare for you?","required":true,"options":[]}]'::jsonb
@@ -1188,8 +1196,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '116 days',
-    now() + interval '116 days 2 hours',
+    date_trunc('day', now()) + interval '116 days 10 hours',
+    date_trunc('day', now()) + interval '116 days 12 hours',
     true,
     false,
     '[{"id":"57555555-5555-5555-5555-555555555918","kind":"free-text","prompt":"What would you like to learn?","required":true,"options":[]}]'::jsonb
@@ -1206,8 +1214,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '117 days',
-    now() + interval '117 days 2 hours',
+    date_trunc('day', now()) + interval '117 days 10 hours',
+    date_trunc('day', now()) + interval '117 days 12 hours',
     false,
     false,
     '[]'::jsonb
@@ -1231,8 +1239,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '118 days',
-    now() + interval '118 days 2 hours',
+    date_trunc('day', now()) + interval '118 days 10 hours',
+    date_trunc('day', now()) + interval '118 days 12 hours',
     1,
     false,
     false,
@@ -1258,8 +1266,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '119 days',
-    now() + interval '119 days 2 hours',
+    date_trunc('day', now()) + interval '119 days 10 hours',
+    date_trunc('day', now()) + interval '119 days 12 hours',
     4,
     true,
     false,
@@ -1277,8 +1285,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '120 days',
-    now() + interval '120 days 2 hours',
+    date_trunc('day', now()) + interval '120 days 10 hours',
+    date_trunc('day', now()) + interval '120 days 12 hours',
     4,
     false,
     false,
@@ -1306,8 +1314,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '120 days',
-    now() + interval '120 days 2 hours',
+    (current_date + interval '120 days 10 hours') at time zone 'America/New_York',
+    (current_date + interval '120 days 12 hours') at time zone 'America/New_York',
     8,
     false,
     false,
@@ -1337,8 +1345,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '121 days',
-    now() + interval '121 days 2 hours',
+    (current_date + interval '121 days 10 hours') at time zone 'America/New_York',
+    (current_date + interval '121 days 12 hours') at time zone 'America/New_York',
     1,
     false,
     false,
@@ -1368,8 +1376,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '122 days',
-    now() + interval '122 days 2 hours',
+    (current_date + interval '122 days 10 hours') at time zone 'America/New_York',
+    (current_date + interval '122 days 12 hours') at time zone 'America/New_York',
     2,
     false,
     false,
@@ -1399,8 +1407,8 @@ insert into event (
     null,
     true,
     true,
-    now() + interval '123 days',
-    now() + interval '123 days 2 hours',
+    (current_date + interval '123 days 10 hours') at time zone 'America/New_York',
+    (current_date + interval '123 days 12 hours') at time zone 'America/New_York',
     8,
     false,
     false,
@@ -1551,8 +1559,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     true,
     true,
-    now() - interval '2 days',
-    now() - interval '2 days' + interval '2 hours',
+    date_trunc('day', now()) - interval '2 days' + interval '10 hours',
+    date_trunc('day', now()) - interval '2 days' + interval '12 hours',
     100,
     'zoom',
     true,
@@ -1595,8 +1603,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     true,
     true,
-    now() + interval '140 days',
-    now() + interval '140 days 2 hours',
+    date_trunc('day', now()) + interval '140 days 10 hours',
+    date_trunc('day', now()) + interval '140 days 12 hours',
     100,
     'zoom',
     true,
@@ -1617,8 +1625,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     true,
     true,
-    now() + interval '141 days',
-    now() + interval '141 days 2 hours',
+    date_trunc('day', now()) + interval '141 days 10 hours',
+    date_trunc('day', now()) + interval '141 days 12 hours',
     100,
     'zoom',
     true,
@@ -1639,8 +1647,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     true,
     true,
-    now() - interval '3 days',
-    now() - interval '3 days' + interval '2 hours',
+    date_trunc('day', now()) - interval '3 days' + interval '10 hours',
+    date_trunc('day', now()) - interval '3 days' + interval '12 hours',
     100,
     'zoom',
     true,
@@ -1661,8 +1669,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     true,
     true,
-    now() - interval '4 days',
-    now() - interval '4 days' + interval '2 hours',
+    date_trunc('day', now()) - interval '4 days' + interval '10 hours',
+    date_trunc('day', now()) - interval '4 days' + interval '12 hours',
     100,
     'zoom',
     true,
@@ -1692,8 +1700,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '124 days',
-    now() + interval '124 days 2 hours',
+    date_trunc('day', now()) + interval '124 days 10 hours',
+    date_trunc('day', now()) + interval '124 days 12 hours',
     2,
     false,
     false,
@@ -1711,8 +1719,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '125 days',
-    now() + interval '125 days 2 hours',
+    date_trunc('day', now()) + interval '125 days 10 hours',
+    date_trunc('day', now()) + interval '125 days 12 hours',
     4,
     false,
     false,
@@ -1730,8 +1738,8 @@ insert into event (
     'USD',
     true,
     true,
-    now() + interval '126 days',
-    now() + interval '126 days 2 hours',
+    date_trunc('day', now()) + interval '126 days 10 hours',
+    date_trunc('day', now()) + interval '126 days 12 hours',
     1,
     false,
     false,
@@ -1758,8 +1766,8 @@ insert into event (
     'virtual',
     '44444444-4444-4444-4444-444444444445',
     true,
-    now() + interval '9 days',
-    now() + interval '9 days 2 hours'
+    date_trunc('day', now()) + interval '9 days 10 hours',
+    date_trunc('day', now()) + interval '9 days 12 hours'
 );
 
 -- Approved co-hosts credited on the public event page and cards.

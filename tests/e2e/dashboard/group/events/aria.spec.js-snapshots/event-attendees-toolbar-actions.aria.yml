@@ -1,0 +1,5 @@
+- menu:
+  - listitem:
+    - menuitem "Invite attendee"
+  - listitem:
+    - menuitem "Download CSV": Attendees list CSV

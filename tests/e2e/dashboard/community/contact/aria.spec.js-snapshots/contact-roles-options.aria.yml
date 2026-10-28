@@ -1,0 +1,5 @@
+- listbox:
+  - option "Admin"
+  - option "Events Manager"
+  - option "Check-In Manager"
+  - option "Viewer"

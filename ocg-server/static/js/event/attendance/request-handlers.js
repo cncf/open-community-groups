@@ -20,9 +20,7 @@ import { refreshAvailabilityAndRenderAttendance } from "/static/js/event/attenda
 import { showProfileAwareInfoAlert } from "/static/js/event/attendance/feedback.js";
 import {
   blockAttendanceRequestForQuestions,
-  isCompletingRegistrationQuestions,
   requestQuestionAnswers,
-  shouldCollectQuestionAnswers,
 } from "/static/js/event/attendance/questions.js";
 import { renderAttendanceCheckResponse } from "/static/js/event/attendance/status-renderer.js";
 import {
@@ -336,9 +334,6 @@ const blockInterceptedAttendRequest = (event, target, container) => {
   }
 
   const meta = getAttendanceMeta(container);
-  if (isCompletingRegistrationQuestions(target) && !shouldCollectQuestionAnswers(container)) {
-    return false;
-  }
   if (!meta.ticketModalRequired && !target.dataset.resumeUrl) {
     return false;
   }

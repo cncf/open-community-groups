@@ -1,66 +1,15 @@
-import { expect } from "../../fixtures.js";
-import { navigateToPath, waitForActionResponse, waitForHtmxSettle } from "../../utils.js";
+import { waitForActionResponses } from "../../utils.js";
 
-export const taxonomyCases = [
-  {
-    path: "/dashboard/community?tab=regions",
-    heading: "Regions",
-    addButton: "Add Region",
-    usedDeleteId: "delete-region-22222222-2222-2222-2222-222222222301",
-    unusedDeleteId: "delete-region-22222222-2222-2222-2222-222222222302",
-  },
-  {
-    path: "/dashboard/community?tab=group-categories",
-    heading: "Group Categories",
-    addButton: "Add Group Category",
-    usedDeleteId: "delete-group-category-22222222-2222-2222-2222-222222222221",
-    unusedDeleteId: "delete-group-category-22222222-2222-2222-2222-222222222223",
-  },
-  {
-    path: "/dashboard/community?tab=event-categories",
-    heading: "Event Categories",
-    addButton: "Add Event Category",
-    usedDeleteId: "delete-event-category-33333333-3333-3333-3333-333333333331",
-    unusedDeleteId: "delete-event-category-33333333-3333-3333-3333-333333333333",
-  },
-];
-
-/** Sets the community groups manager role and waits for the dashboard update. */
-export const ensureCommunityGroupsManagerRole = async (role, page) => {
-  const teamTabPath = "/dashboard/community?tab=team";
-
-  await navigateToPath(page, teamTabPath);
-
-  const dashboardContent = page.locator("#dashboard-content");
-  const groupsManagerRow = dashboardContent.locator("tr", {
-    hasText: "E2E Groups Manager One",
-  });
-  const currentRoleSelect = groupsManagerRow.locator('select[name="role"]');
-
-  await expect(groupsManagerRow).toBeVisible();
-
-  if ((await currentRoleSelect.inputValue()) === role) {
-    return;
-  }
-
-  await waitForActionResponse(page, () => currentRoleSelect.selectOption(role), {
-    method: "PUT",
-    urlEndsWith: "/role",
-    urlIncludes: "/dashboard/community/team/",
-  });
-
-  await expect(currentRoleSelect).toHaveValue(role);
-};
-
-/** Runs a community dashboard mutation and waits for its table refresh. */
-export const waitForCommunityDashboardMutation = async (page, refreshPath, action, responseOptions) => {
-  await Promise.all([
-    page.waitForResponse((response) => {
-      const requestUrl = new URL(response.url());
-
-      return response.request().method() === "GET" && requestUrl.pathname === refreshPath && response.ok();
-    }),
-    waitForActionResponse(page, action, responseOptions),
+/**
+ * Runs a community dashboard mutation and waits for its response and the table refresh.
+ * @param {import("@playwright/test").Page} page - Community dashboard page.
+ * @param {string} refreshPath - Pathname of the refreshed dashboard table.
+ * @param {() => Promise<unknown>|unknown} action - Click that sends the mutation.
+ * @param {object} responseMatcher - `waitForActionResponse` matcher for the mutation.
+ * @returns {Promise<import("@playwright/test").Response[]>} Mutation and refresh responses.
+ */
+export const waitForCommunityDashboardMutation = (page, refreshPath, action, responseMatcher) =>
+  waitForActionResponses(page, action, [
+    responseMatcher,
+    { method: "GET", pathname: refreshPath, status: 200 },
   ]);
-  await waitForHtmxSettle(page);
-};

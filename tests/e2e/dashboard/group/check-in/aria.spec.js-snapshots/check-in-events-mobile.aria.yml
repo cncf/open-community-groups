@@ -1,0 +1,7 @@
+- region "Check-In":
+  - heading "Check-In" [level=1]
+  - paragraph: Select an event, then scan attendee QR codes continuously.
+  - article:
+    - text: E2E ARIA event
+    - button "Scan Attendee Codes for E2E ARIA event"
+    - text: Jun 15 Virtual Jun 15, 2035 · 6:00 PM UTC

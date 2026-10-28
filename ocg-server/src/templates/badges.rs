@@ -3,7 +3,7 @@
 use askama::Template;
 
 use crate::{
-    templates::filters,
+    templates::{filters, helpers},
     types::{
         badges::{UserBadge, VerifiedBadge},
         site::SiteSettings,
@@ -18,6 +18,8 @@ use crate::{
 pub struct CredentialPage {
     /// Durable award and immutable credential snapshot.
     pub award: UserBadge,
+    /// Configured public base URL.
+    pub base_url: String,
     /// Public badge image URL.
     pub image_url: String,
     /// Current request path.
@@ -29,9 +31,17 @@ pub struct CredentialPage {
 }
 
 impl CredentialPage {
-    /// Return the badge image as Open Graph metadata when available.
+    /// Return the canonical public URL for the credential page.
+    pub fn canonical_url(&self) -> String {
+        helpers::absolute_url(
+            &self.base_url,
+            &format!("/badges/credentials/{}", self.award.user_badge_id),
+        )
+    }
+
+    /// Return the absolute badge image URL as Open Graph metadata when available.
     pub fn open_graph_image_url(&self) -> Option<String> {
-        (!self.image_url.is_empty()).then(|| self.image_url.clone())
+        (!self.image_url.is_empty()).then(|| helpers::absolute_url(&self.base_url, &self.image_url))
     }
 }
 

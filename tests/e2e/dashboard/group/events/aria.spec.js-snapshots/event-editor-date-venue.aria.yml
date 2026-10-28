@@ -1,0 +1,44 @@
+- text: Date & Venue
+- paragraph: When will this event take place?
+- text: Timezone *
+- button "UTC"
+- paragraph: Timezone for event times (e.g. America/New_York, Europe/Amsterdam).
+- text: Start Date & Time
+- textbox "Start Date & Time": 2035-06-15T18:00
+- paragraph: When the event starts.
+- text: End Date & Time
+- textbox "End Date & Time": 2035-06-15T20:00
+- paragraph: When the event ends.
+- text: Registration Opens
+- textbox "Registration Opens"
+- paragraph: Leave blank to allow registration immediately.
+- text: Registration Closes
+- textbox "Registration Closes"
+- paragraph: Must be after the open date. Leave blank with an open date to close at event start. Leave both fields blank for no window.
+- text: A registration window limits attendee self-registration, ticket checkout, new invitation requests, waitlist promotion, and registration-question answers. Organizers can still accept pending invitation requests and reissue expired approval offers outside the window. Rejecting requests and inviting attendees manually still work; those invitees can complete required registration questions.
+- checkbox "Send Event Reminder" [checked]
+- text: Send Event Reminder
+- paragraph: /Send a reminder email \d+ hours before the event starts\./
+- text: Online Event Details
+- paragraph: Meeting information for virtual and hybrid events.
+- radio "Use my own meeting link Paste a Zoom, Teams, Meet, or other link." [checked]
+- text: Use my own meeting link
+- paragraph: Paste a Zoom, Teams, Meet, or other link.
+- radio "Create meeting automatically We will create and manage a meeting when you save this event."
+- text: Create meeting automatically
+- paragraph: We will create and manage a meeting when you save this event.
+- text: Meeting URL
+- textbox "Meeting URL":
+  - /placeholder: https://meet.example.com/123456789
+- paragraph: Zoom, Teams, Meet, or any other video link.
+- text: Join instructions (optional)
+- textbox "Join instructions (optional)":
+  - /placeholder: Add passcodes, waiting room details, or other attendee instructions.
+- paragraph: Shown with the meeting details on the public event page.
+- text: Final public recording URL (optional)
+- textbox "Final public recording URL (optional)":
+  - /placeholder: https://youtube.com/watch?v=...
+- paragraph: Optional final recording URL, such as a processed upload or a reviewed provider recording.
+- checkbox "Publish recording publicly"
+- text: Publish recording publicly
+- paragraph: Controls whether public visitors can see the final public recording URL.

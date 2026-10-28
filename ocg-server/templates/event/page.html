@@ -79,7 +79,7 @@
 
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
         {# Event header -#}
-        <div>
+        <div role="region" aria-label="Event summary">
           {# Main flex container -#}
           <div class="grid gap-x-6 gap-y-4 md:gap-y-0 md:grid-cols-[auto_minmax(0,1fr)_auto]">
             {# Event logo -#}
@@ -246,7 +246,7 @@
                             {{ start_tz.format("%b %e, %y") }}
                           </div>
                           <div class="hidden sm:block text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800 whitespace-nowrap">
-                            {{ start_tz.format("%b %e, %G") }}
+                            {{ start_tz.format("%b %e, %Y") }}
                           </div>
                           <div class="mt-1 text-sm text-stone-600">{{ start_tz.format("%I:%M %p") }}</div>
                         </div>
@@ -257,7 +257,7 @@
                             {{ end_tz.format("%b %e, %y") }}
                           </div>
                           <div class="hidden sm:block text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800 whitespace-nowrap">
-                            {{ end_tz.format("%b %e, %G") }}
+                            {{ end_tz.format("%b %e, %Y") }}
                           </div>
                           <div class="mt-1 text-sm text-stone-600">{{ end_tz.format("%I:%M %p") }}</div>
                         </div>
@@ -268,7 +268,7 @@
                         {{ start_tz.format("%b %e, %y") }}
                       </div>
                       <div class="hidden sm:block text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800 whitespace-nowrap">
-                        {{ start_tz.format("%B %e, %G") }}
+                        {{ start_tz.format("%B %e, %Y") }}
                       </div>
                       <div class="mt-2 text-base text-stone-600">
                         {{ start_tz.format("%I:%M %p") }} - {{ end_tz.format("%I:%M %p %Z") }}
@@ -280,7 +280,7 @@
                       {{ start_tz.format("%b %e, %y") }}
                     </div>
                     <div class="hidden sm:block text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800 whitespace-nowrap">
-                      {{ start_tz.format("%B %e, %G") }}
+                      {{ start_tz.format("%B %e, %Y") }}
                     </div>
                     <div class="mt-2 text-base text-stone-600">{{ start_tz.format("%I:%M %p %Z") }}</div>
                   {% endmatch -%}
@@ -395,7 +395,7 @@
         {% let cfs_end_tz = cfs_ends_at.with_timezone(event.timezone) -%}
         <div class="text-lg text-stone-700 pt-9">
           <span class="uppercase text-stone-500 me-2">Submissions open:</span>
-          <span class="font-semibold">{{ cfs_start_tz.format("%b %-e, %l:%M %p") }} - {{ cfs_end_tz.format("%b %-e, %l:%M %p %Z, %G") }}</span>
+          <span class="font-semibold">{{ cfs_start_tz.format("%b %-e, %l:%M %p") }} - {{ cfs_end_tz.format("%b %-e, %l:%M %p %Z, %Y") }}</span>
         </div>
       {% endif -%}
     {% endif -%}

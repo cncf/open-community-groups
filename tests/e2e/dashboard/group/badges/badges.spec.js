@@ -85,16 +85,12 @@ test.describe("group badge definitions", () => {
 
       // Search for the seeded Speaker badge.
       await searchInput.fill("Speaker");
-      await Promise.all([
-        organizerGroupPage.waitForResponse(
-          (response) =>
-            response.request().method() === "GET" &&
-            response.url().includes("/dashboard/group/badges?") &&
-            response.url().includes("badges_query=Speaker") &&
-            response.ok(),
-        ),
-        searchInput.press("Enter"),
-      ]);
+      await waitForActionResponse(organizerGroupPage, () => searchInput.press("Enter"), {
+        method: "GET",
+        params: { badges_query: "Speaker" },
+        pathname: "/dashboard/group/badges",
+        status: 200,
+      });
       await expect(badgesRoot).toHaveAttribute("data-group-badges-ready", "true");
       await expect(
         dashboardContent.getByRole("table", { name: "Badges list" }).getByText("Speaker", {
@@ -112,19 +108,12 @@ test.describe("group badge definitions", () => {
         name: "Clear badge search",
       });
       await expect(clearSearchButton).toBeVisible();
-      await Promise.all([
-        organizerGroupPage.waitForResponse((response) => {
-          const responseUrl = new URL(response.url());
-
-          return (
-            response.request().method() === "GET" &&
-            responseUrl.pathname === "/dashboard/group/badges" &&
-            !responseUrl.searchParams.has("badges_query") &&
-            response.ok()
-          );
-        }),
-        clearSearchButton.click(),
-      ]);
+      await waitForActionResponse(organizerGroupPage, () => clearSearchButton.click(), {
+        method: "GET",
+        params: { badges_query: null },
+        pathname: "/dashboard/group/badges",
+        status: 200,
+      });
       await expect(searchInput).toHaveValue("");
       await expect(badgesRoot).toHaveAttribute("data-group-badges-ready", "true");
 

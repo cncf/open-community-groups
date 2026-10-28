@@ -1,12 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { queryE2eDatabase } from "../database.js";
-import { TEST_USER_IDS } from "../seed.js";
-
-const EVENT_CATEGORY_ID = "33333333-3333-3333-3333-333333333331";
-
-/** Builds a UUID array literal for E2E SQL cleanup queries. */
-const sqlArray = (values) => `array[${values.map((value) => `'${value}'::uuid`).join(", ")}]`;
+import { queryE2eDatabase, sqlString, sqlUuid, sqlUuidArray } from "../database.js";
+import { TEST_EVENT_CATEGORY_IDS, TEST_USER_IDS } from "../seed.js";
+import { shortId, uniqueName } from "../utils.js";
+import { setupTemporaryUser } from "./users.js";
 
 /**
  * Deletes the event graph owned by a notification scenario.
@@ -17,7 +14,7 @@ export const cleanupEventsByIds = (eventIds) => {
     return;
   }
 
-  const eventIdArray = sqlArray(eventIds);
+  const eventIdArray = sqlUuidArray(eventIds);
 
   queryE2eDatabase(`
     do $$
@@ -82,6 +79,242 @@ export const cleanupEventsByIds = (eventIds) => {
 };
 
 /**
+ * Inserts an owned event graph in one transaction: the event, its ticket tiers and their price
+ * windows, organizers, confirmed attendees, waitlist entries and featured speakers. Event
+ * capacity is the sum of the tier seats. Every other event insert in the suite goes through this
+ * primitive. Remove the graph with `cleanupEventsByIds([eventId])` or create it with `owned.event`.
+ * @param {{
+ *   approvalRequired?: boolean,
+ *   attendeeUserIds?: string[],
+ *   capacity?: number,
+ *   categoryId?: string,
+ *   description?: string,
+ *   descriptionShort?: string | null,
+ *   duration?: string,
+ *   endsAt?: string,
+ *   eventId?: string,
+ *   groupId: string,
+ *   kind?: "hybrid" | "in-person" | "virtual",
+ *   meetingJoinUrl?: string | null,
+ *   name?: string,
+ *   organizerUserIds?: string[],
+ *   paymentCurrencyCode?: string | null,
+ *   published?: boolean,
+ *   publishedAgo?: string | null,
+ *   publishedBy?: string | null,
+ *   registrationEndsAt?: string,
+ *   registrationStartsAt?: string,
+ *   slug?: string,
+ *   speakerUserIds?: string[],
+ *   startsAt?: string,
+ *   startsIn?: string,
+ *   testEvent?: boolean,
+ *   tiers?: { amountMinor?: number, description?: string, key: string, seats: number, title: string }[],
+ *   timezone?: string,
+ *   waitlist?: string[],
+ *   waitlistEnabled?: boolean
+ * }} options - Event shape. `capacity` sizes the single default tier (key `general`) used when
+ * `tiers` is omitted. Tiers are free unless `amountMinor` is positive; positive amounts require
+ * `paymentCurrencyCode` (such as `USD`) and a currency requires a positive amount.
+ * `startsAt`/`endsAt` and `registrationStartsAt`/`registrationEndsAt` are local timestamps
+ * (`YYYY-MM-DD HH:MM`) in `timezone`; without `startsAt` the event starts `startsIn` (a SQL interval)
+ * from now. A missing end is `duration` (a SQL interval) after the start. Registration is open
+ * without a window when both registration bounds are omitted. A published event was published `publishedAgo` (a SQL
+ * interval) before now, now when omitted, and has no `published_at` when it is null. `publishedBy`
+ * defaults to organizer1 when published.
+ * `waitlist` lists user IDs queued for the first tier, oldest first.
+ * @returns {{ eventId: string, name: string, slug: string, ticketTypeIds: Record<string, string> }}
+ */
+export const insertOwnedEvent = ({
+  approvalRequired = false,
+  attendeeUserIds = [],
+  capacity = 10,
+  categoryId = TEST_EVENT_CATEGORY_IDS.general,
+  description = "Owned event used by E2E coverage.",
+  descriptionShort = description,
+  duration = "2 hours",
+  endsAt,
+  eventId = randomUUID(),
+  groupId,
+  kind = "virtual",
+  meetingJoinUrl = null,
+  name,
+  organizerUserIds = [TEST_USER_IDS.organizer1],
+  paymentCurrencyCode = null,
+  published = true,
+  publishedAgo,
+  publishedBy = published ? TEST_USER_IDS.organizer1 : null,
+  registrationEndsAt,
+  registrationStartsAt,
+  slug,
+  speakerUserIds = [],
+  startsAt,
+  startsIn = "30 days",
+  testEvent = false,
+  tiers = [{ key: "general", seats: capacity, title: "General admission" }],
+  timezone = "UTC",
+  waitlist = [],
+  waitlistEnabled = false,
+}) => {
+  const identity = buildOwnedEventIdentity("owned event", eventId);
+  const eventName = name ?? identity.name;
+  const eventSlug = slug ?? identity.slug;
+  const ownedTiers = tiers.map((tier, index) => ({
+    amountMinor: 0,
+    ...tier,
+    order: index + 1,
+    priceWindowId: randomUUID(),
+    ticketTypeId: randomUUID(),
+  }));
+  const ticketTypeIds = Object.fromEntries(ownedTiers.map((tier) => [tier.key, tier.ticketTypeId]));
+
+  if (ownedTiers.length === 0) {
+    throw new Error("insertOwnedEvent: events require at least one ticket tier");
+  }
+  if (Object.keys(ticketTypeIds).length !== ownedTiers.length) {
+    throw new Error("insertOwnedEvent: tier keys must be unique");
+  }
+  // Mirrors check_event_ticketing_consistency so a bad shape fails before the deferred trigger.
+  if (ownedTiers.some((tier) => tier.amountMinor > 0) !== (paymentCurrencyCode !== null)) {
+    throw new Error("insertOwnedEvent: positive tier amounts and paymentCurrencyCode go together");
+  }
+
+  const eventUuid = sqlUuid(eventId);
+  const localTimestampSql = (value) =>
+    value === undefined ? "null" : `(${sqlString(value)}::timestamp at time zone ${sqlString(timezone)})`;
+  const startsAtSql = startsAt
+    ? localTimestampSql(startsAt)
+    : `(current_timestamp + ${sqlString(startsIn)}::interval)`;
+  const endsAtSql = endsAt ? localTimestampSql(endsAt) : `${startsAtSql} + ${sqlString(duration)}::interval`;
+  let publishedAtSql = "null";
+  if (published && publishedAgo === undefined) {
+    publishedAtSql = "current_timestamp";
+  } else if (published && publishedAgo !== null) {
+    publishedAtSql = `(current_timestamp - ${sqlString(publishedAgo)}::interval)`;
+  }
+
+  queryE2eDatabase(`
+    insert into event (
+      event_id,
+      name,
+      slug,
+      description,
+      description_short,
+      timezone,
+      event_category_id,
+      event_kind_id,
+      group_id,
+      meeting_join_url,
+      payment_currency_code,
+      published,
+      published_at,
+      published_by,
+      registration_starts_at,
+      registration_ends_at,
+      starts_at,
+      ends_at,
+      capacity,
+      attendee_approval_required,
+      test_event,
+      waitlist_enabled
+    ) values (
+      ${eventUuid},
+      ${sqlString(eventName)},
+      ${sqlString(eventSlug)},
+      ${sqlString(description)},
+      ${descriptionShort === null ? "null" : sqlString(descriptionShort)},
+      ${sqlString(timezone)},
+      ${sqlUuid(categoryId)},
+      ${sqlString(kind)},
+      ${sqlUuid(groupId)},
+      ${meetingJoinUrl === null ? "null" : sqlString(meetingJoinUrl)},
+      ${paymentCurrencyCode === null ? "null" : sqlString(paymentCurrencyCode)},
+      ${published},
+      ${publishedAtSql},
+      ${publishedBy === null ? "null" : sqlUuid(publishedBy)},
+      ${localTimestampSql(registrationStartsAt)},
+      ${localTimestampSql(registrationEndsAt)},
+      ${startsAtSql},
+      ${endsAtSql},
+      ${ownedTiers.reduce((total, tier) => total + tier.seats, 0)},
+      ${approvalRequired},
+      ${testEvent},
+      ${waitlistEnabled}
+    );
+
+    insert into event_ticket_type (
+      event_ticket_type_id,
+      active,
+      event_id,
+      "order",
+      seats_total,
+      title,
+      description
+    ) values ${ownedTiers
+      .map(
+        (tier) => `(
+          ${sqlUuid(tier.ticketTypeId)},
+          true,
+          ${eventUuid},
+          ${tier.order},
+          ${tier.seats},
+          ${sqlString(tier.title)},
+          ${tier.description === undefined ? "null" : sqlString(tier.description)}
+        )`,
+      )
+      .join(", ")};
+
+    insert into event_ticket_price_window (event_ticket_price_window_id, amount_minor, event_ticket_type_id)
+    values ${ownedTiers
+      .map(
+        (tier) =>
+          `(${sqlUuid(tier.priceWindowId)}, ${Number(tier.amountMinor)}, ${sqlUuid(tier.ticketTypeId)})`,
+      )
+      .join(", ")};
+
+    insert into event_organizer (event_id, user_id, "order")
+    select ${eventUuid}, organizer.user_id, organizer.position::int
+    from unnest(${sqlUuidArray(organizerUserIds)}) with ordinality as organizer(user_id, position);
+
+    insert into event_attendee (event_id, user_id, status)
+    select ${eventUuid}, user_id, 'confirmed'
+    from unnest(${sqlUuidArray(attendeeUserIds)}) as user_id;
+
+    -- Entries are a second apart in list order, so promotion order is deterministic.
+    insert into event_waitlist (event_id, event_ticket_type_id, user_id, created_at)
+    select
+      ${eventUuid},
+      ${sqlUuid(ownedTiers[0].ticketTypeId)},
+      entry.user_id,
+      current_timestamp - (${waitlist.length} - entry.position) * interval '1 second'
+    from unnest(${sqlUuidArray(waitlist)}) with ordinality as entry(user_id, position);
+
+    insert into event_speaker (event_id, user_id, featured)
+    select ${eventUuid}, user_id, true
+    from unnest(${sqlUuidArray(speakerUserIds)}) as user_id;
+  `);
+
+  return { eventId, name: eventName, slug: eventSlug, ticketTypeIds };
+};
+
+/**
+ * Creates a published free virtual event 70 days ahead that requires organizer approval for
+ * attendees, with only the default free tier. Inserting it published sends no notifications.
+ * Release it with `cleanupEventsByIds([eventId])`.
+ * @param {{ groupId: string, name: string }} options - Group that owns the event and its name.
+ * @returns {{ eventId: string, name: string, slug: string, ticketTypeIds: Record<string, string> }}
+ */
+export const setupApprovalRequiredEvent = ({ groupId, name }) =>
+  insertOwnedEvent({
+    approvalRequired: true,
+    description: "Owned approval-required event used by E2E invitation request coverage.",
+    groupId,
+    meetingJoinUrl: "https://meet.example.com/e2e-invitation-requests",
+    name,
+    startsIn: "70 days",
+  });
+
+/**
  * Creates a published future alpha-group event with the exact recipient graph needed to
  * verify event cancellation notifications.
  * @param {{ groupId: string }} options - Group that owns the event.
@@ -95,100 +328,35 @@ export const cleanupEventsByIds = (eventIds) => {
  * }}
  */
 export const setupCancelableEvent = ({ groupId }) => {
-  const eventId = randomUUID();
-  const priceWindowId = randomUUID();
-  const suffix = eventId.replace(/-/g, "").slice(0, 8);
-  const ticketTypeId = randomUUID();
-  const name = `E2E cancelable event ${suffix}`;
-  const slug = `e2e-cancelable-event-${suffix}`;
   const attendeeUserIds = [TEST_USER_IDS.member1, TEST_USER_IDS.member2];
   const waitlistUserIds = [TEST_USER_IDS.pending1];
   const speakerUserIds = [TEST_USER_IDS.pending2];
   const recipientUserIds = [...new Set([...attendeeUserIds, ...waitlistUserIds, ...speakerUserIds])];
+  const eventId = randomUUID();
+  const { name, slug } = buildOwnedEventIdentity("cancelable event", eventId);
 
-  queryE2eDatabase(`
-    insert into event (
-      event_id,
-      name,
-      slug,
-      description,
-      description_short,
-      timezone,
-      event_category_id,
-      event_kind_id,
-      group_id,
-      published,
-      published_at,
-      published_by,
-      starts_at,
-      ends_at,
-      capacity,
-      waitlist_enabled
-    ) values (
-      '${eventId}',
-      '${name}',
-      '${slug}',
-      'Owned cancellation event used by E2E notification coverage.',
-      'Owned cancellation event used by E2E notification coverage.',
-      'UTC',
-      '${EVENT_CATEGORY_ID}',
-      'virtual',
-      '${groupId}',
-      true,
-      current_timestamp,
-      '${TEST_USER_IDS.organizer1}',
-      current_timestamp + interval '180 days',
-      current_timestamp + interval '180 days 2 hours',
-      0,
-      true
-    );
-
-    -- The full tier keeps the enrollment worker from promoting the queued user
-    -- into an admission offer before the test cancels the event.
-    insert into event_ticket_type (
-      event_ticket_type_id,
-      active,
-      event_id,
-      "order",
-      seats_total,
-      title,
-      description
-    ) values (
-      '${ticketTypeId}',
-      true,
-      '${eventId}',
-      1,
-      0,
-      'General admission',
-      'Disposable admission used by E2E notification coverage.'
-    );
-
-    insert into event_ticket_price_window (
-      event_ticket_price_window_id,
-      amount_minor,
-      event_ticket_type_id,
-      starts_at,
-      ends_at
-    ) values (
-      '${priceWindowId}',
-      0,
-      '${ticketTypeId}',
-      null,
-      null
-    );
-
-    insert into event_attendee (event_id, user_id, status)
-    select '${eventId}', unnest(${sqlArray(attendeeUserIds)}), 'confirmed';
-
-    insert into event_waitlist (event_id, event_ticket_type_id, user_id)
-    select '${eventId}', '${ticketTypeId}', unnest(${sqlArray(waitlistUserIds)});
-
-    insert into event_speaker (event_id, user_id, featured)
-    select '${eventId}', unnest(${sqlArray(speakerUserIds)}), true;
-
-    insert into event_organizer (event_id, user_id, "order")
-    values ('${eventId}', '${TEST_USER_IDS.organizer1}', 1);
-  `);
+  // The full tier keeps the enrollment worker from promoting the queued user
+  // into an admission offer before the test cancels the event.
+  insertOwnedEvent({
+    attendeeUserIds,
+    description: "Owned cancellation event used by E2E notification coverage.",
+    eventId,
+    groupId,
+    name,
+    slug,
+    speakerUserIds,
+    startsIn: "180 days",
+    tiers: [
+      {
+        description: "Disposable admission used by E2E notification coverage.",
+        key: "general",
+        seats: 0,
+        title: "General admission",
+      },
+    ],
+    waitlist: waitlistUserIds,
+    waitlistEnabled: true,
+  });
 
   return {
     attendeeUserIds,
@@ -198,6 +366,72 @@ export const setupCancelableEvent = ({ groupId }) => {
     speakerUserIds,
     waitlistUserIds,
   };
+};
+
+/**
+ * Creates a published free event starting tomorrow with one confirmed, not checked-in temporary
+ * attendee. Release it with `cleanupEventsByIds([eventId])` and `cleanupTemporaryUser(userId)`.
+ * @param {{ groupId: string }} options - Group that owns the event.
+ * @returns {{ eventId: string, userId: string }}
+ */
+export const setupCheckInEventGraph = ({ groupId }) => {
+  const eventId = randomUUID();
+  const { userId } = setupTemporaryUser({ label: "check-in-attendee" });
+
+  insertOwnedEvent({
+    attendeeUserIds: [userId],
+    description: "Temporary event owned by E2E check-in coverage.",
+    eventId,
+    groupId,
+    name: uniqueName("check-in event"),
+    organizerUserIds: [],
+    publishedBy: null,
+    slug: `e2e-check-in-event-${shortId(eventId)}`,
+    startsIn: "1 day",
+    tiers: [
+      {
+        description: "Temporary free admission used by E2E check-in coverage.",
+        key: "general",
+        seats: 500,
+        title: "General Admission",
+      },
+    ],
+  });
+
+  return { eventId, userId };
+};
+
+/**
+ * Records completed zero-value purchases of a free tier, as attending one does, so the attendees
+ * hold its seats and a full tier stops waitlist promotion. `cleanupEventsByIds` removes them.
+ * @param {{ eventId: string, ticketTypeId: string, userIds: string[] }} options - Seat holders.
+ */
+export const setupCompletedFreePurchases = ({ eventId, ticketTypeId, userIds }) => {
+  queryE2eDatabase(`
+    insert into event_purchase (
+      amount_minor,
+      currency_code,
+      discount_amount_minor,
+      event_id,
+      event_ticket_type_id,
+      status,
+      ticket_title,
+      user_id
+    )
+    select
+      0,
+      null,
+      0,
+      ett.event_id,
+      ett.event_ticket_type_id,
+      'completed',
+      ett.title,
+      buyer.user_id
+    from event_ticket_type ett
+    cross join unnest(${sqlUuidArray(userIds)}) as buyer(user_id)
+    where ett.event_id = ${sqlUuid(eventId)}
+    and ett.event_ticket_type_id = ${sqlUuid(ticketTypeId)};
+  `);
 };
 
 /**
@@ -217,284 +451,154 @@ export const setupNotificationEvent = ({
   testEvent = false,
 }) => {
   const eventId = randomUUID();
-  const priceWindowId = randomUUID();
-  const suffix = eventId.replace(/-/g, "").slice(0, 8);
-  const ticketTypeId = randomUUID();
-  const name = `E2E notification event ${suffix}`;
-  const slug = `e2e-notification-event-${suffix}`;
+  const { name, slug } = buildOwnedEventIdentity("notification event", eventId);
 
-  queryE2eDatabase(`
-    insert into event (
-      event_id,
-      name,
-      slug,
-      description,
-      description_short,
-      timezone,
-      event_category_id,
-      event_kind_id,
-      group_id,
-      published,
-      published_at,
-      published_by,
-      starts_at,
-      ends_at,
-      capacity,
-      test_event
-    ) values (
-      '${eventId}',
-      '${name}',
-      '${slug}',
-      'Owned notification event used by E2E coverage.',
-      'Owned notification event used by E2E coverage.',
-      'UTC',
-      '${EVENT_CATEGORY_ID}',
-      'virtual',
-      '${groupId}',
-      ${published},
-      ${published ? "current_timestamp" : "null"},
-      ${published ? `'${TEST_USER_IDS.organizer1}'` : "null"},
-      current_timestamp + interval '190 days',
-      current_timestamp + interval '190 days 2 hours',
-      10,
-      ${testEvent}
-    );
-
-    insert into event_ticket_type (
-      event_ticket_type_id,
-      active,
-      event_id,
-      "order",
-      seats_total,
-      title,
-      description
-    ) values (
-      '${ticketTypeId}',
-      true,
-      '${eventId}',
-      1,
-      10,
-      'General admission',
-      'Disposable admission used by E2E notification coverage.'
-    );
-
-    insert into event_ticket_price_window (
-      event_ticket_price_window_id,
-      amount_minor,
-      event_ticket_type_id,
-      starts_at,
-      ends_at
-    ) values (
-      '${priceWindowId}',
-      0,
-      '${ticketTypeId}',
-      null,
-      null
-    );
-
-    insert into event_organizer (event_id, user_id, "order")
-    values ('${eventId}', '${TEST_USER_IDS.organizer1}', 1);
-  `);
-
-  if (attendeeUserIds.length > 0) {
-    queryE2eDatabase(`
-      insert into event_attendee (event_id, user_id, status)
-      select '${eventId}', unnest(${sqlArray(attendeeUserIds)}), 'confirmed';
-    `);
-  }
+  insertOwnedEvent({
+    attendeeUserIds,
+    description: "Owned notification event used by E2E coverage.",
+    eventId,
+    groupId,
+    name,
+    published,
+    slug,
+    startsIn: "190 days",
+    testEvent,
+    tiers: [
+      {
+        description: "Disposable admission used by E2E notification coverage.",
+        key: "general",
+        seats: 10,
+        title: "General admission",
+      },
+    ],
+  });
 
   return { attendeeUserIds, eventId, name };
 };
 
 /**
- * Creates a published future event whose only participants are the supplied organizers and
- * confirmed attendees, so organizer badge awards and My Events roles stay isolated.
+ * Creates a future event whose only participants are the supplied organizers, confirmed attendees
+ * and, when given, speakers and waitlisted users, so organizer badge awards and My Events roles stay
+ * isolated. It is published unless `published` is false and starts in 20 days unless `startsAt` is
+ * given. Its single tier (key `general`, 10 seats) is free unless `amountMinor` is positive, which
+ * requires `paymentCurrencyCode`.
  * @param {{
+ *   amountMinor?: number,
  *   attendeeUserIds?: string[],
+ *   endsAt?: string,
  *   groupId: string,
- *   organizerUserIds: string[]
- * }} options - Event participants in organizer display order.
- * @returns {{ eventId: string, name: string, slug: string }}
- */
-export const setupOrganizerEvent = ({ attendeeUserIds = [], groupId, organizerUserIds }) => {
-  const eventId = randomUUID();
-  const priceWindowId = randomUUID();
-  const suffix = eventId.replace(/-/g, "").slice(0, 8);
-  const ticketTypeId = randomUUID();
-  const name = `E2E organizer event ${suffix}`;
-  const slug = `e2e-organizer-event-${suffix}`;
-
-  queryE2eDatabase(`
-    insert into event (
-      event_id,
-      name,
-      slug,
-      description,
-      description_short,
-      timezone,
-      event_category_id,
-      event_kind_id,
-      group_id,
-      meeting_join_url,
-      published,
-      published_at,
-      published_by,
-      starts_at,
-      ends_at,
-      capacity
-    ) values (
-      '${eventId}',
-      '${name}',
-      '${slug}',
-      'Owned organizer event used by E2E contributor coverage.',
-      'Owned organizer event used by E2E contributor coverage.',
-      'UTC',
-      '${EVENT_CATEGORY_ID}',
-      'virtual',
-      '${groupId}',
-      'https://meet.example.com/${slug}',
-      true,
-      current_timestamp,
-      '${TEST_USER_IDS.organizer1}',
-      current_timestamp + interval '20 days',
-      current_timestamp + interval '20 days 2 hours',
-      10
-    );
-
-    insert into event_ticket_type (
-      event_ticket_type_id,
-      active,
-      event_id,
-      "order",
-      seats_total,
-      title,
-      description
-    ) values (
-      '${ticketTypeId}',
-      true,
-      '${eventId}',
-      1,
-      10,
-      'General admission',
-      'Disposable admission used by E2E contributor coverage.'
-    );
-
-    insert into event_ticket_price_window (
-      event_ticket_price_window_id,
-      amount_minor,
-      event_ticket_type_id,
-      starts_at,
-      ends_at
-    ) values (
-      '${priceWindowId}',
-      0,
-      '${ticketTypeId}',
-      null,
-      null
-    );
-
-    insert into event_organizer (event_id, user_id, "order")
-    select '${eventId}', organizer.user_id, organizer.position::int
-    from unnest(${sqlArray(organizerUserIds)}) with ordinality as organizer(user_id, position);
-  `);
-
-  if (attendeeUserIds.length > 0) {
-    queryE2eDatabase(`
-      insert into event_attendee (event_id, user_id, status)
-      select '${eventId}', unnest(${sqlArray(attendeeUserIds)}), 'confirmed';
-    `);
-  }
-
-  return { eventId, name, slug };
-};
-
-/**
- * Creates a published future event with free ticket tiers for allocation conflict checks.
- * @param {{
- *   approvalRequired?: boolean,
- *   groupId: string,
- *   ticketTypes: { key: string, seats: number, title: string }[],
+ *   organizerUserIds: string[],
+ *   paymentCurrencyCode?: string | null,
+ *   published?: boolean,
+ *   speakerUserIds?: string[],
+ *   startsAt?: string,
+ *   timezone?: string,
+ *   waitlist?: string[],
  *   waitlistEnabled?: boolean
- * }} options - Event shape.
- * @returns {{ eventId: string, name: string, ticketTypeIds: Record<string, string> }}
+ * }} options - Event participants in organizer display order and `insertOwnedEvent` options.
+ * @returns {{ eventId: string, name: string, slug: string, ticketTypeIds: Record<string, string> }}
  */
-export const setupTicketAllocationEvent = ({
-  approvalRequired = false,
+export const setupOrganizerEvent = ({
+  amountMinor = 0,
+  attendeeUserIds = [],
+  endsAt,
   groupId,
-  ticketTypes,
+  organizerUserIds,
+  paymentCurrencyCode = null,
+  published = true,
+  speakerUserIds = [],
+  startsAt,
+  timezone = "UTC",
+  waitlist = [],
   waitlistEnabled = false,
 }) => {
   const eventId = randomUUID();
-  const suffix = eventId.replace(/-/g, "").slice(0, 8);
-  const name = `E2E ticket allocation event ${suffix}`;
-  const slug = `e2e-ticket-allocation-event-${suffix}`;
-  const tiers = ticketTypes.map((ticketType, index) => ({
-    ...ticketType,
-    order: index + 1,
-    priceWindowId: randomUUID(),
-    ticketTypeId: randomUUID(),
-  }));
-  const capacity = tiers.reduce((total, tier) => total + tier.seats, 0);
+  const { name, slug } = buildOwnedEventIdentity("organizer event", eventId);
 
-  queryE2eDatabase(`
-    insert into event (
-      event_id,
-      name,
-      slug,
-      description,
-      description_short,
-      timezone,
-      event_category_id,
-      event_kind_id,
-      group_id,
-      published,
-      published_at,
-      published_by,
-      starts_at,
-      ends_at,
-      capacity,
-      attendee_approval_required,
-      waitlist_enabled
-    ) values (
-      '${eventId}',
-      '${name}',
-      '${slug}',
-      'Owned ticket allocation event used by E2E coverage.',
-      'Owned ticket allocation event used by E2E coverage.',
-      'UTC',
-      '${EVENT_CATEGORY_ID}',
-      'virtual',
-      '${groupId}',
-      true,
-      current_timestamp,
-      '${TEST_USER_IDS.organizer1}',
-      current_timestamp + interval '200 days',
-      current_timestamp + interval '200 days 2 hours',
-      ${capacity},
-      ${approvalRequired},
-      ${waitlistEnabled}
-    );
-
-    insert into event_ticket_type (event_ticket_type_id, active, event_id, "order", seats_total, title)
-    values ${tiers
-      .map(
-        (tier) =>
-          `('${tier.ticketTypeId}', true, '${eventId}', ${tier.order}, ${tier.seats}, '${tier.title}')`,
-      )
-      .join(", ")};
-
-    insert into event_ticket_price_window (event_ticket_price_window_id, amount_minor, event_ticket_type_id)
-    values ${tiers.map((tier) => `('${tier.priceWindowId}', 0, '${tier.ticketTypeId}')`).join(", ")};
-
-    insert into event_organizer (event_id, user_id, "order")
-    values ('${eventId}', '${TEST_USER_IDS.organizer1}', 1);
-  `);
-
-  return {
+  return insertOwnedEvent({
+    attendeeUserIds,
+    description: "Owned organizer event used by E2E contributor coverage.",
+    endsAt,
     eventId,
+    groupId,
+    meetingJoinUrl: `https://meet.example.com/${slug}`,
     name,
-    ticketTypeIds: Object.fromEntries(tiers.map((tier) => [tier.key, tier.ticketTypeId])),
-  };
+    organizerUserIds,
+    paymentCurrencyCode,
+    published,
+    slug,
+    speakerUserIds,
+    startsAt,
+    startsIn: "20 days",
+    tiers: [
+      {
+        amountMinor,
+        description: "Disposable admission used by E2E contributor coverage.",
+        key: "general",
+        seats: 10,
+        title: "General admission",
+      },
+    ],
+    timezone,
+    waitlist,
+    waitlistEnabled,
+  });
+};
+
+/**
+ * Creates a future event with ticket tiers for allocation conflict checks. It is published unless
+ * `published` is false and starts in 200 days unless `startsAt` is given. Tiers are free unless
+ * `amountMinor` is positive, which requires `paymentCurrencyCode`; `waitlist` queues users for the
+ * first tier.
+ * @param {{
+ *   approvalRequired?: boolean,
+ *   endsAt?: string,
+ *   groupId: string,
+ *   paymentCurrencyCode?: string | null,
+ *   published?: boolean,
+ *   speakerUserIds?: string[],
+ *   startsAt?: string,
+ *   ticketTypes: { amountMinor?: number, key: string, seats: number, title: string }[],
+ *   timezone?: string,
+ *   waitlist?: string[],
+ *   waitlistEnabled?: boolean
+ * }} options - Event shape and `insertOwnedEvent` options.
+ * @returns {{ eventId: string, name: string, slug: string, ticketTypeIds: Record<string, string> }}
+ */
+export const setupTicketAllocationEvent = ({
+  approvalRequired = false,
+  endsAt,
+  groupId,
+  paymentCurrencyCode = null,
+  published = true,
+  speakerUserIds = [],
+  startsAt,
+  ticketTypes,
+  timezone = "UTC",
+  waitlist = [],
+  waitlistEnabled = false,
+}) => {
+  const eventId = randomUUID();
+  const { name, slug } = buildOwnedEventIdentity("ticket allocation event", eventId);
+
+  return insertOwnedEvent({
+    approvalRequired,
+    description: "Owned ticket allocation event used by E2E coverage.",
+    endsAt,
+    eventId,
+    groupId,
+    name,
+    paymentCurrencyCode,
+    published,
+    slug,
+    speakerUserIds,
+    startsAt,
+    startsIn: "200 days",
+    tiers: ticketTypes.map(({ amountMinor = 0, key, seats, title }) => ({ amountMinor, key, seats, title })),
+    timezone,
+    waitlist,
+    waitlistEnabled,
+  });
 };
 
 /**
@@ -584,4 +688,17 @@ export const setupTicketWaitlistEntry = ({ eventId, ticketTypeId, userId }) => {
     insert into event_waitlist (event_id, event_ticket_type_id, user_id)
     values ('${eventId}', '${ticketTypeId}', '${userId}');
   `);
+};
+
+/**
+ * Builds the name and slug of an owned event from a label and the event ID, such as
+ * `E2E cancelable event 1a2b3c4d` and `e2e-cancelable-event-1a2b3c4d`.
+ * @param {string} label - Lowercase words naming the event kind.
+ * @param {string} eventId - Event identifier whose first 8 hex digits suffix the name.
+ * @returns {{ name: string, slug: string }}
+ */
+const buildOwnedEventIdentity = (label, eventId) => {
+  const suffix = eventId.replace(/-/g, "").slice(0, 8);
+
+  return { name: `E2E ${label} ${suffix}`, slug: `e2e-${label.replaceAll(" ", "-")}-${suffix}` };
 };

@@ -1,7 +1,9 @@
 import { expect } from "@playwright/test";
 
-import { TEST_COMMUNITY_NAME, TEST_EVENT_IDS, TEST_GROUP_SLUGS } from "../../seed.js";
-import { getIntroSection, navigateToEvent, navigateToPath, waitForActionResponse } from "../../utils.js";
+import { confirmAlert, dismissAlertIfPresent, getIntroSection, waitForActionResponses } from "../../utils.js";
+
+// Shared prefix of the leave confirmations for attendance, waitlist and invitation requests.
+const LEAVE_CONFIRMATION_MESSAGE = "Are you sure you want to";
 
 /** Selects the public attendance controls container. */
 export const getAttendanceContainer = (page) => page.locator("[data-attendance-container]").first();
@@ -27,6 +29,43 @@ export const waitForAttendanceState = async (page) => {
   ]);
 };
 
+/**
+ * Cancels the current user's attendance, waitlist entry or invitation request from the event
+ * page, then waits until the attend action is back.
+ * @param {import("@playwright/test").Page} page - Playwright page showing the event.
+ * @param {string} eventId - Event whose attendance is canceled.
+ */
+export const cancelAttendance = async (page, eventId) => {
+  await dismissProfileCompletionPrompt(page);
+
+  const leaveButton = getLeaveButton(page);
+  await expect(leaveButton).toBeVisible();
+
+  // Confirm the cancellation and wait for the leave request and the enrollment refresh.
+  await waitForActionResponses(page, async () => {
+    await leaveButton.click();
+    await confirmAlert(page, { message: LEAVE_CONFIRMATION_MESSAGE });
+  }, [
+    { method: "DELETE", urlIncludes: `/event/${eventId}/leave` },
+    { method: "GET", urlIncludes: `/event/${eventId}/enrollment` },
+  ]);
+
+  // Verify the attend action returns after cancellation.
+  await waitForAttendanceState(page);
+  await expect(getAttendButton(page)).toBeVisible();
+};
+
+/**
+ * Closes the optional profile completion prompt shown after a successful attendance action.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @returns {Promise<boolean>} Whether the prompt was dismissed.
+ */
+export const dismissProfileCompletionPrompt = (page) =>
+  dismissAlertIfPresent(page, { button: "Maybe later" });
+
+/** Selects the checkout action inside the ticket modal. */
+export const getCheckoutButton = (page) => page.locator('[data-attendance-role="checkout-btn"]');
+
 /** Selects an event detail card from its heading. */
 export const getEventInfoSection = (page, heading) =>
   page.getByText(heading, { exact: true }).locator("..").locator("..");
@@ -38,74 +77,8 @@ export const getEventAboutSection = (page) =>
 /** Selects the event logo in the page intro. */
 export const getEventLogo = (page) => getIntroSection(page).locator("img").first();
 
-/** Declines a pending offer for the shared waitlist lab event. */
-const clearSeededWaitlistOffer = async (memberPage) => {
-  await navigateToPath(memberPage, "/dashboard/user?tab=invitations");
-  const offerRow = memberPage.locator("#dashboard-content tr", {
-    hasText: "Full Event With Waitlist",
-  });
-  const actionsButton = offerRow.getByLabel(/Open offer actions/);
+/** Selects the refund action shown to paid attendees. */
+export const getRefundButton = (page) => page.locator('[data-attendance-role="refund-btn"]');
 
-  if (!(await actionsButton.isVisible())) {
-    return;
-  }
-
-  await actionsButton.click();
-  const declineButton = offerRow.getByRole("menuitem", {
-    name: "Decline offer",
-    exact: true,
-  });
-  await declineButton.click();
-  await expect(memberPage.getByRole("button", { name: "Yes" })).toBeVisible();
-  await waitForActionResponse(memberPage, () => memberPage.getByRole("button", { name: "Yes" }).click(), {
-    method: "PUT",
-    urlIncludes: "/dashboard/user/invitations/event-offers/",
-    urlEndsWith: "/decline",
-  });
-};
-
-/** Restores the shared waitlist lab event to its seeded full-event state. */
-export const restoreSeededWaitlistEvent = async (memberPage, organizerPage) => {
-  if (memberPage.isClosed() || organizerPage.isClosed()) {
-    return;
-  }
-
-  // Release any offer left behind by an interrupted promotion flow.
-  await clearSeededWaitlistOffer(memberPage);
-
-  // Remove member2 from the shared waitlist event before depending on capacity.
-  await navigateToEvent(
-    memberPage,
-    TEST_COMMUNITY_NAME,
-    TEST_GROUP_SLUGS.community1.alpha,
-    "alpha-waitlist-lab",
-  );
-  await waitForAttendanceState(memberPage);
-
-  if (await getLeaveButton(memberPage).isVisible()) {
-    await getLeaveButton(memberPage).click();
-    await expect(memberPage.getByRole("button", { name: "Yes" })).toBeVisible();
-    await waitForActionResponse(memberPage, () => memberPage.getByRole("button", { name: "Yes" }).click(), {
-      method: "DELETE",
-      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
-    });
-  }
-
-  // Restore organizer attendance so the one-seat event is full again.
-  await navigateToEvent(
-    organizerPage,
-    TEST_COMMUNITY_NAME,
-    TEST_GROUP_SLUGS.community1.alpha,
-    "alpha-waitlist-lab",
-  );
-  await waitForAttendanceState(organizerPage);
-
-  if (await getAttendButton(organizerPage).isVisible()) {
-    await expect(getAttendButton(organizerPage)).toContainText("Attend event");
-    await waitForActionResponse(organizerPage, () => getAttendButton(organizerPage).click(), {
-      method: "POST",
-      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`,
-    });
-    await expect(getLeaveButton(organizerPage)).toContainText("Cancel attendance");
-  }
-};
+/** Selects the ticket selection modal. */
+export const getTicketModal = (page) => page.locator('[data-attendance-role="ticket-modal"]');

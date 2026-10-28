@@ -1,0 +1,13 @@
+- text: Search refunds
+- textbox "Search refunds":
+  - /placeholder: Search attendee, event, or ticket
+- text: Event
+- combobox "Event":
+  - option "All events" [selected]
+  - option "E2E ARIA event"
+- text: Refund status
+- combobox "Refund status":
+  - option "Active"
+  - option "Needs attention" [selected]
+  - option "Completed"
+  - option "All"

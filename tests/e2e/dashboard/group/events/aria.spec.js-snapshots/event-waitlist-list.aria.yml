@@ -1,0 +1,26 @@
+- text: Waitlist
+- paragraph: Review and manage people waiting for a seat.
+- text: Search waitlist
+- textbox "Search waitlist"
+- text: Sort by
+- combobox "Sort by":
+  - option "Entry ↑" [selected]
+  - option "Entry ↓"
+  - option "Created ↑"
+  - option "Created ↓"
+- text: 1 - 1 of 1 waitlist entry
+- table "Waitlist entries":
+  - rowgroup:
+    - row "Entry Queue Enrollment Actions":
+      - columnheader "Entry"
+      - columnheader "Queue"
+      - columnheader "Enrollment"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "View profile for E2E Member Three 1 General admission Open waitlist actions for E2E Member Three":
+      - cell "View profile for E2E Member Three":
+        - button "View profile for E2E Member Three": ET E2E Member Three e2e-member-3
+      - cell "1"
+      - cell "General admission"
+      - cell "Open waitlist actions for E2E Member Three":
+        - button "Open waitlist actions for E2E Member Three"

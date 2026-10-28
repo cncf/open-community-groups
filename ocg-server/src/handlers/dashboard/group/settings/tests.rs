@@ -34,7 +34,9 @@ async fn test_update_page_success() {
     // Setup identifiers and data structures
     let ids = DashboardIds::new();
     let group = GroupFull {
+        custom_logo_url: Some("https://example.test/group-logo.png".to_string()),
         description_short: Some("Short group description".to_string()),
+        logo_url: "https://example.test/group-logo.png".to_string(),
         ..sample_group_full(ids.community_id, ids.group_id)
     };
 
@@ -55,6 +57,7 @@ async fn test_update_page_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_image_field_value(&html, "logo_url", "https://example.test/group-logo.png");
     assert!(html.contains(r#"value="Short group description""#));
     assert!(html.contains(r#"name="utm_present" value="true""#));
     assert!(html.contains(r#"items="[&#34;newsletter&#34;]""#));
@@ -63,6 +66,36 @@ async fn test_update_page_success() {
     assert!(html.contains(r#"excluded-values="[&#34;email&#34;,&#34;social&#34;]""#));
     assert!(html.contains(">email</li>"));
     assert!(html.contains(">social</li>"));
+}
+
+#[tokio::test]
+async fn test_update_page_leaves_logo_field_empty_without_own_logo() {
+    // Setup identifiers and data structures
+    let ids = DashboardIds::new();
+    let group = GroupFull {
+        custom_logo_url: None,
+        logo_url: "https://example.test/community-logo.png".to_string(),
+        ..sample_group_full(ids.community_id, ids.group_id)
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_update_page_context(
+        &mut db,
+        &ids,
+        unconfigured_external_payments(),
+        group,
+        vec![],
+    );
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, get_request(SETTINGS_URL, ids.session_id)).await;
+    let html = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the community fallback logo is not prefilled
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_image_field_value(&html, "logo_url", "");
 }
 
 #[tokio::test]

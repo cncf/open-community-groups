@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use axum::{
     Json,
     body::Body,
@@ -20,10 +20,7 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{error::HandlerError, extractors::CurrentUser, request_headers_match_site_origin},
-    services::images::{
-        DynImageStorage, NewImage,
-        validation::{ImageValidationError, validate_image_upload},
-    },
+    services::images::{DynImageStorage, NewImage, validation::validate_image_upload},
     types::images::ImageTarget,
     util::compute_hash,
 };
@@ -134,20 +131,20 @@ pub(crate) async fn upload(
     let mut file_name: Option<String> = None;
     let mut data: Option<bytes::Bytes> = None;
 
-    while let Ok(Some(field)) = multipart.next_field().await {
+    while let Some(field) = multipart.next_field().await? {
         let field_name = field.name().map(str::to_string);
 
         match field_name.as_deref() {
             Some("target") => {
-                let target_value = field.text().await.context("error reading target field")?;
-                target = Some(
-                    ImageTarget::from_str(&target_value)
-                        .with_context(|| format!("unknown image target: {target_value}"))?,
-                );
+                let target_value = field.text().await?;
+                let Ok(parsed_target) = ImageTarget::from_str(&target_value) else {
+                    return Ok((StatusCode::BAD_REQUEST, "unknown image target").into_response());
+                };
+                target = Some(parsed_target);
             }
             Some("file") => {
                 file_name = field.file_name().map(str::to_string);
-                data = Some(field.bytes().await.context("error reading uploaded image")?);
+                data = Some(field.bytes().await?);
             }
             _ => {}
         }
@@ -169,7 +166,6 @@ pub(crate) async fn upload(
     // Validate the format, extension, and target requirements
     let validated = match validate_image_upload(&file_name, data.as_ref(), target) {
         Ok(validated) => validated,
-        Err(ImageValidationError::Unsupported(err)) => return Err(HandlerError::from(err)),
         Err(err) => {
             return Ok((StatusCode::UNPROCESSABLE_ENTITY, err.to_string()).into_response());
         }

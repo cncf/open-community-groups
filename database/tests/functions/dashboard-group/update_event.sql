@@ -1654,6 +1654,7 @@ select is(
         "description_short": "Updated short description",
         "starts_at": 1896152400,
         "ends_at": 1896159600,
+        "custom_logo_url": "https://example.com/new-logo.png",
         "logo_url": "https://example.com/new-logo.png",
         "luma_url": "https://luma.com/new-event",
         "meeting_join_instructions": "Use the event ticket name when joining.",

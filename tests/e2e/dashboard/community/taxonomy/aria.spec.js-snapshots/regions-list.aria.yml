@@ -1,0 +1,24 @@
+- text: Regions
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=regions-geographic-scope
+- text: 2 regions
+- button "Add Region"
+- table:
+  - rowgroup:
+    - row "Name Groups Actions":
+      - columnheader "Name"
+      - columnheader "Groups"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row "E2E ARIA region one 1 Edit region: E2E ARIA region one Delete region: E2E ARIA region one"':
+      - cell "E2E ARIA region one"
+      - cell "1"
+      - 'cell "Edit region: E2E ARIA region one Delete region: E2E ARIA region one"':
+        - 'button "Edit region: E2E ARIA region one"'
+        - 'button "Delete region: E2E ARIA region one" [disabled]'
+    - 'row "E2E ARIA region two 0 Edit region: E2E ARIA region two Delete region: E2E ARIA region two"':
+      - cell "E2E ARIA region two"
+      - cell "0"
+      - 'cell "Edit region: E2E ARIA region two Delete region: E2E ARIA region two"':
+        - 'button "Edit region: E2E ARIA region two"'
+        - 'button "Delete region: E2E ARIA region two"'

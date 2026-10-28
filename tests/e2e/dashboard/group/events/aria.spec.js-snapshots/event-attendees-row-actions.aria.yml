@@ -1,0 +1,7 @@
+- menu:
+  - listitem:
+    - menuitem "Send email"
+  - listitem:
+    - menuitem "Award badge"
+  - listitem:
+    - menuitem "Cancel attendance"

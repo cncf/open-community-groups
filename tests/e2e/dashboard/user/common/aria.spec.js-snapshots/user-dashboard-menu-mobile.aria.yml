@@ -1,0 +1,5 @@
+- navigation "Dashboard navigation":
+  - button "Close menu"
+  - text: User Dashboard Events
+  - link "Check-In":
+    - /url: /dashboard/user?tab=check-in

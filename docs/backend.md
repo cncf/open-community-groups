@@ -207,6 +207,7 @@ user-facing rejections raise `OCG01`, everything else stays internal.
 | `Database(msg)` | 422 | `msg`, the `OCG01` message raised by SQL |
 | `Deserialization(detail)` | 422 | `invalid request payload`; detail logged |
 | `Forbidden` | 403 | empty |
+| `Multipart(err)` | `err.status()` | fixed text, empty on 500; detail logged |
 | `NotFound` | 404 | empty |
 | `Rejected(msg)` | 422 | `msg`, a business rejection decided in Rust |
 | `Validation(report)` | 422 | the `garde` report |
@@ -232,6 +233,10 @@ Rules:
   client; `into_response` answers with the fixed body. Parse failures in the
   validated extractors and query-string conversions use this variant; `garde`
   failures keep returning the field-level report through `Validation`.
+- `Multipart` carries axum's multipart read error and answers with its
+  status: 413 `request payload too large` over the body limit, 400
+  `invalid request payload` for a malformed body, and an empty 500 when the
+  body stream fails. Handlers propagate it with `?`.
 - `Auth` carries no payload. Callers that need the underlying cause in logs
   record it before mapping.
 - `into_response` is the single logging point for a `HandlerError`. The 4xx

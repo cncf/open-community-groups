@@ -1,0 +1,14 @@
+- table "Co-hosted events list":
+  - rowgroup:
+    - row "Event Owning group Status Actions":
+      - columnheader "Event"
+      - columnheader "Owning group"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - row /E2E co-hosted event [0-9a-f]{8} [A-Z][a-z]{2} \d+, \d+ at \d+:\d+ [AP]M UTC Platform Ops Meetup Platform Engineering Community Pending/:
+      - rowheader /E2E co-hosted event [0-9a-f]{8} [A-Z][a-z]{2} \d+, \d+ at \d+:\d+ [AP]M UTC/
+      - cell "Platform Ops Meetup Platform Engineering Community"
+      - cell "Pending"
+      - cell:
+        - group

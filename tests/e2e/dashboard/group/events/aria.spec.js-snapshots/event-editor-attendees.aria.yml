@@ -1,0 +1,31 @@
+- text: Attendees
+- paragraph: Review registrations and manage attendee check-in.
+- text: Search attendees
+- textbox "Search attendees"
+- text: Status
+- combobox "Status"
+- text: Sort by
+- combobox "Sort by" [disabled]:
+  - option "Attendee ↑" [selected]
+  - option "Attendee ↓"
+  - option "Enrollment Date ↑"
+  - option "Enrollment Date ↓"
+- text: 0 attendees
+- button "Scan Attendee Codes"
+- button "Send email" [disabled]
+- button "Award badge" [disabled]
+- button "Open attendee actions menu"
+- table "Attendees list":
+  - rowgroup:
+    - row "Attendee Actions":
+      - columnheader "Attendee"
+      - columnheader:
+        - group: Ticket type
+      - columnheader:
+        - group: Checked In
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No attendees found for this event. Try a different event.":
+      - cell "No attendees found for this event. Try a different event.":
+        - text: ""
+        - paragraph: Try a different event.

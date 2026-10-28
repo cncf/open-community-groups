@@ -1,0 +1,9 @@
+- text: Group Category Details
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=group-categories-group-taxonomy
+- paragraph: Update the group category for this community.
+- text: Name *
+- textbox "Name *": E2E ARIA group category one
+- paragraph: /Category display name\. Max \d+ characters\./
+- button "Cancel"
+- button "Update Group Category"

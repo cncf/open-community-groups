@@ -24,6 +24,7 @@
 #
 #   E2E parallel runs (`just e2e-tests-parallel`):
 #     OCG_E2E_PARALLEL_WORKERS    - Number of workers, each with its own database and server (default: 4)
+#     OCG_E2E_SERVER_BINARY       - Prebuilt server binary to run instead of building one (default: unset)
 #
 # Please don't forget to set up the tern config files (tern.conf, tern-tests.conf, and
 # tern-tests-contract.conf) in the config directory (OCG_CONFIG). Make sure the database
@@ -303,16 +304,71 @@ e2e-install:
 e2e-db-mark: e2e-db-guard
     PGPASSWORD="{{ OCG_E2E_DB_PASSWORD }}" PATH="{{ pg_bin }}:$PATH" psql {{ e2e_pg_conn }} {{ OCG_E2E_DB_NAME }} -X -q -v ON_ERROR_STOP=1 -c "update \"group\" set description = 'E2E seed run ' || gen_random_uuid()::text where group_id = '44444444-4444-4444-4444-444444444448'"
 
-# Drop, create, migrate, seed and mark the e2e test database.
-e2e-db-reset: db-recreate-tests-e2e db-load-tests-e2e-data e2e-db-mark
+# Drop, create, migrate, seed and mark the e2e test database, then track its function calls.
+e2e-db-reset: db-recreate-tests-e2e db-load-tests-e2e-data e2e-db-mark e2e-db-track-functions
+
+# Count function calls in the e2e test database for the DB coverage report (needs a superuser, warns otherwise).
+[private]
+e2e-db-track-functions: e2e-db-guard
+    @PGPASSWORD="{{ OCG_E2E_DB_PASSWORD }}" PATH="{{ pg_bin }}:$PATH" psql {{ e2e_pg_conn }} {{ OCG_E2E_DB_NAME }} -X -q -v ON_ERROR_STOP=1 -c "alter database \"{{ OCG_E2E_DB_NAME }}\" set track_functions = 'all'" || echo "warning: could not enable track_functions on {{ OCG_E2E_DB_NAME }}; the DB coverage report will be empty" >&2
+
+# Report the DB functions and audit actions of the last parallel run (extra arguments go to scripts/db-coverage.js).
+[positional-arguments]
+e2e-db-coverage *args:
+    cd tests/e2e && PATH="{{ pg_bin }}:$PATH" node scripts/db-coverage.js "$@"
+
+# Run the unit tests with coverage, then merge their JS coverage with that of the last e2e run made with OCG_E2E_JS_COVERAGE=1 (extra arguments go to scripts/js-coverage-report.js).
+[positional-arguments]
+e2e-js-coverage *args:
+    npm --prefix tests/unit test -- --coverage
+    cd "{{ invocation_directory() }}" && node "{{ source_dir }}/tests/e2e/scripts/js-coverage-report.js" "$@"
+
+# Check the route hits of the last parallel run against the route manifest and coverage allowlist (extra arguments go to scripts/route-coverage.js).
+[positional-arguments]
+e2e-route-coverage *args:
+    cd "{{ invocation_directory() }}" && node "{{ source_dir }}/tests/e2e/scripts/route-coverage.js" "$@"
+
+# Report the routes hit by the last parallel run, or by the server logs or folders given (extra arguments go to scripts/route-hits.js).
+[positional-arguments]
+e2e-route-hits *paths:
+    cd "{{ invocation_directory() }}" && node "{{ source_dir }}/tests/e2e/scripts/route-hits.js" "$@"
+
+# Regenerate the e2e route manifest from the router sources (tests/e2e/coverage/route-manifest.json).
+e2e-route-manifest:
+    OCG_UPDATE_ROUTE_MANIFEST=1 cargo test -p ocg-server router::tests::test_route_manifest_ -- --quiet
+
+# Measure the Rust coverage of the chromium e2e suite and of cargo test, and list the handler and service lines only cargo test or neither reach (on demand; needs cargo-llvm-cov and llvm-tools-preview; extra arguments go to Playwright).
+[positional-arguments]
+e2e-rust-coverage *args: e2e-db-guard
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ source_dir }}"
+    target_dir="${CARGO_TARGET_DIR:-target}"
+    report_dir="$target_dir/llvm-cov"
+    mkdir -p "$report_dir"
+    # Build into a target dir of its own, so the instrumented build leaves the regular one alone.
+    export CARGO_TARGET_DIR="$target_dir/llvm-cov-target"
+    source <(cargo llvm-cov show-env --sh)
+    cargo llvm-cov clean --workspace
+    cargo build -p ocg-server
+    # parallel.sh stops the servers with SIGINT, so they exit cleanly and write their profiles.
+    # A coverage run never writes ARIA snapshots.
+    e2e_status=0
+    OCG_E2E_SERVER_BINARY="$CARGO_LLVM_COV_TARGET_DIR/debug/ocg-server" just e2e-tests-parallel --update-snapshots=none "$@" || e2e_status=$?
+    cargo llvm-cov report --lcov --output-path "$report_dir/e2e.lcov"
+    cargo llvm-cov clean --profraw-only
+    unit_status=0
+    cargo test -p ocg-server || unit_status=$?
+    cargo llvm-cov report --lcov --output-path "$report_dir/unit.lcov"
+    node tests/e2e/scripts/rust-coverage-diff.js --e2e "$report_dir/e2e.lcov" --unit "$report_dir/unit.lcov" --out "$report_dir/e2e-vs-unit.md"
+    if [ "$e2e_status" -ne 0 ] || [ "$unit_status" -ne 0 ]; then
+        echo "error: e2e exit status $e2e_status, cargo test exit status $unit_status; the coverage of failed runs is partial" >&2
+        exit 1
+    fi
 
 # Run the e2e server using cargo run (builds if needed).
 e2e-server:
     just e2e-server-env cargo run -p ocg-server -- -c "{{ e2e_server_config }}"
-
-# Run a prebuilt e2e server binary (used by CI after downloading the build artifact).
-e2e-server-binary binary="target/debug/ocg-server":
-    just e2e-server-env "{{ binary }}" -c "{{ e2e_server_config }}"
 
 # Run the e2e server with watchexec for auto-reload.
 e2e-server-watch:
@@ -327,7 +383,7 @@ e2e-server-env command *args:
 e2e-tests *args:
     cd tests/e2e && PATH="{{ pg_bin }}:$PATH" npx playwright test --config playwright.config.js {{ args }}
 
-# Run the chromium e2e projects with OCG_E2E_PARALLEL_WORKERS isolated workers (extra arguments are forwarded to Playwright).
+# Run the chromium e2e projects, or the --project arguments given, with OCG_E2E_PARALLEL_WORKERS isolated workers (extra arguments are forwarded to Playwright).
 [positional-arguments]
 e2e-tests-parallel *args: e2e-db-guard
     PATH="{{ pg_bin }}:$PATH" "{{ source_dir }}/tests/e2e/scripts/parallel.sh" "$@"
@@ -336,6 +392,12 @@ e2e-tests-parallel *args: e2e-db-guard
 e2e-tests-file spec *args:
     cd tests/e2e && PATH="{{ pg_bin }}:$PATH" npx playwright test --config playwright.config.js "{{ spec }}" {{ args }}
 
-# Update Playwright visual snapshots for the e2e suite.
-e2e-update-snapshots:
-    cd tests/e2e && PATH="{{ pg_bin }}:$PATH" npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep @visual --update-snapshots
+# Update the ARIA snapshots on isolated stacks (any OS): writes missing files and rewrites mismatched ones; spec paths limit the run (default: every aria.spec.js), extra flags go to Playwright.
+[positional-arguments]
+e2e-update-snapshots *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    specs=()
+    for arg in "$@"; do case "$arg" in -*) ;; *) specs+=("$arg") ;; esac; done
+    if [ "${#specs[@]}" -eq 0 ]; then set -- "$@" aria.spec.js; fi
+    just e2e-tests-parallel --update-snapshots=changed --retries=0 "$@"

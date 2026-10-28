@@ -25,6 +25,11 @@ pub(crate) fn classify_scan_error(err: &Error) -> Option<CheckInScanRejection> {
     CheckInScanRejection::from_db_message(message)
 }
 
+/// Formats the versioned attendee credential encoded in check-in QR codes.
+pub(crate) fn format_credential(event_id: Uuid, check_in_code: Uuid) -> String {
+    format!("{CREDENTIAL_PREFIX}{event_id}:{check_in_code}")
+}
+
 /// Parses a versioned attendee credential into event and code identifiers.
 pub(crate) fn parse_credential(credential: &str) -> Result<ScannedCredential, InvalidCredential> {
     // Reject oversized payloads before parsing

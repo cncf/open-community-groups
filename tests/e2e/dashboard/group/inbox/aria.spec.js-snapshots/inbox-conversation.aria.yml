@@ -1,0 +1,23 @@
+- region "E2E ARIA event":
+  - link "Back to inbox":
+    - /url: /dashboard/group?tab=inbox
+  - text: /E2E temporary group [0-9a-f]{8} · Platform Engineering Community/
+  - heading "E2E ARIA event" [level=1]:
+    - link "E2E ARIA event":
+      - /url: /\/e2e-test-community\/group\/e2e-temporary-group-[0-9a-f]{12}\/event\/e2e-aria-event/
+  - text: Open Started
+  - time: /[A-Z][a-z]{2} \d+, \d+/
+  - text: Last message
+  - time: /[A-Z][a-z]{2} \d+, \d+ · \d+:\d+ [AP]M UTC/
+  - text: 1 message
+  - button "Close conversation"
+  - button "Mark as spam"
+  - list "Messages":
+    - listitem:
+      - text: E2E Member Three
+      - time: /[A-Z][a-z]{2} \d+, \d+ · \d+:\d+ [AP]M UTC/
+      - paragraph: Is the venue step-free?
+  - text: Reply
+  - textbox "Reply"
+  - paragraph: /The user receives your reply by email and in their dashboard\. Plain text, up to \d+ characters\./
+  - button "Send"

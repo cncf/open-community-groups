@@ -1,0 +1,11 @@
+- /children: deep-equal
+- list "Co-hosts":
+  - listitem:
+    - link "Developer Experience Community E2E Second Group Delta":
+      - /url: /e2e-second-community/group/second-group-delta
+  - listitem:
+    - link "Developer Experience Community E2E Second Group Zeta":
+      - /url: /e2e-second-community/group/second-group-zeta
+  - listitem:
+    - link "Platform Engineering Community Observability Guild":
+      - /url: /e2e-test-community/group/test-group-gamma

@@ -661,27 +661,6 @@ impl NotificationTemplate for EventExternalPaymentReminder {
     }
 }
 
-/// Template for event invitation notification.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "notifications/event_invitation.html")]
-pub(crate) struct EventInvitation {
-    /// Event summary data.
-    pub event: EventSummary,
-    /// Whether the event has registration questions configured.
-    pub has_registration_questions: bool,
-    /// Link to manage invitations in the dashboard.
-    pub link: String,
-    /// Theme configuration for the community.
-    pub theme: Theme,
-}
-
-impl NotificationTemplate for EventInvitation {
-    /// [`NotificationTemplate::subject`].
-    fn subject(&self) -> String {
-        scoped_subject(&self.event.group_name, "You have been invited to an event")
-    }
-}
-
 /// Template for paid event configuration notifications to community admins.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_paid_configured.html")]
@@ -1107,31 +1086,6 @@ impl NotificationTemplate for EventWaitlistLeft {
     /// [`NotificationTemplate::subject`].
     fn subject(&self) -> String {
         scoped_subject(&self.event.group_name, "You left the waiting list")
-    }
-}
-
-/// Template for event waitlist promotion notification.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "notifications/event_waitlist_promoted.html")]
-pub(crate) struct EventWaitlistPromoted {
-    /// Event summary data.
-    pub event: EventSummary,
-    /// Whether the event has registration questions configured.
-    pub has_registration_questions: bool,
-    /// Link to the event page.
-    pub link: String,
-    /// Theme configuration for the community.
-    pub theme: Theme,
-
-    /// Link to the user dashboard events page.
-    #[serde(default)]
-    pub dashboard_link: Option<String>,
-}
-
-impl NotificationTemplate for EventWaitlistPromoted {
-    /// [`NotificationTemplate::subject`].
-    fn subject(&self) -> String {
-        scoped_subject(&self.event.group_name, "You moved off the waiting list")
     }
 }
 

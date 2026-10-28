@@ -1,7 +1,13 @@
 import { expect, test } from "../../../fixtures.js";
-import { queryE2eDatabase } from "../../../database.js";
-import { navigateToPath, uniqueName, waitForActionResponse } from "../../../utils.js";
+import { queryE2eDatabase, sqlTextArray } from "../../../database.js";
+import { confirmAlert, navigateToPath, uniqueName, waitForActionResponse } from "../../../utils.js";
 import { waitForCommunityDashboardMutation } from "../helpers.js";
+import { TEST_EVENT_CATEGORY_IDS, TEST_GROUP_CATEGORY_IDS } from "../../../seed.js";
+
+const READ_ONLY_TAXONOMY_ROLES = [
+  { fixture: "communityViewerPage", label: "community viewer" },
+  { fixture: "groupsManagerPage", label: "groups manager" },
+];
 
 const taxonomyCases = [
   {
@@ -17,14 +23,15 @@ const taxonomyCases = [
     heading: "Event Categories",
     namePrefix: "Event Category",
     path: "/dashboard/community?tab=event-categories",
+    readonlyMessage: "Your role cannot update event categories.",
     refreshPath: "/dashboard/community/event-categories",
     seededUnusedName: "Workshops",
     seededUsedName: "General",
     tableName: "event_category",
     tableSelector: "#event-categories-list",
     updateButton: "Update Event Category",
-    unusedDeleteId: "delete-event-category-33333333-3333-3333-3333-333333333333",
-    usedDeleteId: "delete-event-category-33333333-3333-3333-3333-333333333331",
+    unusedDeleteId: `delete-event-category-${TEST_EVENT_CATEGORY_IDS.workshops}`,
+    usedDeleteId: `delete-event-category-${TEST_EVENT_CATEGORY_IDS.general}`,
   },
   {
     addButton: "Add Group Category",
@@ -39,14 +46,15 @@ const taxonomyCases = [
     heading: "Group Categories",
     namePrefix: "Group Category",
     path: "/dashboard/community?tab=group-categories",
+    readonlyMessage: "Your role cannot update group categories.",
     refreshPath: "/dashboard/community/group-categories",
     seededUnusedName: "E2E Category Unused",
     seededUsedName: "E2E Category One",
     tableName: "group_category",
     tableSelector: "#group-categories-list",
     updateButton: "Update Group Category",
-    unusedDeleteId: "delete-group-category-22222222-2222-2222-2222-222222222223",
-    usedDeleteId: "delete-group-category-22222222-2222-2222-2222-222222222221",
+    unusedDeleteId: `delete-group-category-${TEST_GROUP_CATEGORY_IDS.unused}`,
+    usedDeleteId: `delete-group-category-${TEST_GROUP_CATEGORY_IDS.one}`,
   },
   {
     addButton: "Add Region",
@@ -61,6 +69,7 @@ const taxonomyCases = [
     heading: "Regions",
     namePrefix: "Region",
     path: "/dashboard/community?tab=regions",
+    readonlyMessage: "Your role cannot update regions.",
     refreshPath: "/dashboard/community/regions",
     seededUnusedName: "APAC",
     seededUsedName: "North America",
@@ -85,8 +94,6 @@ test.describe("community dashboard taxonomy view", () => {
     });
 
     test(`admin can add, update, and delete ${taxonomy.createLabel}`, async ({ adminCommunityPage }) => {
-      test.setTimeout(60_000);
-
       // Create unique names for the temporary taxonomy flow.
       const itemName = uniqueName(taxonomy.namePrefix);
       const updatedItemName = `${itemName} Updated`;
@@ -176,17 +183,43 @@ test.describe("community dashboard taxonomy view", () => {
       await expect(dashboardContent.locator(`#${taxonomy.unusedDeleteId}`)).toBeEnabled();
     });
 
-    test(`viewer sees read-only controls on ${taxonomy.heading}`, async ({ communityViewerPage }) => {
-      // Load the taxonomy case as a read-only viewer.
-      await navigateToPath(communityViewerPage, taxonomy.path);
+    for (const { fixture, label } of READ_ONLY_TAXONOMY_ROLES) {
+      test(`${label} sees read-only controls on ${taxonomy.heading}`, async ({ pageAs }) => {
+        // Load the taxonomy case with a role that cannot manage taxonomy.
+        const page = await pageAs(fixture);
+        await navigateToPath(page, taxonomy.path);
 
-      // Verify all mutation controls are disabled for the viewer.
-      const dashboardContent = communityViewerPage.locator("#dashboard-content");
-      await expect(dashboardContent.getByText(taxonomy.heading, { exact: true })).toBeVisible();
-      await expect(getTaxonomyRow(dashboardContent, taxonomy, taxonomy.seededUnusedName)).toBeVisible();
-      await expect(dashboardContent.getByRole("button", { name: taxonomy.addButton })).toBeDisabled();
-      await expect(dashboardContent.locator(`#${taxonomy.unusedDeleteId}`)).toBeDisabled();
-    });
+        // Verify all mutation controls are disabled for this role.
+        const dashboardContent = page.locator("#dashboard-content");
+        await expect(dashboardContent.getByText(taxonomy.heading, { exact: true })).toBeVisible();
+        const itemRow = getTaxonomyRow(dashboardContent, taxonomy, taxonomy.seededUnusedName);
+        await expect(itemRow).toBeVisible();
+        await expect(dashboardContent.getByRole("button", { name: taxonomy.addButton })).toBeDisabled();
+        await expect(dashboardContent.locator(`#${taxonomy.unusedDeleteId}`)).toBeDisabled();
+
+        // Open the update form for the seeded entry without submitting it.
+        await waitForActionResponse(
+          page,
+          () =>
+            itemRow
+              .getByRole("button", { name: `${taxonomy.editAriaPrefix}: ${taxonomy.seededUnusedName}` })
+              .click(),
+          {
+            method: "GET",
+            urlEndsWith: "/update",
+            urlIncludes: `${taxonomy.refreshPath}/`,
+          },
+        );
+
+        // Verify the update form communicates the read-only state.
+        await expect(dashboardContent.getByText(taxonomy.formHeading, { exact: true })).toBeVisible();
+        await expect(dashboardContent.getByText(taxonomy.readonlyMessage, { exact: true })).toBeVisible();
+        await expect(dashboardContent.locator(".inert-form")).toHaveAttribute("inert", "");
+        const updateButton = dashboardContent.getByRole("button", { name: taxonomy.updateButton });
+        await expect(updateButton).toBeDisabled();
+        await expect(updateButton).toHaveAttribute("title", taxonomy.readonlyMessage);
+      });
+    }
   }
 });
 
@@ -203,9 +236,7 @@ const cleanupTaxonomyEntry = async (page, taxonomy, names, deletedThroughUi) => 
 
 /** Deletes named taxonomy rows from the configured database table. */
 const cleanupTaxonomyEntryInDatabase = (taxonomy, names) => {
-  const nameList = names.map(sqlString).join(", ");
-
-  queryE2eDatabase(`delete from ${taxonomy.tableName} where name in (${nameList});`);
+  queryE2eDatabase(`delete from ${taxonomy.tableName} where name = any(${sqlTextArray(names)});`);
 };
 
 /** Deletes named taxonomy rows through the dashboard when they are visible. */
@@ -227,11 +258,10 @@ const deleteTaxonomyRow = async (page, dashboardContent, taxonomy, name) => {
   const itemRow = getTaxonomyRow(dashboardContent, taxonomy, name);
 
   await itemRow.getByRole("button", { name: `${taxonomy.deleteAriaPrefix}: ${name}` }).click();
-  await expect(page.locator(".swal2-popup")).toContainText(taxonomy.deleteConfirmMessage);
   await waitForCommunityDashboardMutation(
     page,
     taxonomy.refreshPath,
-    () => page.getByRole("button", { name: "Yes" }).click(),
+    () => confirmAlert(page, { message: taxonomy.deleteConfirmMessage }),
     { method: "DELETE", urlIncludes: `${taxonomy.refreshPath}/` },
   );
 };
@@ -250,6 +280,3 @@ const fillTaxonomyForm = async (page, taxonomy, name) => {
 const getTaxonomyRow = (dashboardContent, taxonomy, name) => {
   return dashboardContent.locator(taxonomy.tableSelector).locator("tr", { hasText: name });
 };
-
-/** Escapes a value for a SQL string literal. */
-const sqlString = (value) => `'${value.replaceAll("'", "''")}'`;

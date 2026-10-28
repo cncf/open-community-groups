@@ -122,6 +122,7 @@ test.describe("community dashboard analytics view", () => {
 
       // Assert the rendered attribute value.
       await expect(tabButton).toHaveAttribute("data-active", "true");
+      await expect(tabButton).toHaveAttribute("aria-selected", "true");
       await expect(tabButton).not.toHaveClass(/outline-primary-200/);
       await expect(tabContent).toBeVisible();
       await expect(tabContent.getByText(analyticsTab.label, { exact: true }).first()).toBeVisible();
@@ -148,14 +149,19 @@ test.describe("community dashboard analytics view", () => {
     });
     await expect(mobileTabList).toBeVisible();
 
+    // Verify the summary cards are plain stat cards while the tab list is shown.
+    await expect(dashboardContent.getByRole("tablist")).toHaveCount(1);
+    await expect(dashboardContent.getByRole("group", { name: "Analytics summary" })).toBeVisible();
+    await expect(dashboardContent.getByRole("tab")).toHaveCount(ANALYTICS_TABS.length);
+
     // Open every tab and verify its corresponding analytics section.
     for (const analyticsTab of ANALYTICS_TABS) {
-      const tabButton = mobileTabList.getByRole("button", {
+      const tabButton = mobileTabList.getByRole("tab", {
         name: analyticsTab.label,
       });
       await tabButton.click();
-      await expect(tabButton).toHaveAttribute("data-active", "true");
-      await expect(dashboardContent.locator(`[data-analytics-content="${analyticsTab.key}"]`)).toBeVisible();
+      await expect(tabButton).toHaveAttribute("aria-selected", "true");
+      await expect(dashboardContent.getByRole("tabpanel", { name: analyticsTab.label })).toBeVisible();
     }
   });
 });

@@ -40,7 +40,8 @@ describe("dashboard user home template", () => {
       template.indexOf("{# End events check-in (mobile only) -#}"),
     );
     expect(mobileMenu).not.to.include('name = "Inbox"');
-    expect(template).to.include('hx-get="/dashboard/user/{{ content.refresh_path() }}"');
+    expect(template).to.include("{% if let Some(refresh_path) = content.refresh_path() -%}");
+    expect(template).to.include('hx-get="/dashboard/user/{{ refresh_path }}"');
     expect(template).to.include('class="leading-10 grid gap-y-0.5 md:hidden"');
     expect(template).to.include('class="leading-10 grid gap-y-0.5 max-md:hidden"');
   });

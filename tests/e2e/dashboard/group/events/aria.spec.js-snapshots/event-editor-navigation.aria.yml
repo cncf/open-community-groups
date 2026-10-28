@@ -1,0 +1,37 @@
+- navigation "Event form sections":
+  - text: ""
+  - list "Event":
+    - listitem:
+      - button "Details"
+    - listitem:
+      - button "Date & Venue"
+    - listitem:
+      - button "Co-hosts"
+    - listitem:
+      - button "Contributors"
+  - text: Registration
+  - list "Registration":
+    - listitem:
+      - button "Tickets"
+    - listitem:
+      - button "Questions"
+  - text: Program
+  - list "Program":
+    - listitem:
+      - button "Labels"
+    - listitem:
+      - button "CFS"
+    - listitem:
+      - button "Submissions"
+    - listitem:
+      - button "Sessions"
+  - text: People
+  - list "People":
+    - listitem:
+      - button "Attendees"
+  - text: Follow-up
+  - list "Follow-up":
+    - listitem:
+      - button "Surveys"
+    - listitem:
+      - button "Analytics"

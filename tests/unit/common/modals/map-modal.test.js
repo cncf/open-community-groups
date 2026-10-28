@@ -29,8 +29,9 @@ describe("map modal", () => {
         data-modal-map-id="event-map-modal-map"
         data-close-button-id="close-event-map-modal"
         data-backdrop-id="backdrop-event-map-modal"
-        tabindex="0"
+        data-trigger-id="event-map-trigger"
       ></div>
+      <button id="event-map-trigger" type="button"></button>
       <div id="event-map-modal" class="hidden">
         <button id="close-event-map-modal"></button>
         <div id="backdrop-event-map-modal"></div>
@@ -46,14 +47,10 @@ describe("map modal", () => {
   });
 
   it("initializes preview maps and lazily loads modal maps", async () => {
-    // Initialize the preview map and open the modal with the keyboard.
+    // Initialize the preview map and open the modal from its trigger.
     initializeMapModals();
     await waitForMicrotask();
-    document
-      .getElementById("event-map")
-      .dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+    document.getElementById("event-map-trigger").click();
     await waitForAnimationFrames(2);
 
     // The preview loads immediately and the modal map loads only after opening.
@@ -86,13 +83,14 @@ describe("map modal", () => {
       showCompass: false,
     });
 
-    // Close actions toggle the modal closed.
+    // Close actions toggle the modal closed and return focus to the trigger.
     document.getElementById("close-event-map-modal").click();
     expect(
       document.getElementById("event-map-modal")?.classList.contains("hidden"),
     ).to.equal(true);
+    expect(document.activeElement?.id).to.equal("event-map-trigger");
 
-    // Attribution clicks do not open the preview's modal.
+    // Attribution clicks inside the preview do not open the modal.
     const attribution = document.createElement("a");
     attribution.className = "maplibregl-ctrl";
     document.getElementById("event-map").append(attribution);
@@ -124,7 +122,7 @@ describe("map modal", () => {
     expect(swal.calls[0].text).to.equal(
       "Unable to load the map. Reload the page to try again.",
     );
-    document.getElementById("event-map").click();
+    document.getElementById("event-map-trigger").click();
     await waitForAnimationFrames(2);
     expect(swal.calls).to.have.length(2);
     expect(mapLibre.maps).to.have.length(0);
@@ -132,11 +130,24 @@ describe("map modal", () => {
     // Reopen the modal after initialization becomes available again.
     document.getElementById("close-event-map-modal").click();
     mapLibre.api.Map = MapConstructor;
-    document.getElementById("event-map").click();
+    document.getElementById("event-map-trigger").click();
     await waitForAnimationFrames(2);
     expect(mapLibre.maps.map((map) => map.options.container)).to.deep.equal([
       "event-map-modal-map",
     ]);
     expect(swal.calls).to.have.length(2);
+  });
+
+  it("skips map modals without a trigger", async () => {
+    // Remove the trigger the modal opens from.
+    document.getElementById("event-map-trigger").remove();
+
+    // The incomplete widget loads no map and stays uninitialized.
+    initializeMapModals();
+    await waitForMicrotask();
+    expect(mapLibre.maps).to.have.length(0);
+    expect(document.getElementById("event-map").dataset.mapModalReady).to.equal(
+      undefined,
+    );
   });
 });

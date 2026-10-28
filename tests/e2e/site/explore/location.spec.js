@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../fixtures.js";
 import { TEST_COMMUNITY_NAME, TEST_EVENT_NAMES, TEST_EVENT_SLUGS, TEST_GROUP_SLUGS } from "../../seed.js";
 import { buildE2eUrl, navigateToPath, routeEmptyBasemap } from "../../utils.js";
 

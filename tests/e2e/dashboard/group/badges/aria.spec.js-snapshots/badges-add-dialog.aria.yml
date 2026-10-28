@@ -1,0 +1,15 @@
+- dialog "Add badge":
+  - heading "Add badge" [level=3]
+  - button "Close modal"
+  - text: Name *
+  - textbox "Name *"
+  - text: Description *
+  - textbox "Description *"
+  - text: Criteria *
+  - textbox "Criteria *"
+  - group "Artwork *":
+    - text: ""
+    - radio "Badge artwork 1"
+    - text: Badge artwork 1
+  - button "Cancel"
+  - button "Add badge"

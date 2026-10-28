@@ -1,13 +1,9 @@
 import { expect, test } from "../../../fixtures.js";
-import { queryE2eDatabase } from "../../../database.js";
+import { queryE2eDatabase, restoreRow, snapshotRow } from "../../../database.js";
 import { TEST_COMMUNITY_NAME, TEST_EVENT_IDS, TEST_EVENT_SLUGS, TEST_GROUP_SLUGS } from "../../../seed.js";
-import {
-  expectCurrentPaginationNavigation,
-  navigateToPath,
-  routeNextRequestWithQuery,
-  waitForActionResponse,
-} from "../../../utils.js";
-import { openEventUpdateFormByName, waitForEventEditorAfterSave } from "./helpers.js";
+import { expectCurrentPaginationNavigation, navigateToPath, waitForActionResponse } from "../../../utils.js";
+import { selectLabels } from "./event-form-helpers.js";
+import { openCfsEventSubmissionsTab, waitForEventEditorAfterSave } from "./helpers.js";
 
 const CFS_APPROVAL_SUBMISSION_ID = "99999999-9999-9999-9999-999999999911";
 
@@ -19,10 +15,12 @@ const CFS_EVENT_PUBLIC_PATH = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.
 
 const CFS_SPEAKER_NAME = "E2E Member One";
 
+const WORKSHOP_LABEL_ID = "99999999-9999-9999-9999-999999999702";
+
 test.describe("group dashboard submissions tab", () => {
   test("events manager can move between submission result pages", async ({ eventsManagerGroupPage }) => {
     // Open seeded submissions with one result per page.
-    await openSubmissionsTab(eventsManagerGroupPage, "?limit=1&offset=0");
+    await openCfsEventSubmissionsTab(eventsManagerGroupPage, "?limit=1&offset=0");
 
     // Verify pagination swaps submission rows in both directions.
     await expectCurrentPaginationNavigation(eventsManagerGroupPage, "#submissions-content tbody tr");
@@ -31,22 +29,8 @@ test.describe("group dashboard submissions tab", () => {
   test("events manager can review CFS submissions with labels and ratings", async ({
     eventsManagerGroupPage,
   }) => {
-    // Load the CFS event editor before reviewing submissions.
-    await openEventUpdateFormByName(
-      eventsManagerGroupPage,
-      "Event With Active CFS",
-      TEST_EVENT_IDS.alpha.cfsSummit,
-    );
-
-    // Submit and wait for the server response.
-    await waitForActionResponse(
-      eventsManagerGroupPage,
-      () => eventsManagerGroupPage.locator('button[data-section="submissions"]').click(),
-      {
-        method: "GET",
-        urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/submissions`,
-      },
-    );
+    // Load the CFS event submissions section.
+    await openCfsEventSubmissionsTab(eventsManagerGroupPage);
 
     // Assert that Submissions is visible.
     await expect(
@@ -82,23 +66,62 @@ test.describe("group dashboard submissions tab", () => {
     await expect(approvedRow).toContainText("2 ratings");
     await expect(approvedRow).toContainText("Approved");
     await expect(approvedRow.getByTitle("Review submission")).toBeEnabled();
+
+    // Verify the session-linked approved submission locks every non-approved status.
+    await approvedRow.getByTitle("Review submission").click();
+    const reviewModal = eventsManagerGroupPage.locator("review-submission-modal");
+    const reviewDialog = reviewModal.getByRole("dialog", { name: "Review submission" });
+    await expect(reviewDialog).toBeVisible();
+    await reviewModal.getByRole("tab", { name: "Decision" }).click();
+    const approvedStatus = reviewModal.getByRole("checkbox", { exact: true, name: "Approved" });
+    await expect(approvedStatus).toBeChecked();
+    await expect(approvedStatus).toBeEnabled();
+    await expect(
+      reviewModal.getByRole("checkbox", { exact: true, name: "Information requested" }),
+    ).toBeDisabled();
+    await expect(reviewModal.getByRole("checkbox", { exact: true, name: "Rejected" })).toBeDisabled();
+    await expect(
+      reviewModal.getByText(
+        "This submission is linked to a session. Unlink it from the session before choosing a non-approved status.",
+      ),
+    ).toBeVisible();
+
+    // Close the review without saving.
+    await reviewModal.getByRole("button", { name: "Close modal" }).click();
+    await expect(reviewDialog).toHaveCount(0);
+  });
+
+  test("events manager filters submissions by label", async ({ eventsManagerGroupPage }) => {
+    // Load the CFS event submissions section with every submission listed.
+    const submissionsContent = await openCfsEventSubmissionsTab(eventsManagerGroupPage);
+    await expect(
+      submissionsContent.locator("tr", { hasText: "Platform Reliability Patterns" }),
+    ).toBeVisible();
+
+    // Pick the Workshop label through the filter search and wait for the filtered list.
+    const labelFilter = submissionsContent.locator("label-selector#submissions-label-filter");
+    await waitForActionResponse(eventsManagerGroupPage, () => selectLabels(labelFilter, ["Workshop"]), {
+      method: "GET",
+      params: { "label_ids[]": WORKSHOP_LABEL_ID },
+      pathname: `/dashboard/group/events/${CFS_EVENT_ID}/submissions`,
+      status: 200,
+    });
+
+    // Verify only Workshop submissions remain and the filter keeps the selection.
+    await expect(labelFilter.getByRole("button", { exact: true, name: "Remove Workshop" })).toBeVisible();
+    await expect(submissionsContent.locator("tr", { hasText: "Observability in Practice" })).toBeVisible();
+    await expect(submissionsContent.locator("tr", { hasText: "Scaling Community Workshops" })).toBeVisible();
+    await expect(submissionsContent.locator("tr", { hasText: "Platform Reliability Patterns" })).toHaveCount(
+      0,
+    );
+    await expect(submissionsContent.locator("tr", { hasText: "Maintainer Burnout Lessons" })).toHaveCount(0);
   });
 
   test("viewer sees read-only event and submission controls on the submissions tab", async ({
     groupViewerPage,
   }) => {
-    // Load the CFS event editor as a read-only viewer.
-    await openEventUpdateFormByName(groupViewerPage, "Event With Active CFS", TEST_EVENT_IDS.alpha.cfsSummit);
-
-    // Submit and wait for the server response.
-    await waitForActionResponse(
-      groupViewerPage,
-      () => groupViewerPage.locator('button[data-section="submissions"]').click(),
-      {
-        method: "GET",
-        urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/submissions`,
-      },
-    );
+    // Load the CFS event submissions section as a read-only viewer.
+    await openCfsEventSubmissionsTab(groupViewerPage);
 
     // Find the review buttons.
     const reviewButtons = groupViewerPage.getByTitle("Your role cannot manage events.");
@@ -108,14 +131,12 @@ test.describe("group dashboard submissions tab", () => {
   test("organizer can approve a CFS proposal and publish it to the public agenda", async ({
     organizerGroupPage,
   }) => {
-    test.setTimeout(90_000);
+    // Snapshot the seeded event row the editor save rewrites.
+    const eventSnapshot = snapshotRow({ key: { event_id: CFS_EVENT_ID }, table: "event" });
 
     try {
-      // Reset any prior approved agenda fixture before the review flow.
-      deleteCfsApprovalAgendaFixture();
-
       // Approve the seeded proposal through the submissions review modal.
-      const submissionsContent = await openSubmissionsTab(organizerGroupPage);
+      const submissionsContent = await openCfsEventSubmissionsTab(organizerGroupPage);
       const proposalRow = submissionsContent.locator("tr", {
         hasText: CFS_APPROVAL_TITLE,
       });
@@ -175,8 +196,9 @@ test.describe("group dashboard submissions tab", () => {
       await expect(agendaSession).toBeVisible();
       await expect(agendaSession).toContainText(CFS_SPEAKER_NAME);
     } finally {
-      // Remove the approved agenda fixture after verification.
+      // Remove the approved agenda fixture and restore the seeded event.
       deleteCfsApprovalAgendaFixture();
+      restoreRow(eventSnapshot);
     }
   });
 });
@@ -195,28 +217,6 @@ const deleteCfsApprovalAgendaFixture = () => {
       status_id = 'not-reviewed'
     where cfs_submission_id = '${CFS_APPROVAL_SUBMISSION_ID}';
   `);
-};
-
-/** Opens the event submissions tab and returns its content region. */
-const openSubmissionsTab = async (page, query = "") => {
-  await openEventUpdateFormByName(page, "Event With Active CFS", TEST_EVENT_IDS.alpha.cfsSummit);
-
-  // The tab buttons only exist once the event update form has loaded.
-  const submissionsTab = page.locator('button[data-section="submissions"]');
-  if (query !== "") {
-    await routeNextRequestWithQuery(
-      page,
-      `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/submissions`,
-      query,
-    );
-  }
-
-  await waitForActionResponse(page, () => submissionsTab.click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/submissions`,
-  });
-
-  return page.locator("#submissions-content");
 };
 
 /** Returns the generated approval session ID from the session table. */

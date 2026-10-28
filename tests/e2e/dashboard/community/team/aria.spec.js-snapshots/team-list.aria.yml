@@ -1,0 +1,33 @@
+- text: Community Team
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=team-community-access
+- text: 1 - 2 of 2 members
+- button "Add member"
+- table:
+  - rowgroup:
+    - row "Member Position Role Actions":
+      - columnheader "Member"
+      - columnheader "Position"
+      - columnheader "Role"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "EO E2E Admin One e2e-admin-1 - Admin":
+      - cell "EO E2E Admin One e2e-admin-1"
+      - cell "-"
+      - cell "Admin":
+        - combobox "Role" [disabled]:
+          - option "Admin" [selected]
+          - option "Groups Manager"
+          - option "Viewer"
+      - cell:
+        - button "At least one accepted admin is required." [disabled]
+    - row "ET E2E Member Three Invitation sent e2e-member-3 - Viewer Delete team member":
+      - cell "ET E2E Member Three Invitation sent e2e-member-3"
+      - cell "-"
+      - cell "Viewer":
+        - combobox "Role":
+          - option "Admin"
+          - option "Groups Manager"
+          - option "Viewer" [selected]
+      - cell "Delete team member":
+        - button "Delete team member"

@@ -9,6 +9,7 @@ import {
   bindModalDismissListeners,
   closeModalBodyScroll,
   openModalBodyScroll,
+  trapModalFocus,
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
@@ -56,6 +57,7 @@ export class TeamAddMember extends LitWrapper {
     this._isOpen = false;
     this._selectedRole = "";
     this._selectedUser = null;
+    this._focusOrigin = null;
     this._handleKeydown = this._handleKeydown.bind(this);
     this._removeDismissListeners = null;
   }
@@ -101,14 +103,17 @@ export class TeamAddMember extends LitWrapper {
   }
 
   /**
-   * Handles ESC key to close the modal.
+   * Closes the modal on ESC and keeps Tab navigation inside it while open.
    * @param {KeyboardEvent} event - Keyboard event
    * @private
    */
   _handleKeydown(event) {
-    if (isEscapeEvent(event) && this._isOpen) {
+    if (!this._isOpen) return;
+    if (isEscapeEvent(event)) {
       this._close();
+      return;
     }
+    trapModalFocus(event, this.querySelector('[role="dialog"]'));
   }
 
   /**
@@ -117,6 +122,8 @@ export class TeamAddMember extends LitWrapper {
    */
   _open() {
     if (!this._canManageTeam()) return;
+    const activeElement = document.activeElement;
+    this._focusOrigin = activeElement instanceof HTMLElement ? activeElement : null;
     this._selectedUser = null;
     this._selectedRole = "";
     this._isOpen = openModalBodyScroll(this._isOpen);
@@ -126,12 +133,24 @@ export class TeamAddMember extends LitWrapper {
   }
 
   /**
-   * Closes the modal and clears the selected user and role.
+   * Closes the modal, clears the selected user and role, and refocuses the trigger.
    * @private
    */
   _close() {
     this._isOpen = closeModalBodyScroll(this._isOpen);
     this._resetSelection();
+    this._restoreFocus();
+  }
+
+  /**
+   * Restores focus to the control that opened the modal when it is still present.
+   * @private
+   */
+  _restoreFocus() {
+    if (this._focusOrigin instanceof HTMLElement && document.contains(this._focusOrigin)) {
+      this._focusOrigin.focus();
+    }
+    this._focusOrigin = null;
   }
 
   /**
@@ -256,7 +275,12 @@ export class TeamAddMember extends LitWrapper {
   _renderModal() {
     if (!this._isOpen) return html``;
     return html`
-      <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden">
+      <div
+        class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="team-add-member-title"
+      >
         <div
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"
           @click=${() => this._close()}
@@ -264,7 +288,7 @@ export class TeamAddMember extends LitWrapper {
         <div class="modal-panel p-4 max-w-3xl">
           <div class="modal-card rounded-lg">
             <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-              <h3 class="text-xl font-semibold text-stone-900">Add member</h3>
+              <h3 id="team-add-member-title" class="text-xl font-semibold text-stone-900">Add member</h3>
               <button
                 type="button"
                 class="group bg-transparent hover:bg-stone-200 rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center cursor-pointer"

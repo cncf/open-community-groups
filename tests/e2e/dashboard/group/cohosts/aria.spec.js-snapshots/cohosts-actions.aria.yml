@@ -1,0 +1,5 @@
+- list:
+  - listitem:
+    - button "Approve"
+  - listitem:
+    - button "Reject"

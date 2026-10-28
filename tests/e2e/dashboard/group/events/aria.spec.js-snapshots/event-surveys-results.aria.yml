@@ -1,0 +1,26 @@
+- button "Back to surveys"
+- text: Survey results
+- heading "E2E ARIA survey" [level=2]
+- text: Open Opened
+- time: /[A-Z][a-z]{2} \d+, \d+/
+- text: 2 questions
+- link "Download CSV":
+  - /url: /\/dashboard\/group\/events\/[0-9a-f-]{36}\/surveys\/[0-9a-f-]{36}\/responses\.csv/
+- group "Results view":
+  - button "Summary" [pressed]
+  - button "Individual"
+- text: /Responses 1 \/ 1 \(\d+%\) Eligible attendees who answered Audience Confirmed attendees Identified responses Closes No closing date Shown in the event timezone/
+- region "1 Would you come again?":
+  - heading "1 Would you come again?" [level=3]
+  - text: 1 respondent · 1 selection
+  - list:
+    - listitem: /Yes 1 · \d+%/
+    - listitem: No 0 · 0%
+- region "2 Any feedback?":
+  - heading "2 Any feedback?" [level=3]
+  - text: 1 answer
+  - list:
+    - listitem:
+      - paragraph: Great talks.
+  - paragraph: Showing 1 of 1 answer
+  - 'button "View 1 answer: Any feedback?"'
