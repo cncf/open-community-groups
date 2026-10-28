@@ -20,8 +20,8 @@ use super::helpers::*;
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_activate_pre_registered_user_email_password_deserializes() -> Result<()> {
-    // Setup the activation password profile and verification notification
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work, the password profile and verification
+    let uow = contract_unit_of_work().await?;
     let profile = ExternalUserProfile {
         email: "activation-password.contract@example.com".to_string(),
         name: "Contract Password Activation".to_string(),
@@ -39,7 +39,7 @@ async fn db_contracts_activate_pre_registered_user_email_password_deserializes()
     };
 
     // Activate the pre-registered user through the Rust contract
-    let (user, verification_code) = db
+    let (user, verification_code) = uow
         .activate_pre_registered_user_email_password(&profile, &verification)
         .await?
         .expect("contract password activation user should exist");
@@ -59,8 +59,8 @@ async fn db_contracts_activate_pre_registered_user_email_password_deserializes()
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_activate_pre_registered_user_external_provider_deserializes() -> Result<()> {
-    // Setup the activation identity and external profile
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work, the activation identity and external profile
+    let uow = contract_unit_of_work().await?;
     let profile = ExternalUserProfile {
         email: "activation.contract@example.com".to_string(),
         name: "Contract Activation".to_string(),
@@ -74,7 +74,7 @@ async fn db_contracts_activate_pre_registered_user_external_provider_deserialize
     };
 
     // Activate the pre-registered user through the Rust contract
-    let user = db
+    let user = uow
         .activate_pre_registered_user_external_provider(&activation_id(), &profile)
         .await?;
 
@@ -243,8 +243,8 @@ async fn db_contracts_get_user_by_username_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_sign_up_user_deserializes() -> Result<()> {
-    // Setup a verified sign-up profile without a password
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and a verified sign-up profile without a password
+    let uow = contract_unit_of_work().await?;
     let profile = ExternalUserProfile {
         email: "sign-up.contract@example.com".to_string(),
         name: "Contract Sign Up".to_string(),
@@ -256,7 +256,7 @@ async fn db_contracts_sign_up_user_deserializes() -> Result<()> {
     };
 
     // Sign up the user through the Rust contract
-    let (user, verification_code) = db.sign_up_user(&profile, true, None).await?;
+    let (user, verification_code) = uow.sign_up_user(&profile, true, None).await?;
 
     // Check the signed up user fields and computed membership flags
     assert!(user.email_verified);
@@ -275,8 +275,8 @@ async fn db_contracts_sign_up_user_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
-    // Setup the contract database and external profile update
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the external profile update
+    let uow = contract_unit_of_work().await?;
     let profile = ExternalUserProfile {
         email: "external-update-new.contract@example.com".to_string(),
         name: "Contract External Update".to_string(),
@@ -292,7 +292,7 @@ async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
     };
 
     // Update external authentication through the Rust contract
-    let user = db.update_user_external_auth(&external_update_id(), &profile).await?;
+    let user = uow.update_user_external_auth(&external_update_id(), &profile).await?;
 
     // Check account identity and verification fields
     assert_eq!(user.email, "external-update-new.contract@example.com");

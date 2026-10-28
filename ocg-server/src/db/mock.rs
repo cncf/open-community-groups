@@ -7,6 +7,8 @@ use async_trait::async_trait;
 use mockall::mock;
 use uuid::Uuid;
 
+use crate::{db::inbox::PostedInboxMessage, types::tests::sample_site_settings};
+
 mock! {
     /// Mock `DB` struct for testing purposes, implementing the DB traits.
     pub(crate) DB {}
@@ -1748,5 +1750,35 @@ mock! {
         ) -> Result<crate::types::search::SearchGroupsOutput<
                 crate::types::group::GroupMinimal,
             >>;
+    }
+}
+
+/// Expects one transaction on `db` that rolls back `tx` without committing.
+pub(crate) fn expect_rolled_back_transaction(db: &mut MockDB, mut tx: MockDB) {
+    tx.expect_commit().never();
+    tx.expect_rollback().times(1).returning(|| Ok(()));
+    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
+}
+
+/// Expects one transaction on `db` that commits `tx` without rolling back.
+pub(crate) fn expect_successful_transaction(db: &mut MockDB, mut tx: MockDB) {
+    tx.expect_commit().times(1).returning(|| Ok(()));
+    tx.expect_rollback().never();
+    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
+}
+
+/// Expects one site settings read returning the sample settings.
+pub(crate) fn expect_site_settings(db: &mut MockDB) {
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+}
+
+/// Returns a posted inbox message with fresh identifiers.
+pub(crate) fn sample_posted_inbox_message() -> PostedInboxMessage {
+    PostedInboxMessage {
+        group_id: Uuid::new_v4(),
+        inbox_conversation_id: Uuid::new_v4(),
+        inbox_message_id: Uuid::new_v4(),
     }
 }

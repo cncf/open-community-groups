@@ -5,11 +5,11 @@ use std::{env, time::Duration};
 use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDate};
 use deadpool_postgres::{Config as DeadpoolDbConfig, Pool, Runtime};
-use tokio_postgres::NoTls;
-use uuid::Uuid;
+use tokio_postgres::{NoTls, error::SqlState, types::ToSql};
+use uuid::{Uuid, uuid};
 
 use crate::{
-    db::PgDB,
+    db::{PgDB, PgExecutor, PgUnitOfWork, user_facing_message},
     types::{
         badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge},
         dashboard::group::events::EventInput,
@@ -18,377 +18,42 @@ use crate::{
     },
 };
 
-const ACTIVATION_ID: &str = "00000000-0000-0000-0000-00000000c045";
-/// Pre-registered user activated by the email/password contract.
-const ACTIVATION_PASSWORD_ID: &str = "00000000-0000-0000-0000-00000000c048";
-const ACTIVE_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0bd";
-/// Past paid event used by the event analytics contracts.
-const ANALYTICS_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f205";
-/// Group owning the event analytics fixture.
-const ANALYTICS_GROUP_ID: &str = "00000000-0000-0000-0000-00000000f203";
-/// Select registration question of the event analytics fixture.
-const ANALYTICS_QUESTION_ID: &str = "00000000-0000-0000-0000-00000000f20b";
-/// Paid ticket type of the event analytics fixture.
-const ANALYTICS_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000f208";
-const ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c042";
-const AUTO_END_MEETING_ID: &str = "00000000-0000-0000-0000-00000000c0a3";
-const BADGE_ARTWORK_ID: &str = "00000000-0000-0000-0000-00000000c0ba";
-const BADGE_AWARD_JOB_ID: &str = "00000000-0000-0000-0000-00000000c0bf";
-const BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0bb";
-const BADGE_STATUS_LIST_ID: &str = "00000000-0000-0000-0000-00000000c0bc";
-const CANCELEE_ID: &str = "00000000-0000-0000-0000-00000000c0e9";
-/// Confirmed attendee canceled by the enrollment manager lifecycle contract.
-const LIFECYCLE_CANCELEE_ID: &str = "00000000-0000-0000-0000-00000000c1f0";
-/// Confirmed attendee whose manager cancellation is rolled back by the lifecycle contract.
-const LIFECYCLE_ROLLBACK_CANCELEE_ID: &str = "00000000-0000-0000-0000-00000000c1f1";
-/// User fixture that races an RSVP against event cancellation.
-const CANCELLATION_LOCK_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c0ec";
-/// Event fixture used to verify cancellation lock ownership.
-const CANCELLATION_LOCK_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d6";
-/// Proposal fixture used to verify submission share locking.
-const CFS_ADD_LOCK_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c124";
-/// Proposal fixture used to verify deletion lock ordering.
-const CFS_DELETE_LOCK_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c125";
-/// Session fixture used to verify CFS submission locking.
-const CFS_LOCK_SESSION_ID: &str = "00000000-0000-0000-0000-00000000c123";
-const CFS_SUBMISSION_ID: &str = "00000000-0000-0000-0000-00000000c0c5";
-/// Proposal fixture used to verify update lock strength.
-const CFS_UPDATE_LOCK_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c126";
-const CHECK_IN_CODE: &str = "00000000-0000-0000-0000-00000000c084";
-const CHECKOUT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e1";
-const CLAIM_GROUP_ID: &str = "00000000-0000-0000-0000-00000000c0a0";
-const CO_SPEAKER_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c2";
-/// Group admin notified about co-hosting lifecycle changes.
-const COHOST_ADMIN_ID: &str = "00000000-0000-0000-0000-00000000d401";
-/// Group with an approved co-hosting of the matrix event.
-const COHOST_APPROVED_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d022";
-/// Canceled event with an event-canceled co-hosting.
-const COHOST_CANCELED_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d202";
-/// Group that withdrew its co-hosting of the matrix event.
-const COHOST_CANCELED_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d023";
-/// Inactive community holding every co-host group fixture.
-const COHOST_COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000d101";
-/// Active cross-community group with an approved co-hosting.
-const COHOST_CROSS_COMMUNITY_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d121";
-/// Approved invitation of the cross-community co-host.
-const COHOST_CROSS_COMMUNITY_INVITATION_ID: &str = "00000000-0000-0000-0000-00000000d309";
-/// Deleted event with an event-deleted co-hosting.
-const COHOST_DELETED_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d203";
-/// Group whose co-hosting ended with the event cancellation.
-const COHOST_EVENT_CANCELED_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d024";
-/// Group whose co-hosting ended with the event deletion.
-const COHOST_EVENT_DELETED_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d025";
-/// Invitation closed by the event deletion.
-const COHOST_EVENT_DELETED_INVITATION_ID: &str = "00000000-0000-0000-0000-00000000d305";
-/// Group sorting after the low lock-order group.
-const COHOST_LOCK_ORDER_HIGH_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d02a";
-/// Group sorting before the high lock-order group.
-const COHOST_LOCK_ORDER_LOW_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d029";
-/// Unpublished event holding one co-hosting per editable status.
-const COHOST_MATRIX_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d201";
-/// Group with a pending co-hosting invitation.
-const COHOST_PENDING_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d021";
-/// Pending invitation of the matrix event.
-const COHOST_PENDING_INVITATION_ID: &str = "00000000-0000-0000-0000-00000000d301";
-/// Unpublished event without co-hosts used to race publication against an invitation.
-const COHOST_PUBLISH_RACE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d204";
-/// Inactive group re-invited to co-host the matrix event.
-const COHOST_REINVITED_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d028";
-/// Unpublished event whose pending co-host is re-invited while an approval waits.
-const COHOST_REINVITE_RACE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000d205";
-/// Pending invitation rotated by the re-invite race.
-const COHOST_REINVITE_RACE_INVITATION_ID: &str = "00000000-0000-0000-0000-00000000d310";
-const COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000c001";
-/// Verified contact user who is admin of one group and viewer of another.
-const CONTACT_ADMIN_ID: &str = "00000000-0000-0000-0000-00000000e141";
-/// Contact group category holding the active and inactive groups.
-const CONTACT_CATEGORY_A_ID: &str = "00000000-0000-0000-0000-00000000e112";
-/// Contact group category holding the group without a region.
-const CONTACT_CATEGORY_B_ID: &str = "00000000-0000-0000-0000-00000000e113";
-/// Inactive community used by the community contact contracts.
-const CONTACT_COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000e101";
-/// Active contact group with a region.
-const CONTACT_GROUP_A_ID: &str = "00000000-0000-0000-0000-00000000e121";
-/// Active contact group without a region whose only seat is a viewer.
-const CONTACT_GROUP_B_ID: &str = "00000000-0000-0000-0000-00000000e122";
-/// Inactive contact group excluded from contact.
-const CONTACT_INACTIVE_GROUP_ID: &str = "00000000-0000-0000-0000-00000000e123";
-/// Verified contact user who is events manager of one active group.
-const CONTACT_MANAGER_ID: &str = "00000000-0000-0000-0000-00000000e142";
-/// Region of the contact community.
-const CONTACT_REGION_ID: &str = "00000000-0000-0000-0000-00000000e111";
-const DOCUMENT_ADJUSTMENT_ID: &str = "00000000-0000-0000-0000-00000000c11d";
-const DOCUMENT_ADJUSTMENT_JOB_ID: &str = "00000000-0000-0000-0000-00000000c134";
-const DOCUMENT_CREDIT_NOTE_ID: &str = "00000000-0000-0000-0000-00000000c11e";
-const DOCUMENT_CREDIT_NOTE_JOB_ID: &str = "00000000-0000-0000-0000-00000000c135";
-const DOCUMENT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c11b";
-const DOCUMENT_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c11c";
-const DOCUMENT_REFUND_JOB_ID: &str = "00000000-0000-0000-0000-00000000c136";
-/// User who attends the event raced against an offer decline.
-const ENROLLMENT_RACE_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000f370";
-/// User who declines the offer raced against another user's attendance.
-const ENROLLMENT_RACE_DECLINER_ID: &str = "00000000-0000-0000-0000-00000000f371";
-/// Free one-seat event used by the enrollment lock order race.
-const ENROLLMENT_RACE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f372";
-/// Pending approval offer holding the only seat of the enrollment race event.
-const ENROLLMENT_RACE_OFFER_ID: &str = "00000000-0000-0000-0000-00000000f375";
-const EVENT_CATEGORY_ID: &str = "00000000-0000-0000-0000-00000000c013";
-const EVENT_ID: &str = "00000000-0000-0000-0000-00000000c031";
-/// Label assigned to the contract event session and submission.
-const EVENT_LABEL_ID: &str = "00000000-0000-0000-0000-00000000c0c8";
-/// Buyer fixture used to prepare a new external checkout hold.
-const EXTERNAL_CHECKOUT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c12a";
-/// Pending external purchase dedicated to the completion mutation contract.
-const EXTERNAL_COMPLETE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c133";
-/// Buyer fixture dedicated to the external completion mutation contract.
-const EXTERNAL_COMPLETE_USER_ID: &str = "00000000-0000-0000-0000-00000000c132";
-/// Completed externally managed purchase used by document and attendee contracts.
-const EXTERNAL_COMPLETED_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c12f";
-/// Buyer fixture with a completed externally managed purchase.
-const EXTERNAL_COMPLETED_USER_ID: &str = "00000000-0000-0000-0000-00000000c128";
-/// Event fixture dedicated to external-payments contracts.
-const EXTERNAL_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c12b";
-const EXTERNAL_LOOKUP_ID: &str = "00000000-0000-0000-0000-00000000c046";
-/// Pending external purchase awaiting organizer confirmation.
-const EXTERNAL_PENDING_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c12e";
-/// Buyer fixture with a pending external purchase.
-const EXTERNAL_PENDING_USER_ID: &str = "00000000-0000-0000-0000-00000000c127";
-/// External purchase waiting for local refund approval.
-const EXTERNAL_REFUND_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c130";
-/// Buyer fixture whose external refund request is ready for approval.
-const EXTERNAL_REFUND_USER_ID: &str = "00000000-0000-0000-0000-00000000c129";
-/// Ticket fixture used by the external-payments event.
-const EXTERNAL_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c12c";
-const EXTERNAL_UPDATE_ID: &str = "00000000-0000-0000-0000-00000000c047";
-const FINANCIAL_RECOVERY_ADJUSTMENT_JOB_ID: &str = "00000000-0000-0000-0000-00000000c137";
-const FINANCIAL_RECOVERY_CREDIT_NOTE_JOB_ID: &str = "00000000-0000-0000-0000-00000000c138";
-const FREE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e4";
-const FREE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f3";
-/// Group category of the contract community.
-const GROUP_CATEGORY_ID: &str = "00000000-0000-0000-0000-00000000c012";
-const GROUP_ID: &str = "00000000-0000-0000-0000-00000000c021";
-/// First event fixture used to verify group-level mutation locks.
-const GROUP_LOCK_FIRST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c121";
-/// Second event fixture used to verify group-level mutation locks.
-const GROUP_LOCK_SECOND_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c122";
-const GROUP_SPONSOR_ID: &str = "00000000-0000-0000-0000-00000000c061";
-const INBOX_OPT_OUT_ADMIN_ID: &str = "00000000-0000-0000-0000-00000000e02c";
-const INBOX_OPT_OUT_EVENT_ID: &str = "00000000-0000-0000-0000-00000000e034";
-const INBOX_OPT_OUT_EVENTS_MANAGER_ID: &str = "00000000-0000-0000-0000-00000000e02d";
-const INBOX_OPT_OUT_GROUP_ID: &str = "00000000-0000-0000-0000-00000000e014";
-const INBOX_OPT_OUT_USER_ID: &str = "00000000-0000-0000-0000-00000000e02e";
-const INVITATION_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c083";
-const INVITATION_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c081";
-const INVITE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d8";
-const INVITEE_ID: &str = "00000000-0000-0000-0000-00000000c0ed";
-const LEAVER_ID: &str = "00000000-0000-0000-0000-00000000c0e8";
-const MUTATION_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d5";
-const MUTATION_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c0d7";
-const NOTIFICATION_CONCURRENCY_USER_ID: &str = "00000000-0000-0000-0000-00000000f004";
-const NOTIFICATION_ELIGIBLE_USER_ID: &str = "00000000-0000-0000-0000-00000000f002";
-const NOTIFICATION_PREFERENCES_USER_ID: &str = "00000000-0000-0000-0000-00000000f001";
-const NOTIFICATION_UNAVAILABLE_GROUP_ID: &str = "00000000-0000-0000-0000-00000000d028";
-const NOTIFICATION_UNMUTE_CONCURRENCY_USER_ID: &str = "00000000-0000-0000-0000-00000000f005";
-const NOTIFICATION_UPDATE_USER_ID: &str = "00000000-0000-0000-0000-00000000f003";
-const OFFER_DECLINE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0dc";
-const OFFER_DECLINE_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c0dd";
-const OFFER_DECLINER_ID: &str = "00000000-0000-0000-0000-00000000c0f0";
-const ORGANIZER_ID: &str = "00000000-0000-0000-0000-00000000c041";
-const PAID_CANCELLATION_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c118";
-const PAID_CANCELLATION_USER_ID: &str = "00000000-0000-0000-0000-00000000c117";
-const PAID_TICKET_PRICE_WINDOW_ID: &str = "00000000-0000-0000-0000-00000000c0d2";
-const PAID_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c0d1";
-const PAST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c032";
-/// Admin of the group payment lock order fixture group.
-const PAYMENT_LOCK_ADMIN_ID: &str = "00000000-0000-0000-0000-00000000f408";
-/// Unpublished paid event of the group payment lock order fixture.
-const PAYMENT_LOCK_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f405";
-/// External-payments group of the group payment lock order fixture.
-const PAYMENT_LOCK_GROUP_ID: &str = "00000000-0000-0000-0000-00000000f404";
-const PRE_REGISTERED_ID: &str = "00000000-0000-0000-0000-00000000c044";
-/// Event fixture whose full capacity sends organizer invitations to the queue.
-const QUEUE_INVITE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c105";
-/// User fixture queued by the organizer invitation contract.
-const QUEUE_INVITEE_ID: &str = "00000000-0000-0000-0000-00000000c103";
-const REBIND_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0b9";
-const RECONCILE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e3";
-const RECONCILE_DUE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0de";
-const REFUND_OFFER_USER_ID: &str = "00000000-0000-0000-0000-00000000c101";
-/// Purchase fixture whose provider refund is ready for local finalization.
-const REFUND_APPROVE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f6";
-const REFUND_APPROVE_JOB_ID: &str = "00000000-0000-0000-0000-00000000c139";
-const REFUND_BEGIN_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f4";
-const REFUND_LIFECYCLE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fb";
-/// Paid event containing the refund contract fixtures.
-const REFUND_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d0";
-/// Purchase fixture whose locally finalized refund requires recovery.
-const REFUND_RECOVERY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fd";
-/// Durable refund fixture preserving post-finalization recovery state.
-const REFUND_RECOVERY_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c0fe";
-const REFUND_RECOVERY_JOB_ID: &str = "00000000-0000-0000-0000-00000000c13a";
-const REFUND_REJECT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e7";
-/// Purchase fixture whose refund request is ready for rejection.
-const REFUND_REJECT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f8";
-/// Buyer fixture with a rejected refund reason for attendee-facing contracts.
-const REFUND_REJECTED_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c114";
-const REJECTED_REQUEST_USER_ID: &str = "00000000-0000-0000-0000-00000000c102";
-const REQUEST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d9";
-const REQUESTER_ID: &str = "00000000-0000-0000-0000-00000000c0ee";
-const REVOKED_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0be";
-/// Contract event session with one label.
-const SESSION_ID: &str = "00000000-0000-0000-0000-00000000c051";
-const SESSION_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c1";
-const SITE_ID: &str = "00000000-0000-0000-0000-00000000c0b1";
-/// Inactive community whose cached public statistics are verified.
-const STATS_CACHE_COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000f101";
-/// Active group counted by the stats cache community statistics.
-const STATS_CACHE_GROUP_ID: &str = "00000000-0000-0000-0000-00000000f103";
-/// User added to the stats cache group after its statistics are cached.
-const STATS_CACHE_JOINER_ID: &str = "00000000-0000-0000-0000-00000000f105";
-/// User fixture with a canceled organizer invitation.
-const STATUS_CANCELED_USER_ID: &str = "00000000-0000-0000-0000-00000000c10e";
-/// User fixture with a declined organizer invitation.
-const STATUS_DECLINED_USER_ID: &str = "00000000-0000-0000-0000-00000000c10f";
-/// Event fixture dedicated to enrollment status contracts.
-const STATUS_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c109";
-/// User fixture with an expired organizer invitation.
-const STATUS_EXPIRED_USER_ID: &str = "00000000-0000-0000-0000-00000000c10d";
-/// User fixture with a resumable pending payment.
-const STATUS_PENDING_PAYMENT_USER_ID: &str = "00000000-0000-0000-0000-00000000c10c";
-/// Ticket fixture used by the pending payment.
-const STATUS_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c10a";
-const SUBGROUP_ID: &str = "00000000-0000-0000-0000-00000000c022";
-const SUMMARY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f1";
-/// Open anonymous survey for checked-in attendees of the survey event.
-const SURVEY_ANONYMOUS_ID: &str = "00000000-0000-0000-0000-00000000f306";
-/// Open survey closed while an attendee submits answers.
-const SURVEY_CLOSE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f323";
-/// Open survey deleted while an attendee's submission holds its lock.
-const SURVEY_DELETE_AFTER_SUBMISSION_RACE_ID: &str = "00000000-0000-0000-0000-00000000f327";
-/// Open survey deleted while an attendee submits answers.
-const SURVEY_DELETE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f324";
-/// Draft survey without questions of the survey event.
-const SURVEY_DRAFT_ID: &str = "00000000-0000-0000-0000-00000000f307";
-/// Open survey closed while the opening email job runs.
-const SURVEY_EMAIL_CLOSE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f344";
-/// Past event whose survey opening emails reach its verified attendees.
-const SURVEY_EMAIL_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f340";
-/// Open survey waiting for the opening email of its verified attendees.
-const SURVEY_EMAIL_ID: &str = "00000000-0000-0000-0000-00000000f343";
-/// Verified attendee of the survey email event.
-const SURVEY_EMAIL_RECIPIENT_ID: &str = "00000000-0000-0000-0000-00000000f313";
-/// Open survey whose event is rescheduled while the opening email job runs.
-const SURVEY_EMAIL_RESCHEDULE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f351";
-/// Past test event holding the identified, anonymous and draft surveys.
-const SURVEY_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f301";
-/// Open identified survey without responses answered while it is exported.
-const SURVEY_EXPORT_GROWTH_ID: &str = "00000000-0000-0000-0000-00000000f325";
 /// Number of attendees who answer the export growth survey.
 pub(super) const SURVEY_EXPORT_RESPONDENTS: u8 = 12;
-/// Former attendee who answered the identified survey.
-const SURVEY_FORMER_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000f317";
-/// Open survey answered while its anonymity changes.
-const SURVEY_FIRST_RESPONSE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f321";
-/// Free-text question of the identified survey.
-const SURVEY_FREE_TEXT_QUESTION_ID: &str = "00000000-0000-0000-0000-00000000f308";
-/// Open identified survey with every question kind and three responses, one
-/// of them from a former attendee.
-const SURVEY_IDENTIFIED_ID: &str = "00000000-0000-0000-0000-00000000f305";
-/// Upcoming test event rescheduled while a survey is marked ready.
-const SURVEY_MARK_READY_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f360";
-/// Draft survey marked ready while its event is rescheduled.
-const SURVEY_MARK_READY_RACE_ID: &str = "00000000-0000-0000-0000-00000000f361";
-/// Open anonymous survey without responses whose opening email was handled.
-const SURVEY_OPENED_ANONYMOUS_ID: &str = "00000000-0000-0000-0000-00000000f326";
-/// Confirmed attendee of the survey event who did not check in or answer.
-const SURVEY_PENDING_RESPONDENT_ID: &str = "00000000-0000-0000-0000-00000000f304";
-/// Past test event holding the surveys used by the concurrency contracts.
-const SURVEY_RACE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f320";
-/// Free-text question shared by the concurrency contract surveys.
-const SURVEY_RACE_QUESTION_ID: &str = "00000000-0000-0000-0000-00000000f330";
-/// Attendee answering the concurrency contract surveys.
-const SURVEY_RACER_ID: &str = "00000000-0000-0000-0000-00000000f316";
-/// Past test event rescheduled while the opening email job runs.
-const SURVEY_RESCHEDULE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000f350";
-/// Checked-in attendee who answered both open surveys of the survey event.
-const SURVEY_RESPONDENT_ID: &str = "00000000-0000-0000-0000-00000000f302";
-/// Single-select question of the identified survey.
-const SURVEY_SINGLE_SELECT_QUESTION_ID: &str = "00000000-0000-0000-0000-00000000f309";
-/// Open survey reconfigured while an attendee submits answers.
-const SURVEY_STALE_RACE_ID: &str = "00000000-0000-0000-0000-00000000f322";
-/// Unverified attendee of the survey email event.
-const SURVEY_UNVERIFIED_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000f314";
-const SYNC_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0a1";
-const TICKETED_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d0";
-/// Contract event session without labels.
-const UNLABELED_SESSION_ID: &str = "00000000-0000-0000-0000-00000000c052";
-const WAITLIST_ID: &str = "00000000-0000-0000-0000-00000000c043";
 
 /// Returns the activation identifier used by the contract fixture.
-pub(super) fn activation_id() -> Uuid {
-    parse_uuid(ACTIVATION_ID)
+pub(super) const fn activation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c045")
 }
 
 /// Returns the pre-registered user activated by the email/password contract.
-pub(super) fn activation_password_id() -> Uuid {
-    parse_uuid(ACTIVATION_PASSWORD_ID)
+pub(super) const fn activation_password_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c048")
 }
 
 /// Returns the active user badge identifier used by the contract fixture.
-pub(super) fn active_user_badge_id() -> Uuid {
-    parse_uuid(ACTIVE_USER_BADGE_ID)
+pub(super) const fn active_user_badge_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0bd")
 }
 
 /// Returns the past paid event used by the event analytics contracts.
-pub(super) fn analytics_event_id() -> Uuid {
-    parse_uuid(ANALYTICS_EVENT_ID)
+pub(super) const fn analytics_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f205")
 }
 
 /// Returns the group owning the event analytics fixture.
-pub(super) fn analytics_group_id() -> Uuid {
-    parse_uuid(ANALYTICS_GROUP_ID)
+pub(super) const fn analytics_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f203")
 }
 
 /// Returns the select registration question of the event analytics fixture.
-pub(super) fn analytics_question_id() -> Uuid {
-    parse_uuid(ANALYTICS_QUESTION_ID)
+pub(super) const fn analytics_question_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f20b")
 }
 
 /// Returns the paid ticket type of the event analytics fixture.
-pub(super) fn analytics_ticket_type_id() -> Uuid {
-    parse_uuid(ANALYTICS_TICKET_TYPE_ID)
-}
-
-/// Checks the complete paid ticket type JSON contract.
-pub(super) fn assert_contract_paid_ticket_type(ticket_type: &EventTicketType) {
-    assert!(ticket_type.active);
-    assert_eq!(
-        ticket_type.availability,
-        EventTicketTypeAvailability::Public
-    );
-    assert_eq!(ticket_type.event_ticket_type_id, paid_ticket_type_id());
-    assert_eq!(ticket_type.order, 1);
-    assert_eq!(ticket_type.title, "Contract Paid Ticket");
-
-    let current_price = ticket_type
-        .current_price
-        .as_ref()
-        .expect("paid contract ticket to have a current price");
-    assert_eq!(current_price.amount_minor, 2_500);
-    assert_eq!(current_price.ends_at, None);
-    assert_eq!(current_price.starts_at, None);
-    assert_eq!(ticket_type.description, None);
-    assert_eq!(ticket_type.price_windows.len(), 1);
-    assert_eq!(ticket_type.price_windows[0].amount_minor, 2_500);
-    assert_eq!(
-        ticket_type.price_windows[0].event_ticket_price_window_id,
-        paid_ticket_price_window_id()
-    );
-    assert_eq!(ticket_type.price_windows[0].ends_at, None);
-    assert_eq!(ticket_type.price_windows[0].starts_at, None);
-    assert!(ticket_type.remaining_seats.is_some());
-    assert_eq!(ticket_type.seats_total, Some(50));
-    assert!(!ticket_type.sold_out);
+pub(super) const fn analytics_ticket_type_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f208")
 }
 
 /// Checks the complete ticket type JSON contract shared by event projections.
@@ -417,7 +82,7 @@ pub(super) fn assert_contract_ticket_type(ticket_type: &EventTicketType) {
     assert_eq!(ticket_type.price_windows[0].amount_minor, 2_500);
     assert_eq!(
         ticket_type.price_windows[0].event_ticket_price_window_id,
-        parse_uuid("00000000-0000-0000-0000-00000000c082")
+        invitation_ticket_price_window_id()
     );
     assert_eq!(ticket_type.price_windows[0].ends_at, None);
     assert_eq!(ticket_type.price_windows[0].starts_at, None);
@@ -426,34 +91,268 @@ pub(super) fn assert_contract_ticket_type(ticket_type: &EventTicketType) {
     assert!(!ticket_type.sold_out);
 }
 
+/// Asserts an error is a user-facing `OCG01` database rejection with the
+/// given message, classified through the production [`user_facing_message`].
+#[track_caller]
+pub(super) fn assert_ocg01(err: &anyhow::Error, message: &str) {
+    assert_eq!(
+        user_facing_message(err).as_deref(),
+        Some(message),
+        "expected an OCG01 rejection, got {err:#}"
+    );
+}
+
+/// Asserts a raw database error is a user-facing `OCG01` rejection with the
+/// given message.
+#[track_caller]
+pub(super) fn assert_pg_ocg01(err: tokio_postgres::Error, message: &str) {
+    assert_ocg01(&err.into(), message);
+}
+
 /// Returns the attendee identifier used by the contract fixture.
-pub(super) fn attendee_id() -> Uuid {
-    parse_uuid(ATTENDEE_ID)
+pub(super) const fn attendee_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c042")
 }
 
 /// Returns the automatically ended meeting identifier used by the contract fixture.
-pub(super) fn auto_end_meeting_id() -> Uuid {
-    parse_uuid(AUTO_END_MEETING_ID)
+pub(super) const fn auto_end_meeting_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0a3")
+}
+
+/// Returns the backend process ID of a raw contract-test connection.
+pub(super) async fn backend_pid(client: &tokio_postgres::Client) -> Result<i32> {
+    Ok(client.query_one("select pg_backend_pid()", &[]).await?.get(0))
 }
 
 /// Returns the badge artwork identifier used by the contract fixture.
-pub(super) fn badge_artwork_id() -> Uuid {
-    parse_uuid(BADGE_ARTWORK_ID)
+pub(super) const fn badge_artwork_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0ba")
 }
 
 /// Returns the badge award job identifier used by the contract fixture.
-pub(super) fn badge_award_job_id() -> Uuid {
-    parse_uuid(BADGE_AWARD_JOB_ID)
+pub(super) const fn badge_award_job_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0bf")
 }
 
 /// Returns the badge identifier used by the contract fixture.
-pub(super) fn badge_id() -> Uuid {
-    parse_uuid(BADGE_ID)
+pub(super) const fn badge_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0bb")
 }
 
 /// Returns the badge status list identifier used by the contract fixture.
-pub(super) fn badge_status_list_id() -> Uuid {
-    parse_uuid(BADGE_STATUS_LIST_ID)
+pub(super) const fn badge_status_list_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0bc")
+}
+
+/// Returns the event cancellation target identifier used by the contract fixture.
+pub(super) const fn cancelee_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0e9")
+}
+
+/// Returns the attendee fixture that races event cancellation.
+pub(super) const fn cancellation_lock_attendee_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0ec")
+}
+
+/// Returns the event fixture used to verify cancellation locking.
+pub(super) const fn cancellation_lock_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0d6")
+}
+
+/// Returns the proposal used to verify submission share locking.
+pub(super) const fn cfs_add_lock_proposal_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c124")
+}
+
+/// Returns the proposal used to verify deletion lock ordering.
+pub(super) const fn cfs_delete_lock_proposal_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c125")
+}
+
+/// Returns the session identifier used to verify CFS submission locking.
+pub(super) const fn cfs_lock_session_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c123")
+}
+
+/// Returns the call-for-speakers submission identifier used by the contract fixture.
+pub(super) const fn cfs_submission_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0c5")
+}
+
+/// Returns the proposal used to verify update lock strength.
+pub(super) const fn cfs_update_lock_proposal_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c126")
+}
+
+/// Returns the attendee check-in code used by the contract fixture.
+pub(super) const fn check_in_code() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c084")
+}
+
+/// Returns the checkout buyer identifier used by the contract fixture.
+pub(super) const fn checkout_buyer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0e1")
+}
+
+/// Returns the claim group identifier used by the contract fixture.
+pub(super) const fn claim_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0a0")
+}
+
+/// Returns the co-speaker proposal identifier used by the contract fixture.
+pub(super) const fn co_speaker_proposal_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0c2")
+}
+
+/// Returns the group admin notified about co-hosting lifecycle changes.
+pub(super) const fn cohost_admin_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d401")
+}
+
+/// Returns the group with an approved co-hosting of the matrix event.
+pub(super) const fn cohost_approved_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d022")
+}
+
+/// Returns the canceled event with an event-canceled co-hosting.
+pub(super) const fn cohost_canceled_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d202")
+}
+
+/// Returns the group that withdrew its co-hosting of the matrix event.
+pub(super) const fn cohost_canceled_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d023")
+}
+
+/// Returns the inactive community holding every co-host group fixture.
+pub(super) const fn cohost_community_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d101")
+}
+
+/// Returns the active cross-community group with an approved co-hosting.
+pub(super) const fn cohost_cross_community_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d121")
+}
+
+/// Returns the approved invitation of the cross-community co-host.
+pub(super) const fn cohost_cross_community_invitation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d309")
+}
+
+/// Returns the deleted event with an event-deleted co-hosting.
+pub(super) const fn cohost_deleted_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d203")
+}
+
+/// Returns the group whose co-hosting ended with the event cancellation.
+pub(super) const fn cohost_event_canceled_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d024")
+}
+
+/// Returns the group whose co-hosting ended with the event deletion.
+pub(super) const fn cohost_event_deleted_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d025")
+}
+
+/// Returns the invitation closed by the event deletion.
+pub(super) const fn cohost_event_deleted_invitation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d305")
+}
+
+/// Returns the group sorting after the low lock-order group.
+pub(super) const fn cohost_lock_order_high_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d02a")
+}
+
+/// Returns the group sorting before the high lock-order group.
+pub(super) const fn cohost_lock_order_low_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d029")
+}
+
+/// Returns the unpublished event holding one co-hosting per editable status.
+pub(super) const fn cohost_matrix_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d201")
+}
+
+/// Returns the group with a pending co-hosting invitation.
+pub(super) const fn cohost_pending_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d021")
+}
+
+/// Returns the pending invitation of the matrix event.
+pub(super) const fn cohost_pending_invitation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d301")
+}
+
+/// Returns the unpublished event used to race publication against an invitation.
+pub(super) const fn cohost_publish_race_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d204")
+}
+
+/// Returns the event whose pending co-host is re-invited while an approval waits.
+pub(super) const fn cohost_reinvite_race_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d205")
+}
+
+/// Returns the pending invitation rotated by the re-invite race.
+pub(super) const fn cohost_reinvite_race_invitation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d310")
+}
+
+/// Returns the inactive group re-invited to co-host the matrix event, which the
+/// notification preferences fixture also mutes as an unavailable group.
+pub(super) const fn cohost_reinvited_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000d028")
+}
+
+/// Returns the community identifier used by the contract fixture.
+pub(crate) const fn community_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c001")
+}
+
+/// Returns the verified contact user who is admin of one group and viewer of another.
+pub(super) const fn contact_admin_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e141")
+}
+
+/// Returns the contact group category holding the active and inactive groups.
+pub(super) const fn contact_category_a_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e112")
+}
+
+/// Returns the contact group category holding the group without a region.
+pub(super) const fn contact_category_b_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e113")
+}
+
+/// Returns the inactive community used by the community contact contracts.
+pub(super) const fn contact_community_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e101")
+}
+
+/// Returns the active contact group with a region.
+pub(super) const fn contact_group_a_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e121")
+}
+
+/// Returns the active contact group without a region whose only seat is a viewer.
+pub(super) const fn contact_group_b_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e122")
+}
+
+/// Returns the inactive contact group excluded from contact.
+pub(super) const fn contact_inactive_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e123")
+}
+
+/// Returns the verified contact user who is events manager of one active group.
+pub(super) const fn contact_manager_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e142")
+}
+
+/// Returns the region of the contact community.
+pub(super) const fn contact_region_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e111")
 }
 
 /// Builds an active user badge from the supplied contract snapshot and identity fields.
@@ -504,249 +403,31 @@ pub(super) fn contract_badge_snapshot() -> BadgeSnapshot {
     }
 }
 
-/// Returns the pending application-fee adjustment used by worker contracts.
-pub(super) fn document_adjustment_id() -> Uuid {
-    parse_uuid(DOCUMENT_ADJUSTMENT_ID)
-}
+/// Builds a future virtual test event input on the given August 2099 day.
+pub(super) fn contract_event_input(name: &str, day: u32) -> EventInput {
+    let starts_at = NaiveDate::from_ymd_opt(2099, 8, day)
+        .expect("date should be valid")
+        .and_hms_opt(10, 0, 0)
+        .expect("time should be valid");
+    let ends_at = NaiveDate::from_ymd_opt(2099, 8, day)
+        .expect("date should be valid")
+        .and_hms_opt(11, 0, 0)
+        .expect("time should be valid");
 
-/// Returns the pending application-fee adjustment job used by worker contracts.
-pub(super) fn document_adjustment_job_id() -> Uuid {
-    parse_uuid(DOCUMENT_ADJUSTMENT_JOB_ID)
-}
+    EventInput {
+        category_id: event_category_id(),
+        description: "An event used by Rust database contract tests".to_string(),
+        kind_id: "virtual".to_string(),
+        name: name.to_string(),
+        timezone: "UTC".to_string(),
 
-/// Returns the credit note used by worker and attendee document contracts.
-pub(super) fn document_credit_note_id() -> Uuid {
-    parse_uuid(DOCUMENT_CREDIT_NOTE_ID)
-}
+        capacity: Some(100),
+        ends_at: Some(ends_at),
+        starts_at: Some(starts_at),
+        test_event: Some(true),
 
-/// Returns the credit-note job used by worker and attendee document contracts.
-pub(super) fn document_credit_note_job_id() -> Uuid {
-    parse_uuid(DOCUMENT_CREDIT_NOTE_JOB_ID)
-}
-
-/// Returns the provider-backed purchase used by attendee document contracts.
-pub(super) fn document_purchase_id() -> Uuid {
-    parse_uuid(DOCUMENT_PURCHASE_ID)
-}
-
-/// Returns the provider refund used by credit-note worker contracts.
-pub(super) fn document_refund_id() -> Uuid {
-    parse_uuid(DOCUMENT_REFUND_ID)
-}
-
-/// Returns the provider refund job used by credit-note worker contracts.
-pub(super) fn document_refund_job_id() -> Uuid {
-    parse_uuid(DOCUMENT_REFUND_JOB_ID)
-}
-
-/// Returns the event cancellation target identifier used by the contract fixture.
-pub(super) fn cancelee_id() -> Uuid {
-    parse_uuid(CANCELEE_ID)
-}
-
-/// Returns the attendee fixture that races event cancellation.
-pub(super) fn cancellation_lock_attendee_id() -> Uuid {
-    parse_uuid(CANCELLATION_LOCK_ATTENDEE_ID)
-}
-
-/// Returns the event fixture used to verify cancellation locking.
-pub(super) fn cancellation_lock_event_id() -> Uuid {
-    parse_uuid(CANCELLATION_LOCK_EVENT_ID)
-}
-
-/// Returns the proposal used to verify submission share locking.
-pub(super) fn cfs_add_lock_proposal_id() -> Uuid {
-    parse_uuid(CFS_ADD_LOCK_PROPOSAL_ID)
-}
-
-/// Returns the proposal used to verify deletion lock ordering.
-pub(super) fn cfs_delete_lock_proposal_id() -> Uuid {
-    parse_uuid(CFS_DELETE_LOCK_PROPOSAL_ID)
-}
-
-/// Returns the session identifier used to verify CFS submission locking.
-pub(super) fn cfs_lock_session_id() -> Uuid {
-    parse_uuid(CFS_LOCK_SESSION_ID)
-}
-
-/// Returns the call-for-speakers submission identifier used by the contract fixture.
-pub(super) fn cfs_submission_id() -> Uuid {
-    parse_uuid(CFS_SUBMISSION_ID)
-}
-
-/// Returns the proposal used to verify update lock strength.
-pub(super) fn cfs_update_lock_proposal_id() -> Uuid {
-    parse_uuid(CFS_UPDATE_LOCK_PROPOSAL_ID)
-}
-
-/// Returns the attendee check-in code used by the contract fixture.
-pub(super) fn check_in_code() -> Uuid {
-    parse_uuid(CHECK_IN_CODE)
-}
-
-/// Returns the checkout buyer identifier used by the contract fixture.
-pub(super) fn checkout_buyer_id() -> Uuid {
-    parse_uuid(CHECKOUT_BUYER_ID)
-}
-
-/// Returns the claim group identifier used by the contract fixture.
-pub(super) fn claim_group_id() -> Uuid {
-    parse_uuid(CLAIM_GROUP_ID)
-}
-
-/// Returns the co-speaker proposal identifier used by the contract fixture.
-pub(super) fn co_speaker_proposal_id() -> Uuid {
-    parse_uuid(CO_SPEAKER_PROPOSAL_ID)
-}
-
-/// Returns the group admin notified about co-hosting lifecycle changes.
-pub(super) fn cohost_admin_id() -> Uuid {
-    parse_uuid(COHOST_ADMIN_ID)
-}
-
-/// Returns the group with an approved co-hosting of the matrix event.
-pub(super) fn cohost_approved_group_id() -> Uuid {
-    parse_uuid(COHOST_APPROVED_GROUP_ID)
-}
-
-/// Returns the canceled event with an event-canceled co-hosting.
-pub(super) fn cohost_canceled_event_id() -> Uuid {
-    parse_uuid(COHOST_CANCELED_EVENT_ID)
-}
-
-/// Returns the group that withdrew its co-hosting of the matrix event.
-pub(super) fn cohost_canceled_group_id() -> Uuid {
-    parse_uuid(COHOST_CANCELED_GROUP_ID)
-}
-
-/// Returns the inactive community holding every co-host group fixture.
-pub(super) fn cohost_community_id() -> Uuid {
-    parse_uuid(COHOST_COMMUNITY_ID)
-}
-
-/// Returns the active cross-community group with an approved co-hosting.
-pub(super) fn cohost_cross_community_group_id() -> Uuid {
-    parse_uuid(COHOST_CROSS_COMMUNITY_GROUP_ID)
-}
-
-/// Returns the approved invitation of the cross-community co-host.
-pub(super) fn cohost_cross_community_invitation_id() -> Uuid {
-    parse_uuid(COHOST_CROSS_COMMUNITY_INVITATION_ID)
-}
-
-/// Returns the deleted event with an event-deleted co-hosting.
-pub(super) fn cohost_deleted_event_id() -> Uuid {
-    parse_uuid(COHOST_DELETED_EVENT_ID)
-}
-
-/// Returns the group whose co-hosting ended with the event cancellation.
-pub(super) fn cohost_event_canceled_group_id() -> Uuid {
-    parse_uuid(COHOST_EVENT_CANCELED_GROUP_ID)
-}
-
-/// Returns the group whose co-hosting ended with the event deletion.
-pub(super) fn cohost_event_deleted_group_id() -> Uuid {
-    parse_uuid(COHOST_EVENT_DELETED_GROUP_ID)
-}
-
-/// Returns the invitation closed by the event deletion.
-pub(super) fn cohost_event_deleted_invitation_id() -> Uuid {
-    parse_uuid(COHOST_EVENT_DELETED_INVITATION_ID)
-}
-
-/// Returns the group sorting after the low lock-order group.
-pub(super) fn cohost_lock_order_high_group_id() -> Uuid {
-    parse_uuid(COHOST_LOCK_ORDER_HIGH_GROUP_ID)
-}
-
-/// Returns the group sorting before the high lock-order group.
-pub(super) fn cohost_lock_order_low_group_id() -> Uuid {
-    parse_uuid(COHOST_LOCK_ORDER_LOW_GROUP_ID)
-}
-
-/// Returns the unpublished event holding one co-hosting per editable status.
-pub(super) fn cohost_matrix_event_id() -> Uuid {
-    parse_uuid(COHOST_MATRIX_EVENT_ID)
-}
-
-/// Returns the group with a pending co-hosting invitation.
-pub(super) fn cohost_pending_group_id() -> Uuid {
-    parse_uuid(COHOST_PENDING_GROUP_ID)
-}
-
-/// Returns the pending invitation of the matrix event.
-pub(super) fn cohost_pending_invitation_id() -> Uuid {
-    parse_uuid(COHOST_PENDING_INVITATION_ID)
-}
-
-/// Returns the unpublished event used to race publication against an invitation.
-pub(super) fn cohost_publish_race_event_id() -> Uuid {
-    parse_uuid(COHOST_PUBLISH_RACE_EVENT_ID)
-}
-
-/// Returns the inactive group re-invited to co-host the matrix event.
-pub(super) fn cohost_reinvited_group_id() -> Uuid {
-    parse_uuid(COHOST_REINVITED_GROUP_ID)
-}
-
-/// Returns the event whose pending co-host is re-invited while an approval waits.
-pub(super) fn cohost_reinvite_race_event_id() -> Uuid {
-    parse_uuid(COHOST_REINVITE_RACE_EVENT_ID)
-}
-
-/// Returns the pending invitation rotated by the re-invite race.
-pub(super) fn cohost_reinvite_race_invitation_id() -> Uuid {
-    parse_uuid(COHOST_REINVITE_RACE_INVITATION_ID)
-}
-
-/// Returns the community identifier used by the contract fixture.
-pub(crate) fn community_id() -> Uuid {
-    parse_uuid(COMMUNITY_ID)
-}
-
-/// Returns the verified contact user who is admin of one group and viewer of another.
-pub(super) fn contact_admin_id() -> Uuid {
-    parse_uuid(CONTACT_ADMIN_ID)
-}
-
-/// Returns the contact group category holding the active and inactive groups.
-pub(super) fn contact_category_a_id() -> Uuid {
-    parse_uuid(CONTACT_CATEGORY_A_ID)
-}
-
-/// Returns the contact group category holding the group without a region.
-pub(super) fn contact_category_b_id() -> Uuid {
-    parse_uuid(CONTACT_CATEGORY_B_ID)
-}
-
-/// Returns the inactive community used by the community contact contracts.
-pub(super) fn contact_community_id() -> Uuid {
-    parse_uuid(CONTACT_COMMUNITY_ID)
-}
-
-/// Returns the active contact group with a region.
-pub(super) fn contact_group_a_id() -> Uuid {
-    parse_uuid(CONTACT_GROUP_A_ID)
-}
-
-/// Returns the active contact group without a region whose only seat is a viewer.
-pub(super) fn contact_group_b_id() -> Uuid {
-    parse_uuid(CONTACT_GROUP_B_ID)
-}
-
-/// Returns the inactive contact group excluded from contact.
-pub(super) fn contact_inactive_group_id() -> Uuid {
-    parse_uuid(CONTACT_INACTIVE_GROUP_ID)
-}
-
-/// Returns the verified contact user who is events manager of one active group.
-pub(super) fn contact_manager_id() -> Uuid {
-    parse_uuid(CONTACT_MANAGER_ID)
-}
-
-/// Returns the region of the contact community.
-pub(super) fn contact_region_id() -> Uuid {
-    parse_uuid(CONTACT_REGION_ID)
+        ..Default::default()
+    }
 }
 
 /// Returns the label assigned to the contract session and submission.
@@ -793,742 +474,874 @@ pub(crate) fn contract_tests_pool() -> Result<Pool> {
 }
 
 /// Begins a unit of work that rolls back when dropped.
-pub(super) async fn contract_unit_of_work() -> Result<crate::db::PgUnitOfWork> {
+pub(super) async fn contract_unit_of_work() -> Result<PgUnitOfWork> {
     let client = contract_tests_pool()?.get().await?;
     client.batch_execute("begin").await?;
 
-    Ok(crate::db::PgUnitOfWork {
+    Ok(PgUnitOfWork {
         client: Some(client),
     })
 }
 
+/// Returns the pending application-fee adjustment used by worker contracts.
+pub(super) const fn document_adjustment_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c11d")
+}
+
+/// Returns the pending application-fee adjustment job used by worker contracts.
+pub(super) const fn document_adjustment_job_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c134")
+}
+
+/// Returns the credit note used by worker and attendee document contracts.
+pub(super) const fn document_credit_note_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c11e")
+}
+
+/// Returns the credit-note job used by worker and attendee document contracts.
+pub(super) const fn document_credit_note_job_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c135")
+}
+
+/// Returns the provider-backed purchase used by attendee document contracts.
+pub(super) const fn document_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c11b")
+}
+
+/// Returns the provider refund used by credit-note worker contracts.
+pub(super) const fn document_refund_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c11c")
+}
+
+/// Returns the provider refund job used by credit-note worker contracts.
+pub(super) const fn document_refund_job_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c136")
+}
+
 /// Returns the user who attends the enrollment race event.
-pub(super) fn enrollment_race_attendee_id() -> Uuid {
-    parse_uuid(ENROLLMENT_RACE_ATTENDEE_ID)
+pub(super) const fn enrollment_race_attendee_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f370")
 }
 
 /// Returns the user who declines the enrollment race offer.
-pub(super) fn enrollment_race_decliner_id() -> Uuid {
-    parse_uuid(ENROLLMENT_RACE_DECLINER_ID)
+pub(super) const fn enrollment_race_decliner_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f371")
 }
 
 /// Returns the free one-seat event used by the enrollment lock order race.
-pub(super) fn enrollment_race_event_id() -> Uuid {
-    parse_uuid(ENROLLMENT_RACE_EVENT_ID)
+pub(super) const fn enrollment_race_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f372")
 }
 
 /// Returns the pending approval offer declined by the enrollment race.
-pub(super) fn enrollment_race_offer_id() -> Uuid {
-    parse_uuid(ENROLLMENT_RACE_OFFER_ID)
+pub(super) const fn enrollment_race_offer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f375")
 }
 
 /// Returns an environment value or its contract-test default.
-pub(super) fn env_or_default(name: &str, default: &str) -> String {
+fn env_or_default(name: &str, default: &str) -> String {
     env::var(name).unwrap_or_else(|_| default.to_string())
 }
 
 /// Returns the event category identifier used by the contract fixture.
-pub(super) fn event_category_id() -> Uuid {
-    parse_uuid(EVENT_CATEGORY_ID)
+pub(super) const fn event_category_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c013")
 }
 
 /// Returns the event identifier used by the contract fixture.
-pub(super) fn event_id() -> Uuid {
-    parse_uuid(EVENT_ID)
+pub(super) const fn event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c031")
 }
 
 /// Returns the label assigned to the contract session and submission.
-pub(super) fn event_label_id() -> Uuid {
-    parse_uuid(EVENT_LABEL_ID)
+pub(super) const fn event_label_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0c8")
 }
 
 /// Returns the buyer used to prepare a new external checkout hold.
-pub(super) fn external_checkout_buyer_id() -> Uuid {
-    parse_uuid(EXTERNAL_CHECKOUT_BUYER_ID)
+pub(super) const fn external_checkout_buyer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c12a")
 }
 
 /// Returns the pending external purchase dedicated to completion.
-pub(super) fn external_complete_purchase_id() -> Uuid {
-    parse_uuid(EXTERNAL_COMPLETE_PURCHASE_ID)
+pub(super) const fn external_complete_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c133")
 }
 
 /// Returns the buyer dedicated to the external completion contract.
-pub(super) fn external_complete_user_id() -> Uuid {
-    parse_uuid(EXTERNAL_COMPLETE_USER_ID)
+pub(super) const fn external_complete_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c132")
 }
 
 /// Returns the completed externally managed purchase identifier.
-pub(super) fn external_completed_purchase_id() -> Uuid {
-    parse_uuid(EXTERNAL_COMPLETED_PURCHASE_ID)
+pub(super) const fn external_completed_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c12f")
 }
 
 /// Returns the buyer with a completed externally managed purchase.
-pub(super) fn external_completed_user_id() -> Uuid {
-    parse_uuid(EXTERNAL_COMPLETED_USER_ID)
+pub(super) const fn external_completed_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c128")
 }
 
 /// Returns the event dedicated to external-payments contracts.
-pub(super) fn external_event_id() -> Uuid {
-    parse_uuid(EXTERNAL_EVENT_ID)
+pub(super) const fn external_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c12b")
 }
 
 /// Returns the external identity lookup identifier used by the contract fixture.
-pub(super) fn external_lookup_id() -> Uuid {
-    parse_uuid(EXTERNAL_LOOKUP_ID)
+pub(super) const fn external_lookup_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c046")
 }
 
 /// Returns the pending external purchase awaiting organizer confirmation.
-pub(super) fn external_pending_purchase_id() -> Uuid {
-    parse_uuid(EXTERNAL_PENDING_PURCHASE_ID)
+pub(super) const fn external_pending_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c12e")
 }
 
 /// Returns the buyer with a pending external purchase.
-pub(super) fn external_pending_user_id() -> Uuid {
-    parse_uuid(EXTERNAL_PENDING_USER_ID)
+pub(super) const fn external_pending_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c127")
 }
 
 /// Returns the external purchase waiting for local refund approval.
-pub(super) fn external_refund_purchase_id() -> Uuid {
-    parse_uuid(EXTERNAL_REFUND_PURCHASE_ID)
+pub(super) const fn external_refund_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c130")
 }
 
 /// Returns the buyer whose external refund request is ready for approval.
-pub(super) fn external_refund_user_id() -> Uuid {
-    parse_uuid(EXTERNAL_REFUND_USER_ID)
+pub(super) const fn external_refund_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c129")
 }
 
 /// Returns the ticket used by the external-payments event.
-pub(super) fn external_ticket_type_id() -> Uuid {
-    parse_uuid(EXTERNAL_TICKET_TYPE_ID)
+pub(super) const fn external_ticket_type_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c12c")
 }
 
 /// Returns the external identity update identifier used by the contract fixture.
-pub(super) fn external_update_id() -> Uuid {
-    parse_uuid(EXTERNAL_UPDATE_ID)
+pub(super) const fn external_update_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c047")
 }
 
 /// Returns the exhausted application-fee recovery job identifier.
-pub(super) fn financial_recovery_adjustment_job_id() -> Uuid {
-    parse_uuid(FINANCIAL_RECOVERY_ADJUSTMENT_JOB_ID)
+pub(super) const fn financial_recovery_adjustment_job_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c137")
 }
 
 /// Returns the exhausted credit-note recovery job identifier.
-pub(super) fn financial_recovery_credit_note_job_id() -> Uuid {
-    parse_uuid(FINANCIAL_RECOVERY_CREDIT_NOTE_JOB_ID)
+pub(super) const fn financial_recovery_credit_note_job_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c138")
 }
 
 /// Returns the free checkout buyer identifier used by the contract fixture.
-pub(super) fn free_buyer_id() -> Uuid {
-    parse_uuid(FREE_BUYER_ID)
+pub(super) const fn free_buyer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0e4")
 }
 
 /// Returns the free purchase identifier used by the contract fixture.
-pub(super) fn free_purchase_id() -> Uuid {
-    parse_uuid(FREE_PURCHASE_ID)
-}
-
-/// Returns the group category of the contract community.
-pub(super) fn group_category_id() -> Uuid {
-    parse_uuid(GROUP_CATEGORY_ID)
+pub(super) const fn free_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0f3")
 }
 
 /// Returns the group identifier used by the contract fixture.
-pub(crate) fn group_id() -> Uuid {
-    parse_uuid(GROUP_ID)
-}
-
-/// Returns an event update used by group-level lock contract tests.
-pub(super) fn group_lock_event_update(name: &str, day: u32) -> EventInput {
-    let starts_at = NaiveDate::from_ymd_opt(2099, 8, day)
-        .expect("date should be valid")
-        .and_hms_opt(10, 0, 0)
-        .expect("time should be valid");
-    let ends_at = NaiveDate::from_ymd_opt(2099, 8, day)
-        .expect("date should be valid")
-        .and_hms_opt(11, 0, 0)
-        .expect("time should be valid");
-
-    EventInput {
-        category_id: event_category_id(),
-        description: "An event used by group lock contract tests".to_string(),
-        kind_id: "virtual".to_string(),
-        name: name.to_string(),
-        timezone: "UTC".to_string(),
-
-        capacity: Some(100),
-        ends_at: Some(ends_at),
-        starts_at: Some(starts_at),
-        test_event: Some(true),
-
-        ..Default::default()
-    }
+pub(crate) const fn group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c021")
 }
 
 /// Returns the first event used to verify group-level mutation locks.
-pub(super) fn group_lock_first_event_id() -> Uuid {
-    parse_uuid(GROUP_LOCK_FIRST_EVENT_ID)
+pub(super) const fn group_lock_first_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c121")
 }
 
 /// Returns the second event used to verify group-level mutation locks.
-pub(super) fn group_lock_second_event_id() -> Uuid {
-    parse_uuid(GROUP_LOCK_SECOND_EVENT_ID)
+pub(super) const fn group_lock_second_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c122")
 }
 
 /// Returns the group sponsor identifier used by the contract fixture.
-pub(super) fn group_sponsor_id() -> Uuid {
-    parse_uuid(GROUP_SPONSOR_ID)
+pub(super) const fn group_sponsor_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c061")
+}
+
+/// Returns the group team member with the admin role in the read and write groups.
+pub(crate) const fn inbox_admin_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e021")
+}
+
+/// Returns the closed read conversation without event.
+pub(super) const fn inbox_closed_conversation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e042")
+}
+
+/// Returns the published event owned by the co-host group.
+pub(super) const fn inbox_cohost_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e033")
+}
+
+/// Returns the inactive community holding every inbox fixture.
+pub(crate) const fn inbox_community_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e001")
+}
+
+/// Returns the read conversation whose user account was deleted.
+pub(super) const fn inbox_deleted_user_conversation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e043")
+}
+
+/// Returns the group team member with the events-manager role in the read and write groups.
+pub(crate) const fn inbox_events_manager_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e022")
+}
+
+/// Returns the open conversation of the follow-up limit user.
+pub(super) const fn inbox_follow_up_conversation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e045")
+}
+
+/// Returns the user with nine follow-ups sent today.
+pub(super) const fn inbox_follow_up_limit_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e028")
+}
+
+/// Returns the user starting a conversation through the manager.
+pub(crate) const fn inbox_manager_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e02a")
+}
+
+/// Returns the open read conversation with three messages.
+pub(super) const fn inbox_open_conversation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e041")
 }
 
 /// Returns the opted-out inbox admin used by the contract fixture.
-pub(super) fn inbox_opt_out_admin_id() -> Uuid {
-    parse_uuid(INBOX_OPT_OUT_ADMIN_ID)
+pub(crate) const fn inbox_opt_out_admin_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e02c")
 }
 
 /// Returns the event whose inbox recipients opted out of group-inbox emails.
-pub(super) fn inbox_opt_out_event_id() -> Uuid {
-    parse_uuid(INBOX_OPT_OUT_EVENT_ID)
+pub(crate) const fn inbox_opt_out_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e034")
 }
 
 /// Returns the opted-out inbox events manager used by the contract fixture.
-pub(super) fn inbox_opt_out_events_manager_id() -> Uuid {
-    parse_uuid(INBOX_OPT_OUT_EVENTS_MANAGER_ID)
+pub(crate) const fn inbox_opt_out_events_manager_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e02d")
 }
 
 /// Returns the group whose inbox recipients opted out of group-inbox emails.
-pub(super) fn inbox_opt_out_group_id() -> Uuid {
-    parse_uuid(INBOX_OPT_OUT_GROUP_ID)
+pub(crate) const fn inbox_opt_out_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e014")
 }
 
 /// Returns the user who writes to the opted-out inbox fixture.
-pub(super) fn inbox_opt_out_user_id() -> Uuid {
-    parse_uuid(INBOX_OPT_OUT_USER_ID)
+pub(crate) const fn inbox_opt_out_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e02e")
+}
+
+/// Returns the open conversation raced by a reply and a close.
+pub(super) const fn inbox_race_conversation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e044")
+}
+
+/// Returns the user owning the reply-close race conversation.
+pub(super) const fn inbox_race_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e029")
+}
+
+/// Returns the published event owned by the read group and co-hosted by the co-host group.
+pub(super) const fn inbox_read_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e031")
+}
+
+/// Returns the group whose conversations are only read by the contracts.
+pub(super) const fn inbox_read_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e011")
+}
+
+/// Returns the read conversation marked as spam by the read group.
+pub(super) const fn inbox_spam_conversation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e048")
+}
+
+/// Returns the open conversation of the spam user marked and unmarked by the contracts.
+pub(super) const fn inbox_spam_round_trip_conversation_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e049")
+}
+
+/// Returns the user whose read group conversation was marked as spam.
+pub(super) const fn inbox_spam_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e02b")
+}
+
+/// Returns the user with two conversations started today.
+pub(super) const fn inbox_start_limit_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e026")
+}
+
+/// Returns the user starting two conversations with the same group at once.
+pub(super) const fn inbox_start_race_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e027")
+}
+
+/// Returns the user owning the open and closed read conversations.
+pub(super) const fn inbox_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e024")
+}
+
+/// Returns the group team member with the viewer role in the read and write groups.
+pub(super) const fn inbox_viewer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e023")
+}
+
+/// Returns the published event owned by the write group.
+pub(crate) const fn inbox_write_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e032")
+}
+
+/// Returns the group receiving conversations written by the contracts.
+pub(super) const fn inbox_write_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000e012")
 }
 
 /// Returns the invitation offer identifier used by the contract fixture.
-pub(super) fn invitation_offer_id() -> Uuid {
-    parse_uuid(INVITATION_OFFER_ID)
+pub(super) const fn invitation_offer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c083")
+}
+
+/// Returns the price window of the contract event general admission ticket.
+pub(super) const fn invitation_ticket_price_window_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c082")
 }
 
 /// Returns the invitation ticket type identifier used by the contract fixture.
-pub(super) fn invitation_ticket_type_id() -> Uuid {
-    parse_uuid(INVITATION_TICKET_TYPE_ID)
+pub(super) const fn invitation_ticket_type_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c081")
 }
 
 /// Returns the invited event identifier used by the contract fixture.
-pub(super) fn invite_event_id() -> Uuid {
-    parse_uuid(INVITE_EVENT_ID)
+pub(super) const fn invite_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0d8")
 }
 
 /// Returns the invitee identifier used by the contract fixture.
-pub(super) fn invitee_id() -> Uuid {
-    parse_uuid(INVITEE_ID)
+pub(super) const fn invitee_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0ed")
 }
 
 /// Returns the departing attendee identifier used by the contract fixture.
-pub(super) fn leaver_id() -> Uuid {
-    parse_uuid(LEAVER_ID)
+pub(super) const fn leaver_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0e8")
 }
 
 /// Returns the attendee canceled by the enrollment manager lifecycle contract.
-pub(crate) fn lifecycle_cancelee_id() -> Uuid {
-    parse_uuid(LIFECYCLE_CANCELEE_ID)
+pub(crate) const fn lifecycle_cancelee_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c1f0")
 }
 
 /// Returns the attendee whose manager cancellation is rolled back by the lifecycle contract.
-pub(crate) fn lifecycle_rollback_cancelee_id() -> Uuid {
-    parse_uuid(LIFECYCLE_ROLLBACK_CANCELEE_ID)
+pub(crate) const fn lifecycle_rollback_cancelee_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c1f1")
 }
 
 /// Returns the mutation event identifier used by the contract fixture.
-pub(crate) fn mutation_event_id() -> Uuid {
-    parse_uuid(MUTATION_EVENT_ID)
+pub(crate) const fn mutation_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0d5")
 }
 
 /// Returns the mutation offer identifier used by the contract fixture.
-pub(super) fn mutation_offer_id() -> Uuid {
-    parse_uuid(MUTATION_OFFER_ID)
+pub(super) const fn mutation_offer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0d7")
 }
 
 /// Returns the user used by notification mute concurrency contracts.
-pub(super) fn notification_concurrency_user_id() -> Uuid {
-    parse_uuid(NOTIFICATION_CONCURRENCY_USER_ID)
+pub(super) const fn notification_concurrency_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f004")
 }
 
 /// Returns the recipient that accepts notification filtering contracts.
-pub(super) fn notification_eligible_user_id() -> Uuid {
-    parse_uuid(NOTIFICATION_ELIGIBLE_USER_ID)
-}
-
-/// Returns the user with seeded notification preferences.
-pub(super) fn notification_preferences_user_id() -> Uuid {
-    parse_uuid(NOTIFICATION_PREFERENCES_USER_ID)
-}
-
-/// Returns the unavailable group muted by the notification preferences fixture.
-pub(super) fn notification_unavailable_group_id() -> Uuid {
-    parse_uuid(NOTIFICATION_UNAVAILABLE_GROUP_ID)
-}
-
-/// Returns the user used by notification unmute concurrency contracts.
-pub(super) fn notification_unmute_concurrency_user_id() -> Uuid {
-    parse_uuid(NOTIFICATION_UNMUTE_CONCURRENCY_USER_ID)
-}
-
-/// Returns the user dedicated to notification preference update contracts.
-pub(super) fn notification_update_user_id() -> Uuid {
-    parse_uuid(NOTIFICATION_UPDATE_USER_ID)
+pub(super) const fn notification_eligible_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f002")
 }
 
 /// Returns the notification identifier used by the contract fixture.
-pub(super) fn notification_id() -> Uuid {
-    parse_uuid("00000000-0000-0000-0000-00000000c0f1")
+///
+/// The purchase summary fixture reuses this UUID in `event_purchase`, a
+/// different table.
+pub(super) const fn notification_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0f1")
 }
 
-/// Returns the message of a user-facing `OCG01` database error, if any.
-pub(super) fn ocg01_message(err: &anyhow::Error) -> Option<String> {
-    let db_err = err.downcast_ref::<tokio_postgres::Error>()?.as_db_error()?;
-    (db_err.code().code() == crate::db::USER_FACING_DB_ERROR_CODE)
-        .then(|| db_err.message().to_string())
+/// Returns the user with seeded notification preferences.
+pub(super) const fn notification_preferences_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f001")
+}
+
+/// Returns the user used by notification unmute concurrency contracts.
+pub(super) const fn notification_unmute_concurrency_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f005")
+}
+
+/// Returns the user dedicated to notification preference update contracts.
+pub(super) const fn notification_update_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f003")
 }
 
 /// Returns the declined offer event identifier used by the contract fixture.
-pub(super) fn offer_decline_event_id() -> Uuid {
-    parse_uuid(OFFER_DECLINE_EVENT_ID)
+pub(super) const fn offer_decline_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0dc")
 }
 
 /// Returns the declined offer identifier used by the contract fixture.
-pub(super) fn offer_decline_offer_id() -> Uuid {
-    parse_uuid(OFFER_DECLINE_OFFER_ID)
+pub(super) const fn offer_decline_offer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0dd")
 }
 
 /// Returns the offer decliner identifier used by the contract fixture.
-pub(super) fn offer_decliner_id() -> Uuid {
-    parse_uuid(OFFER_DECLINER_ID)
+pub(super) const fn offer_decliner_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0f0")
 }
 
 /// Returns the organizer identifier used by the contract fixture.
-pub(crate) fn organizer_id() -> Uuid {
-    parse_uuid(ORGANIZER_ID)
+pub(crate) const fn organizer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c041")
 }
 
 /// Returns the purchase used by paid attendance cancellation contracts.
-pub(super) fn paid_cancellation_purchase_id() -> Uuid {
-    parse_uuid(PAID_CANCELLATION_PURCHASE_ID)
+pub(super) const fn paid_cancellation_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c118")
 }
 
 /// Returns the attendee used by paid attendance cancellation contracts.
-pub(super) fn paid_cancellation_user_id() -> Uuid {
-    parse_uuid(PAID_CANCELLATION_USER_ID)
+pub(super) const fn paid_cancellation_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c117")
+}
+
+/// Returns the paid event that also holds the refund fixtures.
+pub(super) const fn paid_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0d0")
 }
 
 /// Returns the paid ticket price window identifier used by the contract fixture.
-pub(super) fn paid_ticket_price_window_id() -> Uuid {
-    parse_uuid(PAID_TICKET_PRICE_WINDOW_ID)
+pub(super) const fn paid_ticket_price_window_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0d2")
 }
 
 /// Returns the paid ticket type identifier used by the contract fixture.
-pub(super) fn paid_ticket_type_id() -> Uuid {
-    parse_uuid(PAID_TICKET_TYPE_ID)
-}
-
-/// Parses a UUID stored by the contract fixture.
-pub(super) fn parse_uuid(value: &str) -> Uuid {
-    Uuid::parse_str(value).expect("contract fixture UUID should be valid")
+pub(super) const fn paid_ticket_type_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0d1")
 }
 
 /// Returns the past event identifier used by the contract fixture.
-pub(super) fn past_event_id() -> Uuid {
-    parse_uuid(PAST_EVENT_ID)
+pub(super) const fn past_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c032")
 }
 
 /// Returns the admin of the group payment lock order fixture group.
-pub(super) fn payment_lock_admin_id() -> Uuid {
-    parse_uuid(PAYMENT_LOCK_ADMIN_ID)
+pub(super) const fn payment_lock_admin_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f408")
 }
 
 /// Returns the unpublished paid event of the group payment lock order fixture.
-pub(super) fn payment_lock_event_id() -> Uuid {
-    parse_uuid(PAYMENT_LOCK_EVENT_ID)
+pub(super) const fn payment_lock_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f405")
 }
 
 /// Returns the external-payments group of the group payment lock order fixture.
-pub(super) fn payment_lock_group_id() -> Uuid {
-    parse_uuid(PAYMENT_LOCK_GROUP_ID)
+pub(super) const fn payment_lock_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f404")
 }
 
 /// Returns the pre-registered attendee identifier used by the contract fixture.
-pub(super) fn pre_registered_id() -> Uuid {
-    parse_uuid(PRE_REGISTERED_ID)
+pub(super) const fn pre_registered_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c044")
+}
+
+/// Runs a lock probe in its own transaction with a 250 ms lock timeout, rolls
+/// it back, and returns the SQLSTATE the probe failed with, if any.
+pub(super) async fn probe_lock(
+    client: &tokio_postgres::Client,
+    sql: &str,
+    params: &[&(dyn ToSql + Sync)],
+) -> Result<Option<SqlState>> {
+    client
+        .batch_execute("begin; set local lock_timeout = '250ms'")
+        .await?;
+    let result = client.query_one(sql, params).await;
+    client.batch_execute("rollback").await?;
+
+    Ok(result.err().and_then(|err| err.code().cloned()))
+}
+
+/// Returns the event dedicated to queue-offer invitation allocation.
+pub(super) const fn queue_invite_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c105")
+}
+
+/// Returns the queued invitation target used by the allocation contract.
+pub(super) const fn queue_invitee_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c103")
 }
 
 /// Returns the award fixture dedicated to the identity rebind contract.
-pub(super) fn rebind_user_badge_id() -> Uuid {
-    parse_uuid(REBIND_USER_BADGE_ID)
+pub(super) const fn rebind_user_badge_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0b9")
 }
 
 /// Returns the reconciliation buyer identifier used by the contract fixture.
-pub(super) fn reconcile_buyer_id() -> Uuid {
-    parse_uuid(RECONCILE_BUYER_ID)
+pub(super) const fn reconcile_buyer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0e3")
 }
 
 /// Returns the due reconciliation event identifier used by the contract fixture.
-pub(super) fn reconcile_due_event_id() -> Uuid {
-    parse_uuid(RECONCILE_DUE_EVENT_ID)
-}
-
-/// Returns the user whose linked offer is hidden during refund processing.
-pub(super) fn refund_offer_user_id() -> Uuid {
-    parse_uuid(REFUND_OFFER_USER_ID)
+pub(super) const fn reconcile_due_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0de")
 }
 
 /// Returns the payment job fixture ready for local refund finalization.
-pub(super) fn refund_approve_job_id() -> Uuid {
-    parse_uuid(REFUND_APPROVE_JOB_ID)
+pub(super) const fn refund_approve_job_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c139")
 }
 
 /// Returns the purchase fixture ready for local refund finalization.
-pub(super) fn refund_approve_purchase_id() -> Uuid {
-    parse_uuid(REFUND_APPROVE_PURCHASE_ID)
+pub(super) const fn refund_approve_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0f6")
 }
 
 /// Returns the purchase fixture ready to begin refund processing.
-pub(super) fn refund_begin_purchase_id() -> Uuid {
-    parse_uuid(REFUND_BEGIN_PURCHASE_ID)
-}
-
-/// Returns the paid event identifier containing the refund fixtures.
-pub(super) fn refund_event_id() -> Uuid {
-    parse_uuid(REFUND_EVENT_ID)
+pub(super) const fn refund_begin_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0f4")
 }
 
 /// Returns the purchase identifier used by the refund lifecycle fixture.
-pub(super) fn refund_lifecycle_purchase_id() -> Uuid {
-    parse_uuid(REFUND_LIFECYCLE_PURCHASE_ID)
+pub(super) const fn refund_lifecycle_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0fb")
+}
+
+/// Returns the user whose linked offer is hidden during refund processing.
+pub(super) const fn refund_offer_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c101")
 }
 
 /// Returns the payment job identifier for the refund recovery fixture.
-pub(super) fn refund_recovery_job_id() -> Uuid {
-    parse_uuid(REFUND_RECOVERY_JOB_ID)
+pub(super) const fn refund_recovery_job_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c13a")
 }
 
 /// Returns the purchase identifier for the refund recovery fixture.
-pub(super) fn refund_recovery_purchase_id() -> Uuid {
-    parse_uuid(REFUND_RECOVERY_PURCHASE_ID)
+pub(super) const fn refund_recovery_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0fd")
 }
 
 /// Returns the durable refund identifier for the recovery fixture.
-pub(super) fn refund_recovery_refund_id() -> Uuid {
-    parse_uuid(REFUND_RECOVERY_REFUND_ID)
+pub(super) const fn refund_recovery_refund_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0fe")
 }
 
 /// Returns the refund rejection buyer identifier used by the contract fixture.
-pub(super) fn refund_reject_buyer_id() -> Uuid {
-    parse_uuid(REFUND_REJECT_BUYER_ID)
+pub(super) const fn refund_reject_buyer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0e7")
 }
 
 /// Returns the purchase fixture ready for refund rejection.
-pub(super) fn refund_reject_purchase_id() -> Uuid {
-    parse_uuid(REFUND_REJECT_PURCHASE_ID)
+pub(super) const fn refund_reject_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0f8")
 }
 
 /// Returns the buyer whose rejected refund is visible on attendee surfaces.
-pub(super) fn refund_rejected_buyer_id() -> Uuid {
-    parse_uuid(REFUND_REJECTED_BUYER_ID)
+pub(super) const fn refund_rejected_buyer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c114")
+}
+
+/// Returns the single-select meal preference question of the contract event.
+pub(super) const fn registration_question_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c071")
+}
+
+/// Returns the vegetarian option of the contract event meal preference question.
+pub(super) const fn registration_question_option_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c072")
 }
 
 /// Returns the rejected requester ignored after approval is disabled.
-pub(super) fn rejected_request_user_id() -> Uuid {
-    parse_uuid(REJECTED_REQUEST_USER_ID)
+pub(super) const fn rejected_request_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c102")
 }
 
 /// Returns the invitation request event identifier used by the contract fixture.
-pub(super) fn request_event_id() -> Uuid {
-    parse_uuid(REQUEST_EVENT_ID)
+pub(super) const fn request_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0d9")
 }
 
 /// Returns the requester identifier used by the contract fixture.
-pub(super) fn requester_id() -> Uuid {
-    parse_uuid(REQUESTER_ID)
+pub(super) const fn requester_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0ee")
 }
 
 /// Returns the revoked user badge identifier used by the contract fixture.
-pub(super) fn revoked_user_badge_id() -> Uuid {
-    parse_uuid(REVOKED_USER_BADGE_ID)
+pub(super) const fn revoked_user_badge_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0be")
 }
 
 /// Returns the labeled session identifier used by the contract fixture.
-pub(super) fn session_id() -> Uuid {
-    parse_uuid(SESSION_ID)
+pub(super) const fn session_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c051")
 }
 
 /// Returns the session proposal identifier used by the contract fixture.
-pub(super) fn session_proposal_id() -> Uuid {
-    parse_uuid(SESSION_PROPOSAL_ID)
+pub(super) const fn session_proposal_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0c1")
 }
 
 /// Returns the site identifier used by the contract fixture.
-pub(super) fn site_id() -> Uuid {
-    parse_uuid(SITE_ID)
+pub(super) const fn site_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0b1")
 }
 
 /// Returns the community used by the stats cache contract.
-pub(super) fn stats_cache_community_id() -> Uuid {
-    parse_uuid(STATS_CACHE_COMMUNITY_ID)
+pub(super) const fn stats_cache_community_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f101")
 }
 
 /// Returns the group used by the stats cache contract.
-pub(super) fn stats_cache_group_id() -> Uuid {
-    parse_uuid(STATS_CACHE_GROUP_ID)
+pub(super) const fn stats_cache_group_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f103")
 }
 
 /// Returns the user added by the stats cache contract.
-pub(super) fn stats_cache_joiner_id() -> Uuid {
-    parse_uuid(STATS_CACHE_JOINER_ID)
+pub(super) const fn stats_cache_joiner_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f105")
 }
 
 /// Returns the canceled-offer user used by the status contract.
-pub(super) fn status_canceled_user_id() -> Uuid {
-    parse_uuid(STATUS_CANCELED_USER_ID)
+pub(super) const fn status_canceled_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c10e")
 }
 
 /// Returns the declined-offer user used by the status contract.
-pub(super) fn status_declined_user_id() -> Uuid {
-    parse_uuid(STATUS_DECLINED_USER_ID)
+pub(super) const fn status_declined_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c10f")
 }
 
 /// Returns the event dedicated to enrollment status contracts.
-pub(super) fn status_event_id() -> Uuid {
-    parse_uuid(STATUS_EVENT_ID)
+pub(super) const fn status_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c109")
 }
 
 /// Returns the expired-offer user used by the status contract.
-pub(super) fn status_expired_user_id() -> Uuid {
-    parse_uuid(STATUS_EXPIRED_USER_ID)
+pub(super) const fn status_expired_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c10d")
 }
 
 /// Returns the pending-purchase user used by the status contract.
-pub(super) fn status_pending_payment_user_id() -> Uuid {
-    parse_uuid(STATUS_PENDING_PAYMENT_USER_ID)
+pub(super) const fn status_pending_payment_user_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c10c")
 }
 
 /// Returns the ticket used by the pending payment contract.
-pub(super) fn status_ticket_type_id() -> Uuid {
-    parse_uuid(STATUS_TICKET_TYPE_ID)
+pub(super) const fn status_ticket_type_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c10a")
 }
 
 /// Returns the subgroup identifier used by the contract fixture.
-pub(super) fn subgroup_id() -> Uuid {
-    parse_uuid(SUBGROUP_ID)
+pub(super) const fn subgroup_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c022")
 }
 
 /// Returns the purchase summary identifier used by the contract fixture.
-pub(super) fn summary_purchase_id() -> Uuid {
-    parse_uuid(SUMMARY_PURCHASE_ID)
+///
+/// The notification fixture reuses this UUID in `notification`, a different
+/// table.
+pub(super) const fn summary_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0f1")
 }
 
 /// Returns the open anonymous survey of the survey event.
-pub(super) fn survey_anonymous_id() -> Uuid {
-    parse_uuid(SURVEY_ANONYMOUS_ID)
+pub(super) const fn survey_anonymous_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f306")
 }
 
 /// Returns the survey closed while an attendee submits answers.
-pub(super) fn survey_close_race_id() -> Uuid {
-    parse_uuid(SURVEY_CLOSE_RACE_ID)
+pub(super) const fn survey_close_race_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f323")
 }
 
 /// Returns the survey deleted while a submission holds its lock.
-pub(super) fn survey_delete_after_submission_race_id() -> Uuid {
-    parse_uuid(SURVEY_DELETE_AFTER_SUBMISSION_RACE_ID)
+pub(super) const fn survey_delete_after_submission_race_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f327")
 }
 
 /// Returns the survey deleted while an attendee submits answers.
-pub(super) fn survey_delete_race_id() -> Uuid {
-    parse_uuid(SURVEY_DELETE_RACE_ID)
+pub(super) const fn survey_delete_race_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f324")
 }
 
 /// Returns the draft survey of the survey event.
-pub(super) fn survey_draft_id() -> Uuid {
-    parse_uuid(SURVEY_DRAFT_ID)
+pub(super) const fn survey_draft_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f307")
 }
 
 /// Returns the survey closed while the opening email job runs.
-pub(super) fn survey_email_close_race_id() -> Uuid {
-    parse_uuid(SURVEY_EMAIL_CLOSE_RACE_ID)
+pub(super) const fn survey_email_close_race_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f344")
 }
 
 /// Returns the event whose survey opening emails reach its attendees.
-pub(super) fn survey_email_event_id() -> Uuid {
-    parse_uuid(SURVEY_EMAIL_EVENT_ID)
+pub(super) const fn survey_email_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f340")
 }
 
 /// Returns the survey waiting for its opening email.
-pub(super) fn survey_email_id() -> Uuid {
-    parse_uuid(SURVEY_EMAIL_ID)
-}
-
-/// Returns the verified attendee of the survey email event.
-pub(super) fn survey_email_recipient_id() -> Uuid {
-    parse_uuid(SURVEY_EMAIL_RECIPIENT_ID)
+pub(super) const fn survey_email_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f343")
 }
 
 /// Returns the survey whose event is rescheduled while the opening email job runs.
-pub(super) fn survey_email_reschedule_race_id() -> Uuid {
-    parse_uuid(SURVEY_EMAIL_RESCHEDULE_RACE_ID)
+pub(super) const fn survey_email_reschedule_race_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f351")
 }
 
 /// Returns the event holding the identified, anonymous and draft surveys.
-pub(super) fn survey_event_id() -> Uuid {
-    parse_uuid(SURVEY_EVENT_ID)
+pub(super) const fn survey_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f301")
 }
 
 /// Returns the survey answered while it is exported.
-pub(super) fn survey_export_growth_id() -> Uuid {
-    parse_uuid(SURVEY_EXPORT_GROWTH_ID)
+pub(super) const fn survey_export_growth_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f325")
 }
 
 /// Returns the attendee numbered `n` (1 to 12) who answers the export growth
 /// survey.
 pub(super) fn survey_export_respondent_id(n: u8) -> Uuid {
-    parse_uuid(&format!(
-        "00000000-0000-0000-0000-00000000f3{:02x}",
-        127 + n
-    ))
+    Uuid::from_u128(0xf37f + u128::from(n))
 }
 
 /// Returns the survey answered while its anonymity changes.
-pub(super) fn survey_first_response_race_id() -> Uuid {
-    parse_uuid(SURVEY_FIRST_RESPONSE_RACE_ID)
+pub(super) const fn survey_first_response_race_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f321")
 }
 
 /// Returns the former attendee who answered the identified survey.
-pub(super) fn survey_former_attendee_id() -> Uuid {
-    parse_uuid(SURVEY_FORMER_ATTENDEE_ID)
+pub(super) const fn survey_former_attendee_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f317")
 }
 
 /// Returns the free-text question of the identified survey.
-pub(super) fn survey_free_text_question_id() -> Uuid {
-    parse_uuid(SURVEY_FREE_TEXT_QUESTION_ID)
+pub(super) const fn survey_free_text_question_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f308")
 }
 
 /// Returns the open identified survey of the survey event.
-pub(super) fn survey_identified_id() -> Uuid {
-    parse_uuid(SURVEY_IDENTIFIED_ID)
+pub(super) const fn survey_identified_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f305")
 }
 
 /// Returns the upcoming event rescheduled while a survey is marked ready.
-pub(super) fn survey_mark_ready_event_id() -> Uuid {
-    parse_uuid(SURVEY_MARK_READY_EVENT_ID)
+pub(super) const fn survey_mark_ready_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f360")
 }
 
 /// Returns the draft survey marked ready while its event is rescheduled.
-pub(super) fn survey_mark_ready_race_id() -> Uuid {
-    parse_uuid(SURVEY_MARK_READY_RACE_ID)
-}
-
-/// Returns the open anonymous survey whose opening email was handled.
-pub(super) fn survey_opened_anonymous_id() -> Uuid {
-    parse_uuid(SURVEY_OPENED_ANONYMOUS_ID)
+pub(super) const fn survey_mark_ready_race_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f361")
 }
 
 /// Returns the survey event attendee who did not check in or answer.
-pub(super) fn survey_pending_respondent_id() -> Uuid {
-    parse_uuid(SURVEY_PENDING_RESPONDENT_ID)
+pub(super) const fn survey_pending_respondent_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f304")
 }
 
 /// Returns the event holding the concurrency contract surveys.
-pub(super) fn survey_race_event_id() -> Uuid {
-    parse_uuid(SURVEY_RACE_EVENT_ID)
+pub(super) const fn survey_race_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f320")
 }
 
 /// Returns the free-text question of the concurrency contract surveys.
-pub(super) fn survey_race_question_id() -> Uuid {
-    parse_uuid(SURVEY_RACE_QUESTION_ID)
+pub(super) const fn survey_race_question_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f330")
 }
 
 /// Returns the attendee answering the concurrency contract surveys.
-pub(super) fn survey_racer_id() -> Uuid {
-    parse_uuid(SURVEY_RACER_ID)
+pub(super) const fn survey_racer_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f316")
 }
 
 /// Returns the event rescheduled while the opening email job runs.
-pub(super) fn survey_reschedule_event_id() -> Uuid {
-    parse_uuid(SURVEY_RESCHEDULE_EVENT_ID)
+pub(super) const fn survey_reschedule_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f350")
 }
 
 /// Returns the attendee who answered both open surveys of the survey event.
-pub(super) fn survey_respondent_id() -> Uuid {
-    parse_uuid(SURVEY_RESPONDENT_ID)
+pub(super) const fn survey_respondent_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f302")
 }
 
 /// Returns the changes that make the open surveys of the survey event
-/// unreachable on the public site, each with a short description.
-pub(super) fn survey_scope_changes() -> [(&'static str, &'static str); 6] {
+/// unreachable on the public site, each with a short description and the
+/// identifier bound to its `$1` parameter.
+pub(super) fn survey_scope_changes() -> [(&'static str, &'static str, Uuid); 6] {
     [
         (
             "canceled event",
-            "update event set canceled = true where event_id = '00000000-0000-0000-0000-00000000f301'",
+            "update event set canceled = true where event_id = $1::uuid",
+            survey_event_id(),
         ),
         (
             "deleted group",
-            r#"update "group" set active = false, deleted = true where group_id = '00000000-0000-0000-0000-00000000c022'"#,
+            r#"update "group" set active = false, deleted = true where group_id = $1::uuid"#,
+            subgroup_id(),
         ),
         (
             "draft surveys",
-            "update event_survey set status = 'draft', closed_at = null, first_response_at = null, open_notification_processed_at = null, open_notification_recipients = null where event_id = '00000000-0000-0000-0000-00000000f301'",
+            "update event_survey set status = 'draft', closed_at = null, first_response_at = null, open_notification_processed_at = null, open_notification_recipients = null where event_id = $1::uuid",
+            survey_event_id(),
         ),
         (
             "inactive community",
-            "update community set active = false where community_id = '00000000-0000-0000-0000-00000000c001'",
+            "update community set active = false where community_id = $1::uuid",
+            community_id(),
         ),
         (
             "inactive group",
-            r#"update "group" set active = false where group_id = '00000000-0000-0000-0000-00000000c022'"#,
+            r#"update "group" set active = false where group_id = $1::uuid"#,
+            subgroup_id(),
         ),
         (
             "unpublished event",
-            "update event set published = false where event_id = '00000000-0000-0000-0000-00000000f301'",
+            "update event set published = false where event_id = $1::uuid",
+            survey_event_id(),
         ),
     ]
 }
 
+/// Returns the second attendee who checked in and answered both open surveys.
+pub(super) const fn survey_second_respondent_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f303")
+}
+
 /// Returns the single-select question of the identified survey.
-pub(super) fn survey_single_select_question_id() -> Uuid {
-    parse_uuid(SURVEY_SINGLE_SELECT_QUESTION_ID)
+pub(super) const fn survey_single_select_question_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f309")
 }
 
 /// Returns the survey reconfigured while an attendee submits answers.
-pub(super) fn survey_stale_race_id() -> Uuid {
-    parse_uuid(SURVEY_STALE_RACE_ID)
-}
-
-/// Returns the unverified attendee of the survey email event.
-pub(super) fn survey_unverified_attendee_id() -> Uuid {
-    parse_uuid(SURVEY_UNVERIFIED_ATTENDEE_ID)
+pub(super) const fn survey_stale_race_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f322")
 }
 
 /// Returns the synchronized event identifier used by the contract fixture.
-pub(super) fn sync_event_id() -> Uuid {
-    parse_uuid(SYNC_EVENT_ID)
-}
-
-/// Returns the paid event identifier used by the contract fixture.
-pub(super) fn paid_event_id() -> Uuid {
-    parse_uuid(TICKETED_EVENT_ID)
-}
-
-/// Returns the event dedicated to queue-offer invitation allocation.
-pub(super) fn queue_invite_event_id() -> Uuid {
-    parse_uuid(QUEUE_INVITE_EVENT_ID)
-}
-
-/// Returns the queued invitation target used by the allocation contract.
-pub(super) fn queue_invitee_id() -> Uuid {
-    parse_uuid(QUEUE_INVITEE_ID)
+pub(super) const fn sync_event_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0a1")
 }
 
 /// Returns the unlabeled session identifier used by the contract fixture.
-pub(super) fn unlabeled_session_id() -> Uuid {
-    parse_uuid(UNLABELED_SESSION_ID)
+pub(super) const fn unlabeled_session_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c052")
+}
+
+/// Returns the backend process ID of a contract-test unit of work.
+pub(super) async fn uow_backend_pid(uow: &PgUnitOfWork) -> Result<i32> {
+    uow.fetch_scalar_one("select pg_backend_pid()", &[]).await
 }
 
 /// Waits until one contract-test backend is blocked by another.
@@ -1564,6 +1377,6 @@ pub(super) async fn wait_for_backend_blocker(
 }
 
 /// Returns the waitlist identifier used by the contract fixture.
-pub(super) fn waitlist_id() -> Uuid {
-    parse_uuid(WAITLIST_ID)
+pub(super) const fn waitlist_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c043")
 }

@@ -2,13 +2,12 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use axum::http::{HeaderMap, HeaderValue};
-use serde_json::to_value;
+use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
     db::{
-        DynDB,
         mock::MockDB,
         payments::{
             CompletedEventPurchase, EventPurchaseNotificationContext,
@@ -21,29 +20,33 @@ use crate::{
         payments::{
             ApproveRefundRequestInput, AutomaticTaxReadiness, AutomaticTaxReadinessError,
             CompleteRefundRecoveryInput, DynPaymentsProvider, FinancialDocument,
-            FinancialDocumentKind, HandleWebhookError, MockPaymentsProvider, PaymentJobRecovery,
-            PaymentsError, PaymentsManager, PaymentsWebhookEvent, PgPaymentsManager,
-            PrepareCheckoutOutcome, RejectRefundRequestInput, RequestRefundInput,
+            FinancialDocumentKind, FiscalSponsorReadinessError, HandleWebhookError,
+            MockPaymentsProvider, PaymentJobRecovery, PaymentsError, PaymentsManager,
+            PaymentsWebhookEvent, PgPaymentsManager, PrepareCheckoutOutcome,
+            RejectRefundRequestInput, RequestRefundInput,
             provider::CheckoutSession,
+            tests::{approval_template_matches, stripe_provider},
         },
     },
-    templates::notifications::EventRefundRequested,
     types::{
-        event::{EventKind, EventSummary},
         notifications::NotificationKind,
         payments::{
-            CheckoutInput, EventPurchaseChargeModel, EventPurchaseSummary, FiscalSponsorSeller,
-            GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxBehavior,
-            TicketTaxCalculationMode, TicketTaxJurisdiction, TicketVenue,
+            CheckoutInput, EventPurchaseChargeModel, EventPurchaseStatus, EventPurchaseSummary,
+            FiscalSponsorSeller, GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout,
+            TicketTaxBehavior, TicketTaxCalculationMode, TicketTaxJurisdiction, TicketTaxRate,
+            TicketVenue,
         },
         site::SiteSettings,
+        tests::{
+            sample_event_purchase_summary, sample_event_summary, sample_group_payment_recipient,
+        },
     },
 };
 
 use super::PaymentsWebhookEndpoint;
 
 #[tokio::test]
-async fn approve_refund_request_approves_external_purchases_locally() {
+async fn test_approve_refund_request_approves_external_purchases_locally() {
     // Setup identifiers and the local approval expectation
     let actor_user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
@@ -51,7 +54,6 @@ async fn approve_refund_request_approves_external_purchases_locally() {
     let event_purchase_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
     let mut db = MockDB::new();
     db.expect_get_event_purchase_charge_model()
         .withf(move |purchase| *purchase == event_purchase_id)
@@ -66,25 +68,16 @@ async fn approve_refund_request_approves_external_purchases_locally() {
                 event_id,
             }))
         });
-    db.expect_get_event_summary_by_id()
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .times(1)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(SiteSettings::default()));
+    expect_event_notification_context(&mut db, community_id, event_id);
     db.expect_approve_external_event_refund_request()
         .withf(move |actor, group, purchase, note, template| {
             *actor == actor_user_id
                 && *group == group_id
                 && *purchase == event_purchase_id
                 && note.as_deref() == Some("Returned by bank transfer")
-                && template.as_ref().is_some_and(|data| {
-                    data.get("event")
-                        .and_then(|event| event.get("event_id"))
-                        .and_then(|value| value.as_str())
-                        .is_some_and(|value| value == event_id.to_string())
-                })
+                && template
+                    .as_ref()
+                    .is_some_and(|data| approval_template_matches(data, event_id, true))
         })
         .times(1)
         .returning(move |_, _, _, _, _| {
@@ -93,7 +86,7 @@ async fn approve_refund_request_approves_external_purchases_locally() {
                 event_id,
                 user_id,
 
-                transitioned: Some(true),
+                transitioned: None,
             })
         });
     db.expect_queue_event_refund_request_approval().times(0);
@@ -113,7 +106,7 @@ async fn approve_refund_request_approves_external_purchases_locally() {
 }
 
 #[tokio::test]
-async fn approve_refund_request_only_queues_durable_work() {
+async fn test_approve_refund_request_only_queues_durable_work() {
     // Setup identifiers and the durable queue expectation
     let actor_user_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
@@ -133,13 +126,7 @@ async fn approve_refund_request_only_queues_durable_work() {
         .times(1)
         .returning(|_, _, _, _| Ok(()));
 
-    let manager = PgPaymentsManager::new(
-        Arc::new(db) as DynDB,
-        Arc::new(MockNotificationsManager::new()),
-        None,
-        0,
-        HttpServerConfig::default(),
-    );
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
 
     // Approve the request without a configured provider
     manager
@@ -154,7 +141,7 @@ async fn approve_refund_request_only_queues_durable_work() {
 }
 
 #[tokio::test]
-async fn approve_refund_request_propagates_queue_failure() {
+async fn test_approve_refund_request_propagates_queue_failure() {
     // Setup a durable queue failure
     let mut db = MockDB::new();
     db.expect_get_event_purchase_charge_model()
@@ -163,13 +150,7 @@ async fn approve_refund_request_propagates_queue_failure() {
     db.expect_queue_event_refund_request_approval()
         .times(1)
         .returning(|_, _, _, _| Err(anyhow::anyhow!("queue unavailable")));
-    let manager = PgPaymentsManager::new(
-        Arc::new(db) as DynDB,
-        Arc::new(MockNotificationsManager::new()),
-        None,
-        0,
-        HttpServerConfig::default(),
-    );
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
 
     // Attempt to approve the request
     let err = manager
@@ -187,7 +168,7 @@ async fn approve_refund_request_propagates_queue_failure() {
 }
 
 #[tokio::test]
-async fn approve_refund_request_rejects_external_purchase_outside_group() {
+async fn test_approve_refund_request_rejects_external_purchase_outside_group() {
     // Setup an external purchase that does not belong to the acting group
     let event_purchase_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -222,15 +203,14 @@ async fn approve_refund_request_rejects_external_purchase_outside_group() {
 }
 
 #[tokio::test]
-async fn complete_external_checkout_enqueues_welcome_when_transitioned() {
-    // Setup identifiers and the first-transition completion
+async fn test_complete_external_checkout_passes_welcome_payload_to_atomic_completion() {
+    // Setup identifiers and the atomic completion receiving the welcome payload
     let actor_user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
     let mut db = MockDB::new();
     db.expect_get_event_purchase_notification_context()
         .withf(move |group, purchase| *group == group_id && *purchase == event_purchase_id)
@@ -241,13 +221,7 @@ async fn complete_external_checkout_enqueues_welcome_when_transitioned() {
                 event_id,
             }))
         });
-    db.expect_get_event_summary_by_id()
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .times(1)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(SiteSettings::default()));
+    expect_event_notification_context(&mut db, community_id, event_id);
     db.expect_complete_external_event_purchase()
         .withf(
             move |actor, group, purchase, details, attachments, template| {
@@ -258,12 +232,9 @@ async fn complete_external_checkout_enqueues_welcome_when_transitioned() {
                     && attachments
                         .as_ref()
                         .is_some_and(|value| value.as_array().is_some_and(|items| items.len() == 1))
-                    && template.as_ref().is_some_and(|data| {
-                        data.get("event")
-                            .and_then(|event| event.get("event_id"))
-                            .and_then(|value| value.as_str())
-                            .is_some_and(|value| value == event_id.to_string())
-                    })
+                    && template
+                        .as_ref()
+                        .is_some_and(|data| template_event_matches(data, event_id))
             },
         )
         .times(1)
@@ -273,7 +244,7 @@ async fn complete_external_checkout_enqueues_welcome_when_transitioned() {
                 event_id,
                 user_id,
 
-                transitioned: Some(true),
+                transitioned: None,
             })
         });
 
@@ -291,7 +262,7 @@ async fn complete_external_checkout_enqueues_welcome_when_transitioned() {
 }
 
 #[tokio::test]
-async fn complete_external_checkout_rejects_purchase_outside_group() {
+async fn test_complete_external_checkout_rejects_purchase_outside_group() {
     // Setup a purchase lookup scoped to a group that does not own it
     let event_purchase_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -314,57 +285,12 @@ async fn complete_external_checkout_rejects_purchase_outside_group() {
 }
 
 #[tokio::test]
-async fn complete_external_checkout_skips_welcome_when_already_completed() {
-    // Setup an idempotent replay that still composes but lets SQL skip enqueue
-    let actor_user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-    let mut db = MockDB::new();
-    db.expect_get_event_purchase_notification_context()
-        .times(1)
-        .returning(move |_, _| {
-            Ok(Some(EventPurchaseNotificationContext {
-                community_id,
-                event_id,
-            }))
-        });
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(SiteSettings::default()));
-    db.expect_complete_external_event_purchase()
-        .times(1)
-        .returning(move |_, _, _, _, _, _| {
-            Ok(CompletedEventPurchase {
-                community_id,
-                event_id,
-                user_id,
-
-                transitioned: Some(false),
-            })
-        });
-
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
-    manager
-        .complete_external_checkout(actor_user_id, group_id, event_purchase_id, None)
-        .await
-        .unwrap();
-}
-
-#[tokio::test]
-async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
+async fn test_complete_free_checkout_records_purchase_and_enqueues_notification() {
     // Setup checkout identifiers and notification context
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
 
     // Setup free-purchase completion and notification context expectations
     let mut db = MockDB::new();
@@ -380,22 +306,19 @@ async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
                 transitioned: None,
             })
         });
-    db.expect_get_event_summary_by_id()
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .times(1)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(SiteSettings::default()));
+    expect_event_notification_context(&mut db, community_id, event_id);
 
     // Setup the attendee welcome notification expectation
     let mut notifications_manager = MockNotificationsManager::new();
     notifications_manager
         .expect_enqueue()
         .withf(move |notification| {
-            notification.attachments.len() == 1
-                && matches!(notification.kind, NotificationKind::EventWelcome)
+            matches!(notification.kind, NotificationKind::EventWelcome)
                 && notification.recipients == vec![user_id]
+                && notification
+                    .template_data
+                    .as_ref()
+                    .is_some_and(|data| template_event_matches(data, event_id))
         })
         .times(1)
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -410,7 +333,7 @@ async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
 }
 
 #[tokio::test]
-async fn complete_payment_job_recovery_persists_recovery_evidence() {
+async fn test_complete_payment_job_recovery_persists_recovery_evidence() {
     // Setup recovery identifiers and the durable completion expectation
     let actor_user_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -446,7 +369,7 @@ async fn complete_payment_job_recovery_persists_recovery_evidence() {
 }
 
 #[tokio::test]
-async fn complete_payment_job_recovery_propagates_database_failure() {
+async fn test_complete_payment_job_recovery_propagates_database_failure() {
     // Setup a failing durable completion
     let mut db = MockDB::new();
     db.expect_complete_payment_job_recovery()
@@ -472,7 +395,7 @@ async fn complete_payment_job_recovery_propagates_database_failure() {
 }
 
 #[tokio::test]
-async fn complete_refund_recovery_composes_template_data_before_atomic_completion() {
+async fn test_complete_refund_recovery_composes_template_data_before_atomic_completion() {
     // Setup authoritative recovery and event context
     let actor_user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
@@ -480,7 +403,6 @@ async fn complete_refund_recovery_composes_template_data_before_atomic_completio
     let event_purchase_id = Uuid::new_v4();
     let event_purchase_refund_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
     let mut db = MockDB::new();
     db.expect_get_event_purchase_refund_recovery_context()
         .times(1)
@@ -493,13 +415,7 @@ async fn complete_refund_recovery_composes_template_data_before_atomic_completio
                 notification_required: true,
             })
         });
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |community, event| *community == community_id && *event == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(SiteSettings::default()));
+    expect_event_notification_context(&mut db, community_id, event_id);
     db.expect_complete_event_purchase_refund_recovery()
         .times(1)
         .withf(move |input| {
@@ -508,25 +424,17 @@ async fn complete_refund_recovery_composes_template_data_before_atomic_completio
                 && input.event_purchase_refund_id == event_purchase_refund_id
                 && input.recovery_reference == "bank-transfer-123"
                 && input.recovery_note == "Verified bank receipt"
-                && input.notification_template_data.as_ref().is_some_and(|data| {
-                    data.get("event")
-                        .and_then(|event| event.get("event_id"))
-                        .and_then(|event_id| event_id.as_str())
-                        .is_some_and(|value| value == event_id.to_string())
-                })
+                && input
+                    .notification_template_data
+                    .as_ref()
+                    .is_some_and(|data| approval_template_matches(data, event_id, false))
                 && input.payment_provider == Some(PaymentProvider::Stripe)
         })
         .returning(|_| Ok(()));
 
-    // Setup the configured payment provider expectation
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(1)
-        .return_const(PaymentProvider::Stripe);
-
     // Complete recovery through the same typed composer used by the refund worker
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
+    let manager =
+        sample_payments_manager(db, MockNotificationsManager::new(), Some(stripe_provider()));
     manager
         .complete_refund_recovery(&CompleteRefundRecoveryInput {
             actor_user_id,
@@ -540,7 +448,7 @@ async fn complete_refund_recovery_composes_template_data_before_atomic_completio
 }
 
 #[tokio::test]
-async fn complete_refund_recovery_skips_composition_after_local_finalization() {
+async fn test_complete_refund_recovery_skips_composition_after_local_finalization() {
     // Setup a recovery whose attendee notification was already finalized
     let actor_user_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
@@ -583,17 +491,15 @@ async fn complete_refund_recovery_skips_composition_after_local_finalization() {
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_creates_and_persists_session() {
-    // Setup checkout identifiers and recipient
+async fn test_get_or_create_checkout_redirect_url_creates_and_persists_session() {
+    // Setup a checkout that requires a provider session
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let recipient = GroupPaymentRecipient {
-        provider: PaymentProvider::Stripe,
-        recipient_id: "acct_test_123".to_string(),
-        seller_display_name: "Test Fiscal Sponsor".to_string(),
-    };
+    let mut prepared_checkout =
+        sample_prepared_event_checkout(event_id, event_purchase_id, event_ticket_type_id);
+    prepared_checkout.purchase.discount_code = Some("SPRING".to_string());
 
     // Setup checkout attachment and canonical reload expectations
     let mut db = MockDB::new();
@@ -609,20 +515,15 @@ async fn get_or_create_checkout_redirect_url_creates_and_persists_session() {
         .withf(move |purchase_id| *purchase_id == event_purchase_id)
         .times(1)
         .returning(move |_| {
-            Ok(sample_event_purchase_summary(
+            Ok(checkout_purchase_summary(
                 event_purchase_id,
                 event_ticket_type_id,
                 Some("https://example.test/checkout".to_string()),
-                Some("SPRING".to_string()),
             ))
         });
 
     // Setup provider checkout creation expectations
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(2)
-        .return_const(PaymentProvider::Stripe);
+    let mut provider = stripe_provider();
     provider
         .expect_create_checkout_session()
         .withf(move |input| {
@@ -631,7 +532,7 @@ async fn get_or_create_checkout_redirect_url_creates_and_persists_session() {
                 && input.event_id == event_id
                 && input.provisional_platform_fee_amount_minor == 62
                 && input.purchase_id == event_purchase_id
-                && input.seller.connected_account_id == recipient.recipient_id
+                && input.seller.connected_account_id == "acct_test"
                 && input.user_id == user_id
         })
         .times(1)
@@ -644,22 +545,9 @@ async fn get_or_create_checkout_redirect_url_creates_and_persists_session() {
                 })
             })
         });
-    // Prepare a checkout that requires a provider session
-    let prepared_checkout = sample_prepared_event_checkout(
-        event_id,
-        event_purchase_id,
-        event_ticket_type_id,
-        None,
-        Some("SPRING".to_string()),
-        GroupPaymentRecipient {
-            provider: PaymentProvider::Stripe,
-            recipient_id: "acct_test_123".to_string(),
-            seller_display_name: "Test Fiscal Sponsor".to_string(),
-        },
-    );
+
     // Create the checkout session
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
-
     let redirect_url = manager
         .get_or_create_checkout_redirect_url(&prepared_checkout, user_id)
         .await
@@ -670,24 +558,12 @@ async fn get_or_create_checkout_redirect_url_creates_and_persists_session() {
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_allows_manual_tax_without_tax_code() {
+async fn test_get_or_create_checkout_redirect_url_allows_manual_tax_without_tax_code() {
     // Setup a manual-tax checkout whose rates do not use a Product tax code
-    let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
-    let recipient = GroupPaymentRecipient {
-        provider: PaymentProvider::Stripe,
-        recipient_id: "acct_test_123".to_string(),
-        seller_display_name: "Test Fiscal Sponsor".to_string(),
-    };
-    let mut prepared_checkout = sample_prepared_event_checkout(
-        event_id,
-        event_purchase_id,
-        event_ticket_type_id,
-        None,
-        None,
-        recipient,
-    );
+    let mut prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), event_purchase_id, event_ticket_type_id);
     prepared_checkout.manual_tax_rate_ids = Some(vec!["txr_test".to_string()]);
     prepared_checkout.tax_calculation_mode = Some(TicketTaxCalculationMode::Manual);
     prepared_checkout.tax_code = None;
@@ -698,20 +574,15 @@ async fn get_or_create_checkout_redirect_url_allows_manual_tax_without_tax_code(
         .times(1)
         .returning(|_| Ok(()));
     db.expect_get_event_purchase_summary().times(1).returning(move |_| {
-        Ok(sample_event_purchase_summary(
+        Ok(checkout_purchase_summary(
             event_purchase_id,
             event_ticket_type_id,
             Some("https://example.test/manual-checkout".to_string()),
-            None,
         ))
     });
 
     // Require the provider contract to preserve the mode-specific optional tax code
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(2)
-        .return_const(PaymentProvider::Stripe);
+    let mut provider = stripe_provider();
     provider
         .expect_create_checkout_session()
         .withf(|input| {
@@ -745,17 +616,12 @@ async fn get_or_create_checkout_redirect_url_allows_manual_tax_without_tax_code(
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_attach() {
+async fn test_get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_attach() {
     // Setup a checkout whose concurrent request wins the canonical URL
-    let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let recipient = GroupPaymentRecipient {
-        provider: PaymentProvider::Stripe,
-        recipient_id: "acct_test_123".to_string(),
-        seller_display_name: "Test Fiscal Sponsor".to_string(),
-    };
+    let prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), event_purchase_id, event_ticket_type_id);
 
     // Setup attachment and canonical purchase reload expectations
     let mut db = MockDB::new();
@@ -772,16 +638,15 @@ async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_
         .withf(move |purchase_id| *purchase_id == event_purchase_id)
         .times(1)
         .returning(move |_| {
-            Ok(sample_event_purchase_summary(
+            Ok(checkout_purchase_summary(
                 event_purchase_id,
                 event_ticket_type_id,
                 Some("https://example.test/checkout/canonical".to_string()),
-                None,
             ))
         });
 
     // Setup the provider session created by the losing request
-    let mut provider = MockPaymentsProvider::new();
+    let mut provider = stripe_provider();
     provider.expect_create_checkout_session().times(1).returning(|_| {
         Box::pin(async {
             Ok(CheckoutSession {
@@ -791,25 +656,11 @@ async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_
             })
         })
     });
-    provider
-        .expect_provider()
-        .times(2)
-        .return_const(PaymentProvider::Stripe);
 
     // Create the checkout and reload its canonical persisted state
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
     let redirect_url = manager
-        .get_or_create_checkout_redirect_url(
-            &sample_prepared_event_checkout(
-                event_id,
-                event_purchase_id,
-                event_ticket_type_id,
-                None,
-                None,
-                recipient,
-            ),
-            user_id,
-        )
+        .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
         .await
         .expect("canonical checkout URL to be returned");
 
@@ -818,15 +669,12 @@ async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_returns_error_when_checkout_url_is_missing() {
+async fn test_get_or_create_checkout_redirect_url_returns_error_when_checkout_url_is_missing() {
     // Setup a checkout whose persisted purchase has no canonical URL
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
-    let recipient = GroupPaymentRecipient {
-        provider: PaymentProvider::Stripe,
-        recipient_id: "acct_test_123".to_string(),
-        seller_display_name: "Test Fiscal Sponsor".to_string(),
-    };
+    let prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), event_purchase_id, event_ticket_type_id);
 
     // Setup successful attachment followed by an incomplete purchase reload
     let mut db = MockDB::new();
@@ -837,16 +685,15 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_checkout_url_is_
         .withf(move |purchase_id| *purchase_id == event_purchase_id)
         .times(1)
         .returning(move |_| {
-            Ok(sample_event_purchase_summary(
+            Ok(checkout_purchase_summary(
                 event_purchase_id,
                 event_ticket_type_id,
-                None,
                 None,
             ))
         });
 
     // Setup provider checkout creation
-    let mut provider = MockPaymentsProvider::new();
+    let mut provider = stripe_provider();
     provider.expect_create_checkout_session().times(1).returning(|_| {
         Box::pin(async {
             Ok(CheckoutSession {
@@ -856,25 +703,11 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_checkout_url_is_
             })
         })
     });
-    provider
-        .expect_provider()
-        .times(2)
-        .return_const(PaymentProvider::Stripe);
 
     // Attempt to create the checkout without a canonical persisted URL
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
     let err = manager
-        .get_or_create_checkout_redirect_url(
-            &sample_prepared_event_checkout(
-                Uuid::new_v4(),
-                event_purchase_id,
-                event_ticket_type_id,
-                None,
-                None,
-                recipient,
-            ),
-            Uuid::new_v4(),
-        )
+        .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
         .await
         .expect_err("missing canonical checkout URL to fail");
 
@@ -886,20 +719,10 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_checkout_url_is_
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_returns_error_when_payments_are_unconfigured() {
+async fn test_get_or_create_checkout_redirect_url_returns_error_when_payments_are_unconfigured() {
     // Setup a checkout that requires a provider session
-    let prepared_checkout = sample_prepared_event_checkout(
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        None,
-        None,
-        GroupPaymentRecipient {
-            provider: PaymentProvider::Stripe,
-            recipient_id: "acct_test_123".to_string(),
-            seller_display_name: "Test Fiscal Sponsor".to_string(),
-        },
-    );
+    let prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
     let mut db = MockDB::new();
     db.expect_get_event_purchase_summary().never();
 
@@ -915,135 +738,103 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_payments_are_unc
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_requires_paid_currency() {
+async fn test_get_or_create_checkout_redirect_url_requires_paid_currency() {
     // Setup a paid checkout without a currency snapshot
-    let mut prepared_checkout = sample_prepared_event_checkout(
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        None,
-        None,
-        GroupPaymentRecipient {
-            provider: PaymentProvider::Stripe,
-            recipient_id: "acct_test_123".to_string(),
-            seller_display_name: "Test Fiscal Sponsor".to_string(),
-        },
-    );
+    let mut prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
     prepared_checkout.purchase.currency_code = None;
 
-    // Attempt provider checkout creation with the incomplete paid contract
-    let manager = sample_payments_manager(
-        MockDB::new(),
-        MockNotificationsManager::new(),
-        Some(MockPaymentsProvider::new()),
+    // Check the paid-only requirement fails before any provider request
+    assert_eq!(
+        checkout_contract_error(&prepared_checkout).await,
+        "paid checkout is missing currency_code"
     );
-    let err = manager
-        .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
-        .await
-        .expect_err("missing paid currency to fail");
-
-    // Check the paid-only requirement remains explicit
-    assert_eq!(err.to_string(), "paid checkout is missing currency_code");
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_requires_paid_recipient() {
+async fn test_get_or_create_checkout_redirect_url_requires_paid_recipient() {
     // Setup a paid checkout without a group recipient
-    let mut prepared_checkout = sample_prepared_event_checkout(
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        None,
-        None,
-        GroupPaymentRecipient {
-            provider: PaymentProvider::Stripe,
-            recipient_id: "acct_test_123".to_string(),
-            seller_display_name: "Test Fiscal Sponsor".to_string(),
-        },
-    );
+    let mut prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
     prepared_checkout.seller = None;
 
-    // Attempt provider checkout creation with the incomplete paid contract
-    let manager = sample_payments_manager(
-        MockDB::new(),
-        MockNotificationsManager::new(),
-        Some(MockPaymentsProvider::new()),
-    );
-    let err = manager
-        .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
-        .await
-        .expect_err("missing paid recipient to fail");
-
-    // Check the paid-only requirement remains explicit
+    // Check the paid-only requirement fails before any provider request
     assert_eq!(
-        err.to_string(),
+        checkout_contract_error(&prepared_checkout).await,
         "paid checkout is missing a fiscal sponsor seller"
     );
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_requires_tax_code_for_automatic_tax() {
-    // Setup an automatic-tax checkout without its immutable Product tax code
-    let mut prepared_checkout = sample_prepared_event_checkout(
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        None,
-        None,
-        GroupPaymentRecipient {
-            provider: PaymentProvider::Stripe,
-            recipient_id: "acct_test_123".to_string(),
-            seller_display_name: "Test Fiscal Sponsor".to_string(),
-        },
-    );
-    prepared_checkout.tax_code = None;
-    let mut provider = MockPaymentsProvider::new();
-    provider.expect_create_checkout_session().never();
+async fn test_get_or_create_checkout_redirect_url_requires_tax_behavior() {
+    // Setup a paid checkout without its ticket tax behavior snapshot
+    let mut prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+    prepared_checkout.tax_behavior = None;
 
-    // Attempt provider checkout creation with the incomplete automatic-tax contract
-    let manager = sample_payments_manager(
-        MockDB::new(),
-        MockNotificationsManager::new(),
-        Some(provider),
+    // Check the paid-only requirement fails before any provider request
+    assert_eq!(
+        checkout_contract_error(&prepared_checkout).await,
+        "paid checkout is missing tax behavior"
     );
-    let err = manager
-        .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
-        .await
-        .expect_err("missing automatic tax code to fail");
-
-    // Check invalid state fails before any provider request
-    assert_eq!(err.to_string(), "paid checkout is missing ticket tax code");
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_reuses_existing_url_without_provider() {
+async fn test_get_or_create_checkout_redirect_url_requires_tax_calculation_mode() {
+    // Setup a paid checkout without its tax calculation mode snapshot
+    let mut prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+    prepared_checkout.tax_calculation_mode = None;
+
+    // Check the paid-only requirement fails before any provider request
+    assert_eq!(
+        checkout_contract_error(&prepared_checkout).await,
+        "paid checkout is missing tax calculation mode"
+    );
+}
+
+#[tokio::test]
+async fn test_get_or_create_checkout_redirect_url_requires_tax_code_for_automatic_tax() {
+    // Setup an automatic-tax checkout without its immutable Product tax code
+    let mut prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+    prepared_checkout.tax_code = None;
+
+    // Check invalid state fails before any provider request
+    assert_eq!(
+        checkout_contract_error(&prepared_checkout).await,
+        "paid checkout is missing ticket tax code"
+    );
+}
+
+#[tokio::test]
+async fn test_get_or_create_checkout_redirect_url_requires_venue_snapshot() {
+    // Setup a paid checkout without its venue snapshot
+    let mut prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+    prepared_checkout.venue = None;
+
+    // Check the paid-only requirement fails before any provider request
+    assert_eq!(
+        checkout_contract_error(&prepared_checkout).await,
+        "paid checkout is missing venue snapshot"
+    );
+}
+
+#[tokio::test]
+async fn test_get_or_create_checkout_redirect_url_reuses_existing_url_without_provider() {
     // Setup a checkout with an existing provider URL
     let existing_url = "https://example.test/checkout".to_string();
-    let prepared_checkout = PreparedEventCheckout {
-        purchase: EventPurchaseSummary {
-            provider_checkout_url: Some(existing_url.clone()),
-            ..sample_event_purchase_summary(Uuid::new_v4(), Uuid::new_v4(), None, None)
-        },
-        ..sample_prepared_event_checkout(
-            Uuid::new_v4(),
-            Uuid::new_v4(),
-            Uuid::new_v4(),
-            None,
-            None,
-            GroupPaymentRecipient {
-                provider: PaymentProvider::Stripe,
-                recipient_id: "acct_test_123".to_string(),
-                seller_display_name: "Test Fiscal Sponsor".to_string(),
-            },
-        )
-    };
+    let mut prepared_checkout =
+        sample_prepared_event_checkout(Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+    prepared_checkout.purchase.provider_checkout_url = Some(existing_url.clone());
+
     // Guard against database access before reusing the URL
     let mut db = MockDB::new();
     db.expect_get_event_purchase_summary().never();
 
     // Reuse the URL without a configured provider
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
-
     let redirect_url = manager
         .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
         .await
@@ -1054,7 +845,7 @@ async fn get_or_create_checkout_redirect_url_reuses_existing_url_without_provide
 }
 
 #[tokio::test]
-async fn get_purchase_document_url_hides_documents_not_owned_by_attendee() {
+async fn test_get_purchase_document_url_hides_documents_not_owned_by_attendee() {
     // Setup a document lookup that is not owned by the attendee
     let mut db = MockDB::new();
     db.expect_get_user_purchase_document_context()
@@ -1073,7 +864,7 @@ async fn get_purchase_document_url_hides_documents_not_owned_by_attendee() {
 }
 
 #[tokio::test]
-async fn get_purchase_document_url_retrieves_current_account_scoped_credit_note() {
+async fn test_get_purchase_document_url_retrieves_current_account_scoped_credit_note() {
     // Setup credit-note identifiers and attendee-owned document context
     let event_purchase_credit_note_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
@@ -1095,11 +886,7 @@ async fn get_purchase_document_url_retrieves_current_account_scoped_credit_note(
         });
 
     // Setup account-scoped credit-note retrieval
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(1)
-        .return_const(PaymentProvider::Stripe);
+    let mut provider = stripe_provider();
     provider
         .expect_get_financial_document()
         .withf(|input| {
@@ -1133,7 +920,7 @@ async fn get_purchase_document_url_retrieves_current_account_scoped_credit_note(
 }
 
 #[tokio::test]
-async fn get_purchase_document_url_retrieves_current_account_scoped_invoice() {
+async fn test_get_purchase_document_url_retrieves_current_account_scoped_invoice() {
     // Setup invoice identifiers and attendee-owned document context
     let event_purchase_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
@@ -1152,11 +939,7 @@ async fn get_purchase_document_url_retrieves_current_account_scoped_invoice() {
         });
 
     // Setup account-scoped invoice retrieval
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(1)
-        .return_const(PaymentProvider::Stripe);
+    let mut provider = stripe_provider();
     provider
         .expect_get_financial_document()
         .withf(|input| {
@@ -1186,7 +969,72 @@ async fn get_purchase_document_url_retrieves_current_account_scoped_invoice() {
 }
 
 #[tokio::test]
-async fn handle_webhook_accepts_verified_noop_event() {
+async fn test_get_purchase_document_url_rejects_document_without_current_url() {
+    // Setup an attendee-owned invoice whose provider document has no URL
+    let mut db = MockDB::new();
+    db.expect_get_user_purchase_document_context()
+        .times(1)
+        .returning(|_, _, _| {
+            Ok(Some(UserPurchaseDocumentContext {
+                connected_seller_id: "acct_sponsor".to_string(),
+                payment_provider: PaymentProvider::Stripe,
+                provider_document_id: "in_purchase".to_string(),
+            }))
+        });
+    let mut provider = stripe_provider();
+    provider.expect_get_financial_document().times(1).returning(|_| {
+        Box::pin(async {
+            Ok(FinancialDocument {
+                hosted_url: None,
+                pdf_url: None,
+            })
+        })
+    });
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
+
+    // Attempt to retrieve the current invoice URL
+    let err = manager
+        .get_purchase_document_url(Uuid::new_v4(), Uuid::new_v4(), None)
+        .await
+        .expect_err("document without a current URL to fail");
+
+    // Check the missing provider URL is explicit
+    assert_eq!(
+        err.to_string(),
+        "provider financial document has no current URL"
+    );
+}
+
+#[tokio::test]
+async fn test_handle_connected_webhook_verifies_connected_account_endpoint() {
+    // Setup a provider verifier scoped to the connected-account endpoint
+    let mut provider = MockPaymentsProvider::new();
+    provider
+        .expect_verify_and_parse_webhook()
+        .withf(|endpoint, headers, body| {
+            *endpoint == PaymentsWebhookEndpoint::ConnectedAccount
+                && has_test_signature_header(headers)
+                && body == "payload"
+        })
+        .times(1)
+        .returning(|_, _, _| Ok(PaymentsWebhookEvent::Noop));
+
+    // Verify and dispatch the connected-account webhook
+    let manager = sample_payments_manager(
+        MockDB::new(),
+        MockNotificationsManager::new(),
+        Some(provider),
+    );
+    let result = manager
+        .handle_connected_webhook(&sample_webhook_headers(), "payload")
+        .await;
+
+    // Check the verified no-op is acknowledged
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_webhook_accepts_verified_noop_event() {
     // Setup a provider verifier that returns an irrelevant signed event
     let mut provider = MockPaymentsProvider::new();
     provider
@@ -1212,7 +1060,7 @@ async fn handle_webhook_accepts_verified_noop_event() {
 }
 
 #[tokio::test]
-async fn handle_webhook_returns_invalid_payload_when_verification_fails() {
+async fn test_handle_webhook_returns_invalid_payload_when_verification_fails() {
     // Setup a provider signature verification failure
     let mut provider = MockPaymentsProvider::new();
     provider
@@ -1241,7 +1089,7 @@ async fn handle_webhook_returns_invalid_payload_when_verification_fails() {
 }
 
 #[tokio::test]
-async fn handle_webhook_returns_not_configured_without_provider() {
+async fn test_handle_webhook_returns_not_configured_without_provider() {
     // Attempt webhook verification without a configured provider
     let manager = sample_payments_manager(MockDB::new(), MockNotificationsManager::new(), None);
     let err = manager
@@ -1254,7 +1102,7 @@ async fn handle_webhook_returns_not_configured_without_provider() {
 }
 
 #[tokio::test]
-async fn prepare_checkout_rejects_missing_ticket_type_before_any_write() {
+async fn test_prepare_checkout_rejects_missing_ticket_type_before_any_write() {
     // Setup the database, which must not be reached
     let mut db = MockDB::new();
     db.expect_prepare_event_checkout_purchase().never();
@@ -1278,7 +1126,7 @@ async fn prepare_checkout_rejects_missing_ticket_type_before_any_write() {
 }
 
 #[tokio::test]
-async fn prepare_checkout_returns_conflict_code() {
+async fn test_prepare_checkout_returns_conflict_code() {
     // Setup identifiers and a sold-out checkout attempt
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1324,26 +1172,16 @@ async fn prepare_checkout_returns_conflict_code() {
 }
 
 #[tokio::test]
-async fn prepare_checkout_returns_prepared_checkout_with_manager_configuration() {
+async fn test_prepare_checkout_returns_prepared_checkout_with_manager_configuration() {
     // Setup identifiers and the provider-configured manager
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let recipient = GroupPaymentRecipient {
-        provider: PaymentProvider::Stripe,
-        recipient_id: "acct_123".to_string(),
-        seller_display_name: "Fiscal sponsor".to_string(),
-    };
-    let prepared_checkout = sample_prepared_event_checkout(
-        event_id,
-        event_purchase_id,
-        event_ticket_type_id,
-        None,
-        Some("EARLY".to_string()),
-        recipient,
-    );
+    let mut prepared_checkout =
+        sample_prepared_event_checkout(event_id, event_purchase_id, event_ticket_type_id);
+    prepared_checkout.purchase.discount_code = Some("EARLY".to_string());
     let expected_checkout = prepared_checkout.clone();
 
     // Setup database mock
@@ -1366,14 +1204,10 @@ async fn prepare_checkout_returns_prepared_checkout_with_manager_configuration()
                 prepared_checkout.clone(),
             )))
         });
-    let mut payments_provider = MockPaymentsProvider::new();
-    payments_provider
-        .expect_provider()
-        .return_const(PaymentProvider::Stripe);
 
     // Prepare the checkout
     let manager =
-        sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
+        sample_payments_manager(db, MockNotificationsManager::new(), Some(stripe_provider()));
     let outcome = manager
         .prepare_checkout(
             community_id,
@@ -1396,7 +1230,7 @@ async fn prepare_checkout_returns_prepared_checkout_with_manager_configuration()
 }
 
 #[tokio::test]
-async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
+async fn test_reject_refund_request_persists_rejection_and_enqueues_notification() {
     // Setup review identifiers and notification context
     let actor_user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
@@ -1404,7 +1238,6 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
     let event_purchase_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let target_user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
 
     // Setup rejection persistence and context expectations
     let mut db = MockDB::new();
@@ -1425,12 +1258,8 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
                 transitioned: None,
             })
         });
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(SiteSettings::default()));
+    expect_event_notification_context(&mut db, community_id, event_id);
+
     // Setup the attendee rejection notification expectation
     let mut notifications_manager = MockNotificationsManager::new();
     notifications_manager
@@ -1462,38 +1291,26 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
 }
 
 #[tokio::test]
-async fn request_refund_records_request_with_notification_context() {
-    // Setup refund request identifiers and expected notification payload
+async fn test_request_refund_records_request_with_notification_context() {
+    // Setup refund request identifiers
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-    let site_settings = SiteSettings::default();
-    let expected_template_data = to_value(&EventRefundRequested {
-        event: event.clone(),
-        link: "/dashboard/group?tab=refunds".to_string(),
-        theme: site_settings.theme.clone(),
-    })
-    .unwrap();
 
     // Setup notification context and request persistence expectations
     let mut db = MockDB::new();
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
+    expect_event_notification_context(&mut db, community_id, event_id);
     db.expect_request_event_refund()
         .withf(move |community, event, user, reason, template_data| {
             *community == community_id
                 && *event == event_id
                 && *user == user_id
                 && reason.as_deref() == Some("Need to cancel")
-                && template_data == &expected_template_data
+                && template_event_matches(template_data, event_id)
         })
         .times(1)
         .returning(|_, _, _, _, _| Ok(()));
+
     // Record the attendee refund request
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
 
@@ -1509,7 +1326,7 @@ async fn request_refund_records_request_with_notification_context() {
 }
 
 #[tokio::test]
-async fn request_refund_returns_error_when_notification_context_load_fails() {
+async fn test_request_refund_returns_error_when_notification_context_load_fails() {
     // Setup a notification context load failure and guard request persistence
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1537,7 +1354,7 @@ async fn request_refund_returns_error_when_notification_context_load_fails() {
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_forwards_provider_account_and_tax_jurisdiction() {
+async fn test_validate_fiscal_sponsor_forwards_provider_account_and_tax_jurisdiction() {
     // Setup a provider expectation for the selected fiscal sponsor
     let mut provider = MockPaymentsProvider::new();
     provider
@@ -1577,13 +1394,9 @@ async fn validate_fiscal_sponsor_forwards_provider_account_and_tax_jurisdiction(
 }
 
 #[tokio::test]
-async fn validate_tax_rates_forwards_venue_jurisdiction() {
+async fn test_validate_tax_rates_forwards_venue_jurisdiction() {
     // Setup provider expectations for the selected sponsor, rates, and venue
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(1)
-        .return_const(PaymentProvider::Stripe);
+    let mut provider = stripe_provider();
     provider
         .expect_validate_tax_rates()
         .withf(|input| {
@@ -1625,7 +1438,7 @@ async fn validate_tax_rates_forwards_venue_jurisdiction() {
 }
 
 #[tokio::test]
-async fn ensure_automatic_tax_readiness_reuses_cached_location_without_state() {
+async fn test_ensure_automatic_tax_readiness_reuses_cached_location_without_state() {
     // Setup a normalized venue and matching account-scoped cache entry
     let recipient = GroupPaymentRecipient {
         provider: PaymentProvider::Stripe,
@@ -1653,11 +1466,7 @@ async fn ensure_automatic_tax_readiness_reuses_cached_location_without_state() {
     db.expect_upsert_payment_provider_tax_location().never();
 
     // Setup provider validation and cache reuse expectations
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(1)
-        .return_const(PaymentProvider::Stripe);
+    let mut provider = stripe_provider();
     provider
         .expect_validate_fiscal_sponsor()
         .withf(|input| {
@@ -1703,13 +1512,9 @@ async fn ensure_automatic_tax_readiness_reuses_cached_location_without_state() {
 }
 
 #[tokio::test]
-async fn ensure_automatic_tax_readiness_reports_all_incomplete_venue_fields() {
+async fn test_ensure_automatic_tax_readiness_reports_all_incomplete_venue_fields() {
     // Setup a matching provider without allowing remote validation
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(1)
-        .return_const(PaymentProvider::Stripe);
+    let mut provider = stripe_provider();
     provider.expect_validate_fiscal_sponsor().never();
     provider.expect_ensure_performance_location().never();
     let manager = sample_payments_manager(
@@ -1744,7 +1549,190 @@ async fn ensure_automatic_tax_readiness_reports_all_incomplete_venue_fields() {
     ));
 }
 
+#[tokio::test]
+async fn test_ensure_automatic_tax_readiness_maps_fiscal_sponsor_readiness_failure() {
+    // Setup a sponsor whose provider readiness check fails
+    let mut db = MockDB::new();
+    db.expect_get_payment_provider_tax_location().never();
+    let mut provider = stripe_provider();
+    provider.expect_validate_fiscal_sponsor().times(1).returning(|_| {
+        Box::pin(async {
+            Err(FiscalSponsorReadinessError::NotReady(
+                "fiscal sponsor Stripe Tax settings are not active".to_string(),
+            ))
+        })
+    });
+    provider.expect_ensure_performance_location().never();
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
+
+    // Resolve readiness for a complete venue
+    let error = manager
+        .ensure_automatic_tax_readiness(&sample_group_payment_recipient(), &sample_ticket_venue())
+        .await
+        .expect_err("unready sponsor to be rejected");
+
+    // Check the organizer-correctable provider message is preserved
+    assert!(matches!(
+        error,
+        AutomaticTaxReadinessError::FiscalSponsorNotReady(message)
+            if message == "fiscal sponsor Stripe Tax settings are not active"
+    ));
+}
+
+#[tokio::test]
+async fn test_ensure_automatic_tax_readiness_persists_new_location() {
+    // Setup a venue without a cached provider location
+    let mut db = MockDB::new();
+    db.expect_get_payment_provider_tax_location()
+        .times(1)
+        .returning(|_, _, _| Ok(None));
+    db.expect_upsert_payment_provider_tax_location()
+        .withf(|provider, seller, fingerprint, location_id, venue| {
+            *provider == PaymentProvider::Stripe
+                && seller == "acct_test"
+                && fingerprint == "fingerprint_created"
+                && location_id == "loc_created"
+                && *venue == sample_ticket_venue()
+        })
+        .times(1)
+        .returning(|_, _, _, _, _| Ok(()));
+
+    // Setup provider validation and location creation
+    let mut provider = stripe_provider();
+    provider
+        .expect_validate_fiscal_sponsor()
+        .times(1)
+        .returning(|_| Box::pin(async { Ok(()) }));
+    provider
+        .expect_ensure_performance_location()
+        .withf(|input| {
+            input.cached_fingerprint.is_none() && input.cached_provider_tax_location_id.is_none()
+        })
+        .times(1)
+        .returning(|_| {
+            Box::pin(async {
+                Ok(AutomaticTaxReadiness {
+                    cached: false,
+                    fingerprint: "fingerprint_created".to_string(),
+                    provider_tax_location_id: "loc_created".to_string(),
+                    state_code: Some("CA".to_string()),
+                })
+            })
+        });
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
+
+    // Resolve readiness through the shared manager boundary
+    let readiness = manager
+        .ensure_automatic_tax_readiness(&sample_group_payment_recipient(), &sample_ticket_venue())
+        .await
+        .expect("new location to be created and cached");
+
+    // Check the created location is returned
+    assert!(!readiness.cached);
+    assert_eq!(readiness.provider_tax_location_id, "loc_created");
+}
+
+#[tokio::test]
+async fn test_ensure_automatic_tax_readiness_rejects_invalid_country_code() {
+    // Setup a provider that must not be contacted for an invalid venue country
+    let mut provider = stripe_provider();
+    provider.expect_validate_fiscal_sponsor().never();
+    provider.expect_ensure_performance_location().never();
+    let manager = sample_payments_manager(
+        MockDB::new(),
+        MockNotificationsManager::new(),
+        Some(provider),
+    );
+
+    // Resolve readiness for a venue whose country is not an ISO alpha-2 code
+    let venue = TicketVenue {
+        country_code: "USA".to_string(),
+        ..sample_ticket_venue()
+    };
+    let error = manager
+        .ensure_automatic_tax_readiness(&sample_group_payment_recipient(), &venue)
+        .await
+        .expect_err("invalid venue country to be rejected locally");
+
+    // Check the normalized rejected country is reported
+    assert!(matches!(
+        error,
+        AutomaticTaxReadinessError::CountryInvalid { country_code } if country_code == "USA"
+    ));
+}
+
+#[tokio::test]
+async fn test_list_tax_rates_forwards_recipient_account_and_tax_behavior() {
+    // Setup the provider listing for the recipient account
+    let rate = TicketTaxRate {
+        display_name: "Sales tax".to_string(),
+        id: "txr_state".to_string(),
+        inclusive: false,
+        percentage: "8.875".to_string(),
+
+        jurisdiction: Some("California".to_string()),
+    };
+    let listed_rate = rate.clone();
+    let mut provider = stripe_provider();
+    provider
+        .expect_list_tax_rates()
+        .withf(|input| {
+            input.connected_seller_id == "acct_test"
+                && input.tax_behavior == TicketTaxBehavior::Exclusive
+        })
+        .times(1)
+        .returning(move |_| {
+            let listed_rate = listed_rate.clone();
+            Box::pin(async move { Ok(vec![listed_rate]) })
+        });
+    let manager = sample_payments_manager(
+        MockDB::new(),
+        MockNotificationsManager::new(),
+        Some(provider),
+    );
+
+    // List the recipient's rates through the manager boundary
+    let rates = manager
+        .list_tax_rates(
+            &sample_group_payment_recipient(),
+            TicketTaxBehavior::Exclusive,
+        )
+        .await
+        .expect("Tax Rates to be listed");
+
+    // Check the provider rates are returned unchanged
+    assert_eq!(rates, vec![rate]);
+}
+
 // Helpers.
+
+/// Returns the error raised by checkout creation for an incomplete prepared checkout.
+async fn checkout_contract_error(prepared_checkout: &PreparedEventCheckout) -> String {
+    let mut provider = MockPaymentsProvider::new();
+    provider.expect_create_checkout_session().never();
+    let manager = sample_payments_manager(
+        MockDB::new(),
+        MockNotificationsManager::new(),
+        Some(provider),
+    );
+
+    manager
+        .get_or_create_checkout_redirect_url(prepared_checkout, Uuid::new_v4())
+        .await
+        .expect_err("incomplete paid checkout to fail")
+        .to_string()
+}
+
+/// Expects the event summary and site settings every payments notification loads.
+fn expect_event_notification_context(db: &mut MockDB, community_id: Uuid, event_id: Uuid) {
+    db.expect_get_event_summary_by_id()
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .times(1)
+        .returning(move |_, _| Ok(sample_event_summary(event_id)));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(SiteSettings::default()));
+}
 
 /// Reports whether test webhook headers contain the expected signature.
 fn has_test_signature_header(headers: &HeaderMap) -> bool {
@@ -1754,82 +1742,19 @@ fn has_test_signature_header(headers: &HeaderMap) -> bool {
     )
 }
 
-/// Creates an event summary for payment notification tests.
-fn sample_event_summary(event_id: Uuid) -> EventSummary {
-    EventSummary {
-        attendee_approval_required: false,
-        canceled: false,
-        cohosts: vec![],
-        community_display_name: "Community".to_string(),
-        community_name: "community".to_string(),
-        event_id,
-        group_category_name: "Technology".to_string(),
-        group_name: "Group".to_string(),
-        group_slug: "group".to_string(),
-        has_external_payment: false,
-        has_registration_questions: false,
-        has_related_events: false,
-        kind: EventKind::default(),
-        logo_url: "https://example.test/logo.png".to_string(),
-        name: "Event".to_string(),
-        published: true,
-        slug: "event".to_string(),
-        test_event: false,
-        timezone: chrono_tz::UTC,
-        waitlist_count: 0,
-        waitlist_enabled: false,
-
-        attendee_count: None,
-        capacity: None,
-        created_by_display_name: None,
-        created_by_username: None,
-        delete_eligibility: None,
-        description_short: None,
-        ends_at: None,
-        event_series_id: None,
-        group_slug_pretty: None,
-        latitude: None,
-        longitude: None,
-        meeting_join_instructions: None,
-        meeting_join_url: None,
-        meeting_password: None,
-        meeting_provider: None,
-        payment_currency_code: None,
-        pending_cohosts_count: None,
-        registration_ends_at: None,
-        registration_starts_at: None,
-        remaining_capacity: None,
-        starts_at: None,
-        ticket_types: None,
-        venue_address: None,
-        venue_city: None,
-        venue_country_code: None,
-        venue_country_name: None,
-        venue_name: None,
-        venue_state_code: None,
-        venue_state_name: None,
-        venue_zip_code: None,
-    }
-}
-
-/// Creates a purchase summary for checkout manager tests.
-fn sample_event_purchase_summary(
+/// Creates a pending purchase summary for checkout manager tests.
+fn checkout_purchase_summary(
     event_purchase_id: Uuid,
     event_ticket_type_id: Uuid,
     provider_checkout_url: Option<String>,
-    discount_code: Option<String>,
 ) -> EventPurchaseSummary {
     EventPurchaseSummary {
-        amount_minor: 2_500,
-        currency_code: Some("usd".to_string()),
-        event_purchase_id,
         event_ticket_type_id,
         provisional_platform_fee_amount_minor: 62,
-        ticket_title: "General admission".to_string(),
 
-        discount_code,
+        currency_code: Some("usd".to_string()),
         provider_checkout_url,
-        ..EventPurchaseSummary::default()
+        ..sample_event_purchase_summary(event_purchase_id, EventPurchaseStatus::Pending)
     }
 }
 
@@ -1851,15 +1776,14 @@ fn sample_payments_manager(
     )
 }
 
-/// Creates a prepared checkout result for manager tests.
+/// Creates a prepared paid checkout for the sample payment recipient.
 fn sample_prepared_event_checkout(
     event_id: Uuid,
     event_purchase_id: Uuid,
     event_ticket_type_id: Uuid,
-    provider_checkout_url: Option<String>,
-    discount_code: Option<String>,
-    recipient: GroupPaymentRecipient,
 ) -> PreparedEventCheckout {
+    let recipient = sample_group_payment_recipient();
+
     PreparedEventCheckout {
         community_display_name: "Community".to_string(),
         community_name: "community".to_string(),
@@ -1869,12 +1793,7 @@ fn sample_prepared_event_checkout(
         event_timezone: "UTC".to_string(),
         group_name: "Group".to_string(),
         group_slug: "group".to_string(),
-        purchase: sample_event_purchase_summary(
-            event_purchase_id,
-            event_ticket_type_id,
-            provider_checkout_url,
-            discount_code,
-        ),
+        purchase: checkout_purchase_summary(event_purchase_id, event_ticket_type_id, None),
         group_slug_pretty: None,
         seller: Some(FiscalSponsorSeller {
             connected_account_id: recipient.recipient_id,
@@ -1884,16 +1803,21 @@ fn sample_prepared_event_checkout(
         tax_behavior: Some(TicketTaxBehavior::Inclusive),
         tax_calculation_mode: Some(TicketTaxCalculationMode::Automatic),
         tax_code: Some("txcd_50013001".to_string()),
-        venue: Some(TicketVenue {
-            address: "123 Example Street".to_string(),
-            city: "Example City".to_string(),
-            country_code: "US".to_string(),
-            name: "Example Venue".to_string(),
-            zip_code: "12345".to_string(),
-            state_code: Some("CA".to_string()),
-            state_name: Some("California".to_string()),
-        }),
+        venue: Some(sample_ticket_venue()),
         ..PreparedEventCheckout::default()
+    }
+}
+
+/// Creates a complete, normalized ticket venue snapshot.
+fn sample_ticket_venue() -> TicketVenue {
+    TicketVenue {
+        address: "123 Example Street".to_string(),
+        city: "Example City".to_string(),
+        country_code: "US".to_string(),
+        name: "Example Venue".to_string(),
+        zip_code: "12345".to_string(),
+        state_code: Some("CA".to_string()),
+        state_name: Some("California".to_string()),
     }
 }
 
@@ -1902,4 +1826,9 @@ fn sample_webhook_headers() -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert("stripe-signature", HeaderValue::from_static("sig_test"));
     headers
+}
+
+/// Reports whether notification template data names the event.
+fn template_event_matches(template_data: &Value, event_id: Uuid) -> bool {
+    template_data["event"]["event_id"] == json!(event_id)
 }

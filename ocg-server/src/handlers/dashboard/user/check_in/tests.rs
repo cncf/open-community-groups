@@ -1,110 +1,108 @@
-use axum::{
-    body::{Body, to_bytes},
-    http::{Request, StatusCode, header::COOKIE},
-};
-use axum_login::tower_sessions::session;
-use tower::ServiceExt;
+use axum::http::StatusCode;
 use uuid::Uuid;
 
-use crate::{
-    db::mock::MockDB,
-    handlers::tests::{TestRouterBuilder, assert_html_response, expect_authenticated_session},
-    services::notifications::MockNotificationsManager,
-};
+use crate::{db::mock::MockDB, handlers::tests::*};
+
+#[tokio::test]
+async fn test_list_page_falls_back_to_username_when_name_is_blank() {
+    // Setup identifiers and a user without a display name
+    let ids = DashboardIds::new();
+    let user = crate::auth::User {
+        name: " ".to_string(),
+        ..sample_auth_user(ids.user_id, "hash")
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_session_with_user(&mut db, &ids, user);
+    db.expect_list_user_check_in_events()
+        .times(1)
+        .withf(move |uid| *uid == ids.user_id)
+        .returning(|_| Ok(vec![]));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user/check-in", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the QR modal identifies the attendee by username
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains(r#"data-user-name="test-user""#));
+    assert!(body.contains(r#"data-username="test-user""#));
+}
 
 #[tokio::test]
 async fn test_list_page_returns_current_user_events() {
-    // Setup an authenticated user and empty credential list
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_list_user_check_in_events()
         .times(1)
-        .withf(move |uid| *uid == user_id)
+        .withf(move |uid| *uid == ids.user_id)
         .returning(|_| Ok(vec![]));
 
-    // Request the user's check-in fragment
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/user/check-in")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let body = to_bytes(body, usize::MAX).await.unwrap();
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user/check-in", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
-    // Verify the fragment renders successfully
-    assert_html_response(&parts, &body, StatusCode::OK);
+    // Check the fragment renders the attendee display identity
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains(r#"data-user-name="Test User""#));
+    assert!(body.contains(r#"data-username="test-user""#));
 }
 
 #[tokio::test]
 async fn test_qr_code_returns_private_uncacheable_svg() {
-    // Setup a confirmed credential owned by the current user
+    // Setup identifiers and a confirmed credential owned by the current user
     let check_in_code = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_get_user_check_in_code()
         .times(1)
-        .withf(move |eid, uid| *eid == event_id && *uid == user_id)
+        .withf(move |eid, uid| *eid == event_id && *uid == ids.user_id)
         .returning(move |_, _| Ok(Some(check_in_code)));
 
-    // Request the credential image
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/user/check-in/{event_id}/qr-code"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let body = to_bytes(body, usize::MAX).await.unwrap();
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/user/check-in/{event_id}/qr-code"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
-    // Verify the private SVG response contract
+    // Check the private SVG response contract
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(parts.headers["cache-control"], "private, no-store");
     assert_eq!(parts.headers["content-type"], "image/svg+xml");
-    assert!(String::from_utf8_lossy(&body).contains("<svg"));
+    assert!(String::from_utf8_lossy(&bytes).contains("<svg"));
 }
 
 #[tokio::test]
 async fn test_qr_code_returns_unavailable_for_non_confirmed_attendance() {
-    // Setup a user without a confirmed credential for the selected event
+    // Setup identifiers and a user without a confirmed credential
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_get_user_check_in_code()
         .times(1)
-        .withf(move |eid, uid| *eid == event_id && *uid == user_id)
+        .withf(move |eid, uid| *eid == event_id && *uid == ids.user_id)
         .returning(|_, _| Ok(None));
 
-    // Request the unavailable credential image
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/user/check-in/{event_id}/qr-code"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/user/check-in/{event_id}/qr-code"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
-    // Verify credential ownership is not disclosed
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    // Check credential ownership is not disclosed
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }

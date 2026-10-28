@@ -1,140 +1,85 @@
-use axum::{
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE, HOST},
-    },
-};
-use axum_login::tower_sessions::session;
-use tower::ServiceExt;
+use axum::http::StatusCode;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    types::permissions::CommunityPermission,
+    db::mock::MockDB,
+    handlers::tests::*,
+    types::{group::GroupCategory, permissions::CommunityPermission},
 };
 
 use super::GroupCategoryInput;
 
 #[tokio::test]
 async fn test_add_invalid_payload() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
+    expect_community_access(&mut db, &ids, CommunityPermission::TaxonomyWrite);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/dashboard/community/group-categories/add")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("name="))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "POST",
+        "/dashboard/community/group-categories/add",
+        ids.session_id,
+        "name=",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(!bytes.is_empty());
+    assert_eq!(
+        bytes.as_ref(),
+        b"name: value cannot be empty or whitespace-only\n"
+    );
 }
 
 #[tokio::test]
 async fn test_add_page_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_community_access(&mut db, &ids, CommunityPermission::Read);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/community/group-categories/add")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/community/group-categories/add", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
 async fn test_add_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let form = GroupCategoryInput {
         name: "Platform Engineering".to_string(),
     };
-    let expected_name = form.name.clone();
     let body = serde_qs::to_string(&form).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
+    expect_community_access(&mut db, &ids, CommunityPermission::TaxonomyWrite);
     db.expect_add_group_category()
         .times(1)
-        .withf(move |uid, cid, category| {
-            *uid == user_id && *cid == community_id && category.name == expected_name
+        .withf(move |user_id, community_id, category| {
+            *user_id == ids.user_id
+                && *community_id == ids.community_id
+                && category.name == form.name
         })
         .returning(|_, _, _| Ok(Uuid::new_v4()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/dashboard/community/group-categories/add")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "POST",
+        "/dashboard/community/group-categories/add",
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_empty_hx_trigger_response(
@@ -147,45 +92,26 @@ async fn test_add_success() {
 
 #[tokio::test]
 async fn test_delete_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let group_category_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
+    expect_community_access(&mut db, &ids, CommunityPermission::TaxonomyWrite);
     db.expect_delete_group_category()
         .times(1)
-        .withf(move |uid, cid, gcid| {
-            *uid == user_id && *cid == community_id && *gcid == group_category_id
+        .withf(move |user_id, community_id, id| {
+            *user_id == ids.user_id && *community_id == ids.community_id && *id == group_category_id
         })
         .returning(|_, _, _| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!(
-            "/dashboard/community/group-categories/{group_category_id}/delete"
-        ))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "DELETE",
+        &format!("/dashboard/community/group-categories/{group_category_id}/delete"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_empty_hx_trigger_response(
@@ -198,134 +124,63 @@ async fn test_delete_success() {
 
 #[tokio::test]
 async fn test_list_page_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let categories = vec![sample_group_category()];
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
-    db.expect_list_group_categories()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(categories.clone()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_page_reads(&mut db, &ids, vec![sample_group_category()]);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/community/group-categories")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/community/group-categories", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    // Check the listed category is rendered
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(body.contains(r#"aria-label="Edit group category: Meetup""#));
 }
 
 #[tokio::test]
 async fn test_update_invalid_payload() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let group_category_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
+    expect_community_access(&mut db, &ids, CommunityPermission::TaxonomyWrite);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!(
-            "/dashboard/community/group-categories/{group_category_id}/update"
-        ))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("name="))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "PUT",
+        &format!("/dashboard/community/group-categories/{group_category_id}/update"),
+        ids.session_id,
+        "name=",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(!bytes.is_empty());
+    assert_eq!(
+        bytes.as_ref(),
+        b"name: value cannot be empty or whitespace-only\n"
+    );
 }
 
 #[tokio::test]
 async fn test_update_page_not_found() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let group_category_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let categories = vec![sample_group_category()];
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
-    db.expect_list_group_categories()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(categories.clone()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_page_reads(&mut db, &ids, vec![sample_group_category()]);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
-            "/dashboard/community/group-categories/{group_category_id}/update"
-        ))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/community/group-categories/{group_category_id}/update"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -335,106 +190,67 @@ async fn test_update_page_not_found() {
 #[tokio::test]
 async fn test_update_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let group_category_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let mut category = sample_group_category();
-    category.group_category_id = group_category_id;
-    let categories = vec![category];
+    let category = GroupCategory {
+        group_category_id,
+        name: "Platform Engineering".to_string(),
+        ..sample_group_category()
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
-    db.expect_list_group_categories()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(categories.clone()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_page_reads(&mut db, &ids, vec![sample_group_category(), category]);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
-            "/dashboard/community/group-categories/{group_category_id}/update"
-        ))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/community/group-categories/{group_category_id}/update"),
+        ids.session_id,
     );
-    assert!(!bytes.is_empty());
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the requested category is rendered in the form
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(body.contains(&format!(
+        r#"hx-put="/dashboard/community/group-categories/{group_category_id}/update""#
+    )));
+    assert!(body.contains(r#"value="Platform Engineering""#));
 }
 
 #[tokio::test]
 async fn test_update_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let group_category_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
     let form = GroupCategoryInput {
         name: "Cloud Native".to_string(),
     };
-    let expected_name = form.name.clone();
     let body = serde_qs::to_string(&form).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
+    expect_community_access(&mut db, &ids, CommunityPermission::TaxonomyWrite);
     db.expect_update_group_category()
         .times(1)
-        .withf(move |uid, cid, gcid, category| {
-            *uid == user_id
-                && *cid == community_id
-                && *gcid == group_category_id
-                && category.name == expected_name
+        .withf(move |user_id, community_id, id, category| {
+            *user_id == ids.user_id
+                && *community_id == ids.community_id
+                && *id == group_category_id
+                && category.name == form.name
         })
         .returning(|_, _, _, _| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!(
-            "/dashboard/community/group-categories/{group_category_id}/update"
-        ))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "PUT",
+        &format!("/dashboard/community/group-categories/{group_category_id}/update"),
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_empty_hx_trigger_response(
@@ -443,4 +259,17 @@ async fn test_update_success() {
         StatusCode::NO_CONTENT,
         "refresh-community-dashboard-table",
     );
+}
+
+// Helpers.
+
+/// Expects the reads the list and update pages perform.
+fn expect_page_reads(db: &mut MockDB, ids: &DashboardIds, categories: Vec<GroupCategory>) {
+    let ids = *ids;
+    expect_community_access(db, &ids, CommunityPermission::Read);
+    expect_community_permission_result(db, &ids, CommunityPermission::TaxonomyWrite, true);
+    db.expect_list_group_categories()
+        .times(1)
+        .withf(move |community_id| *community_id == ids.community_id)
+        .returning(move |_| Ok(categories.clone()));
 }

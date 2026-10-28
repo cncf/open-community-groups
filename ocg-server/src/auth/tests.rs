@@ -21,18 +21,14 @@ use crate::{
 use super::*;
 
 #[tokio::test]
-async fn authenticate_dispatches_password_credentials() {
+async fn test_authenticate_dispatches_password_credentials() {
     // Setup database mock
-    let password_hash = generate_hash("correct-password");
+    let user = User {
+        password: Some(generate_hash("correct-password")),
+        ..sample_user()
+    };
     let mut db = MockDB::new();
-    db.expect_get_user_by_username()
-        .times(1)
-        .withf(|username| username == "test-user")
-        .returning(move |_| {
-            let mut user = sample_user();
-            user.password = Some(password_hash.clone());
-            Ok(Some(user))
-        });
+    expect_user_by_username(&mut db, Some(user));
     let db: DynDB = Arc::new(db);
 
     // Execute authentication
@@ -48,13 +44,14 @@ async fn authenticate_dispatches_password_credentials() {
     .unwrap()
     .unwrap();
 
-    // Check result
+    // Check the user is returned without the password hash
     assert!(user.password.is_none());
+    assert_eq!(user.email, "user@example.com");
     assert_eq!(user.username, "test-user");
 }
 
 #[tokio::test]
-async fn authenticate_maps_password_backend_error_to_auth_error() {
+async fn test_authenticate_maps_password_backend_error_to_auth_error() {
     // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_user_by_username()
@@ -82,7 +79,7 @@ async fn authenticate_maps_password_backend_error_to_auth_error() {
 }
 
 #[tokio::test]
-async fn authenticate_maps_oauth2_backend_error_to_auth_error() {
+async fn test_authenticate_maps_oauth2_backend_error_to_auth_error() {
     // Setup backend without configured providers
     let db: DynDB = Arc::new(MockDB::new());
     let backend = authn_backend(db).await;
@@ -105,7 +102,7 @@ async fn authenticate_maps_oauth2_backend_error_to_auth_error() {
 }
 
 #[tokio::test]
-async fn authenticate_maps_oidc_backend_error_to_auth_error() {
+async fn test_authenticate_maps_oidc_backend_error_to_auth_error() {
     // Setup backend without configured providers
     let db: DynDB = Arc::new(MockDB::new());
     let backend = authn_backend(db).await;
@@ -129,57 +126,14 @@ async fn authenticate_maps_oidc_backend_error_to_auth_error() {
 }
 
 #[tokio::test]
-async fn authenticate_oauth2_returns_error_when_provider_missing() {
-    // Setup backend without configured providers
-    let db: DynDB = Arc::new(MockDB::new());
-    let backend = authn_backend(db).await;
-
-    // Execute authentication
-    let result = backend
-        .authenticate_oauth2(OAuth2Credentials {
-            code: "code".to_string(),
-            provider: OAuth2Provider::GitHub,
-        })
-        .await;
-
-    // Check result
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("oauth2 provider not found"));
-}
-
-#[tokio::test]
-async fn authenticate_oidc_returns_error_when_provider_missing() {
-    // Setup backend without configured providers
-    let db: DynDB = Arc::new(MockDB::new());
-    let backend = authn_backend(db).await;
-
-    // Execute authentication
-    let result = backend
-        .authenticate_oidc(OidcCredentials {
-            code: "code".to_string(),
-            nonce: oidc::Nonce::new("nonce".to_string()),
-            provider: OidcProvider::LinuxFoundation,
-        })
-        .await;
-
-    // Check result
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("oidc provider not found"));
-}
-
-#[tokio::test]
-async fn authenticate_password_returns_none_when_password_is_incorrect() {
+async fn test_authenticate_password_returns_none_when_password_is_incorrect() {
     // Setup database mock
-    let password_hash = generate_hash("correct-password");
+    let user = User {
+        password: Some(generate_hash("correct-password")),
+        ..sample_user()
+    };
     let mut db = MockDB::new();
-    db.expect_get_user_by_username()
-        .times(1)
-        .withf(|username| username == "test-user")
-        .returning(move |_| {
-            let mut user = sample_user();
-            user.password = Some(password_hash.clone());
-            Ok(Some(user))
-        });
+    expect_user_by_username(&mut db, Some(user));
     let db: DynDB = Arc::new(db);
 
     // Execute authentication
@@ -197,17 +151,14 @@ async fn authenticate_password_returns_none_when_password_is_incorrect() {
 }
 
 #[tokio::test]
-async fn authenticate_password_returns_none_when_password_is_missing() {
+async fn test_authenticate_password_returns_none_when_password_is_missing() {
     // Setup database mock
+    let user = User {
+        password: None,
+        ..sample_user()
+    };
     let mut db = MockDB::new();
-    db.expect_get_user_by_username()
-        .times(1)
-        .withf(|username| username == "test-user")
-        .returning(|_| {
-            let mut user = sample_user();
-            user.password = None;
-            Ok(Some(user))
-        });
+    expect_user_by_username(&mut db, Some(user));
     let db: DynDB = Arc::new(db);
 
     // Execute authentication
@@ -225,13 +176,10 @@ async fn authenticate_password_returns_none_when_password_is_missing() {
 }
 
 #[tokio::test]
-async fn authenticate_password_returns_none_when_user_not_found() {
+async fn test_authenticate_password_returns_none_when_user_not_found() {
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_user_by_username()
-        .times(1)
-        .withf(|username| username == "test-user")
-        .returning(|_| Ok(None));
+    expect_user_by_username(&mut db, None);
     let db: DynDB = Arc::new(db);
 
     // Execute authentication
@@ -246,41 +194,10 @@ async fn authenticate_password_returns_none_when_user_not_found() {
 
     // Check result
     assert!(result.is_none());
-}
-
-#[tokio::test]
-async fn authenticate_password_returns_user_without_password_when_valid() {
-    // Setup database mock
-    let password_hash = generate_hash("correct-password");
-    let mut db = MockDB::new();
-    db.expect_get_user_by_username()
-        .times(1)
-        .withf(|username| username == "test-user")
-        .returning(move |_| {
-            let mut user = sample_user();
-            user.password = Some(password_hash.clone());
-            Ok(Some(user))
-        });
-    let db: DynDB = Arc::new(db);
-
-    // Execute authentication
-    let backend = authn_backend(db).await;
-    let user = backend
-        .authenticate_password(PasswordCredentials {
-            password: "correct-password".to_string(),
-            username: "test-user".to_string(),
-        })
-        .await
-        .unwrap()
-        .unwrap();
-
-    // Check result
-    assert!(user.password.is_none());
-    assert_eq!(user.email, "user@example.com");
 }
 
 #[test]
-fn from_user_to_external_user_profile_drops_password() {
+fn test_from_user_to_external_user_profile_drops_password() {
     // Setup input user
     let mut user = sample_user();
     user.has_password = Some(true);
@@ -296,7 +213,7 @@ fn from_user_to_external_user_profile_drops_password() {
 }
 
 #[tokio::test]
-async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
+async fn test_get_or_sign_up_external_user_merges_provider_into_existing_user() {
     // Setup database mock
     let mut db = MockDB::new();
     let existing_user = sample_user();
@@ -304,16 +221,8 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
     let incoming_provider = sample_linuxfoundation_user_provider();
     let profile = sample_external_user_profile(Some(incoming_provider.clone()));
 
-    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
-        .times(1)
-        .withf(|issuer, subject| {
-            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
-        })
-        .returning(|_, _| Ok(None));
-    db.expect_get_user_by_email_for_external_auth()
-        .times(1)
-        .withf(|email| email == "user@example.com")
-        .returning(move |_| Ok(Some(existing_user.clone())));
+    expect_lf_identity_lookup(&mut db, None);
+    expect_email_lookup(&mut db, Some(existing_user));
     db.expect_update_user_provider()
         .times(1)
         .withf(move |user_id, provider| {
@@ -345,7 +254,7 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
 }
 
 #[tokio::test]
-async fn get_or_sign_up_external_user_rejects_linuxfoundation_identity_relink() {
+async fn test_get_or_sign_up_external_user_rejects_linuxfoundation_identity_relink() {
     // Setup database mock
     let mut db = MockDB::new();
     let mut existing_provider = sample_user_provider();
@@ -361,16 +270,8 @@ async fn get_or_sign_up_external_user_rejects_linuxfoundation_identity_relink() 
     };
     let profile = sample_external_user_profile(Some(sample_linuxfoundation_user_provider()));
 
-    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
-        .times(1)
-        .withf(|issuer, subject| {
-            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
-        })
-        .returning(|_, _| Ok(None));
-    db.expect_get_user_by_email_for_external_auth()
-        .times(1)
-        .withf(|email| email == "user@example.com")
-        .returning(move |_| Ok(Some(existing_user.clone())));
+    expect_lf_identity_lookup(&mut db, None);
+    expect_email_lookup(&mut db, Some(existing_user));
     db.expect_update_user_provider().times(0);
     db.expect_sign_up_user().times(0);
     let db: DynDB = Arc::new(db);
@@ -384,7 +285,8 @@ async fn get_or_sign_up_external_user_rejects_linuxfoundation_identity_relink() 
 }
 
 #[tokio::test]
-async fn get_or_sign_up_external_user_ignores_linuxfoundation_username_mismatch_without_identity() {
+async fn test_get_or_sign_up_external_user_ignores_linuxfoundation_username_mismatch_without_identity()
+ {
     // Setup database mock
     let mut db = MockDB::new();
     let existing_user = User {
@@ -397,16 +299,8 @@ async fn get_or_sign_up_external_user_ignores_linuxfoundation_username_mismatch_
     let incoming_provider = sample_linuxfoundation_user_provider();
     let profile = sample_external_user_profile(Some(incoming_provider.clone()));
 
-    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
-        .times(1)
-        .withf(|issuer, subject| {
-            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
-        })
-        .returning(|_, _| Ok(None));
-    db.expect_get_user_by_email_for_external_auth()
-        .times(1)
-        .withf(|email| email == "user@example.com")
-        .returning(move |_| Ok(Some(existing_user.clone())));
+    expect_lf_identity_lookup(&mut db, None);
+    expect_email_lookup(&mut db, Some(existing_user));
     db.expect_update_user_provider()
         .times(1)
         .withf(move |user_id, provider| {
@@ -425,7 +319,7 @@ async fn get_or_sign_up_external_user_ignores_linuxfoundation_username_mismatch_
 }
 
 #[tokio::test]
-async fn get_or_sign_up_external_user_reconciles_linuxfoundation_identity_before_email() {
+async fn test_get_or_sign_up_external_user_reconciles_linuxfoundation_identity_before_email() {
     // Setup database mock
     let mut db = MockDB::new();
     let existing_user = User {
@@ -440,12 +334,7 @@ async fn get_or_sign_up_external_user_reconciles_linuxfoundation_identity_before
     profile.email = "new@example.com".to_string();
     profile.name = "New Test User".to_string();
 
-    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
-        .times(1)
-        .withf(|issuer, subject| {
-            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
-        })
-        .returning(move |_, _| Ok(Some(existing_user.clone())));
+    expect_lf_identity_lookup(&mut db, Some(existing_user));
     db.expect_update_user_external_auth()
         .times(1)
         .withf(move |user_id, summary| {
@@ -471,7 +360,7 @@ async fn get_or_sign_up_external_user_reconciles_linuxfoundation_identity_before
 }
 
 #[tokio::test]
-async fn get_or_sign_up_external_user_sets_provider_for_existing_user_without_provider() {
+async fn test_get_or_sign_up_external_user_sets_provider_for_existing_user_without_provider() {
     // Setup database mock
     let mut db = MockDB::new();
     let existing_user = sample_user_without_provider();
@@ -479,10 +368,7 @@ async fn get_or_sign_up_external_user_sets_provider_for_existing_user_without_pr
     let incoming_provider = sample_user_provider();
     let profile = sample_external_user_profile(Some(incoming_provider.clone()));
 
-    db.expect_get_user_by_email_for_external_auth()
-        .times(1)
-        .withf(|email| email == "user@example.com")
-        .returning(move |_| Ok(Some(existing_user.clone())));
+    expect_email_lookup(&mut db, Some(existing_user));
     db.expect_update_user_provider()
         .times(1)
         .withf(move |user_id, provider| {
@@ -501,16 +387,13 @@ async fn get_or_sign_up_external_user_sets_provider_for_existing_user_without_pr
 }
 
 #[tokio::test]
-async fn get_or_sign_up_external_user_skips_provider_update_when_unchanged() {
+async fn test_get_or_sign_up_external_user_skips_provider_update_when_unchanged() {
     // Setup database mock
     let mut db = MockDB::new();
     let existing_user = sample_user();
     let profile = sample_external_user_profile(Some(sample_user_provider()));
 
-    db.expect_get_user_by_email_for_external_auth()
-        .times(1)
-        .withf(|email| email == "user@example.com")
-        .returning(move |_| Ok(Some(existing_user.clone())));
+    expect_email_lookup(&mut db, Some(existing_user));
     db.expect_update_user_provider().times(0);
     db.expect_sign_up_user().times(0);
     let db: DynDB = Arc::new(db);
@@ -524,17 +407,14 @@ async fn get_or_sign_up_external_user_skips_provider_update_when_unchanged() {
 }
 
 #[tokio::test]
-async fn get_or_sign_up_external_user_signs_up_new_user() {
+async fn test_get_or_sign_up_external_user_signs_up_new_user() {
     // Setup database mock
     let mut db = MockDB::new();
     let provider = sample_user_provider();
     let profile = sample_external_user_profile(Some(provider.clone()));
     let signed_up_user = sample_user();
 
-    db.expect_get_user_by_email_for_external_auth()
-        .times(1)
-        .withf(|email| email == "user@example.com")
-        .returning(|_| Ok(None));
+    expect_email_lookup(&mut db, None);
     db.expect_update_user_provider().times(0);
     db.expect_sign_up_user()
         .times(1)
@@ -558,7 +438,7 @@ async fn get_or_sign_up_external_user_signs_up_new_user() {
 }
 
 #[tokio::test]
-async fn get_or_sign_up_external_user_activates_pre_registered_user() {
+async fn test_get_or_sign_up_external_user_activates_pre_registered_user() {
     // Setup database mock
     let mut db = MockDB::new();
     let mut pre_registered_user = sample_user();
@@ -567,16 +447,8 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
     let activated_user = sample_user();
     let profile = sample_external_user_profile(Some(sample_linuxfoundation_user_provider()));
 
-    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
-        .times(1)
-        .withf(|issuer, subject| {
-            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
-        })
-        .returning(|_, _| Ok(None));
-    db.expect_get_user_by_email_for_external_auth()
-        .times(1)
-        .withf(|email| email == "user@example.com")
-        .returning(move |_| Ok(Some(pre_registered_user.clone())));
+    expect_lf_identity_lookup(&mut db, None);
+    expect_email_lookup(&mut db, Some(pre_registered_user));
     db.expect_activate_pre_registered_user_external_provider()
         .times(1)
         .withf(move |user_id, summary| {
@@ -598,16 +470,13 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
 }
 
 #[tokio::test]
-async fn get_or_sign_up_external_user_skips_provider_update_when_missing() {
+async fn test_get_or_sign_up_external_user_skips_provider_update_when_missing() {
     // Setup database mock
     let mut db = MockDB::new();
     let existing_user = sample_user();
     let profile = sample_external_user_profile(None);
 
-    db.expect_get_user_by_email_for_external_auth()
-        .times(1)
-        .withf(|email| email == "user@example.com")
-        .returning(move |_| Ok(Some(existing_user.clone())));
+    expect_email_lookup(&mut db, Some(existing_user));
     db.expect_update_user_provider().times(0);
     db.expect_sign_up_user().times(0);
     let db: DynDB = Arc::new(db);
@@ -621,7 +490,7 @@ async fn get_or_sign_up_external_user_skips_provider_update_when_missing() {
 }
 
 #[tokio::test]
-async fn get_user_maps_db_error_to_auth_error() {
+async fn test_get_user_maps_db_error_to_auth_error() {
     // Setup database mock
     let user_id = Uuid::new_v4();
     let mut db = MockDB::new();
@@ -643,7 +512,7 @@ async fn get_user_maps_db_error_to_auth_error() {
 }
 
 #[tokio::test]
-async fn get_user_returns_none_when_user_not_found() {
+async fn test_get_user_returns_none_when_user_not_found() {
     // Setup database mock
     let user_id = Uuid::new_v4();
     let mut db = MockDB::new();
@@ -662,7 +531,7 @@ async fn get_user_returns_none_when_user_not_found() {
 }
 
 #[tokio::test]
-async fn setup_oidc_providers_rejects_invalid_issuer_url() {
+async fn test_setup_oidc_providers_rejects_invalid_issuer_url() {
     // Setup invalid OIDC configuration
     let mut oidc_cfg: OidcConfig = HashMap::new();
     let mut provider_cfg = sample_oidc_provider_config();
@@ -678,7 +547,7 @@ async fn setup_oidc_providers_rejects_invalid_issuer_url() {
 }
 
 #[test]
-fn setup_oauth2_providers_builds_provider_map_when_config_is_valid() {
+fn test_setup_oauth2_providers_builds_provider_map_when_config_is_valid() {
     // Setup valid OAuth2 configuration
     let mut oauth2_cfg: OAuth2Config = HashMap::new();
     let provider_cfg = sample_oauth2_provider_config();
@@ -697,52 +566,46 @@ fn setup_oauth2_providers_builds_provider_map_when_config_is_valid() {
 }
 
 #[test]
-fn setup_oauth2_providers_rejects_invalid_auth_url() {
-    // Setup invalid OAuth2 configuration
-    let mut oauth2_cfg: OAuth2Config = HashMap::new();
-    let mut provider_cfg = sample_oauth2_provider_config();
-    provider_cfg.auth_url = "invalid-url".to_string();
-    oauth2_cfg.insert(OAuth2Provider::GitHub, provider_cfg);
+fn test_setup_oauth2_providers_rejects_invalid_urls() {
+    // Setup configurations with one invalid URL each
+    let valid_cfg = sample_oauth2_provider_config();
+    let cases = [
+        (
+            "invalid auth url",
+            OAuth2ProviderConfig {
+                auth_url: "invalid-url".to_string(),
+                ..valid_cfg.clone()
+            },
+        ),
+        (
+            "invalid redirect uri",
+            OAuth2ProviderConfig {
+                redirect_uri: "invalid-url".to_string(),
+                ..valid_cfg.clone()
+            },
+        ),
+        (
+            "invalid token url",
+            OAuth2ProviderConfig {
+                token_url: "invalid-url".to_string(),
+                ..valid_cfg
+            },
+        ),
+    ];
 
-    // Execute provider setup
-    let result = AuthnBackend::setup_oauth2_providers(&oauth2_cfg);
+    for (case, provider_cfg) in cases {
+        let oauth2_cfg: OAuth2Config = HashMap::from([(OAuth2Provider::GitHub, provider_cfg)]);
 
-    // Check result
-    assert!(result.is_err());
+        // Execute provider setup
+        let result = AuthnBackend::setup_oauth2_providers(&oauth2_cfg);
+
+        // Check result
+        assert!(result.is_err(), "{case}");
+    }
 }
 
 #[test]
-fn setup_oauth2_providers_rejects_invalid_redirect_uri() {
-    // Setup invalid OAuth2 configuration
-    let mut oauth2_cfg: OAuth2Config = HashMap::new();
-    let mut provider_cfg = sample_oauth2_provider_config();
-    provider_cfg.redirect_uri = "invalid-url".to_string();
-    oauth2_cfg.insert(OAuth2Provider::GitHub, provider_cfg);
-
-    // Execute provider setup
-    let result = AuthnBackend::setup_oauth2_providers(&oauth2_cfg);
-
-    // Check result
-    assert!(result.is_err());
-}
-
-#[test]
-fn setup_oauth2_providers_rejects_invalid_token_url() {
-    // Setup invalid OAuth2 configuration
-    let mut oauth2_cfg: OAuth2Config = HashMap::new();
-    let mut provider_cfg = sample_oauth2_provider_config();
-    provider_cfg.token_url = "invalid-url".to_string();
-    oauth2_cfg.insert(OAuth2Provider::GitHub, provider_cfg);
-
-    // Execute provider setup
-    let result = AuthnBackend::setup_oauth2_providers(&oauth2_cfg);
-
-    // Check result
-    assert!(result.is_err());
-}
-
-#[test]
-fn user_debug_does_not_expose_sensitive_fields() {
+fn test_user_debug_does_not_expose_sensitive_fields() {
     // Setup input user
     let mut user = sample_user();
     user.auth_hash = "private-auth-hash".to_string();
@@ -758,64 +621,40 @@ fn user_debug_does_not_expose_sensitive_fields() {
 }
 
 #[test]
-fn user_is_profile_complete_returns_false_when_bio_is_missing() {
-    // Setup user missing bio
-    let mut user = sample_user();
-    user.github_url = Some("https://github.com/test-user".to_string());
-    user.title = Some("Software Engineer".to_string());
+fn test_user_is_profile_complete_requires_title_bio_and_profile_link() {
+    // Setup profile field combinations: (case, bio, github_url, title, expected)
+    let bio = Some("Builds community tools.");
+    let github_url = Some("https://github.com/test-user");
+    let title = Some("Software Engineer");
+    let cases = [
+        ("bio missing", None, github_url, title, false),
+        ("profile link missing", bio, None, title, false),
+        ("title missing", bio, github_url, None, false),
+        (
+            "whitespace-only values",
+            Some("   "),
+            Some("\n\t"),
+            Some(" "),
+            false,
+        ),
+        ("required fields present", bio, github_url, title, true),
+    ];
 
-    // Check profile completion result
-    assert!(!user.is_profile_complete());
+    for (case, bio, github_url, title, expected) in cases {
+        let user = User {
+            bio: bio.map(String::from),
+            github_url: github_url.map(String::from),
+            title: title.map(String::from),
+            ..sample_user()
+        };
+
+        // Check profile completion result
+        assert_eq!(user.is_profile_complete(), expected, "{case}");
+    }
 }
 
 #[test]
-fn user_is_profile_complete_returns_false_when_social_link_is_missing() {
-    // Setup user missing profile links
-    let mut user = sample_user();
-    user.bio = Some("Builds community tools.".to_string());
-    user.title = Some("Software Engineer".to_string());
-
-    // Check profile completion result
-    assert!(!user.is_profile_complete());
-}
-
-#[test]
-fn user_is_profile_complete_returns_false_when_title_is_missing() {
-    // Setup user missing title
-    let mut user = sample_user();
-    user.bio = Some("Builds community tools.".to_string());
-    user.github_url = Some("https://github.com/test-user".to_string());
-
-    // Check profile completion result
-    assert!(!user.is_profile_complete());
-}
-
-#[test]
-fn user_is_profile_complete_returns_false_when_values_are_whitespace_only() {
-    // Setup user with whitespace-only profile fields
-    let mut user = sample_user();
-    user.bio = Some("   ".to_string());
-    user.github_url = Some("\n\t".to_string());
-    user.title = Some(" ".to_string());
-
-    // Check profile completion result
-    assert!(!user.is_profile_complete());
-}
-
-#[test]
-fn user_is_profile_complete_returns_true_when_required_fields_are_present() {
-    // Setup complete profile
-    let mut user = sample_user();
-    user.bio = Some("Builds community tools.".to_string());
-    user.github_url = Some("https://github.com/test-user".to_string());
-    user.title = Some("Software Engineer".to_string());
-
-    // Check profile completion result
-    assert!(user.is_profile_complete());
-}
-
-#[test]
-fn external_user_profile_debug_does_not_expose_password() {
+fn test_external_user_profile_debug_does_not_expose_password() {
     // Setup input summary
     let summary = ExternalUserProfile {
         email: "user@example.com".to_string(),
@@ -835,7 +674,7 @@ fn external_user_profile_debug_does_not_expose_password() {
 }
 
 #[test]
-fn external_user_profile_from_oidc_id_token_claims_extracts_verified_user() {
+fn test_external_user_profile_from_oidc_id_token_claims_extracts_verified_user() {
     // Setup valid claims
     let claims = sample_oidc_claims(
         Some("user@example.com"),
@@ -868,92 +707,68 @@ fn external_user_profile_from_oidc_id_token_claims_extracts_verified_user() {
 }
 
 #[test]
-fn external_user_profile_from_oidc_id_token_claims_rejects_missing_email() {
-    // Setup invalid claims
-    let claims = sample_oidc_claims(None, Some(true), Some("Test User"), Some("test-user"));
+fn test_external_user_profile_from_oidc_id_token_claims_rejects_incomplete_claims() {
+    // Setup claims: (case, email, email_verified, name, nickname, expected error)
+    let email = Some("user@example.com");
+    let name = Some("Test User");
+    let nickname = Some("test-user");
+    let cases = [
+        (
+            "email missing",
+            None,
+            Some(true),
+            name,
+            nickname,
+            "email missing",
+        ),
+        (
+            "name missing",
+            email,
+            Some(true),
+            None,
+            nickname,
+            "name missing",
+        ),
+        (
+            "nickname missing",
+            email,
+            Some(true),
+            name,
+            None,
+            "nickname missing",
+        ),
+        (
+            "email verification missing",
+            email,
+            None,
+            name,
+            nickname,
+            "email not verified",
+        ),
+        (
+            "email unverified",
+            email,
+            Some(false),
+            name,
+            nickname,
+            "email not verified",
+        ),
+    ];
 
-    // Execute conversion
-    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
+    for (case, email, email_verified, name, nickname, expected_error) in cases {
+        let claims = sample_oidc_claims(email, email_verified, name, nickname);
 
-    // Check result
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("email missing"));
+        // Execute conversion
+        let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
+
+        // Check result
+        let err = result.expect_err(case);
+        assert!(err.to_string().contains(expected_error), "{case}: {err}");
+    }
 }
 
 #[test]
-fn external_user_profile_from_oidc_id_token_claims_rejects_missing_name() {
-    // Setup invalid claims
-    let claims = sample_oidc_claims(
-        Some("user@example.com"),
-        Some(true),
-        None,
-        Some("test-user"),
-    );
-
-    // Execute conversion
-    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
-
-    // Check result
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("name missing"));
-}
-
-#[test]
-fn external_user_profile_from_oidc_id_token_claims_rejects_missing_nickname() {
-    // Setup invalid claims
-    let claims = sample_oidc_claims(
-        Some("user@example.com"),
-        Some(true),
-        Some("Test User"),
-        None,
-    );
-
-    // Execute conversion
-    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
-
-    // Check result
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("nickname missing"));
-}
-
-#[test]
-fn external_user_profile_from_oidc_id_token_claims_rejects_missing_email_verified() {
-    // Setup invalid claims
-    let claims = sample_oidc_claims(
-        Some("user@example.com"),
-        None,
-        Some("Test User"),
-        Some("test-user"),
-    );
-
-    // Execute conversion
-    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
-
-    // Check result
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("email not verified"));
-}
-
-#[test]
-fn external_user_profile_from_oidc_id_token_claims_rejects_unverified_email() {
-    // Setup invalid claims
-    let claims = sample_oidc_claims(
-        Some("user@example.com"),
-        Some(false),
-        Some("Test User"),
-        Some("test-user"),
-    );
-
-    // Execute conversion
-    let result = ExternalUserProfile::from_oidc_id_token_claims(&claims);
-
-    // Check result
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("email not verified"));
-}
-
-#[test]
-fn user_session_auth_hash_matches_auth_hash_bytes() {
+fn test_user_session_auth_hash_matches_auth_hash_bytes() {
     // Setup input user
     let mut user = sample_user();
     user.auth_hash = "private-auth-hash".to_string();
@@ -966,6 +781,32 @@ fn user_session_auth_hash_matches_auth_hash_bytes() {
 }
 
 // Helpers.
+
+/// Expect the email lookup for the sample profile to return the user.
+fn expect_email_lookup(db: &mut MockDB, user: Option<User>) {
+    db.expect_get_user_by_email_for_external_auth()
+        .times(1)
+        .withf(|email| email == "user@example.com")
+        .returning(move |_| Ok(user.clone()));
+}
+
+/// Expect the LF identity lookup for the sample profile to return the user.
+fn expect_lf_identity_lookup(db: &mut MockDB, user: Option<User>) {
+    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
+        .times(1)
+        .withf(|issuer, subject| {
+            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
+        })
+        .returning(move |_, _| Ok(user.clone()));
+}
+
+/// Expect the username lookup for the sample credentials to return the user.
+fn expect_user_by_username(db: &mut MockDB, user: Option<User>) {
+    db.expect_get_user_by_username()
+        .times(1)
+        .withf(|username| username == "test-user")
+        .returning(move |_| Ok(user.clone()));
+}
 
 async fn authn_backend(db: DynDB) -> AuthnBackend {
     let http_client_cfg = HttpClientConfig::default();

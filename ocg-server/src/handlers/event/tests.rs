@@ -1,30 +1,27 @@
 use anyhow::anyhow;
 use axum::{
-    body::{Body, to_bytes},
+    body::Body,
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, LOCATION},
+        header::{CACHE_CONTROL, CONTENT_TYPE, LOCATION},
     },
 };
-use axum_login::tower_sessions::session;
 use chrono::TimeZone;
 use serde_json::{from_slice, json};
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     activity_tracker::{Activity, MockActivityTracker},
-    db::mock::MockDB,
+    db::mock::{MockDB, expect_site_settings},
     handlers::tests::*,
     router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
     services::{
         enrollment::{AttendOutcome, EnrollmentError, MockEnrollmentManager},
         inbox::{InboxError, MockInboxManager},
-        notifications::MockNotificationsManager,
         payments::MockPaymentsManager,
     },
     types::{
-        event::{EventEnrollmentState, EventEnrollmentStatus, EventLeaveOutcome},
+        event::{EventEnrollmentState, EventEnrollmentStatus, EventFull, EventLeaveOutcome},
         inbox::{InboxContactContext, InboxContactViewer},
         payments::{
             EventPurchaseChargeModel, EventPurchaseStatus, EventTicketCurrentPrice,
@@ -94,10 +91,7 @@ async fn test_availability_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_test_community(&mut db, community_id);
     db.expect_get_event_full_by_slug()
         .times(1)
         .withf(move |id, group_slug, event_slug| {
@@ -106,17 +100,14 @@ async fn test_availability_success() {
         .returning(move |_, _, _| Ok(Some(event.clone())));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test-community/group/test-group/event/test-event/availability")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        "/test-community/group/test-group/event/test-event/availability",
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
     let payload: serde_json::Value = from_slice(&bytes).unwrap();
 
     // Check response matches expectations
@@ -151,30 +142,20 @@ async fn test_page_community_not_found() {
         .times(1)
         .withf(|name| name == "missing-community")
         .returning(|_| Ok(None));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_site_settings(&mut db);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/missing-community/group/test-group/event/test-event")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        "/missing-community/group/test-group/event/test-event",
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::NOT_FOUND);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
@@ -186,45 +167,23 @@ async fn test_page_community_not_found() {
 
 #[tokio::test]
 async fn test_page_not_found() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-
     // Setup database mock
+    let community_id = Uuid::new_v4();
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    db.expect_get_event_full_by_slug()
-        .times(1)
-        .withf(move |id, group_slug, event_slug| {
-            *id == community_id && group_slug == "test-group" && event_slug == "missing-event"
-        })
-        .returning(move |_, _, _| Ok(None));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_event_page_reads(&mut db, community_id, "test-group", "missing-event", None);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test-community/group/test-group/event/missing-event")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        "/test-community/group/test-group/event/missing-event",
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::NOT_FOUND);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
@@ -238,9 +197,7 @@ async fn test_page_not_found() {
 async fn test_page_renders_only_named_organizers() {
     // Setup an event with one named and one unnamed organizer
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let mut event = sample_event_full(community_id, event_id, group_id);
+    let mut event = sample_event_full(community_id, Uuid::new_v4(), Uuid::new_v4());
     event.community.name = "test-community".to_string();
     event.organizers = vec![
         User {
@@ -261,35 +218,23 @@ async fn test_page_renders_only_named_organizers() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    db.expect_get_event_full_by_slug()
-        .times(1)
-        .withf(move |id, group_slug, event_slug| {
-            *id == community_id && group_slug == "test-group" && event_slug == "test-event"
-        })
-        .returning(move |_, _, _| Ok(Some(event.clone())));
+    expect_event_page_reads(
+        &mut db,
+        community_id,
+        "test-group",
+        "test-event",
+        Some(event),
+    );
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test-community/group/test-group/event/test-event")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/test-community/group/test-group/event/test-event")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the organizers section lists only the named organizer
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("ada-organizer"));
     assert!(!body.contains("bob-organizer"));
@@ -300,8 +245,7 @@ async fn test_page_renders_contact_opener_without_organizers() {
     // Setup an event without organizers
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let mut event = sample_event_full(community_id, event_id, group_id);
+    let mut event = sample_event_full(community_id, event_id, Uuid::new_v4());
     event.community.name = "test-community".to_string();
     event.organizers = vec![];
     event.group.slug = "test-group".to_string();
@@ -309,35 +253,23 @@ async fn test_page_renders_contact_opener_without_organizers() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    db.expect_get_event_full_by_slug()
-        .times(1)
-        .withf(move |id, group_slug, event_slug| {
-            *id == community_id && group_slug == "test-group" && event_slug == "test-event"
-        })
-        .returning(move |_, _, _| Ok(Some(event.clone())));
+    expect_event_page_reads(
+        &mut db,
+        community_id,
+        "test-group",
+        "test-event",
+        Some(event),
+    );
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test-community/group/test-group/event/test-event")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/test-community/group/test-group/event/test-event")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the contact opener and modal render without organizers
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains(&format!(
         "hx-get=\"/test-community/event/{event_id}/contact-modal\""
@@ -348,46 +280,37 @@ async fn test_page_renders_contact_opener_without_organizers() {
 
 #[tokio::test]
 async fn test_page_temporarily_redirects_generated_group_slug_to_pretty_slug() {
-    // Setup identifiers and data structures
+    // Setup an event whose group has a pretty slug
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let mut event = sample_event_full(community_id, event_id, group_id);
+    let mut event = sample_event_full(community_id, Uuid::new_v4(), Uuid::new_v4());
     event.group.slug = "test-group".to_string();
     event.group.slug_pretty = Some("pretty-group".to_string());
     event.slug = "test-event".to_string();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    db.expect_get_event_full_by_slug()
-        .times(1)
-        .withf(move |id, group_slug, event_slug| {
-            *id == community_id && group_slug == "test-group" && event_slug == "test-event"
-        })
-        .returning(move |_, _, _| Ok(Some(event.clone())));
+    expect_event_page_reads(
+        &mut db,
+        community_id,
+        "test-group",
+        "test-event",
+        Some(event),
+    );
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test-community/group/test-group/event/test-event?utm_source=test")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        "/test-community/group/test-group/event/test-event?utm_source=test",
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
+    assert_empty_response(&parts, &bytes, StatusCode::TEMPORARY_REDIRECT);
     assert_eq!(
-        response.headers().get(LOCATION).unwrap(),
+        parts.headers.get(LOCATION).unwrap(),
         &HeaderValue::from_static(
             "/test-community/group/pretty-group/event/test-event?utm_source=test"
         )
@@ -399,8 +322,7 @@ async fn test_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let mut event = sample_event_full(community_id, event_id, group_id);
+    let mut event = sample_event_full(community_id, event_id, Uuid::new_v4());
     event.community.name = "test-community".to_string();
     event.community.display_name = "Test Community".to_string();
     event.group.name = "Test Group".to_string();
@@ -413,72 +335,48 @@ async fn test_page_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    db.expect_get_event_full_by_slug()
-        .times(1)
-        .withf(move |id, group_slug, event_slug| {
-            *id == community_id && group_slug == "pretty-group" && event_slug == "test-event"
-        })
-        .returning(move |_, _, _| Ok(Some(event.clone())));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_event_page_reads(
+        &mut db,
+        community_id,
+        "pretty-group",
+        "test-event",
+        Some(event),
+    );
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(sample_tracking_server_cfg())
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
         .build()
         .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test-community/group/pretty-group/event/test-event")
+    let request = request("GET", "/test-community/group/pretty-group/event/test-event")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    assert!(body.contains("<title>Test Event - March 5</title>"));
-    assert!(body.contains(
-        r#"<meta name="description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
-    ));
-    assert!(body.contains(
-        r#"<link rel="canonical" href="https://example.test/test-community/group/pretty-group/event/test-event">"#
-    ));
-    assert!(body.contains(r#"<meta property="og:title" content="Test Event - March 5">"#));
-    assert!(body.contains(
-        r#"<meta property="og:url" content="https://example.test/test-community/group/pretty-group/event/test-event">"#
-    ));
-    assert!(body.contains(
-        r#"<meta property="og:description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
-    ));
-    assert!(body.contains(
-        r#"<meta property="og:image" content="https://example.test/images/og/group-og.png">"#
-    ));
-    assert!(body.contains(r#"<meta name="twitter:title" content="Test Event - March 5">"#));
-    assert!(body.contains(
-        r#"<meta name="twitter:description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
-    ));
-    assert!(body.contains(
-        r#"<meta name="twitter:image" content="https://example.test/images/og/group-og.png">"#
-    ));
+    let description = "Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.";
+    let url = "https://example.test/test-community/group/pretty-group/event/test-event";
+    let image = "https://example.test/images/og/group-og.png";
+    for tag in [
+        "<title>Test Event - March 5</title>".to_string(),
+        format!(r#"<meta name="description" content="{description}">"#),
+        format!(r#"<link rel="canonical" href="{url}">"#),
+        r#"<meta property="og:title" content="Test Event - March 5">"#.to_string(),
+        format!(r#"<meta property="og:url" content="{url}">"#),
+        format!(r#"<meta property="og:description" content="{description}">"#),
+        format!(r#"<meta property="og:image" content="{image}">"#),
+        r#"<meta name="twitter:title" content="Test Event - March 5">"#.to_string(),
+        format!(r#"<meta name="twitter:description" content="{description}">"#),
+        format!(r#"<meta name="twitter:image" content="{image}">"#),
+    ] {
+        assert!(body.contains(&tag), "missing {tag}");
+    }
     assert!(body.contains(&format!(
         "hx-get=\"/test-community/event/{event_id}/contact-modal\""
     )));
@@ -493,17 +391,11 @@ async fn test_cfs_modal_rejects_invalid_event_id_before_community_lookup() {
     db.expect_get_community_id_by_name().never();
 
     // Request the modal with a malformed event identifier
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/test-community/event/not-a-uuid/cfs-modal")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/test-community/event/not-a-uuid/cfs-modal")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check path validation rejects the request before community lookup
@@ -517,15 +409,11 @@ async fn test_cfs_modal_success_anonymous() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let event_summary = sample_event_summary(event_id, group_id);
+    let event_summary = sample_event_summary(event_id);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_test_community(&mut db, community_id);
     db.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -535,51 +423,36 @@ async fn test_cfs_modal_success_anonymous() {
         .withf(move |eid| *eid == event_id)
         .returning(|_| Ok(vec![]));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/test-community/event/{event_id}/cfs-modal"))
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", &event_uri(event_id, "cfs-modal"))
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
-    assert!(!bytes.is_empty());
+    // Check the sign-in prompt replaces the submission form
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("You need to sign in to submit a proposal for this event."));
+    assert!(body.contains("href=\"/log-in?next_url=/test-community/group/def5678/event/ghi9abc\""));
+    assert!(!body.contains("id=\"cfs-submission-form\""));
 }
 
 #[tokio::test]
 async fn test_cfs_modal_success_authenticated() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
-    let event_summary = sample_event_summary(event_id, group_id);
+    let event_summary = sample_event_summary(event_id);
     let proposals = vec![sample_event_cfs_session_proposal(session_proposal_id)];
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == ids.community_id && *eid == event_id)
         .returning(move |_, _| Ok(event_summary.clone()));
     db.expect_list_event_labels()
         .times(1)
@@ -587,55 +460,37 @@ async fn test_cfs_modal_success_authenticated() {
         .returning(|_| Ok(vec![]));
     db.expect_list_user_session_proposals_for_cfs_event()
         .times(1)
-        .withf(move |uid, eid| *uid == user_id && *eid == event_id)
+        .withf(move |uid, eid| *uid == ids.user_id && *eid == event_id)
         .returning(move |_, _| Ok(proposals.clone()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/test-community/event/{event_id}/cfs-modal"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(&event_uri(event_id, "cfs-modal"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
-    assert!(!bytes.is_empty());
+    // Check the submission form lists the user's proposals
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("id=\"cfs-submission-form\""));
+    assert!(body.contains(&format!("<option value=\"{session_proposal_id}\"")));
+    assert!(body.contains("Sample Proposal"));
 }
 
 #[tokio::test]
 async fn test_contact_modal_rejects_ineligible_event() {
-    // Setup identifiers and an event that does not accept contact
+    // Setup an event that does not accept contact
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let mut db = MockDB::new();
     expect_test_community(&mut db, community_id);
-    db.expect_get_inbox_contact_context()
-        .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && uid.is_none())
-        .returning(|_, _, _| Ok(None));
+    expect_contact_context(&mut db, community_id, event_id, None, None);
 
     // Request the modal
-    let (parts, bytes) = send_contact_request(
-        db,
-        MockInboxManager::new(),
-        None,
-        "GET",
-        &format!("/test-community/event/{event_id}/contact-modal"),
-        None,
-    )
-    .await;
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", &event_uri(event_id, "contact-modal"))
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the event is not found
     assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
@@ -648,49 +503,40 @@ async fn test_contact_modal_rejects_invalid_event_id() {
     db.expect_get_community_id_by_name().never();
 
     // Request the modal with a malformed event identifier
-    let (parts, _) = send_contact_request(
-        db,
-        MockInboxManager::new(),
-        None,
-        "GET",
-        "/test-community/event/not-a-uuid/contact-modal",
-        None,
-    )
-    .await;
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/test-community/event/not-a-uuid/contact-modal")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check path validation rejects the request
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("not-a-uuid"));
 }
 
 #[tokio::test]
 async fn test_contact_modal_renders_blocked_notice() {
     // Setup a signed-in viewer blocked by spam reports
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let viewer = InboxContactViewer {
+        is_blocked: true,
+        ..sample_contact_viewer()
+    };
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
-    let context = sample_contact_context(
+    expect_member_context(&mut db, &ids);
+    expect_contact_context(
+        &mut db,
+        ids.community_id,
         event_id,
-        Some(InboxContactViewer {
-            is_blocked: true,
-            ..sample_contact_viewer()
-        }),
+        Some(ids.user_id),
+        Some(sample_contact_context(event_id, Some(viewer))),
     );
-    db.expect_get_inbox_contact_context()
-        .times(1)
-        .withf(move |_, _, uid| *uid == Some(user_id))
-        .returning(move |_, _, _| Ok(Some(context.clone())));
 
     // Request the modal
-    let (parts, bytes) = send_contact_request(
-        db,
-        MockInboxManager::new(),
-        Some(session_id),
-        "GET",
-        &format!("/test-community/event/{event_id}/contact-modal"),
-        None,
-    )
-    .await;
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(&event_uri(event_id, "contact-modal"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the blocked notice replaces the form
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -705,32 +551,26 @@ async fn test_contact_modal_renders_blocked_notice() {
 #[tokio::test]
 async fn test_contact_modal_renders_daily_limit_notice() {
     // Setup a signed-in viewer who reached the daily limit
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let viewer = InboxContactViewer {
+        can_start_conversation: false,
+        ..sample_contact_viewer()
+    };
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
-    let context = sample_contact_context(
+    expect_member_context(&mut db, &ids);
+    expect_contact_context(
+        &mut db,
+        ids.community_id,
         event_id,
-        Some(InboxContactViewer {
-            can_start_conversation: false,
-            ..sample_contact_viewer()
-        }),
+        Some(ids.user_id),
+        Some(sample_contact_context(event_id, Some(viewer))),
     );
-    db.expect_get_inbox_contact_context()
-        .times(1)
-        .withf(move |_, _, uid| *uid == Some(user_id))
-        .returning(move |_, _, _| Ok(Some(context.clone())));
 
     // Request the modal
-    let (parts, bytes) = send_contact_request(
-        db,
-        MockInboxManager::new(),
-        Some(session_id),
-        "GET",
-        &format!("/test-community/event/{event_id}/contact-modal"),
-        None,
-    )
-    .await;
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(&event_uri(event_id, "contact-modal"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the limit notice replaces the form
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -742,28 +582,25 @@ async fn test_contact_modal_renders_daily_limit_notice() {
 #[tokio::test]
 async fn test_contact_modal_renders_form_for_signed_in_users() {
     // Setup a signed-in viewer allowed to start a conversation
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
-    let context = sample_contact_context(event_id, Some(sample_contact_viewer()));
-    db.expect_get_inbox_contact_context()
-        .times(1)
-        .withf(move |cid, eid, uid| {
-            *cid == community_id && *eid == event_id && *uid == Some(user_id)
-        })
-        .returning(move |_, _, _| Ok(Some(context.clone())));
+    expect_member_context(&mut db, &ids);
+    expect_contact_context(
+        &mut db,
+        ids.community_id,
+        event_id,
+        Some(ids.user_id),
+        Some(sample_contact_context(
+            event_id,
+            Some(sample_contact_viewer()),
+        )),
+    );
 
     // Request the modal
-    let (parts, bytes) = send_contact_request(
-        db,
-        MockInboxManager::new(),
-        Some(session_id),
-        "GET",
-        &format!("/test-community/event/{event_id}/contact-modal"),
-        None,
-    )
-    .await;
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(&event_uri(event_id, "contact-modal"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the form contract and the private cache policy
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -784,32 +621,27 @@ async fn test_contact_modal_renders_form_for_signed_in_users() {
 #[tokio::test]
 async fn test_contact_modal_renders_open_conversation_link() {
     // Setup a signed-in viewer with an open conversation
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let inbox_conversation_id = Uuid::new_v4();
+    let viewer = InboxContactViewer {
+        open_inbox_conversation_id: Some(inbox_conversation_id),
+        ..sample_contact_viewer()
+    };
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
-    let context = sample_contact_context(
+    expect_member_context(&mut db, &ids);
+    expect_contact_context(
+        &mut db,
+        ids.community_id,
         event_id,
-        Some(InboxContactViewer {
-            open_inbox_conversation_id: Some(inbox_conversation_id),
-            ..sample_contact_viewer()
-        }),
+        Some(ids.user_id),
+        Some(sample_contact_context(event_id, Some(viewer))),
     );
-    db.expect_get_inbox_contact_context()
-        .times(1)
-        .returning(move |_, _, _| Ok(Some(context.clone())));
 
     // Request the modal
-    let (parts, bytes) = send_contact_request(
-        db,
-        MockInboxManager::new(),
-        Some(session_id),
-        "GET",
-        &format!("/test-community/event/{event_id}/contact-modal"),
-        None,
-    )
-    .await;
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(&event_uri(event_id, "contact-modal"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the open conversation link replaces the form
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -824,32 +656,27 @@ async fn test_contact_modal_renders_open_conversation_link() {
 #[tokio::test]
 async fn test_contact_modal_renders_organizer_note() {
     // Setup a signed-in group team member
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let viewer = InboxContactViewer {
+        can_manage_inbox: true,
+        is_group_team_member: true,
+        ..sample_contact_viewer()
+    };
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
-    let context = sample_contact_context(
+    expect_member_context(&mut db, &ids);
+    expect_contact_context(
+        &mut db,
+        ids.community_id,
         event_id,
-        Some(InboxContactViewer {
-            can_manage_inbox: true,
-            is_group_team_member: true,
-            ..sample_contact_viewer()
-        }),
+        Some(ids.user_id),
+        Some(sample_contact_context(event_id, Some(viewer))),
     );
-    db.expect_get_inbox_contact_context()
-        .times(1)
-        .returning(move |_, _, _| Ok(Some(context.clone())));
 
     // Request the modal
-    let (parts, bytes) = send_contact_request(
-        db,
-        MockInboxManager::new(),
-        Some(session_id),
-        "GET",
-        &format!("/test-community/event/{event_id}/contact-modal"),
-        None,
-    )
-    .await;
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(&event_uri(event_id, "contact-modal"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the organizer note replaces the form
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -866,31 +693,26 @@ async fn test_contact_modal_renders_organizer_note() {
 #[tokio::test]
 async fn test_contact_modal_renders_organizer_note_for_community_inbox_managers() {
     // Setup a signed-in community team member with Inbox access
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let viewer = InboxContactViewer {
+        can_manage_inbox: true,
+        ..sample_contact_viewer()
+    };
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
-    let context = sample_contact_context(
+    expect_member_context(&mut db, &ids);
+    expect_contact_context(
+        &mut db,
+        ids.community_id,
         event_id,
-        Some(InboxContactViewer {
-            can_manage_inbox: true,
-            ..sample_contact_viewer()
-        }),
+        Some(ids.user_id),
+        Some(sample_contact_context(event_id, Some(viewer))),
     );
-    db.expect_get_inbox_contact_context()
-        .times(1)
-        .returning(move |_, _, _| Ok(Some(context.clone())));
 
     // Request the modal
-    let (parts, bytes) = send_contact_request(
-        db,
-        MockInboxManager::new(),
-        Some(session_id),
-        "GET",
-        &format!("/test-community/event/{event_id}/contact-modal"),
-        None,
-    )
-    .await;
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(&event_uri(event_id, "contact-modal"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the organizer note with the Inbox link replaces the form
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -908,25 +730,24 @@ async fn test_contact_modal_renders_organizer_note_for_community_inbox_managers(
 #[tokio::test]
 async fn test_contact_modal_renders_sign_in_prompt_for_anonymous_visitors() {
     // Setup an anonymous request
-    let (community_id, event_id, _, _) = sample_contact_ids();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
     let mut db = MockDB::new();
     expect_test_community(&mut db, community_id);
-    let context = sample_contact_context(event_id, None);
-    db.expect_get_inbox_contact_context()
-        .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && uid.is_none())
-        .returning(move |_, _, _| Ok(Some(context.clone())));
+    expect_contact_context(
+        &mut db,
+        community_id,
+        event_id,
+        None,
+        Some(sample_contact_context(event_id, None)),
+    );
 
     // Request the modal
-    let (parts, bytes) = send_contact_request(
-        db,
-        MockInboxManager::new(),
-        None,
-        "GET",
-        &format!("/test-community/event/{event_id}/contact-modal"),
-        None,
-    )
-    .await;
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", &event_uri(event_id, "contact-modal"))
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the sign-in prompt and the private cache policy
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -947,31 +768,26 @@ async fn test_contact_modal_renders_sign_in_prompt_for_anonymous_visitors() {
 #[tokio::test]
 async fn test_contact_modal_renders_team_note_without_inbox_link_for_viewers() {
     // Setup a signed-in group team member without Inbox access
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let viewer = InboxContactViewer {
+        is_group_team_member: true,
+        ..sample_contact_viewer()
+    };
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
-    let context = sample_contact_context(
+    expect_member_context(&mut db, &ids);
+    expect_contact_context(
+        &mut db,
+        ids.community_id,
         event_id,
-        Some(InboxContactViewer {
-            is_group_team_member: true,
-            ..sample_contact_viewer()
-        }),
+        Some(ids.user_id),
+        Some(sample_contact_context(event_id, Some(viewer))),
     );
-    db.expect_get_inbox_contact_context()
-        .times(1)
-        .returning(move |_, _, _| Ok(Some(context.clone())));
 
     // Request the modal
-    let (parts, bytes) = send_contact_request(
-        db,
-        MockInboxManager::new(),
-        Some(session_id),
-        "GET",
-        &format!("/test-community/event/{event_id}/contact-modal"),
-        None,
-    )
-    .await;
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(&event_uri(event_id, "contact-modal"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the team note replaces the form without the Inbox link
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -988,20 +804,14 @@ async fn test_contact_modal_renders_team_note_without_inbox_link_for_viewers() {
 #[tokio::test]
 async fn test_attend_event_returns_checkout_redirect() {
     // Setup identifiers and the redirect outcome
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
     let hold_expires_at = chrono::Utc.with_ymd_and_hms(2030, 1, 2, 3, 4, 5).unwrap();
 
     // Setup session and community resolution
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup the enrollment manager expectation
     let mut enrollment_manager = MockEnrollmentManager::new();
@@ -1009,9 +819,9 @@ async fn test_attend_event_returns_checkout_redirect() {
         .expect_attend_event()
         .times(1)
         .withf(move |input| {
-            input.community_id == community_id
+            input.community_id == ids.community_id
                 && input.event_id == event_id
-                && input.user_id == user_id
+                && input.user_id == ids.user_id
                 && input.attendance.event_ticket_type_id == Some(ticket_type_id)
                 && input.attendance.registration_answers.registration_answers.is_none()
         })
@@ -1025,20 +835,17 @@ async fn test_attend_event_returns_checkout_redirect() {
         });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/attend"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request(
+        "POST",
+        &event_uri(event_id, "attend"),
+        ids.session_id,
+        format!("event_ticket_type_id={ticket_type_id}"),
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the redirect payload
     assert_eq!(parts.status, StatusCode::OK);
@@ -1051,17 +858,10 @@ async fn test_attend_event_returns_checkout_redirect() {
 #[tokio::test]
 async fn test_attend_event_returns_conflict() {
     // Setup identifiers and the conflict outcome
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup enrollment manager mock
     let mut enrollment_manager = MockEnrollmentManager::new();
@@ -1074,20 +874,12 @@ async fn test_attend_event_returns_conflict() {
     });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/attend"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request("POST", &event_uri(event_id, "attend"), ids.session_id, "");
+    let (parts, bytes) = send(router, request).await;
 
     // Check the conflict payload
     assert_eq!(parts.status, StatusCode::CONFLICT);
@@ -1098,11 +890,9 @@ async fn test_attend_event_returns_conflict() {
 #[tokio::test]
 async fn test_attend_event_returns_enrollment_status_with_registration_answers() {
     // Setup identifiers and the submitted answers
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
     let answers = QuestionnaireAnswers {
         answers: vec![QuestionnaireAnswer {
             question_id,
@@ -1117,10 +907,7 @@ async fn test_attend_event_returns_enrollment_status_with_registration_answers()
 
     // Setup session and community resolution
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup the enrollment manager expectation on the decoded answers
     let mut enrollment_manager = MockEnrollmentManager::new();
@@ -1143,20 +930,17 @@ async fn test_attend_event_returns_enrollment_status_with_registration_answers()
         });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/attend"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form_body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request(
+        "POST",
+        &event_uri(event_id, "attend"),
+        ids.session_id,
+        form_body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the enrollment status payload
     assert_eq!(parts.status, StatusCode::OK);
@@ -1167,25 +951,20 @@ async fn test_attend_event_returns_enrollment_status_with_registration_answers()
 #[tokio::test]
 async fn test_attend_event_returns_external_pending_payment() {
     // Setup identifiers and the external purchase snapshot
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
     let hold_expires_at = chrono::Utc.with_ymd_and_hms(2030, 1, 2, 3, 4, 5).unwrap();
-    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
+    let mut purchase =
+        sample_event_purchase_summary(event_purchase_id, EventPurchaseStatus::Pending);
     purchase.charge_model = EventPurchaseChargeModel::External;
-    purchase.event_purchase_id = event_purchase_id;
     purchase.external_payment_instructions = Some("Use reference on the transfer.".to_string());
     purchase.external_payment_url = Some("https://pay.example.test/event".to_string());
     purchase.hold_expires_at = Some(hold_expires_at);
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup enrollment manager mock
     let mut enrollment_manager = MockEnrollmentManager::new();
@@ -1203,20 +982,12 @@ async fn test_attend_event_returns_external_pending_payment() {
     });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/attend"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request("POST", &event_uri(event_id, "attend"), ids.session_id, "");
+    let (parts, bytes) = send(router, request).await;
 
     // Check the pending-payment payload uses the purchase snapshot
     assert_eq!(parts.status, StatusCode::OK);
@@ -1237,110 +1008,12 @@ async fn test_attend_event_returns_external_pending_payment() {
 }
 
 #[tokio::test]
-async fn test_attend_event_returns_internal_server_error_when_manager_fails() {
-    // Setup identifiers and an internal manager failure
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
-
-    // Setup enrollment manager mock
-    let mut enrollment_manager = MockEnrollmentManager::new();
-    enrollment_manager.expect_attend_event().times(1).returning(|_| {
-        Box::pin(async { Err(EnrollmentError::Other(anyhow!("database failure"))) })
-    });
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_enrollment_manager(enrollment_manager)
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/attend"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the internal failure is hidden
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_attend_event_returns_unprocessable_entity_for_database_rejection() {
-    // Setup identifiers and a user-facing database rejection
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
-
-    // Setup enrollment manager mock
-    let mut enrollment_manager = MockEnrollmentManager::new();
-    enrollment_manager.expect_attend_event().times(1).returning(|_| {
-        Box::pin(async {
-            Err(EnrollmentError::Other(
-                HandlerError::Database("event not found or inactive".to_string()).into(),
-            ))
-        })
-    });
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_enrollment_manager(enrollment_manager)
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/attend"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the rejection message is returned
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(
-        String::from_utf8(bytes.to_vec()).unwrap(),
-        "event not found or inactive"
-    );
-}
-
-#[tokio::test]
 async fn test_attend_event_returns_unprocessable_entity_for_rejection() {
     // Setup identifiers and an application rejection
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup enrollment manager mock
     let mut enrollment_manager = MockEnrollmentManager::new();
@@ -1353,20 +1026,12 @@ async fn test_attend_event_returns_unprocessable_entity_for_rejection() {
     });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/attend"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request("POST", &event_uri(event_id, "attend"), ids.session_id, "");
+    let (parts, bytes) = send(router, request).await;
 
     // Check the rejection message is returned
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -1377,54 +1042,63 @@ async fn test_attend_event_returns_unprocessable_entity_for_rejection() {
 }
 
 #[tokio::test]
-async fn test_enrollment_state_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+async fn test_enrollment_state_paid_attendee_can_request_refund() {
+    // Setup a paid attendee of an event that has not started yet
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let mut event_summary = sample_event_summary(event_id);
+    event_summary.starts_at = Some(chrono::Utc::now() + chrono::Duration::days(1));
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
     db.expect_get_event_enrollment()
         .times(1)
-        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
+        .withf(move |cid, eid, uid| {
+            *cid == ids.community_id && *eid == event_id && *uid == ids.user_id
+        })
         .returning(|_, _, _| {
             Ok(EventEnrollmentState {
-                is_checked_in: false,
-                status: EventEnrollmentStatus::Attendee,
-
-                admission_offer_id: None,
-                event_ticket_type_id: None,
-                external_payment: None,
-                manually_invited: false,
-                purchase_amount_minor: None,
-                purchase_charge_model: None,
-                refund_rejection_reason: None,
-                refund_request_status: None,
-                resume_checkout_url: None,
+                purchase_amount_minor: Some(2500),
+                ..sample_enrollment_state(EventEnrollmentStatus::Attendee)
             })
         });
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == ids.community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_summary.clone()));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/test-community/event/{event_id}/enrollment"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(&event_uri(event_id, "enrollment"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the refund request is offered for the paid attendance
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body["can_request_refund"], json!(true));
+    assert_eq!(body["purchase_amount_minor"], json!(2500));
+    assert_eq!(body["status"], json!("attendee"));
+}
+
+#[tokio::test]
+async fn test_enrollment_state_success() {
+    // Setup a free attendee, whose refund eligibility needs no event read
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_member_context(&mut db, &ids);
+    db.expect_get_event_enrollment()
+        .times(1)
+        .withf(move |cid, eid, uid| {
+            *cid == ids.community_id && *eid == event_id && *uid == ids.user_id
+        })
+        .returning(|_, _, _| Ok(sample_enrollment_state(EventEnrollmentStatus::Attendee)));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(&event_uri(event_id, "enrollment"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
@@ -1452,134 +1126,38 @@ async fn test_enrollment_state_success() {
 }
 
 #[tokio::test]
-async fn test_enrollment_state_stale_event_returns_none_without_summary_lookup() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_get_event_enrollment()
-        .times(1)
-        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| {
-            Ok(EventEnrollmentState {
-                is_checked_in: false,
-                status: EventEnrollmentStatus::None,
-
-                admission_offer_id: None,
-                event_ticket_type_id: None,
-                external_payment: None,
-                manually_invited: false,
-                purchase_amount_minor: None,
-                purchase_charge_model: None,
-                refund_rejection_reason: None,
-                refund_request_status: None,
-                resume_checkout_url: None,
-            })
-        });
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/test-community/event/{event_id}/enrollment"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(
-        body,
-        json!({
-            "admission_offer_id": null,
-            "can_request_refund": false,
-            "event_ticket_type_id": null,
-            "external_payment": null,
-            "is_checked_in": false,
-            "manually_invited": false,
-            "purchase_amount_minor": null,
-            "refund_rejection_reason": null,
-            "refund_request_status": null,
-            "resume_checkout_url": null,
-            "status": "none",
-        })
-    );
-}
-
-#[tokio::test]
 async fn test_cancel_checkout_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and the restored enrollment state
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
     db.expect_cancel_event_checkout()
         .times(1)
         .withf(move |cid, eid, uid, payment_provider| {
-            *cid == community_id
+            *cid == ids.community_id
                 && *eid == event_id
-                && *uid == user_id
+                && *uid == ids.user_id
                 && payment_provider.is_none()
         })
         .returning(|_, _, _, _| Ok(()));
     db.expect_get_event_enrollment()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+        .withf(move |cid, eid, uid| {
+            *cid == ids.community_id && *eid == event_id && *uid == ids.user_id
+        })
         .returning(|_, _, _| {
             Ok(EventEnrollmentState {
-                is_checked_in: false,
-                status: EventEnrollmentStatus::InvitationApproved,
-
                 admission_offer_id: Some(Uuid::from_u128(1)),
                 event_ticket_type_id: Some(Uuid::from_u128(2)),
-                external_payment: None,
-                manually_invited: false,
-                purchase_amount_minor: None,
-                purchase_charge_model: None,
-                refund_rejection_reason: None,
-                refund_request_status: None,
-                resume_checkout_url: None,
+                ..sample_enrollment_state(EventEnrollmentStatus::InvitationApproved)
             })
         });
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request("DELETE", &event_uri(event_id, "checkout"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
@@ -1588,106 +1166,12 @@ async fn test_cancel_checkout_success() {
 }
 
 #[tokio::test]
-async fn test_cancel_checkout_returns_internal_server_error_when_db_fails() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-    db.expect_cancel_event_checkout()
-        .times(1)
-        .withf(move |cid, eid, uid, payment_provider| {
-            *cid == community_id
-                && *eid == event_id
-                && *uid == user_id
-                && payment_provider.is_none()
-        })
-        .returning(|_, _, _, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_leave_event_returns_internal_server_error_when_manager_fails() {
-    // Setup identifiers and an internal manager failure
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
-
-    // Setup enrollment manager mock
-    let mut enrollment_manager = MockEnrollmentManager::new();
-    enrollment_manager.expect_leave_event().times(1).returning(|_| {
-        Box::pin(async { Err(EnrollmentError::Other(anyhow!("database failure"))) })
-    });
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_enrollment_manager(enrollment_manager)
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!("/test-community/event/{event_id}/leave"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the internal failure is hidden
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
 async fn test_leave_event_returns_left_status() {
     // Setup identifiers and the leave outcome
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup enrollment manager mock
     let mut enrollment_manager = MockEnrollmentManager::new();
@@ -1695,9 +1179,9 @@ async fn test_leave_event_returns_left_status() {
         .expect_leave_event()
         .times(1)
         .withf(move |input| {
-            input.community_id == community_id
+            input.community_id == ids.community_id
                 && input.event_id == event_id
-                && input.user_id == user_id
+                && input.user_id == ids.user_id
         })
         .returning(|_| {
             Box::pin(async {
@@ -1708,19 +1192,12 @@ async fn test_leave_event_returns_left_status() {
         });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!("/test-community/event/{event_id}/leave"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = empty_request("DELETE", &event_uri(event_id, "leave"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the left status payload
     assert_eq!(parts.status, StatusCode::OK);
@@ -1729,47 +1206,30 @@ async fn test_leave_event_returns_left_status() {
 }
 
 #[tokio::test]
-async fn test_leave_event_returns_unprocessable_entity_for_database_rejection() {
-    // Setup identifiers and the paid-attendee database rejection
-    let community_id = Uuid::new_v4();
+async fn test_leave_event_returns_unprocessable_entity_for_rejection() {
+    // Setup identifiers and the paid-attendee rejection
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup enrollment manager mock
     let mut enrollment_manager = MockEnrollmentManager::new();
     enrollment_manager.expect_leave_event().times(1).returning(|_| {
         Box::pin(async {
-            Err(EnrollmentError::Other(
-                HandlerError::Database(
-                    "paid attendance must be refunded before leaving".to_string(),
-                )
-                .into(),
+            Err(EnrollmentError::Rejected(
+                "paid attendance must be refunded before leaving".to_string(),
             ))
         })
     });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!("/test-community/event/{event_id}/leave"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = empty_request("DELETE", &event_uri(event_id, "leave"), ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check the rejection message is returned
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -1780,20 +1240,49 @@ async fn test_leave_event_returns_unprocessable_entity_for_database_rejection() 
 }
 
 #[tokio::test]
-async fn test_request_refund_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+async fn test_request_refund_returns_unprocessable_entity_for_rejection() {
+    // Setup identifiers and a refund request rejection
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
+
+    // Setup payments manager mock
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager.expect_request_refund().times(1).returning(|_| {
+        Box::pin(async {
+            Err(HandlerError::Database("refund request already exists".to_string()).into())
+        })
+    });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = form_request(
+        "POST",
+        &event_uri(event_id, "refund-request"),
+        ids.session_id,
+        "requested_reason=Need%20to%20cancel",
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the rejection message is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "refund request already exists"
+    );
+}
+
+#[tokio::test]
+async fn test_request_refund_success() {
+    // Setup identifiers and the refund request expectation
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_member_context(&mut db, &ids);
 
     // Setup payments manager mock
     let mut payments_manager = MockPaymentsManager::new();
@@ -1801,89 +1290,30 @@ async fn test_request_refund_success() {
         .expect_request_refund()
         .times(1)
         .withf(move |input| {
-            input.community_id == community_id
+            input.community_id == ids.community_id
                 && input.event_id == event_id
                 && input.requested_reason.as_deref() == Some("Need to cancel")
-                && input.user_id == user_id
+                && input.user_id == ids.user_id
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
+    let router = TestRouterBuilder::new(db)
         .with_payments_manager(payments_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/refund-request"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("requested_reason=Need%20to%20cancel"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request(
+        "POST",
+        &event_uri(event_id, "refund-request"),
+        ids.session_id,
+        "requested_reason=Need%20to%20cancel",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     let body: serde_json::Value = from_slice(&bytes).unwrap();
     assert_eq!(body, json!({ "status": "refund-requested" }));
-}
-
-#[tokio::test]
-async fn test_request_refund_returns_internal_server_error_when_payments_manager_fails() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-
-    // Setup payments manager mock
-    let mut payments_manager = MockPaymentsManager::new();
-    payments_manager
-        .expect_request_refund()
-        .times(1)
-        .withf(move |input| {
-            input.community_id == community_id
-                && input.event_id == event_id
-                && input.requested_reason.as_deref() == Some("Need to cancel")
-                && input.user_id == user_id
-        })
-        .returning(|_| Box::pin(async { Err(anyhow!("payments error")) }));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_payments_manager(payments_manager)
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/refund-request"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("requested_reason=Need%20to%20cancel"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1894,130 +1324,64 @@ async fn test_send_contact_message_redirects_anonymous_visitors_to_log_in() {
     inbox_manager.expect_start_conversation().never();
 
     // Send the message
-    let (parts, _) = send_contact_request(
-        MockDB::new(),
-        inbox_manager,
-        None,
-        "POST",
-        &format!("/test-community/event/{event_id}/contact"),
-        Some("body=Hello"),
-    )
-    .await;
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_inbox_manager(inbox_manager)
+        .build()
+        .await;
+    let request = request("POST", &event_uri(event_id, "contact"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from("body=Hello"))
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the visitor is sent to the log-in page
-    assert!(parts.status.is_redirection());
-    assert!(
-        parts
-            .headers
-            .get(LOCATION)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .starts_with("/log-in?next_url=")
+    assert_empty_response(&parts, &bytes, StatusCode::TEMPORARY_REDIRECT);
+    assert_eq!(
+        parts.headers.get(LOCATION).unwrap(),
+        &format!("/log-in?next_url=%2Ftest-community%2Fevent%2F{event_id}%2Fcontact")
     );
 }
 
 #[tokio::test]
 async fn test_send_contact_message_rejects_invalid_bodies() {
     // Setup the signed-in sender and invalid bodies
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let too_long = format!("body={}", "é".repeat(5001));
 
-    for body in ["body=+%0A%09+", too_long.as_str()] {
+    for body in ["body=+%0A%09+".to_string(), too_long] {
         // Setup session and community expectations without manager calls
         let mut db = MockDB::new();
-        expect_authenticated_session(&mut db, session_id, user_id);
-        expect_test_community(&mut db, community_id);
+        expect_member_context(&mut db, &ids);
         let mut inbox_manager = MockInboxManager::new();
         inbox_manager.expect_start_conversation().never();
 
         // Send the message
-        let (parts, _) = send_contact_request(
-            db,
-            inbox_manager,
-            Some(session_id),
+        let router = TestRouterBuilder::new(db)
+            .with_inbox_manager(inbox_manager)
+            .build()
+            .await;
+        let label = body.chars().take(20).collect::<String>();
+        let request = form_request(
             "POST",
-            &format!("/test-community/event/{event_id}/contact"),
-            Some(body),
-        )
-        .await;
+            &event_uri(event_id, "contact"),
+            ids.session_id,
+            body,
+        );
+        let (parts, _) = send(router, request).await;
 
         // Check the validation failure
-        assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY, "{label}");
     }
-}
-
-#[tokio::test]
-async fn test_send_contact_message_returns_database_rejection_message() {
-    // Setup the signed-in sender and a database rejection
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
-    let mut inbox_manager = MockInboxManager::new();
-    inbox_manager.expect_start_conversation().times(1).returning(|_| {
-        Box::pin(async {
-            Err(InboxError::Other(
-                HandlerError::Database("daily limit of new conversations reached".to_string())
-                    .into(),
-            ))
-        })
-    });
-
-    // Send the message
-    let (parts, bytes) = send_contact_request(
-        db,
-        inbox_manager,
-        Some(session_id),
-        "POST",
-        &format!("/test-community/event/{event_id}/contact"),
-        Some("body=Hello"),
-    )
-    .await;
-
-    // Check the rejection message is returned
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(
-        String::from_utf8(bytes.to_vec()).unwrap(),
-        "daily limit of new conversations reached"
-    );
-}
-
-#[tokio::test]
-async fn test_send_contact_message_returns_internal_error_without_body() {
-    // Setup the signed-in sender and an internal failure
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
-    let mut inbox_manager = MockInboxManager::new();
-    inbox_manager
-        .expect_start_conversation()
-        .times(1)
-        .returning(|_| Box::pin(async { Err(InboxError::Other(anyhow!("db error"))) }));
-
-    // Send the message
-    let (parts, bytes) = send_contact_request(
-        db,
-        inbox_manager,
-        Some(session_id),
-        "POST",
-        &format!("/test-community/event/{event_id}/contact"),
-        Some("body=Hello"),
-    )
-    .await;
-
-    // Check the internal error hides the detail
-    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
 async fn test_send_contact_message_returns_rejected_message() {
     // Setup the signed-in sender and an open conversation rejection
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
+    expect_member_context(&mut db, &ids);
     let mut inbox_manager = MockInboxManager::new();
     inbox_manager.expect_start_conversation().times(1).returning(|_| {
         Box::pin(async {
@@ -2028,15 +1392,17 @@ async fn test_send_contact_message_returns_rejected_message() {
     });
 
     // Send the message
-    let (parts, bytes) = send_contact_request(
-        db,
-        inbox_manager,
-        Some(session_id),
+    let router = TestRouterBuilder::new(db)
+        .with_inbox_manager(inbox_manager)
+        .build()
+        .await;
+    let request = form_request(
         "POST",
-        &format!("/test-community/event/{event_id}/contact"),
-        Some("body=Hello"),
-    )
-    .await;
+        &event_uri(event_id, "contact"),
+        ids.session_id,
+        "body=Hello",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the rejection message is returned
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -2049,33 +1415,35 @@ async fn test_send_contact_message_returns_rejected_message() {
 #[tokio::test]
 async fn test_send_contact_message_starts_conversation() {
     // Setup the signed-in sender and the started conversation
-    let (community_id, event_id, session_id, user_id) = sample_contact_ids();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let inbox_conversation_id = Uuid::new_v4();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    expect_test_community(&mut db, community_id);
+    expect_member_context(&mut db, &ids);
     let mut inbox_manager = MockInboxManager::new();
     inbox_manager
         .expect_start_conversation()
         .times(1)
         .withf(move |input| {
             input.body == "Is there parking?"
-                && input.community_id == community_id
+                && input.community_id == ids.community_id
                 && input.event_id == event_id
-                && input.user_id == user_id
+                && input.user_id == ids.user_id
         })
         .returning(move |_| Box::pin(async move { Ok(inbox_conversation_id) }));
 
     // Send the message
-    let (parts, bytes) = send_contact_request(
-        db,
-        inbox_manager,
-        Some(session_id),
+    let router = TestRouterBuilder::new(db)
+        .with_inbox_manager(inbox_manager)
+        .build()
+        .await;
+    let request = form_request(
         "POST",
-        &format!("/test-community/event/{event_id}/contact"),
-        Some("body=Is+there+parking%3F"),
-    )
-    .await;
+        &event_uri(event_id, "contact"),
+        ids.session_id,
+        "body=Is+there+parking%3F",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the sent notice links to the conversation
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -2089,21 +1457,13 @@ async fn test_send_contact_message_starts_conversation() {
 #[tokio::test]
 async fn test_start_checkout_returns_checkout_redirect() {
     // Setup identifiers and the redirect outcome
+    let ids = DashboardIds::new();
     let admission_offer_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
     let hold_expires_at = chrono::Utc.with_ymd_and_hms(2030, 1, 2, 3, 4, 5).unwrap();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup the enrollment manager expectation on the decoded form
     let mut enrollment_manager = MockEnrollmentManager::new();
@@ -2111,9 +1471,9 @@ async fn test_start_checkout_returns_checkout_redirect() {
         .expect_start_checkout()
         .times(1)
         .withf(move |input| {
-            input.community_id == community_id
+            input.community_id == ids.community_id
                 && input.event_id == event_id
-                && input.user_id == user_id
+                && input.user_id == ids.user_id
                 && input.checkout.admission_offer_id == Some(admission_offer_id)
                 && input.checkout.discount_code.as_deref() == Some("EARLY")
                 && input.checkout.event_ticket_type_id == Some(ticket_type_id)
@@ -2129,22 +1489,19 @@ async fn test_start_checkout_returns_checkout_redirect() {
         });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
+    let request = form_request(
+        "POST",
+        &event_uri(event_id, "checkout"),
+        ids.session_id,
+        format!(
             "admission_offer_id={admission_offer_id}&discount_code=EARLY&event_ticket_type_id={ticket_type_id}"
-        )))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        ),
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the redirect payload
     assert_eq!(parts.status, StatusCode::OK);
@@ -2157,17 +1514,10 @@ async fn test_start_checkout_returns_checkout_redirect() {
 #[tokio::test]
 async fn test_start_checkout_returns_conflict() {
     // Setup identifiers and the sold-out conflict
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup enrollment manager mock
     let mut enrollment_manager = MockEnrollmentManager::new();
@@ -2176,23 +1526,17 @@ async fn test_start_checkout_returns_conflict() {
     });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
-            "event_ticket_type_id={}",
-            Uuid::new_v4()
-        )))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request(
+        "POST",
+        &event_uri(event_id, "checkout"),
+        ids.session_id,
+        format!("event_ticket_type_id={}", Uuid::new_v4()),
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the conflict payload
     assert_eq!(parts.status, StatusCode::CONFLICT);
@@ -2203,17 +1547,10 @@ async fn test_start_checkout_returns_conflict() {
 #[tokio::test]
 async fn test_start_checkout_returns_enrollment_status() {
     // Setup identifiers and a completed free checkout
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup enrollment manager mock
     let mut enrollment_manager = MockEnrollmentManager::new();
@@ -2222,23 +1559,17 @@ async fn test_start_checkout_returns_enrollment_status() {
     });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
-            "event_ticket_type_id={}",
-            Uuid::new_v4()
-        )))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request(
+        "POST",
+        &event_uri(event_id, "checkout"),
+        ids.session_id,
+        format!("event_ticket_type_id={}", Uuid::new_v4()),
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the enrollment status payload
     assert_eq!(parts.status, StatusCode::OK);
@@ -2247,64 +1578,12 @@ async fn test_start_checkout_returns_enrollment_status() {
 }
 
 #[tokio::test]
-async fn test_start_checkout_returns_internal_server_error_when_manager_fails() {
-    // Setup identifiers and an internal manager failure
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
-
-    // Setup enrollment manager mock
-    let mut enrollment_manager = MockEnrollmentManager::new();
-    enrollment_manager.expect_start_checkout().times(1).returning(|_| {
-        Box::pin(async { Err(EnrollmentError::Other(anyhow!("provider unavailable"))) })
-    });
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_enrollment_manager(enrollment_manager)
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
-            "event_ticket_type_id={}",
-            Uuid::new_v4()
-        )))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check the internal failure is hidden
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
 async fn test_start_checkout_returns_unprocessable_entity_for_rejection() {
     // Setup identifiers and the missing ticket rejection
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
 
     // Setup enrollment manager mock
     let mut enrollment_manager = MockEnrollmentManager::new();
@@ -2321,20 +1600,12 @@ async fn test_start_checkout_returns_unprocessable_entity_for_rejection() {
         });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_enrollment_manager(enrollment_manager)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(""))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = form_request("POST", &event_uri(event_id, "checkout"), ids.session_id, "");
+    let (parts, bytes) = send(router, request).await;
 
     // Check the rejection message is returned
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -2347,36 +1618,30 @@ async fn test_start_checkout_returns_unprocessable_entity_for_rejection() {
 #[tokio::test]
 async fn test_submit_cfs_submission_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
-    let event_summary = sample_event_summary(event_id, group_id);
-    let proposals = vec![sample_event_cfs_session_proposal(session_proposal_id)];
-    let form_data = format!("session_proposal_id={session_proposal_id}");
+    let event_summary = sample_event_summary(event_id);
+    let mut proposal = sample_event_cfs_session_proposal(session_proposal_id);
+    proposal.is_submitted = true;
+    let proposals = vec![proposal];
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+    expect_member_context(&mut db, &ids);
     db.expect_add_cfs_submission()
         .times(1)
         .withf(move |cid, eid, uid, proposal_id, label_ids| {
-            *cid == community_id
+            *cid == ids.community_id
                 && *eid == event_id
-                && *uid == user_id
+                && *uid == ids.user_id
                 && *proposal_id == session_proposal_id
                 && label_ids.is_empty()
         })
         .returning(|_, _, _, _, _| Ok(Uuid::new_v4()));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == ids.community_id && *eid == event_id)
         .returning(move |_, _| Ok(event_summary.clone()));
     db.expect_list_event_labels()
         .times(1)
@@ -2384,72 +1649,52 @@ async fn test_submit_cfs_submission_success() {
         .returning(|_| Ok(vec![]));
     db.expect_list_user_session_proposals_for_cfs_event()
         .times(1)
-        .withf(move |uid, eid| *uid == user_id && *eid == event_id)
+        .withf(move |uid, eid| *uid == ids.user_id && *eid == event_id)
         .returning(move |_, _| Ok(proposals.clone()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/test-community/event/{event_id}/cfs-submissions"))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(form_data))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "POST",
+        &event_uri(event_id, "cfs-submissions"),
+        ids.session_id,
+        format!("session_proposal_id={session_proposal_id}"),
     );
-    assert!(!bytes.is_empty());
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the modal renders the notice and the refreshed proposals
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("data-cfs-submission-notice"));
+    assert!(body.contains("Submission received."));
+    assert!(body.contains("Sample Proposal"));
 }
 
 #[tokio::test]
 async fn test_track_view_accepts_same_origin_request() {
-    // Setup identifiers and data structures
+    // Setup a view without UTM values to look up
     let event_id = Uuid::new_v4();
-
-    // Setup database mock that must not look up UTM values
     let mut db = MockDB::new();
     db.expect_get_event_utm_allowlist().never();
+    let activity_tracker = expect_event_view(event_id, None);
 
-    // Setup activity tracker mock expecting an unattributed view
-    let mut activity_tracker = MockActivityTracker::new();
-    activity_tracker
-        .expect_track()
-        .times(1)
-        .withf(move |activity| {
-            *activity
-                == Activity::EventView {
-                    event_id,
-                    utm: None,
-                }
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Send the tracking request
-    let (parts, bytes) =
-        send_track_view_request(db, activity_tracker, &format!("/events/{event_id}/views")).await;
+    // Setup router and send the tracking request
+    let router = TestRouterBuilder::new(db)
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = track_view_request(&format!("/events/{event_id}/views"));
+    let (parts, bytes) = send(router, request).await;
 
     // Check the view is accepted
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn test_track_view_drops_utm_params_not_accepted_by_event() {
-    // Setup identifiers and data structures
+    // Setup an allowlist without the requested campaign
     let event_id = Uuid::new_v4();
-
-    // Setup database mock returning values without the requested campaign
     let mut db = MockDB::new();
     db.expect_get_event_utm_allowlist()
         .times(1)
@@ -2460,234 +1705,254 @@ async fn test_track_view_drops_utm_params_not_accepted_by_event() {
                 ..EventUtmAllowlist::default()
             }))
         });
+    let activity_tracker = expect_event_view(event_id, None);
 
-    // Setup activity tracker mock expecting an unattributed view
-    let mut activity_tracker = MockActivityTracker::new();
-    activity_tracker
-        .expect_track()
-        .times(1)
-        .withf(move |activity| {
-            *activity
-                == Activity::EventView {
-                    event_id,
-                    utm: None,
-                }
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Send the tracking request
-    let (parts, bytes) = send_track_view_request(
-        db,
-        activity_tracker,
-        &format!("/events/{event_id}/views?utm_campaign=spring-launch&utm_source=newsletter"),
-    )
-    .await;
+    // Setup router and send the tracking request
+    let router = TestRouterBuilder::new(db)
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = track_view_request(&format!(
+        "/events/{event_id}/views?utm_campaign=spring-launch&utm_source=newsletter"
+    ));
+    let (parts, bytes) = send(router, request).await;
 
     // Check the view is counted without attribution
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn test_track_view_drops_utm_params_of_unpublished_event() {
-    // Setup identifiers and data structures
+    // Setup no allowlist for an unpublished event
     let event_id = Uuid::new_v4();
-
-    // Setup database mock returning no values for an unpublished event
     let mut db = MockDB::new();
     db.expect_get_event_utm_allowlist()
         .times(1)
         .withf(move |id| *id == event_id)
         .returning(|_| Ok(None));
+    let activity_tracker = expect_event_view(event_id, None);
 
-    // Setup activity tracker mock expecting an unattributed view
-    let mut activity_tracker = MockActivityTracker::new();
-    activity_tracker
-        .expect_track()
-        .times(1)
-        .withf(move |activity| {
-            *activity
-                == Activity::EventView {
-                    event_id,
-                    utm: None,
-                }
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Send the tracking request
-    let (parts, bytes) = send_track_view_request(
-        db,
-        activity_tracker,
-        &format!("/events/{event_id}/views?utm_source=newsletter"),
-    )
-    .await;
+    // Setup router and send the tracking request
+    let router = TestRouterBuilder::new(db)
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = track_view_request(&format!("/events/{event_id}/views?utm_source=newsletter"));
+    let (parts, bytes) = send(router, request).await;
 
     // Check the view is counted without attribution
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn test_track_view_drops_utm_params_when_lookup_fails() {
-    // Setup identifiers and data structures
+    // Setup a failing allowlist lookup
     let event_id = Uuid::new_v4();
-
-    // Setup database mock failing to look up UTM values
     let mut db = MockDB::new();
     db.expect_get_event_utm_allowlist()
         .times(1)
         .withf(move |id| *id == event_id)
         .returning(|_| Err(anyhow!("db error")));
+    let activity_tracker = expect_event_view(event_id, None);
 
-    // Setup activity tracker mock expecting an unattributed view
-    let mut activity_tracker = MockActivityTracker::new();
-    activity_tracker
-        .expect_track()
-        .times(1)
-        .withf(move |activity| {
-            *activity
-                == Activity::EventView {
-                    event_id,
-                    utm: None,
-                }
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Send the tracking request
-    let (parts, bytes) = send_track_view_request(
-        db,
-        activity_tracker,
-        &format!("/events/{event_id}/views?utm_source=newsletter"),
-    )
-    .await;
+    // Setup router and send the tracking request
+    let router = TestRouterBuilder::new(db)
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = track_view_request(&format!("/events/{event_id}/views?utm_source=newsletter"));
+    let (parts, bytes) = send(router, request).await;
 
     // Check the view is counted without attribution
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn test_track_view_ignores_invalid_utm_params() {
-    // Setup identifiers and data structures
+    // Setup a view whose invalid UTM values need no lookup
     let event_id = Uuid::new_v4();
-
-    // Setup database mock that must not look up UTM values
     let mut db = MockDB::new();
     db.expect_get_event_utm_allowlist().never();
+    let activity_tracker = expect_event_view(event_id, None);
 
-    // Setup activity tracker mock expecting an unattributed view
-    let mut activity_tracker = MockActivityTracker::new();
-    activity_tracker
-        .expect_track()
-        .times(1)
-        .withf(move |activity| {
-            *activity
-                == Activity::EventView {
-                    event_id,
-                    utm: None,
-                }
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Send the tracking request
-    let (parts, bytes) = send_track_view_request(
-        db,
-        activity_tracker,
-        &format!("/events/{event_id}/views?utm_campaign=spring-launch&utm_source=news%20letter"),
-    )
-    .await;
+    // Setup router and send the tracking request
+    let router = TestRouterBuilder::new(db)
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = track_view_request(&format!(
+        "/events/{event_id}/views?utm_campaign=spring-launch&utm_source=news%20letter"
+    ));
+    let (parts, bytes) = send(router, request).await;
 
     // Check the view is counted without attribution
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn test_track_view_ignores_malformed_query() {
-    // Setup identifiers and data structures
+    // Setup a view whose malformed query needs no lookup
     let event_id = Uuid::new_v4();
-
-    // Setup database mock that must not look up UTM values
     let mut db = MockDB::new();
     db.expect_get_event_utm_allowlist().never();
+    let activity_tracker = expect_event_view(event_id, None);
 
-    // Setup activity tracker mock expecting an unattributed view
-    let mut activity_tracker = MockActivityTracker::new();
-    activity_tracker
-        .expect_track()
-        .times(1)
-        .withf(move |activity| {
-            *activity
-                == Activity::EventView {
-                    event_id,
-                    utm: None,
-                }
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Send the tracking request
-    let (parts, bytes) = send_track_view_request(
-        db,
-        activity_tracker,
-        &format!("/events/{event_id}/views?utm_source[x]=newsletter"),
-    )
-    .await;
+    // Setup router and send the tracking request
+    let router = TestRouterBuilder::new(db)
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = track_view_request(&format!(
+        "/events/{event_id}/views?utm_source[x]=newsletter"
+    ));
+    let (parts, bytes) = send(router, request).await;
 
     // Check the view is still counted
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn test_track_view_ignores_utm_params_without_source_or_campaign() {
-    // Setup identifiers and data structures
+    // Setup a view whose blank source and campaign need no lookup
     let event_id = Uuid::new_v4();
-
-    // Setup database mock that must not look up UTM values
     let mut db = MockDB::new();
     db.expect_get_event_utm_allowlist().never();
+    let activity_tracker = expect_event_view(event_id, None);
 
-    // Setup activity tracker mock expecting an unattributed view
-    let mut activity_tracker = MockActivityTracker::new();
-    activity_tracker
-        .expect_track()
-        .times(1)
-        .withf(move |activity| {
-            *activity
-                == Activity::EventView {
-                    event_id,
-                    utm: None,
-                }
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Send the tracking request
-    let (parts, bytes) = send_track_view_request(
-        db,
-        activity_tracker,
-        &format!("/events/{event_id}/views?utm_campaign=%20&utm_medium=email&utm_source=%20"),
-    )
-    .await;
+    // Setup router and send the tracking request
+    let router = TestRouterBuilder::new(db)
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = track_view_request(&format!(
+        "/events/{event_id}/views?utm_campaign=%20&utm_medium=email&utm_source=%20"
+    ));
+    let (parts, bytes) = send(router, request).await;
 
     // Check the view is counted without attribution
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn test_track_view_records_utm_params_accepted_by_event() {
-    // Setup identifiers and data structures
+    // Setup the values accepted for the event
     let event_id = Uuid::new_v4();
-    let utm = UtmParams::new(Some("spring-launch"), None, Some("newsletter"));
-
-    // Setup database mock returning the values accepted for the event
     let mut db = MockDB::new();
     db.expect_get_event_utm_allowlist()
         .times(1)
         .withf(move |id| *id == event_id)
         .returning(|_| Ok(Some(sample_event_utm_allowlist())));
+    let activity_tracker = expect_event_view(
+        event_id,
+        UtmParams::new(Some("spring-launch"), None, Some("newsletter")),
+    );
 
-    // Setup activity tracker mock expecting the normalized attribution
+    // Setup router and send the tracking request
+    let router = TestRouterBuilder::new(db)
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = track_view_request(&format!(
+        "/events/{event_id}/views?utm_campaign=Spring-Launch&utm_medium=&utm_source=%20Newsletter%20"
+    ));
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the view is counted with its normalized attribution
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn test_track_view_rejects_cross_origin_request() {
+    // Setup an activity tracker that must not record the request
+    let mut activity_tracker = MockActivityTracker::new();
+    activity_tracker.expect_track().times(0);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = request("POST", &format!("/events/{}/views", Uuid::new_v4()))
+        .header("origin", "https://evil.test")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_track_view_rejects_missing_origin_request() {
+    // Setup an activity tracker that must not record the request
+    let mut activity_tracker = MockActivityTracker::new();
+    activity_tracker.expect_track().times(0);
+
+    // Send a request without origin headers, which the middleware lets through
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = request("POST", &format!("/events/{}/views", Uuid::new_v4()))
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the handler rejects the request without same-origin evidence
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
+}
+
+// Helpers.
+
+/// Builds the URI of an event-scoped route of the test community.
+fn event_uri(event_id: Uuid, action: &str) -> String {
+    format!("/test-community/event/{event_id}/{action}")
+}
+
+/// Expects one contact context read for the viewer, returning `context`.
+fn expect_contact_context(
+    db: &mut MockDB,
+    community_id: Uuid,
+    event_id: Uuid,
+    user_id: Option<Uuid>,
+    context: Option<InboxContactContext>,
+) {
+    db.expect_get_inbox_contact_context()
+        .times(1)
+        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+        .returning(move |_, _, _| Ok(context.clone()));
+}
+
+/// Expects the reads the event page always performs: the test community, the
+/// site settings and the event lookup by slug, which returns `event`.
+fn expect_event_page_reads(
+    db: &mut MockDB,
+    community_id: Uuid,
+    group_slug: &'static str,
+    event_slug: &'static str,
+    event: Option<EventFull>,
+) {
+    expect_test_community(db, community_id);
+    expect_site_settings(db);
+    db.expect_get_event_full_by_slug()
+        .times(1)
+        .withf(move |id, gslug, eslug| {
+            *id == community_id && gslug == group_slug && eslug == event_slug
+        })
+        .returning(move |_, _, _| Ok(event.clone()));
+}
+
+/// Expects one tracked view of the event with the given attribution.
+fn expect_event_view(event_id: Uuid, utm: Option<UtmParams>) -> MockActivityTracker {
     let mut activity_tracker = MockActivityTracker::new();
     activity_tracker
         .expect_track()
@@ -2700,101 +1965,7 @@ async fn test_track_view_records_utm_params_accepted_by_event() {
                 }
         })
         .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Send the tracking request
-    let (parts, bytes) =
-        send_track_view_request(db, activity_tracker, &format!("/events/{event_id}/views?utm_campaign=Spring-Launch&utm_medium=&utm_source=%20Newsletter%20")).await;
-
-    // Check the view is counted with its attribution
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_track_view_rejects_cross_origin_request() {
-    // Setup database mock
-    let db = MockDB::new();
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup activity tracker mock
-    let mut activity_tracker = MockActivityTracker::new();
-    activity_tracker.expect_track().times(0);
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_activity_tracker(activity_tracker)
-        .with_server_cfg(sample_tracking_server_cfg())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!("/events/{}/views", Uuid::new_v4()))
-        .header("origin", "https://evil.test")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::FORBIDDEN);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_track_view_rejects_missing_origin_request() {
-    // Setup dependencies that must not record the unverified request
-    let db = MockDB::new();
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-    let mut activity_tracker = MockActivityTracker::new();
-    activity_tracker.expect_track().never();
-
-    // Send a headerless tracking request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_activity_tracker(activity_tracker)
-        .with_server_cfg(sample_tracking_server_cfg())
-        .build()
-        .await;
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri(format!("/events/{}/views", Uuid::new_v4()))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check missing same-origin evidence is forbidden
-    assert_eq!(parts.status, StatusCode::FORBIDDEN);
-    assert!(bytes.is_empty());
-}
-
-// Helpers.
-
-/// Expects the test community to resolve to the given identifier.
-fn expect_test_community(db: &mut MockDB, community_id: Uuid) {
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
-}
-
-/// Returns community, event, session and user identifiers for contact tests.
-fn sample_contact_ids() -> (Uuid, Uuid, session::Id, Uuid) {
-    (
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        session::Id::default(),
-        Uuid::new_v4(),
-    )
+    activity_tracker
 }
 
 /// Builds the contact context of the test event.
@@ -2827,65 +1998,10 @@ fn sample_contact_viewer() -> InboxContactViewer {
     }
 }
 
-/// Returns an allowlist accepting the sample attribution.
-fn sample_event_utm_allowlist() -> EventUtmAllowlist {
-    EventUtmAllowlist {
-        campaigns: vec!["spring-launch".to_string()],
-        mediums: vec!["email".to_string()],
-        sources: vec!["newsletter".to_string()],
-    }
-}
-
-/// Sends a contact request through the router.
-async fn send_contact_request(
-    db: MockDB,
-    inbox_manager: MockInboxManager,
-    session_id: Option<session::Id>,
-    method: &str,
-    uri: &str,
-    form: Option<&str>,
-) -> (axum::http::response::Parts, axum::body::Bytes) {
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_inbox_manager(inbox_manager)
-        .build()
-        .await;
-    let mut request = Request::builder().method(method).uri(uri);
-    if let Some(session_id) = session_id {
-        request = request.header(COOKIE, format!("id={session_id}"));
-    }
-    if form.is_some() {
-        request = request.header(CONTENT_TYPE, "application/x-www-form-urlencoded");
-    }
-    let request = request
-        .body(Body::from(form.unwrap_or_default().to_string()))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    (parts, bytes)
-}
-
-/// Sends a same-origin event view tracking request through the router.
-async fn send_track_view_request(
-    db: MockDB,
-    activity_tracker: MockActivityTracker,
-    uri: &str,
-) -> (axum::http::response::Parts, axum::body::Bytes) {
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_activity_tracker(activity_tracker)
-        .with_server_cfg(sample_tracking_server_cfg())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(uri)
+/// Builds a same-origin view tracking request.
+fn track_view_request(uri: &str) -> Request<Body> {
+    request("POST", uri)
         .header("origin", "https://example.test")
         .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    (parts, bytes)
+        .unwrap()
 }

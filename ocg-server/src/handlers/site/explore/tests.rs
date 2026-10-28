@@ -1,25 +1,22 @@
 use axum::{
-    body::{Body, to_bytes},
+    body::Body,
     http::{
-        HeaderMap, HeaderValue, Request, StatusCode,
+        HeaderMap, HeaderValue, StatusCode,
         header::{CACHE_CONTROL, CONTENT_TYPE},
     },
 };
 use chrono::{Months, Utc};
 use serde_json::Value;
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB,
+    db::mock::{MockDB, expect_site_settings},
     handlers::{
         error::{HandlerError, INVALID_REQUEST_PAYLOAD},
         tests::*,
     },
     router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
-    services::notifications::MockNotificationsManager,
     types::{
-        pagination,
         search::{EXPLORE_WIDGET_MAX_ITEMS, SearchEventsFilters, SearchGroupsFilters, ViewMode},
         site::explore::Entity,
     },
@@ -40,30 +37,21 @@ async fn test_event_card_calendar_renders_calendar_card() {
     db.expect_get_public_event_summary()
         .times(1)
         .withf(move |id| *id == event_id)
-        .returning(move |_| Ok(Some(sample_event_summary(event_id, Uuid::new_v4()))));
+        .returning(move |_| Ok(Some(sample_event_summary(event_id))));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
-            "/explore/events/{event_id}/card?view_mode=calendar"
-        ))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        &format!("/explore/events/{event_id}/card?view_mode=calendar"),
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the calendar card is rendered with public cache headers
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
@@ -79,20 +67,14 @@ async fn test_event_card_invalid_view_mode_returns_422() {
     db.expect_get_public_event_summary().never();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
-            "/explore/events/{}/card?view_mode=list",
-            Uuid::new_v4()
-        ))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        &format!("/explore/events/{}/card?view_mode=list", Uuid::new_v4()),
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the request is rejected without exposing parser details
@@ -110,28 +92,21 @@ async fn test_event_card_map_renders_event_card() {
     db.expect_get_public_event_summary()
         .times(1)
         .withf(move |id| *id == event_id)
-        .returning(move |_| Ok(Some(sample_event_summary(event_id, Uuid::new_v4()))));
+        .returning(move |_| Ok(Some(sample_event_summary(event_id))));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/explore/events/{event_id}/card?view_mode=map"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        &format!("/explore/events/{event_id}/card?view_mode=map"),
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the map card is rendered with public cache headers
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
@@ -153,21 +128,17 @@ async fn test_event_card_not_found_returns_404() {
         .returning(|_| Ok(None));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/explore/events/{event_id}/card?view_mode=map"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        &format!("/explore/events/{event_id}/card?view_mode=map"),
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response is an empty not found
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -186,21 +157,15 @@ async fn test_events_results_section_calendar_uses_widget_data() {
     db.expect_search_events().never();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/events-results-section?view_mode=calendar")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/events-results-section?view_mode=calendar")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the calendar embeds the minimal events and hides the notice
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("data-explore-calendar-data"));
     assert!(body.contains(&event_id.to_string()));
     assert!(body.contains("Sample Minimal Event"));
@@ -228,21 +193,15 @@ async fn test_events_results_section_map_shows_truncation_notice() {
     db.expect_search_events().never();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/events-results-section?view_mode=map")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/events-results-section?view_mode=map")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the map embeds the minimal events and shows the notice
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains(r#"data-explore-map-data data-entity="events""#));
     assert!(body.contains(&event_id.to_string()));
     assert!(!truncation_notice_is_hidden(&body));
@@ -262,36 +221,23 @@ async fn test_events_results_section_success() {
         .times(1)
         .returning(move |_| Ok(sample_search_events_output(event_id)));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/events-results-section")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/events-results-section")
         .body(Body::empty())
         .unwrap();
-    let raw_query = request.uri().query().map(str::to_string).unwrap_or_default();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert_eq!(
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
-        expected_events_push_url(&raw_query)
+        "/explore?entity=events&community=&event_category=&group=&group_category=&kind=&region=&limit=10&offset=0"
     );
-    assert!(!bytes.is_empty());
 }
 
 #[tokio::test]
@@ -309,36 +255,21 @@ async fn test_events_section_success() {
         .times(1)
         .returning(move |_| Ok(sample_search_events_output(event_id)));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/events-section")
-        .body(Body::empty())
-        .unwrap();
-    let raw_query = request.uri().query().map(str::to_string).unwrap_or_default();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/events-section").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert_eq!(
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
-        expected_events_push_url(&raw_query)
+        "/explore?entity=events&community=&event_category=&group=&group_category=&kind=&region=&limit=10&offset=0"
     );
-    assert!(!bytes.is_empty());
 }
 
 #[tokio::test]
@@ -356,23 +287,15 @@ async fn test_events_section_with_single_community() {
         .times(1)
         .returning(move |_| Ok(sample_search_events_output(event_id)));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/events-section?community[0]=test-community")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/events-section?community[0]=test-community")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -388,21 +311,14 @@ async fn test_group_card_not_found_returns_404() {
         .returning(|_| Ok(None));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/explore/groups/{group_id}/card"))
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", &format!("/explore/groups/{group_id}/card"))
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response is an empty not found
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -418,25 +334,15 @@ async fn test_group_card_success() {
         .returning(move |_| Ok(Some(sample_group_summary(group_id))));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/explore/groups/{group_id}/card"))
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", &format!("/explore/groups/{group_id}/card"))
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the group card is rendered with public cache headers
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
@@ -458,21 +364,15 @@ async fn test_groups_results_section_calendar_renders_list() {
     db.expect_search_groups_minimal().never();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/groups-results-section?view_mode=calendar")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/groups-results-section?view_mode=calendar")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check groups have no calendar view and render as a list
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("Test Group"));
     assert!(body.contains("data-results-summary"));
     assert!(!body.contains("data-explore-map-data"));
@@ -494,21 +394,15 @@ async fn test_groups_results_section_map_uses_widget_data() {
     db.expect_search_groups().never();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/groups-results-section?view_mode=map")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/groups-results-section?view_mode=map")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the map embeds the minimal groups and hides the notice
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains(r#"data-explore-map-data data-entity="groups""#));
     assert!(body.contains(&group_id.to_string()));
     assert!(body.contains("Test Group"));
@@ -526,36 +420,23 @@ async fn test_groups_results_section_success() {
         .times(1)
         .returning(move |_| Ok(sample_search_groups_output(group_id)));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/groups-results-section")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/groups-results-section")
         .body(Body::empty())
         .unwrap();
-    let raw_query = request.uri().query().map(str::to_string).unwrap_or_default();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert_eq!(
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
-        expected_groups_push_url(&raw_query)
+        "/explore?entity=groups&community=&group_category=&region=&limit=10&offset=0"
     );
-    assert!(!bytes.is_empty());
 }
 
 #[tokio::test]
@@ -573,36 +454,21 @@ async fn test_groups_section_success() {
         .times(1)
         .returning(move |_| Ok(sample_search_groups_output(group_id)));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/groups-section")
-        .body(Body::empty())
-        .unwrap();
-    let raw_query = request.uri().query().map(str::to_string).unwrap_or_default();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/groups-section").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert_eq!(
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
-        expected_groups_push_url(&raw_query)
+        "/explore?entity=groups&community=&group_category=&region=&limit=10&offset=0"
     );
-    assert!(!bytes.is_empty());
 }
 
 #[tokio::test]
@@ -620,46 +486,29 @@ async fn test_groups_section_with_single_community() {
         .times(1)
         .returning(move |_| Ok(sample_search_groups_output(group_id)));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/groups-section?community[0]=test-community")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/groups-section?community[0]=test-community")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
 async fn test_page_events_invalid_filters() {
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_site_settings(&mut db);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore?entity=events&limit=invalid")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore?entity=events&limit=invalid")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
@@ -671,23 +520,14 @@ async fn test_page_events_invalid_filters() {
 async fn test_page_groups_invalid_filters() {
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_site_settings(&mut db);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore?entity=groups&limit=invalid")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore?entity=groups&limit=invalid")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
@@ -702,9 +542,7 @@ async fn test_page_success_events() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_get_filters_options()
         .times(1)
         .withf(|c, e| c.is_none() && e == &Some(Entity::Events))
@@ -713,31 +551,17 @@ async fn test_page_success_events() {
         .times(1)
         .returning(move |_| Ok(sample_search_events_output(event_id)));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore?entity=events")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore?entity=events").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
-    assert!(!bytes.is_empty());
 }
 
 #[tokio::test]
@@ -747,9 +571,7 @@ async fn test_page_success_groups() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_get_filters_options()
         .times(1)
         .withf(|c, e| c.is_none() && e == &Some(Entity::Groups))
@@ -758,31 +580,17 @@ async fn test_page_success_groups() {
         .times(1)
         .returning(move |_| Ok(sample_search_groups_output(group_id)));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore?entity=groups")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore?entity=groups").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
-    assert!(!bytes.is_empty());
 }
 
 #[test]
@@ -899,17 +707,14 @@ async fn test_search_events_calendar_success() {
         .returning(move |_, _| Ok(sample_search_events_minimal_output(event_id)));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/events/search?date_from=2031-03-01&date_to=2031-03-31&view_mode=calendar")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        "/explore/events/search?date_from=2031-03-01&date_to=2031-03-31&view_mode=calendar",
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Check the minimal events are returned with shared cache headers
@@ -947,20 +752,15 @@ async fn test_search_events_map_success() {
     db.expect_search_events().never();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(
-            "/explore/events/search?bbox_ne_lat=45.0&bbox_ne_lon=10.0&bbox_sw_lat=40.0\
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        "/explore/events/search?bbox_ne_lat=45.0&bbox_ne_lon=10.0&bbox_sw_lat=40.0\
              &bbox_sw_lon=5.0&view_mode=map",
-        )
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Check the minimal events are returned with shared cache headers
@@ -981,35 +781,11 @@ async fn test_search_events_map_success() {
 }
 
 #[tokio::test]
-async fn test_search_events_rejects_list_view_mode() {
-    // Setup database mock (the search must not be reached)
-    let mut db = MockDB::new();
-    db.expect_search_events_minimal().never();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/events/search?view_mode=list")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-    let body = String::from_utf8(bytes.to_vec()).unwrap();
-
-    // Check the request is rejected with the view mode message
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(body, "view_mode must be calendar or map");
-}
-
-#[tokio::test]
 async fn test_search_events_rejects_unsupported_view_modes() {
     for uri in [
         "/explore/events/search",
         "/explore/events/search?view_mode=",
+        "/explore/events/search?view_mode=list",
         "/explore/events/search?view_mode=unknown",
         "/explore/events/search?view_mode=map&view_mode=list",
     ] {
@@ -1018,13 +794,9 @@ async fn test_search_events_rejects_unsupported_view_modes() {
         db.expect_search_events_minimal().never();
 
         // Setup router and send request
-        let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-            .build()
-            .await;
-        let request = Request::builder().method("GET").uri(uri).body(Body::empty()).unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        let router = TestRouterBuilder::new(db).build().await;
+        let request = request("GET", uri).body(Body::empty()).unwrap();
+        let (parts, bytes) = send(router, request).await;
         let body = String::from_utf8(bytes.to_vec()).unwrap();
 
         // Check the request is rejected with the view mode message
@@ -1048,19 +820,16 @@ async fn test_search_events_with_distance_sort_and_location_headers_is_not_cache
         .returning(move |_, _| Ok(sample_search_events_minimal_output(event_id)));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/events/search?sort_by=distance&view_mode=map")
-        .header("CloudFront-Viewer-Latitude", "51.5")
-        .header("CloudFront-Viewer-Longitude", "-0.12")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        "/explore/events/search?sort_by=distance&view_mode=map",
+    )
+    .header("CloudFront-Viewer-Latitude", "51.5")
+    .header("CloudFront-Viewer-Longitude", "-0.12")
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Check the location dependent response is not stored
@@ -1084,33 +853,25 @@ async fn test_events_results_section_with_distance_sort_and_location_headers_is_
         .withf(SearchEventsFilters::uses_viewer_location)
         .returning(move |_| Ok(sample_search_events_output(event_id)));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/events-results-section?sort_by=distance")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/events-results-section?sort_by=distance")
         .header("CloudFront-Viewer-Latitude", "51.5")
         .header("CloudFront-Viewer-Longitude", "-0.12")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_NO_STORE)
     );
     assert_eq!(
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
-        expected_events_push_url("sort_by=distance")
+        "/explore?entity=events&community=&event_category=&group=&group_category=&kind=&region=&limit=10&offset=0&sort_by=distance"
     );
-    assert!(!bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1129,17 +890,14 @@ async fn test_search_groups_success() {
     db.expect_search_groups().never();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/groups/search?region[0]=europe&view_mode=map")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        "/explore/groups/search?region[0]=europe&view_mode=map",
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Check the minimal groups are returned with shared cache headers
@@ -1174,19 +932,13 @@ async fn test_search_groups_with_distance_filter_and_location_headers_is_not_cac
         .returning(move |_, _| Ok(sample_search_groups_minimal_output(group_id)));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/groups/search?distance=25000&view_mode=map")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/groups/search?distance=25000&view_mode=map")
         .header("CloudFront-Viewer-Latitude", "51.5")
         .header("CloudFront-Viewer-Longitude", "-0.12")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
     let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Check the location dependent response is not stored
@@ -1210,67 +962,51 @@ async fn test_groups_results_section_with_distance_filter_and_location_headers_i
         .withf(SearchGroupsFilters::uses_viewer_location)
         .returning(move |_| Ok(sample_search_groups_output(group_id)));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/explore/groups-results-section?distance=25000")
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/groups-results-section?distance=25000")
         .header("CloudFront-Viewer-Latitude", "51.5")
         .header("CloudFront-Viewer-Longitude", "-0.12")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_NO_STORE)
     );
     assert_eq!(
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
-        expected_groups_push_url("distance=25000")
+        "/explore?entity=groups&community=&group_category=&region=&distance=25000.0&limit=10&offset=0"
     );
-    assert!(!bytes.is_empty());
 }
 
 #[test]
-fn test_viewer_location_invalid_values() {
-    let headers = sample_location_headers("invalid", "10.0");
+fn test_viewer_location_reads_valid_headers_only() {
+    // Setup labeled header cases with the expected coordinates
+    let cases = [
+        (
+            "invalid latitude",
+            sample_location_headers("invalid", "10.0"),
+            (None, None),
+        ),
+        ("missing headers", HeaderMap::new(), (None, None)),
+        (
+            "valid headers",
+            sample_location_headers("10.123", "-20.456"),
+            (Some(10.123), Some(-20.456)),
+        ),
+    ];
 
-    assert_eq!(viewer_location(&headers), (None, None));
-}
-
-#[test]
-fn test_viewer_location_missing_headers() {
-    assert_eq!(viewer_location(&HeaderMap::new()), (None, None));
-}
-
-#[test]
-fn test_viewer_location_valid_headers() {
-    let headers = sample_location_headers("10.123", "-20.456");
-
-    assert_eq!(viewer_location(&headers), (Some(10.123), Some(-20.456)));
+    // Check each case resolves the expected viewer location
+    for (case, headers, expected) in cases {
+        assert_eq!(viewer_location(&headers), expected, "{case}");
+    }
 }
 
 // Helpers
-
-/// Helper to compute the expected events HX-Push-Url for tests.
-fn expected_events_push_url(raw_query: &str) -> String {
-    let filters = parse_events_filters(&HeaderMap::new(), raw_query).unwrap();
-    pagination::build_url("/explore?entity=events", &filters).unwrap()
-}
-
-/// Helper to compute the expected groups HX-Push-Url for tests.
-fn expected_groups_push_url(raw_query: &str) -> String {
-    let filters = parse_groups_filters(&HeaderMap::new(), raw_query).unwrap();
-    pagination::build_url("/explore?entity=groups", &filters).unwrap()
-}
 
 /// Returns `CloudFront` viewer location headers with the given values.
 fn sample_location_headers(latitude: &'static str, longitude: &'static str) -> HeaderMap {

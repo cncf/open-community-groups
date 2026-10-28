@@ -1,8 +1,6 @@
 //! Bounded PNG baking and extraction tests.
 
-use std::io::Cursor;
-
-use image::{DynamicImage, ImageFormat};
+use crate::test_util::sample_png;
 
 use super::{
     BadgesManagerError, CREDENTIAL_KEYWORD, MAX_CREDENTIAL_SIZE, MAX_PNG_CHUNKS, MAX_PNG_SIZE,
@@ -12,7 +10,7 @@ use super::{
 #[test]
 fn test_bake_and_extract_round_trip_replaces_existing_credential() {
     // Bake and extract one credential from source artwork
-    let source = sample_png();
+    let source = sample_png(512, 512);
     let first = bake(&source, br#"{"id":"first"}"#).unwrap();
     assert_eq!(extract(&first).unwrap(), br#"{"id":"first"}"#);
 
@@ -25,7 +23,7 @@ fn test_bake_and_extract_round_trip_replaces_existing_credential() {
 fn test_bake_rejects_oversized_credential() {
     let credential = vec![b'a'; MAX_CREDENTIAL_SIZE + 1];
     assert!(matches!(
-        bake(&sample_png(), &credential),
+        bake(&sample_png(512, 512), &credential),
         Err(BadgesManagerError::PngLimitExceeded)
     ));
 }
@@ -33,14 +31,11 @@ fn test_bake_rejects_oversized_credential() {
 #[test]
 fn test_bake_rejects_oversized_dimensions() {
     // Encode compact artwork above the decoder's dimension limit
-    let mut source = Cursor::new(Vec::new());
-    DynamicImage::new_rgba8(513, 512)
-        .write_to(&mut source, ImageFormat::Png)
-        .unwrap();
+    let source = sample_png(513, 512);
 
     // Check the bounded decoder rejects the oversized dimensions
     assert!(matches!(
-        bake(&source.into_inner(), b"{}"),
+        bake(&source, b"{}"),
         Err(BadgesManagerError::InvalidImage)
     ));
 }
@@ -65,14 +60,11 @@ fn test_bake_rejects_undecodable_source() {
 #[test]
 fn test_bake_rejects_wrong_artwork_dimensions() {
     // Encode valid artwork outside the canonical badge dimensions
-    let mut source = Cursor::new(Vec::new());
-    DynamicImage::new_rgba8(256, 256)
-        .write_to(&mut source, ImageFormat::Png)
-        .unwrap();
+    let source = sample_png(256, 256);
 
     // Check the wrong dimensions are rejected
     assert!(matches!(
-        bake(&source.into_inner(), b"{}"),
+        bake(&source, b"{}"),
         Err(BadgesManagerError::InvalidImage)
     ));
 }
@@ -80,7 +72,7 @@ fn test_bake_rejects_wrong_artwork_dimensions() {
 #[test]
 fn test_extract_rejects_chunk_count_above_limit() {
     // Insert ancillary chunks beyond the bounded chunk budget
-    let mut png = bake(&sample_png(), b"{}").unwrap();
+    let mut png = bake(&sample_png(512, 512), b"{}").unwrap();
     let filler = test_png_chunk(*b"zzZz", &[]);
     for _ in 0..MAX_PNG_CHUNKS {
         insert_chunk_before_iend(&mut png, &filler);
@@ -96,7 +88,7 @@ fn test_extract_rejects_chunk_count_above_limit() {
 #[test]
 fn test_extract_rejects_compressed_credential_chunk() {
     // Insert a credential chunk that uses compression flags
-    let mut png = bake(&sample_png(), b"{}").unwrap();
+    let mut png = bake(&sample_png(512, 512), b"{}").unwrap();
     let chunk = credential_chunk([1, 0, 0, 0, 0], b"{}");
     insert_chunk_before_iend(&mut png, &chunk);
 
@@ -107,7 +99,7 @@ fn test_extract_rejects_compressed_credential_chunk() {
 #[test]
 fn test_extract_rejects_corrupt_png() {
     // Flip one bit inside the baked credential artwork
-    let mut png = bake(&sample_png(), b"{}").unwrap();
+    let mut png = bake(&sample_png(512, 512), b"{}").unwrap();
     let last = png.len() - 1;
     png[last] ^= 1;
 
@@ -118,7 +110,7 @@ fn test_extract_rejects_corrupt_png() {
 #[test]
 fn test_extract_rejects_duplicate_credential_chunks() {
     // Insert a second credential chunk into baked artwork
-    let mut png = bake(&sample_png(), b"{}").unwrap();
+    let mut png = bake(&sample_png(512, 512), b"{}").unwrap();
     let chunk = credential_chunk([0, 0, 0, 0, 0], b"{}");
     insert_chunk_before_iend(&mut png, &chunk);
 
@@ -129,7 +121,7 @@ fn test_extract_rejects_duplicate_credential_chunks() {
 #[test]
 fn test_extract_rejects_missing_credential_chunk() {
     assert!(matches!(
-        extract(&sample_png()),
+        extract(&sample_png(512, 512)),
         Err(BadgesManagerError::InvalidPng)
     ));
 }
@@ -145,7 +137,7 @@ fn test_extract_rejects_non_png_input() {
 #[test]
 fn test_extract_rejects_trailing_data_after_terminator() {
     // Append one valid chunk after the stream terminator
-    let mut png = bake(&sample_png(), b"{}").unwrap();
+    let mut png = bake(&sample_png(512, 512), b"{}").unwrap();
     png.extend_from_slice(&test_png_chunk(*b"zzZz", &[]));
 
     // Check data beyond the terminator is rejected
@@ -155,7 +147,7 @@ fn test_extract_rejects_trailing_data_after_terminator() {
 #[test]
 fn test_extract_rejects_truncated_stream() {
     // Remove the stream terminator from baked artwork
-    let mut png = bake(&sample_png(), b"{}").unwrap();
+    let mut png = bake(&sample_png(512, 512), b"{}").unwrap();
     png.truncate(png.len() - 12);
 
     // Check the unterminated stream is rejected
@@ -193,15 +185,6 @@ fn credential_chunk(flags: [u8; 5], payload: &[u8]) -> Vec<u8> {
 fn insert_chunk_before_iend(png: &mut Vec<u8>, chunk: &[u8]) {
     let iend_offset = png.len() - 12;
     png.splice(iend_offset..iend_offset, chunk.iter().copied());
-}
-
-/// Encode valid 512×512 PNG artwork.
-fn sample_png() -> Vec<u8> {
-    let mut output = Cursor::new(Vec::new());
-    DynamicImage::new_rgba8(512, 512)
-        .write_to(&mut output, ImageFormat::Png)
-        .unwrap();
-    output.into_inner()
 }
 
 /// Encode one PNG chunk with a valid CRC for malformed-stream tests.

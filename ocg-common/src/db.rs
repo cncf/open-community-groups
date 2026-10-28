@@ -83,200 +83,125 @@ mod tests {
 
     use super::*;
 
+    #[tokio::test]
+    async fn test_tls_connector_handshake_follows_verification_mode() {
+        // Setup a trusted CA and server certificates chaining to it or to an unknown CA
+        let trusted_ca = test_certificate_authority();
+        let trusted_server = test_server_certificate(&trusted_ca);
+        let untrusted_server = test_server_certificate(&test_certificate_authority());
+
+        // (case, mode, server chains to the trusted CA, hostname, handshake succeeds)
+        let cases = [
+            (
+                "disabled verification, untrusted chain",
+                None,
+                false,
+                "localhost",
+                true,
+            ),
+            (
+                "verify-ca, hostname mismatch",
+                Some(DbTlsMode::VerifyCa),
+                true,
+                "db.example.test",
+                true,
+            ),
+            (
+                "verify-ca, untrusted chain",
+                Some(DbTlsMode::VerifyCa),
+                false,
+                "localhost",
+                false,
+            ),
+            (
+                "verify-full, trusted chain and hostname",
+                Some(DbTlsMode::VerifyFull),
+                true,
+                "localhost",
+                true,
+            ),
+            (
+                "verify-full, hostname mismatch",
+                Some(DbTlsMode::VerifyFull),
+                true,
+                "db.example.test",
+                false,
+            ),
+            (
+                "verify-full, untrusted chain",
+                Some(DbTlsMode::VerifyFull),
+                false,
+                "localhost",
+                false,
+            ),
+        ];
+
+        for (case, mode, trusted_chain, hostname, succeeds) in cases {
+            // Setup the server and the connector for the verification mode
+            let server_certificate = if trusted_chain {
+                &trusted_server
+            } else {
+                &untrusted_server
+            };
+            let (address, server) = spawn_tls_server(server_certificate);
+            let tls = mode.map(|mode| DbTlsConfig {
+                mode,
+
+                ca_cert: Some(certificate_pem(&trusted_ca)),
+            });
+            let connector = tls_connector(tls.as_ref()).unwrap();
+
+            // Perform the TLS handshake against the test server
+            let result = tls_handshake(connector, address, hostname).await;
+
+            // Check the handshake outcome matches the verification policy
+            assert_eq!(result.is_ok(), succeeds, "{case}: {result:?}");
+            server.join().unwrap();
+        }
+    }
+
     #[test]
-    fn test_tls_connector_accepts_custom_ca_certificate() {
-        // Setup a generated CA certificate and full verification
-        let tls = DbTlsConfig {
-            mode: DbTlsMode::VerifyFull,
+    fn test_tls_connector_rejects_invalid_trust_configuration() {
+        let invalid_pem = "-----BEGIN CERTIFICATE-----\nnot base64!\n-----END CERTIFICATE-----\n";
+        // (case, mode, ca_cert, expected error)
+        let cases = [
+            (
+                "empty bundle",
+                DbTlsMode::VerifyCa,
+                Some(""),
+                "db.tls.ca_cert does not contain a certificate",
+            ),
+            (
+                "text without PEM markers",
+                DbTlsMode::VerifyCa,
+                Some("not a certificate"),
+                "db.tls.ca_cert does not contain a certificate",
+            ),
+            (
+                "malformed certificate",
+                DbTlsMode::VerifyCa,
+                Some(invalid_pem),
+                "db.tls.ca_cert is not valid PEM",
+            ),
+            (
+                "verification without trust roots",
+                DbTlsMode::VerifyFull,
+                None,
+                "db.tls.ca_cert is required when db.tls.mode enables certificate verification",
+            ),
+        ];
 
-            ca_cert: Some(test_ca_certificate()),
-        };
+        for (case, mode, ca_cert, expected) in cases {
+            let tls = DbTlsConfig {
+                mode,
 
-        // Build the database TLS connector
-        let result = tls_connector(Some(&tls));
+                ca_cert: ca_cert.map(str::to_string),
+            };
 
-        // Check the custom trust root is accepted
-        assert!(result.is_ok());
-    }
+            let error = tls_connector(Some(&tls)).err().expect(case);
 
-    #[test]
-    fn test_tls_connector_accepts_disabled_verification() {
-        assert!(tls_connector(None).is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_tls_connector_disabled_verification_accepts_untrusted_chain() {
-        // Setup a server whose certificate chains to an unknown CA
-        let ca = test_certificate_authority();
-        let (address, server) = spawn_tls_server(test_server_certificate(&ca));
-        let connector = tls_connector(None).unwrap();
-
-        // Perform the TLS handshake against the test server
-        let result = tls_handshake(connector, address, "localhost").await;
-
-        // Check disabled verification accepts the untrusted chain
-        result.expect("handshake should succeed");
-        server.join().unwrap();
-    }
-
-    #[test]
-    fn test_tls_connector_rejects_empty_ca_certificate() {
-        // Setup an empty trust bundle
-        let tls = DbTlsConfig {
-            mode: DbTlsMode::VerifyCa,
-
-            ca_cert: Some(String::new()),
-        };
-
-        // Build the database TLS connector
-        let error = tls_connector(Some(&tls))
-            .err()
-            .expect("empty CA certificate should fail");
-
-        // Check the startup error identifies the missing certificate
-        assert_eq!(
-            error.to_string(),
-            "db.tls.ca_cert does not contain a certificate"
-        );
-    }
-
-    #[test]
-    fn test_tls_connector_rejects_invalid_ca_certificate() {
-        // Setup invalid trust material
-        let tls = DbTlsConfig {
-            mode: DbTlsMode::VerifyCa,
-
-            ca_cert: Some("not a certificate".to_string()),
-        };
-
-        // Build the database TLS connector
-        let error = tls_connector(Some(&tls))
-            .err()
-            .expect("invalid CA certificate should fail");
-
-        // Check the startup error identifies the invalid field
-        assert!(error.to_string().contains("db.tls.ca_cert"));
-    }
-
-    #[test]
-    fn test_tls_connector_rejects_verification_without_ca_certificate() {
-        // Setup certificate verification without trust roots
-        let tls = DbTlsConfig {
-            mode: DbTlsMode::VerifyFull,
-
-            ca_cert: None,
-        };
-
-        // Build the database TLS connector
-        let error = tls_connector(Some(&tls))
-            .err()
-            .expect("missing CA certificate should fail");
-
-        // Check the startup error identifies the missing trust roots
-        assert_eq!(
-            error.to_string(),
-            "db.tls.ca_cert is required when db.tls.mode enables certificate verification"
-        );
-    }
-
-    #[tokio::test]
-    async fn test_tls_connector_verify_ca_accepts_hostname_mismatch() {
-        // Setup a trusted chain with a certificate for another hostname
-        let ca = test_certificate_authority();
-        let (address, server) = spawn_tls_server(test_server_certificate(&ca));
-        let tls = DbTlsConfig {
-            mode: DbTlsMode::VerifyCa,
-
-            ca_cert: Some(certificate_pem(&ca)),
-        };
-        let connector = tls_connector(Some(&tls)).unwrap();
-
-        // Perform the TLS handshake with a non-matching hostname
-        let result = tls_handshake(connector, address, "db.example.test").await;
-
-        // Check verify-ca keeps the chain check but skips hostname verification
-        result.expect("handshake should succeed");
-        server.join().unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_tls_connector_verify_ca_rejects_untrusted_chain() {
-        // Setup a server whose certificate chains to an unknown CA
-        let untrusted_ca = test_certificate_authority();
-        let (address, server) = spawn_tls_server(test_server_certificate(&untrusted_ca));
-        let tls = DbTlsConfig {
-            mode: DbTlsMode::VerifyCa,
-
-            ca_cert: Some(certificate_pem(&test_certificate_authority())),
-        };
-        let connector = tls_connector(Some(&tls)).unwrap();
-
-        // Perform the TLS handshake against the test server
-        let result = tls_handshake(connector, address, "localhost").await;
-
-        // Check chain verification rejects the handshake
-        assert!(result.is_err());
-        server.join().unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_tls_connector_verify_full_accepts_trusted_chain_and_hostname() {
-        // Setup a server whose certificate chains to the trusted CA
-        let ca = test_certificate_authority();
-        let (address, server) = spawn_tls_server(test_server_certificate(&ca));
-        let tls = DbTlsConfig {
-            mode: DbTlsMode::VerifyFull,
-
-            ca_cert: Some(certificate_pem(&ca)),
-        };
-        let connector = tls_connector(Some(&tls)).unwrap();
-
-        // Perform the TLS handshake against the test server
-        let result = tls_handshake(connector, address, "localhost").await;
-
-        // Check the trusted chain and matching hostname are accepted
-        result.expect("handshake should succeed");
-        server.join().unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_tls_connector_verify_full_rejects_hostname_mismatch() {
-        // Setup a trusted chain with a certificate for another hostname
-        let ca = test_certificate_authority();
-        let (address, server) = spawn_tls_server(test_server_certificate(&ca));
-        let tls = DbTlsConfig {
-            mode: DbTlsMode::VerifyFull,
-
-            ca_cert: Some(certificate_pem(&ca)),
-        };
-        let connector = tls_connector(Some(&tls)).unwrap();
-
-        // Perform the TLS handshake with a non-matching hostname
-        let result = tls_handshake(connector, address, "db.example.test").await;
-
-        // Check hostname verification rejects the handshake
-        assert!(result.is_err());
-        server.join().unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_tls_connector_verify_full_rejects_untrusted_chain() {
-        // Setup a server whose certificate chains to an unknown CA
-        let untrusted_ca = test_certificate_authority();
-        let (address, server) = spawn_tls_server(test_server_certificate(&untrusted_ca));
-        let tls = DbTlsConfig {
-            mode: DbTlsMode::VerifyFull,
-
-            ca_cert: Some(certificate_pem(&test_certificate_authority())),
-        };
-        let connector = tls_connector(Some(&tls)).unwrap();
-
-        // Perform the TLS handshake against the test server
-        let result = tls_handshake(connector, address, "localhost").await;
-
-        // Check chain verification rejects the handshake
-        assert!(result.is_err());
-        server.join().unwrap();
+            assert_eq!(error.to_string(), expected, "{case}");
+        }
     }
 
     // Helpers.
@@ -293,15 +218,16 @@ mod tests {
     }
 
     /// Spawns a TLS server that accepts a single handshake attempt.
-    fn spawn_tls_server(server: TestCertificate) -> (SocketAddr, JoinHandle<()>) {
+    fn spawn_tls_server(server: &TestCertificate) -> (SocketAddr, JoinHandle<()>) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
+        let (certificate, key) = (server.certificate.clone(), server.key.clone());
 
         let handle = thread::spawn(move || {
             // Setup the acceptor with the server certificate and key
             let mut acceptor = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls()).unwrap();
-            acceptor.set_certificate(&server.certificate).unwrap();
-            acceptor.set_private_key(&server.key).unwrap();
+            acceptor.set_certificate(&certificate).unwrap();
+            acceptor.set_private_key(&key).unwrap();
             let acceptor = acceptor.build();
 
             // Serve a single handshake; failures are asserted client-side
@@ -310,11 +236,6 @@ mod tests {
         });
 
         (address, handle)
-    }
-
-    /// Generates a self-signed CA certificate for TLS connector tests.
-    fn test_ca_certificate() -> String {
-        certificate_pem(&test_certificate_authority())
     }
 
     /// Generates a self-signed certificate authority for handshake tests.

@@ -264,249 +264,138 @@ mod tests {
     const TEST_PAGINATION_LIMIT: usize = 10;
 
     #[test]
-    fn test_clamp_offset_to_last_page_keeps_offset_when_results_are_empty() {
-        let mut filters = test_filters(Some(10));
+    fn test_clamp_offset_to_last_page_moves_offset_to_last_page() {
+        // (case, offset, total, clamped, expected offset)
+        let cases = [
+            ("empty results keep the offset", 10, 0, false, 10),
+            ("offset within results is kept", 10, 11, false, 10),
+            ("offset past a full last page moves", 20, 20, true, 10),
+            ("offset past a partial last page moves", 30, 15, true, 10),
+            ("unaligned offset moves to the page start", 12, 12, true, 10),
+        ];
+        for (case, offset, total, clamped, expected_offset) in cases {
+            let mut filters = test_filters(Some(offset));
 
-        assert!(!filters.clamp_offset_to_last_page(0));
-        assert_eq!(filters.offset, Some(10));
+            assert_eq!(filters.clamp_offset_to_last_page(total), clamped, "{case}");
+            assert_eq!(filters.offset, Some(expected_offset), "{case}");
+        }
     }
 
     #[test]
-    fn test_clamp_offset_to_last_page_keeps_offset_within_results() {
-        let mut filters = test_filters(Some(10));
+    fn test_navigation_links_offsets_cover_page_positions() {
+        // (case, offset, total, first, last, next, prev)
+        let cases = [
+            (
+                "first of two full pages",
+                Some(0),
+                20,
+                None,
+                Some(10),
+                Some(10),
+                None,
+            ),
+            (
+                "last of two full pages",
+                Some(10),
+                20,
+                Some(0),
+                None,
+                None,
+                Some(0),
+            ),
+            (
+                "first page with a partial last page",
+                Some(0),
+                21,
+                None,
+                Some(20),
+                Some(10),
+                None,
+            ),
+            (
+                "partial last page",
+                Some(10),
+                15,
+                Some(0),
+                None,
+                None,
+                Some(0),
+            ),
+            ("single full page", Some(0), 10, None, None, None, None),
+            ("single partial page", Some(0), 5, None, None, None, None),
+            ("no results", Some(0), 0, None, None, None, None),
+            (
+                "missing offset defaults to first page",
+                None,
+                15,
+                None,
+                Some(10),
+                Some(10),
+                None,
+            ),
+            (
+                "middle page",
+                Some(20),
+                50,
+                Some(0),
+                Some(40),
+                Some(30),
+                Some(10),
+            ),
+            (
+                "unaligned offset",
+                Some(2),
+                20,
+                Some(0),
+                Some(10),
+                Some(12),
+                Some(0),
+            ),
+            (
+                "one result past a full page",
+                Some(0),
+                11,
+                None,
+                Some(10),
+                Some(10),
+                None,
+            ),
+        ];
 
-        assert!(!filters.clamp_offset_to_last_page(11));
-        assert_eq!(filters.offset, Some(10));
+        for (case, offset, total, first, last, next, prev) in cases {
+            assert_eq!(
+                NavigationLinksOffsets::new(offset, TEST_PAGINATION_LIMIT, total),
+                NavigationLinksOffsets {
+                    first,
+                    last,
+                    next,
+                    prev,
+                },
+                "{case}"
+            );
+        }
     }
 
     #[test]
-    fn test_clamp_offset_to_last_page_moves_to_last_full_page() {
-        let mut filters = test_filters(Some(20));
+    fn test_get_url_filters_separator_matches_query_state() {
+        let cases = [
+            ("no query string", "https://example.com", "?"),
+            ("empty query string", "https://example.com?", ""),
+            (
+                "query with parameters",
+                "https://example.com?param1=value1",
+                "&",
+            ),
+            (
+                "query ending with ampersand",
+                "https://example.com?param1=value1&",
+                "",
+            ),
+        ];
 
-        assert!(filters.clamp_offset_to_last_page(20));
-        assert_eq!(filters.offset, Some(10));
-    }
-
-    #[test]
-    fn test_clamp_offset_to_last_page_moves_to_last_partial_page() {
-        let mut filters = test_filters(Some(30));
-
-        assert!(filters.clamp_offset_to_last_page(15));
-        assert_eq!(filters.offset, Some(10));
-    }
-
-    #[test]
-    fn test_clamp_offset_to_last_page_moves_unaligned_offset_to_page_start() {
-        let mut filters = test_filters(Some(12));
-
-        assert!(filters.clamp_offset_to_last_page(12));
-        assert_eq!(filters.offset, Some(10));
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_1() {
-        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 20);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: None,
-                last: Some(10),
-                next: Some(10),
-                prev: None,
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_2() {
-        let offsets = NavigationLinksOffsets::new(Some(10), TEST_PAGINATION_LIMIT, 20);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: Some(0),
-                last: None,
-                next: None,
-                prev: Some(0),
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_3() {
-        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 21);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: None,
-                last: Some(20),
-                next: Some(10),
-                prev: None,
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_4() {
-        let offsets = NavigationLinksOffsets::new(Some(10), TEST_PAGINATION_LIMIT, 15);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: Some(0),
-                last: None,
-                next: None,
-                prev: Some(0),
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_5() {
-        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 10);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: None,
-                last: None,
-                next: None,
-                prev: None,
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_6() {
-        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 5);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: None,
-                last: None,
-                next: None,
-                prev: None,
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_7() {
-        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 0);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: None,
-                last: None,
-                next: None,
-                prev: None,
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_8() {
-        let offsets = NavigationLinksOffsets::new(None, TEST_PAGINATION_LIMIT, 15);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: None,
-                last: Some(10),
-                next: Some(10),
-                prev: None,
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_9() {
-        let offsets = NavigationLinksOffsets::new(None, TEST_PAGINATION_LIMIT, 15);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: None,
-                last: Some(TEST_PAGINATION_LIMIT),
-                next: Some(TEST_PAGINATION_LIMIT),
-                prev: None,
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_10() {
-        let offsets = NavigationLinksOffsets::new(Some(20), TEST_PAGINATION_LIMIT, 50);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: Some(0),
-                last: Some(40),
-                next: Some(30),
-                prev: Some(10),
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_11() {
-        let offsets = NavigationLinksOffsets::new(Some(2), TEST_PAGINATION_LIMIT, 20);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: Some(0),
-                last: Some(10),
-                next: Some(12),
-                prev: Some(0),
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_12() {
-        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 5);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: None,
-                last: None,
-                next: None,
-                prev: None,
-            }
-        );
-    }
-
-    #[test]
-    fn test_navigation_links_offsets_13() {
-        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 11);
-        assert_eq!(
-            offsets,
-            NavigationLinksOffsets {
-                first: None,
-                last: Some(10),
-                next: Some(10),
-                prev: None,
-            }
-        );
-    }
-
-    #[test]
-    fn test_get_url_filters_separator_1() {
-        let url = "https://example.com";
-        assert_eq!(get_url_filters_separator(url), "?");
-    }
-
-    #[test]
-    fn test_get_url_filters_separator_2() {
-        let url = "https://example.com?";
-        assert_eq!(get_url_filters_separator(url), "");
-    }
-
-    #[test]
-    fn test_get_url_filters_separator_3() {
-        let url = "https://example.com?param1=value1";
-        assert_eq!(get_url_filters_separator(url), "&");
-    }
-
-    #[test]
-    fn test_get_url_filters_separator_4() {
-        let url = "https://example.com?param1=value1&";
-        assert_eq!(get_url_filters_separator(url), "");
+        for (case, url, expected) in cases {
+            assert_eq!(get_url_filters_separator(url), expected, "{case}");
+        }
     }
 
     // Helpers.

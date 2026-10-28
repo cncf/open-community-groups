@@ -1,194 +1,106 @@
 use anyhow::anyhow;
-use axum::{
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE},
-    },
-};
-use axum_login::tower_sessions::session;
-use tower::ServiceExt;
+use axum::http::{HeaderValue, StatusCode};
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    types::dashboard::DASHBOARD_PAGINATION_LIMIT,
+    db::mock::MockDB, handlers::tests::*, types::dashboard::user::submissions::CfsSubmissionsOutput,
 };
 
 #[tokio::test]
 async fn test_list_page_success() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_proposal_id = Uuid::new_v4();
-    let cfs_submission_id = Uuid::new_v4();
-    let output = crate::types::dashboard::user::submissions::CfsSubmissionsOutput {
+    // Setup identifiers and one listed submission
+    let ids = DashboardIds::new();
+    let output = CfsSubmissionsOutput {
         submissions: vec![sample_user_cfs_submission(
-            cfs_submission_id,
-            event_id,
-            group_id,
-            session_proposal_id,
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            Uuid::new_v4(),
         )],
-        total: 1,
+        total: 11,
     };
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_list_user_cfs_submissions()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id
-                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                && filters.offset == Some(0)
+            *uid == ids.user_id && filters.limit == Some(5) && filters.offset == Some(10)
         })
         .returning(move |_, _| Ok(output.clone()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/user/submissions")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        "/dashboard/user/submissions?limit=5&offset=10",
+        ids.session_id,
     );
-    assert!(!bytes.is_empty());
-}
+    let (parts, bytes) = send(router, request).await;
 
-#[tokio::test]
-async fn test_list_page_with_pagination_params() {
-    // Setup identifiers and data structures
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let output = crate::types::dashboard::user::submissions::CfsSubmissionsOutput {
-        submissions: vec![],
-        total: 0,
-    };
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
-    db.expect_list_user_cfs_submissions()
-        .times(1)
-        .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(5) && filters.offset == Some(10)
-        })
-        .returning(move |_, _| Ok(output.clone()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/user/submissions?limit=5&offset=10")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
+    // Check the requested page renders and pushes the full dashboard URL
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
+        parts.headers.get("hx-push-url"),
+        Some(&HeaderValue::from_static(
+            "/dashboard/user?tab=submissions&limit=5&offset=10"
+        )),
     );
-    assert!(!bytes.is_empty());
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("Proposal title"));
 }
 
 #[tokio::test]
 async fn test_resubmit_db_error() {
-    // Setup identifiers and data structures
+    // Setup identifiers and a failing write with no flash message
     let cfs_submission_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_resubmit_cfs_submission()
         .times(1)
-        .withf(move |uid, submission_id| *uid == user_id && *submission_id == cfs_submission_id)
+        .withf(move |uid, submission_id| *uid == ids.user_id && *submission_id == cfs_submission_id)
         .returning(|_, _| Err(anyhow!("db error")));
     db.expect_update_session().times(0);
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!(
-            "/dashboard/user/submissions/{cfs_submission_id}/resubmit"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "PUT",
+        &format!("/dashboard/user/submissions/{cfs_submission_id}/resubmit"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
 async fn test_resubmit_success() {
-    // Setup identifiers and data structures
+    // Setup identifiers and database mock
     let cfs_submission_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_resubmit_cfs_submission()
         .times(1)
-        .withf(move |uid, submission_id| *uid == user_id && *submission_id == cfs_submission_id)
+        .withf(move |uid, submission_id| *uid == ids.user_id && *submission_id == cfs_submission_id)
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
-            record.id == session_id && message_matches(record, "Submission resubmitted.")
+            record.id == ids.session_id && message_matches(record, "Submission resubmitted.")
         })
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!(
-            "/dashboard/user/submissions/{cfs_submission_id}/resubmit"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "PUT",
+        &format!("/dashboard/user/submissions/{cfs_submission_id}/resubmit"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_empty_hx_trigger_response(
@@ -201,79 +113,56 @@ async fn test_resubmit_success() {
 
 #[tokio::test]
 async fn test_withdraw_db_error() {
-    // Setup identifiers and data structures
+    // Setup identifiers and a failing write with no flash message
     let cfs_submission_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_withdraw_cfs_submission()
         .times(1)
-        .withf(move |uid, submission_id| *uid == user_id && *submission_id == cfs_submission_id)
+        .withf(move |uid, submission_id| *uid == ids.user_id && *submission_id == cfs_submission_id)
         .returning(|_, _| Err(anyhow!("db error")));
     db.expect_update_session().times(0);
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!(
-            "/dashboard/user/submissions/{cfs_submission_id}/withdraw"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "PUT",
+        &format!("/dashboard/user/submissions/{cfs_submission_id}/withdraw"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
 async fn test_withdraw_success() {
-    // Setup identifiers and data structures
+    // Setup identifiers and database mock
     let cfs_submission_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_session(&mut db, session_id, user_id);
+    expect_session(&mut db, &ids);
     db.expect_withdraw_cfs_submission()
         .times(1)
-        .withf(move |uid, submission_id| *uid == user_id && *submission_id == cfs_submission_id)
+        .withf(move |uid, submission_id| *uid == ids.user_id && *submission_id == cfs_submission_id)
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
-            record.id == session_id && message_matches(record, "Submission withdrawn.")
+            record.id == ids.session_id && message_matches(record, "Submission withdrawn.")
         })
         .returning(|_| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!(
-            "/dashboard/user/submissions/{cfs_submission_id}/withdraw"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "PUT",
+        &format!("/dashboard/user/submissions/{cfs_submission_id}/withdraw"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_empty_hx_trigger_response(

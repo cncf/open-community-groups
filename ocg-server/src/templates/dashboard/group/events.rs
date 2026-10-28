@@ -310,222 +310,153 @@ mod tests {
     };
 
     #[test]
-    fn test_event_ticketing_mode_prefers_external_when_eligible() {
-        let external_payments = GroupExternalPaymentsContext {
-            configured: true,
-            eligible: true,
-            enabled: true,
-            country_code: Some("KR".to_string()),
-            default_payment_window_hours: Some(72),
-            max_payment_window_hours: Some(336),
-            seller_display_name: Some("External Payee Co".to_string()),
-        };
+    #[allow(clippy::too_many_lines)]
+    fn test_ticketing_rail_helpers_follow_rail_selection() {
+        use EventTicketingMode::{External, Stripe, Unavailable};
 
-        assert_eq!(
-            event_ticketing_mode(true, &external_payments),
-            EventTicketingMode::External
-        );
-    }
+        let named = Some("External Payee Co");
+        // (case, payments_ready, external payments, mode, available, opt_in, seller_name)
+        let cases = [
+            (
+                "no rail configured",
+                false,
+                GroupExternalPaymentsContext::default(),
+                Unavailable,
+                false,
+                false,
+                false,
+            ),
+            (
+                "stripe ready, country not allowlisted",
+                true,
+                external_payments(true, false, false, named),
+                Stripe,
+                true,
+                false,
+                false,
+            ),
+            (
+                "stripe ready, country not allowlisted, nameless",
+                true,
+                external_payments(true, false, false, None),
+                Stripe,
+                true,
+                false,
+                false,
+            ),
+            (
+                "stripe not ready, country not allowlisted",
+                false,
+                external_payments(true, false, false, None),
+                Unavailable,
+                false,
+                false,
+                false,
+            ),
+            (
+                "allowlisted but external payments not configured",
+                false,
+                external_payments(false, true, false, None),
+                Unavailable,
+                false,
+                false,
+                false,
+            ),
+            (
+                "allowlisted and opted out, stripe ready",
+                true,
+                external_payments(true, true, false, named),
+                Stripe,
+                true,
+                false,
+                false,
+            ),
+            (
+                "allowlisted and opted out, stripe not ready",
+                false,
+                external_payments(true, true, false, None),
+                Unavailable,
+                false,
+                true,
+                false,
+            ),
+            (
+                "opted in and named, stripe ready",
+                true,
+                external_payments(true, true, true, named),
+                External,
+                true,
+                false,
+                false,
+            ),
+            (
+                "opted in and named, stripe not ready",
+                false,
+                external_payments(true, true, true, named),
+                External,
+                true,
+                false,
+                false,
+            ),
+            // An opted-in group stays on the external rail even when Stripe is
+            // ready, so paid tickets wait on the seller name
+            (
+                "opted in and nameless, stripe ready",
+                true,
+                external_payments(true, true, true, None),
+                External,
+                false,
+                false,
+                true,
+            ),
+            (
+                "opted in and nameless, stripe not ready",
+                false,
+                external_payments(true, true, true, None),
+                External,
+                false,
+                false,
+                true,
+            ),
+        ];
 
-    #[test]
-    fn test_event_ticketing_mode_returns_external_without_stripe_recipient() {
-        let external_payments = GroupExternalPaymentsContext {
-            configured: true,
-            eligible: true,
-            enabled: true,
-            country_code: Some("KR".to_string()),
-            default_payment_window_hours: Some(72),
-            max_payment_window_hours: Some(336),
-            seller_display_name: Some("External Payee Co".to_string()),
-        };
-
-        assert_eq!(
-            event_ticketing_mode(false, &external_payments),
-            EventTicketingMode::External
-        );
-    }
-
-    #[test]
-    fn test_event_ticketing_mode_returns_stripe_when_external_is_unavailable() {
-        let external_payments = GroupExternalPaymentsContext {
-            configured: true,
-            eligible: false,
-            enabled: false,
-            country_code: Some("US".to_string()),
-            default_payment_window_hours: Some(72),
-            max_payment_window_hours: Some(336),
-            seller_display_name: Some("External Payee Co".to_string()),
-        };
-
-        assert_eq!(
-            event_ticketing_mode(true, &external_payments),
-            EventTicketingMode::Stripe
-        );
-    }
-
-    #[test]
-    fn test_event_ticketing_mode_returns_unavailable_without_either_rail() {
-        let external_payments = GroupExternalPaymentsContext::default();
-
-        assert_eq!(
-            event_ticketing_mode(false, &external_payments),
-            EventTicketingMode::Unavailable
-        );
-    }
-
-    #[test]
-    fn test_requires_external_payments_opt_in_is_false_for_ineligible_group() {
-        let external_payments = GroupExternalPaymentsContext {
-            configured: true,
-            eligible: false,
-            enabled: false,
-            country_code: Some("US".to_string()),
-            default_payment_window_hours: Some(72),
-            max_payment_window_hours: Some(336),
-            seller_display_name: Some("External Payee Co".to_string()),
-        };
-
-        assert!(!requires_external_payments_opt_in(
-            false,
-            &external_payments
-        ));
-    }
-
-    #[test]
-    fn test_requires_external_payments_opt_in_is_false_for_stripe_ready_group() {
-        let external_payments = GroupExternalPaymentsContext {
-            configured: true,
-            eligible: true,
-            enabled: false,
-            country_code: Some("KR".to_string()),
-            default_payment_window_hours: Some(72),
-            max_payment_window_hours: Some(336),
-            seller_display_name: Some("External Payee Co".to_string()),
-        };
-
-        assert!(!requires_external_payments_opt_in(true, &external_payments));
-    }
-
-    #[test]
-    fn test_requires_external_payments_opt_in_is_true_for_eligible_opted_out_group() {
-        let external_payments = GroupExternalPaymentsContext {
-            configured: true,
-            eligible: true,
-            enabled: false,
-            country_code: Some("KR".to_string()),
-            default_payment_window_hours: Some(72),
-            max_payment_window_hours: Some(336),
-            seller_display_name: Some("External Payee Co".to_string()),
-        };
-
-        assert!(requires_external_payments_opt_in(false, &external_payments));
-    }
-
-    #[test]
-    fn test_event_ticketing_mode_keeps_external_without_seller_name_despite_stripe_readiness() {
-        let external_payments = nameless_selected_external_payments();
-
-        assert_eq!(
-            event_ticketing_mode(true, &external_payments),
-            EventTicketingMode::External
-        );
-    }
-
-    #[test]
-    fn test_is_paid_ticketing_available_is_false_for_nameless_selected_group_with_stripe() {
-        let external_payments = nameless_selected_external_payments();
-
-        assert!(!is_paid_ticketing_available(true, &external_payments));
-    }
-
-    #[test]
-    fn test_is_paid_ticketing_available_is_true_for_named_external_group() {
-        let external_payments = GroupExternalPaymentsContext {
-            seller_display_name: Some("External Payee Co".to_string()),
-            ..nameless_selected_external_payments()
-        };
-
-        assert!(is_paid_ticketing_available(false, &external_payments));
-    }
-
-    #[test]
-    fn test_is_paid_ticketing_available_follows_stripe_readiness_off_the_external_rail() {
-        let external_payments = GroupExternalPaymentsContext {
-            configured: true,
-            eligible: false,
-            enabled: false,
-            country_code: Some("US".to_string()),
-            default_payment_window_hours: Some(72),
-            max_payment_window_hours: Some(336),
-            seller_display_name: None,
-        };
-
-        assert!(is_paid_ticketing_available(true, &external_payments));
-        assert!(!is_paid_ticketing_available(false, &external_payments));
-    }
-
-    #[test]
-    fn test_requires_external_payments_seller_name_is_false_for_named_group() {
-        let external_payments = GroupExternalPaymentsContext {
-            configured: true,
-            eligible: true,
-            enabled: true,
-            country_code: Some("KR".to_string()),
-            default_payment_window_hours: Some(72),
-            max_payment_window_hours: Some(336),
-            seller_display_name: Some("External Payee Co".to_string()),
-        };
-
-        assert!(!requires_external_payments_seller_name(
-            false,
-            &external_payments
-        ));
-    }
-
-    #[test]
-    fn test_requires_external_payments_seller_name_is_false_for_opted_out_group() {
-        let external_payments = GroupExternalPaymentsContext {
-            configured: true,
-            eligible: true,
-            enabled: false,
-            country_code: Some("KR".to_string()),
-            default_payment_window_hours: Some(72),
-            max_payment_window_hours: Some(336),
-            seller_display_name: None,
-        };
-
-        assert!(!requires_external_payments_seller_name(
-            false,
-            &external_payments
-        ));
-    }
-
-    #[test]
-    fn test_requires_external_payments_seller_name_is_true_for_nameless_opted_in_group() {
-        let external_payments = nameless_selected_external_payments();
-
-        assert!(requires_external_payments_seller_name(
-            false,
-            &external_payments
-        ));
-        assert!(requires_external_payments_seller_name(
-            true,
-            &external_payments
-        ));
+        for (case, ready, ctx, mode, available, opt_in, seller_name) in cases {
+            assert_eq!(event_ticketing_mode(ready, &ctx), mode, "{case}: mode");
+            assert_eq!(
+                is_paid_ticketing_available(ready, &ctx),
+                available,
+                "{case}: available"
+            );
+            assert_eq!(
+                requires_external_payments_opt_in(ready, &ctx),
+                opt_in,
+                "{case}: opt-in"
+            );
+            assert_eq!(
+                requires_external_payments_seller_name(ready, &ctx),
+                seller_name,
+                "{case}: seller name"
+            );
+        }
     }
 
     // Helpers.
 
-    /// Opted-in, allowlisted group that has not named the external payee.
-    fn nameless_selected_external_payments() -> GroupExternalPaymentsContext {
+    /// External payments context for the given flags and seller name.
+    fn external_payments(
+        configured: bool,
+        eligible: bool,
+        enabled: bool,
+        seller_display_name: Option<&str>,
+    ) -> GroupExternalPaymentsContext {
         GroupExternalPaymentsContext {
-            configured: true,
-            eligible: true,
-            enabled: true,
+            configured,
+            eligible,
+            enabled,
             country_code: Some("KR".to_string()),
             default_payment_window_hours: Some(72),
             max_payment_window_hours: Some(336),
-            seller_display_name: None,
+            seller_display_name: seller_display_name.map(str::to_string),
         }
     }
 }

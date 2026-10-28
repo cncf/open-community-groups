@@ -2,11 +2,11 @@
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use tokio_postgres::error::{DbError, SqlState};
+use tokio_postgres::error::SqlState;
 
 use crate::{
     db::{
-        DB, USER_FACING_DB_ERROR_CODE,
+        DB,
         dashboard::user::DBDashboardUser,
         event::{AttendEventResult, DBEvent},
     },
@@ -45,23 +45,22 @@ async fn db_contracts_add_cfs_submission_blocks_no_key_updates() -> Result<()> {
         .await?;
 
     // Probe with a lock mode that does not conflict with the foreign-key lock
-    proposal_client
-        .batch_execute("begin; set local lock_timeout = '250ms'")
-        .await?;
-    let lock_result = proposal_client
-        .query_one(
-            "select session_proposal_id from session_proposal where session_proposal_id = $1::uuid for no key update",
-            &[&cfs_add_lock_proposal_id()],
-        )
-        .await;
+    let probe_code = probe_lock(
+        &proposal_client,
+        "select session_proposal_id from session_proposal where session_proposal_id = $1::uuid for no key update",
+        &[&cfs_add_lock_proposal_id()],
+    )
+    .await?;
 
-    // Release both transactions before checking the lock outcome
-    proposal_client.batch_execute("rollback").await?;
+    // Release the submission before checking the lock outcome
     submission_client.batch_execute("rollback").await?;
 
     // Check the explicit share lock blocks a competing non-key update
-    let lock_err = lock_result.expect_err("proposal update should wait for the submission lock");
-    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+    assert_eq!(
+        probe_code,
+        Some(SqlState::LOCK_NOT_AVAILABLE),
+        "proposal update should wait for the submission lock"
+    );
 
     Ok(())
 }
@@ -70,7 +69,9 @@ async fn db_contracts_add_cfs_submission_blocks_no_key_updates() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_attend_event_and_decline_event_admission_offer_complete_concurrently()
 -> Result<()> {
-    // Setup the contract database and a client to read the race outcome
+    // Setup the contract database and a client to read the race outcome; the
+    // two single-statement calls cannot be interleaved deterministically, so
+    // this race is best effort and only proves neither call deadlocks or fails
     let db = contract_tests_db()?;
     let state_client = contract_tests_pool()?.get().await?;
 
@@ -131,21 +132,13 @@ async fn db_contracts_get_event_enrollment_deserializes() -> Result<()> {
         .get_event_enrollment(community_id(), event_id(), pre_registered_id())
         .await?;
     let refund_offer_enrollment = db
-        .get_event_enrollment(community_id(), refund_event_id(), refund_offer_user_id())
+        .get_event_enrollment(community_id(), paid_event_id(), refund_offer_user_id())
         .await?;
     let rejected_refund_enrollment = db
-        .get_event_enrollment(
-            community_id(),
-            refund_event_id(),
-            refund_rejected_buyer_id(),
-        )
+        .get_event_enrollment(community_id(), paid_event_id(), refund_rejected_buyer_id())
         .await?;
     let rejected_request_enrollment = db
-        .get_event_enrollment(
-            community_id(),
-            refund_event_id(),
-            rejected_request_user_id(),
-        )
+        .get_event_enrollment(community_id(), paid_event_id(), rejected_request_user_id())
         .await?;
     let expired_offer_enrollment = db
         .get_event_enrollment(community_id(), status_event_id(), status_expired_user_id())
@@ -323,13 +316,10 @@ async fn db_contracts_get_event_summary_by_id_deserializes() -> Result<()> {
     // Load the event summary by identifier
     let event = db.get_event_summary_by_id(community_id(), event_id()).await?;
 
-    // Check identity, kind, and name fields
+    // Check identity, kind, name, and ticket type fields
     assert_eq!(event.event_id, event_id());
-    assert!(
-        event
-            .ticket_types
-            .as_ref()
-            .is_some_and(|ticket_types| !ticket_types.is_empty())
+    assert_contract_ticket_type(
+        &event.ticket_types.as_ref().expect("event should have tickets")[0],
     );
     assert_eq!(event.kind, EventKind::Hybrid);
     assert_eq!(event.name, "Future Contract Event");
@@ -376,11 +366,11 @@ async fn db_contracts_get_event_utm_allowlist_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_leave_event_deserializes() -> Result<()> {
-    // Setup the contract database and attendee fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the attendee fixture
+    let uow = contract_unit_of_work().await?;
 
     // Leave the event through the Rust contract
-    let outcome = db
+    let outcome = uow
         .leave_event(
             community_id(),
             mutation_event_id(),
@@ -389,7 +379,7 @@ async fn db_contracts_leave_event_deserializes() -> Result<()> {
         )
         .await?;
 
-    // Check the prior status and waitlist outcome
+    // Check the prior enrollment status
     assert_eq!(outcome.left_status, EventEnrollmentStatus::Attendee);
 
     Ok(())
@@ -464,14 +454,7 @@ async fn db_contracts_lock_events_for_cancellation_serializes_rsvp() -> Result<(
         )
         .await
         .expect_err("RSVP should fail after cancellation commits");
-    assert_eq!(
-        canceled_err.as_db_error().map(DbError::message),
-        Some("event not found or inactive")
-    );
-    assert_eq!(
-        canceled_err.code(),
-        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
-    );
+    assert_pg_ocg01(canceled_err, "event not found or inactive");
 
     Ok(())
 }

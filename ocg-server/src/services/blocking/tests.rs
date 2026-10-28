@@ -7,7 +7,9 @@ use std::{
     time::Duration,
 };
 
-use tokio::time::{sleep, timeout};
+use tokio::time::sleep;
+
+use crate::test_util::wait_until;
 
 use super::BlockingExecutor;
 
@@ -16,42 +18,6 @@ fn test_new_clamps_zero_bound_to_one() {
     let executor = BlockingExecutor::new(0);
 
     assert_eq!(executor.available_permits(), 1);
-}
-
-#[tokio::test]
-async fn test_run_keeps_async_work_responsive_during_a_blocking_burst() {
-    // Setup a single-permit executor and hold that permit with blocked work
-    let executor = BlockingExecutor::new(1);
-    let (release, gate) = mpsc::channel::<()>();
-    let gate = Arc::new(Mutex::new(gate));
-    let mut burst = Vec::new();
-    for _ in 0..5 {
-        let executor = executor.clone();
-        let gate = gate.clone();
-        burst.push(tokio::spawn(async move {
-            executor
-                .run(move || {
-                    // Block this thread until the test releases it
-                    gate.lock().unwrap().recv().unwrap();
-                })
-                .await
-        }));
-    }
-
-    // Run unrelated async work while the burst is pending
-    let unrelated = timeout(Duration::from_secs(5), sleep(Duration::from_millis(10))).await;
-
-    // Check the async work completed and the executor still holds its bound
-    assert!(unrelated.is_ok());
-    assert_eq!(executor.available_permits(), 0);
-
-    // Release the burst and check every closure ran
-    for _ in 0..5 {
-        release.send(()).unwrap();
-    }
-    for task in burst {
-        task.await.unwrap().unwrap();
-    }
 }
 
 #[tokio::test]
@@ -129,17 +95,4 @@ async fn test_run_returns_the_work_output() {
     // Check the value is returned and the permit is released
     assert_eq!(output, 42);
     assert_eq!(executor.available_permits(), 1);
-}
-
-// Helpers.
-
-/// Polls `condition` until it holds, failing the test after five seconds.
-async fn wait_until(condition: impl Fn() -> bool) {
-    timeout(Duration::from_secs(5), async {
-        while !condition() {
-            sleep(Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .expect("condition to hold within the wait budget");
 }

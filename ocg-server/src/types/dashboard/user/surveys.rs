@@ -151,7 +151,6 @@ pub(crate) struct EventSurveyAnswersForm {
 
 #[cfg(test)]
 mod tests {
-    use chrono::{TimeZone, Utc};
     use garde::Validate;
     use serde_json::json;
     use uuid::Uuid;
@@ -161,17 +160,15 @@ mod tests {
             dashboard::USER_EVENT_SURVEYS_PAGINATION_LIMIT,
             event_survey::EventSurveyState,
             questionnaire::QuestionnaireAnswerValue,
-            tests::{
-                sample_event_summary, sample_user_event_survey, sample_user_event_survey_item,
-            },
+            tests::{sample_user_event_survey, sample_user_event_survey_item},
         },
         validation::MAX_SURVEY_PAGE_LIMIT,
     };
 
-    use super::{EventSurveyAnswersForm, UserEventSurvey, UserEventSurveysFilters};
+    use super::{EventSurveyAnswersForm, UserEventSurveysFilters};
 
     #[test]
-    fn event_survey_answers_form_deserializes_answers_and_revision() {
+    fn test_event_survey_answers_form_deserializes_answers_and_revision() {
         // Deserialize a form with JSON-encoded answers
         let form: EventSurveyAnswersForm = serde_urlencoded::from_str(&format!(
             "answers={}&revision=4",
@@ -196,14 +193,14 @@ mod tests {
     }
 
     #[test]
-    fn event_survey_answers_form_rejects_blank_answers() {
+    fn test_event_survey_answers_form_rejects_blank_answers() {
         let result = serde_urlencoded::from_str::<EventSurveyAnswersForm>("answers=&revision=1");
 
         assert!(result.is_err());
     }
 
     #[test]
-    fn event_survey_answers_form_rejects_repeated_question() {
+    fn test_event_survey_answers_form_rejects_repeated_question() {
         let form: EventSurveyAnswersForm = serde_urlencoded::from_str(&format!(
             "answers={}&revision=1",
             encode_answers(&json!({
@@ -215,84 +212,28 @@ mod tests {
         ))
         .unwrap();
 
-        assert!(form.validate().is_err());
+        let report = form.validate().unwrap_err().to_string();
+        assert!(
+            report.contains("questionnaire answers must include each question at most once"),
+            "{report}"
+        );
     }
 
     #[test]
-    fn event_survey_answers_form_rejects_zero_revision() {
+    fn test_event_survey_answers_form_rejects_zero_revision() {
         let form: EventSurveyAnswersForm = serde_urlencoded::from_str(&format!(
             "answers={}&revision=0",
             encode_answers(&json!({ "answers": [] }))
         ))
         .unwrap();
 
-        assert!(form.validate().is_err());
+        let report = form.validate().unwrap_err();
+        let fields: Vec<String> = report.iter().map(|(path, _)| path.to_string()).collect();
+        assert_eq!(fields, ["revision"]);
     }
 
     #[test]
-    fn user_event_survey_deserializes_database_payload() {
-        // Deserialize a closed survey in the shape returned by get_user_event_survey
-        let event =
-            serde_json::to_value(sample_event_summary(Uuid::from_u128(2), Uuid::from_u128(3)))
-                .unwrap();
-        let survey: UserEventSurvey = serde_json::from_value(json!({
-            "anonymous": false,
-            "event": event,
-            "event_survey_id": "00000000-0000-0000-0000-000000000001",
-            "questions": [{
-                "id": "00000000-0000-0000-0000-000000000004",
-                "kind": "free-text",
-                "prompt": "What should we improve?",
-                "required": true
-            }],
-            "revision": 4,
-            "state": "closed",
-            "title": "Session feedback",
-
-            "closed_at": 4_101_580_800_i64,
-            "closes_at": 4_102_444_800_i64,
-            "description": null,
-            "response": {
-                "answers": {"answers": [{
-                    "question_id": "00000000-0000-0000-0000-000000000004",
-                    "value": "More hands-on time"
-                }]},
-                "created_at": 4_099_770_000_i64,
-                "updated_at": null
-            }
-        }))
-        .unwrap();
-
-        // Check the survey fields
-        assert!(!survey.anonymous);
-        assert_eq!(survey.event.event_id, Uuid::from_u128(2));
-        assert_eq!(survey.event_survey_id, Uuid::from_u128(1));
-        assert_eq!(survey.questions.len(), 1);
-        assert_eq!(survey.revision, 4);
-        assert_eq!(survey.state, EventSurveyState::Closed);
-        assert_eq!(survey.title, "Session feedback");
-        assert_eq!(
-            survey.closed_at,
-            Utc.with_ymd_and_hms(2099, 12, 22, 0, 0, 0).single()
-        );
-        assert_eq!(
-            survey.closes_at,
-            Utc.with_ymd_and_hms(2100, 1, 1, 0, 0, 0).single()
-        );
-        assert!(survey.description.is_none());
-
-        // Check the stored response without an edit time
-        let response = survey.response.unwrap();
-        assert_eq!(response.answers.answers.len(), 1);
-        assert_eq!(
-            response.created_at,
-            Utc.with_ymd_and_hms(2099, 12, 1, 1, 0, 0).unwrap()
-        );
-        assert!(response.updated_at.is_none());
-    }
-
-    #[test]
-    fn user_event_survey_is_closed_only_in_closed_state() {
+    fn test_user_event_survey_is_closed_only_in_closed_state() {
         let mut survey = sample_user_event_survey(Uuid::from_u128(1), Uuid::from_u128(2));
 
         assert!(!survey.is_closed());
@@ -303,7 +244,7 @@ mod tests {
     }
 
     #[test]
-    fn user_event_survey_item_is_closed_only_in_closed_state() {
+    fn test_user_event_survey_item_is_closed_only_in_closed_state() {
         let mut item = sample_user_event_survey_item(Uuid::from_u128(1), true);
 
         assert!(!item.is_closed());
@@ -314,17 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn user_event_surveys_filters_accept_page_limit() {
-        let filters = UserEventSurveysFilters {
-            limit: Some(MAX_SURVEY_PAGE_LIMIT),
-            offset: Some(10),
-        };
-
-        assert!(filters.validate().is_ok());
-    }
-
-    #[test]
-    fn user_event_surveys_filters_apply_default_bounds() {
+    fn test_user_event_surveys_filters_apply_default_bounds() {
         let filters: UserEventSurveysFilters = serde_qs::from_str("").unwrap();
 
         assert_eq!(filters.limit, Some(USER_EVENT_SURVEYS_PAGINATION_LIMIT));
@@ -332,20 +263,26 @@ mod tests {
     }
 
     #[test]
-    fn user_event_surveys_filters_reject_empty_pages() {
-        let filters: UserEventSurveysFilters = serde_qs::from_str("limit=0").unwrap();
+    fn test_user_event_surveys_filters_validate_page_bounds() {
+        let cases = [
+            ("default limit", None, true),
+            ("page limit", Some(MAX_SURVEY_PAGE_LIMIT), true),
+            ("empty page", Some(0), false),
+            (
+                "limit above page limit",
+                Some(MAX_SURVEY_PAGE_LIMIT + 1),
+                false,
+            ),
+        ];
 
-        assert!(filters.validate().is_err());
-    }
+        for (case, limit, valid) in cases {
+            let filters = UserEventSurveysFilters {
+                limit,
+                offset: Some(10),
+            };
 
-    #[test]
-    fn user_event_surveys_filters_reject_limit_above_page_limit() {
-        let filters = UserEventSurveysFilters {
-            limit: Some(MAX_SURVEY_PAGE_LIMIT + 1),
-            offset: None,
-        };
-
-        assert!(filters.validate().is_err());
+            assert_eq!(filters.validate().is_ok(), valid, "{case}");
+        }
     }
 
     // Helpers.

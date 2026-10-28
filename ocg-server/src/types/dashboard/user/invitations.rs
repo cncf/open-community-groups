@@ -131,16 +131,13 @@ pub(crate) struct GroupTeamInvitation {
 
 #[cfg(test)]
 mod tests {
-    use chrono::{TimeZone, Utc};
-    use chrono_tz::UTC;
     use uuid::Uuid;
 
-    use super::EventInvitation;
-    use crate::types::event::{EventAdmissionOfferSource, EventAdmissionOfferStatus};
+    use crate::types::tests::sample_event_invitation;
 
     #[test]
-    fn event_invitation_discount_code_available_rejects_free_offers() {
-        let mut invitation = sample_event_invitation();
+    fn test_event_invitation_discount_code_available_rejects_free_offers() {
+        let mut invitation = sample_event_invitation(Uuid::new_v4());
         assert!(invitation.discount_code_available());
 
         invitation.amount_minor = Some(0);
@@ -149,8 +146,8 @@ mod tests {
     }
 
     #[test]
-    fn event_invitation_price_label_formats_free_and_paid_offers() {
-        let mut invitation = sample_event_invitation();
+    fn test_event_invitation_price_label_formats_free_and_paid_offers() {
+        let mut invitation = sample_event_invitation(Uuid::new_v4());
         invitation.amount_minor = Some(0);
 
         assert_eq!(invitation.price_label().as_deref(), Some("Free"));
@@ -159,35 +156,5 @@ mod tests {
         invitation.currency_code = Some("usd".to_string());
 
         assert_eq!(invitation.price_label().as_deref(), Some("USD 25.00"));
-    }
-
-    // Helpers.
-
-    /// Sample event invitation used by display-helper tests.
-    fn sample_event_invitation() -> EventInvitation {
-        EventInvitation {
-            admission_offer_id: Uuid::from_u128(1),
-            admission_offer_source: EventAdmissionOfferSource::OrganizerInvitation,
-            admission_offer_status: EventAdmissionOfferStatus::Pending,
-            community_display_name: "Test Community".to_string(),
-            community_name: "test-community".to_string(),
-            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
-            event_id: Uuid::from_u128(3),
-            event_name: "Test Event".to_string(),
-            event_ticket_type_id: Uuid::from_u128(2),
-            expires_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
-            group_name: "Test Group".to_string(),
-            is_simple_rsvp: false,
-            ticket_title: "General admission".to_string(),
-            timezone: UTC,
-
-            amount_minor: None,
-            currency_code: None,
-            external_payment: None,
-            registration_answers: None,
-            registration_questions: vec![],
-            resume_checkout_url: None,
-            starts_at: None,
-        }
     }
 }

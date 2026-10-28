@@ -4,6 +4,7 @@ use chrono_tz::{Europe::Madrid, Tz};
 use uuid::Uuid;
 
 use crate::{
+    test_util::normalize_whitespace,
     types::{
         dashboard::group::surveys::{
             EventSurveyFull, EventSurveyResponseFull, EventSurveyResponseNavigationFilters,
@@ -15,7 +16,10 @@ use crate::{
         event_survey::{EventSurveyAudience, EventSurveyState},
         pagination::NavigationLinks,
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestionKind},
-        tests::{sample_event_summary, sample_event_survey_full, sample_event_survey_summary},
+        tests::{
+            sample_event_summary, sample_event_survey_full, sample_event_survey_summary,
+            sample_user_summary,
+        },
         user::UserSummary,
     },
     validation::MAX_EVENT_SURVEYS,
@@ -36,55 +40,54 @@ fn test_answered_label_describes_answered_questions() {
 
 #[test]
 fn test_closes_label_formats_closing_date_in_event_timezone() {
-    let survey = EventSurveySummary {
-        closes_at: Some(sample_date()),
-        ..sample_survey(EventSurveyState::Open)
-    };
+    let cases = [
+        (
+            "closing date",
+            Some(sample_date()),
+            "May 10, 2099 11:00 AM CEST",
+        ),
+        ("no closing date", None, "No closing date"),
+    ];
 
-    assert_eq!(closes_label(&survey, Madrid), "May 10, 2099 11:00 AM CEST");
-}
+    for (case, closes_at, expected) in cases {
+        let survey = EventSurveySummary {
+            closes_at,
+            ..sample_survey(EventSurveyState::Open)
+        };
 
-#[test]
-fn test_closes_label_without_closing_date() {
-    let survey = sample_survey(EventSurveyState::Open);
-
-    assert_eq!(closes_label(&survey, Madrid), "No closing date");
-}
-
-#[test]
-fn test_few_anonymous_responses_ignores_identified_surveys() {
-    let survey = EventSurveySummary {
-        anonymous: false,
-        responses_count: 1,
-        ..sample_survey(EventSurveyState::Open)
-    };
-
-    assert!(!few_anonymous_responses(&survey));
-}
-
-#[test]
-fn test_few_anonymous_responses_ignores_surveys_without_responses() {
-    let survey = EventSurveySummary {
-        responses_count: 0,
-        ..sample_survey(EventSurveyState::Open)
-    };
-
-    assert!(!few_anonymous_responses(&survey));
+        assert_eq!(closes_label(&survey, Madrid), expected, "{case}");
+    }
 }
 
 #[test]
 fn test_few_anonymous_responses_matches_anonymous_surveys_below_threshold() {
-    let below = EventSurveySummary {
-        responses_count: FEW_RESPONSES_THRESHOLD - 1,
-        ..sample_survey(EventSurveyState::Open)
-    };
-    let at_threshold = EventSurveySummary {
-        responses_count: FEW_RESPONSES_THRESHOLD,
-        ..sample_survey(EventSurveyState::Open)
-    };
+    // (case, anonymous, responses_count, expected)
+    let cases = [
+        (
+            "anonymous below threshold",
+            true,
+            FEW_RESPONSES_THRESHOLD - 1,
+            true,
+        ),
+        (
+            "anonymous at threshold",
+            true,
+            FEW_RESPONSES_THRESHOLD,
+            false,
+        ),
+        ("anonymous without responses", true, 0, false),
+        ("identified with one response", false, 1, false),
+    ];
 
-    assert!(few_anonymous_responses(&below));
-    assert!(!few_anonymous_responses(&at_threshold));
+    for (case, anonymous, responses_count, expected) in cases {
+        let survey = EventSurveySummary {
+            anonymous,
+            responses_count,
+            ..sample_survey(EventSurveyState::Open)
+        };
+
+        assert_eq!(few_anonymous_responses(&survey), expected, "{case}");
+    }
 }
 
 #[test]
@@ -191,23 +194,17 @@ fn test_format_date_uses_event_timezone() {
 }
 
 #[test]
-fn test_list_page_limit_reached_at_survey_limit() {
-    let page = sample_list_page(vec![
-        sample_survey(EventSurveyState::Draft);
-        MAX_EVENT_SURVEYS
-    ]);
+fn test_list_page_limit_reached_matches_survey_limit() {
+    let cases = [
+        ("below the limit", MAX_EVENT_SURVEYS - 1, false),
+        ("at the limit", MAX_EVENT_SURVEYS, true),
+    ];
 
-    assert!(page.limit_reached());
-}
+    for (case, surveys, expected) in cases {
+        let page = sample_list_page(vec![sample_survey(EventSurveyState::Draft); surveys]);
 
-#[test]
-fn test_list_page_limit_reached_below_survey_limit() {
-    let page = sample_list_page(vec![
-        sample_survey(EventSurveyState::Draft);
-        MAX_EVENT_SURVEYS - 1
-    ]);
-
-    assert!(!page.limit_reached());
+        assert_eq!(page.limit_reached(), expected, "{case}");
+    }
 }
 
 #[test]
@@ -309,147 +306,161 @@ fn test_list_page_without_manage_permission_disables_mutation_controls() {
 }
 
 #[test]
-fn test_mark_ready_blocker_allows_drafts_with_a_valid_schedule() {
-    let survey = EventSurveySummary {
-        closes_at: Some(sample_date() + Duration::days(1)),
-        effective_opens_at: Some(sample_date()),
-        ..sample_survey(EventSurveyState::Draft)
-    };
+fn test_mark_ready_blocker_matches_draft_schedule() {
+    use MarkReadyBlocker::{ClosesBeforeOpening, ClosingDatePassed, NoQuestions};
 
-    assert_eq!(mark_ready_blocker(&survey, sample_now()), None);
+    let past = sample_now() - Duration::hours(1);
+    // (case, survey, expected Option<(blocker, hint, reason)>)
+    let cases = [
+        (
+            "valid schedule",
+            EventSurveySummary {
+                closes_at: Some(sample_date() + Duration::days(1)),
+                effective_opens_at: Some(sample_date()),
+                ..sample_survey(EventSurveyState::Draft)
+            },
+            None,
+        ),
+        (
+            "no closing date",
+            sample_survey(EventSurveyState::Draft),
+            None,
+        ),
+        (
+            "not a draft",
+            EventSurveySummary {
+                closes_at: Some(past),
+                questions_count: 0,
+                ..sample_survey(EventSurveyState::Closed)
+            },
+            None,
+        ),
+        (
+            "closing date in the past",
+            EventSurveySummary {
+                closes_at: Some(past),
+                ..sample_survey(EventSurveyState::Draft)
+            },
+            Some((
+                ClosingDatePassed,
+                "Closing date has passed",
+                "Edit the closing date to mark the survey ready.",
+            )),
+        ),
+        (
+            "closing exactly at render time",
+            EventSurveySummary {
+                closes_at: Some(sample_now()),
+                ..sample_survey(EventSurveyState::Draft)
+            },
+            Some((
+                ClosingDatePassed,
+                "Closing date has passed",
+                "Edit the closing date to mark the survey ready.",
+            )),
+        ),
+        (
+            "closing at the opening",
+            EventSurveySummary {
+                closes_at: Some(sample_date()),
+                effective_opens_at: Some(sample_date()),
+                ..sample_survey(EventSurveyState::Draft)
+            },
+            Some((
+                ClosesBeforeOpening,
+                "Closes before it opens",
+                "Edit the closing date so it is after the survey opens.",
+            )),
+        ),
+        (
+            "no questions takes precedence over a past closing date",
+            EventSurveySummary {
+                closes_at: Some(past),
+                questions_count: 0,
+                ..sample_survey(EventSurveyState::Draft)
+            },
+            Some((
+                NoQuestions,
+                "No questions yet",
+                "Add a question before marking the survey ready.",
+            )),
+        ),
+    ];
+
+    for (case, survey, expected) in cases {
+        let blocker = mark_ready_blocker(&survey, sample_now());
+
+        assert_eq!(blocker, expected.map(|(blocker, _, _)| blocker), "{case}");
+        if let (Some(blocker), Some((_, hint, reason))) = (blocker, expected) {
+            assert_eq!(blocker.hint(), hint, "{case}: hint");
+            assert_eq!(blocker.reason(), reason, "{case}: reason");
+        }
+    }
 }
 
 #[test]
-fn test_mark_ready_blocker_ignores_surveys_that_are_not_drafts() {
-    let survey = EventSurveySummary {
-        closes_at: Some(sample_now() - Duration::hours(1)),
-        questions_count: 0,
-        ..sample_survey(EventSurveyState::Closed)
-    };
+fn test_opening_label_describes_survey_opening() {
+    let past = Some(sample_now() - Duration::days(1));
+    // (case, state, effective_opens_at, published, expected)
+    let cases = [
+        (
+            "future opening",
+            EventSurveyState::Scheduled,
+            Some(sample_date()),
+            true,
+            "Opens May 10, 2099 11:00 AM CEST",
+        ),
+        (
+            "event without dates",
+            EventSurveyState::Draft,
+            None,
+            true,
+            "Opens once the event has a date",
+        ),
+        (
+            "past scheduled opening",
+            EventSurveyState::Scheduled,
+            past,
+            true,
+            "Opens now",
+        ),
+        (
+            "past draft opening",
+            EventSurveyState::Draft,
+            past,
+            true,
+            "Opens when marked ready",
+        ),
+        (
+            "past draft opening of an unpublished event",
+            EventSurveyState::Draft,
+            past,
+            false,
+            "Opens once the event is published",
+        ),
+        (
+            "past scheduled opening of an unpublished event",
+            EventSurveyState::Scheduled,
+            past,
+            false,
+            "Opens once the event is published",
+        ),
+    ];
 
-    assert_eq!(mark_ready_blocker(&survey, sample_now()), None);
-}
+    for (case, state, effective_opens_at, published, expected) in cases {
+        let mut event = sample_event();
+        event.published = published;
+        let survey = EventSurveySummary {
+            effective_opens_at,
+            ..sample_survey(state)
+        };
 
-#[test]
-fn test_mark_ready_blocker_rejects_closing_dates_in_the_past() {
-    // Setup drafts closing before and exactly at the render time
-    let closed = EventSurveySummary {
-        closes_at: Some(sample_now() - Duration::hours(1)),
-        ..sample_survey(EventSurveyState::Draft)
-    };
-    let closing = EventSurveySummary {
-        closes_at: Some(sample_now()),
-        ..sample_survey(EventSurveyState::Draft)
-    };
-
-    // Check both are blocked by the closing date
-    assert_eq!(
-        mark_ready_blocker(&closed, sample_now()),
-        Some(MarkReadyBlocker::ClosingDatePassed)
-    );
-    assert_eq!(
-        mark_ready_blocker(&closing, sample_now()),
-        Some(MarkReadyBlocker::ClosingDatePassed)
-    );
-}
-
-#[test]
-fn test_mark_ready_blocker_rejects_closing_dates_before_the_opening() {
-    let survey = EventSurveySummary {
-        closes_at: Some(sample_date()),
-        effective_opens_at: Some(sample_date()),
-        ..sample_survey(EventSurveyState::Draft)
-    };
-
-    assert_eq!(
-        mark_ready_blocker(&survey, sample_now()),
-        Some(MarkReadyBlocker::ClosesBeforeOpening)
-    );
-}
-
-#[test]
-fn test_mark_ready_blocker_rejects_drafts_without_questions() {
-    let survey = EventSurveySummary {
-        closes_at: Some(sample_now() - Duration::hours(1)),
-        questions_count: 0,
-        ..sample_survey(EventSurveyState::Draft)
-    };
-
-    assert_eq!(
-        mark_ready_blocker(&survey, sample_now()),
-        Some(MarkReadyBlocker::NoQuestions)
-    );
-}
-
-#[test]
-fn test_opening_label_describes_future_and_unknown_openings() {
-    // Setup surveys opening in the future and without event dates
-    let scheduled = EventSurveySummary {
-        effective_opens_at: Some(sample_date()),
-        ..sample_survey(EventSurveyState::Scheduled)
-    };
-    let undated = sample_survey(EventSurveyState::Draft);
-
-    // Check each label in the event timezone
-    assert_eq!(
-        opening_label(&scheduled, &sample_event(), sample_now()),
-        "Opens May 10, 2099 11:00 AM CEST"
-    );
-    assert_eq!(
-        opening_label(&undated, &sample_event(), sample_now()),
-        "Opens once the event has a date"
-    );
-}
-
-#[test]
-fn test_opening_label_opens_now_for_past_scheduled_openings() {
-    let survey = EventSurveySummary {
-        effective_opens_at: Some(sample_now() - Duration::days(1)),
-        ..sample_survey(EventSurveyState::Scheduled)
-    };
-
-    assert_eq!(
-        opening_label(&survey, &sample_event(), sample_now()),
-        "Opens now"
-    );
-}
-
-#[test]
-fn test_opening_label_waits_for_mark_ready_on_past_draft_openings() {
-    let survey = EventSurveySummary {
-        effective_opens_at: Some(sample_now() - Duration::days(1)),
-        ..sample_survey(EventSurveyState::Draft)
-    };
-
-    assert_eq!(
-        opening_label(&survey, &sample_event(), sample_now()),
-        "Opens when marked ready"
-    );
-}
-
-#[test]
-fn test_opening_label_waits_for_publication_on_past_openings() {
-    // Setup draft and scheduled surveys of an unpublished event
-    let mut event = sample_event();
-    event.published = false;
-    let draft = EventSurveySummary {
-        effective_opens_at: Some(sample_now() - Duration::days(1)),
-        ..sample_survey(EventSurveyState::Draft)
-    };
-    let scheduled = EventSurveySummary {
-        effective_opens_at: Some(sample_now() - Duration::days(1)),
-        ..sample_survey(EventSurveyState::Scheduled)
-    };
-
-    // Check both wait for the event to be published
-    assert_eq!(
-        opening_label(&draft, &event, sample_now()),
-        "Opens once the event is published"
-    );
-    assert_eq!(
-        opening_label(&scheduled, &event, sample_now()),
-        "Opens once the event is published"
-    );
+        assert_eq!(
+            opening_label(&survey, &event, sample_now()),
+            expected,
+            "{case}"
+        );
+    }
 }
 
 #[test]
@@ -546,37 +557,31 @@ fn test_response_modal_without_neighbors_has_no_links() {
 }
 
 #[test]
-fn test_responses_label_adds_stored_total_when_it_differs() {
-    let survey = EventSurveySummary {
-        responses_count: 14,
-        ..sample_survey(EventSurveyState::Open)
-    };
+fn test_responses_label_describes_eligible_responses() {
+    // (case, eligible_count, eligible_respondents_count, responses_count, expected)
+    let cases = [
+        ("eligible respondents and rate", 40, 12, 12, "12 / 40 (30%)"),
+        (
+            "stored total differs",
+            40,
+            12,
+            14,
+            "12 / 40 (30%) · 14 total",
+        ),
+        ("nobody eligible", 0, 0, 0, "-"),
+        ("nobody eligible with responses", 0, 0, 3, "- · 3 total"),
+    ];
 
-    assert_eq!(responses_label(&survey), "12 / 40 (30%) · 14 total");
-}
+    for (case, eligible_count, eligible_respondents_count, responses_count, expected) in cases {
+        let survey = EventSurveySummary {
+            eligible_count,
+            eligible_respondents_count,
+            responses_count,
+            ..sample_survey(EventSurveyState::Open)
+        };
 
-#[test]
-fn test_responses_label_shows_dash_when_nobody_is_eligible() {
-    let survey = EventSurveySummary {
-        eligible_count: 0,
-        eligible_respondents_count: 0,
-        responses_count: 0,
-        ..sample_survey(EventSurveyState::Open)
-    };
-    let survey_with_responses = EventSurveySummary {
-        responses_count: 3,
-        ..survey.clone()
-    };
-
-    assert_eq!(responses_label(&survey), "-");
-    assert_eq!(responses_label(&survey_with_responses), "- · 3 total");
-}
-
-#[test]
-fn test_responses_label_shows_eligible_respondents_and_rate() {
-    let survey = sample_survey(EventSurveyState::Open);
-
-    assert_eq!(responses_label(&survey), "12 / 40 (30%)");
+        assert_eq!(responses_label(&survey), expected, "{case}");
+    }
 }
 
 #[test]
@@ -681,19 +686,46 @@ fn test_status_action_back_to_draft_for_scheduled_surveys() {
 }
 
 #[test]
-fn test_status_action_back_to_draft_unavailable_after_opening_email() {
-    let survey = EventSurveySummary {
-        open_notification_processed_at: Some(sample_now()),
-        responses_count: 0,
-        ..sample_survey(EventSurveyState::Scheduled)
-    };
+fn test_status_action_back_to_draft_disabled_reasons() {
+    // (case, open_notification_processed_at, responses_count, expected)
+    let cases = [
+        ("not emailed and no responses", None, 0, None),
+        (
+            "opening email sent",
+            Some(sample_now()),
+            0,
+            Some("The opening email was already sent."),
+        ),
+        (
+            "survey has responses",
+            None,
+            1,
+            Some("The survey already has responses."),
+        ),
+        (
+            "opening email sent and survey has responses",
+            Some(sample_now()),
+            1,
+            Some("The opening email was already sent."),
+        ),
+    ];
 
-    let action = status_action(&survey, &sample_event(), sample_now());
+    for (case, open_notification_processed_at, responses_count, expected) in cases {
+        let survey = EventSurveySummary {
+            responses_count,
+            open_notification_processed_at,
+            ..sample_survey(EventSurveyState::Scheduled)
+        };
 
-    assert_eq!(
-        action.disabled_reason,
-        Some("The opening email was already sent.")
-    );
+        let action = status_action(&survey, &sample_event(), sample_now());
+
+        assert_eq!(
+            action.action,
+            EventSurveyStatusAction::BackToDraft,
+            "{case}"
+        );
+        assert_eq!(action.disabled_reason, expected, "{case}");
+    }
 }
 
 #[test]
@@ -714,65 +746,70 @@ fn test_status_action_close_for_open_surveys() {
 }
 
 #[test]
-fn test_status_action_mark_ready_now_for_past_openings() {
-    let survey = EventSurveySummary {
-        effective_opens_at: Some(sample_now() - Duration::days(1)),
-        ..sample_survey(EventSurveyState::Draft)
-    };
+fn test_status_action_mark_ready_confirms_when_attendees_are_emailed() {
+    let opens_at = sample_date().timestamp().to_string();
+    let mut unpublished = sample_event();
+    unpublished.published = false;
+    let mut test_event = sample_event();
+    test_event.test_event = true;
+    // (case, effective_opens_at, event, confirm_message, expected_effective_opens_at)
+    let cases = [
+        (
+            "past opening",
+            Some(sample_now() - Duration::days(1)),
+            sample_event(),
+            "This will email eligible attendees (currently 40) now.",
+            (sample_now() - Duration::days(1)).timestamp().to_string(),
+        ),
+        (
+            "future opening",
+            Some(sample_date()),
+            sample_event(),
+            "This will email eligible attendees (currently 40) on May 10, 2099 11:00 AM CEST.",
+            opens_at.clone(),
+        ),
+        (
+            "past opening of an unpublished event",
+            Some(sample_now() - Duration::days(1)),
+            unpublished,
+            "This will email eligible attendees (currently 40) once the event is published.",
+            (sample_now() - Duration::days(1)).timestamp().to_string(),
+        ),
+        (
+            "future opening of a test event",
+            Some(sample_date()),
+            test_event,
+            "Mark this survey ready? Test events do not email attendees.",
+            opens_at,
+        ),
+        (
+            "event without dates",
+            None,
+            sample_event(),
+            "This will email eligible attendees (currently 40) once the event has a date and ends.",
+            String::new(),
+        ),
+    ];
 
-    let action = status_action(&survey, &sample_event(), sample_now());
+    for (case, effective_opens_at, event, confirm_message, expected_effective_opens_at) in cases {
+        let survey = EventSurveySummary {
+            effective_opens_at,
+            ..sample_survey(EventSurveyState::Draft)
+        };
 
-    assert_eq!(
-        action.confirm_message,
-        "This will email eligible attendees (currently 40) now."
-    );
-}
+        let action = status_action(&survey, &event, sample_now());
 
-#[test]
-fn test_status_action_mark_ready_on_future_opening_date() {
-    // Setup a draft survey opening in the future
-    let survey = EventSurveySummary {
-        effective_opens_at: Some(sample_date()),
-        ..sample_survey(EventSurveyState::Draft)
-    };
-
-    // Describe its status action
-    let action = status_action(&survey, &sample_event(), sample_now());
-
-    // Check the confirmation and the confirmed opening sent with the request
-    assert_eq!(action.action, EventSurveyStatusAction::MarkReady);
-    assert_eq!(
-        action.confirm_message,
-        "This will email eligible attendees (currently 40) on May 10, 2099 11:00 AM CEST."
-    );
-    assert_eq!(
-        action.request_values,
-        format!(
-            r#"{{"action":"mark-ready","expected_effective_opens_at":"{}","revision":"3"}}"#,
-            sample_date().timestamp()
-        )
-    );
-    assert_eq!(action.disabled_reason, None);
-}
-
-#[test]
-fn test_status_action_mark_ready_once_event_is_published() {
-    // Setup a draft survey of an unpublished event with a past opening
-    let mut event = sample_event();
-    event.published = false;
-    let survey = EventSurveySummary {
-        effective_opens_at: Some(sample_now() - Duration::days(1)),
-        ..sample_survey(EventSurveyState::Draft)
-    };
-
-    // Describe its status action
-    let action = status_action(&survey, &event, sample_now());
-
-    // Check the confirmation waits for the publication
-    assert_eq!(
-        action.confirm_message,
-        "This will email eligible attendees (currently 40) once the event is published."
-    );
+        assert_eq!(action.action, EventSurveyStatusAction::MarkReady, "{case}");
+        assert_eq!(action.confirm_message, confirm_message, "{case}");
+        assert_eq!(
+            action.request_values,
+            format!(
+                r#"{{"action":"mark-ready","expected_effective_opens_at":"{expected_effective_opens_at}","revision":"3"}}"#
+            ),
+            "{case}"
+        );
+        assert_eq!(action.disabled_reason, None, "{case}");
+    }
 }
 
 #[test]
@@ -787,77 +824,6 @@ fn test_status_action_mark_ready_unavailable_after_closing_date() {
     assert_eq!(
         action.disabled_reason,
         Some("Edit the closing date to mark the survey ready.")
-    );
-}
-
-#[test]
-fn test_status_action_mark_ready_unavailable_when_closing_before_opening() {
-    let survey = EventSurveySummary {
-        closes_at: Some(sample_date()),
-        effective_opens_at: Some(sample_date() + Duration::hours(1)),
-        ..sample_survey(EventSurveyState::Draft)
-    };
-
-    let action = status_action(&survey, &sample_event(), sample_now());
-
-    assert_eq!(
-        action.disabled_reason,
-        Some("Edit the closing date so it is after the survey opens.")
-    );
-}
-
-#[test]
-fn test_status_action_mark_ready_unavailable_without_questions() {
-    let survey = EventSurveySummary {
-        questions_count: 0,
-        ..sample_survey(EventSurveyState::Draft)
-    };
-
-    let action = status_action(&survey, &sample_event(), sample_now());
-
-    assert_eq!(
-        action.disabled_reason,
-        Some("Add a question before marking the survey ready.")
-    );
-}
-
-#[test]
-fn test_status_action_mark_ready_on_test_events() {
-    // Setup a draft survey of a test event opening in the future
-    let survey = EventSurveySummary {
-        effective_opens_at: Some(sample_date()),
-        ..sample_survey(EventSurveyState::Draft)
-    };
-    let mut event = sample_event();
-    event.test_event = true;
-
-    // Describe its status action
-    let action = status_action(&survey, &event, sample_now());
-
-    // Check the confirmation says no email is sent
-    assert_eq!(action.action, EventSurveyStatusAction::MarkReady);
-    assert_eq!(
-        action.confirm_message,
-        "Mark this survey ready? Test events do not email attendees."
-    );
-}
-
-#[test]
-fn test_status_action_mark_ready_without_event_dates() {
-    // Setup a draft survey of an event without dates
-    let survey = sample_survey(EventSurveyState::Draft);
-
-    // Describe its status action
-    let action = status_action(&survey, &sample_event(), sample_now());
-
-    // Check the confirmation and the blank confirmed opening
-    assert_eq!(
-        action.confirm_message,
-        "This will email eligible attendees (currently 40) once the event has a date and ends."
-    );
-    assert_eq!(
-        action.request_values,
-        r#"{"action":"mark-ready","expected_effective_opens_at":"","revision":"3"}"#
     );
 }
 
@@ -967,11 +933,6 @@ fn test_view_all_answers_label_counts_answers() {
 
 // Helpers.
 
-/// Collapses whitespace runs so rendered attributes can be matched exactly.
-fn normalize_whitespace(html: &str) -> String {
-    html.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
 /// Returns a fixed future date used by the survey dates.
 fn sample_date() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2099, 5, 10, 9, 0, 0).unwrap()
@@ -979,7 +940,7 @@ fn sample_date() -> DateTime<Utc> {
 
 /// Returns an event in Madrid that is not a test event.
 fn sample_event() -> EventSummary {
-    let mut event = sample_event_summary(Uuid::from_u128(1), Uuid::from_u128(2));
+    let mut event = sample_event_summary(Uuid::from_u128(1));
     event.test_event = false;
     event.timezone = Madrid;
     event
@@ -1084,14 +1045,5 @@ fn sample_text_answers_modal(
 
 /// Returns a respondent with only a username.
 fn sample_user() -> UserSummary {
-    UserSummary {
-        user_id: Uuid::from_u128(4),
-        username: "jane".to_string(),
-
-        company: None,
-        name: None,
-        photo_url: None,
-        provider: None,
-        title: None,
-    }
+    sample_user_summary(Uuid::from_u128(4), "jane")
 }

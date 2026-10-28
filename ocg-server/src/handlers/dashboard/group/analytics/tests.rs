@@ -1,25 +1,15 @@
-use axum::{
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE},
-    },
-};
-use axum_login::tower_sessions::session;
-use tower::ServiceExt;
-use uuid::Uuid;
+use axum::http::StatusCode;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
+    db::mock::MockDB,
+    handlers::{error::INVALID_REQUEST_PAYLOAD, tests::*},
+    types::permissions::GroupPermission,
 };
 
 #[tokio::test]
 async fn test_page_hides_cohosted_events_without_cohosted_events() {
     // Setup identifiers and stats without co-hosted events
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let mut stats = sample_group_stats();
     stats.cohosted_events.per_month.clear();
     stats.cohosted_events.running_total.clear();
@@ -27,35 +17,25 @@ async fn test_page_hides_cohosted_events_without_cohosted_events() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    db.expect_user_has_group_permission()
-        .times(1)
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
     db.expect_get_group_stats()
         .times(1)
+        .withf(move |cid, gid, include_subgroups| {
+            *cid == ids.community_id && *gid == ids.group_id && !*include_subgroups
+        })
         .returning(move |_, _, _| Ok(stats.clone()));
     db.expect_group_has_active_subgroups()
         .times(1)
         .returning(|_, _| Ok(false));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/analytics")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/group/analytics", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the co-hosted events section is omitted
-    assert_eq!(parts.status, StatusCode::OK);
-    let body = std::str::from_utf8(&bytes).unwrap();
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("id=\"events-monthly-chart\""));
     assert!(!body.contains("Co-hosted events"));
     assert!(!body.contains("cohosted-events-monthly-chart"));
@@ -63,94 +43,67 @@ async fn test_page_hides_cohosted_events_without_cohosted_events() {
 
 #[tokio::test]
 async fn test_page_rejects_invalid_query() {
-    // Setup identifiers
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock without statistics reads
+    // Setup identifiers and database mock without statistics reads
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    db.expect_user_has_group_permission()
-        .times(1)
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
     db.expect_get_group_stats().never();
     db.expect_group_has_active_subgroups().never();
 
     // Setup router and send request with an invalid flag
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/analytics?include_subgroups=maybe")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        "/dashboard/group/analytics?include_subgroups=maybe",
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the query is rejected before loading statistics
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(bytes.as_ref(), b"invalid request payload");
+    assert_eq!(bytes.as_ref(), INVALID_REQUEST_PAYLOAD.as_bytes());
 }
 
 #[tokio::test]
 async fn test_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let stats = sample_group_stats();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
     db.expect_get_group_stats()
         .times(1)
         .withf(move |cid, gid, include_subgroups| {
-            *cid == community_id && *gid == group_id && *include_subgroups
+            *cid == ids.community_id && *gid == ids.group_id && *include_subgroups
         })
         .returning(move |_, _, _| Ok(stats.clone()));
     db.expect_group_has_active_subgroups()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == ids.community_id && *gid == ids.group_id)
         .returning(|_, _| Ok(true));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/group/analytics?include_subgroups=true")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        "/dashboard/group/analytics?include_subgroups=true",
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
-    let body = std::str::from_utf8(&bytes).unwrap();
-    assert!(body.contains("Include subgroups"));
-    assert!(body.contains("checked"));
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(include_subgroups_input(&body).contains("checked"));
     assert!(body.contains("Co-hosted events"));
     assert!(body.contains("id=\"cohosted-events-monthly-chart\""));
+}
+
+// Helpers.
+
+/// Returns the include-subgroups checkbox markup from the rendered page.
+fn include_subgroups_input(body: &str) -> &str {
+    let start = body.find("<input id=\"include_subgroups\"").unwrap();
+    let end = start + body[start..].find('>').unwrap();
+    &body[start..end]
 }

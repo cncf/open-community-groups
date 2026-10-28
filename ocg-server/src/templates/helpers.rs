@@ -128,6 +128,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_absolute_url_joins_base_url_and_path() {
+        let cases = [
+            (
+                "rooted path",
+                "https://example.test",
+                "/events",
+                "https://example.test/events",
+            ),
+            (
+                "relative path",
+                "https://example.test",
+                "events",
+                "https://example.test/events",
+            ),
+            (
+                "base with trailing slash",
+                "https://example.test/",
+                "/events",
+                "https://example.test/events",
+            ),
+        ];
+
+        for (case, base_url, path, expected) in cases {
+            assert_eq!(absolute_url(base_url, path), expected, "{case}");
+        }
+    }
+
+    #[test]
     fn test_bar_width_clamps_to_the_total() {
         assert_eq!(bar_width(1, 4), "25.0");
         assert_eq!(bar_width(5, 4), "100.0");
@@ -144,6 +172,35 @@ mod tests {
     fn test_count_label_uses_thousands_separators() {
         assert_eq!(count_label(999), "999");
         assert_eq!(count_label(1_234_567), "1,234,567");
+    }
+
+    #[test]
+    fn test_open_graph_image_url_resolves_image_locations() {
+        let cases = [
+            (
+                "uploaded image",
+                "/images/logo.png",
+                "https://example.test/images/og/logo.png",
+            ),
+            (
+                "other local path",
+                "/static/images/default.png",
+                "https://example.test/static/images/default.png",
+            ),
+            (
+                "external URL",
+                "https://cdn.example.org/logo.png",
+                "https://cdn.example.org/logo.png",
+            ),
+        ];
+
+        for (case, image_url, expected) in cases {
+            assert_eq!(
+                open_graph_image_url("https://example.test/", image_url),
+                expected,
+                "{case}"
+            );
+        }
     }
 
     #[test]

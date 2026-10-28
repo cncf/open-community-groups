@@ -1,4 +1,5 @@
-//! Shared sample data builders for handlers tests.
+//! Shared router, request, session and permission helpers and sample data
+//! builders for handlers tests.
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -7,24 +8,26 @@ use std::{
 
 use axum::{
     Router,
-    http::{HeaderValue, StatusCode, header::CONTENT_TYPE, response::Parts},
+    body::{Body, Bytes, to_bytes},
+    http::{
+        HeaderValue, Request, StatusCode,
+        header::{CONTENT_TYPE, COOKIE},
+        request::Builder as RequestBuilder,
+        response::Parts,
+    },
 };
-use axum_login::tower_sessions::session;
+use axum_login::tower_sessions::{Session, session};
 use chrono::{DateTime, TimeZone, Utc};
-use chrono_tz::UTC;
 use serde_json::json;
-use ssi_jwk::JWK;
 use time::{Duration as TimeDuration, OffsetDateTime};
 use tokio_util::sync::CancellationToken;
+use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     activity_tracker::DynActivityTracker,
     auth::User as AuthUser,
-    config::{
-        BadgeSigningKeyConfig, BadgesConfig, HttpClientConfig, HttpServerConfig, MeetingsConfig,
-        MeetingsZoomConfig, PaymentsConfig, PaymentsStripeConfig,
-    },
+    config::{BadgesConfig, HttpServerConfig, PaymentsConfig},
     db::{DynDB, mock::MockDB},
     handlers::auth::session_context::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
@@ -67,7 +70,7 @@ use crate::{
                 waitlist::WaitlistEntry,
             },
             user::{
-                invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
+                invitations::{CommunityTeamInvitation, GroupTeamInvitation},
                 session_proposals::{
                     PendingCoSpeakerInvitation, SessionProposal as UserSessionProposal,
                     SessionProposalLevel as UserSessionProposalLevel,
@@ -80,20 +83,27 @@ use crate::{
             SessionProposal as EventSessionProposal,
         },
         group::{GroupFull, GroupMinimal, GroupRole, GroupRoleSummary, GroupSponsor},
-        payments::{EventPurchaseStatus, EventPurchaseSummary, PaymentMode},
         permissions::{CommunityPermission, GroupPermission},
         search::{BBox, SearchEventsOutput, SearchGroupsOutput},
-        user::{User as TemplateUser, UserSummary},
+        tests::sample_event_minimal,
+        user::User as TemplateUser,
     },
 };
 
-pub(crate) use crate::types::tests::{
-    sample_community_summary, sample_event_analytics, sample_event_cohost_group, sample_event_form,
-    sample_event_full, sample_event_minimal, sample_event_summary, sample_event_survey_full,
-    sample_event_survey_summary, sample_group_category, sample_group_minimal,
-    sample_group_payment_recipient, sample_group_region, sample_group_summary,
-    sample_inbox_conversation, sample_inbox_conversation_summary, sample_site_settings,
-    sample_user_event_survey, sample_user_event_survey_item, sample_user_search_result,
+pub(crate) use crate::{
+    config::tests::{
+        sample_badges_cfg, sample_payments_cfg, sample_server_cfg, sample_zoom_meetings_cfg,
+    },
+    types::tests::{
+        sample_community_summary, sample_enrollment_state, sample_event_analytics,
+        sample_event_cohost_group, sample_event_form, sample_event_full, sample_event_invitation,
+        sample_event_purchase_summary, sample_event_summary, sample_event_survey_full,
+        sample_event_survey_summary, sample_event_utm_allowlist, sample_group_category,
+        sample_group_minimal, sample_group_payment_recipient, sample_group_region,
+        sample_group_summary, sample_inbox_conversation, sample_inbox_conversation_summary,
+        sample_site_settings, sample_user_event, sample_user_event_survey,
+        sample_user_event_survey_item, sample_user_search_result, sample_user_summary,
+    },
 };
 
 // Helpers.
@@ -181,44 +191,149 @@ pub(crate) fn assert_non_empty_response(parts: &Parts, bytes: &[u8], status: Sta
     assert!(!bytes.is_empty(), "response body should not be empty");
 }
 
-/// Expect an authenticated session scoped to a community.
-pub(crate) fn expect_authenticated_community_session(
+/// Expect an authenticated community session granted the permission.
+pub(crate) fn expect_community_access(
     db: &mut MockDB,
-    session_id: session::Id,
-    user_id: Uuid,
-    community_id: Uuid,
+    ids: &DashboardIds,
+    permission: CommunityPermission,
 ) {
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    expect_community_session(db, ids);
+    expect_community_permission_result(db, ids, permission, true);
+}
 
+/// Expect one community permission check that returns `allowed`.
+pub(crate) fn expect_community_permission_result(
+    db: &mut MockDB,
+    ids: &DashboardIds,
+    permission: CommunityPermission,
+    allowed: bool,
+) {
+    let ids = *ids;
+    db.expect_user_has_community_permission()
+        .times(1)
+        .withf(move |community_id, user_id, requested_permission| {
+            *community_id == ids.community_id
+                && *user_id == ids.user_id
+                && *requested_permission == permission
+        })
+        .returning(move |_, _, _| Ok(allowed));
+}
+
+/// Expect an authenticated session scoped to the community of the identifiers.
+pub(crate) fn expect_community_session(db: &mut MockDB, ids: &DashboardIds) {
+    expect_session_record(
+        db,
+        ids.session_id,
+        ids.user_id,
+        Some(ids.community_id),
+        None,
+    );
+}
+
+/// Expect an authenticated group session granted the permission.
+pub(crate) fn expect_group_access(
+    db: &mut MockDB,
+    ids: &DashboardIds,
+    permission: GroupPermission,
+) {
+    expect_group_session(db, ids);
+    expect_group_permission_result(db, ids, permission, true);
+}
+
+/// Expect one group permission check that returns `allowed`.
+pub(crate) fn expect_group_permission_result(
+    db: &mut MockDB,
+    ids: &DashboardIds,
+    permission: GroupPermission,
+    allowed: bool,
+) {
+    let ids = *ids;
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(
+            move |community_id, group_id, user_id, requested_permission| {
+                *community_id == ids.community_id
+                    && *group_id == ids.group_id
+                    && *user_id == ids.user_id
+                    && *requested_permission == permission
+            },
+        )
+        .returning(move |_, _, _, _| Ok(allowed));
+}
+
+/// Expect an authenticated session scoped to the group of the identifiers.
+pub(crate) fn expect_group_session(db: &mut MockDB, ids: &DashboardIds) {
+    expect_session_record(
+        db,
+        ids.session_id,
+        ids.user_id,
+        Some(ids.community_id),
+        Some(ids.group_id),
+    );
+}
+
+/// Expects the session and community reads every signed-in public route
+/// performs.
+pub(crate) fn expect_member_context(db: &mut MockDB, ids: &DashboardIds) {
+    expect_session(db, ids);
+    expect_test_community(db, ids.community_id);
+}
+
+/// Expect an authenticated session of the identifiers without a selected
+/// dashboard scope.
+pub(crate) fn expect_session(db: &mut MockDB, ids: &DashboardIds) {
+    expect_session_record(db, ids.session_id, ids.user_id, None, None);
+}
+
+/// Expect an authenticated session of the identifiers, without a selected
+/// dashboard scope, whose user lookup returns `user`.
+///
+/// `user` must carry the `"hash"` auth hash, e.g. built from
+/// [`sample_auth_user`].
+pub(crate) fn expect_session_with_user(db: &mut MockDB, ids: &DashboardIds, user: AuthUser) {
+    let session_record = sample_session_record(ids.session_id, ids.user_id, "hash", None, None);
+    expect_session_user_lookup(db, session_record, user);
+}
+
+/// Expect the session read to return the stored record, without a user lookup.
+pub(crate) fn expect_stored_session(db: &mut MockDB, session_record: session::Record) {
+    let session_id = session_record.id;
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
 }
 
-/// Expect an authenticated session scoped to a group.
-pub(crate) fn expect_authenticated_group_session(
+/// Expects the test community to resolve to the given identifier.
+pub(crate) fn expect_test_community(db: &mut MockDB, community_id: Uuid) {
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+}
+
+/// Expect the session read and user lookup of an authenticated request.
+fn expect_session_record(
     db: &mut MockDB,
     session_id: session::Id,
     user_id: Uuid,
-    community_id: Uuid,
-    group_id: Uuid,
+    selected_community_id: Option<Uuid>,
+    selected_group_id: Option<Uuid>,
 ) {
-    let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
         user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
+        "hash",
+        selected_community_id,
+        selected_group_id,
     );
+    expect_session_user_lookup(db, session_record, sample_auth_user(user_id, "hash"));
+}
 
+/// Expect the session read returning the record and the lookup of its user.
+fn expect_session_user_lookup(db: &mut MockDB, session_record: session::Record, user: AuthUser) {
+    let session_id = session_record.id;
+    let user_id = user.user_id;
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)
@@ -226,60 +341,73 @@ pub(crate) fn expect_authenticated_group_session(
     db.expect_get_user_by_id()
         .times(1)
         .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        .returning(move |_| Ok(Some(user.clone())));
 }
 
-/// Expect an authenticated session without a selected dashboard scope.
-pub(crate) fn expect_authenticated_session(
-    db: &mut MockDB,
+// Request helpers.
+
+/// Content type of form-encoded request bodies.
+const FORM_CONTENT_TYPE: &str = "application/x-www-form-urlencoded";
+
+/// Start a request builder that carries the session cookie.
+pub(crate) fn authenticated_request(
+    method: &str,
+    uri: &str,
     session_id: session::Id,
-    user_id: Uuid,
-) {
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+) -> RequestBuilder {
+    request(method, uri).header(COOKIE, format!("id={session_id}"))
 }
 
-/// Expect a successful community permission check.
-pub(crate) fn expect_community_permission(
-    db: &mut MockDB,
-    community_id: Uuid,
-    user_id: Uuid,
-    expected_permission: CommunityPermission,
-) {
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == expected_permission
-        })
-        .returning(|_, _, _| Ok(true));
+/// Build an authenticated request with an empty body.
+pub(crate) fn empty_request(method: &str, uri: &str, session_id: session::Id) -> Request<Body> {
+    authenticated_request(method, uri, session_id)
+        .body(Body::empty())
+        .unwrap()
 }
 
-/// Expect a successful group permission check.
-pub(crate) fn expect_group_permission(
-    db: &mut MockDB,
-    community_id: Uuid,
-    group_id: Uuid,
-    user_id: Uuid,
-    expected_permission: GroupPermission,
-) {
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == expected_permission
-        })
-        .returning(|_, _, _, _| Ok(true));
+/// Build an authenticated form-encoded request.
+pub(crate) fn form_request(
+    method: &str,
+    uri: &str,
+    session_id: session::Id,
+    body: impl Into<Body>,
+) -> Request<Body> {
+    authenticated_request(method, uri, session_id)
+        .header(CONTENT_TYPE, FORM_CONTENT_TYPE)
+        .body(body.into())
+        .unwrap()
+}
+
+/// Build an authenticated GET request with an empty body.
+pub(crate) fn get_request(uri: &str, session_id: session::Id) -> Request<Body> {
+    empty_request("GET", uri, session_id)
+}
+
+/// Build an authenticated JSON request.
+pub(crate) fn json_request(
+    method: &str,
+    uri: &str,
+    session_id: session::Id,
+    body: &serde_json::Value,
+) -> Request<Body> {
+    authenticated_request(method, uri, session_id)
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from(body.to_string()))
+        .unwrap()
+}
+
+/// Start a request builder without a session cookie.
+pub(crate) fn request(method: &str, uri: &str) -> RequestBuilder {
+    Request::builder().method(method).uri(uri)
+}
+
+/// Send the request through the router and return the response parts and body.
+pub(crate) async fn send(router: Router, request: Request<Body>) -> (Parts, Bytes) {
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    (parts, bytes)
 }
 
 // Sample data helpers.
@@ -366,7 +494,7 @@ pub(crate) fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
 }
 
 /// Sample bounding box output used by explore handlers.
-pub(crate) fn sample_bbox() -> BBox {
+fn sample_bbox() -> BBox {
     BBox {
         ne_lat: 1.0,
         ne_lon: 2.0,
@@ -534,7 +662,7 @@ pub(crate) fn sample_community_update() -> CommunityUpdate {
 }
 
 /// Sample public user profile payload used by dashboard row fixtures.
-pub(crate) fn sample_dashboard_user_profile(
+fn sample_dashboard_user_profile(
     user_id: Uuid,
     username: &str,
     name: Option<&str>,
@@ -601,34 +729,6 @@ pub(crate) fn sample_event_cfs_session_proposal(session_proposal_id: Uuid) -> Ev
     }
 }
 
-/// Sample event invitation used in dashboard user invitation tests.
-pub(crate) fn sample_event_invitation(event_id: Uuid) -> EventInvitation {
-    EventInvitation {
-        admission_offer_id: Uuid::new_v4(),
-        admission_offer_source: crate::types::event::EventAdmissionOfferSource::OrganizerInvitation,
-        admission_offer_status: crate::types::event::EventAdmissionOfferStatus::Pending,
-        community_display_name: "Test Community".to_string(),
-        community_name: "test-community".to_string(),
-        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
-        event_id,
-        event_name: "Test Event".to_string(),
-        event_ticket_type_id: Uuid::new_v4(),
-        expires_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
-        group_name: "Test Group".to_string(),
-        is_simple_rsvp: false,
-        ticket_title: "General admission".to_string(),
-        timezone: UTC,
-
-        amount_minor: None,
-        currency_code: None,
-        external_payment: None,
-        registration_answers: None,
-        registration_questions: vec![],
-        resume_checkout_url: None,
-        starts_at: Some(Utc.with_ymd_and_hms(2024, 2, 1, 12, 0, 0).unwrap()),
-    }
-}
-
 /// Sample event kind summary for drop-downs.
 pub(crate) fn sample_event_kind_summary() -> EventKindSummary {
     EventKindSummary {
@@ -643,7 +743,7 @@ pub(crate) fn sample_filters_options() -> crate::types::site::explore::FiltersOp
 }
 
 /// Sample CFS session proposal used in group dashboard tests.
-pub(crate) fn sample_group_cfs_session_proposal(session_proposal_id: Uuid) -> CfsSessionProposal {
+fn sample_group_cfs_session_proposal(session_proposal_id: Uuid) -> CfsSessionProposal {
     CfsSessionProposal {
         session_proposal_id,
         title: "Proposal title".to_string(),
@@ -682,8 +782,8 @@ pub(crate) fn sample_group_cfs_submission(
 }
 
 /// Sample group events aggregation for dashboard pages.
-pub(crate) fn sample_group_events(event_id: Uuid, group_id: Uuid) -> GroupEvents {
-    let summary = sample_event_summary(event_id, group_id);
+pub(crate) fn sample_group_events(event_id: Uuid) -> GroupEvents {
+    let summary = sample_event_summary(event_id);
     GroupEvents {
         past: crate::types::dashboard::group::events::PaginatedEvents {
             events: vec![summary.clone()],
@@ -879,20 +979,6 @@ pub(crate) fn sample_invitation_request() -> InvitationRequest {
     }
 }
 
-/// Sample Stripe payments configuration used in handler tests.
-pub(crate) fn sample_payments_cfg() -> PaymentsConfig {
-    PaymentsConfig::Stripe(PaymentsStripeConfig {
-        connected_webhook_secret: "whsec_connect_test".to_string(),
-        mode: PaymentMode::Test,
-        secret_key: "sk_test".to_string(),
-        ticket_tax_api_version: "2026-07-29.preview".to_string(),
-        webhook_secret: "whsec_test".to_string(),
-
-        http_client: HttpClientConfig::default(),
-        platform_fee_bps: 0,
-    })
-}
-
 /// Sample pending co-speaker invitation used in user dashboard tests.
 pub(crate) fn sample_pending_co_speaker_invitation(
     session_proposal_id: Uuid,
@@ -920,29 +1006,6 @@ pub(crate) fn sample_pending_co_speaker_invitation(
     }
 }
 
-/// Sample purchase summary used in event handler tests.
-pub(crate) fn sample_purchase_summary(status: EventPurchaseStatus) -> EventPurchaseSummary {
-    EventPurchaseSummary {
-        amount_minor: 2_500,
-        currency_code: Some("USD".to_string()),
-        discount_amount_minor: 0,
-        event_purchase_id: Uuid::new_v4(),
-        event_ticket_type_id: Uuid::new_v4(),
-        provisional_platform_fee_amount_minor: 0,
-        status,
-        ticket_title: "General admission".to_string(),
-
-        completed_at: None,
-        discount_code: None,
-        hold_expires_at: None,
-        provider_checkout_url: None,
-        provider_payment_reference: None,
-        provider_session_id: None,
-        refunded_at: None,
-        ..EventPurchaseSummary::default()
-    }
-}
-
 /// Sample minimal search output for events.
 pub(crate) fn sample_search_events_minimal_output(
     event_id: Uuid,
@@ -959,7 +1022,7 @@ pub(crate) fn sample_search_events_minimal_output(
 /// Sample search output for events.
 pub(crate) fn sample_search_events_output(event_id: Uuid) -> SearchEventsOutput {
     SearchEventsOutput {
-        events: vec![sample_event_summary(event_id, Uuid::new_v4())],
+        events: vec![sample_event_summary(event_id)],
         total: 1,
 
         bbox: None,
@@ -1114,16 +1177,8 @@ pub(crate) fn sample_team_member(accepted: bool) -> GroupTeamMember {
     }
 }
 
-/// Sample server configuration for testing `track_view` handlers.
-pub(crate) fn sample_tracking_server_cfg() -> HttpServerConfig {
-    HttpServerConfig {
-        base_url: "https://example.test".to_string(),
-        ..Default::default()
-    }
-}
-
 /// Sample CFS session proposal used in user dashboard tests.
-pub(crate) fn sample_user_cfs_session_proposal(session_proposal_id: Uuid) -> CfsSessionProposal {
+fn sample_user_cfs_session_proposal(session_proposal_id: Uuid) -> CfsSessionProposal {
     CfsSessionProposal {
         session_proposal_id,
         title: "Proposal title".to_string(),
@@ -1140,13 +1195,12 @@ pub(crate) fn sample_user_cfs_session_proposal(session_proposal_id: Uuid) -> Cfs
 pub(crate) fn sample_user_cfs_submission(
     cfs_submission_id: Uuid,
     event_id: Uuid,
-    group_id: Uuid,
     session_proposal_id: Uuid,
 ) -> UserCfsSubmission {
     UserCfsSubmission {
         cfs_submission_id,
         created_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
-        event: sample_event_summary(event_id, group_id),
+        event: sample_event_summary(event_id),
         labels: vec![],
         session_proposal: sample_user_cfs_session_proposal(session_proposal_id),
         status_id: "submitted".to_string(),
@@ -1194,20 +1248,6 @@ pub(crate) fn sample_user_groups_by_community(
     }]
 }
 
-/// Sample user summary used across dashboard tests.
-pub(crate) fn sample_user_summary(user_id: Uuid, username: &str) -> UserSummary {
-    UserSummary {
-        user_id,
-        username: username.to_string(),
-
-        company: None,
-        name: None,
-        photo_url: None,
-        provider: None,
-        title: None,
-    }
-}
-
 /// Sample waitlist entry used in dashboard group waitlist tests.
 pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
     let user_id = Uuid::new_v4();
@@ -1231,22 +1271,11 @@ pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
     }
 }
 
-/// Sample Zoom meetings configuration used in handler tests.
-pub(crate) fn sample_zoom_meetings_cfg(secret: &str) -> MeetingsConfig {
-    MeetingsConfig {
-        zoom: Some(MeetingsZoomConfig {
-            account_id: "account-id".to_string(),
-            client_id: "client-id".to_string(),
-            client_secret: "client-secret".to_string(),
-            enabled: true,
-            host_pool_users: vec!["host@example.com".to_string()],
-            max_participants: 100,
-            max_simultaneous_meetings_per_host: 1,
-            webhook_secret_token: secret.to_string(),
-
-            http_client: HttpClientConfig::default(),
-        }),
-    }
+/// Returns the community and group currently selected in the session.
+pub(crate) async fn selected_ids(session: &Session) -> (Option<Uuid>, Option<Uuid>) {
+    let community_id = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
+    let group_id = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
+    (community_id, group_id)
 }
 
 /// Checks if the session record contains the selected group ID.
@@ -1260,6 +1289,33 @@ pub(crate) fn session_record_contains_selected_group(
         .and_then(|value| value.as_str())
         .and_then(|value| value.parse::<Uuid>().ok())
         == Some(group_id)
+}
+
+/// Identifiers of an authenticated dashboard request.
+///
+/// User dashboard tests ignore the community and group identifiers.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct DashboardIds {
+    /// Community selected in the session.
+    pub(crate) community_id: Uuid,
+    /// Group selected in the session.
+    pub(crate) group_id: Uuid,
+    /// Session sent in the request cookie.
+    pub(crate) session_id: session::Id,
+    /// Authenticated user.
+    pub(crate) user_id: Uuid,
+}
+
+impl DashboardIds {
+    /// Generates fresh identifiers for one test.
+    pub(crate) fn new() -> Self {
+        Self {
+            community_id: Uuid::new_v4(),
+            group_id: Uuid::new_v4(),
+            session_id: session::Id::default(),
+            user_id: Uuid::new_v4(),
+        }
+    }
 }
 
 /// Builds test router state with default server configuration.
@@ -1315,15 +1371,20 @@ pub(crate) struct TestRouterBuilder {
     image_storage: Option<MockImageStorage>,
     inbox_manager: Option<MockInboxManager>,
     meetings_cfg: Option<crate::config::MeetingsConfig>,
-    nm: MockNotificationsManager,
+    notifications_manager: Option<MockNotificationsManager>,
     payments_cfg: Option<PaymentsConfig>,
     payments_manager: Option<MockPaymentsManager>,
     server_cfg: Option<HttpServerConfig>,
 }
 
 impl TestRouterBuilder {
-    /// Creates a new test router builder with required dependencies.
-    pub(crate) fn new(db: MockDB, nm: MockNotificationsManager) -> Self {
+    /// Creates a new test router builder with the database mock.
+    ///
+    /// The activity tracker, image storage, notifications manager, and the
+    /// enrollment, events, and inbox managers default to mocks without
+    /// expectations, which panic on any call. The default payments manager
+    /// only answers the configured provider and fiscal sponsor validation.
+    pub(crate) fn new(db: MockDB) -> Self {
         Self {
             activity_tracker: None,
             db: Box::new(db),
@@ -1332,7 +1393,7 @@ impl TestRouterBuilder {
             image_storage: None,
             inbox_manager: None,
             meetings_cfg: None,
-            nm,
+            notifications_manager: None,
             payments_cfg: None,
             payments_manager: None,
             server_cfg: None,
@@ -1345,7 +1406,7 @@ impl TestRouterBuilder {
         let activity_tracker: DynActivityTracker =
             Arc::new(self.activity_tracker.unwrap_or_default());
         let is: DynImageStorage = Arc::new(self.image_storage.unwrap_or_default());
-        let nm: DynNotificationsManager = Arc::new(self.nm);
+        let nm: DynNotificationsManager = Arc::new(self.notifications_manager.unwrap_or_default());
         let mut server_cfg = self.server_cfg.unwrap_or_default();
         server_cfg.badges.get_or_insert_with(|| TEST_BADGES_CONFIG.clone());
         let configured_provider = self.payments_cfg.as_ref().map(PaymentsConfig::provider);
@@ -1425,6 +1486,15 @@ impl TestRouterBuilder {
         self
     }
 
+    /// Sets a custom notifications manager.
+    pub(crate) fn with_notifications_manager(
+        mut self,
+        notifications_manager: MockNotificationsManager,
+    ) -> Self {
+        self.notifications_manager = Some(notifications_manager);
+        self
+    }
+
     /// Sets a custom payments configuration.
     pub(crate) fn with_payments_cfg(mut self, cfg: PaymentsConfig) -> Self {
         self.payments_cfg = Some(cfg);
@@ -1445,10 +1515,4 @@ impl TestRouterBuilder {
 }
 
 /// Shared valid signing configuration for tests outside the badge surface.
-static TEST_BADGES_CONFIG: LazyLock<BadgesConfig> = LazyLock::new(|| BadgesConfig {
-    signing_key: BadgeSigningKeyConfig {
-        key_id: "handler-test".to_string(),
-        private_jwk: JWK::generate_ed25519().expect("test signing key generation to succeed"),
-    },
-    verification_keys: vec![],
-});
+static TEST_BADGES_CONFIG: LazyLock<BadgesConfig> = LazyLock::new(sample_badges_cfg);

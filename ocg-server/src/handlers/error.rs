@@ -5,11 +5,10 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use tokio_postgres::error::SqlState;
 use tracing::{error, warn};
 
 use crate::{
-    db::USER_FACING_DB_ERROR_CODE,
+    db::user_facing_message,
     services::{
         enrollment::EnrollmentError,
         events::EventsError,
@@ -129,7 +128,7 @@ impl IntoResponse for HandlerError {
 impl From<anyhow::Error> for HandlerError {
     fn from(err: anyhow::Error) -> Self {
         // Surface user-facing database rejections by their SQLSTATE
-        if let Some(msg) = extract_db_error_message(&err) {
+        if let Some(msg) = user_facing_message(&err) {
             return HandlerError::Database(msg);
         }
         // Preserve an already classified handler error carried through anyhow
@@ -198,16 +197,4 @@ impl From<serde_qs::Error> for HandlerError {
     fn from(err: serde_qs::Error) -> Self {
         HandlerError::Deserialization(err.to_string())
     }
-}
-
-/// Extracts the message of a database error raised with the user-facing SQLSTATE.
-fn extract_db_error_message(err: &anyhow::Error) -> Option<String> {
-    let pg_err = err.downcast_ref::<tokio_postgres::Error>()?;
-    let db_err = pg_err.as_db_error()?;
-
-    // Only OCG01 messages are meant for users; P0001 and others stay internal
-    if db_err.code() == &SqlState::from_code(USER_FACING_DB_ERROR_CODE) {
-        return Some(db_err.message().to_string());
-    }
-    None
 }

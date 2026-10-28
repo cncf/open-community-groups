@@ -307,20 +307,27 @@ surface per layer:
   recipients, `template_data` content, and the tracking record. Callers,
   including handler tests, assert only kind, recipients, and identifiers.
 - Error contract (`handlers/error/tests.rs`): no mocks; asserts each
-  `HandlerError` variant's status and body.
+  `HandlerError` variant's status and body, and the status and body each
+  typed manager error kind (`OCG01` rejection, `Rejected`, internal failure)
+  maps to through its `From` impl.
 - Contract (`db/contract_tests`, `just db-contract-tests`): real database;
-  asserts SQL JSON to Rust DTO shapes, the `PgUnitOfWork` lifecycle
-  (rollback on drop, explicit rollback, failing deferred constraint on
-  commit), and manager compositions that mocks cannot prove.
+  asserts SQL JSON to Rust DTO shapes, lock ordering, the `PgUnitOfWork`
+  lifecycle (rollback on drop, explicit rollback, failing deferred
+  constraint on commit), that an `OCG01` rejection reaches Rust as a
+  user-facing error, and manager compositions that mocks cannot prove. A
+  test that only re-asserts a pgTAP `throws_ok` rejection is not repeated
+  here; a rejection is asserted only as the outcome of a race, lifecycle, or
+  composition the test exists to prove, or to pin how a wrapper passes its
+  arguments.
 
 Rules that follow from the layering:
 
 - Handler tests build the router with `TestRouterBuilder` and the shared
   session and permission helpers. A handler behind a manager has one or two
-  manager expectations per test and no workflow `MockDB` expectations. Every
-  typed manager error is proven at the handler with three tests: an `OCG01`
-  rejection returns 422 with its message, a `Rejected` returns 422 with its
-  message, and an internal failure returns 500 with an empty body.
+  manager expectations per test and no workflow `MockDB` expectations. The
+  mapping of typed manager errors to responses is proven once by the error
+  contract tests; each route that calls a manager has one test showing that
+  a manager rejection returns 422 with its message.
 - Handler DB-failure tests exist only when they prove something the error
   contract tests cannot: a failure mapped to a non-500 status, a suppressed
   later side effect (asserted with `.never()` on the side effect and its
@@ -330,7 +337,11 @@ Rules that follow from the layering:
 - Shared sample builders for domain types live in `types/tests.rs`;
   `handlers/tests.rs` re-exports them, and `services` or `templates` tests
   import them from `types::tests`, so test code follows the same dependency
-  direction as production code.
+  direction as production code. Other shared helpers live next to what they
+  build: `MockDB` expectation helpers in `db::mock`, configuration samples in
+  `config::tests`, router, request, session, and permission helpers in
+  `handlers/tests.rs`, and helpers that belong to no layer (byte fixtures,
+  text normalization, polling) in `test_util`.
 - A test file's local helpers share what is identical and incidental across
   its tests and keep visible what each test exists to prove. Request
   builders for a route and the fixed set of context reads a page always
@@ -338,8 +349,12 @@ Rules that follow from the layering:
   is passed to the helper as an explicit argument, never selected by a flag,
   and is written inline when only one test needs it. Assertions on the
   response (status, headers, body) stay inline in every test.
+- Pure functions and value logic are tested with tables: one test iterates
+  labeled cases and every assertion message names the case. Handler and
+  manager tests keep one test per scenario.
 - A test is removed only when the PR description names the test that proves
-  the same behavior at another layer. A test with no replacement stays.
+  the same behavior, at the same or another layer. A test with no
+  replacement stays.
 
 ## Bounded operations and worker health
 

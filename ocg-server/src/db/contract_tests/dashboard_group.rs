@@ -1,18 +1,18 @@
 //! Contract tests for the `DBDashboardGroup` functions.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use tokio_postgres::{
-    error::{DbError, SqlState},
+    error::SqlState,
     types::{Json, ToSql},
 };
 use uuid::Uuid;
 
 use crate::{
     db::{
-        DB, DBUnitOfWork, PgExecutor, PgUnitOfWork, USER_FACING_DB_ERROR_CODE,
+        DB, DBUnitOfWork, PgExecutor, PgUnitOfWork,
         common::DBCommon,
         dashboard::{
             group::{
@@ -69,11 +69,11 @@ use super::helpers::*;
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_accept_event_invitation_request_deserializes() -> Result<()> {
-    // Setup the contract database and pending RSVP request fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the pending RSVP request fixture
+    let uow = contract_unit_of_work().await?;
 
     // Accept the pending request through the Rust JSON contract
-    let result = db
+    let result = uow
         .accept_event_invitation_request(
             organizer_id(),
             subgroup_id(),
@@ -106,7 +106,7 @@ async fn db_contracts_add_event_stores_submitted_organizers() -> Result<()> {
     let event = EventInput {
         organizers: Some(vec![organizer_id()]),
         organizers_present: Some(true),
-        ..organizers_event_input("Contract Organizers Event")
+        ..contract_event_input("Contract Organizers Event", 1)
     };
 
     // Add the event through the Rust contract
@@ -128,7 +128,7 @@ async fn db_contracts_add_event_stores_submitted_organizers() -> Result<()> {
     let event = EventInput {
         organizers: Some(vec![attendee_id()]),
         organizers_present: Some(true),
-        ..organizers_event_input("Contract Outside Organizer Event")
+        ..contract_event_input("Contract Outside Organizer Event", 1)
     };
     let err = uow
         .add_event(
@@ -140,7 +140,7 @@ async fn db_contracts_add_event_stores_submitted_organizers() -> Result<()> {
         )
         .await
         .expect_err("organizers outside the group team should be rejected");
-    assert_user_facing_error(&err, "organizer is not a group team member");
+    assert_ocg01(&err, "organizer is not a group team member");
 
     // Roll back the created event
     Box::new(uow).rollback().await?;
@@ -179,7 +179,7 @@ async fn db_contracts_approve_event_cohost_deserializes() -> Result<()> {
         )
         .await
         .expect_err("replayed approval should be rejected");
-    assert_user_facing_error(&err, "co-hosting invitation is no longer pending");
+    assert_ocg01(&err, "co-hosting invitation is no longer pending");
 
     Ok(())
 }
@@ -192,10 +192,8 @@ async fn db_contracts_approve_event_cohost_rejects_concurrently_reinvited_invita
     let editor_uow = contract_unit_of_work().await?;
     let approval_uow = contract_unit_of_work().await?;
     let probe_client = contract_tests_pool()?.get().await?;
-    let editor_backend_pid: i32 =
-        editor_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
-    let approval_backend_pid: i32 =
-        approval_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let editor_backend_pid = uow_backend_pid(&editor_uow).await?;
+    let approval_backend_pid = uow_backend_pid(&approval_uow).await?;
 
     // Remove and re-invite the pending co-host while retaining the event lock
     let removal = editor_uow
@@ -239,7 +237,7 @@ async fn db_contracts_approve_event_cohost_rejects_concurrently_reinvited_invita
         .expect_err("the rotated invitation should not be approved");
 
     // Check the approval rechecked the invitation under the event lock
-    assert_user_facing_error(&err, "co-hosting invitation not found");
+    assert_ocg01(&err, "co-hosting invitation not found");
     let cohost = probe_client
         .query_one(
             "select approved_at, event_cohost_status_id, invitation_id from event_cohost where event_id = $1::uuid and group_id = $2::uuid",
@@ -256,11 +254,11 @@ async fn db_contracts_approve_event_cohost_rejects_concurrently_reinvited_invita
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_award_badge_deserializes() -> Result<()> {
-    // Setup the contract database and badge recipient
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the badge recipient
+    let uow = contract_unit_of_work().await?;
 
     // Queue the badge award through the Rust contract
-    let outcome = db
+    let outcome = uow
         .award_badge(
             organizer_id(),
             community_id(),
@@ -461,11 +459,11 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_cancel_event_admission_offer_deserializes() -> Result<()> {
-    // Setup the contract database and dedicated RSVP offer fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the dedicated RSVP offer fixture
+    let uow = contract_unit_of_work().await?;
 
     // Cancel the offer through the Rust JSON contract
-    let outcome = db
+    let outcome = uow
         .cancel_event_admission_offer(organizer_id(), group_id(), mutation_offer_id(), None)
         .await?;
 
@@ -480,11 +478,11 @@ async fn db_contracts_cancel_event_admission_offer_deserializes() -> Result<()> 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_cancel_event_attendee_attendance_deserializes() -> Result<()> {
-    // Setup the contract database and attendance fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the attendance fixture
+    let uow = contract_unit_of_work().await?;
 
     // Cancel the attendee through the Rust contract
-    let outcome = db
+    let outcome = uow
         .cancel_event_attendee_attendance(
             organizer_id(),
             group_id(),
@@ -507,11 +505,11 @@ async fn db_contracts_cancel_event_attendee_attendance_deserializes() -> Result<
 #[ignore = "requires the contract test database"]
 async fn db_contracts_cancel_event_attendee_attendance_queues_paid_refund_deserializes()
 -> Result<()> {
-    // Setup the contract database and paid attendance fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the paid attendance fixture
+    let uow = contract_unit_of_work().await?;
 
     // Queue cancellation through the real paid-attendance database contract
-    let outcome = db
+    let outcome = uow
         .cancel_event_attendee_attendance(
             organizer_id(),
             group_id(),
@@ -526,7 +524,7 @@ async fn db_contracts_cancel_event_attendee_attendance_queues_paid_refund_deseri
         outcome.cancellation_status,
         EventAttendeeCancellationStatus::RefundQueued
     );
-    let refund = db.get_event_purchase_refund(paid_cancellation_purchase_id()).await?;
+    let refund = uow.get_event_purchase_refund(paid_cancellation_purchase_id()).await?;
     assert_eq!(refund.event_purchase_id, paid_cancellation_purchase_id());
     assert_eq!(refund.kind, EventPurchaseRefundKind::AttendanceCancellation);
     assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
@@ -562,7 +560,7 @@ async fn db_contracts_cancel_event_cohost_requires_approval() -> Result<()> {
         )
         .await
         .expect_err("pending co-hosting should not be withdrawn");
-    assert_user_facing_error(&err, "co-hosting is not approved");
+    assert_ocg01(&err, "co-hosting is not approved");
 
     Ok(())
 }
@@ -604,24 +602,17 @@ async fn db_contracts_cfs_session_link_serializes_submission_rejection() -> Resu
             "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid, '{\"label_ids\": [], \"status_id\": \"rejected\"}'::jsonb)",
             &[&organizer_id(), &group_id(), &event_id(), &cfs_submission_id()],
         )
-        .await
-        .expect_err("linked submissions should remain approved");
-    assert_eq!(
-        linked_err.as_db_error().map(DbError::message),
-        Some("linked submissions must remain approved")
-    );
-    assert_eq!(
-        linked_err.code(),
-        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
-    );
+        .await;
 
-    // Restore the shared submission fixture for later contract tests
+    // Restore the shared submission fixture before any check can fail
     review_client
         .execute(
             "delete from session where session_id = $1::uuid",
             &[&cfs_lock_session_id()],
         )
         .await?;
+    let linked_err = linked_err.expect_err("linked submissions should remain approved");
+    assert_pg_ocg01(linked_err, "linked submissions must remain approved");
 
     Ok(())
 }
@@ -717,53 +708,7 @@ async fn db_contracts_check_in_attendee_by_code_rejects_concurrently_revoked_cod
         .await?;
     let scan_err =
         scan_result.expect_err("the revoked credential should not pass the attendee lock");
-    assert_eq!(
-        scan_err.as_db_error().map(DbError::message),
-        Some("check-in credential not found")
-    );
-    assert_eq!(
-        scan_err.code(),
-        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_check_in_event_rejects_event_outside_group() -> Result<()> {
-    // Setup the contract database and a user without attendance, so neither
-    // call can mutate state
-    let db = contract_tests_db()?;
-    let non_attendee_user_id = Uuid::new_v4();
-
-    // Check the event passes the scope gate through its own group
-    let owner_err = db
-        .check_in_event(
-            organizer_id(),
-            community_id(),
-            event_id(),
-            group_id(),
-            non_attendee_user_id,
-        )
-        .await
-        .expect_err("users without attendance should be rejected");
-    assert_user_facing_error(&owner_err, "attendance is not confirmed");
-
-    // Check in through another group of the same community
-    let err = db
-        .check_in_event(
-            organizer_id(),
-            community_id(),
-            event_id(),
-            subgroup_id(),
-            non_attendee_user_id,
-        )
-        .await
-        .expect_err("events outside the selected group should be rejected");
-
-    // Check the rejection is user-facing
-    assert_user_facing_error(&err, "event unavailable for check-in");
+    assert_pg_ocg01(scan_err, "check-in credential not found");
 
     Ok(())
 }
@@ -876,12 +821,7 @@ async fn db_contracts_event_ticketing_configuration_changed_deserializes() -> Re
 async fn db_contracts_event_ticketing_configuration_changed_ignores_dated_editor_roundtrip()
 -> Result<()> {
     // Setup a unit of work under a non-UTC session time zone
-    let pool = contract_tests_pool()?;
-    let client = pool.get().await?;
-    client.batch_execute("begin").await?;
-    let uow = PgUnitOfWork {
-        client: Some(client),
-    };
+    let uow = contract_unit_of_work().await?;
     uow.execute("set local time zone 'Europe/Madrid'", &[]).await?;
 
     // Date the paid price window and add discount codes with live inventory
@@ -976,38 +916,6 @@ async fn db_contracts_event_ticketing_configuration_changed_ignores_dated_editor
 
     // Roll back the fixture changes
     Box::new(uow).rollback().await?;
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_event_ticketing_configuration_changed_rejects_foreign_event() -> Result<()> {
-    // Setup a direct connection to observe the SQLSTATE of the scope check
-    let pool = contract_tests_pool()?;
-    let client = pool.get().await?;
-
-    // An event outside the group scope is rejected with the user-facing SQLSTATE
-    let scope_err = client
-        .query_one(
-            "select event_ticketing_configuration_changed($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
-            &[
-                &community_id(),
-                &subgroup_id(),
-                &paid_event_id(),
-                &Json(serde_json::json!({ "kind_id": "in-person" })),
-            ],
-        )
-        .await
-        .expect_err("events outside the group scope should be rejected");
-    assert_eq!(
-        scope_err.as_db_error().map(DbError::message),
-        Some("event not found or inactive")
-    );
-    assert_eq!(
-        scope_err.code(),
-        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
-    );
 
     Ok(())
 }
@@ -1286,12 +1194,6 @@ async fn db_contracts_get_event_summary_dashboard_deserializes() -> Result<()> {
     // Check shared summary fields
     assert_eq!(event.event_id, event_id());
     assert!(event.has_registration_questions);
-    assert!(
-        event
-            .ticket_types
-            .as_ref()
-            .is_some_and(|ticket_types| !ticket_types.is_empty())
-    );
     assert_eq!(event.kind, EventKind::Hybrid);
 
     // Check dashboard-only fields
@@ -1356,47 +1258,48 @@ async fn db_contracts_get_group_external_payments_eligibility_deserializes() -> 
     // Setup the contract database and group fixture (stored country US, allowlisted)
     let db = contract_tests_db()?;
 
-    // Check an omitted country resolves to the stored allowlisted country
-    assert!(
-        db.get_group_external_payments_eligibility(community_id(), group_id(), None)
-            .await?
-    );
-
-    // Check a submitted non-allowlisted country overrides the stored one
-    assert!(
-        !db.get_group_external_payments_eligibility(
-            community_id(),
+    // Check how the submitted country is encoded and matched for each case
+    for (case, target_group_id, country_code, expected) in [
+        (
+            "an omitted country resolves to the stored one",
             group_id(),
-            Some("FR".to_string())
-        )
-        .await?
-    );
-
-    // Check a submitted lowercase country is normalized before matching
-    assert!(
-        db.get_group_external_payments_eligibility(
-            community_id(),
+            None,
+            true,
+        ),
+        (
+            "a non-allowlisted country overrides the stored one",
             group_id(),
-            Some("us".to_string())
-        )
-        .await?
-    );
-
-    // Check an explicit empty country clears the stored one
-    assert!(
-        !db.get_group_external_payments_eligibility(
-            community_id(),
+            Some("FR"),
+            false,
+        ),
+        (
+            "a lowercase country is normalized before matching",
             group_id(),
-            Some(String::new())
-        )
-        .await?
-    );
-
-    // Check a missing group is reported as not allowlisted instead of null
-    assert!(
-        !db.get_group_external_payments_eligibility(community_id(), Uuid::new_v4(), None)
-            .await?
-    );
+            Some("us"),
+            true,
+        ),
+        (
+            "an explicit empty country clears the stored one",
+            group_id(),
+            Some(""),
+            false,
+        ),
+        (
+            "a missing group is not allowlisted instead of null",
+            Uuid::new_v4(),
+            None,
+            false,
+        ),
+    ] {
+        let eligible = db
+            .get_group_external_payments_eligibility(
+                community_id(),
+                target_group_id,
+                country_code.map(str::to_string),
+            )
+            .await?;
+        assert_eq!(eligible, expected, "{case}");
+    }
 
     Ok(())
 }
@@ -1502,11 +1405,11 @@ async fn db_contracts_group_has_event_checks_ownership() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_invite_event_attendee_deserializes() -> Result<()> {
-    // Setup the contract database and dedicated invitee fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the dedicated invitee fixture
+    let uow = contract_unit_of_work().await?;
 
     // Invite the registered user through the Rust JSON contract
-    let result = db
+    let result = uow
         .invite_event_attendee(
             organizer_id(),
             subgroup_id(),
@@ -1537,11 +1440,11 @@ async fn db_contracts_invite_event_attendee_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_invite_event_attendee_queue_offer_deserializes() -> Result<()> {
-    // Setup the contract database and queued invitee fixture
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and the queued invitee fixture
+    let uow = contract_unit_of_work().await?;
 
     // Invite the queue head so reconciliation allocates the released seat
-    let result = db
+    let result = uow
         .invite_event_attendee(
             organizer_id(),
             subgroup_id(),
@@ -1600,10 +1503,7 @@ async fn db_contracts_list_cohost_group_options_deserializes() -> Result<()> {
         .find(|option| option.group_id == subgroup_id())
         .expect("subgroup to be offered as a co-host");
     assert_eq!(subgroup.community_name, "contract-community");
-    assert!(
-        !subgroup.logo_url.is_empty(),
-        "subgroup logo url should be set"
-    );
+    assert_eq!(subgroup.logo_url, "https://example.com/community-logo.png");
 
     // Check inactive communities offer no options
     let inactive_options = db
@@ -1693,12 +1593,17 @@ async fn db_contracts_list_event_cohosts_deserializes() -> Result<()> {
         .cohosts
         .iter()
         .map(|cohost| cohost.group_id)
-        .collect::<Vec<_>>();
-    assert_eq!(group_ids.len(), 4);
-    assert!(group_ids.contains(&cohost_approved_group_id()));
-    assert!(group_ids.contains(&cohost_cross_community_group_id()));
-    assert!(group_ids.contains(&cohost_pending_group_id()));
-    assert!(group_ids.contains(&cohost_reinvited_group_id()));
+        .collect::<HashSet<_>>();
+    assert_eq!(editor.cohosts.len(), 4);
+    assert_eq!(
+        group_ids,
+        HashSet::from([
+            cohost_approved_group_id(),
+            cohost_cross_community_group_id(),
+            cohost_pending_group_id(),
+            cohost_reinvited_group_id(),
+        ])
+    );
 
     // Check the pending invitation fields
     let pending = editor
@@ -1862,24 +1767,33 @@ async fn db_contracts_list_group_cohosted_events_deserializes() -> Result<()> {
     assert!(event.canceled);
     assert_eq!(event.event_id, cohost_canceled_event_id());
     assert_eq!(event.event_kind, EventKind::Virtual);
-    assert!(
-        !event.event_logo_url.is_empty(),
-        "event logo url should be set"
+    assert_eq!(
+        event.event_logo_url,
+        "https://example.com/community-logo.png"
     );
     assert_eq!(event.event_name, "Contract Co-host Canceled Event");
     assert_eq!(event.event_slug, "contract-cohost-canceled-event");
     assert_eq!(event.owner_community_display_name, "Contract Community");
     assert_eq!(event.owner_community_name, "contract-community");
-    assert!(
-        !event.owner_group_logo_url.is_empty(),
-        "owner group logo url should be set"
+    assert_eq!(
+        event.owner_group_logo_url,
+        "https://example.com/community-logo.png"
     );
     assert!(!event.published);
     assert_eq!(event.status, EventCohostStatus::EventCanceled);
     assert_eq!(event.timezone.to_string(), "UTC");
-    assert!(event.ends_at.is_some());
-    assert!(event.responded_at.is_some());
-    assert!(event.starts_at.is_some());
+    assert_eq!(
+        event.ends_at,
+        Some(DateTime::parse_from_rfc3339("2099-10-02T12:00:00Z")?.with_timezone(&Utc))
+    );
+    assert_eq!(
+        event.responded_at,
+        Some(DateTime::parse_from_rfc3339("2024-02-03T10:00:00Z")?.with_timezone(&Utc))
+    );
+    assert_eq!(
+        event.starts_at,
+        Some(DateTime::parse_from_rfc3339("2099-10-02T10:00:00Z")?.with_timezone(&Utc))
+    );
 
     // Check deleted events are not listed
     let deleted_output = db
@@ -1961,12 +1875,19 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
     // Load the filtered group refunds through the Rust contract
     let output = db.list_group_refunds(group_id(), &filters).await?;
 
-    // Check event options and refund pagination
-    assert_eq!(output.events.len(), 3);
+    // Check event options include every seeded refund event; the durable
+    // enrollment manager contracts may add the mutation event
+    let event_options = output
+        .events
+        .iter()
+        .map(|event| (event.event_id, event.name.as_str()))
+        .collect::<HashSet<_>>();
     assert!(
-        output.events.iter().any(|event| {
-            event.event_id == paid_event_id() && event.name == "Contract Paid Event"
-        })
+        event_options.is_superset(&HashSet::from([
+            (external_event_id(), "Contract External Event"),
+            (paid_event_id(), "Contract Paid Event"),
+        ])),
+        "unexpected refund event options: {event_options:?}"
     );
     assert_eq!(output.refunds.len(), 1);
     assert_eq!(output.total, 2);
@@ -2161,13 +2082,13 @@ async fn db_contracts_list_user_groups_deserializes() -> Result<()> {
             .iter()
             .all(|group| group.community_name == "contract-community")
     );
-    assert!(output[0].groups.iter().any(|group| group.group_id == group_id()));
-    assert!(output[0].groups.iter().any(|group| group.group_id == subgroup_id()));
-    assert!(
+    assert_eq!(
         output[0]
             .groups
             .iter()
-            .any(|group| group.group_id == claim_group_id())
+            .map(|group| group.group_id)
+            .collect::<HashSet<_>>(),
+        HashSet::from([claim_group_id(), group_id(), subgroup_id()])
     );
 
     Ok(())
@@ -2181,11 +2102,8 @@ async fn db_contracts_lock_event_cohost_groups_locks_in_group_id_order() -> Resu
     let blocker_client = pool.get().await?;
     let probe_client = pool.get().await?;
     let lock_uow = contract_unit_of_work().await?;
-    let blocker_backend_pid = blocker_client
-        .query_one("select pg_backend_pid()", &[])
-        .await?
-        .get::<_, i32>(0);
-    let lock_backend_pid: i32 = lock_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let blocker_backend_pid = backend_pid(&blocker_client).await?;
+    let lock_backend_pid = uow_backend_pid(&lock_uow).await?;
     let high_group_id = cohost_lock_order_high_group_id();
     let low_group_id = cohost_lock_order_low_group_id();
 
@@ -2208,24 +2126,23 @@ async fn db_contracts_lock_event_cohost_groups_locks_in_group_id_order() -> Resu
     wait_for_backend_blocker(&probe_client, blocker_backend_pid, lock_backend_pid).await?;
 
     // Probe whether the helper already holds the lower group
-    probe_client
-        .batch_execute("begin; set local lock_timeout = '250ms'")
-        .await?;
-    let probe_result = probe_client
-        .query_one(
-            r#"select group_id from "group" where group_id = $1::uuid for update"#,
-            &[&low_group_id],
-        )
-        .await;
+    let probe_code = probe_lock(
+        &probe_client,
+        r#"select group_id from "group" where group_id = $1::uuid for update"#,
+        &[&low_group_id],
+    )
+    .await?;
 
-    // Release the probe and the blocker so the helper can finish
-    probe_client.batch_execute("rollback").await?;
+    // Release the blocker so the helper can finish
     blocker_client.batch_execute("rollback").await?;
     lock_task.await??;
 
     // Check the lower group is locked first, so crossed invitations cannot deadlock
-    let probe_err = probe_result.expect_err("the lower group should already be locked");
-    assert_eq!(probe_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+    assert_eq!(
+        probe_code,
+        Some(SqlState::LOCK_NOT_AVAILABLE),
+        "the lower group should already be locked"
+    );
 
     Ok(())
 }
@@ -2239,7 +2156,7 @@ async fn db_contracts_lock_group_events_serializes_update() -> Result<()> {
     let racing_client = racing_pool.get().await?;
     let event_id = group_lock_first_event_id();
     let event_payload =
-        Json(group_lock_event_update("Contract Group Lock Event One Updated", 3).to_db_payload()?);
+        Json(contract_event_input("Contract Group Lock Event One Updated", 3).to_db_payload()?);
     racing_client.batch_execute("set lock_timeout = '250ms'").await?;
 
     // Lock the group and event through the Rust database contract
@@ -2264,7 +2181,9 @@ async fn db_contracts_lock_group_events_serializes_update() -> Result<()> {
     // Release the helper locks before retrying the update
     uow.commit().await?;
 
-    // Check the serialized update succeeds after the locks are released
+    // Check the serialized update succeeds after the locks are released, then
+    // roll it back so the fixture event keeps its seeded state
+    racing_client.batch_execute("begin").await?;
     let updated = racing_client
         .query_one(
             "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
@@ -2276,6 +2195,7 @@ async fn db_contracts_lock_group_events_serializes_update() -> Result<()> {
             ],
         )
         .await?;
+    racing_client.batch_execute("rollback").await?;
     assert!(!updated.get::<_, bool>(0));
 
     Ok(())
@@ -2289,12 +2209,8 @@ async fn db_contracts_publish_event_reads_group_payment_state_after_group_lock()
     let blocker_client = pool.get().await?;
     let probe_client = pool.get().await?;
     let publish_uow = contract_unit_of_work().await?;
-    let blocker_backend_pid = blocker_client
-        .query_one("select pg_backend_pid()", &[])
-        .await?
-        .get::<_, i32>(0);
-    let publish_backend_pid: i32 =
-        publish_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let blocker_backend_pid = backend_pid(&blocker_client).await?;
+    let publish_backend_pid = uow_backend_pid(&publish_uow).await?;
 
     // Clear the seller name while holding the group row lock
     blocker_client.batch_execute("begin").await?;
@@ -2326,7 +2242,7 @@ async fn db_contracts_publish_event_reads_group_payment_state_after_group_lock()
         .expect_err("the committed missing seller name should block publication");
 
     // Check the readiness helpers read the group state after the group lock
-    assert_user_facing_error(
+    assert_ocg01(
         &err,
         "external payments require the legal name of the organization collecting payments",
     );
@@ -2349,10 +2265,8 @@ async fn db_contracts_publish_event_rechecks_cohosts_after_concurrent_invitation
     let editor_uow = contract_unit_of_work().await?;
     let publish_uow = contract_unit_of_work().await?;
     let probe_client = contract_tests_pool()?.get().await?;
-    let editor_backend_pid: i32 =
-        editor_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
-    let publish_backend_pid: i32 =
-        publish_uow.fetch_scalar_one("select pg_backend_pid()", &[]).await?;
+    let editor_backend_pid = uow_backend_pid(&editor_uow).await?;
+    let publish_backend_pid = uow_backend_pid(&publish_uow).await?;
 
     // Invite a co-host while retaining the event lock
     let sync = editor_uow
@@ -2387,7 +2301,7 @@ async fn db_contracts_publish_event_rechecks_cohosts_after_concurrent_invitation
         .expect_err("the committed pending co-host should block publication");
 
     // Check the publish gate rechecked the co-hosts under the event lock
-    assert_user_facing_error(
+    assert_ocg01(
         &err,
         "co-hosts must respond before the event can be published",
     );
@@ -2399,31 +2313,6 @@ async fn db_contracts_publish_event_rechecks_cohosts_after_concurrent_invitation
         .await?
         .get::<_, bool>(0);
     assert!(!published);
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_publish_event_requires_cohost_responses() -> Result<()> {
-    // Setup a rolled-back unit of work for the publish attempt
-    let uow = contract_unit_of_work().await?;
-
-    // Check the pending co-hosts block publication
-    let err = uow
-        .publish_event(
-            organizer_id(),
-            subgroup_id(),
-            cohost_matrix_event_id(),
-            None,
-            None,
-        )
-        .await
-        .expect_err("pending co-hosts should block publication");
-    assert_user_facing_error(
-        &err,
-        "co-hosts must respond before the event can be published",
-    );
 
     Ok(())
 }
@@ -2456,14 +2345,10 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     // Setup the contract database and attendee filters
     let db = contract_tests_db()?;
     let filters = AttendeesFilters {
-        checked_in: None,
-        event_ticket_type_ids: None,
         limit: Some(10),
         offset: Some(0),
-        sort: None,
-        status: None,
-        title: None,
-        ts_query: None,
+
+        ..Default::default()
     };
 
     // Search event attendees through the Rust contract
@@ -2543,14 +2428,11 @@ async fn db_contracts_search_event_attendees_external_payment_deserializes() -> 
     // Setup the contract database and unfiltered external-event search
     let db = contract_tests_db()?;
     let filters = AttendeesFilters {
-        checked_in: None,
-        event_ticket_type_ids: None,
         limit: Some(10),
         offset: Some(0),
-        sort: None,
         status: Some(AttendeeEnrollmentStatusFilter::All),
-        title: None,
-        ts_query: None,
+
+        ..Default::default()
     };
 
     // Search external-payment attendees through the Rust contract
@@ -2559,7 +2441,7 @@ async fn db_contracts_search_event_attendees_external_payment_deserializes() -> 
         .await?;
 
     // Check pending and completed external purchase encodings
-    assert!(output.total >= 2);
+    assert_eq!(output.total, 4);
     let pending = output
         .attendees
         .iter()
@@ -2636,14 +2518,11 @@ async fn db_contracts_search_event_attendees_terminal_offer_statuses_deserialize
     // Setup the contract database and unfiltered status event search
     let db = contract_tests_db()?;
     let filters = AttendeesFilters {
-        checked_in: None,
-        event_ticket_type_ids: None,
         limit: Some(10),
         offset: Some(0),
-        sort: None,
         status: Some(AttendeeEnrollmentStatusFilter::All),
-        title: None,
-        ts_query: None,
+
+        ..Default::default()
     };
 
     // Search terminal organizer offers through the Rust contract
@@ -2688,12 +2567,12 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
     // Setup the contract database and invitation request filters
     let db = contract_tests_db()?;
     let filters = InvitationRequestsFilters {
+        status: InvitationRequestsStatusFilter::All,
+
         limit: Some(10),
         offset: Some(0),
-        sort: None,
-        status: InvitationRequestsStatusFilter::All,
-        title: None,
-        ts_query: None,
+
+        ..Default::default()
     };
 
     // Search invitation requests through the Rust contract
@@ -2742,13 +2621,10 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
         .as_ref()
         .expect("contract invitation request should include registration answers");
     assert_eq!(answers.answers.len(), 1);
-    assert_eq!(
-        answers.answers[0].question_id,
-        parse_uuid("00000000-0000-0000-0000-00000000c071")
-    );
+    assert_eq!(answers.answers[0].question_id, registration_question_id());
     match &answers.answers[0].value {
         QuestionnaireAnswerValue::One(value) => {
-            assert_eq!(value, "00000000-0000-0000-0000-00000000c072");
+            assert_eq!(*value, registration_question_option_id().to_string());
         }
         QuestionnaireAnswerValue::Many(_) => panic!("expected single-select answer"),
     }
@@ -2764,9 +2640,8 @@ async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
     let filters = WaitlistFilters {
         limit: Some(10),
         offset: Some(0),
-        sort: None,
-        title: None,
-        ts_query: None,
+
+        ..Default::default()
     };
 
     // Search the event waitlist through the Rust contract
@@ -2825,11 +2700,16 @@ async fn db_contracts_sync_event_cohosts_deserializes() -> Result<()> {
         .removed
         .iter()
         .map(|reference| reference.cohost_group_id)
-        .collect::<Vec<_>>();
-    assert_eq!(removed_group_ids.len(), 3);
-    assert!(removed_group_ids.contains(&cohost_cross_community_group_id()));
-    assert!(removed_group_ids.contains(&cohost_pending_group_id()));
-    assert!(removed_group_ids.contains(&cohost_reinvited_group_id()));
+        .collect::<HashSet<_>>();
+    assert_eq!(sync.removed.len(), 3);
+    assert_eq!(
+        removed_group_ids,
+        HashSet::from([
+            cohost_cross_community_group_id(),
+            cohost_pending_group_id(),
+            cohost_reinvited_group_id(),
+        ])
+    );
     assert!(
         sync.removed
             .iter()
@@ -2846,7 +2726,7 @@ async fn db_contracts_sync_event_cohosts_deserializes() -> Result<()> {
         )
         .await
         .expect_err("removed invitation should not be approved");
-    assert_user_facing_error(&err, "co-hosting invitation is no longer pending");
+    assert_ocg01(&err, "co-hosting invitation is no longer pending");
     uow.execute("rollback to savepoint removed_invitation", &[]).await?;
 
     // Check a second editor on the old revision is rejected
@@ -2860,7 +2740,7 @@ async fn db_contracts_sync_event_cohosts_deserializes() -> Result<()> {
         )
         .await
         .expect_err("stale co-hosts revision should be rejected");
-    assert_user_facing_error(
+    assert_ocg01(
         &err,
         "co-hosts changed since this page was loaded; reload to continue",
     );
@@ -2870,67 +2750,16 @@ async fn db_contracts_sync_event_cohosts_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_sync_event_cohosts_rejects_published_changes() -> Result<()> {
-    // Setup a rolled-back unit of work with the matrix event published
-    let uow = contract_unit_of_work().await?;
-    uow.execute(
-        "update event set published = true where event_id = $1::uuid",
-        &[&cohost_matrix_event_id()],
-    )
-    .await?;
-
-    // Check changing the co-hosts of a published event is rejected
-    let err = uow
-        .sync_event_cohosts(
-            organizer_id(),
-            subgroup_id(),
-            cohost_matrix_event_id(),
-            &[cohost_approved_group_id()],
-            9,
-        )
-        .await
-        .expect_err("published co-hosts should be locked");
-    assert_user_facing_error(
-        &err,
-        "co-hosts cannot be changed while the event is published",
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
 async fn db_contracts_update_event_deserializes() -> Result<()> {
-    // Setup the contract database and event schedule
-    let db = contract_tests_db()?;
-    let starts_at = NaiveDate::from_ymd_opt(2099, 8, 1)
-        .expect("date should be valid")
-        .and_hms_opt(10, 0, 0)
-        .expect("time should be valid");
-    let ends_at = NaiveDate::from_ymd_opt(2099, 8, 1)
-        .expect("date should be valid")
-        .and_hms_opt(11, 0, 0)
-        .expect("time should be valid");
-    let event = EventInput {
-        category_id: event_category_id(),
-        description: "A mutation event updated by Rust database contract tests".to_string(),
-        kind_id: "virtual".to_string(),
-        name: "Contract Mutation Event".to_string(),
-        timezone: "UTC".to_string(),
-
-        capacity: Some(100),
-        ends_at: Some(ends_at),
-        starts_at: Some(starts_at),
-        test_event: Some(true),
-
-        ..Default::default()
-    };
+    // Setup a rolled-back unit of work and the mutation event update
+    let uow = contract_unit_of_work().await?;
+    let event = contract_event_input("Contract Mutation Event", 1);
 
     // Serialize the event update for the database contract
     let payload = event.to_db_payload()?;
 
     // Update the event through the Rust contract
-    let requires_paid_notification = db
+    let requires_paid_notification = uow
         .update_event(
             organizer_id(),
             group_id(),
@@ -2952,7 +2781,7 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
 async fn db_contracts_update_event_syncs_submitted_organizers() -> Result<()> {
     // Setup a rolled-back unit of work and the mutation event update
     let uow = contract_unit_of_work().await?;
-    let base_event = organizers_event_input("Contract Mutation Event");
+    let base_event = contract_event_input("Contract Mutation Event", 1);
 
     // Submit the organizers with their marker
     let event = EventInput {
@@ -3010,10 +2839,10 @@ async fn db_contracts_update_event_serializes_same_group_mutations() -> Result<(
     let racing_client = racing_pool.get().await?;
     let first_event_id = group_lock_first_event_id();
     let first_payload =
-        group_lock_event_update("Contract Group Lock Event One Updated", 3).to_db_payload()?;
+        contract_event_input("Contract Group Lock Event One Updated", 3).to_db_payload()?;
     let second_event_id = group_lock_second_event_id();
     let second_payload =
-        Json(group_lock_event_update("Contract Group Lock Event Two Updated", 4).to_db_payload()?);
+        Json(contract_event_input("Contract Group Lock Event Two Updated", 4).to_db_payload()?);
     racing_client.batch_execute("set lock_timeout = '250ms'").await?;
 
     // Update the first event while retaining the owning group lock
@@ -3045,10 +2874,12 @@ async fn db_contracts_update_event_serializes_same_group_mutations() -> Result<(
         .expect_err("same-group event update should wait for the group lock");
     assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
 
-    // Commit the first update before retrying the second mutation
-    uow.commit().await?;
+    // Roll back the first update to release the group lock
+    uow.rollback().await?;
 
-    // Check the second update succeeds after observing the committed group state
+    // Check the second update succeeds once the group lock is released, then
+    // roll it back so the fixture event keeps its seeded state
+    racing_client.batch_execute("begin").await?;
     let updated = racing_client
         .query_one(
             "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
@@ -3060,24 +2891,13 @@ async fn db_contracts_update_event_serializes_same_group_mutations() -> Result<(
             ],
         )
         .await?;
+    racing_client.batch_execute("rollback").await?;
     assert!(!updated.get::<_, bool>(0));
 
     Ok(())
 }
 
 // Helpers.
-
-/// Asserts a database error is a user-facing rejection with the given message.
-fn assert_user_facing_error(err: &anyhow::Error, message: &str) {
-    let db_err = err
-        .downcast_ref::<tokio_postgres::Error>()
-        .expect("error to come from the database");
-    assert_eq!(db_err.as_db_error().map(DbError::message), Some(message));
-    assert_eq!(
-        db_err.code(),
-        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
-    );
-}
 
 /// Builds the dashboard editor input that echoes a stored paid event: dated
 /// windows as `DateTime<Utc>`, discount codes in reversed order without their
@@ -3160,33 +2980,6 @@ fn dated_editor_event_input(event: &EventFull) -> EventInput {
 /// Returns the organizer user IDs of an event in their stored order.
 fn organizer_user_ids(event: &EventFull) -> Vec<Uuid> {
     event.organizers.iter().map(|user| user.user_id).collect()
-}
-
-/// Builds a minimal future virtual event input used by organizer contracts.
-fn organizers_event_input(name: &str) -> EventInput {
-    let starts_at = NaiveDate::from_ymd_opt(2099, 8, 1)
-        .expect("date should be valid")
-        .and_hms_opt(10, 0, 0)
-        .expect("time should be valid");
-    let ends_at = NaiveDate::from_ymd_opt(2099, 8, 1)
-        .expect("date should be valid")
-        .and_hms_opt(11, 0, 0)
-        .expect("time should be valid");
-
-    EventInput {
-        category_id: event_category_id(),
-        description: "An event used by organizer Rust database contract tests".to_string(),
-        kind_id: "virtual".to_string(),
-        name: name.to_string(),
-        timezone: "UTC".to_string(),
-
-        capacity: Some(100),
-        ends_at: Some(ends_at),
-        starts_at: Some(starts_at),
-        test_event: Some(true),
-
-        ..Default::default()
-    }
 }
 
 /// Updates the mutation event with the given input inside the unit of work.

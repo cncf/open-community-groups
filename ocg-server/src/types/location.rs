@@ -116,125 +116,82 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_build_location_all_fields() {
-        let address = "123 Main St".to_string();
-        let city = "San Francisco".to_string();
-        let country_name = "United States".to_string();
-        let name = "Convention Center".to_string();
-        let state_code = "CA".to_string();
-        let state_name = "California".to_string();
+    fn test_build_location_joins_available_parts() {
+        // (case, parts, max length, expected)
+        let cases = [
+            (
+                "all fields",
+                LocationParts::new()
+                    .address(Some("123 Main St"))
+                    .city(Some("San Francisco"))
+                    .country_name(Some("United States"))
+                    .name(Some("Convention Center"))
+                    .state_code(Some("CA"))
+                    .state_name(Some("California")),
+                100,
+                Some("Convention Center, 123 Main St, San Francisco, California, United States"),
+            ),
+            (
+                "city, state and country",
+                LocationParts::new()
+                    .city(Some("Boston"))
+                    .country_name(Some("United States"))
+                    .state_name(Some("Massachusetts")),
+                100,
+                Some("Boston, Massachusetts, United States"),
+            ),
+            (
+                "state code fallback",
+                LocationParts::new().city(Some("Boston")).state_code(Some("MA")),
+                100,
+                Some("Boston, MA"),
+            ),
+            (
+                "country name preferred over code",
+                LocationParts::new()
+                    .country_code(Some("US"))
+                    .country_name(Some("United States")),
+                100,
+                Some("United States"),
+            ),
+            (
+                "country code fallback",
+                LocationParts::new().country_code(Some("US")),
+                100,
+                Some("US"),
+            ),
+            (
+                "name and address only",
+                LocationParts::new()
+                    .address(Some("456 Oak Ave"))
+                    .name(Some("Tech Hub")),
+                100,
+                Some("Tech Hub, 456 Oak Ave"),
+            ),
+            ("empty", LocationParts::new(), 100, None),
+            (
+                "single part above max length",
+                LocationParts::new().name(Some("very long venue name")),
+                5,
+                None,
+            ),
+            (
+                "parts truncated at max length",
+                LocationParts::new()
+                    .address(Some("very long street name"))
+                    .city(Some("city"))
+                    .name(Some("venue")),
+                12,
+                Some("venue, city"),
+            ),
+        ];
 
-        let parts = LocationParts::new()
-            .address(Some(address.as_str()))
-            .city(Some(city.as_str()))
-            .country_name(Some(country_name.as_str()))
-            .name(Some(name.as_str()))
-            .state_code(Some(state_code.as_str()))
-            .state_name(Some(state_name.as_str()));
-
-        assert_eq!(
-            build_location(&parts, 100),
-            Some(
-                "Convention Center, 123 Main St, San Francisco, California, United States"
-                    .to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_build_location_city_state_country() {
-        let city = "Boston".to_string();
-        let country_name = "United States".to_string();
-        let state_name = "Massachusetts".to_string();
-
-        let parts = LocationParts::new()
-            .city(Some(city.as_str()))
-            .country_name(Some(country_name.as_str()))
-            .state_name(Some(state_name.as_str()));
-
-        assert_eq!(
-            build_location(&parts, 100),
-            Some("Boston, Massachusetts, United States".to_string())
-        );
-    }
-
-    #[test]
-    fn test_build_location_state_code_fallback() {
-        let city = "Boston".to_string();
-        let state_code = "MA".to_string();
-
-        let parts = LocationParts::new()
-            .city(Some(city.as_str()))
-            .state_code(Some(state_code.as_str()));
-
-        assert_eq!(build_location(&parts, 100), Some("Boston, MA".to_string()));
-    }
-
-    #[test]
-    fn test_build_location_country_name_preferred_over_code() {
-        let country_code = "US".to_string();
-        let country_name = "United States".to_string();
-
-        let parts = LocationParts::new()
-            .country_code(Some(country_code.as_str()))
-            .country_name(Some(country_name.as_str()));
-
-        assert_eq!(
-            build_location(&parts, 100),
-            Some("United States".to_string())
-        );
-    }
-
-    #[test]
-    fn test_build_location_country_code_fallback() {
-        let country_code = "US".to_string();
-
-        let parts = LocationParts::new().country_code(Some(country_code.as_str()));
-
-        assert_eq!(build_location(&parts, 100), Some("US".to_string()));
-    }
-
-    #[test]
-    fn test_build_location_empty() {
-        let parts = LocationParts::new();
-        assert_eq!(build_location(&parts, 100), None);
-    }
-
-    #[test]
-    fn test_build_location_max_length_exceeded() {
-        let name = "very long venue name".to_string();
-
-        let parts = LocationParts::new().name(Some(name.as_str()));
-
-        assert_eq!(build_location(&parts, 5), None);
-    }
-
-    #[test]
-    fn test_build_location_truncates_at_max_length() {
-        let address = "very long street name".to_string();
-        let city = "city".to_string();
-        let name = "venue".to_string();
-
-        let parts = LocationParts::new()
-            .address(Some(address.as_str()))
-            .city(Some(city.as_str()))
-            .name(Some(name.as_str()));
-
-        assert_eq!(build_location(&parts, 12), Some("venue, city".to_string()));
-    }
-
-    #[test]
-    fn test_build_location_name_and_address_only() {
-        let address = "456 Oak Ave".to_string();
-        let name = "Tech Hub".to_string();
-
-        let parts = LocationParts::new()
-            .address(Some(address.as_str()))
-            .name(Some(name.as_str()));
-
-        assert_eq!(
-            build_location(&parts, 100),
-            Some("Tech Hub, 456 Oak Ave".to_string())
-        );
+        for (case, parts, max_len, expected) in cases {
+            assert_eq!(
+                build_location(&parts, max_len).as_deref(),
+                expected,
+                "{case}"
+            );
+        }
     }
 }

@@ -106,31 +106,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_database_config_accepts_default_tls_configuration() {
-        let db = sample_db_config();
-
-        assert!(db.validate().is_ok());
-    }
-
-    #[test]
-    fn test_database_config_accepts_verification_with_required_tls() {
-        // Setup full certificate verification over required TLS
-        let mut db = sample_db_config();
-        db.connection.ssl_mode = Some(DeadpoolSslMode::Require);
-        db.tls = Some(DbTlsConfig {
-            mode: DbTlsMode::VerifyFull,
-
-            ca_cert: Some("trusted CA certificate".to_string()),
-        });
-
-        // Validate the database transport configuration
-        let result = db.validate();
-
-        // Check secure TLS configuration is accepted
-        assert!(result.is_ok());
-    }
-
-    #[test]
     fn test_database_config_deserializes_tls_fields() {
         // Setup the chart-compatible flattened database configuration
         let yaml = r"
@@ -153,70 +128,66 @@ tls:
     }
 
     #[test]
-    fn test_database_config_rejects_ca_certificate_without_verification() {
-        // Setup CA material that certificate verification would ignore
-        let mut db = sample_db_config();
-        db.tls = Some(DbTlsConfig {
-            mode: DbTlsMode::None,
+    fn test_database_config_validate_checks_tls_policy() {
+        let require = Some(DeadpoolSslMode::Require);
+        let ca_cert = Some("trusted CA certificate");
+        let verification_without_tls =
+            "db.ssl_mode must be Require when db.tls.mode enables certificate verification";
+        // (case, ssl_mode, tls mode and CA certificate, expected error)
+        let cases = [
+            ("default configuration", None, None, None),
+            (
+                "full verification over required TLS",
+                require,
+                Some((DbTlsMode::VerifyFull, ca_cert)),
+                None,
+            ),
+            (
+                "CA certificate without verification",
+                None,
+                Some((DbTlsMode::None, Some("unused CA certificate"))),
+                Some("db.tls.ca_cert requires db.tls.mode verify-ca or verify-full"),
+            ),
+            (
+                "verification without CA certificate",
+                require,
+                Some((DbTlsMode::VerifyFull, None)),
+                Some(
+                    "db.tls.ca_cert is required when db.tls.mode enables certificate verification",
+                ),
+            ),
+            (
+                "verification without ssl mode",
+                None,
+                Some((DbTlsMode::VerifyCa, ca_cert)),
+                Some(verification_without_tls),
+            ),
+            (
+                "verification with disabled ssl",
+                Some(DeadpoolSslMode::Disable),
+                Some((DbTlsMode::VerifyCa, ca_cert)),
+                Some(verification_without_tls),
+            ),
+            (
+                "verification with preferred ssl",
+                Some(DeadpoolSslMode::Prefer),
+                Some((DbTlsMode::VerifyCa, ca_cert)),
+                Some(verification_without_tls),
+            ),
+        ];
 
-            ca_cert: Some("unused CA certificate".to_string()),
-        });
-
-        // Validate the database transport configuration
-        let result = db.validate();
-
-        // Check ignored trust material is rejected
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "db.tls.ca_cert requires db.tls.mode verify-ca or verify-full"
-        );
-    }
-
-    #[test]
-    fn test_database_config_rejects_verification_without_ca_certificate() {
-        // Setup certificate verification without trust roots
-        let mut db = sample_db_config();
-        db.connection.ssl_mode = Some(DeadpoolSslMode::Require);
-        db.tls = Some(DbTlsConfig {
-            mode: DbTlsMode::VerifyFull,
-
-            ca_cert: None,
-        });
-
-        // Validate the database transport configuration
-        let result = db.validate();
-
-        // Check missing trust roots are rejected
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "db.tls.ca_cert is required when db.tls.mode enables certificate verification"
-        );
-    }
-
-    #[test]
-    fn test_database_config_rejects_verification_without_required_tls() {
-        for ssl_mode in [
-            None,
-            Some(DeadpoolSslMode::Disable),
-            Some(DeadpoolSslMode::Prefer),
-        ] {
-            // Setup certificate verification with a plaintext-capable SSL mode
+        for (case, ssl_mode, tls, expected) in cases {
             let mut db = sample_db_config();
             db.connection.ssl_mode = ssl_mode;
-            db.tls = Some(DbTlsConfig {
-                mode: DbTlsMode::VerifyCa,
+            db.tls = tls.map(|(mode, ca_cert)| DbTlsConfig {
+                mode,
 
-                ca_cert: Some("trusted CA certificate".to_string()),
+                ca_cert: ca_cert.map(str::to_string),
             });
 
-            // Validate the database transport configuration
-            let result = db.validate();
+            let result = db.validate().map_err(|err| err.to_string());
 
-            // Check every plaintext-capable mode is rejected
-            assert_eq!(
-                result.unwrap_err().to_string(),
-                "db.ssl_mode must be Require when db.tls.mode enables certificate verification"
-            );
+            assert_eq!(result.err().as_deref(), expected, "{case}");
         }
     }
 

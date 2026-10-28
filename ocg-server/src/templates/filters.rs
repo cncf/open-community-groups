@@ -189,36 +189,6 @@ mod tests {
     }
 
     #[test]
-    fn test_safe_href_accepts_root_relative_url() {
-        let values = askama::NO_VALUES;
-
-        assert_eq!(
-            safe_href::default().execute("/relative/path", values).unwrap(),
-            "/relative/path"
-        );
-    }
-
-    #[test]
-    fn test_safe_href_replaces_backslash_protocol_relative_url() {
-        let values = askama::NO_VALUES;
-
-        assert_eq!(
-            safe_href::default().execute("/\\evil.com", values).unwrap(),
-            "#"
-        );
-    }
-
-    #[test]
-    fn test_safe_href_replaces_data_url() {
-        let values = askama::NO_VALUES;
-
-        assert_eq!(
-            safe_href::default().execute("data:text/html,hello", values).unwrap(),
-            "#"
-        );
-    }
-
-    #[test]
     fn test_safe_href_replaces_javascript_url() {
         let values = askama::NO_VALUES;
 

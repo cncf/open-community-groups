@@ -18,6 +18,9 @@ mod refund_recorder;
 mod webhook_reconciler;
 mod workers;
 
+#[cfg(test)]
+mod tests;
+
 pub(crate) use manager::{
     ApproveRefundRequestInput, CompleteRefundRecoveryInput, DynPaymentsManager, HandleWebhookError,
     PaymentJobRecovery, PaymentsError, PgPaymentsManager, PrepareCheckoutOutcome,

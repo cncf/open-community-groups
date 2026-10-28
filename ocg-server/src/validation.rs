@@ -564,516 +564,639 @@ mod tests {
 
     #[test]
     fn test_email_vec_invalid() {
-        assert!(email_vec(&Some(vec!["not-an-email".to_string()]), &()).is_err());
-        assert!(email_vec(&Some(vec![String::new()]), &()).is_err());
-        assert!(email_vec(&Some(vec!["   ".to_string()]), &()).is_err());
-        assert!(
-            email_vec(
-                &Some(vec!["valid@example.com".to_string(), "invalid".to_string()]),
-                &()
-            )
-            .is_err()
+        // An address parse_email accepts that is longer than MAX_LEN_M
+        let long_email = format!(
+            "user@{}example.com",
+            format!("{}.", "a".repeat(60)).repeat(4)
         );
-    }
+        assert!(long_email.len() > MAX_LEN_M);
+        assert!(parse_email(&long_email).is_ok());
 
-    #[test]
-    fn test_email_vec_length_exceeded() {
-        // Email exceeding MAX_LEN_M
-        let long_email = format!("{}@example.com", "a".repeat(MAX_LEN_M));
-        assert!(email_vec(&Some(vec![long_email]), &()).is_err());
-    }
+        let cases = [
+            (
+                "not an email",
+                Some(strings(&["not-an-email"])),
+                "invalid email: ",
+            ),
+            ("empty", Some(strings(&[""])), "invalid email: "),
+            ("blank", Some(strings(&["   "])), "invalid email: "),
+            (
+                "valid then invalid",
+                Some(strings(&["valid@example.com", "invalid"])),
+                "invalid email: ",
+            ),
+            (
+                "too long",
+                Some(vec![long_email]),
+                "email exceeds max length of 250",
+            ),
+        ];
 
-    #[test]
-    fn test_email_vec_none() {
-        assert!(email_vec(&None, &()).is_ok());
+        for (case, value, expected) in cases {
+            let message = email_vec(&value, &()).expect_err(case).to_string();
+            assert!(message.starts_with(expected), "{case}: {message}");
+        }
     }
 
     #[test]
     fn test_email_vec_valid() {
-        assert!(email_vec(&Some(vec!["user@example.com".to_string()]), &()).is_ok());
-        assert!(
-            email_vec(
-                &Some(vec![
-                    "user@example.com".to_string(),
-                    "other@test.org".to_string()
-                ]),
-                &()
-            )
-            .is_ok()
-        );
-        // Empty vec is valid (no invalid elements)
-        assert!(email_vec(&Some(vec![]), &()).is_ok());
+        let cases = [
+            ("none", None),
+            ("one address", Some(strings(&["user@example.com"]))),
+            (
+                "two addresses",
+                Some(strings(&["user@example.com", "other@test.org"])),
+            ),
+            ("empty list", Some(strings(&[]))),
+        ];
+
+        for (case, value) in cases {
+            assert!(email_vec(&value, &()).is_ok(), "{case}");
+        }
     }
 
     #[test]
     fn test_image_url_invalid() {
-        // Reject malformed, protocol-relative, and unsafe-scheme URLs
-        assert!(image_url(&"not-a-url", &()).is_err());
-        assert!(image_url(&"example.com/image.png", &()).is_err());
-        assert!(image_url(&"//example.com/image.png", &()).is_err());
-        assert!(image_url(&"/\\evil.com/image.png", &()).is_err());
-        assert!(image_url(&"data:image/png;base64,AA==", &()).is_err());
-        assert!(image_url(&"file:///tmp/image.png", &()).is_err());
-        assert!(image_url(&"javascript:alert(1)", &()).is_err());
-
-        // Reject characters browsers strip before parsing the URL
-        for url in [
-            "/\t/evil.com/image.png",
-            "/\n/evil.com/image.png",
-            "/\r/evil.com/image.png",
-        ] {
-            assert!(image_url(&url, &()).is_err());
-        }
-
-        // Empty
-        assert!(image_url(&"", &()).is_err());
-        // Whitespace only
-        assert!(image_url(&"   ", &()).is_err());
-    }
-
-    #[test]
-    fn test_image_url_length_exceeded() {
         let long_url = format!("/{}", "a".repeat(MAX_LEN_L));
-        assert!(image_url(&long_url, &()).is_err());
+        let cases = [
+            ("malformed", "not-a-url"),
+            ("missing scheme", "example.com/image.png"),
+            ("protocol-relative", "//example.com/image.png"),
+            ("backslash protocol-relative", "/\\evil.com/image.png"),
+            ("data scheme", "data:image/png;base64,AA=="),
+            ("file scheme", "file:///tmp/image.png"),
+            ("javascript scheme", "javascript:alert(1)"),
+            ("stripped tab", "/\t/evil.com/image.png"),
+            ("stripped newline", "/\n/evil.com/image.png"),
+            ("stripped carriage return", "/\r/evil.com/image.png"),
+        ];
+
+        for (case, url) in cases {
+            let message = image_url(&url, &()).expect_err(case).to_string();
+            assert_eq!(message, format!("invalid image URL: {url}"), "{case}");
+        }
+        for (case, url, expected) in [
+            ("empty", "", "image URL cannot be empty"),
+            ("blank", "   ", "image URL cannot be empty"),
+            (
+                "too long",
+                long_url.as_str(),
+                "image URL exceeds max length of 2000",
+            ),
+        ] {
+            let message = image_url(&url, &()).expect_err(case).to_string();
+            assert_eq!(message, expected, "{case}");
+        }
     }
 
     #[test]
     fn test_image_url_opt_invalid() {
-        assert!(image_url_opt(&Some("not-a-url".to_string()), &()).is_err());
-        assert!(image_url_opt(&Some(String::new()), &()).is_err());
-        assert!(image_url_opt(&Some("   ".to_string()), &()).is_err());
-    }
+        let message = image_url_opt(&Some("not-a-url".to_string()), &())
+            .unwrap_err()
+            .to_string();
 
-    #[test]
-    fn test_image_url_opt_length_exceeded() {
-        let long_url = format!("/{}", "a".repeat(MAX_LEN_L));
-        assert!(image_url_opt(&Some(long_url), &()).is_err());
-    }
-
-    #[test]
-    fn test_image_url_opt_none() {
-        assert!(image_url_opt(&None, &()).is_ok());
+        assert_eq!(message, "invalid image URL: not-a-url");
     }
 
     #[test]
     fn test_image_url_opt_valid() {
-        // Absolute URLs
-        assert!(image_url_opt(&Some("https://example.com/image.png".to_string()), &()).is_ok());
-        assert!(image_url_opt(&Some("http://example.com/logo.svg".to_string()), &()).is_ok());
-        // Relative URLs
-        assert!(image_url_opt(&Some("/images/logo.png".to_string()), &()).is_ok());
-        assert!(image_url_opt(&Some("/logo.svg".to_string()), &()).is_ok());
+        for (case, value) in [
+            ("none", None),
+            (
+                "absolute",
+                Some("https://example.com/image.png".to_string()),
+            ),
+            ("root-relative", Some("/images/logo.png".to_string())),
+        ] {
+            assert!(image_url_opt(&value, &()).is_ok(), "{case}");
+        }
     }
 
     #[test]
     fn test_image_url_valid() {
-        // Absolute URLs
-        assert!(image_url(&"https://example.com/image.png", &()).is_ok());
-        assert!(image_url(&"http://example.com/logo.svg", &()).is_ok());
-        assert!(image_url(&"https://cdn.example.com/path/to/image.jpg", &()).is_ok());
-        // Relative URLs
-        assert!(image_url(&"/images/logo.png", &()).is_ok());
-        assert!(image_url(&"/logo.svg", &()).is_ok());
-        assert!(image_url(&"/path/to/image.jpg", &()).is_ok());
+        for url in [
+            "https://example.com/image.png",
+            "http://example.com/logo.svg",
+            "https://cdn.example.com/path/to/image.jpg",
+            "/images/logo.png",
+            "/logo.svg",
+            "/path/to/image.jpg",
+        ] {
+            assert!(image_url(&url, &()).is_ok(), "{url:?}");
+        }
     }
 
     #[test]
     fn test_image_url_vec_invalid() {
-        assert!(image_url_vec(&Some(vec!["not-a-url".to_string()]), &()).is_err());
-        assert!(image_url_vec(&Some(vec![String::new()]), &()).is_err());
-        assert!(image_url_vec(&Some(vec!["   ".to_string()]), &()).is_err());
-        // One valid, one invalid
-        assert!(
-            image_url_vec(
-                &Some(vec![
-                    "/valid/image.png".to_string(),
-                    "not-a-url".to_string()
-                ]),
-                &()
-            )
-            .is_err()
-        );
-    }
-
-    #[test]
-    fn test_image_url_vec_length_exceeded() {
-        let long_url = format!("/{}", "a".repeat(MAX_LEN_L));
-        assert!(image_url_vec(&Some(vec![long_url]), &()).is_err());
-    }
-
-    #[test]
-    fn test_image_url_vec_none() {
-        assert!(image_url_vec(&None, &()).is_ok());
+        for (case, value) in [
+            ("invalid", Some(strings(&["not-a-url"]))),
+            (
+                "valid then invalid",
+                Some(strings(&["/valid/image.png", "not-a-url"])),
+            ),
+        ] {
+            let message = image_url_vec(&value, &()).expect_err(case).to_string();
+            assert_eq!(message, "invalid image URL: not-a-url", "{case}");
+        }
     }
 
     #[test]
     fn test_image_url_vec_valid() {
-        // Absolute URLs
-        assert!(
-            image_url_vec(
-                &Some(vec!["https://example.com/image.png".to_string()]),
-                &()
-            )
-            .is_ok()
-        );
-        // Relative URLs
-        assert!(image_url_vec(&Some(vec!["/images/logo.png".to_string()]), &()).is_ok());
-        // Mix of absolute and relative
-        assert!(
-            image_url_vec(
-                &Some(vec![
-                    "https://example.com/image.png".to_string(),
-                    "/local/image.jpg".to_string()
-                ]),
-                &()
-            )
-            .is_ok()
-        );
-        // Empty vec is valid
-        assert!(image_url_vec(&Some(vec![]), &()).is_ok());
+        for (case, value) in [
+            ("none", None),
+            (
+                "absolute and root-relative",
+                Some(strings(&[
+                    "https://example.com/image.png",
+                    "/local/image.jpg",
+                ])),
+            ),
+            ("empty list", Some(strings(&[]))),
+        ] {
+            assert!(image_url_vec(&value, &()).is_ok(), "{case}");
+        }
     }
 
     #[test]
-    fn test_is_safe_href_rejects_url_parser_control_characters() {
-        for url in ["/\t/evil.com", "/\n/evil.com", "/\r/evil.com"] {
-            assert!(!is_safe_href(url));
+    fn test_is_safe_href_matches_safe_urls() {
+        let cases = [
+            ("absolute web URL", "https://example.com/path", true),
+            ("plain HTTP URL", "http://example.com", true),
+            ("root-relative path", "/relative/path", true),
+            ("protocol-relative URL", "//evil.com", false),
+            ("backslash protocol-relative URL", "/\\evil.com", false),
+            ("data URL", "data:text/html,hello", false),
+            ("javascript URL", "javascript:alert(1)", false),
+            ("URL without host", "https://", false),
+            ("stripped tab", "/\t/evil.com", false),
+            ("stripped newline", "/\n/evil.com", false),
+            ("stripped carriage return", "/\r/evil.com", false),
+        ];
+
+        for (case, url, expected) in cases {
+            assert_eq!(is_safe_href(url), expected, "{case}");
         }
     }
 
     #[test]
     fn test_is_valid_utm_value_invalid() {
-        for value in ["", "News", "news letter", "news!", "news\u{0}"] {
+        let too_long = "a".repeat(MAX_LEN_UTM_VALUE + 1);
+        for value in ["", "News", "news letter", "news!", "news\u{0}", &too_long] {
             assert!(!is_valid_utm_value(value), "{value:?} should be invalid");
         }
-        assert!(!is_valid_utm_value(&"a".repeat(MAX_LEN_UTM_VALUE + 1)));
     }
 
     #[test]
     fn test_is_valid_utm_value_valid() {
-        for value in ["newsletter", "partner.site", "spring-launch_2026"] {
+        let longest = "a".repeat(MAX_LEN_UTM_VALUE);
+        for value in ["newsletter", "partner.site", "spring-launch_2026", &longest] {
             assert!(is_valid_utm_value(value), "{value:?} should be valid");
         }
-        assert!(is_valid_utm_value(&"a".repeat(MAX_LEN_UTM_VALUE)));
     }
 
     #[test]
     fn test_trimmed_non_empty_invalid() {
-        assert!(trimmed_non_empty(&"", &()).is_err());
-        assert!(trimmed_non_empty(&"   ", &()).is_err());
-        assert!(trimmed_non_empty(&"\t\n", &()).is_err());
-        assert!(trimmed_non_empty(&"  \t  \n  ", &()).is_err());
+        for value in ["", "   ", "\t\n", "  \t  \n  "] {
+            let message = trimmed_non_empty(&value, &()).unwrap_err().to_string();
+            assert_eq!(
+                message, "value cannot be empty or whitespace-only",
+                "{value:?}"
+            );
+        }
     }
 
     #[test]
     fn test_trimmed_non_empty_opt_invalid() {
-        assert!(trimmed_non_empty_opt(&Some(String::new()), &()).is_err());
-        assert!(trimmed_non_empty_opt(&Some("   ".to_string()), &()).is_err());
-        assert!(trimmed_non_empty_opt(&Some("\t\n".to_string()), &()).is_err());
-    }
-
-    #[test]
-    fn test_trimmed_non_empty_opt_none() {
-        assert!(trimmed_non_empty_opt(&None, &()).is_ok());
+        for value in ["", "   ", "\t\n"] {
+            let message = trimmed_non_empty_opt(&Some(value.to_string()), &())
+                .unwrap_err()
+                .to_string();
+            assert_eq!(
+                message, "value cannot be empty or whitespace-only",
+                "{value:?}"
+            );
+        }
     }
 
     #[test]
     fn test_trimmed_non_empty_opt_valid() {
-        assert!(trimmed_non_empty_opt(&Some("hello".to_string()), &()).is_ok());
-        assert!(trimmed_non_empty_opt(&Some("  hello  ".to_string()), &()).is_ok());
+        for value in [None, Some("hello"), Some("  hello  ")] {
+            assert!(
+                trimmed_non_empty_opt(&value.map(str::to_string), &()).is_ok(),
+                "{value:?}"
+            );
+        }
     }
 
     #[test]
     fn test_trimmed_non_empty_valid() {
-        assert!(trimmed_non_empty(&"hello", &()).is_ok());
-        assert!(trimmed_non_empty(&"  hello  ", &()).is_ok());
-        assert!(trimmed_non_empty(&"a", &()).is_ok());
+        for value in ["hello", "  hello  ", "a"] {
+            assert!(trimmed_non_empty(&value, &()).is_ok(), "{value:?}");
+        }
     }
 
     #[test]
     fn test_valid_date_opt_invalid() {
-        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(0, 1, 1), &()).is_err());
-        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(-5000, 1, 1), &()).is_err());
-        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(10000, 1, 1), &()).is_err());
-    }
-
-    #[test]
-    fn test_valid_date_opt_none() {
-        assert!(valid_date_opt(&None, &()).is_ok());
+        for year in [0, -5000, 10000] {
+            let message = valid_date_opt(&NaiveDate::from_ymd_opt(year, 1, 1), &())
+                .unwrap_err()
+                .to_string();
+            assert_eq!(message, "year must be between 1 and 9999", "{year}");
+        }
     }
 
     #[test]
     fn test_valid_date_opt_valid() {
-        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(1, 1, 1), &()).is_ok());
-        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(2026, 9, 11), &()).is_ok());
-        assert!(valid_date_opt(&NaiveDate::from_ymd_opt(9999, 12, 31), &()).is_ok());
+        for date in [
+            None,
+            NaiveDate::from_ymd_opt(1, 1, 1),
+            NaiveDate::from_ymd_opt(2026, 9, 11),
+            NaiveDate::from_ymd_opt(9999, 12, 31),
+        ] {
+            assert!(valid_date_opt(&date, &()).is_ok(), "{date:?}");
+        }
     }
 
     #[test]
     fn test_valid_group_pretty_slug_invalid() {
-        assert!(valid_group_pretty_slug(&Some("Pretty-Group".to_string()), &()).is_err());
-        assert!(valid_group_pretty_slug(&Some("pretty_group".to_string()), &()).is_err());
-        assert!(valid_group_pretty_slug(&Some("-pretty-group".to_string()), &()).is_err());
-        assert!(valid_group_pretty_slug(&Some("pretty-group-".to_string()), &()).is_err());
-        assert!(valid_group_pretty_slug(&Some("pretty--group".to_string()), &()).is_err());
-        assert!(
-            valid_group_pretty_slug(&Some("a".repeat(MAX_LEN_GROUP_PRETTY_SLUG + 1)), &()).is_err()
-        );
+        let too_long = "a".repeat(MAX_LEN_GROUP_PRETTY_SLUG + 1);
+        let cases = [
+            (
+                "uppercase",
+                "Pretty-Group",
+                "Pretty slug must use lowercase ASCII letters, numbers, and hyphens only",
+            ),
+            (
+                "underscore",
+                "pretty_group",
+                "Pretty slug must use lowercase ASCII letters, numbers, and hyphens only",
+            ),
+            (
+                "leading hyphen",
+                "-pretty-group",
+                "Pretty slug must start and end with a lowercase ASCII letter or number",
+            ),
+            (
+                "trailing hyphen",
+                "pretty-group-",
+                "Pretty slug must start and end with a lowercase ASCII letter or number",
+            ),
+            (
+                "consecutive hyphens",
+                "pretty--group",
+                "Pretty slug cannot contain consecutive hyphens",
+            ),
+            (
+                "too long",
+                too_long.as_str(),
+                "Pretty slug must be 50 characters or fewer",
+            ),
+        ];
+
+        for (case, value, expected) in cases {
+            let message = valid_group_pretty_slug(&Some(value.to_string()), &())
+                .expect_err(case)
+                .to_string();
+            assert_eq!(message, expected, "{case}");
+        }
     }
 
     #[test]
     fn test_valid_group_pretty_slug_valid() {
-        assert!(valid_group_pretty_slug(&None, &()).is_ok());
-        assert!(valid_group_pretty_slug(&Some(String::new()), &()).is_ok());
-        assert!(valid_group_pretty_slug(&Some("pretty-group-2026".to_string()), &()).is_ok());
-        assert!(valid_group_pretty_slug(&Some("a".repeat(MAX_LEN_GROUP_PRETTY_SLUG)), &()).is_ok());
+        let longest = "a".repeat(MAX_LEN_GROUP_PRETTY_SLUG);
+        for (case, value) in [
+            ("none", None),
+            ("empty clears the slug", Some("")),
+            ("blank clears the slug", Some("   ")),
+            ("letters, numbers and hyphens", Some("pretty-group-2026")),
+            ("longest", Some(longest.as_str())),
+        ] {
+            assert!(
+                valid_group_pretty_slug(&value.map(str::to_string), &()).is_ok(),
+                "{case}"
+            );
+        }
     }
 
     #[test]
     fn test_validate_trimmed_non_empty_vec_invalid() {
-        assert!(validate_trimmed_non_empty_vec(&Some(vec![String::new()]), MAX_LEN_TAG).is_err());
-        assert!(
-            validate_trimmed_non_empty_vec(&Some(vec!["   ".to_string()]), MAX_LEN_TAG).is_err()
-        );
-        assert!(
-            validate_trimmed_non_empty_vec(
-                &Some(vec!["valid".to_string(), "   ".to_string()]),
-                MAX_LEN_TAG
-            )
-            .is_err()
-        );
-    }
+        let blank = "value cannot be empty or whitespace-only";
+        let cases = [
+            ("empty value", Some(strings(&[""])), MAX_LEN_TAG, blank),
+            ("blank value", Some(strings(&["   "])), MAX_LEN_TAG, blank),
+            (
+                "valid then blank",
+                Some(strings(&["valid", "   "])),
+                MAX_LEN_TAG,
+                blank,
+            ),
+            (
+                "value longer than the limit",
+                Some(vec!["a".repeat(MAX_LEN_TAG + 1)]),
+                MAX_LEN_TAG,
+                "value exceeds max length of 50",
+            ),
+            (
+                "too many items",
+                Some(vec!["tag".to_string(); MAX_ITEMS + 1]),
+                MAX_LEN_TAG,
+                "value exceeds max items of 25",
+            ),
+        ];
 
-    #[test]
-    fn test_validate_trimmed_non_empty_vec_length_exceeded() {
-        let long_tag = "a".repeat(MAX_LEN_TAG + 1);
-        assert!(
-            validate_trimmed_non_empty_vec(&Some(vec![long_tag.clone()]), MAX_LEN_TAG).is_err()
-        );
-        assert!(validate_trimmed_non_empty_vec(&Some(vec![long_tag]), MAX_LEN_M).is_ok());
-    }
-
-    #[test]
-    fn test_validate_trimmed_non_empty_vec_max_items() {
-        let tags = vec!["tag".to_string(); MAX_ITEMS + 1];
-        assert!(validate_trimmed_non_empty_vec(&Some(tags), MAX_LEN_TAG).is_err());
-    }
-
-    #[test]
-    fn test_validate_trimmed_non_empty_vec_none() {
-        assert!(validate_trimmed_non_empty_vec(&None, MAX_LEN_TAG).is_ok());
+        for (case, value, max_len, expected) in cases {
+            let message = validate_trimmed_non_empty_vec(&value, max_len)
+                .expect_err(case)
+                .to_string();
+            assert_eq!(message, expected, "{case}");
+        }
     }
 
     #[test]
     fn test_validate_trimmed_non_empty_vec_valid() {
-        assert!(
-            validate_trimmed_non_empty_vec(&Some(vec!["hello".to_string()]), MAX_LEN_M).is_ok()
-        );
-        assert!(
-            validate_trimmed_non_empty_vec(
-                &Some(vec!["a".to_string(), "b".to_string()]),
-                MAX_LEN_M
-            )
-            .is_ok()
-        );
-        assert!(
-            validate_trimmed_non_empty_vec(&Some(vec!["  hello  ".to_string()]), MAX_LEN_M).is_ok()
-        );
-        // Empty vec is valid (no invalid elements)
-        assert!(validate_trimmed_non_empty_vec(&Some(vec![]), MAX_LEN_M).is_ok());
+        let cases = [
+            ("none", None, MAX_LEN_TAG),
+            ("one value", Some(strings(&["hello"])), MAX_LEN_M),
+            ("two values", Some(strings(&["a", "b"])), MAX_LEN_M),
+            ("padded value", Some(strings(&["  hello  "])), MAX_LEN_M),
+            ("empty list", Some(strings(&[])), MAX_LEN_M),
+            (
+                "value within a larger limit",
+                Some(vec!["a".repeat(MAX_LEN_TAG + 1)]),
+                MAX_LEN_M,
+            ),
+            (
+                "most items",
+                Some(vec!["tag".to_string(); MAX_ITEMS]),
+                MAX_LEN_TAG,
+            ),
+        ];
+
+        for (case, value, max_len) in cases {
+            assert!(
+                validate_trimmed_non_empty_vec(&value, max_len).is_ok(),
+                "{case}"
+            );
+        }
     }
 
     #[test]
     fn test_url_map_values_invalid() {
-        let mut map = BTreeMap::new();
-        map.insert("test".to_string(), "not-a-url".to_string());
-        assert!(url_map_values(&Some(map), &()).is_err());
-
-        let mut map = BTreeMap::new();
-        map.insert("test".to_string(), String::new());
-        assert!(url_map_values(&Some(map), &()).is_err());
-
-        let mut map = BTreeMap::new();
-        map.insert("test".to_string(), "   ".to_string());
-        assert!(url_map_values(&Some(map), &()).is_err());
-
-        // One valid, one invalid
-        let mut map = BTreeMap::new();
-        map.insert("valid".to_string(), "https://example.com".to_string());
-        map.insert("invalid".to_string(), "not-a-url".to_string());
-        assert!(url_map_values(&Some(map), &()).is_err());
-
-        // Reject URL schemes outside HTTP and HTTPS
-        for url in [
-            "custom://example.com",
-            "data:text/html,hello",
-            "file:///tmp/file",
-            "javascript:alert(1)",
-        ] {
-            let mut map = BTreeMap::new();
-            map.insert("test".to_string(), url.to_string());
-            assert!(url_map_values(&Some(map), &()).is_err());
-        }
-    }
-
-    #[test]
-    fn test_url_map_values_length_exceeded() {
-        // Key exceeding MAX_LEN_LINK_LABEL
-        let mut map = BTreeMap::new();
         let long_key = "a".repeat(MAX_LEN_LINK_LABEL + 1);
-        map.insert(long_key, "https://example.com".to_string());
-        assert!(url_map_values(&Some(map), &()).is_err());
-
-        // Exceeds MAX_ITEMS
-        let mut map = BTreeMap::new();
-        for idx in 0..=MAX_ITEMS {
-            map.insert(format!("key-{idx}"), "https://example.com".to_string());
-        }
-        assert!(url_map_values(&Some(map), &()).is_err());
-
-        // URL exceeding MAX_LEN_L
-        let mut map = BTreeMap::new();
         let long_url = format!("https://example.com/{}", "a".repeat(MAX_LEN_L));
-        map.insert("test".to_string(), long_url);
-        assert!(url_map_values(&Some(map), &()).is_err());
-    }
+        let too_many: Vec<(String, &str)> = (0..=MAX_ITEMS)
+            .map(|idx| (format!("key-{idx}"), "https://example.com"))
+            .collect();
+        let cases = [
+            (
+                "malformed",
+                vec![("test".to_string(), "not-a-url")],
+                "invalid URL for 'test': not-a-url".to_string(),
+            ),
+            (
+                "empty",
+                vec![("test".to_string(), "")],
+                "URL for 'test' cannot be empty".to_string(),
+            ),
+            (
+                "blank",
+                vec![("test".to_string(), "   ")],
+                "URL for 'test' cannot be empty".to_string(),
+            ),
+            (
+                "valid and invalid",
+                vec![
+                    ("invalid".to_string(), "not-a-url"),
+                    ("valid".to_string(), "https://example.com"),
+                ],
+                "invalid URL for 'invalid': not-a-url".to_string(),
+            ),
+            (
+                "custom scheme",
+                vec![("test".to_string(), "custom://example.com")],
+                "invalid URL for 'test': custom://example.com".to_string(),
+            ),
+            (
+                "data scheme",
+                vec![("test".to_string(), "data:text/html,hello")],
+                "invalid URL for 'test': data:text/html,hello".to_string(),
+            ),
+            (
+                "file scheme",
+                vec![("test".to_string(), "file:///tmp/file")],
+                "invalid URL for 'test': file:///tmp/file".to_string(),
+            ),
+            (
+                "javascript scheme",
+                vec![("test".to_string(), "javascript:alert(1)")],
+                "invalid URL for 'test': javascript:alert(1)".to_string(),
+            ),
+            (
+                "root-relative path",
+                vec![("test".to_string(), "/relative")],
+                "invalid URL for 'test': /relative".to_string(),
+            ),
+            (
+                "key too long",
+                vec![(long_key.clone(), "https://example.com")],
+                format!("key '{long_key}' exceeds max length of 80"),
+            ),
+            (
+                "URL too long",
+                vec![("test".to_string(), long_url.as_str())],
+                "URL for 'test' exceeds max length of 2000".to_string(),
+            ),
+            (
+                "too many items",
+                too_many,
+                "value exceeds max items of 25".to_string(),
+            ),
+        ];
 
-    #[test]
-    fn test_url_map_values_none() {
-        assert!(url_map_values(&None, &()).is_ok());
+        for (case, entries, expected) in cases {
+            let map = entries.into_iter().map(|(key, url)| (key, url.to_string())).collect();
+            let message = url_map_values(&Some(map), &()).expect_err(case).to_string();
+            assert_eq!(message, expected, "{case}");
+        }
     }
 
     #[test]
     fn test_url_map_values_valid() {
-        let mut map = BTreeMap::new();
-        map.insert("website".to_string(), "https://example.com".to_string());
-        assert!(url_map_values(&Some(map), &()).is_ok());
+        let cases = [
+            ("none", None),
+            (
+                "one link",
+                Some(BTreeMap::from([(
+                    "website".to_string(),
+                    "https://example.com".to_string(),
+                )])),
+            ),
+            (
+                "two links",
+                Some(BTreeMap::from([
+                    (
+                        "docs".to_string(),
+                        "https://docs.example.com/path".to_string(),
+                    ),
+                    ("website".to_string(), "https://example.com".to_string()),
+                ])),
+            ),
+            ("empty map", Some(BTreeMap::new())),
+        ];
 
-        let mut map = BTreeMap::new();
-        map.insert("website".to_string(), "https://example.com".to_string());
-        map.insert(
-            "docs".to_string(),
-            "https://docs.example.com/path".to_string(),
-        );
-        assert!(url_map_values(&Some(map), &()).is_ok());
-
-        // Empty map is valid
-        assert!(url_map_values(&Some(BTreeMap::new()), &()).is_ok());
+        for (case, value) in cases {
+            assert!(url_map_values(&value, &()).is_ok(), "{case}");
+        }
     }
 
     #[test]
     fn test_utm_value_vec_invalid() {
-        // Check values with an unsupported format are rejected
-        assert!(utm_value_vec(&Some(vec!["News Letter".to_string()]), &()).is_err());
+        let too_many = (0..=MAX_UTM_VALUES).map(|i| format!("value-{i}")).collect();
+        let cases = [
+            (
+                "unsupported format",
+                Some(strings(&["News Letter"])),
+                "utm value 'News Letter' must have up to 50 lowercase letters, numbers, dots, hyphens, or underscores",
+            ),
+            (
+                "duplicated value",
+                Some(strings(&["newsletter", "newsletter"])),
+                "utm value 'newsletter' is duplicated",
+            ),
+            (
+                "too many items",
+                Some(too_many),
+                "value exceeds max items of 20",
+            ),
+        ];
 
-        // Check duplicated values are rejected
-        let duplicated = vec!["newsletter".to_string(), "newsletter".to_string()];
-        assert!(utm_value_vec(&Some(duplicated), &()).is_err());
-    }
-
-    #[test]
-    fn test_utm_value_vec_max_items() {
-        let values = (0..=MAX_UTM_VALUES).map(|i| format!("value-{i}")).collect();
-        assert!(utm_value_vec(&Some(values), &()).is_err());
-    }
-
-    #[test]
-    fn test_utm_value_vec_none() {
-        assert!(utm_value_vec(&None, &()).is_ok());
+        for (case, value, expected) in cases {
+            let message = utm_value_vec(&value, &()).expect_err(case).to_string();
+            assert_eq!(message, expected, "{case}");
+        }
     }
 
     #[test]
     fn test_utm_value_vec_valid() {
-        let values = (0..MAX_UTM_VALUES).map(|i| format!("value-{i}")).collect();
-        assert!(utm_value_vec(&Some(values), &()).is_ok());
-        assert!(utm_value_vec(&Some(vec![]), &()).is_ok());
+        let most = (0..MAX_UTM_VALUES).map(|i| format!("value-{i}")).collect();
+        for (case, value) in [
+            ("none", None),
+            ("most items", Some(most)),
+            ("empty list", Some(strings(&[]))),
+        ] {
+            assert!(utm_value_vec(&value, &()).is_ok(), "{case}");
+        }
     }
 
     #[test]
     fn test_valid_latitude_invalid() {
-        assert!(valid_latitude(&Some(90.1), &()).is_err());
-        assert!(valid_latitude(&Some(-90.1), &()).is_err());
-        assert!(valid_latitude(&Some(180.0), &()).is_err());
-        assert!(valid_latitude(&Some(-180.0), &()).is_err());
-    }
-
-    #[test]
-    fn test_valid_latitude_none() {
-        assert!(valid_latitude(&None, &()).is_ok());
+        for latitude in [90.1, -90.1, 180.0, -180.0] {
+            let message = valid_latitude(&Some(latitude), &()).unwrap_err().to_string();
+            assert_eq!(message, "latitude must be between -90 and 90", "{latitude}");
+        }
     }
 
     #[test]
     fn test_valid_latitude_valid() {
-        assert!(valid_latitude(&Some(0.0), &()).is_ok());
-        assert!(valid_latitude(&Some(90.0), &()).is_ok());
-        assert!(valid_latitude(&Some(-90.0), &()).is_ok());
-        assert!(valid_latitude(&Some(45.5), &()).is_ok());
-        assert!(valid_latitude(&Some(-45.5), &()).is_ok());
+        for latitude in [
+            None,
+            Some(0.0),
+            Some(90.0),
+            Some(-90.0),
+            Some(45.5),
+            Some(-45.5),
+        ] {
+            assert!(valid_latitude(&latitude, &()).is_ok(), "{latitude:?}");
+        }
     }
 
     #[test]
     fn test_valid_longitude_invalid() {
-        assert!(valid_longitude(&Some(180.1), &()).is_err());
-        assert!(valid_longitude(&Some(-180.1), &()).is_err());
-        assert!(valid_longitude(&Some(360.0), &()).is_err());
-    }
-
-    #[test]
-    fn test_valid_longitude_none() {
-        assert!(valid_longitude(&None, &()).is_ok());
+        for longitude in [180.1, -180.1, 360.0] {
+            let message = valid_longitude(&Some(longitude), &()).unwrap_err().to_string();
+            assert_eq!(
+                message, "longitude must be between -180 and 180",
+                "{longitude}"
+            );
+        }
     }
 
     #[test]
     fn test_valid_longitude_valid() {
-        assert!(valid_longitude(&Some(0.0), &()).is_ok());
-        assert!(valid_longitude(&Some(180.0), &()).is_ok());
-        assert!(valid_longitude(&Some(-180.0), &()).is_ok());
-        assert!(valid_longitude(&Some(90.0), &()).is_ok());
-        assert!(valid_longitude(&Some(-90.0), &()).is_ok());
+        for longitude in [
+            None,
+            Some(0.0),
+            Some(180.0),
+            Some(-180.0),
+            Some(90.0),
+            Some(-90.0),
+        ] {
+            assert!(valid_longitude(&longitude, &()).is_ok(), "{longitude:?}");
+        }
     }
 
     #[test]
-    fn test_valid_payment_recipient_blank_pair_is_valid() {
-        let recipient = GroupPaymentRecipient::default();
+    fn test_valid_payment_recipient_invalid() {
+        let pair = "payment recipient account and seller name must be provided together";
+        let cases = [
+            (
+                "missing seller name",
+                "acct_test".to_string(),
+                String::new(),
+                pair,
+            ),
+            (
+                "missing account",
+                String::new(),
+                "Fiscal Sponsor".to_string(),
+                pair,
+            ),
+            (
+                "account too long",
+                "a".repeat(MAX_LEN_M + 1),
+                "Fiscal Sponsor".to_string(),
+                "payment recipient account exceeds max length of 250",
+            ),
+            (
+                "seller name too long",
+                "acct_test".to_string(),
+                "a".repeat(MAX_LEN_ENTITY_NAME + 1),
+                "seller name exceeds max length of 120",
+            ),
+        ];
 
-        assert!(valid_payment_recipient(&Some(recipient), &()).is_ok());
-    }
+        for (case, recipient_id, seller_display_name, expected) in cases {
+            let recipient = GroupPaymentRecipient {
+                recipient_id,
+                seller_display_name,
+                ..GroupPaymentRecipient::default()
+            };
 
-    #[test]
-    fn test_valid_payment_recipient_invalid_pair_or_length() {
-        let missing_name = GroupPaymentRecipient {
-            recipient_id: "acct_test".to_string(),
-            ..GroupPaymentRecipient::default()
-        };
-        let missing_account = GroupPaymentRecipient {
-            seller_display_name: "Fiscal Sponsor".to_string(),
-            ..GroupPaymentRecipient::default()
-        };
-        let long_account = GroupPaymentRecipient {
-            recipient_id: "a".repeat(MAX_LEN_M + 1),
-            seller_display_name: "Fiscal Sponsor".to_string(),
-            ..GroupPaymentRecipient::default()
-        };
-        let long_name = GroupPaymentRecipient {
-            recipient_id: "acct_test".to_string(),
-            seller_display_name: "a".repeat(MAX_LEN_ENTITY_NAME + 1),
-            ..GroupPaymentRecipient::default()
-        };
-
-        assert!(valid_payment_recipient(&Some(missing_name), &()).is_err());
-        assert!(valid_payment_recipient(&Some(missing_account), &()).is_err());
-        assert!(valid_payment_recipient(&Some(long_account), &()).is_err());
-        assert!(valid_payment_recipient(&Some(long_name), &()).is_err());
+            let message = valid_payment_recipient(&Some(recipient), &())
+                .expect_err(case)
+                .to_string();
+            assert_eq!(message, expected, "{case}");
+        }
     }
 
     #[test]
     fn test_valid_payment_recipient_valid() {
-        let recipient = GroupPaymentRecipient {
-            recipient_id: "acct_test".to_string(),
-            seller_display_name: "Fiscal Sponsor".to_string(),
-            ..GroupPaymentRecipient::default()
-        };
+        let cases = [
+            ("none", None),
+            ("blank pair", Some(GroupPaymentRecipient::default())),
+            (
+                "account and seller name",
+                Some(GroupPaymentRecipient {
+                    recipient_id: "acct_test".to_string(),
+                    seller_display_name: "Fiscal Sponsor".to_string(),
+                    ..GroupPaymentRecipient::default()
+                }),
+            ),
+        ];
 
-        assert!(valid_payment_recipient(&Some(recipient), &()).is_ok());
+        for (case, recipient) in cases {
+            assert!(valid_payment_recipient(&recipient, &()).is_ok(), "{case}");
+        }
     }
 
     #[test]
@@ -1087,19 +1210,27 @@ mod tests {
             "javascript:alert(1)",
             "https://",
         ] {
-            assert!(web_url_opt(&Some(url.to_string()), &()).is_err());
+            let message = web_url_opt(&Some(url.to_string()), &()).unwrap_err().to_string();
+            assert_eq!(
+                message,
+                format!("URL must be an absolute HTTP or HTTPS URL: {url}"),
+                "{url:?}"
+            );
         }
     }
 
     #[test]
-    fn test_web_url_opt_none() {
-        assert!(web_url_opt(&None, &()).is_ok());
-    }
-
-    #[test]
     fn test_web_url_opt_valid() {
-        assert!(web_url_opt(&Some("https://example.com/path".to_string()), &()).is_ok());
-        assert!(web_url_opt(&Some("http://example.com".to_string()), &()).is_ok());
+        for url in [
+            None,
+            Some("https://example.com/path"),
+            Some("http://example.com"),
+        ] {
+            assert!(
+                web_url_opt(&url.map(str::to_string), &()).is_ok(),
+                "{url:?}"
+            );
+        }
     }
 
     // Deserializers.
@@ -1123,98 +1254,78 @@ mod tests {
     }
 
     #[test]
-    fn test_blank_naive_datetime_as_none_absent() {
-        let date: OptionalDateTime = serde_json::from_value(serde_json::json!({})).unwrap();
+    fn test_blank_naive_datetime_as_none() {
+        let at_18_30 = NaiveDate::from_ymd_opt(2099, 5, 1).unwrap().and_hms_opt(18, 30, 0);
+        let cases = [
+            ("absent", serde_json::json!({}), None),
+            ("blank", serde_json::json!({ "value": "  " }), None),
+            (
+                "with seconds",
+                serde_json::json!({ "value": "2099-05-01T18:30:00" }),
+                at_18_30,
+            ),
+            (
+                "without seconds",
+                serde_json::json!({ "value": "2099-05-01T18:30" }),
+                at_18_30,
+            ),
+        ];
 
-        assert_eq!(date.value, None);
-    }
-
-    #[test]
-    fn test_blank_naive_datetime_as_none_blank() {
-        let date: OptionalDateTime =
-            serde_json::from_value(serde_json::json!({ "value": "  " })).unwrap();
-
-        assert_eq!(date.value, None);
-    }
-
-    #[test]
-    fn test_blank_naive_datetime_as_none_invalid() {
-        let result =
-            serde_json::from_value::<OptionalDateTime>(serde_json::json!({ "value": "tomorrow" }));
-
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_blank_naive_datetime_as_none_present() {
-        let date: OptionalDateTime =
-            serde_json::from_value(serde_json::json!({ "value": "2099-05-01T18:30:00" })).unwrap();
-
-        assert_eq!(
-            date.value,
-            NaiveDate::from_ymd_opt(2099, 5, 1).unwrap().and_hms_opt(18, 30, 0)
+        for (case, json, expected) in cases {
+            let date: OptionalDateTime = serde_json::from_value(json).expect(case);
+            assert_eq!(date.value, expected, "{case}");
+        }
+        let invalid = serde_json::json!({ "value": "tomorrow" });
+        assert!(
+            serde_json::from_value::<OptionalDateTime>(invalid).is_err(),
+            "invalid"
         );
     }
 
     #[test]
-    fn test_blank_naive_datetime_as_none_present_without_seconds() {
-        let date: OptionalDateTime =
-            serde_json::from_value(serde_json::json!({ "value": "2099-05-01T18:30" })).unwrap();
+    fn test_blank_string_as_none() {
+        let cases = [
+            ("absent", serde_json::json!({}), None),
+            ("blank", serde_json::json!({ "value": "   " }), None),
+            (
+                "present keeps padding",
+                serde_json::json!({ "value": "  rust  " }),
+                Some("  rust  "),
+            ),
+        ];
 
-        assert_eq!(
-            date.value,
-            NaiveDate::from_ymd_opt(2099, 5, 1).unwrap().and_hms_opt(18, 30, 0)
+        for (case, json, expected) in cases {
+            let text: OptionalText = serde_json::from_value(json).expect(case);
+            assert_eq!(text.value.as_deref(), expected, "{case}");
+        }
+    }
+
+    #[test]
+    fn test_blank_timestamp_seconds_as_none() {
+        let cases = [
+            ("absent", "", None),
+            ("blank", "value=", None),
+            (
+                "present",
+                "value=4081420800",
+                DateTime::from_timestamp(4_081_420_800, 0),
+            ),
+        ];
+
+        for (case, query, expected) in cases {
+            let timestamp: OptionalTimestamp = serde_urlencoded::from_str(query).expect(case);
+            assert_eq!(timestamp.value, expected, "{case}");
+        }
+        assert!(
+            serde_urlencoded::from_str::<OptionalTimestamp>("value=soon").is_err(),
+            "invalid"
         );
     }
 
-    #[test]
-    fn test_blank_string_as_none_absent() {
-        let text: OptionalText = serde_json::from_value(serde_json::json!({})).unwrap();
+    // Helpers.
 
-        assert_eq!(text.value, None);
-    }
-
-    #[test]
-    fn test_blank_string_as_none_blank() {
-        let text: OptionalText =
-            serde_json::from_value(serde_json::json!({ "value": "   " })).unwrap();
-
-        assert_eq!(text.value, None);
-    }
-
-    #[test]
-    fn test_blank_string_as_none_present() {
-        let text: OptionalText =
-            serde_json::from_value(serde_json::json!({ "value": "  rust  " })).unwrap();
-
-        assert_eq!(text.value.as_deref(), Some("  rust  "));
-    }
-
-    #[test]
-    fn test_blank_timestamp_seconds_as_none_absent() {
-        let timestamp: OptionalTimestamp = serde_json::from_value(serde_json::json!({})).unwrap();
-
-        assert_eq!(timestamp.value, None);
-    }
-
-    #[test]
-    fn test_blank_timestamp_seconds_as_none_blank() {
-        let timestamp: OptionalTimestamp = serde_urlencoded::from_str("value=").unwrap();
-
-        assert_eq!(timestamp.value, None);
-    }
-
-    #[test]
-    fn test_blank_timestamp_seconds_as_none_invalid() {
-        let result = serde_urlencoded::from_str::<OptionalTimestamp>("value=soon");
-
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_blank_timestamp_seconds_as_none_present() {
-        let timestamp: OptionalTimestamp = serde_urlencoded::from_str("value=4081420800").unwrap();
-
-        assert_eq!(timestamp.value, DateTime::from_timestamp(4_081_420_800, 0));
+    /// Returns the given values as owned strings.
+    fn strings(values: &[&str]) -> Vec<String> {
+        values.iter().map(ToString::to_string).collect()
     }
 }

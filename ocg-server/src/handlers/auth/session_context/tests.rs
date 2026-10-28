@@ -60,13 +60,7 @@ async fn test_resolve_community_dashboard_context_skips_unreadable_candidate() {
 
     // Setup stale in-memory dashboard context
     let db: DynDB = Arc::new(db);
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
-    session
-        .insert(SELECTED_COMMUNITY_ID_KEY, selected_community_id)
-        .await
-        .unwrap();
-    session.insert(SELECTED_GROUP_ID_KEY, stale_group_id).await.unwrap();
+    let session = session_with_selection(Some(selected_community_id), Some(stale_group_id)).await;
 
     // Resolve the first verified community context
     let resolved =
@@ -75,9 +69,6 @@ async fn test_resolve_community_dashboard_context_skips_unreadable_candidate() {
             .expect("community context should resolve");
 
     // Check only the readable candidate is persisted
-    let persisted_community_id: Option<Uuid> =
-        session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
-    let persisted_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(
         resolved,
         Some(ResolvedCommunityContext {
@@ -85,8 +76,10 @@ async fn test_resolve_community_dashboard_context_skips_unreadable_candidate() {
             has_requested_permission: true,
         })
     );
-    assert_eq!(persisted_community_id, Some(accessible_community_id));
-    assert_eq!(persisted_group_id, None);
+    assert_eq!(
+        selected_ids(&session).await,
+        (Some(accessible_community_id), None)
+    );
 }
 
 #[tokio::test]
@@ -119,23 +112,19 @@ async fn test_resolve_group_dashboard_context_prefers_selected_community() {
         .times(1)
         .withf(move |uid| *uid == user_id)
         .returning(move |_| Ok(groups.clone()));
-    expect_group_permission(
-        &mut db,
-        selected_community_id,
-        selected_group_id,
-        user_id,
-        GroupPermission::Read,
-    );
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == selected_community_id
+                && *gid == selected_group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
 
     // Setup stale in-memory dashboard context
     let db: DynDB = Arc::new(db);
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
-    session
-        .insert(SELECTED_COMMUNITY_ID_KEY, selected_community_id)
-        .await
-        .unwrap();
-    session.insert(SELECTED_GROUP_ID_KEY, stale_group_id).await.unwrap();
+    let session = session_with_selection(Some(selected_community_id), Some(stale_group_id)).await;
 
     // Resolve group context from the preferred community
     let resolved = resolve_group_dashboard_context(&db, &session, &user_id, GroupPermission::Read)
@@ -143,9 +132,6 @@ async fn test_resolve_group_dashboard_context_prefers_selected_community() {
         .expect("group context should resolve");
 
     // Check the selected community wins over listing order
-    let persisted_community_id: Option<Uuid> =
-        session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
-    let persisted_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(
         resolved,
         Some(ResolvedGroupContext {
@@ -154,8 +140,10 @@ async fn test_resolve_group_dashboard_context_prefers_selected_community() {
             has_requested_permission: true,
         })
     );
-    assert_eq!(persisted_community_id, Some(selected_community_id));
-    assert_eq!(persisted_group_id, Some(selected_group_id));
+    assert_eq!(
+        selected_ids(&session).await,
+        (Some(selected_community_id), Some(selected_group_id))
+    );
 }
 
 #[tokio::test]
@@ -197,23 +185,19 @@ async fn test_resolve_group_dashboard_context_repairs_across_communities() {
                 && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(false));
-    expect_group_permission(
-        &mut db,
-        fallback_community_id,
-        fallback_group_id,
-        user_id,
-        GroupPermission::Read,
-    );
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == fallback_community_id
+                && *gid == fallback_group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
 
     // Setup stale in-memory dashboard context
     let db: DynDB = Arc::new(db);
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
-    session
-        .insert(SELECTED_COMMUNITY_ID_KEY, selected_community_id)
-        .await
-        .unwrap();
-    session.insert(SELECTED_GROUP_ID_KEY, stale_group_id).await.unwrap();
+    let session = session_with_selection(Some(selected_community_id), Some(stale_group_id)).await;
 
     // Resolve group context from the fallback community
     let resolved = resolve_group_dashboard_context(&db, &session, &user_id, GroupPermission::Read)
@@ -221,9 +205,6 @@ async fn test_resolve_group_dashboard_context_repairs_across_communities() {
         .expect("group context should resolve");
 
     // Check both selected identifiers move to the fallback context
-    let persisted_community_id: Option<Uuid> =
-        session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
-    let persisted_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(
         resolved,
         Some(ResolvedGroupContext {
@@ -232,8 +213,10 @@ async fn test_resolve_group_dashboard_context_repairs_across_communities() {
             has_requested_permission: true,
         })
     );
-    assert_eq!(persisted_community_id, Some(fallback_community_id));
-    assert_eq!(persisted_group_id, Some(fallback_group_id));
+    assert_eq!(
+        selected_ids(&session).await,
+        (Some(fallback_community_id), Some(fallback_group_id))
+    );
 }
 
 #[tokio::test]
@@ -271,23 +254,19 @@ async fn test_resolve_group_dashboard_context_skips_unreadable_candidate() {
                 && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(false));
-    expect_group_permission(
-        &mut db,
-        community_id,
-        accessible_group_id,
-        user_id,
-        GroupPermission::Read,
-    );
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == accessible_group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
 
     // Setup stale in-memory dashboard context
     let db: DynDB = Arc::new(db);
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
-    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await.unwrap();
-    session
-        .insert(SELECTED_GROUP_ID_KEY, selected_group_id)
-        .await
-        .unwrap();
+    let session = session_with_selection(Some(community_id), Some(selected_group_id)).await;
 
     // Resolve the first verified group context
     let resolved = resolve_group_dashboard_context(&db, &session, &user_id, GroupPermission::Read)
@@ -295,9 +274,6 @@ async fn test_resolve_group_dashboard_context_skips_unreadable_candidate() {
         .expect("group context should resolve");
 
     // Check only the readable candidate is persisted
-    let persisted_community_id: Option<Uuid> =
-        session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
-    let persisted_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(
         resolved,
         Some(ResolvedGroupContext {
@@ -306,8 +282,10 @@ async fn test_resolve_group_dashboard_context_skips_unreadable_candidate() {
             has_requested_permission: true,
         })
     );
-    assert_eq!(persisted_community_id, Some(community_id));
-    assert_eq!(persisted_group_id, Some(accessible_group_id));
+    assert_eq!(
+        selected_ids(&session).await,
+        (Some(community_id), Some(accessible_group_id))
+    );
 }
 
 #[tokio::test]
@@ -329,8 +307,7 @@ async fn test_select_first_community_and_group_selects_community_when_user_has_n
 
     // Setup in-memory session
     let db: DynDB = Arc::new(db);
-    let store = Arc::new(MemoryStore::default());
-    let session = Session::new(None, store, None);
+    let session = session_with_selection(None, None).await;
 
     // Execute helper
     select_first_community_and_group(&db, &session, &user_id)
@@ -338,8 +315,19 @@ async fn test_select_first_community_and_group_selects_community_when_user_has_n
         .expect("helper should select first available community");
 
     // Check session data matches expectations
-    let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
-    let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
-    assert_eq!(selected_community_id, Some(community_id));
-    assert_eq!(selected_group_id, None);
+    assert_eq!(selected_ids(&session).await, (Some(community_id), None));
+}
+
+// Helpers.
+
+/// Builds an in-memory session selecting the given community and group.
+async fn session_with_selection(community_id: Option<Uuid>, group_id: Option<Uuid>) -> Session {
+    let session = Session::new(None, Arc::new(MemoryStore::default()), None);
+    if let Some(community_id) = community_id {
+        session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await.unwrap();
+    }
+    if let Some(group_id) = group_id {
+        session.insert(SELECTED_GROUP_ID_KEY, group_id).await.unwrap();
+    }
+    session
 }

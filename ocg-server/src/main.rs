@@ -61,6 +61,9 @@ mod router;
 mod services;
 /// Templates for rendering pages, notifications, etc.
 mod templates;
+/// Test helpers that belong to no layer.
+#[cfg(test)]
+mod test_util;
 /// Domain types and data structures.
 mod types;
 /// Utility helpers shared across modules.

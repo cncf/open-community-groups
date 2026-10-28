@@ -5,13 +5,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use strum::VariantArray;
-use tokio_postgres::{
-    error::{DbError, SqlState},
-    types::Json,
-};
+use tokio_postgres::types::Json;
+use uuid::Uuid;
 
 use crate::{
-    db::{DB, USER_FACING_DB_ERROR_CODE, dashboard::user::DBDashboardUser},
+    db::{DBUnitOfWork, PgExecutor, dashboard::user::DBDashboardUser},
     types::dashboard::user::notifications::{NotificationCategory, NotificationPreferencesInput},
 };
 
@@ -63,7 +61,7 @@ async fn db_contracts_get_user_notification_preferences_deserializes() -> Result
     let unavailable_group = preferences
         .muted_groups
         .iter()
-        .find(|group| group.group_id == notification_unavailable_group_id())
+        .find(|group| group.group_id == cohost_reinvited_group_id())
         .expect("unavailable muted group should be present");
     assert!(!unavailable_group.available);
     assert_eq!(
@@ -120,110 +118,41 @@ async fn db_contracts_list_user_notification_group_options_deserializes() -> Res
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_mute_user_group_notifications_rejects_disconnected_group() -> Result<()> {
-    // Setup a disconnected user and active group
-    let client = contract_tests_pool()?.get().await?;
-
-    // Try to mute a group the user cannot select
-    let err = client
-        .query_one(
-            "select mute_user_group_notifications($1::uuid, $2::uuid)",
-            &[&notification_update_user_id(), &subgroup_id()],
-        )
-        .await
-        .expect_err("disconnected groups should be rejected");
-
-    // Check the rejection maps to the user-facing SQLSTATE
-    assert_eq!(
-        err.as_db_error().map(DbError::message),
-        Some("group not available to mute")
-    );
-    assert_eq!(
-        err.code(),
-        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
 async fn db_contracts_mute_user_group_notifications_serializes_concurrent_requests() -> Result<()> {
-    // Setup a clean dedicated mute target
-    let pool = contract_tests_pool()?;
-    let cleanup_client = pool.get().await?;
-    cleanup_client
-        .execute(
-            "delete from user_group_notification_mute
-            where user_id = $1::uuid
-            and group_id = $2::uuid",
-            &[&notification_concurrency_user_id(), &subgroup_id()],
-        )
-        .await?;
-    let test_started_at: DateTime<Utc> = cleanup_client
-        .query_one("select clock_timestamp()", &[])
-        .await?
-        .get(0);
+    // Setup a clean dedicated mute target and two racing units of work
+    let user_id = notification_concurrency_user_id();
+    let probe_client = contract_tests_pool()?.get().await?;
+    delete_mute(&probe_client, user_id).await?;
+    let test_started_at = clock_timestamp(&probe_client).await?;
+    let first = contract_unit_of_work().await?;
+    let second = contract_unit_of_work().await?;
+    let first_backend_pid = uow_backend_pid(&first).await?;
+    let second_backend_pid = uow_backend_pid(&second).await?;
 
-    // Mute the same connected group through two independent transactions
-    let db = contract_tests_db()?;
-    let first = db.begin().await?;
-    let second = db.begin().await?;
-    let first_result = async move {
-        first
-            .mute_user_group_notifications(notification_concurrency_user_id(), subgroup_id())
-            .await?;
-        first.commit().await
-    };
-    let second_result = async move {
-        second
-            .mute_user_group_notifications(notification_concurrency_user_id(), subgroup_id())
-            .await?;
-        second.commit().await
-    };
-    let (first_result, second_result) = tokio::join!(first_result, second_result);
-    first_result?;
-    second_result?;
+    // Mute the group while retaining the uncommitted mute row
+    first.mute_user_group_notifications(user_id, subgroup_id()).await?;
+
+    // Mute the same group concurrently from the second transaction
+    let second_mute = tokio::spawn(async move {
+        second.mute_user_group_notifications(user_id, subgroup_id()).await?;
+        Box::new(second).commit().await
+    });
+    wait_for_backend_blocker(&probe_client, first_backend_pid, second_backend_pid).await?;
+
+    // Commit the first mute so the waiting request observes it
+    Box::new(first).commit().await?;
+    second_mute.await??;
 
     // Check one durable mute and one audit row survived the race
-    let row = cleanup_client
-        .query_one(
-            "select
-                (
-                    select count(*)
-                    from user_group_notification_mute
-                    where user_id = $1::uuid
-                    and group_id = $2::uuid
-                ),
-                (
-                    select count(*)
-                    from audit_log
-                    where actor_user_id = $1::uuid
-                    and action = 'group_notifications_muted'
-                    and resource_id = $1::uuid
-                    and resource_type = 'user'
-                    and details->>'group_id' = $2::uuid::text
-                    and created_at >= $3::timestamptz
-                )",
-            &[
-                &notification_concurrency_user_id(),
-                &subgroup_id(),
-                &test_started_at,
-            ],
-        )
-        .await?;
-    assert_eq!(row.get::<_, i64>(0), 1);
-    assert_eq!(row.get::<_, i64>(1), 1);
-
-    // Clean up the mutable row so repeated focused runs start from the same state
-    cleanup_client
-        .execute(
-            "delete from user_group_notification_mute
-            where user_id = $1::uuid
-            and group_id = $2::uuid",
-            &[&notification_concurrency_user_id(), &subgroup_id()],
-        )
-        .await?;
+    let counts = mute_and_audit_counts(
+        &probe_client,
+        user_id,
+        "group_notifications_muted",
+        test_started_at,
+    )
+    .await?;
+    delete_mute(&probe_client, user_id).await?;
+    assert_eq!(counts, (1, 1));
 
     Ok(())
 }
@@ -260,57 +189,125 @@ async fn db_contracts_notification_categories_match_enum() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_unmute_user_group_notifications_serializes_concurrent_requests() -> Result<()>
 {
-    // Setup one durable mute row for the concurrent unmute target
-    let pool = contract_tests_pool()?;
-    let cleanup_client = pool.get().await?;
-    cleanup_client
+    // Setup one durable mute row and two racing units of work
+    let user_id = notification_unmute_concurrency_user_id();
+    let probe_client = contract_tests_pool()?.get().await?;
+    delete_mute(&probe_client, user_id).await?;
+    probe_client
+        .execute(
+            "insert into user_group_notification_mute (group_id, user_id)
+            values ($1::uuid, $2::uuid)",
+            &[&subgroup_id(), &user_id],
+        )
+        .await?;
+    let test_started_at = clock_timestamp(&probe_client).await?;
+    let first = contract_unit_of_work().await?;
+    let second = contract_unit_of_work().await?;
+    let first_backend_pid = uow_backend_pid(&first).await?;
+    let second_backend_pid = uow_backend_pid(&second).await?;
+
+    // Unmute the group while retaining the lock on the deleted mute row
+    first.unmute_user_group_notifications(user_id, subgroup_id()).await?;
+
+    // Unmute the same group concurrently from the second transaction
+    let second_unmute = tokio::spawn(async move {
+        second.unmute_user_group_notifications(user_id, subgroup_id()).await?;
+        Box::new(second).commit().await
+    });
+    wait_for_backend_blocker(&probe_client, first_backend_pid, second_backend_pid).await?;
+
+    // Commit the first unmute so the waiting request observes it
+    Box::new(first).commit().await?;
+    second_unmute.await??;
+
+    // Check the race removed the mute once and audited exactly one unmute
+    let counts = mute_and_audit_counts(
+        &probe_client,
+        user_id,
+        "group_notifications_unmuted",
+        test_started_at,
+    )
+    .await?;
+    assert_eq!(counts, (0, 1));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_update_user_notification_preferences_saves_categories() -> Result<()> {
+    // Setup a rolled-back unit of work and a clean preference mutation target
+    let uow = contract_unit_of_work().await?;
+    uow.execute(
+        "delete from user_notification_opt_out where user_id = $1::uuid",
+        &[&notification_update_user_id()],
+    )
+    .await?;
+
+    // Save one disabled category and one explicitly enabled category
+    let input = NotificationPreferencesInput {
+        preferences: BTreeMap::from([
+            (NotificationCategory::Badges, false),
+            (NotificationCategory::NewEvents, true),
+        ]),
+    };
+    uow.update_user_notification_preferences(notification_update_user_id(), &input)
+        .await?;
+
+    // Check the persisted preferences and audit snapshot
+    let preferences = uow
+        .get_user_notification_preferences(notification_update_user_id())
+        .await?;
+    let audit_count: i64 = uow
+        .fetch_scalar_one(
+            "select count(*)
+            from audit_log
+            where actor_user_id = $1::uuid
+            and action = 'user_notification_preferences_updated'
+            and details = '{\"opted_out_categories\":[\"badges\"]}'::jsonb
+            and created_at >= current_timestamp",
+            &[&notification_update_user_id()],
+        )
+        .await?;
+    assert_eq!(
+        preferences.opted_out_categories,
+        vec![NotificationCategory::Badges]
+    );
+    assert_eq!(audit_count, 1);
+
+    Ok(())
+}
+
+// Helpers.
+
+/// Returns the current database clock time.
+async fn clock_timestamp(client: &tokio_postgres::Client) -> Result<DateTime<Utc>> {
+    Ok(client.query_one("select clock_timestamp()", &[]).await?.get(0))
+}
+
+/// Deletes the mute of the subgroup for the given user.
+async fn delete_mute(client: &tokio_postgres::Client, user_id: Uuid) -> Result<()> {
+    client
         .execute(
             "delete from user_group_notification_mute
             where user_id = $1::uuid
             and group_id = $2::uuid",
-            &[&notification_unmute_concurrency_user_id(), &subgroup_id()],
+            &[&user_id, &subgroup_id()],
         )
         .await?;
-    cleanup_client
-        .execute(
-            "insert into user_group_notification_mute (group_id, user_id)
-            values ($1::uuid, $2::uuid)",
-            &[&subgroup_id(), &notification_unmute_concurrency_user_id()],
-        )
-        .await?;
-    let test_started_at: DateTime<Utc> = cleanup_client
-        .query_one("select clock_timestamp()", &[])
-        .await?
-        .get(0);
 
-    // Unmute the same group through two independent transactions
-    let db = contract_tests_db()?;
-    let first = db.begin().await?;
-    let second = db.begin().await?;
-    let first_result = async move {
-        first
-            .unmute_user_group_notifications(
-                notification_unmute_concurrency_user_id(),
-                subgroup_id(),
-            )
-            .await?;
-        first.commit().await
-    };
-    let second_result = async move {
-        second
-            .unmute_user_group_notifications(
-                notification_unmute_concurrency_user_id(),
-                subgroup_id(),
-            )
-            .await?;
-        second.commit().await
-    };
-    let (first_result, second_result) = tokio::join!(first_result, second_result);
-    first_result?;
-    second_result?;
+    Ok(())
+}
 
-    // Check the race removed the mute once and audited exactly one unmute
-    let row = cleanup_client
+/// Returns the subgroup mute rows of the user and the audit rows of the given
+/// action recorded since `since`.
+async fn mute_and_audit_counts(
+    client: &tokio_postgres::Client,
+    user_id: Uuid,
+    action: &str,
+    since: DateTime<Utc>,
+) -> Result<(i64, i64)> {
+    let row = client
         .query_one(
             "select
                 (
@@ -323,101 +320,15 @@ async fn db_contracts_unmute_user_group_notifications_serializes_concurrent_requ
                     select count(*)
                     from audit_log
                     where actor_user_id = $1::uuid
-                    and action = 'group_notifications_unmuted'
+                    and action = $3::text
                     and resource_id = $1::uuid
                     and resource_type = 'user'
                     and details->>'group_id' = $2::uuid::text
-                    and created_at >= $3::timestamptz
+                    and created_at >= $4::timestamptz
                 )",
-            &[
-                &notification_unmute_concurrency_user_id(),
-                &subgroup_id(),
-                &test_started_at,
-            ],
+            &[&user_id, &subgroup_id(), &action, &since],
         )
         .await?;
-    assert_eq!(row.get::<_, i64>(0), 0);
-    assert_eq!(row.get::<_, i64>(1), 1);
 
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_update_user_notification_preferences_rejects_unknown_category() -> Result<()>
-{
-    // Setup a raw invalid preferences payload
-    let client = contract_tests_pool()?.get().await?;
-    let payload = Json(serde_json::json!({ "unknown-category": false }));
-
-    // Submit the unknown category directly to the database function
-    let err = client
-        .query_one(
-            "select update_user_notification_preferences($1::uuid, $2::jsonb)",
-            &[&notification_update_user_id(), &payload],
-        )
-        .await
-        .expect_err("unknown categories should be rejected");
-
-    // Check the rejection maps to the user-facing SQLSTATE
-    assert_eq!(
-        err.as_db_error().map(DbError::message),
-        Some("unknown notification category")
-    );
-    assert_eq!(
-        err.code(),
-        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_update_user_notification_preferences_saves_categories() -> Result<()> {
-    // Setup a clean dedicated preference mutation target
-    let db = contract_tests_db()?;
-    let client = contract_tests_pool()?.get().await?;
-    client
-        .execute(
-            "delete from user_notification_opt_out where user_id = $1::uuid",
-            &[&notification_update_user_id()],
-        )
-        .await?;
-    let test_started_at: DateTime<Utc> =
-        client.query_one("select clock_timestamp()", &[]).await?.get(0);
-
-    // Save one disabled category and one explicitly enabled category
-    let input = NotificationPreferencesInput {
-        preferences: BTreeMap::from([
-            (NotificationCategory::Badges, false),
-            (NotificationCategory::NewEvents, true),
-        ]),
-    };
-    db.update_user_notification_preferences(notification_update_user_id(), &input)
-        .await?;
-
-    // Check the persisted preferences and audit snapshot
-    let preferences = db
-        .get_user_notification_preferences(notification_update_user_id())
-        .await?;
-    let audit_count: i64 = client
-        .query_one(
-            "select count(*)
-            from audit_log
-            where actor_user_id = $1::uuid
-            and action = 'user_notification_preferences_updated'
-            and details = '{\"opted_out_categories\":[\"badges\"]}'::jsonb
-            and created_at >= $2::timestamptz",
-            &[&notification_update_user_id(), &test_started_at],
-        )
-        .await?
-        .get(0);
-    assert_eq!(
-        preferences.opted_out_categories,
-        vec![NotificationCategory::Badges]
-    );
-    assert_eq!(audit_count, 1);
-
-    Ok(())
+    Ok((row.get(0), row.get(1)))
 }

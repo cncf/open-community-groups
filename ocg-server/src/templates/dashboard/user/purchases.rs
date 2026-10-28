@@ -36,7 +36,7 @@ mod tests {
     use super::ListPage;
 
     #[test]
-    fn list_page_renders_document_routes_for_past_refunded_purchase() {
+    fn test_list_page_renders_document_routes_for_past_refunded_purchase() {
         let event_purchase_credit_note_id = Uuid::new_v4();
         let event_purchase_id = Uuid::new_v4();
         let mut purchase = sample_purchase(event_purchase_id);
@@ -62,7 +62,7 @@ mod tests {
     }
 
     #[test]
-    fn list_page_renders_processing_states_when_documents_are_missing() {
+    fn test_list_page_renders_processing_states_when_documents_are_missing() {
         let mut purchase = sample_purchase(Uuid::new_v4());
         purchase.credit_notes = vec![CreditNoteDocument {
             event_purchase_credit_note_id: Uuid::new_v4(),

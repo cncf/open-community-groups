@@ -70,7 +70,7 @@ mod tests {
     fn test_config_with_defaults_preserves_configured_values() {
         let mut cfg = DeadpoolDbConfig::new();
         cfg.manager = Some(ManagerConfig {
-            recycling_method: RecyclingMethod::Clean,
+            recycling_method: RecyclingMethod::Fast,
         });
         cfg.options = Some("-c statement_timeout=5000".to_string());
         cfg.pool = Some(PoolConfig::new(32));
@@ -83,7 +83,7 @@ mod tests {
         let cfg = config_with_defaults(&cfg);
 
         let manager = cfg.manager.expect("manager config should be set");
-        assert_eq!(manager.recycling_method, RecyclingMethod::Clean);
+        assert_eq!(manager.recycling_method, RecyclingMethod::Fast);
         assert_eq!(cfg.options.as_deref(), Some("-c statement_timeout=5000"));
 
         let pool = cfg.pool.expect("pool config should be set");

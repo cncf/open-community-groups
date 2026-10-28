@@ -1,19 +1,10 @@
-use axum::{
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE},
-    },
-};
-use axum_login::tower_sessions::session;
+use axum::http::StatusCode;
 use mockall::Sequence;
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    services::notifications::MockNotificationsManager,
     types::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
@@ -29,43 +20,20 @@ use crate::{
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let waitlist_entry = sample_waitlist_entry();
-    let event = sample_event_summary(event_id, group_id);
     let output = WaitlistOutput {
         total: 1,
-        waitlist: vec![waitlist_entry],
+        waitlist: vec![sample_waitlist_entry()],
     };
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-    db.expect_get_event_summary_dashboard()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event.clone()));
+    expect_list_page_context(&mut db, &ids, event_id);
     db.expect_search_event_waitlist()
         .times(1)
         .withf(move |gid, eid, filters| {
-            *gid == group_id
+            *gid == ids.group_id
                 && *eid == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
@@ -73,120 +41,75 @@ async fn test_list_page_success() {
         .returning(move |_, _, _| Ok(output.clone()));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/events/{event_id}/waitlist"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/waitlist"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(body.contains("Waitlisted User"));
 }
 
 #[tokio::test]
 async fn test_list_page_rejects_overlong_search_query() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!(
             "/dashboard/group/events/{event_id}/waitlist?ts_query={}",
             "a".repeat(251)
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        ),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(!bytes.is_empty());
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "ts_query: length is greater than 250\n"
+    );
 }
 
 #[tokio::test]
 async fn test_list_page_rejects_zero_pagination_limit() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
-            "/dashboard/group/events/{event_id}/waitlist?limit=0"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/waitlist?limit=0"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(!bytes.is_empty());
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "limit: lower than 1\n"
+    );
 }
 
 #[tokio::test]
 async fn test_list_page_steps_back_to_last_page_when_offset_is_past_end() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
     let empty_page = WaitlistOutput {
         total: 6,
         waitlist: vec![],
@@ -196,35 +119,15 @@ async fn test_list_page_steps_back_to_last_page_when_offset_is_past_end() {
         waitlist: vec![sample_waitlist_entry()],
     };
 
-    // Setup session, permission, and event context expectations
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-    db.expect_get_event_summary_dashboard()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event.clone()));
-
     // Setup the empty requested page followed by the last page with rows
+    let mut db = MockDB::new();
+    expect_list_page_context(&mut db, &ids, event_id);
     let mut sequence = Sequence::new();
     db.expect_search_event_waitlist()
         .times(1)
         .in_sequence(&mut sequence)
         .withf(move |gid, eid, filters| {
-            *gid == group_id
+            *gid == ids.group_id
                 && *eid == event_id
                 && filters.limit == Some(5)
                 && filters.offset == Some(10)
@@ -234,7 +137,7 @@ async fn test_list_page_steps_back_to_last_page_when_offset_is_past_end() {
         .times(1)
         .in_sequence(&mut sequence)
         .withf(move |gid, eid, filters| {
-            *gid == group_id
+            *gid == ids.group_id
                 && *eid == event_id
                 && filters.limit == Some(5)
                 && filters.offset == Some(5)
@@ -242,112 +145,26 @@ async fn test_list_page_steps_back_to_last_page_when_offset_is_past_end() {
         .return_once(move |_, _, _| Ok(last_page));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
-            "/dashboard/group/events/{event_id}/waitlist?limit=5&offset=10"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/waitlist?limit=5&offset=10"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the last page with rows is rendered and refreshed in place
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    let body = std::str::from_utf8(&bytes).unwrap();
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("Waitlisted User"));
     assert!(body.contains("offset=5"));
     assert!(!body.contains("offset=10"));
 }
 
 #[tokio::test]
-async fn test_list_page_with_pagination_params() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
-    let output = WaitlistOutput {
-        total: 0,
-        waitlist: vec![],
-    };
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-    db.expect_get_event_summary_dashboard()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_search_event_waitlist()
-        .times(1)
-        .withf(move |gid, eid, filters| {
-            *gid == group_id
-                && *eid == event_id
-                && filters.limit == Some(5)
-                && filters.offset == Some(10)
-        })
-        .returning(move |_, _, _| Ok(output.clone()));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
-            "/dashboard/group/events/{event_id}/waitlist?limit=5&offset=10"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
-}
-
-#[tokio::test]
 async fn test_list_page_with_search_query() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id, group_id);
     let output = WaitlistOutput {
         total: 2,
         waitlist: vec![sample_waitlist_entry()],
@@ -355,29 +172,11 @@ async fn test_list_page_with_search_query() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-    db.expect_get_event_summary_dashboard()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event.clone()));
+    expect_list_page_context(&mut db, &ids, event_id);
     db.expect_search_event_waitlist()
         .times(1)
         .withf(move |gid, eid, filters| {
-            *gid == group_id
+            *gid == ids.group_id
                 && *eid == event_id
                 && filters.limit == Some(1)
                 && filters.offset == Some(0)
@@ -388,36 +187,40 @@ async fn test_list_page_with_search_query() {
         .returning(move |_, _, _| Ok(output.clone()));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!(
-            concat!(
-                "/dashboard/group/events/{event_id}/waitlist?",
-                "limit=1&sort=name-asc&title=present&ts_query=wait"
-            ),
-            event_id = event_id,
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!(
+            "/dashboard/group/events/{event_id}/waitlist?\
+             limit=1&sort=name-asc&title=present&ts_query=wait"
+        ),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    let body = std::str::from_utf8(&bytes).unwrap();
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("name=\"ts_query\""));
     assert!(body.contains("value=\"wait\""));
     assert!(body.contains("Waitlisted User"));
     assert!(body.contains("offset=1"));
     assert!(body.contains("ts_query=wait"));
     assert!(body.contains("refresh-event-waitlist"));
+}
+
+// Helpers.
+
+/// Expects the session, permissions and event summary read by the list page.
+fn expect_list_page_context(db: &mut MockDB, ids: &DashboardIds, event_id: Uuid) {
+    let ids = *ids;
+    let event = sample_event_summary(event_id);
+
+    expect_group_access(db, &ids, GroupPermission::Read);
+    expect_group_permission_result(db, &ids, GroupPermission::EventsWrite, true);
+    db.expect_get_event_summary_dashboard()
+        .times(1)
+        .withf(move |cid, gid, eid| {
+            *cid == ids.community_id && *gid == ids.group_id && *eid == event_id
+        })
+        .returning(move |_, _, _| Ok(event.clone()));
 }

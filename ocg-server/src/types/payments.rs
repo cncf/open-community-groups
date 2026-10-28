@@ -786,41 +786,37 @@ mod tests {
     use super::{TicketVenue, TicketVenueField, format_amount_minor};
 
     #[test]
-    fn format_amount_minor_formats_two_decimal_currencies() {
-        assert_eq!(format_amount_minor(2_500, "usd"), "USD 25.00");
-    }
-
-    #[test]
-    fn format_amount_minor_formats_zero_decimal_currencies() {
-        assert_eq!(format_amount_minor(5_000, "jpy"), "JPY 5000");
-    }
-
-    #[test]
-    fn format_amount_minor_normalizes_currency_codes() {
-        assert_eq!(format_amount_minor(2_500, " usd "), "USD 25.00");
-    }
-
-    #[test]
-    fn format_amount_minor_preserves_negative_amounts() {
-        assert_eq!(format_amount_minor(-250, "usd"), "USD -2.50");
+    fn test_format_amount_minor_formats_currencies() {
+        let cases = [
+            ("negative amount", -250, "usd", "USD -2.50"),
+            ("padded currency code", 2_500, " usd ", "USD 25.00"),
+            ("two-decimal currency", 2_500, "usd", "USD 25.00"),
+            ("zero-decimal currency", 5_000, "jpy", "JPY 5000"),
+        ];
+        for (case, amount_minor, currency_code, expected) in cases {
+            assert_eq!(
+                format_amount_minor(amount_minor, currency_code),
+                expected,
+                "{case}"
+            );
+        }
     }
 
     #[test]
     fn test_ticket_venue_country_code_validation_checks_iso_shape() {
-        // Setup a valid two-letter country code
-        let mut venue = TicketVenue {
-            country_code: "PT".to_string(),
-            ..TicketVenue::default()
-        };
+        let cases = [
+            ("non-alphabetic code", "P1", false),
+            ("three-letter code", "PRT", false),
+            ("two-letter code", "PT", true),
+        ];
+        for (case, country_code, valid) in cases {
+            let venue = TicketVenue {
+                country_code: country_code.to_string(),
+                ..TicketVenue::default()
+            };
 
-        // Check valid, long, and non-alphabetic country codes
-        assert!(venue.has_valid_country_code());
-
-        venue.country_code = "PRT".to_string();
-        assert!(!venue.has_valid_country_code());
-
-        venue.country_code = "P1".to_string();
-        assert!(!venue.has_valid_country_code());
+            assert_eq!(venue.has_valid_country_code(), valid, "{case}");
+        }
     }
 
     #[test]

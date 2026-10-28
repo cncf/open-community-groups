@@ -118,7 +118,7 @@ fn normalize_utm_value(value: Option<&str>) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::validation::MAX_LEN_UTM_VALUE;
+    use crate::{types::tests::sample_event_utm_allowlist, validation::MAX_LEN_UTM_VALUE};
 
     use super::*;
 
@@ -208,13 +208,4 @@ mod tests {
     }
 
     // Helpers.
-
-    /// Returns a sample allowlist accepting one value per parameter.
-    fn sample_event_utm_allowlist() -> EventUtmAllowlist {
-        EventUtmAllowlist {
-            campaigns: vec!["spring-launch".to_string()],
-            mediums: vec!["email".to_string()],
-            sources: vec!["newsletter".to_string()],
-        }
-    }
 }

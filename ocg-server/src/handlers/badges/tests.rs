@@ -1,28 +1,24 @@
-use std::io::Cursor;
-
 use axum::{
-    body::{Body, to_bytes},
+    body::Body,
     http::{
         HeaderMap, HeaderValue, Request, StatusCode,
         header::{ACCEPT, CACHE_CONTROL, CONTENT_TYPE},
     },
 };
 use chrono::{TimeZone, Utc};
-use image::{DynamicImage, ImageFormat};
 use serde_json::{Value, json};
-use ssi_jwk::JWK;
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    config::{BadgeSigningKeyConfig, BadgesConfig, HttpServerConfig},
+    config::HttpServerConfig,
     db::mock::MockDB,
-    handlers::tests::{TestRouterBuilder, sample_site_settings},
-    router::CACHE_CONTROL_PUBLIC_SHARED,
-    services::{
-        badges::{CredentialInput, EmailIdentity, SsiBadgesManager, png},
-        notifications::MockNotificationsManager,
+    handlers::tests::{
+        TestRouterBuilder, assert_empty_response, assert_html_response, request, sample_badges_cfg,
+        sample_server_cfg, sample_site_settings, send,
     },
+    router::{CACHE_CONTROL_PRIVATE_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
+    services::badges::{CredentialInput, EmailIdentity, SsiBadgesManager, png},
+    test_util::sample_png,
     types::badges::{
         BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicBadgeSnapshot,
         PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
@@ -33,30 +29,28 @@ use super::*;
 
 #[test]
 fn test_accepts_credential_requires_the_supported_media_type() {
-    // Build supported, ordinary, parameterized, and explicitly rejected headers
-    let mut credential_headers = HeaderMap::new();
-    credential_headers.insert(
-        ACCEPT,
-        HeaderValue::from_static("text/html, application/vc+ld+json"),
-    );
-    let mut html_headers = HeaderMap::new();
-    html_headers.insert(ACCEPT, HeaderValue::from_static("text/html"));
-    let mut parameterized_headers = HeaderMap::new();
-    parameterized_headers.insert(
-        ACCEPT,
-        HeaderValue::from_static("application/vc+ld+json; charset=utf-8"),
-    );
-    let mut rejected_headers = HeaderMap::new();
-    rejected_headers.insert(
-        ACCEPT,
-        HeaderValue::from_static("application/vc+ld+json; q=0, application/vc+ld+json; q=invalid"),
-    );
+    // Setup labeled Accept headers with the expected representation choice
+    let cases = [
+        ("supported", "text/html, application/vc+ld+json", true),
+        ("ordinary html", "text/html", false),
+        (
+            "parameterized",
+            "application/vc+ld+json; charset=utf-8",
+            true,
+        ),
+        (
+            "explicitly rejected",
+            "application/vc+ld+json; q=0, application/vc+ld+json; q=invalid",
+            false,
+        ),
+    ];
 
     // Check representation selection remains explicit
-    assert!(accepts_credential(&credential_headers));
-    assert!(!accepts_credential(&html_headers));
-    assert!(accepts_credential(&parameterized_headers));
-    assert!(!accepts_credential(&rejected_headers));
+    for (case, accept, expected) in cases {
+        let mut headers = HeaderMap::new();
+        headers.insert(ACCEPT, HeaderValue::from_static(accept));
+        assert_eq!(accepts_credential(&headers), expected, "{case}");
+    }
 }
 
 #[tokio::test]
@@ -65,36 +59,24 @@ async fn test_credential_html_response_uses_public_snapshot_and_cache_contract()
     let award = sample_user_badge();
     let user_badge_id = award.user_badge_id;
     let mut db = MockDB::new();
-    db.expect_get_public_user_badge()
-        .times(1)
-        .withf(move |id| *id == user_badge_id)
-        .return_once(move |_| Ok(Some(award)));
-    db.expect_get_site_settings()
-        .times(1)
-        .return_once(|| Ok(sample_site_settings()));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
+    expect_award_page_reads(&mut db, award);
+    let router = TestRouterBuilder::new(db).build().await;
 
     // Request the browser representation
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri(format!("/badges/credentials/{user_badge_id}"))
-                .header(ACCEPT, "text/html")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let request = request("GET", &format!("/badges/credentials/{user_badge_id}"))
+        .header(ACCEPT, "text/html")
+        .body(Body::empty())
         .unwrap();
-    let (parts, body) = response.into_parts();
-    let body = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the page and representation-sensitive cache headers
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(parts.headers.get("vary").unwrap(), CREDENTIAL_CACHE_VARY);
-    assert!(parts.headers.get("cache-control").is_some());
-    assert!(String::from_utf8_lossy(&body).contains("Test Badge"));
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_PUBLIC_SHARED
+    );
+    assert!(String::from_utf8_lossy(&bytes).contains("Test Badge"));
 }
 
 #[tokio::test]
@@ -107,24 +89,18 @@ async fn test_credential_json_ld_response_is_signed_and_shared_cached() {
         .times(1)
         .withf(move |id| *id == user_badge_id)
         .return_once(move |_| Ok(Some(award)));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_server_cfg(badges_server_config())
         .build()
         .await;
 
     // Request the signed credential representation explicitly
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri(format!("/badges/credentials/{user_badge_id}"))
-                .header(ACCEPT, "application/vc+ld+json")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let request = request("GET", &format!("/badges/credentials/{user_badge_id}"))
+        .header(ACCEPT, "application/vc+ld+json")
+        .body(Body::empty())
         .unwrap();
-    let (parts, body) = response.into_parts();
-    let body: Value = serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Check the signed JSON-LD and bounded shared-cache boundary
     assert_eq!(parts.status, StatusCode::OK);
@@ -157,64 +133,51 @@ async fn test_credential_unknown_award_returns_not_found() {
         .times(1)
         .withf(move |id| *id == user_badge_id)
         .return_once(|_| Ok(None));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
+    let router = TestRouterBuilder::new(db).build().await;
 
     // Request the missing credential
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri(format!("/badges/credentials/{user_badge_id}"))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let request = request("GET", &format!("/badges/credentials/{user_badge_id}"))
+        .body(Body::empty())
         .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check unknown opaque identifiers stay private
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_PRIVATE_NO_STORE
+    );
 }
 
 #[tokio::test]
 async fn test_issuer_key_returns_immutable_multikey_document() {
     // Setup a public router with one active signing method
     let group_id = Uuid::new_v4();
-    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(MockDB::new())
         .with_server_cfg(badges_server_config())
         .build()
         .await;
 
     // Resolve the published key from the issuer profile
-    let response = router
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri(format!("/badges/issuers/{group_id}"))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let profile_request = request("GET", &format!("/badges/issuers/{group_id}"))
+        .body(Body::empty())
         .unwrap();
-    let profile: Value =
-        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+    let (_, profile_bytes) = send(router.clone(), profile_request).await;
+    let profile: Value = serde_json::from_slice(&profile_bytes).unwrap();
     let key_multibase = profile["verificationMethod"][0]["publicKeyMultibase"]
         .as_str()
         .unwrap()
         .to_string();
 
     // Request the dereferenceable standalone key document
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri(format!("/badges/issuers/{group_id}/keys/{key_multibase}"))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    let (parts, body) = response.into_parts();
-    let body: Value = serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+    let key_request = request(
+        "GET",
+        &format!("/badges/issuers/{group_id}/keys/{key_multibase}"),
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, key_request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Check the immutable content-addressed Multikey document
     assert_eq!(parts.status, StatusCode::OK);
@@ -234,47 +197,39 @@ async fn test_issuer_key_returns_immutable_multikey_document() {
 async fn test_issuer_key_unknown_multibase_returns_not_found() {
     // Setup a public router with one active signing method
     let group_id = Uuid::new_v4();
-    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(MockDB::new())
         .with_server_cfg(badges_server_config())
         .build()
         .await;
 
     // Request a key document outside the retained allowlist
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri(format!("/badges/issuers/{group_id}/keys/z6MkUnknown"))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    let request = request(
+        "GET",
+        &format!("/badges/issuers/{group_id}/keys/z6MkUnknown"),
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check unknown keys are not published
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
 async fn test_issuer_returns_stable_public_profile() {
     // Setup a public router with one active signing method
     let group_id = Uuid::new_v4();
-    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(MockDB::new())
         .with_server_cfg(badges_server_config())
         .build()
         .await;
 
     // Request the issuer profile
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri(format!("/badges/issuers/{group_id}"))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let request = request("GET", &format!("/badges/issuers/{group_id}"))
+        .body(Body::empty())
         .unwrap();
-    let (parts, body) = response.into_parts();
-    let body: Value = serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Check stable issuer identity and public caching
     assert_eq!(parts.status, StatusCode::OK);
@@ -301,7 +256,10 @@ async fn test_issuer_returns_stable_public_profile() {
         )
     );
     assert!(method["publicKeyMultibase"].as_str().unwrap().starts_with("z6Mk"));
-    assert!(parts.headers.get("cache-control").is_some());
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_PUBLIC_SHARED
+    );
 }
 
 #[tokio::test]
@@ -314,23 +272,17 @@ async fn test_status_list_returns_signed_current_state() {
         .times(1)
         .withf(move |id| *id == status_list_id)
         .return_once(move |_| Ok(Some(status)));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    let router = TestRouterBuilder::new(db)
         .with_server_cfg(badges_server_config())
         .build()
         .await;
 
     // Request the signed status-list credential
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri(format!("/badges/status-lists/{status_list_id}"))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let request = request("GET", &format!("/badges/status-lists/{status_list_id}"))
+        .body(Body::empty())
         .unwrap();
-    let (parts, body) = response.into_parts();
-    let body: Value = serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     // Check the signed status response and bounded public cache policy
     assert_eq!(parts.status, StatusCode::OK);
@@ -357,23 +309,16 @@ async fn test_status_list_unknown_id_returns_not_found() {
         .times(1)
         .withf(move |id| *id == status_list_id)
         .return_once(|_| Ok(None));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
+    let router = TestRouterBuilder::new(db).build().await;
 
     // Request the missing status list
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri(format!("/badges/status-lists/{status_list_id}"))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let request = request("GET", &format!("/badges/status-lists/{status_list_id}"))
+        .body(Body::empty())
         .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check missing lists are not synthesized
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -397,50 +342,39 @@ async fn test_user_profile_badges_returns_public_projection() {
         .times(1)
         .withf(move |limit, offset, username| *limit == 50 && *offset == 0 && username == "ada")
         .return_once(move |_, _, _| Ok(output));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
+    let router = TestRouterBuilder::new(db).build().await;
 
     // Request the public profile projection
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/users/ada/badges")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    let (parts, body) = response.into_parts();
-    let body: Vec<PublicUserBadge> =
-        serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+    let request = request("GET", "/users/ada/badges").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body: Vec<PublicUserBadge> = serde_json::from_slice(&bytes).unwrap();
 
     // Check only the bounded public DTO crosses the shared-cache boundary
     assert_eq!(parts.status, StatusCode::OK);
-    assert!(parts.headers.get(CACHE_CONTROL).is_some());
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_PUBLIC_SHARED
+    );
     assert_eq!(body, expected);
 }
 
 #[tokio::test]
 async fn test_user_profile_badges_rejects_page_above_public_cap() {
     // Build a public router whose database must not be queried for invalid pagination
-    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
-        .build()
-        .await;
+    let router = TestRouterBuilder::new(MockDB::new()).build().await;
 
     // Request a page larger than the fixed public response cap
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/users/ada/badges?limit=51")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let request = request("GET", "/users/ada/badges?limit=51")
+        .body(Body::empty())
         .unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check validation rejects the request before any public-profile reads
-    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "badge pagination is outside the supported range"
+    );
 }
 
 #[tokio::test]
@@ -450,19 +384,18 @@ async fn test_verify_page_is_never_cached() {
     db.expect_get_site_settings()
         .times(1)
         .return_once(|| Ok(sample_site_settings()));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
+    let router = TestRouterBuilder::new(db).build().await;
 
     // Request the local verification form
-    let response = router
-        .oneshot(Request::builder().uri("/badges/verify").body(Body::empty()).unwrap())
-        .await
-        .unwrap();
+    let request = request("GET", "/badges/verify").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check sensitive verification output cannot be cached
-    assert_eq!(response.status(), StatusCode::OK);
-    assert_eq!(response.headers().get("cache-control").unwrap(), "no-store");
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_NO_STORE
+    );
 }
 
 #[tokio::test]
@@ -473,61 +406,24 @@ async fn test_verify_post_flags_stale_email_bound_award_as_superseded() {
     award.identity_hash =
         Some("1f5c1b4c4459c1197a51122a1e86154bbd1eec1c4bb9e34c7c9e4c4e5f3b2a10".to_string());
     award.identity_salt = Some("fedcba9876543210fedcba9876543210".to_string());
-    let user_badge_id = award.user_badge_id;
     let server_cfg = badges_server_config();
-    let badges_manager =
-        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
-    let credential = badges_manager
-        .issue_credential(CredentialInput {
-            award: &award,
-            created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
-            email_identity: Some(EmailIdentity {
-                hash: "fa4e696fed1caae3ce9bda21a14b5d7960f8ef36bf1566164dafb09f4c8ac324"
-                    .to_string(),
-                salt: "0123456789abcdef0123456789abcdef".to_string(),
-            }),
-        })
-        .await
-        .unwrap();
-    let credential = serde_json::to_vec(&credential).unwrap();
-    let png = png::bake(&sample_png(), &credential).unwrap();
+    let email_identity = EmailIdentity {
+        hash: "fa4e696fed1caae3ce9bda21a14b5d7960f8ef36bf1566164dafb09f4c8ac324".to_string(),
+        salt: "0123456789abcdef0123456789abcdef".to_string(),
+    };
+    let png = baked_png(&server_cfg, &award, Some(email_identity)).await;
 
     // Setup the rebound durable award and verification page settings
     let mut db = MockDB::new();
-    db.expect_get_public_user_badge()
-        .times(1)
-        .withf(move |id| *id == user_badge_id)
-        .returning(move |_| Ok(Some(award.clone())));
-    db.expect_get_site_settings()
-        .times(1)
-        .return_once(|| Ok(sample_site_settings()));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_server_cfg(server_cfg)
-        .build()
-        .await;
-    let boundary = "BADGE-PNG-VERIFY-BOUNDARY";
+    expect_award_page_reads(&mut db, award);
+    let router = TestRouterBuilder::new(db).with_server_cfg(server_cfg).build().await;
 
     // Submit the stale exported PNG as multipart form data
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/badges/verify")
-                .header(
-                    CONTENT_TYPE,
-                    format!("multipart/form-data; boundary={boundary}"),
-                )
-                .body(Body::from(png_multipart(boundary, &png)))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    let (parts, body) = response.into_parts();
-    let body = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, png_verify_request(&png)).await;
 
     // Check the stale export still verifies but is flagged as superseded
-    assert_eq!(parts.status, StatusCode::OK);
-    let body = String::from_utf8_lossy(&body);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8_lossy(&bytes);
     assert!(body.contains("Authentic but superseded by a newer export"));
     assert!(!body.contains("Valid and active"));
 }
@@ -538,44 +434,22 @@ async fn test_verify_post_returns_current_local_award() {
     let award = sample_user_badge();
     let user_badge_id = award.user_badge_id;
     let mut db = MockDB::new();
-    db.expect_get_public_user_badge()
-        .times(1)
-        .withf(move |id| *id == user_badge_id)
-        .returning(move |_| Ok(Some(award.clone())));
-    db.expect_get_site_settings()
-        .times(1)
-        .return_once(|| Ok(sample_site_settings()));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+    expect_award_page_reads(&mut db, award);
+    let router = TestRouterBuilder::new(db)
         .with_server_cfg(badges_server_config())
         .build()
         .await;
-    let boundary = "BADGE-VERIFY-BOUNDARY";
 
     // Submit the opaque local award identifier as multipart form data
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/badges/verify")
-                .header(
-                    CONTENT_TYPE,
-                    format!("multipart/form-data; boundary={boundary}"),
-                )
-                .body(Body::from(credential_multipart(boundary, user_badge_id)))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    let (parts, body) = response.into_parts();
-    let body = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, credential_verify_request(user_badge_id)).await;
 
     // Check verification renders current public identity without caching
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         CACHE_CONTROL_NO_STORE
     );
-    let body = String::from_utf8_lossy(&body);
+    let body = String::from_utf8_lossy(&bytes);
     assert!(body.contains("Valid and active"));
     assert!(body.contains("Ada"));
     assert!(body.contains("src=\"/images/badges/test-badge.png\""));
@@ -588,61 +462,24 @@ async fn test_verify_post_returns_current_local_award() {
 async fn test_verify_post_returns_uploaded_award() {
     // Issue and bake one portable credential using the router's signing key
     let award = sample_user_badge();
-    let user_badge_id = award.user_badge_id;
     let server_cfg = badges_server_config();
-    let badges_manager =
-        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
-    let credential = badges_manager
-        .issue_credential(CredentialInput {
-            award: &award,
-            created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
-            email_identity: None,
-        })
-        .await
-        .unwrap();
-    let credential = serde_json::to_vec(&credential).unwrap();
-    let png = png::bake(&sample_png(), &credential).unwrap();
+    let png = baked_png(&server_cfg, &award, None).await;
 
     // Setup the matching durable award and verification page settings
     let mut db = MockDB::new();
-    db.expect_get_public_user_badge()
-        .times(1)
-        .withf(move |id| *id == user_badge_id)
-        .returning(move |_| Ok(Some(award.clone())));
-    db.expect_get_site_settings()
-        .times(1)
-        .return_once(|| Ok(sample_site_settings()));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_server_cfg(server_cfg)
-        .build()
-        .await;
-    let boundary = "BADGE-PNG-VERIFY-BOUNDARY";
+    expect_award_page_reads(&mut db, award);
+    let router = TestRouterBuilder::new(db).with_server_cfg(server_cfg).build().await;
 
     // Submit the exported PNG as multipart form data
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/badges/verify")
-                .header(
-                    CONTENT_TYPE,
-                    format!("multipart/form-data; boundary={boundary}"),
-                )
-                .body(Body::from(png_multipart(boundary, &png)))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    let (parts, body) = response.into_parts();
-    let body = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, png_verify_request(&png)).await;
 
     // Check portable verification renders the matched local artwork and award date
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         CACHE_CONTROL_NO_STORE
     );
-    let body = String::from_utf8_lossy(&body);
+    let body = String::from_utf8_lossy(&bytes);
     assert!(body.contains("Valid and active"));
     assert!(body.contains("src=\"/images/badges/test-badge.png\""));
     assert!(body.contains("datetime=\"2024-01-02T03:04:05+00:00\""));
@@ -658,60 +495,24 @@ async fn test_verify_post_returns_uploaded_email_bound_award_without_rendering_i
     award.identity_bound_at = Some(Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap());
     award.identity_hash = Some(identity_hash.to_string());
     award.identity_salt = Some(identity_salt.to_string());
-    let user_badge_id = award.user_badge_id;
     let server_cfg = badges_server_config();
-    let badges_manager =
-        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
-    let credential = badges_manager
-        .issue_credential(CredentialInput {
-            award: &award,
-            created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
-            email_identity: Some(EmailIdentity {
-                hash: identity_hash.to_string(),
-                salt: identity_salt.to_string(),
-            }),
-        })
-        .await
-        .unwrap();
-    let credential = serde_json::to_vec(&credential).unwrap();
-    let png = png::bake(&sample_png(), &credential).unwrap();
+    let email_identity = EmailIdentity {
+        hash: identity_hash.to_string(),
+        salt: identity_salt.to_string(),
+    };
+    let png = baked_png(&server_cfg, &award, Some(email_identity)).await;
 
     // Setup the matching durable award and verification page settings
     let mut db = MockDB::new();
-    db.expect_get_public_user_badge()
-        .times(1)
-        .withf(move |id| *id == user_badge_id)
-        .returning(move |_| Ok(Some(award.clone())));
-    db.expect_get_site_settings()
-        .times(1)
-        .return_once(|| Ok(sample_site_settings()));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_server_cfg(server_cfg)
-        .build()
-        .await;
-    let boundary = "BADGE-PNG-VERIFY-BOUNDARY";
+    expect_award_page_reads(&mut db, award);
+    let router = TestRouterBuilder::new(db).with_server_cfg(server_cfg).build().await;
 
     // Submit the exported email-bound PNG as multipart form data
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/badges/verify")
-                .header(
-                    CONTENT_TYPE,
-                    format!("multipart/form-data; boundary={boundary}"),
-                )
-                .body(Body::from(png_multipart(boundary, &png)))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    let (parts, body) = response.into_parts();
-    let body = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, png_verify_request(&png)).await;
 
     // Check the current email-bound export verifies without rendering its identity
-    assert_eq!(parts.status, StatusCode::OK);
-    let body = String::from_utf8_lossy(&body);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8_lossy(&bytes);
     assert!(body.contains("Valid and active"));
     assert!(!body.contains("superseded"));
     assert!(!body.contains(identity_hash));
@@ -721,37 +522,71 @@ async fn test_verify_post_returns_uploaded_email_bound_award_without_rendering_i
 
 // Helpers.
 
+/// Multipart boundary of the verification requests.
+const VERIFY_BOUNDARY: &str = "BADGE-VERIFY-BOUNDARY";
+
 /// Build a server configuration with one active deterministic key identifier.
 fn badges_server_config() -> HttpServerConfig {
     HttpServerConfig {
-        badges: Some(BadgesConfig {
-            signing_key: BadgeSigningKeyConfig {
-                key_id: "test-key".to_string(),
-                private_jwk: JWK::generate_ed25519().unwrap(),
-            },
-            verification_keys: vec![],
-        }),
-        base_url: "https://badges.example.test".to_string(),
-        ..HttpServerConfig::default()
+        badges: Some(sample_badges_cfg()),
+        ..sample_server_cfg("https://badges.example.test")
     }
 }
 
-/// Encode one credential-reference multipart body.
-fn credential_multipart(boundary: &str, user_badge_id: Uuid) -> String {
-    format!(
-        "--{boundary}\r\nContent-Disposition: form-data; name=\"credential\"\r\n\r\n{user_badge_id}\r\n--{boundary}--\r\n"
+/// Issues the award's export credential and bakes it into badge artwork.
+async fn baked_png(
+    server_cfg: &HttpServerConfig,
+    award: &UserBadge,
+    email_identity: Option<EmailIdentity>,
+) -> Vec<u8> {
+    let badges_manager =
+        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+    let credential = badges_manager
+        .issue_credential(CredentialInput {
+            award,
+            created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+            email_identity,
+        })
+        .await
+        .unwrap();
+    let credential = serde_json::to_vec(&credential).unwrap();
+
+    png::bake(&sample_png(512, 512), &credential).unwrap()
+}
+
+/// Builds a verification request submitting an award identifier.
+fn credential_verify_request(user_badge_id: Uuid) -> Request<Body> {
+    verify_request(
+        format!(
+            "--{VERIFY_BOUNDARY}\r\nContent-Disposition: form-data; name=\"credential\"\r\n\r\n{user_badge_id}\r\n--{VERIFY_BOUNDARY}--\r\n"
+        )
+        .into_bytes(),
     )
 }
 
-/// Encodes one PNG-upload multipart body.
-fn png_multipart(boundary: &str, png: &[u8]) -> Vec<u8> {
+/// Expects the award read and site settings read of the public award pages,
+/// with the award lookup returning `award`.
+fn expect_award_page_reads(db: &mut MockDB, award: UserBadge) {
+    let user_badge_id = award.user_badge_id;
+    db.expect_get_public_user_badge()
+        .times(1)
+        .withf(move |id| *id == user_badge_id)
+        .return_once(move |_| Ok(Some(award)));
+    db.expect_get_site_settings()
+        .times(1)
+        .return_once(|| Ok(sample_site_settings()));
+}
+
+/// Builds a verification request uploading baked badge artwork.
+fn png_verify_request(png: &[u8]) -> Request<Body> {
     let mut body = format!(
-        "--{boundary}\r\nContent-Disposition: form-data; name=\"png\"; filename=\"badge.png\"\r\nContent-Type: image/png\r\n\r\n"
+        "--{VERIFY_BOUNDARY}\r\nContent-Disposition: form-data; name=\"png\"; filename=\"badge.png\"\r\nContent-Type: image/png\r\n\r\n"
     )
     .into_bytes();
     body.extend_from_slice(png);
-    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
-    body
+    body.extend_from_slice(format!("\r\n--{VERIFY_BOUNDARY}--\r\n").as_bytes());
+
+    verify_request(body)
 }
 
 /// Build one deterministic current status-list row.
@@ -761,15 +596,6 @@ fn sample_badge_status_list() -> BadgeStatusList {
         group_id: Uuid::new_v4(),
         revoked_indexes: vec![1],
     }
-}
-
-/// Encodes valid 512×512 PNG artwork.
-fn sample_png() -> Vec<u8> {
-    let mut output = Cursor::new(Vec::new());
-    DynamicImage::new_rgba8(512, 512)
-        .write_to(&mut output, ImageFormat::Png)
-        .unwrap();
-    output.into_inner()
 }
 
 /// Build one active public badge fixture.
@@ -809,4 +635,15 @@ fn sample_user_badge() -> UserBadge {
         revoked_by_user_id: None,
         user_id: Some(Uuid::new_v4()),
     }
+}
+
+/// Builds a multipart verification request with the encoded body.
+fn verify_request(body: Vec<u8>) -> Request<Body> {
+    request("POST", "/badges/verify")
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={VERIFY_BOUNDARY}"),
+        )
+        .body(Body::from(body))
+        .unwrap()
 }

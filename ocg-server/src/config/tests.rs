@@ -5,48 +5,67 @@ use super::*;
 
 #[test]
 fn test_badges_config_rejects_invalid_keys() {
-    // Setup invalid identifiers, mismatched material, and duplicate identifiers
+    // Setup a signing key, a public key of another key pair, and mismatched material
     let private_jwk = JWK::generate_ed25519().unwrap();
-    let mut mismatched = private_jwk.clone();
-    let Params::OKP(params) = &mut mismatched.params else {
+    let other_private_jwk = JWK::generate_ed25519().unwrap();
+    let mut mismatched_jwk = private_jwk.clone();
+    let (Params::OKP(mismatched), Params::OKP(other)) =
+        (&mut mismatched_jwk.params, &other_private_jwk.params)
+    else {
         unreachable!();
     };
-    params.public_key.0[0] ^= 1;
-    let public_jwk = private_jwk.to_public();
+    mismatched.public_key = other.public_key.clone();
+    let signing_key = |key_id: &str, private_jwk: &JWK| BadgeSigningKeyConfig {
+        key_id: key_id.to_string(),
+        private_jwk: private_jwk.clone(),
+    };
+    let verification_key = |key_id: &str, public_jwk: &JWK| BadgeVerificationKeyConfig {
+        key_id: key_id.to_string(),
+        public_jwk: public_jwk.clone(),
+    };
 
-    let invalid_id = BadgesConfig {
-        signing_key: BadgeSigningKeyConfig {
-            key_id: "Not Stable".to_string(),
-            private_jwk: private_jwk.clone(),
-        },
-        verification_keys: vec![],
-    };
-    let mismatched_key = BadgesConfig {
-        signing_key: BadgeSigningKeyConfig {
-            key_id: "active-2026".to_string(),
-            private_jwk: mismatched,
-        },
-        verification_keys: vec![],
-    };
-    let duplicate = BadgesConfig {
-        signing_key: BadgeSigningKeyConfig {
-            key_id: "active-2026".to_string(),
-            private_jwk,
-        },
-        verification_keys: vec![BadgeVerificationKeyConfig {
-            key_id: "active-2026".to_string(),
-            public_jwk,
-        }],
-    };
-    // Validate each inconsistent key configuration
-    let duplicate_result = duplicate.validate();
-    let invalid_id_result = invalid_id.validate();
-    let mismatched_key_result = mismatched_key.validate();
+    // (case, signing key, verification keys, expected error)
+    let cases = [
+        (
+            "unstable key identifier",
+            signing_key("Not Stable", &private_jwk),
+            vec![],
+            "server.badges key identifiers must be 1-64 lowercase URL-safe characters and start and end with a letter or digit",
+        ),
+        (
+            "signing key without private material",
+            signing_key("active-2026", &private_jwk.to_public()),
+            vec![],
+            "server.badges signing key must contain an Ed25519 private key",
+        ),
+        (
+            "mismatched key material",
+            signing_key("active-2026", &mismatched_jwk),
+            vec![],
+            "server.badges signing key public and private material must match",
+        ),
+        (
+            "verification key with private material",
+            signing_key("active-2026", &private_jwk),
+            vec![verification_key("retired-2025", &other_private_jwk)],
+            "server.badges verification keys must contain public material only",
+        ),
+        (
+            "duplicate key identifiers",
+            signing_key("active-2026", &private_jwk),
+            vec![verification_key("active-2026", &private_jwk.to_public())],
+            "server.badges contains duplicate key identifiers",
+        ),
+    ];
 
-    // Check every inconsistent configuration is rejected
-    assert!(duplicate_result.is_err());
-    assert!(invalid_id_result.is_err());
-    assert!(mismatched_key_result.is_err());
+    for (case, signing_key, verification_keys, expected) in cases {
+        let cfg = BadgesConfig {
+            signing_key,
+            verification_keys,
+        };
+
+        assert_eq!(cfg.validate().unwrap_err().to_string(), expected, "{case}");
+    }
 }
 
 #[test]
@@ -130,98 +149,71 @@ fn test_external_payments_config_defaults_window_hours() {
 }
 
 #[test]
-fn test_external_payments_config_rejects_default_window_above_max() {
-    // Setup a default window longer than the configured maximum
-    let cfg = ExternalPaymentsConfig {
-        allowed_countries: vec!["KR".to_string()],
-        default_payment_window_hours: 48,
-        max_payment_window_hours: 24,
-    };
+fn test_external_payments_config_rejects_invalid_settings() {
+    let default_hours = DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS;
+    let max_hours = DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS;
+    // (case, allowed countries, default window hours, max window hours, expected error)
+    let cases = [
+        (
+            "empty allowlist",
+            vec![],
+            default_hours,
+            max_hours,
+            "external_payments.allowed_countries cannot be empty",
+        ),
+        (
+            "invalid country code",
+            vec!["KOR"],
+            default_hours,
+            max_hours,
+            "external_payments.allowed_countries contains invalid country code 'KOR'",
+        ),
+        (
+            "duplicate country code in different case",
+            vec!["KR", "kr"],
+            default_hours,
+            max_hours,
+            "external_payments.allowed_countries contains duplicate country code 'kr'",
+        ),
+        (
+            "non-positive default window",
+            vec!["KR"],
+            0,
+            max_hours,
+            "external_payments.default_payment_window_hours must be at least 1",
+        ),
+        (
+            "non-positive max window",
+            vec!["KR"],
+            1,
+            0,
+            "external_payments.max_payment_window_hours must be at least 1",
+        ),
+        (
+            "default window above max",
+            vec!["KR"],
+            48,
+            24,
+            "external_payments.default_payment_window_hours cannot exceed max_payment_window_hours",
+        ),
+    ];
 
-    // Validate the inconsistent window limits
-    let result = cfg.validate();
+    for (
+        case,
+        allowed_countries,
+        default_payment_window_hours,
+        max_payment_window_hours,
+        expected,
+    ) in cases
+    {
+        let cfg = ExternalPaymentsConfig {
+            allowed_countries: allowed_countries.into_iter().map(str::to_string).collect(),
+            default_payment_window_hours,
+            max_payment_window_hours,
+        };
 
-    // Check startup rejects a default that cannot be enforced
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        "external_payments.default_payment_window_hours cannot exceed max_payment_window_hours"
-    );
-}
-
-#[test]
-fn test_external_payments_config_rejects_duplicate_country_codes() {
-    // Setup an allowlist with the same country in different case
-    let cfg = ExternalPaymentsConfig {
-        allowed_countries: vec!["KR".to_string(), "kr".to_string()],
-        default_payment_window_hours: DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS,
-        max_payment_window_hours: DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS,
-    };
-
-    // Validate the duplicated country codes
-    let result = cfg.validate();
-
-    // Check case-insensitive duplicates are rejected
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        "external_payments.allowed_countries contains duplicate country code 'kr'"
-    );
-}
-
-#[test]
-fn test_external_payments_config_rejects_empty_allowlist() {
-    // Setup a present config section with no countries
-    let cfg = ExternalPaymentsConfig {
-        allowed_countries: vec![],
-        default_payment_window_hours: DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS,
-        max_payment_window_hours: DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS,
-    };
-
-    // Validate the empty allowlist
-    let result = cfg.validate();
-
-    // Check startup rejects a configured-but-empty allowlist
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        "external_payments.allowed_countries cannot be empty"
-    );
-}
-
-#[test]
-fn test_external_payments_config_rejects_invalid_country_code() {
-    // Setup an allowlist entry that is not an ISO 3166-1 alpha-2 code
-    let cfg = ExternalPaymentsConfig {
-        allowed_countries: vec!["KOR".to_string()],
-        default_payment_window_hours: DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS,
-        max_payment_window_hours: DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS,
-    };
-
-    // Validate the invalid country code
-    let result = cfg.validate();
-
-    // Check startup rejects codes that cannot match group.country_code
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        "external_payments.allowed_countries contains invalid country code 'KOR'"
-    );
-}
-
-#[test]
-fn test_external_payments_config_rejects_non_positive_window_hours() {
-    // Setup a non-positive default window
-    let cfg = ExternalPaymentsConfig {
-        allowed_countries: vec!["KR".to_string()],
-        default_payment_window_hours: 0,
-        max_payment_window_hours: DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS,
-    };
-
-    // Validate the non-positive window
-    let result = cfg.validate();
-
-    // Check startup rejects a window that cannot schedule a hold
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        "external_payments.default_payment_window_hours must be at least 1"
-    );
+        assert_eq!(cfg.validate().unwrap_err().to_string(), expected, "{case}");
+    }
 }
 
 #[test]
@@ -235,33 +227,38 @@ fn test_http_client_config_defaults_deadlines() {
 }
 
 #[test]
-fn test_http_client_config_rejects_zero_connect_timeout() {
-    // Setup a section with a zero connection deadline
-    let cfg = HttpClientConfig {
-        connect_timeout_secs: 0,
-        request_timeout_secs: 30,
-    };
+fn test_http_client_config_rejects_zero_timeouts() {
+    // (case, connect timeout, request timeout, section, expected error)
+    let cases = [
+        (
+            "zero connect timeout",
+            0,
+            30,
+            "payments.http_client",
+            "payments.http_client.connect_timeout_secs must be >= 1",
+        ),
+        (
+            "zero request timeout",
+            10,
+            0,
+            "server.http_client",
+            "server.http_client.request_timeout_secs must be >= 1",
+        ),
+    ];
 
-    // Check the section name is carried in the rejection
-    assert_eq!(
-        cfg.validate("payments.http_client").unwrap_err().to_string(),
-        "payments.http_client.connect_timeout_secs must be >= 1"
-    );
-}
+    for (case, connect_timeout_secs, request_timeout_secs, section, expected) in cases {
+        let cfg = HttpClientConfig {
+            connect_timeout_secs,
+            request_timeout_secs,
+        };
 
-#[test]
-fn test_http_client_config_rejects_zero_request_timeout() {
-    // Setup a section with a zero request deadline
-    let cfg = HttpClientConfig {
-        connect_timeout_secs: 10,
-        request_timeout_secs: 0,
-    };
-
-    // Check the section name is carried in the rejection
-    assert_eq!(
-        cfg.validate("server.http_client").unwrap_err().to_string(),
-        "server.http_client.request_timeout_secs must be >= 1"
-    );
+        // Check the section name is carried in the rejection
+        assert_eq!(
+            cfg.validate(section).unwrap_err().to_string(),
+            expected,
+            "{case}"
+        );
+    }
 }
 
 #[test]
@@ -272,13 +269,6 @@ fn test_http_server_config_defaults_deadlines_and_grace_period() {
     // Check the documented defaults apply
     assert_eq!(cfg.http_client, HttpClientConfig::default());
     assert_eq!(cfg.shutdown_grace_period(), Duration::from_secs(30));
-}
-
-#[test]
-fn test_http_server_config_defaults_image_hotlinking_to_false() {
-    let cfg: HttpServerConfig = serde_json::from_value(sample_http_server_config_value()).unwrap();
-
-    assert!(!cfg.allow_image_hotlinking);
 }
 
 #[test]
@@ -295,13 +285,28 @@ fn test_http_server_config_defaults_max_blocking_concurrency_to_parallelism() {
 }
 
 #[test]
-fn test_http_server_config_ignores_removed_referer_setting() {
-    let mut value = sample_http_server_config_value();
-    value["disable_referer_checks"] = serde_json::Value::Bool(true);
+fn test_http_server_config_deserializes_image_hotlinking() {
+    // (case, extra setting, expected allow_image_hotlinking)
+    let cases = [
+        ("omitted", None, false),
+        ("enabled", Some("allow_image_hotlinking"), true),
+        (
+            "removed referer setting",
+            Some("disable_referer_checks"),
+            false,
+        ),
+    ];
 
-    let cfg: HttpServerConfig = serde_json::from_value(value).unwrap();
+    for (case, setting, expected) in cases {
+        let mut value = sample_http_server_config_value();
+        if let Some(setting) = setting {
+            value[setting] = serde_json::Value::Bool(true);
+        }
 
-    assert!(!cfg.allow_image_hotlinking);
+        let cfg: HttpServerConfig = serde_json::from_value(value).expect(case);
+
+        assert_eq!(cfg.allow_image_hotlinking, expected, "{case}");
+    }
 }
 
 #[test]
@@ -315,16 +320,6 @@ fn test_http_server_config_rejects_zero_max_blocking_concurrency() {
         cfg.validate().unwrap_err().to_string(),
         "server.max_blocking_concurrency must be >= 1"
     );
-}
-
-#[test]
-fn test_http_server_config_uses_image_hotlinking_setting() {
-    let mut value = sample_http_server_config_value();
-    value["allow_image_hotlinking"] = serde_json::Value::Bool(true);
-
-    let cfg: HttpServerConfig = serde_json::from_value(value).unwrap();
-
-    assert!(cfg.allow_image_hotlinking);
 }
 
 #[test]
@@ -367,117 +362,74 @@ fn test_payments_config_accepts_maximum_platform_fee_bps() {
 #[test]
 fn test_payments_config_defaults_platform_fee_bps_to_zero() {
     // Setup a Stripe configuration without a platform fee entry
-    let cfg: PaymentsConfig = serde_json::from_value(serde_json::json!({
-        "provider": "stripe",
-        "connected_webhook_secret": "whsec_connect_secret",
-        "mode": "test",
-        "secret_key": "sk_test_secret",
-        "ticket_tax_api_version": "2026-07-29.preview",
-        "webhook_secret": "whsec_secret",
-    }))
-    .unwrap();
+    let cfg: PaymentsConfig = serde_json::from_value(sample_stripe_config_value()).unwrap();
 
     // Check the platform fee defaults to zero (no fee)
     assert_eq!(cfg.platform_fee_bps(), 0);
 }
 
 #[test]
-fn test_payments_config_rejects_zero_http_client_deadline() {
-    // Setup a Stripe configuration with a zero request deadline
-    let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
-        unreachable!();
-    };
-    cfg.http_client.request_timeout_secs = 0;
+fn test_payments_config_rejects_invalid_stripe_settings() {
+    type Change = fn(&mut PaymentsStripeConfig);
 
-    // Check the Stripe section rejects the deadline
-    assert_eq!(
-        cfg.validate().unwrap_err().to_string(),
-        "payments.http_client.request_timeout_secs must be >= 1"
-    );
+    // (case, setting change, expected error)
+    let cases: [(&str, Change, &str); 6] = [
+        (
+            "zero http client deadline",
+            |cfg| cfg.http_client.request_timeout_secs = 0,
+            "payments.http_client.request_timeout_secs must be >= 1",
+        ),
+        (
+            "platform fee above maximum",
+            |cfg| cfg.platform_fee_bps = MAX_PLATFORM_FEE_BPS + 1,
+            "payments.platform_fee_bps cannot exceed 9999",
+        ),
+        (
+            "blank connected webhook secret",
+            |cfg| cfg.connected_webhook_secret = "  ".to_string(),
+            "payments.connected_webhook_secret cannot be empty",
+        ),
+        (
+            "blank secret key",
+            |cfg| cfg.secret_key = "  ".to_string(),
+            "payments.secret_key cannot be empty",
+        ),
+        (
+            "blank ticket tax API version",
+            |cfg| cfg.ticket_tax_api_version = "  ".to_string(),
+            "payments.ticket_tax_api_version cannot be empty",
+        ),
+        (
+            "blank webhook secret",
+            |cfg| cfg.webhook_secret = "  ".to_string(),
+            "payments.webhook_secret cannot be empty",
+        ),
+    ];
+
+    for (case, change, expected) in cases {
+        let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
+            unreachable!();
+        };
+        change(&mut cfg);
+
+        assert_eq!(cfg.validate().unwrap_err().to_string(), expected, "{case}");
+    }
 }
 
 #[test]
-fn test_payments_config_rejects_platform_fee_bps_above_maximum() {
-    // Setup a Stripe configuration with an out-of-range platform fee
-    let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
-        unreachable!();
-    };
-    cfg.platform_fee_bps = MAX_PLATFORM_FEE_BPS + 1;
+fn test_payments_config_requires_stripe_fields() {
+    for field in ["connected_webhook_secret", "ticket_tax_api_version"] {
+        // Setup serialized Stripe configuration without the field
+        let mut value = sample_stripe_config_value();
+        value.as_object_mut().unwrap().remove(field);
 
-    // Validate the Stripe payments configuration
-    let result = cfg.validate();
-
-    // Check the out-of-range fee is rejected
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        "payments.platform_fee_bps cannot exceed 9999"
-    );
-}
-
-#[test]
-fn test_payments_config_rejects_blank_connected_webhook_secret() {
-    // Setup a Stripe configuration with a blank Connect webhook secret
-    let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
-        unreachable!();
-    };
-    cfg.connected_webhook_secret = "  ".to_string();
-
-    // Validate the Stripe payments configuration
-    let result = cfg.validate();
-
-    // Check startup rejects a secret that cannot verify Connect events
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        "payments.connected_webhook_secret cannot be empty"
-    );
-}
-
-#[test]
-fn test_payments_config_rejects_blank_ticket_tax_api_version() {
-    // Setup a Stripe configuration with a blank ticket-tax API version
-    let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
-        unreachable!();
-    };
-    cfg.ticket_tax_api_version = "  ".to_string();
-
-    // Validate the Stripe payments configuration
-    let result = cfg.validate();
-
-    // Check startup rejects a version that cannot be sent to Stripe
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        "payments.ticket_tax_api_version cannot be empty"
-    );
-}
-
-#[test]
-fn test_payments_config_rejects_missing_connected_webhook_secret() {
-    // Setup serialized Stripe configuration without a Connect webhook secret
-    let result = serde_json::from_value::<PaymentsConfig>(serde_json::json!({
-        "provider": "stripe",
-        "mode": "test",
-        "secret_key": "sk_test_secret",
-        "ticket_tax_api_version": "2026-07-29.preview",
-        "webhook_secret": "whsec_secret",
-    }));
-
-    // Check deserialization rejects an unverifiable Connect configuration
-    assert!(result.is_err());
-}
-
-#[test]
-fn test_payments_config_rejects_missing_ticket_tax_api_version() {
-    // Setup serialized Stripe configuration without the ticket-tax API version
-    let result = serde_json::from_value::<PaymentsConfig>(serde_json::json!({
-        "provider": "stripe",
-        "connected_webhook_secret": "whsec_connect_secret",
-        "mode": "test",
-        "secret_key": "sk_test_secret",
-        "webhook_secret": "whsec_secret",
-    }));
-
-    // Check deserialization rejects an incomplete tax and credit-note configuration
-    assert!(result.is_err());
+        // Check deserialization names the missing field
+        let error = serde_json::from_value::<PaymentsConfig>(value).unwrap_err();
+        assert!(
+            error.to_string().contains(&format!("missing field `{field}`")),
+            "{field}: {error}"
+        );
+    }
 }
 
 #[test]
@@ -507,6 +459,65 @@ fn test_smtp_config_rejects_zero_send_timeout() {
         cfg.validate().unwrap_err().to_string(),
         "email.smtp.send_timeout_secs must be >= 1"
     );
+}
+
+// Shared configuration samples.
+
+/// Sample badge signing configuration with a freshly generated key.
+pub(crate) fn sample_badges_cfg() -> BadgesConfig {
+    BadgesConfig {
+        signing_key: BadgeSigningKeyConfig {
+            key_id: "test-key".to_string(),
+            private_jwk: JWK::generate_ed25519().expect("test signing key generation to succeed"),
+        },
+        verification_keys: vec![],
+    }
+}
+
+/// Sample Stripe payments configuration.
+pub(crate) fn sample_payments_cfg() -> PaymentsConfig {
+    PaymentsConfig::Stripe(PaymentsStripeConfig {
+        connected_webhook_secret: "whsec_connect_test".to_string(),
+        mode: PaymentMode::Test,
+        secret_key: "sk_test".to_string(),
+        ticket_tax_api_version: "2026-07-29.preview".to_string(),
+        webhook_secret: "whsec_test".to_string(),
+
+        http_client: HttpClientConfig::default(),
+        platform_fee_bps: 0,
+    })
+}
+
+/// Sample HTTP server configuration with the given public base URL.
+pub(crate) fn sample_server_cfg(base_url: &str) -> HttpServerConfig {
+    HttpServerConfig {
+        base_url: base_url.to_string(),
+        ..Default::default()
+    }
+}
+
+/// Sample enabled Zoom configuration with the given webhook secret token.
+pub(crate) fn sample_zoom_cfg(webhook_secret_token: &str) -> MeetingsZoomConfig {
+    MeetingsZoomConfig {
+        account_id: "account-id".to_string(),
+        client_id: "client-id".to_string(),
+        client_secret: "client-secret".to_string(),
+        enabled: true,
+        host_pool_users: vec!["host@example.com".to_string()],
+        max_participants: 100,
+        max_simultaneous_meetings_per_host: 1,
+        webhook_secret_token: webhook_secret_token.to_string(),
+
+        http_client: HttpClientConfig::default(),
+    }
+}
+
+/// Sample meetings configuration with Zoom enabled and the given webhook
+/// secret token.
+pub(crate) fn sample_zoom_meetings_cfg(webhook_secret_token: &str) -> MeetingsConfig {
+    MeetingsConfig {
+        zoom: Some(sample_zoom_cfg(webhook_secret_token)),
+    }
 }
 
 // Helpers.
@@ -642,6 +653,17 @@ fn sample_http_server_config_value() -> serde_json::Value {
         },
         "oauth2": {},
         "oidc": {},
+    })
+}
+
+fn sample_stripe_config_value() -> serde_json::Value {
+    serde_json::json!({
+        "provider": "stripe",
+        "connected_webhook_secret": "whsec_connect_secret",
+        "mode": "test",
+        "secret_key": "sk_test_secret",
+        "ticket_tax_api_version": "2026-07-29.preview",
+        "webhook_secret": "whsec_secret",
     })
 }
 

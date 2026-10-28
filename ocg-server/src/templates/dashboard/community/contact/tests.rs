@@ -3,6 +3,7 @@ use percent_encoding::percent_decode_str;
 use uuid::Uuid;
 
 use crate::{
+    test_util::normalize_whitespace,
     types::{
         dashboard::community::contact::{
             CommunityContactFilterOptions, CommunityContactFilters,
@@ -135,11 +136,6 @@ fn test_page_groups_filter_is_disabled_without_groups() {
 }
 
 #[test]
-fn test_page_has_regions_is_false_without_regions() {
-    assert!(!sample_page().has_regions());
-}
-
-#[test]
 fn test_page_recipients_summary_posts_filters_only() {
     // Collect the field names of every filter from the canonical query
     let filters = CommunityContactFilters {
@@ -187,6 +183,7 @@ fn test_page_region_options_append_no_region() {
     // Setup page with one region
     let region_id = Uuid::new_v4();
     let mut page = sample_page();
+    assert!(!page.has_regions());
     page.filter_options.no_region_groups_count = 2;
     page.filter_options.regions = vec![CommunityContactRegionOption {
         groups_count: 3,
@@ -287,11 +284,6 @@ fn test_recipients_summary_omits_unmatched_notice_when_every_group_matches() {
 }
 
 // Helpers.
-
-/// Collapses whitespace runs so rendered text can be matched exactly.
-fn normalize_whitespace(html: &str) -> String {
-    html.split_whitespace().collect::<Vec<_>>().join(" ")
-}
 
 /// Returns a group label for the unmatched groups notice.
 fn sample_group_label(label: &str) -> CommunityContactGroupLabel {

@@ -1,140 +1,83 @@
-use axum::{
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE, HOST},
-    },
-};
-use axum_login::tower_sessions::session;
-use tower::ServiceExt;
+use axum::http::StatusCode;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    types::permissions::CommunityPermission,
+    db::mock::MockDB,
+    handlers::tests::*,
+    types::{group::GroupRegion, permissions::CommunityPermission},
 };
 
 use super::RegionInput;
 
 #[tokio::test]
 async fn test_add_invalid_payload() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
+    expect_community_access(&mut db, &ids, CommunityPermission::TaxonomyWrite);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/dashboard/community/regions/add")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("name="))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "POST",
+        "/dashboard/community/regions/add",
+        ids.session_id,
+        "name=",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(!bytes.is_empty());
+    assert_eq!(
+        bytes.as_ref(),
+        b"name: value cannot be empty or whitespace-only\n"
+    );
 }
 
 #[tokio::test]
 async fn test_add_page_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_community_access(&mut db, &ids, CommunityPermission::Read);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/community/regions/add")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/community/regions/add", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
 async fn test_add_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let form = RegionInput {
         name: "North America".to_string(),
     };
-    let expected_name = form.name.clone();
     let body = serde_qs::to_string(&form).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
+    expect_community_access(&mut db, &ids, CommunityPermission::TaxonomyWrite);
     db.expect_add_region()
         .times(1)
-        .withf(move |uid, cid, region| {
-            *uid == user_id && *cid == community_id && region.name == expected_name
+        .withf(move |user_id, community_id, region| {
+            *user_id == ids.user_id && *community_id == ids.community_id && region.name == form.name
         })
         .returning(|_, _, _| Ok(Uuid::new_v4()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/dashboard/community/regions/add")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "POST",
+        "/dashboard/community/regions/add",
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_empty_hx_trigger_response(
@@ -147,41 +90,26 @@ async fn test_add_success() {
 
 #[tokio::test]
 async fn test_delete_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let region_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
+    expect_community_access(&mut db, &ids, CommunityPermission::TaxonomyWrite);
     db.expect_delete_region()
         .times(1)
-        .withf(move |uid, cid, rid| *uid == user_id && *cid == community_id && *rid == region_id)
+        .withf(move |user_id, community_id, id| {
+            *user_id == ids.user_id && *community_id == ids.community_id && *id == region_id
+        })
         .returning(|_, _, _| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("DELETE")
-        .uri(format!("/dashboard/community/regions/{region_id}/delete"))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
+        "DELETE",
+        &format!("/dashboard/community/regions/{region_id}/delete"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_empty_hx_trigger_response(
@@ -194,130 +122,63 @@ async fn test_delete_success() {
 
 #[tokio::test]
 async fn test_list_page_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let regions = vec![sample_group_region()];
-
-    // Setup database mock
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
-    db.expect_list_regions()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(regions.clone()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_page_reads(&mut db, &ids, vec![sample_group_region()]);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/community/regions")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/community/regions", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    // Check the listed region is rendered
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(body.contains(r#"aria-label="Edit region: North America""#));
 }
 
 #[tokio::test]
 async fn test_update_invalid_payload() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let region_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
+    expect_community_access(&mut db, &ids, CommunityPermission::TaxonomyWrite);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!("/dashboard/community/regions/{region_id}/update"))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("name="))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "PUT",
+        &format!("/dashboard/community/regions/{region_id}/update"),
+        ids.session_id,
+        "name=",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(!bytes.is_empty());
+    assert_eq!(
+        bytes.as_ref(),
+        b"name: value cannot be empty or whitespace-only\n"
+    );
 }
 
 #[tokio::test]
 async fn test_update_page_not_found() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
     let region_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let regions = vec![sample_group_region()];
-
-    // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
-    db.expect_list_regions()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(regions.clone()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_page_reads(&mut db, &ids, vec![sample_group_region()]);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/community/regions/{region_id}/update"))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/community/regions/{region_id}/update"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -327,102 +188,67 @@ async fn test_update_page_not_found() {
 #[tokio::test]
 async fn test_update_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let region_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let mut region = sample_group_region();
-    region.region_id = region_id;
-    let regions = vec![region];
+    let region = GroupRegion {
+        region_id,
+        name: "Europe".to_string(),
+        ..sample_group_region()
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
-    db.expect_list_regions()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(regions.clone()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    expect_page_reads(&mut db, &ids, vec![sample_group_region(), region]);
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/community/regions/{region_id}/update"))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/community/regions/{region_id}/update"),
+        ids.session_id,
     );
-    assert!(!bytes.is_empty());
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the requested region is rendered in the form
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(body.contains(&format!(
+        r#"hx-put="/dashboard/community/regions/{region_id}/update""#
+    )));
+    assert!(body.contains(r#"value="Europe""#));
 }
 
 #[tokio::test]
 async fn test_update_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let ids = DashboardIds::new();
     let region_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
     let form = RegionInput {
         name: "South America".to_string(),
     };
-    let expected_name = form.name.clone();
     let body = serde_qs::to_string(&form).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
+    expect_community_access(&mut db, &ids, CommunityPermission::TaxonomyWrite);
     db.expect_update_region()
         .times(1)
-        .withf(move |uid, cid, rid, region| {
-            *uid == user_id
-                && *cid == community_id
-                && *rid == region_id
-                && region.name == expected_name
+        .withf(move |user_id, community_id, id, region| {
+            *user_id == ids.user_id
+                && *community_id == ids.community_id
+                && *id == region_id
+                && region.name == form.name
         })
         .returning(|_, _, _, _| Ok(()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("PUT")
-        .uri(format!("/dashboard/community/regions/{region_id}/update"))
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "PUT",
+        &format!("/dashboard/community/regions/{region_id}/update"),
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
     assert_empty_hx_trigger_response(
@@ -431,4 +257,17 @@ async fn test_update_success() {
         StatusCode::NO_CONTENT,
         "refresh-community-dashboard-table",
     );
+}
+
+// Helpers.
+
+/// Expects the reads the list and update pages perform.
+fn expect_page_reads(db: &mut MockDB, ids: &DashboardIds, regions: Vec<GroupRegion>) {
+    let ids = *ids;
+    expect_community_access(db, &ids, CommunityPermission::Read);
+    expect_community_permission_result(db, &ids, CommunityPermission::TaxonomyWrite, true);
+    db.expect_list_regions()
+        .times(1)
+        .withf(move |community_id| *community_id == ids.community_id)
+        .returning(move |_| Ok(regions.clone()));
 }

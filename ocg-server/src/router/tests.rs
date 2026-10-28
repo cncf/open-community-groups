@@ -1,19 +1,13 @@
 use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
-    http::{
-        HeaderValue, Method, StatusCode, Uri,
-        header::{COOKIE, LOCATION},
-    },
+    http::{HeaderValue, Method, StatusCode, Uri, header::LOCATION},
 };
-use axum_login::tower_sessions::session;
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB,
+    db::mock::{MockDB, expect_site_settings},
     handlers::tests::*,
-    services::notifications::MockNotificationsManager,
     types::permissions::{CommunityPermission, GroupPermission},
 };
 
@@ -38,173 +32,158 @@ const SCOPE_SELECTION_ROUTES: [&str; 3] = [
 #[tokio::test]
 async fn test_browser_same_origin_middleware_enforces_browser_signals() {
     // Setup a mutation route protected by the browser-origin middleware
-    let server_cfg = HttpServerConfig {
-        base_url: "https://example.test".to_string(),
-        ..Default::default()
-    };
     let router = Router::new()
         .route(
             "/",
             get(|| async { StatusCode::NO_CONTENT }).post(|| async { StatusCode::NO_CONTENT }),
         )
         .route_layer(middleware::from_fn_with_state(
-            server_cfg,
+            sample_server_cfg("https://example.test"),
             enforce_browser_same_origin,
         ));
 
     // Define safe methods and trusted or untrusted browser signals
     let cases = [
-        (Method::POST, None, None, StatusCode::NO_CONTENT),
         (
+            "post without browser signals",
+            Method::POST,
+            None,
+            None,
+            None,
+            StatusCode::NO_CONTENT,
+        ),
+        (
+            "post from same origin fetch",
             Method::POST,
             Some("same-origin"),
             None,
+            None,
             StatusCode::NO_CONTENT,
         ),
         (
+            "cross-site fetch with matching origin",
             Method::POST,
             Some("cross-site"),
             Some("https://example.test"),
+            None,
             StatusCode::FORBIDDEN,
         ),
-        (Method::POST, Some("same-site"), None, StatusCode::FORBIDDEN),
         (
+            "same-site fetch without origin",
+            Method::POST,
+            Some("same-site"),
+            None,
+            None,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "mismatched origin",
             Method::POST,
             None,
             Some("https://attacker.test"),
+            None,
             StatusCode::FORBIDDEN,
         ),
         (
+            "matching origin",
             Method::POST,
             None,
             Some("https://example.test"),
+            None,
             StatusCode::NO_CONTENT,
         ),
         (
+            "matching referer without origin",
+            Method::POST,
+            None,
+            None,
+            Some("https://example.test/page"),
+            StatusCode::NO_CONTENT,
+        ),
+        (
+            "mismatched referer without origin",
+            Method::POST,
+            None,
+            None,
+            Some("https://attacker.test/page"),
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "cross-site get",
             Method::GET,
             Some("cross-site"),
+            None,
             None,
             StatusCode::NO_CONTENT,
         ),
     ];
 
     // Send each request and check the middleware decision
-    for (method, fetch_site, origin, expected_status) in cases {
-        let mut request = Request::builder().method(method).uri("/");
+    for (case, method, fetch_site, origin, referer, expected_status) in cases {
+        let mut request = request(method.as_str(), "/");
         if let Some(fetch_site) = fetch_site {
             request = request.header("Sec-Fetch-Site", fetch_site);
         }
         if let Some(origin) = origin {
             request = request.header("Origin", origin);
         }
-
-        let response = router
-            .clone()
-            .oneshot(request.body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(response.status(), expected_status);
+        if let Some(referer) = referer {
+            request = request.header("Referer", referer);
+        }
+        let (parts, _) = send(router.clone(), request.body(Body::empty()).unwrap()).await;
+        assert_eq!(parts.status, expected_status, "{case}");
     }
 }
 
 #[tokio::test]
 async fn test_browser_same_origin_route_layer_excludes_later_webhook_routes() {
     // Setup protected browser and unprotected webhook routes
-    let server_cfg = HttpServerConfig {
-        base_url: "https://example.test".to_string(),
-        ..Default::default()
-    };
     let router = Router::new()
         .route(
             "/browser-mutation",
             post(|| async { StatusCode::NO_CONTENT }),
         )
         .route_layer(middleware::from_fn_with_state(
-            server_cfg,
+            sample_server_cfg("https://example.test"),
             enforce_browser_same_origin,
         ))
         .route("/webhook", post(|| async { StatusCode::NO_CONTENT }));
 
     // Send cross-site requests to both route groups
-    let browser_response = router
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method(Method::POST)
-                .uri("/browser-mutation")
-                .header("Sec-Fetch-Site", "cross-site")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let browser_request = request("POST", "/browser-mutation")
+        .header("Sec-Fetch-Site", "cross-site")
+        .body(Body::empty())
         .unwrap();
-    let webhook_response = router
-        .oneshot(
-            Request::builder()
-                .method(Method::POST)
-                .uri("/webhook")
-                .header("Sec-Fetch-Site", "cross-site")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+    let (browser_parts, _) = send(router.clone(), browser_request).await;
+    let webhook_request = request("POST", "/webhook")
+        .header("Sec-Fetch-Site", "cross-site")
+        .body(Body::empty())
         .unwrap();
+    let (webhook_parts, _) = send(router, webhook_request).await;
 
     // Check only the browser mutation route is protected
-    assert_eq!(browser_response.status(), StatusCode::FORBIDDEN);
-    assert_eq!(webhook_response.status(), StatusCode::NO_CONTENT);
+    assert_eq!(browser_parts.status, StatusCode::FORBIDDEN);
+    assert_eq!(webhook_parts.status, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn test_cohost_response_routes_require_settings_write_permission() {
     // Setup an events manager session without settings access
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .returning(|_, _, _, permission| {
-            Ok(matches!(
-                permission,
-                GroupPermission::EventsWrite | GroupPermission::Read
-            ))
-        });
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
+    let ids = DashboardIds::new();
+    let db = permission_scoped_db(&ids, |permission| {
+        matches!(
+            permission,
+            GroupPermission::EventsWrite | GroupPermission::Read
+        )
+    });
+    let router = TestRouterBuilder::new(db).build().await;
 
     // Check every co-hosting response route rejects the events manager
     for action in ["approve", "cancel", "reject"] {
-        let response = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method(Method::PUT)
-                    .uri(format!(
-                        "/dashboard/group/cohosts/{}/{action}",
-                        Uuid::new_v4()
-                    ))
-                    .header(COOKIE, format!("id={session_id}"))
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let uri = format!("/dashboard/group/cohosts/{}/{action}", Uuid::new_v4());
+        let (parts, _) = send(router.clone(), empty_request("PUT", &uri, ids.session_id)).await;
         assert_eq!(
-            response.status(),
+            parts.status,
             StatusCode::FORBIDDEN,
             "co-hosting {action} is not protected by the settings write permission"
         );
@@ -212,86 +191,38 @@ async fn test_cohost_response_routes_require_settings_write_permission() {
 }
 
 #[tokio::test]
-async fn test_current_commit_htmx_request_runs_handler() {
+async fn test_current_commit_request_runs_handler() {
     // Setup router with commit SHA middleware
     let router = Router::new()
-        .route("/", get(|| async { "fresh fragment" }))
+        .route("/", get(|| async { "fresh response" }))
         .layer(middleware::from_fn(refresh_stale_clients));
 
-    // Send request with current commit SHA
-    let request = Request::builder()
-        .uri("/")
-        .header("HX-Request", "true")
-        .header(COMMIT_SHA_HEADER, COMMIT_SHA)
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(COMMIT_SHA_HEADER).unwrap(),
-        &HeaderValue::from_static(COMMIT_SHA)
-    );
-    assert_eq!(String::from_utf8(bytes.to_vec()).unwrap(), "fresh fragment");
-}
-
-#[tokio::test]
-async fn test_current_commit_ocg_fetch_request_runs_handler() {
-    // Setup router with commit SHA middleware
-    let router = Router::new()
-        .route("/", get(|| async { "fresh json" }))
-        .layer(middleware::from_fn(refresh_stale_clients));
-
-    // Send request with current commit SHA
-    let request = Request::builder()
-        .uri("/")
-        .header("X-OCG-Fetch", "true")
-        .header(COMMIT_SHA_HEADER, COMMIT_SHA)
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(COMMIT_SHA_HEADER).unwrap(),
-        &HeaderValue::from_static(COMMIT_SHA)
-    );
-    assert_eq!(String::from_utf8(bytes.to_vec()).unwrap(), "fresh json");
+    // Check each dynamic client on the current commit reaches the handler
+    for client_header in ["HX-Request", "X-OCG-Fetch"] {
+        let request = request("GET", "/")
+            .header(client_header, "true")
+            .header(COMMIT_SHA_HEADER, COMMIT_SHA)
+            .body(Body::empty())
+            .unwrap();
+        let (parts, bytes) = send(router.clone(), request).await;
+        assert_eq!(parts.status, StatusCode::OK, "{client_header}");
+        assert_eq!(
+            parts.headers.get(COMMIT_SHA_HEADER).unwrap(),
+            &HeaderValue::from_static(COMMIT_SHA),
+            "{client_header}"
+        );
+        assert_eq!(bytes.as_ref(), b"fresh response", "{client_header}");
+    }
 }
 
 #[tokio::test]
 async fn test_dashboard_mutation_routes_require_write_permission() {
     // Setup an authenticated session that only holds read access everywhere
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    let ids = DashboardIds::new();
+    let mut db = permission_scoped_db(&ids, |permission| permission == GroupPermission::Read);
     db.expect_user_has_community_permission()
         .returning(|_, _, permission| Ok(permission == CommunityPermission::Read));
-    db.expect_user_has_group_permission()
-        .returning(|_, _, _, permission| Ok(permission == GroupPermission::Read));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
+    let router = TestRouterBuilder::new(db).build().await;
 
     // Collect every mutation route declared by the community and group dashboards
     let mutation_routes = dashboard_mutation_routes();
@@ -336,20 +267,10 @@ async fn test_dashboard_mutation_routes_require_write_permission() {
             })
             .collect::<Vec<_>>()
             .join("/");
-        let response = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method(method.clone())
-                    .uri(&uri)
-                    .header(COOKIE, format!("id={session_id}"))
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let request = empty_request(method.as_str(), &uri, ids.session_id);
+        let (parts, _) = send(router.clone(), request).await;
         assert_eq!(
-            response.status(),
+            parts.status,
             StatusCode::FORBIDDEN,
             "{method} {path} is not protected by a write permission layer"
         );
@@ -358,61 +279,32 @@ async fn test_dashboard_mutation_routes_require_write_permission() {
 
 #[tokio::test]
 async fn test_default_response_cache_header_is_private_no_store() {
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/log-in")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let router = TestRouterBuilder::new(site_settings_db()).build().await;
+    let request = request("GET", "/log-in").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
-        response.headers().get(CACHE_CONTROL).unwrap(),
+        parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE)
     );
     assert_eq!(
-        response.headers().get(COMMIT_SHA_HEADER).unwrap(),
+        parts.headers.get(COMMIT_SHA_HEADER).unwrap(),
         &HeaderValue::from_static(COMMIT_SHA)
     );
 }
 
 #[tokio::test]
 async fn test_favicon_route_returns_not_found_without_configured_url() {
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/favicon.ico")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(site_settings_db()).build().await;
+    let request = request("GET", "/favicon.ico").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -421,28 +313,18 @@ async fn test_favicon_route_returns_redirect_with_cache_header() {
     let favicon_url = "https://example.test/favicon.ico".to_string();
     let mut site_settings = sample_site_settings();
     site_settings.favicon_url = Some(favicon_url.clone());
-
     let mut db = MockDB::new();
     db.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/favicon.ico")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/favicon.ico").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static("public, max-age=604800")
@@ -451,7 +333,6 @@ async fn test_favicon_route_returns_redirect_with_cache_header() {
         parts.headers.get(LOCATION).unwrap(),
         &HeaderValue::from_str(&favicon_url).unwrap()
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -462,20 +343,13 @@ async fn test_favicon_route_surfaces_db_errors_as_internal_server_error() {
         .times(1)
         .returning(|| Err(anyhow!("db error")));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/favicon.ico")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/favicon.ico").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -507,53 +381,23 @@ async fn test_health_check_returns_service_unavailable_while_draining() {
 #[tokio::test]
 async fn test_inbox_routes_require_inbox_write_permission() {
     // Setup a session with read and events access but without inbox access
-    let community_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .returning(|_, _, _, permission| {
-            Ok(matches!(
-                permission,
-                GroupPermission::EventsWrite | GroupPermission::Read
-            ))
-        });
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
+    let ids = DashboardIds::new();
+    let db = permission_scoped_db(&ids, |permission| {
+        matches!(
+            permission,
+            GroupPermission::EventsWrite | GroupPermission::Read
+        )
+    });
+    let router = TestRouterBuilder::new(db).build().await;
 
     // Check both inbox read routes reject the session
     for uri in [
         "/dashboard/group/inbox".to_string(),
         format!("/dashboard/group/inbox/{}", Uuid::new_v4()),
     ] {
-        let response = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method(Method::GET)
-                    .uri(&uri)
-                    .header(COOKIE, format!("id={session_id}"))
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let (parts, _) = send(router.clone(), get_request(&uri, ids.session_id)).await;
         assert_eq!(
-            response.status(),
+            parts.status,
             StatusCode::FORBIDDEN,
             "{uri} is not protected by the inbox write permission"
         );
@@ -562,55 +406,24 @@ async fn test_inbox_routes_require_inbox_write_permission() {
 
 #[tokio::test]
 async fn test_log_out_route_rejects_get() {
-    // Setup the application router
-    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
-        .build()
-        .await;
-
-    // Send an unsupported GET request
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method(Method::GET)
-                .uri("/log-out")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    // Setup the application router and send an unsupported GET request
+    let router = TestRouterBuilder::new(MockDB::new()).build().await;
+    let request = request("GET", "/log-out").body(Body::empty()).unwrap();
+    let (parts, _) = send(router, request).await;
 
     // Check the router rejects the method
-    assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(parts.status, StatusCode::METHOD_NOT_ALLOWED);
 }
 
 #[tokio::test]
 async fn test_missing_route_returns_not_found_page() {
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/missing/page")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(site_settings_db()).build().await;
+    let request = request("GET", "/missing/page").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::NOT_FOUND);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
@@ -625,64 +438,50 @@ async fn test_missing_route_returns_not_found_page() {
 
 #[tokio::test]
 async fn test_payments_webhook_route_is_not_mounted_without_payments_config() {
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/webhooks/payments")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(site_settings_db()).build().await;
+    let request = request("POST", "/webhooks/payments").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::NOT_FOUND);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
 }
 
 #[tokio::test]
+async fn test_redirect_old_hosts_passes_other_hosts_through() {
+    // Setup router with redirect host configuration
+    let router = redirect_old_hosts_router();
+
+    // Send request from the current host
+    let request = request("GET", "/")
+        .header(HOST, "example.com")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the request reaches the handler
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(bytes.as_ref(), b"ok");
+}
+
+#[tokio::test]
 async fn test_redirect_old_hosts_redirects_matching_host() {
     // Setup router with redirect host configuration
-    let server_cfg = HttpServerConfig {
-        base_url: "https://example.com".to_string(),
-        redirect_hosts: Some(vec!["old.example.com".to_string()]),
-        ..Default::default()
-    };
-    let router: Router<()> = Router::new()
-        .route("/", get(|| async { "ok" }))
-        .layer(middleware::from_fn_with_state(
-            server_cfg.clone(),
-            redirect_old_hosts,
-        ))
-        .with_state(server_cfg);
+    let router = redirect_old_hosts_router();
 
     // Send request from old host
-    let request = Request::builder()
-        .uri("/some/path?query=value")
+    let request = request("GET", "/some/path?query=value")
         .header(HOST, "old.example.com:8080")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    let (parts, _) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(parts.status, StatusCode::PERMANENT_REDIRECT);
     assert_eq!(
-        response.headers().get(LOCATION).unwrap(),
+        parts.headers.get(LOCATION).unwrap(),
         &HeaderValue::from_static("https://example.com")
     );
 }
@@ -695,17 +494,15 @@ async fn test_stale_hx_request_refreshes_without_running_handler() {
         .layer(middleware::from_fn(refresh_stale_clients));
 
     // Send stale HTMX request
-    let request = Request::builder()
-        .uri("/")
+    let request = request("GET", "/")
         .header("HX-Request", "true")
         .header(COMMIT_SHA_HEADER, "older-commit")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_NO_STORE)
@@ -715,7 +512,6 @@ async fn test_stale_hx_request_refreshes_without_running_handler() {
         parts.headers.get(COMMIT_SHA_HEADER).unwrap(),
         &HeaderValue::from_static(COMMIT_SHA)
     );
-    assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -726,108 +522,63 @@ async fn test_stale_ocg_fetch_request_refreshes_without_running_handler() {
         .layer(middleware::from_fn(refresh_stale_clients));
 
     // Send stale OCG fetch request
-    let request = Request::builder()
-        .uri("/")
+    let request = request("GET", "/")
         .header("X-OCG-Fetch", "true")
         .header(COMMIT_SHA_HEADER, "older-commit")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
     assert_eq!(parts.headers.get("X-OCG-Refresh").unwrap(), "true");
     assert!(parts.headers.get("HX-Refresh").is_none());
-    assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
 }
 
 #[tokio::test]
 async fn test_stale_ocg_fetch_static_request_serves_asset_without_commit_sha() {
     // Setup the application router
-    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
-        .build()
-        .await;
+    let router = TestRouterBuilder::new(MockDB::new()).build().await;
 
     // Send stale OCG fetch request for a static asset
-    let request = Request::builder()
-        .uri("/static/vendor/css/docsify-vue.v4.13.1.min.css")
+    let request = request("GET", "/static/vendor/css/docsify-vue.v4.13.1.min.css")
         .header("X-OCG-Fetch", "true")
         .header(COMMIT_SHA_HEADER, "older-commit")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check the asset is served without deployment version headers
-    assert_eq!(parts.status, StatusCode::OK);
+    assert_non_empty_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE)
     );
     assert!(parts.headers.get(COMMIT_SHA_HEADER).is_none());
     assert!(parts.headers.get("X-OCG-Refresh").is_none());
-    assert!(!bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_responses_carry_a_request_id_header() {
     // Setup the application router
-    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
-        .build()
-        .await;
+    let router = TestRouterBuilder::new(MockDB::new()).build().await;
 
     // Send a request without a request id and one with a client-supplied id
-    let generated = router
-        .clone()
-        .oneshot(Request::builder().uri("/health-check").body(Body::empty()).unwrap())
-        .await
-        .unwrap();
-    let propagated = router
-        .oneshot(
-            Request::builder()
-                .uri("/health-check")
-                .header("x-request-id", "client-supplied-id")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    // Check a generated id is echoed and a supplied id is preserved
-    let generated_id = generated.headers().get("x-request-id").unwrap().to_str().unwrap();
-    assert!(Uuid::parse_str(generated_id).is_ok(), "{generated_id}");
-    assert_eq!(
-        propagated.headers().get("x-request-id").unwrap(),
-        &HeaderValue::from_static("client-supplied-id")
-    );
-}
-
-#[tokio::test]
-async fn test_static_asset_request_omits_commit_sha_header() {
-    // Setup the application router
-    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
-        .build()
-        .await;
-
-    // Request a static asset
-    let request = Request::builder()
-        .uri("/static/images/icons/arrow_left.svg")
+    let generated_request = request("GET", "/health-check").body(Body::empty()).unwrap();
+    let (generated, _) = send(router.clone(), generated_request).await;
+    let propagated_request = request("GET", "/health-check")
+        .header("x-request-id", "client-supplied-id")
         .body(Body::empty())
         .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let (propagated, _) = send(router, propagated_request).await;
 
-    // Check cached copies cannot carry a commit SHA
-    assert_eq!(parts.status, StatusCode::OK);
+    // Check a generated id is echoed and a supplied id is preserved
+    let generated_id = generated.headers.get("x-request-id").unwrap().to_str().unwrap();
+    assert!(Uuid::parse_str(generated_id).is_ok(), "{generated_id}");
     assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_STATIC_IMAGES)
+        propagated.headers.get("x-request-id").unwrap(),
+        &HeaderValue::from_static("client-supplied-id")
     );
-    assert!(parts.headers.get(COMMIT_SHA_HEADER).is_none());
-    assert!(!bytes.is_empty());
 }
 
 #[tokio::test]
@@ -843,128 +594,79 @@ async fn test_static_handler_missing_asset_returns_not_found() {
 }
 
 #[tokio::test]
-async fn test_static_handler_serves_existing_asset() {
-    // Run handler
-    let uri = Uri::from_static("/static/images/icons/arrow_left.svg");
-    let response = static_handler(uri).await.into_response();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+async fn test_static_handler_serves_assets_with_cache_policy() {
+    // Setup labeled embedded assets with their content type and cache policy
+    let cases = [
+        (
+            "image",
+            "/static/images/icons/arrow_left.svg".to_string(),
+            "image/svg+xml",
+            CACHE_CONTROL_STATIC_IMAGES,
+        ),
+        (
+            "hashed css",
+            format!(
+                "/static/{}",
+                static_path_with_prefix_and_suffix("css/", ".css")
+            ),
+            "text/css",
+            CACHE_CONTROL_IMMUTABLE,
+        ),
+        (
+            "hashed js",
+            format!(
+                "/static/{}",
+                static_path_with_prefix_and_suffix("js/", ".js")
+            ),
+            "text/javascript",
+            CACHE_CONTROL_IMMUTABLE,
+        ),
+        (
+            "vendor js",
+            "/static/vendor/js/htmx.v2.0.7.min.js".to_string(),
+            "text/javascript",
+            CACHE_CONTROL_IMMUTABLE,
+        ),
+    ];
 
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("image/svg+xml")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_STATIC_IMAGES)
-    );
-    assert!(!bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_static_handler_serves_hashed_css_asset_with_immutable_cache() {
-    // Run handler
-    let path = static_path_with_prefix_and_suffix("css/", ".css");
-    let uri = Uri::try_from(format!("/static/{path}")).unwrap();
-    let response = static_handler(uri).await.into_response();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/css")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE)
-    );
-    assert!(!bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_static_handler_serves_hashed_js_asset_with_immutable_cache() {
-    // Run handler
-    let path = static_path_with_prefix_and_suffix("js/", ".js");
-    let uri = Uri::try_from(format!("/static/{path}")).unwrap();
-    let response = static_handler(uri).await.into_response();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/javascript")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE)
-    );
-    assert!(!bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_static_handler_serves_vendor_asset_with_immutable_cache() {
-    // Run handler
-    let uri = Uri::from_static("/static/vendor/js/htmx.v2.0.7.min.js");
-    let response = static_handler(uri).await.into_response();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/javascript")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE)
-    );
-    assert!(!bytes.is_empty());
+    // Check each asset is served with the expected headers
+    for (case, uri, content_type, cache_control) in cases {
+        let response = static_handler(Uri::try_from(uri).unwrap()).await.into_response();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        assert_eq!(parts.status, StatusCode::OK, "{case}");
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static(content_type),
+            "{case}"
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(cache_control),
+            "{case}"
+        );
+        assert!(!bytes.is_empty(), "{case}");
+    }
 }
 
 #[tokio::test]
 async fn test_zoom_webhook_route_is_not_mounted_when_zoom_is_disabled() {
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
     // Setup disabled Zoom configuration
     let mut meetings_cfg = sample_zoom_meetings_cfg("zoom-secret");
     if let Some(zoom_cfg) = meetings_cfg.zoom.as_mut() {
         zoom_cfg.enabled = false;
     }
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
+    let router = TestRouterBuilder::new(site_settings_db())
         .with_meetings_cfg(meetings_cfg)
         .build()
         .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri("/webhooks/zoom")
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let request = request("POST", "/webhooks/zoom").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::NOT_FOUND);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
 }
@@ -1045,6 +747,50 @@ fn dashboard_mutation_routes() -> Vec<(String, Method)> {
         }
     }
     routes
+}
+
+/// Builds a database answering every session read of a user with a selected
+/// community and group, granting only the group permissions `allows` accepts.
+fn permission_scoped_db(ids: &DashboardIds, allows: fn(GroupPermission) -> bool) -> MockDB {
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        ids.session_id,
+        ids.user_id,
+        &auth_hash,
+        Some(ids.community_id),
+        Some(ids.group_id),
+    );
+    let user_id = ids.user_id;
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .returning(move |_, _, _, permission| Ok(allows(permission)));
+    db
+}
+
+/// Builds a router that redirects `old.example.com` to the base URL.
+fn redirect_old_hosts_router() -> Router {
+    let server_cfg = HttpServerConfig {
+        redirect_hosts: Some(vec!["old.example.com".to_string()]),
+        ..sample_server_cfg("https://example.com")
+    };
+    Router::new()
+        .route("/", get(|| async { "ok" }))
+        .layer(middleware::from_fn_with_state(
+            server_cfg.clone(),
+            redirect_old_hosts,
+        ))
+        .with_state(server_cfg)
+}
+
+/// Builds a database answering the site settings read of a rendered page.
+fn site_settings_db() -> MockDB {
+    let mut db = MockDB::new();
+    expect_site_settings(&mut db);
+    db
 }
 
 /// Finds an embedded static asset path matching the given prefix and suffix.

@@ -3,11 +3,16 @@
 //! These tests verify that activities are flushed both periodically and on
 //! shutdown, and that no flush occurs if no activities are tracked.
 
+use std::sync::atomic::AtomicUsize;
+
 use anyhow::anyhow;
 use mockall::predicate::eq;
 use tokio::time::{sleep, timeout};
 
-use crate::db::activity_tracker::MockDBActivityTracker;
+use crate::{
+    db::activity_tracker::MockDBActivityTracker, services::workers::WorkerRegistry,
+    test_util::wait_until,
+};
 
 use super::*;
 
@@ -29,7 +34,7 @@ static GROUP2_ID: LazyLock<Uuid> =
 #[tokio::test]
 async fn test_flushes_activities_on_stop() {
     // Setup mock database
-    let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
+    let day = current_day();
     let mut mock_db = MockDBActivityTracker::new();
     mock_db
         .expect_update_community_views()
@@ -56,7 +61,8 @@ async fn test_flushes_activities_on_stop() {
 
     // Setup tracker and track some activities
     let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
-    let tracker = ActivityTrackerDB::new(mock_db, &background_tasks);
+    let registry = background_tasks.registry();
+    let tracker = ActivityTrackerDB::new(mock_db.clone(), &background_tasks);
     tracker
         .track(Activity::CommunityView {
             community_id: *COMMUNITY1_ID,
@@ -115,36 +121,52 @@ async fn test_flushes_activities_on_stop() {
         .await
         .unwrap();
 
-    // Stop the tracker and wait for the workers to complete
+    // Stop the tracker and check the shutdown flush wrote every counter
     background_tasks.shutdown().await;
+    assert_no_unexpected_exits(&registry);
+    drop(mock_db);
 }
 
 /// Test that activities are flushed periodically.
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_flushes_activities_periodically() {
-    // Setup mock database
-    let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
+    // Setup mock database counting the writes it receives
+    let day = current_day();
+    let writes = Arc::new(AtomicUsize::new(0));
     let mut mock_db = MockDBActivityTracker::new();
+    let community_writes = writes.clone();
     mock_db
         .expect_update_community_views()
         .with(eq(vec![(*COMMUNITY1_ID, day.clone(), 1)]))
         .times(1)
-        .returning(|_| Ok(()));
+        .returning(move |_| {
+            community_writes.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+    let event_writes = writes.clone();
     mock_db
         .expect_update_event_views()
         .with(eq(vec![(*EVENT1_ID, day.clone(), 1)]))
         .times(1)
-        .returning(|_| Ok(()));
+        .returning(move |_| {
+            event_writes.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+    let group_writes = writes.clone();
     mock_db
         .expect_update_group_views()
         .with(eq(vec![(*GROUP1_ID, day, 1)]))
         .times(1)
-        .returning(|_| Ok(()));
+        .returning(move |_| {
+            group_writes.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
     let mock_db = Arc::new(mock_db);
 
     // Setup tracker and track some activities
     let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
-    let tracker = ActivityTrackerDB::new(mock_db, &background_tasks);
+    let registry = background_tasks.registry();
+    let tracker = ActivityTrackerDB::new(mock_db.clone(), &background_tasks);
     tracker
         .track(Activity::CommunityView {
             community_id: *COMMUNITY1_ID,
@@ -165,33 +187,37 @@ async fn test_flushes_activities_periodically() {
         .await
         .unwrap();
 
-    // Wait for the periodic flush to complete
-    sleep(FLUSH_FREQUENCY * 2).await;
+    // Check the periodic flush writes every counter before shutdown is requested
+    wait_until(|| writes.load(Ordering::SeqCst) == 3).await;
 
-    // Stop the tracker and wait for the workers to complete
+    // Stop the tracker and check the workers stopped cleanly with nothing left to flush
     background_tasks.shutdown().await;
+    assert_no_unexpected_exits(&registry);
+    drop(mock_db);
 }
 
 /// Test that nothing is flushed if no activities are tracked.
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_skips_flush_when_no_activities_are_tracked() {
-    // Setup tracker with no activities tracked
-    let mock_db = Arc::new(MockDBActivityTracker::new());
+    // Setup tracker with no activities tracked and a database expecting no writes
     let background_tasks = BackgroundTasks::new(Duration::from_secs(5));
-    let _tracker = ActivityTrackerDB::new(mock_db, &background_tasks);
+    let registry = background_tasks.registry();
+    let _tracker =
+        ActivityTrackerDB::new(Arc::new(MockDBActivityTracker::new()), &background_tasks);
 
     // Wait long enough for a periodic flush attempt
     sleep(FLUSH_FREQUENCY * 2).await;
 
-    // Stop the tracker and wait for the workers to complete
+    // Stop the tracker and check no write reached the database
     background_tasks.shutdown().await;
+    assert_no_unexpected_exits(&registry);
 }
 
 /// Test that queued activities are drained into the final shutdown batch.
 #[tokio::test]
 async fn test_drains_queued_activities_on_stop() {
     // Setup channels and cancellation state
-    let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
+    let day = current_day();
     let (activities_tx, activities_rx) = mpsc::channel(10);
     let (batches_tx, mut batches_rx) = mpsc::channel(1);
     let cancellation_token = CancellationToken::new();
@@ -393,10 +419,10 @@ fn test_batches_skip_utm_attribution_of_dropped_views() {
 }
 
 /// Test that a busy flusher does not block the aggregator and pending counters keep merging.
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_keeps_aggregating_when_flusher_is_busy() {
     // Setup a batches queue whose only slot is taken to simulate a busy flusher
-    let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
+    let day = current_day();
     let (activities_tx, activities_rx) = mpsc::channel(10);
     let (batches_tx, mut batches_rx) = mpsc::channel(1);
     batches_tx.send(Batches::new()).await.unwrap();
@@ -454,7 +480,7 @@ async fn test_keeps_aggregating_when_flusher_is_busy() {
 #[tokio::test]
 async fn test_flusher_continues_after_database_failure() {
     // Setup a database that rejects the first batch's community views only
-    let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
+    let day = current_day();
     let mut mock_db = MockDBActivityTracker::new();
     mock_db
         .expect_update_community_views()
@@ -651,6 +677,20 @@ fn test_prepare_utm_batch_data_encodes_missing_values_as_empty_strings() {
 }
 
 // Helpers.
+
+/// Asserts that no activity worker exited unexpectedly.
+///
+/// Mock panics inside the workers are recorded in the registry instead of
+/// failing the test, so this check is what surfaces them.
+fn assert_no_unexpected_exits(registry: &WorkerRegistry) {
+    for (name, status) in registry.snapshot() {
+        assert!(
+            status.unexpected_exits.is_empty(),
+            "{name} exited unexpectedly: {:?}",
+            status.unexpected_exits
+        );
+    }
+}
 
 /// Returns the current day in the tracker date format.
 fn current_day() -> Day {

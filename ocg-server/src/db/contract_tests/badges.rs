@@ -9,15 +9,15 @@ use super::helpers::*;
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_badge_award_worker_deserializes() -> Result<()> {
-    // Setup the contract database wrapper
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
 
     // Claim and process the seeded pending award job
-    let claim = db
+    let claim = uow
         .claim_badge_award_job()
         .await?
         .context("contract badge award job should be claimable")?;
-    let outcome = db
+    let outcome = uow
         .process_badge_award_job_batch(claim.badge_award_job_id, claim.claim_id, 25, 500)
         .await?;
 

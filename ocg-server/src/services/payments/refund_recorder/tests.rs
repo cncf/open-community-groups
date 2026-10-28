@@ -15,7 +15,7 @@ use crate::{
 use super::{RecordedProviderRefund, persist_provider_refund_result};
 
 #[tokio::test]
-async fn persist_provider_refund_result_preserves_matching_terminal_failure() {
+async fn test_persist_provider_refund_result_preserves_matching_terminal_failure() {
     // Setup an already-persisted terminal failure from the same provider refund
     let mut refund = sample_refund();
     refund.provider_refund_id = Some("re_terminal".to_string());
@@ -44,7 +44,7 @@ async fn persist_provider_refund_result_preserves_matching_terminal_failure() {
 }
 
 #[tokio::test]
-async fn persist_provider_refund_result_propagates_pending_persistence_error() {
+async fn test_persist_provider_refund_result_propagates_pending_persistence_error() {
     // Setup a pending provider result and its expected durable identifiers
     let refund = sample_refund();
     let claim_id = refund.claim_id;
@@ -86,7 +86,52 @@ async fn persist_provider_refund_result_propagates_pending_persistence_error() {
 }
 
 #[tokio::test]
-async fn persist_provider_refund_result_propagates_terminal_failure_persistence_error() {
+async fn test_persist_provider_refund_result_propagates_success_persistence_error() {
+    // Setup a successful provider result and its expected durable identifiers
+    let refund = sample_refund();
+    let claim_id = refund.claim_id;
+    let idempotency_key = refund.idempotency_key.clone();
+    let refund_id = refund.event_purchase_refund_id;
+
+    // Fail the success-state persistence operation
+    let mut db = MockDB::new();
+    db.expect_record_event_purchase_refund_pending().never();
+    db.expect_record_event_purchase_refund_succeeded()
+        .withf(move |id, key, provider_refund_id, expected_claim_id| {
+            *id == refund_id
+                && key == &idempotency_key
+                && provider_refund_id == "re_succeeded"
+                && *expected_claim_id == claim_id
+        })
+        .times(1)
+        .returning(|_, _, _, _| Err(anyhow::anyhow!("database unavailable")));
+    db.expect_record_event_purchase_refund_terminal_failed().never();
+    let db: DynDB = Arc::new(db);
+
+    // Persist the provider result
+    let Err(err) = persist_provider_refund_result(
+        &db,
+        &refund,
+        RefundPaymentResult {
+            provider_refund_id: "re_succeeded".to_string(),
+            status: RefundPaymentStatus::Succeeded,
+        },
+    )
+    .await
+    else {
+        panic!("success persistence failure to remain visible");
+    };
+
+    // Check both the operation context and database cause are preserved
+    assert_eq!(
+        err.to_string(),
+        "failed to record successful provider refund"
+    );
+    assert_eq!(err.root_cause().to_string(), "database unavailable");
+}
+
+#[tokio::test]
+async fn test_persist_provider_refund_result_propagates_terminal_failure_persistence_error() {
     // Setup a terminal provider result and its expected durable identifiers
     let refund = sample_refund();
     let claim_id = refund.claim_id;

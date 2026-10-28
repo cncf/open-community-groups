@@ -228,7 +228,7 @@ fn test_survey_helpers_handle_surveys_without_eligible_attendees() {
 }
 
 #[test]
-fn test_survey_responses_short_summary_adds_the_stored_total_when_it_differs() {
+fn test_survey_responses_summaries_add_the_stored_total_when_it_differs() {
     let page = sample_page();
     let mut survey = page.stats.surveys.surveys[0].clone();
     survey.eligible_count = 1_200;
@@ -239,16 +239,6 @@ fn test_survey_responses_short_summary_adds_the_stored_total_when_it_differs() {
         page.survey_responses_short_summary(&survey),
         "1,000 / 1,200 · 1,005 total"
     );
-}
-
-#[test]
-fn test_survey_responses_summary_adds_the_stored_total_when_it_differs() {
-    let page = sample_page();
-    let mut survey = page.stats.surveys.surveys[0].clone();
-    survey.eligible_count = 1_200;
-    survey.eligible_respondents_count = 1_000;
-    survey.responses_count = 1_005;
-
     assert_eq!(
         page.survey_responses_summary(&survey),
         "1,000 of 1,200 eligible attendees responded · 1,005 responses in total"

@@ -1,22 +1,15 @@
-use axum::{
-    Router,
-    body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_DISPOSITION, CONTENT_TYPE, COOKIE},
-        response::Parts,
-    },
+use axum::http::{
+    HeaderValue, StatusCode,
+    header::{CONTENT_DISPOSITION, CONTENT_TYPE},
 };
-use axum_login::tower_sessions::session;
 use chrono::{NaiveDate, TimeZone, Utc};
 use serde_json::json;
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    services::notifications::MockNotificationsManager,
+    test_util::normalize_whitespace,
     types::{
         dashboard::{
             EVENT_SURVEY_RESPONSES_PAGINATION_LIMIT, EVENT_SURVEY_TEXT_ANSWERS_PAGINATION_LIMIT,
@@ -43,31 +36,33 @@ use super::{
 #[tokio::test]
 async fn test_add_accepts_draft_without_questions() {
     // Setup identifiers and a draft submitted without questions
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let body = "anonymous=true&audience=confirmed&title=Feedback&questions_present=true";
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::EventsWrite);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
     db.expect_add_event_survey()
         .times(1)
-        .withf(move |actor_user_id, group_id, event_id, survey| {
+        .withf(move |actor_user_id, group_id, survey_event_id, survey| {
             *actor_user_id == ids.user_id
                 && *group_id == ids.group_id
-                && *event_id == ids.event_id
+                && *survey_event_id == event_id
                 && survey.questions.is_empty()
                 && survey.revision.is_none()
         })
         .returning(|_, _, _, _| Ok(Uuid::new_v4()));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
         "POST",
-        &format!("/dashboard/group/events/{}/surveys/add", ids.event_id),
-        Some(body),
-    )
-    .await;
+        &format!("/dashboard/group/events/{event_id}/surveys/add"),
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
     assert_empty_hx_trigger_response(
@@ -82,7 +77,8 @@ async fn test_add_accepts_draft_without_questions() {
 async fn test_add_accepts_normalized_browser_dates() {
     // Setup identifiers and a survey with dates in the normalized browser format
     // and a percent-encoded single-select question
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let body = "anonymous=false&audience=checked-in&title=Feedback&description=Tell%20us&\
 opens_at=2099-05-10T09%3A00%3A00&closes_at=2099-05-20T18%3A30%3A00&questions_present=true&\
 questions%5B0%5D%5Bid%5D=00000000-0000-0000-0000-000000000001&\
@@ -95,13 +91,14 @@ questions%5B1%5D%5Boptions%5D%5B0%5D%5Bid%5D=00000000-0000-0000-0000-00000000000
 questions%5B1%5D%5Boptions%5D%5B0%5D%5Blabel%5D=Good";
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::EventsWrite);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
     db.expect_add_event_survey()
         .times(1)
-        .withf(move |actor_user_id, group_id, event_id, survey| {
+        .withf(move |actor_user_id, group_id, survey_event_id, survey| {
             *actor_user_id == ids.user_id
                 && *group_id == ids.group_id
-                && *event_id == ids.event_id
+                && *survey_event_id == event_id
                 && !survey.anonymous
                 && survey.audience == EventSurveyAudience::CheckedIn
                 && survey.title == "Feedback"
@@ -119,15 +116,15 @@ questions%5B1%5D%5Boptions%5D%5B0%5D%5Blabel%5D=Good";
         })
         .returning(|_, _, _, _| Ok(Uuid::new_v4()));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
         "POST",
-        &format!("/dashboard/group/events/{}/surveys/add", ids.event_id),
-        Some(body),
-    )
-    .await;
+        &format!("/dashboard/group/events/{event_id}/surveys/add"),
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
     assert_empty_hx_trigger_response(
@@ -141,27 +138,26 @@ questions%5B1%5D%5Boptions%5D%5B0%5D%5Blabel%5D=Good";
 #[tokio::test]
 async fn test_add_page_success() {
     // Setup identifiers and database expectations
-    let ids = TestIds::new();
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_events_write_permission(&mut db, &ids, true);
-    expect_event_summary(&mut db, &ids);
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, true);
+    expect_event_summary(&mut db, &ids, event_id);
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys/add"),
         ids.session_id,
-        "GET",
-        &format!("/dashboard/group/events/{}/surveys/add", ids.event_id),
-        None,
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response renders an empty form with its own submit target
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let html = String::from_utf8_lossy(&bytes);
     assert!(html.contains(&format!(
-        r#"hx-post="/dashboard/group/events/{}/surveys/add""#,
-        ids.event_id
+        r#"hx-post="/dashboard/group/events/{event_id}/surveys/add""#
     )));
     assert!(html.contains("data-event-survey-form"));
     assert!(!html.contains("data-event-form"));
@@ -171,28 +167,35 @@ async fn test_add_page_success() {
 #[tokio::test]
 async fn test_add_rejects_invalid_form() {
     // Setup identifiers and database expectations
-    let ids = TestIds::new();
-    let mut db = setup_db(&ids, GroupPermission::EventsWrite);
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
     db.expect_add_event_survey().never();
 
-    // Run the request with a blank title
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
+    // Setup router and send request with a blank title
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
         "POST",
-        &format!("/dashboard/group/events/{}/surveys/add", ids.event_id),
-        Some("anonymous=true&audience=confirmed&title=%20"),
-    )
-    .await;
+        &format!("/dashboard/group/events/{event_id}/surveys/add"),
+        ids.session_id,
+        "anonymous=true&audience=confirmed&title=%20",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
-    assert_non_empty_response(&parts, &bytes, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        std::str::from_utf8(&bytes).unwrap(),
+        "title: value cannot be empty or whitespace-only\n"
+    );
 }
 
 #[tokio::test]
 async fn test_change_status_success() {
     // Setup identifiers and the confirmed Mark ready values
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let opens_at = Utc.with_ymd_and_hms(2099, 5, 10, 9, 0, 0).unwrap();
     let body = format!(
@@ -201,14 +204,15 @@ async fn test_change_status_success() {
     );
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::EventsWrite);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
     db.expect_change_event_survey_status()
         .times(1)
         .withf(
-            move |actor_user_id, group_id, event_id, survey_id, status| {
+            move |actor_user_id, group_id, survey_event_id, survey_id, status| {
                 *actor_user_id == ids.user_id
                     && *group_id == ids.group_id
-                    && *event_id == ids.event_id
+                    && *survey_event_id == event_id
                     && *survey_id == event_survey_id
                     && status.action == EventSurveyStatusAction::MarkReady
                     && status.revision == 3
@@ -217,18 +221,15 @@ async fn test_change_status_success() {
         )
         .returning(|_, _, _, _, _| Ok(()));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
         "PUT",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/status",
-            ids.event_id
-        ),
-        Some(&body),
-    )
-    .await;
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/status"),
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
     assert_empty_hx_trigger_response(
@@ -242,31 +243,29 @@ async fn test_change_status_success() {
 #[tokio::test]
 async fn test_delete_success() {
     // Setup identifiers and database expectations
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
-    let mut db = setup_db(&ids, GroupPermission::EventsWrite);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
     db.expect_delete_event_survey()
         .times(1)
-        .withf(move |actor_user_id, group_id, event_id, survey_id| {
+        .withf(move |actor_user_id, group_id, survey_event_id, survey_id| {
             *actor_user_id == ids.user_id
                 && *group_id == ids.group_id
-                && *event_id == ids.event_id
+                && *survey_event_id == event_id
                 && *survey_id == event_survey_id
         })
         .returning(|_, _, _, _| Ok(()));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = empty_request(
         "DELETE",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/delete",
-            ids.event_id
-        ),
-        None,
-    )
-    .await;
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/delete"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
     assert_empty_hx_trigger_response(
@@ -280,7 +279,8 @@ async fn test_delete_success() {
 #[tokio::test]
 async fn test_download_csv_anonymous_survey_exports_dates_and_answers_only() {
     // Setup identifiers and an anonymous export
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let export = EventSurveyExport {
         anonymous: true,
@@ -296,22 +296,18 @@ async fn test_download_csv_anonymous_survey_exports_dates_and_answers_only() {
     };
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
-    expect_survey_export(&mut db, &ids, event_survey_id, export);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_survey_export(&mut db, &ids, event_id, event_survey_id, export);
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses.csv"),
         ids.session_id,
-        "GET",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses.csv",
-            ids.event_id
-        ),
-        None,
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the CSV has no respondent columns
     assert_eq!(parts.status, StatusCode::OK);
@@ -320,7 +316,7 @@ async fn test_download_csv_anonymous_survey_exports_dates_and_answers_only() {
         &HeaderValue::from_static("text/csv; charset=utf-8"),
     );
     assert_eq!(
-        String::from_utf8(bytes).unwrap(),
+        String::from_utf8(bytes.to_vec()).unwrap(),
         "Submitted,Updated,What should we improve?,How would you rate the sessions?\n\
 2099-05-10 09:00 UTC,,'=SUM(A1),Excellent\n",
     );
@@ -329,7 +325,8 @@ async fn test_download_csv_anonymous_survey_exports_dates_and_answers_only() {
 #[tokio::test]
 async fn test_download_csv_identified_survey_exports_protected_respondent_columns() {
     // Setup identifiers and an identified export with formula-like cells
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let mut questions = sample_event_survey_full(event_survey_id).questions;
     questions[0].prompt = "@Comments".to_string();
@@ -353,22 +350,18 @@ async fn test_download_csv_identified_survey_exports_protected_respondent_column
     };
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
-    expect_survey_export(&mut db, &ids, event_survey_id, export);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_survey_export(&mut db, &ids, event_id, event_survey_id, export);
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses.csv"),
         ids.session_id,
-        "GET",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses.csv",
-            ids.event_id
-        ),
-        None,
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the attachment and its protected cells
     assert_eq!(parts.status, StatusCode::OK);
@@ -380,7 +373,7 @@ async fn test_download_csv_identified_survey_exports_protected_respondent_column
         .unwrap(),
     );
     assert_eq!(
-        String::from_utf8(bytes).unwrap(),
+        String::from_utf8(bytes.to_vec()).unwrap(),
         "Name,Company,Title,Submitted,Updated,'@Comments,How would you rate the sessions?\n\
 Jane Doe,'+Example,,2099-05-10 09:00 UTC,2099-05-11 10:30 UTC,'=SUM(A1),Excellent\n",
     );
@@ -389,26 +382,23 @@ Jane Doe,'+Example,,2099-05-10 09:00 UTC,2099-05-11 10:30 UTC,'=SUM(A1),Excellen
 #[tokio::test]
 async fn test_download_csv_unknown_survey_returns_not_found() {
     // Setup identifiers and database expectations
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
     db.expect_get_event_survey_export()
         .times(1)
         .returning(|_, _, _, _, _| Ok(None));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses.csv"),
         ids.session_id,
-        "GET",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses.csv",
-            ids.event_id
-        ),
-        None,
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
     assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
@@ -417,63 +407,55 @@ async fn test_download_csv_unknown_survey_returns_not_found() {
 #[tokio::test]
 async fn test_list_page_read_only_disables_mutation_controls() {
     // Setup identifiers and a survey listed for a read-only role
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let survey = sample_event_survey_summary(Uuid::new_v4(), EventSurveyState::Draft);
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_events_write_permission(&mut db, &ids, false);
-    expect_event_summary(&mut db, &ids);
-    expect_list_event_surveys(&mut db, &ids, vec![survey]);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, false);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_list_event_surveys(&mut db, &ids, event_id, vec![survey]);
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys"),
         ids.session_id,
-        "GET",
-        &format!("/dashboard/group/events/{}/surveys", ids.event_id),
-        None,
-    )
-    .await;
-
-    // Check results, the CSV and the read-only form stay available while
-    // mutation controls are disabled with the role reason
-    assert_html_response(&parts, &bytes, StatusCode::OK);
-    let html = normalize_whitespace(&String::from_utf8_lossy(&bytes));
-    assert!(html.contains("Session feedback"));
-    assert!(html.contains("/results\""));
-    assert!(html.contains("/responses.csv\""));
-    assert!(html.contains("/update\""));
-    assert!(html.contains("Your role cannot manage surveys."));
-    assert_eq!(
-        html.matches(r#"disabled title="Your role cannot add, update or delete surveys.""#)
-            .count(),
-        3
     );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the survey is listed with the role reason; the disabled controls
+    // are covered by the template tests
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let html = String::from_utf8_lossy(&bytes);
+    assert!(html.contains("Session feedback"));
+    assert!(html.contains("Your role cannot manage surveys."));
 }
 
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and a draft survey
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let survey = sample_event_survey_summary(event_survey_id, EventSurveyState::Draft);
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_events_write_permission(&mut db, &ids, true);
-    expect_event_summary(&mut db, &ids);
-    expect_list_event_surveys(&mut db, &ids, vec![survey]);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, true);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_list_event_surveys(&mut db, &ids, event_id, vec![survey]);
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys"),
         ids.session_id,
-        "GET",
-        &format!("/dashboard/group/events/{}/surveys", ids.event_id),
-        None,
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the row and its mutation controls
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -491,29 +473,28 @@ async fn test_list_page_success() {
 #[tokio::test]
 async fn test_response_modal_rejects_anonymous_survey() {
     // Setup identifiers and an anonymous survey
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let survey = sample_event_survey_full(event_survey_id);
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
-    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_get_event_survey(&mut db, &ids, event_id, event_survey_id, survey);
     db.expect_get_event_survey_response().never();
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses/{}",
-            ids.event_id,
+            "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses/{}",
             Uuid::new_v4()
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the rejection
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -526,7 +507,8 @@ async fn test_response_modal_rejects_anonymous_survey() {
 #[tokio::test]
 async fn test_response_modal_success() {
     // Setup identifiers and an identified survey with three matching respondents
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let next_user_id = Uuid::new_v4();
@@ -560,15 +542,16 @@ async fn test_response_modal_success() {
     };
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
-    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_get_event_survey(&mut db, &ids, event_id, event_survey_id, survey);
     db.expect_get_event_survey_response()
         .times(1)
         .withf(
-            move |group_id, event_id, survey_id, respondent_id, filters| {
+            move |group_id, survey_event_id, survey_id, respondent_id, filters| {
                 *group_id == ids.group_id
-                    && *event_id == ids.event_id
+                    && *survey_event_id == event_id
                     && *survey_id == event_survey_id
                     && *respondent_id == user_id
                     && filters.ts_query.as_deref() == Some("jane doe")
@@ -576,18 +559,15 @@ async fn test_response_modal_success() {
         )
         .returning(move |_, _, _, _, _| Ok(Some(response.clone())));
 
-    // Run the request with the respondents search
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request with the respondents search
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses/{user_id}?ts_query=jane+doe",
-            ids.event_id
+            "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses/{user_id}?ts_query=jane+doe"
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the respondent details and escaped answers
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -603,10 +583,8 @@ async fn test_response_modal_success() {
 
     // Check the navigation keeps the search
     assert!(html.contains("Respondent 2 of 3"));
-    let base_url = format!(
-        "/dashboard/group/events/{}/surveys/{event_survey_id}/responses",
-        ids.event_id
-    );
+    let base_url =
+        format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses");
     assert!(html.contains(&format!(
         r#"hx-get="{base_url}/{previous_user_id}?ts_query=jane+doe""#
     )));
@@ -618,15 +596,17 @@ async fn test_response_modal_success() {
 #[tokio::test]
 async fn test_response_modal_unknown_response_returns_not_found() {
     // Setup identifiers and an identified survey
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let mut survey = sample_event_survey_full(event_survey_id);
     survey.summary.anonymous = false;
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
-    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_get_event_survey(&mut db, &ids, event_id, event_survey_id, survey);
     db.expect_get_event_survey_response()
         .times(1)
         .withf(move |_, _, survey_id, _, filters| {
@@ -634,29 +614,26 @@ async fn test_response_modal_unknown_response_returns_not_found() {
         })
         .returning(|_, _, _, _, _| Ok(None));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses/{}",
-            ids.event_id,
+            "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses/{}",
             Uuid::new_v4()
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response is not found
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert_eq!(bytes, Vec::<u8>::new());
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
 async fn test_response_modal_without_neighbors_disables_navigation() {
     // Setup identifiers and the only respondent of an identified survey
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let mut survey = sample_event_survey_full(event_survey_id);
@@ -679,25 +656,23 @@ async fn test_response_modal_without_neighbors_disables_navigation() {
     };
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
-    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_get_event_survey(&mut db, &ids, event_id, event_survey_id, survey);
     db.expect_get_event_survey_response()
         .times(1)
         .returning(move |_, _, _, _, _| Ok(Some(response.clone())));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses/{user_id}",
-            ids.event_id
+            "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses/{user_id}"
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check both navigation buttons are disabled and the details fall back
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -711,9 +686,10 @@ async fn test_response_modal_without_neighbors_disables_navigation() {
 }
 
 #[tokio::test]
-async fn test_responses_page_applies_default_bounds() {
+async fn test_responses_page_without_responses_uses_default_bounds() {
     // Setup identifiers and an identified survey without responses
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let mut survey = sample_event_survey_full(event_survey_id);
     survey.summary.anonymous = false;
@@ -723,60 +699,57 @@ async fn test_responses_page_applies_default_bounds() {
     };
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
-    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_get_event_survey(&mut db, &ids, event_id, event_survey_id, survey);
     db.expect_list_event_survey_responses()
         .times(1)
         .withf(move |_, _, survey_id, filters| {
             *survey_id == event_survey_id
                 && filters.limit == Some(EVENT_SURVEY_RESPONSES_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
+                && filters.ts_query.is_none()
         })
         .returning(move |_, _, _, _| Ok(Some(responses.clone())));
 
-    // Run the request without a query string
-    let (parts, _) = send(
-        db,
+    // Setup router and send request without a query string
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses"),
         ids.session_id,
-        "GET",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses",
-            ids.event_id
-        ),
-        None,
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
-    // Check the page was rendered with the default bounds
-    assert_eq!(parts.status, StatusCode::OK);
+    // Check the empty state replaces the respondents search
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let html = String::from_utf8_lossy(&bytes);
+    assert!(html.contains("This survey does not have any responses yet."));
+    assert!(!html.contains(r#"name="ts_query""#));
 }
 
 #[tokio::test]
 async fn test_responses_page_rejects_anonymous_survey() {
     // Setup identifiers and an anonymous survey
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let survey = sample_event_survey_full(event_survey_id);
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
-    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_get_event_survey(&mut db, &ids, event_id, event_survey_id, survey);
     db.expect_list_event_survey_responses().never();
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses"),
         ids.session_id,
-        "GET",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses",
-            ids.event_id
-        ),
-        None,
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the rejection
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -789,7 +762,8 @@ async fn test_responses_page_rejects_anonymous_survey() {
 #[tokio::test]
 async fn test_responses_page_renders_no_results_for_unmatched_search() {
     // Setup identifiers and an identified survey without matching respondents
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let mut survey = sample_event_survey_full(event_survey_id);
     survey.summary.anonymous = false;
@@ -799,26 +773,24 @@ async fn test_responses_page_renders_no_results_for_unmatched_search() {
     };
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
-    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_get_event_survey(&mut db, &ids, event_id, event_survey_id, survey);
     db.expect_list_event_survey_responses()
         .times(1)
         .withf(|_, _, _, filters| filters.ts_query.as_deref() == Some("nobody"))
         .returning(move |_, _, _, _| Ok(Some(responses.clone())));
 
-    // Run the request with a search
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request with a search
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses?ts_query=nobody",
-            ids.event_id
+            "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses?ts_query=nobody"
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the search stays editable above the no results state
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -831,7 +803,8 @@ async fn test_responses_page_renders_no_results_for_unmatched_search() {
 #[tokio::test]
 async fn test_responses_page_success() {
     // Setup identifiers and an identified survey with two respondents
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let jane_id = Uuid::new_v4();
     let mut survey = sample_event_survey_full(event_survey_id);
@@ -863,14 +836,15 @@ async fn test_responses_page_success() {
     };
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
-    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_get_event_survey(&mut db, &ids, event_id, event_survey_id, survey);
     db.expect_list_event_survey_responses()
         .times(1)
-        .withf(move |group_id, event_id, survey_id, filters| {
+        .withf(move |group_id, survey_event_id, survey_id, filters| {
             *group_id == ids.group_id
-                && *event_id == ids.event_id
+                && *survey_event_id == event_id
                 && *survey_id == event_survey_id
                 && filters.limit == Some(EVENT_SURVEY_RESPONSES_PAGINATION_LIMIT)
                 && filters.offset == Some(20)
@@ -878,18 +852,15 @@ async fn test_responses_page_success() {
         })
         .returning(move |_, _, _, _| Ok(Some(responses.clone())));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/responses?offset=20&ts_query=j",
-            ids.event_id
+            "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses?offset=20&ts_query=j"
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the Individual view renders the searchable respondents table
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -913,8 +884,7 @@ async fn test_responses_page_success() {
 
     // Check rows open the responses keeping the search, and pages keep it too
     assert!(html.contains(&format!(
-        r#"hx-get="/dashboard/group/events/{}/surveys/{event_survey_id}/responses/{jane_id}?ts_query=j""#,
-        ids.event_id
+        r#"hx-get="/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses/{jane_id}?ts_query=j""#
     )));
     assert!(html.contains("ts_query=j"));
     assert!(html.contains("offset=0"));
@@ -923,7 +893,8 @@ async fn test_responses_page_success() {
 #[tokio::test]
 async fn test_results_page_success() {
     // Setup identifiers and the results of an anonymous survey with few responses
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
     let mut survey = sample_event_survey_summary(event_survey_id, EventSurveyState::Open);
@@ -948,27 +919,25 @@ async fn test_results_page_success() {
     };
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
     db.expect_get_event_survey_results()
         .times(1)
-        .withf(move |group_id, event_id, survey_id| {
-            *group_id == ids.group_id && *event_id == ids.event_id && *survey_id == event_survey_id
+        .withf(move |group_id, survey_event_id, survey_id| {
+            *group_id == ids.group_id
+                && *survey_event_id == event_id
+                && *survey_id == event_survey_id
         })
         .returning(move |_, _, _| Ok(Some(results.clone())));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/results"),
         ids.session_id,
-        "GET",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/results",
-            ids.event_id
-        ),
-        None,
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the escaped preview, the modal opener and the anonymity notice
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -977,8 +946,7 @@ async fn test_results_page_success() {
     assert!(!html.contains("<b>talks</b>"));
     assert!(html.contains("View all 11 answers"));
     assert!(html.contains(&format!(
-        r#"hx-get="/dashboard/group/events/{}/surveys/{event_survey_id}/results/questions/{question_id}/answers""#,
-        ids.event_id
+        r#"hx-get="/dashboard/group/events/{event_id}/surveys/{event_survey_id}/results/questions/{question_id}/answers""#
     )));
     assert!(html.contains(r#"id="event-survey-text-answers-modal""#));
     assert!(html.contains("data-event-survey-few-responses-notice"));
@@ -992,26 +960,25 @@ async fn test_results_page_success() {
 #[tokio::test]
 async fn test_results_page_unknown_survey_returns_not_found() {
     // Setup identifiers and database expectations
-    let ids = TestIds::new();
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_event_summary(&mut db, &ids);
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary(&mut db, &ids, event_id);
     db.expect_get_event_survey_results()
         .times(1)
         .returning(|_, _, _| Ok(None));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{}/results",
-            ids.event_id,
+            "/dashboard/group/events/{event_id}/surveys/{}/results",
             Uuid::new_v4()
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
     assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
@@ -1020,34 +987,38 @@ async fn test_results_page_unknown_survey_returns_not_found() {
 #[tokio::test]
 async fn test_text_answers_modal_rejects_long_search() {
     // Setup identifiers and a search above the length limit
-    let ids = TestIds::new();
-    let mut db = setup_db(&ids, GroupPermission::Read);
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
     db.expect_list_event_survey_text_answers().never();
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{}/results/questions/{}/answers?ts_query={}",
-            ids.event_id,
+            "/dashboard/group/events/{event_id}/surveys/{}/results/questions/{}/answers?ts_query={}",
             Uuid::new_v4(),
             Uuid::new_v4(),
             "a".repeat(MAX_LEN_M + 1)
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the search is rejected before loading answers
-    assert_non_empty_response(&parts, &bytes, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        std::str::from_utf8(&bytes).unwrap(),
+        format!("ts_query: length is greater than {MAX_LEN_M}\n")
+    );
 }
 
 #[tokio::test]
 async fn test_text_answers_modal_success() {
     // Setup identifiers and the second page of answers matching a search
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
     let answers = EventSurveyTextAnswersOutput {
@@ -1058,12 +1029,13 @@ async fn test_text_answers_modal_success() {
     };
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
     db.expect_list_event_survey_text_answers()
         .times(1)
-        .withf(move |group_id, event_id, survey_id, qid, filters| {
+        .withf(move |group_id, survey_event_id, survey_id, qid, filters| {
             *group_id == ids.group_id
-                && *event_id == ids.event_id
+                && *survey_event_id == event_id
                 && *survey_id == event_survey_id
                 && *qid == question_id
                 && filters.limit == Some(EVENT_SURVEY_TEXT_ANSWERS_PAGINATION_LIMIT)
@@ -1072,18 +1044,15 @@ async fn test_text_answers_modal_success() {
         })
         .returning(move |_, _, _, _, _| Ok(Some(answers.clone())));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/results/questions/{question_id}/answers?offset=10&ts_query=breaks",
-            ids.event_id
+            "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/results/questions/{question_id}/answers?offset=10&ts_query=breaks"
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the escaped prompt, answers and search
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -1101,32 +1070,31 @@ async fn test_text_answers_modal_success() {
 #[tokio::test]
 async fn test_text_answers_modal_unknown_question_returns_not_found() {
     // Setup identifiers and database expectations
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
-    let mut db = setup_db(&ids, GroupPermission::Read);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
     db.expect_list_event_survey_text_answers()
         .times(1)
-        .withf(move |group_id, event_id, survey_id, qid, _| {
+        .withf(move |group_id, survey_event_id, survey_id, qid, _| {
             *group_id == ids.group_id
-                && *event_id == ids.event_id
+                && *survey_event_id == event_id
                 && *survey_id == event_survey_id
                 && *qid == question_id
         })
         .returning(|_, _, _, _, _| Ok(None));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/results/questions/{question_id}/answers",
-            ids.event_id
+            "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/results/questions/{question_id}/answers"
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
     assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
@@ -1135,19 +1103,26 @@ async fn test_text_answers_modal_unknown_question_returns_not_found() {
 #[tokio::test]
 async fn test_update_clears_custom_opening_and_closing_date() {
     // Setup identifiers and a form clearing both dates
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let body = "anonymous=true&audience=confirmed&title=Feedback&opens_at=&closes_at=&revision=4";
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::EventsWrite);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
     db.expect_update_event_survey()
         .times(1)
         .withf(
-            move |actor_user_id, group_id, event_id, survey_id, expected_revision, survey| {
+            move |actor_user_id,
+                  group_id,
+                  survey_event_id,
+                  survey_id,
+                  expected_revision,
+                  survey| {
                 *actor_user_id == ids.user_id
                     && *group_id == ids.group_id
-                    && *event_id == ids.event_id
+                    && *survey_event_id == event_id
                     && *survey_id == event_survey_id
                     && *expected_revision == 4
                     && survey.closes_at.is_none()
@@ -1156,18 +1131,15 @@ async fn test_update_clears_custom_opening_and_closing_date() {
         )
         .returning(|_, _, _, _, _, _| Ok(()));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
         "PUT",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/update",
-            ids.event_id
-        ),
-        Some(body),
-    )
-    .await;
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/update"),
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
     assert_empty_hx_trigger_response(
@@ -1181,36 +1153,32 @@ async fn test_update_clears_custom_opening_and_closing_date() {
 #[tokio::test]
 async fn test_update_page_locked_survey_disables_locked_fields() {
     // Setup identifiers and a survey locked by responses
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let mut survey = sample_event_survey_full(event_survey_id);
     survey.summary.locked = true;
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_events_write_permission(&mut db, &ids, true);
-    expect_event_summary(&mut db, &ids);
-    expect_get_event_survey(&mut db, &ids, event_survey_id, survey);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, true);
+    expect_event_summary(&mut db, &ids, event_id);
+    expect_get_event_survey(&mut db, &ids, event_id, event_survey_id, survey);
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/update"),
         ids.session_id,
-        "GET",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/update",
-            ids.event_id
-        ),
-        None,
-    )
-    .await;
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the form targets the update route and carries the revision
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let html = String::from_utf8_lossy(&bytes);
     assert!(html.contains(&format!(
-        r#"hx-put="/dashboard/group/events/{}/surveys/{event_survey_id}/update""#,
-        ids.event_id
+        r#"hx-put="/dashboard/group/events/{event_id}/surveys/{event_survey_id}/update""#
     )));
     assert!(html.contains(r#"name="revision" value="3""#));
     assert!(html.contains("data-event-survey-locked-notice"));
@@ -1219,25 +1187,24 @@ async fn test_update_page_locked_survey_disables_locked_fields() {
 #[tokio::test]
 async fn test_update_page_unknown_survey_returns_not_found() {
     // Setup identifiers and database expectations
-    let ids = TestIds::new();
-    let mut db = setup_db(&ids, GroupPermission::Read);
-    expect_events_write_permission(&mut db, &ids, true);
-    expect_event_summary(&mut db, &ids);
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, true);
+    expect_event_summary(&mut db, &ids, event_id);
     db.expect_get_event_survey().times(1).returning(|_, _, _| Ok(None));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
-        "GET",
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
         &format!(
-            "/dashboard/group/events/{}/surveys/{}/update",
-            ids.event_id,
+            "/dashboard/group/events/{event_id}/surveys/{}/update",
             Uuid::new_v4()
         ),
-        None,
-    )
-    .await;
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
     assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
@@ -1246,23 +1213,24 @@ async fn test_update_page_unknown_survey_returns_not_found() {
 #[tokio::test]
 async fn test_update_rejects_missing_revision() {
     // Setup identifiers and database expectations
-    let ids = TestIds::new();
-    let mut db = setup_db(&ids, GroupPermission::EventsWrite);
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
     db.expect_update_event_survey().never();
 
-    // Run the request without the loaded revision
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
+    // Setup router and send request without the loaded revision
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
         "PUT",
         &format!(
-            "/dashboard/group/events/{}/surveys/{}/update",
-            ids.event_id,
+            "/dashboard/group/events/{event_id}/surveys/{}/update",
             Uuid::new_v4()
         ),
-        Some("anonymous=true&audience=confirmed&title=Feedback"),
-    )
-    .await;
+        ids.session_id,
+        "anonymous=true&audience=confirmed&title=Feedback",
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the rejection
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -1275,12 +1243,14 @@ async fn test_update_rejects_missing_revision() {
 #[tokio::test]
 async fn test_update_removing_last_question() {
     // Setup identifiers and a form whose editor has no questions left
-    let ids = TestIds::new();
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let event_survey_id = Uuid::new_v4();
     let body = "anonymous=true&audience=confirmed&title=Feedback&questions_present=true&revision=2";
 
     // Setup database expectations
-    let mut db = setup_db(&ids, GroupPermission::EventsWrite);
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
     db.expect_update_event_survey()
         .times(1)
         .withf(move |_, _, _, survey_id, expected_revision, survey| {
@@ -1288,18 +1258,15 @@ async fn test_update_removing_last_question() {
         })
         .returning(|_, _, _, _, _, _| Ok(()));
 
-    // Run the request
-    let (parts, bytes) = send(
-        db,
-        ids.session_id,
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
         "PUT",
-        &format!(
-            "/dashboard/group/events/{}/surveys/{event_survey_id}/update",
-            ids.event_id
-        ),
-        Some(body),
-    )
-    .await;
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/update"),
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
 
     // Check the response
     assert_empty_hx_trigger_response(
@@ -1312,110 +1279,76 @@ async fn test_update_removing_last_question() {
 
 // Helpers.
 
-/// Identifiers shared by the requests of one test.
-#[derive(Clone, Copy)]
-struct TestIds {
-    /// Selected community.
-    community_id: Uuid,
-    /// Event the surveys belong to.
-    event_id: Uuid,
-    /// Selected group.
-    group_id: Uuid,
-    /// Authenticated session.
-    session_id: session::Id,
-    /// Authenticated user.
-    user_id: Uuid,
-}
-
-impl TestIds {
-    /// Generates the identifiers of a test.
-    fn new() -> Self {
-        Self {
-            community_id: Uuid::new_v4(),
-            event_id: Uuid::new_v4(),
-            group_id: Uuid::new_v4(),
-            session_id: session::Id::default(),
-            user_id: Uuid::new_v4(),
-        }
-    }
-}
-
 /// Expects the event summary read by survey pages.
-fn expect_event_summary(db: &mut MockDB, ids: &TestIds) {
+fn expect_event_summary(db: &mut MockDB, ids: &DashboardIds, event_id: Uuid) {
     let ids = *ids;
-    let event = sample_event_summary(ids.event_id, ids.group_id);
+    let event = sample_event_summary(event_id);
     db.expect_get_event_summary_dashboard()
         .times(1)
-        .withf(move |community_id, group_id, event_id| {
+        .withf(move |community_id, group_id, survey_event_id| {
             *community_id == ids.community_id
                 && *group_id == ids.group_id
-                && *event_id == ids.event_id
+                && *survey_event_id == event_id
         })
         .returning(move |_, _, _| Ok(event.clone()));
-}
-
-/// Expects the events write permission check made by pages with mutations.
-fn expect_events_write_permission(db: &mut MockDB, ids: &TestIds, allowed: bool) {
-    let ids = *ids;
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |community_id, group_id, user_id, permission| {
-            *community_id == ids.community_id
-                && *group_id == ids.group_id
-                && *user_id == ids.user_id
-                && *permission == GroupPermission::EventsWrite
-        })
-        .returning(move |_, _, _, _| Ok(allowed));
 }
 
 /// Expects the survey read by the update form and the Individual view.
 fn expect_get_event_survey(
     db: &mut MockDB,
-    ids: &TestIds,
+    ids: &DashboardIds,
+    event_id: Uuid,
     event_survey_id: Uuid,
     survey: EventSurveyFull,
 ) {
     let ids = *ids;
     db.expect_get_event_survey()
         .times(1)
-        .withf(move |group_id, event_id, survey_id| {
-            *group_id == ids.group_id && *event_id == ids.event_id && *survey_id == event_survey_id
+        .withf(move |group_id, survey_event_id, survey_id| {
+            *group_id == ids.group_id
+                && *survey_event_id == event_id
+                && *survey_id == event_survey_id
         })
         .returning(move |_, _, _| Ok(Some(survey.clone())));
 }
 
 /// Expects the surveys read by the list page.
-fn expect_list_event_surveys(db: &mut MockDB, ids: &TestIds, surveys: Vec<EventSurveySummary>) {
+fn expect_list_event_surveys(
+    db: &mut MockDB,
+    ids: &DashboardIds,
+    event_id: Uuid,
+    surveys: Vec<EventSurveySummary>,
+) {
     let ids = *ids;
     db.expect_list_event_surveys()
         .times(1)
-        .withf(move |group_id, event_id| *group_id == ids.group_id && *event_id == ids.event_id)
+        .withf(move |group_id, survey_event_id| {
+            *group_id == ids.group_id && *survey_event_id == event_id
+        })
         .returning(move |_, _| Ok(surveys.clone()));
 }
 
 /// Expects the export read by the CSV download, within the export bounds.
 fn expect_survey_export(
     db: &mut MockDB,
-    ids: &TestIds,
+    ids: &DashboardIds,
+    event_id: Uuid,
     event_survey_id: Uuid,
     export: EventSurveyExport,
 ) {
     let ids = *ids;
     db.expect_get_event_survey_export()
         .times(1)
-        .withf(move |group_id, event_id, survey_id, max_rows, max_bytes| {
-            *group_id == ids.group_id
-                && *event_id == ids.event_id
-                && *survey_id == event_survey_id
-                && *max_rows == MAX_EVENT_SURVEY_EXPORT_ROWS
-                && *max_bytes == MAX_EVENT_SURVEY_EXPORT_ANSWER_BYTES
-        })
+        .withf(
+            move |group_id, survey_event_id, survey_id, max_rows, max_bytes| {
+                *group_id == ids.group_id
+                    && *survey_event_id == event_id
+                    && *survey_id == event_survey_id
+                    && *max_rows == MAX_EVENT_SURVEY_EXPORT_ROWS
+                    && *max_bytes == MAX_EVENT_SURVEY_EXPORT_ANSWER_BYTES
+            },
+        )
         .returning(move |_, _, _, _, _| Ok(Some(export.clone())));
-}
-
-/// Collapses whitespace runs so rendered attributes can be matched exactly.
-fn normalize_whitespace(html: &str) -> String {
-    html.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// Returns answers to the sample survey questions, with a formula-like text.
@@ -1427,53 +1360,4 @@ fn sample_answers() -> QuestionnaireAnswers {
         ]
     }))
     .unwrap()
-}
-
-/// Sends a request to the dashboard router and returns its parts and body.
-async fn send(
-    db: MockDB,
-    session_id: session::Id,
-    method: &str,
-    uri: &str,
-    form: Option<&str>,
-) -> (Parts, Vec<u8>) {
-    let router: Router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let mut request = Request::builder()
-        .method(method)
-        .uri(uri)
-        .header(COOKIE, format!("id={session_id}"));
-    if form.is_some() {
-        request = request.header(CONTENT_TYPE, "application/x-www-form-urlencoded");
-    }
-    let request = request
-        .body(form.map_or_else(Body::empty, |form| Body::from(form.to_string())))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    (parts, bytes.to_vec())
-}
-
-/// Returns a database mock with an authenticated group session holding the
-/// permission the route requires.
-fn setup_db(ids: &TestIds, permission: GroupPermission) -> MockDB {
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(
-        &mut db,
-        ids.session_id,
-        ids.user_id,
-        ids.community_id,
-        ids.group_id,
-    );
-    expect_group_permission(
-        &mut db,
-        ids.community_id,
-        ids.group_id,
-        ids.user_id,
-        permission,
-    );
-    db
 }

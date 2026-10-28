@@ -14,17 +14,17 @@ use axum::{
 };
 use chrono::{TimeDelta, Utc};
 use serde_json::json;
-use tokio::{task::JoinHandle, time::timeout};
+use tokio::time::timeout;
 use uuid::Uuid;
 
 use crate::{
     config::{HttpClientConfig, PaymentsStripeConfig},
     services::payments::{
-        ApplicationFeeAdjustmentInput, AutomaticTaxReadinessError, CreateCheckoutSessionInput,
-        CreditNoteInput, FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
-        FiscalSponsorReadinessInput, GetCheckoutFinancialContextInput, GetFinancialDocumentInput,
-        ListTaxRatesInput, PaymentsWebhookEvent, PerformanceLocationInput, RefundPaymentInput,
-        RefundPaymentStatus, ValidateTaxRatesInput,
+        ApplicationFeeAdjustmentInput, AutomaticTaxReadiness, AutomaticTaxReadinessError,
+        CreateCheckoutSessionInput, CreditNoteInput, FinancialDocumentKind, FindRefundInput,
+        FiscalSponsorReadinessError, FiscalSponsorReadinessInput, GetCheckoutFinancialContextInput,
+        GetFinancialDocumentInput, ListTaxRatesInput, PaymentsWebhookEvent,
+        PerformanceLocationInput, RefundPaymentInput, RefundPaymentStatus, ValidateTaxRatesInput,
     },
     types::payments::{
         FiscalSponsorSeller, PaymentMode, PaymentProvider, TicketTaxBehavior,
@@ -39,50 +39,23 @@ use super::{
 };
 
 #[tokio::test]
-async fn automatic_tax_location_omits_missing_state_code() {
-    // Capture the performance-location request for a country without a subdivision
-    let captured_body = Arc::new(Mutex::new(String::new()));
-    let request_body = Arc::clone(&captured_body);
-    let router = Router::new().route(
-        "/v1/tax/locations",
-        post(move |body: String| {
-            let request_body = Arc::clone(&request_body);
-            async move {
-                *request_body
-                    .lock()
-                    .expect("captured request body lock to be available") = body;
-                Json(json!({"id": "loc_created"}))
-            }
-        }),
-    );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+async fn test_automatic_tax_location_omits_missing_state_code() {
+    // Setup a venue in a country without a subdivision
     let mut input = sample_performance_location_input();
     input.venue.country_code = "PT".to_string();
     input.venue.state_code = None;
 
     // Create the location without inventing a subdivision
-    let readiness = provider
-        .create_performance_location(&input, super::STRIPE_API_VERSION)
-        .await
-        .expect("country without subdivision to create a location");
-    server.abort();
+    let (readiness, form_fields) = create_location_and_capture_form(&input).await;
 
     // Check Stripe receives no empty state parameter
-    let form_fields: BTreeMap<String, String> = serde_urlencoded::from_str(
-        &captured_body
-            .lock()
-            .expect("captured request body lock to be available"),
-    )
-    .expect("captured request body to be valid form data");
     assert_eq!(readiness.provider_tax_location_id, "loc_created");
     assert_eq!(readiness.state_code, None);
     assert!(!form_fields.contains_key("address[state]"));
 }
 
 #[tokio::test]
-async fn automatic_tax_location_reuses_matching_persisted_cache_entry() {
+async fn test_automatic_tax_location_reuses_matching_persisted_cache_entry() {
     // Setup a checkout whose location snapshot still matches its persisted cache
     let provider = sample_stripe_provider();
     let mut input = sample_performance_location_input();
@@ -104,41 +77,12 @@ async fn automatic_tax_location_reuses_matching_persisted_cache_entry() {
 }
 
 #[tokio::test]
-async fn automatic_tax_location_sends_iso_country_and_state_codes() {
-    // Capture the Stripe performance-location request body
-    let captured_body = Arc::new(Mutex::new(String::new()));
-    let request_body = Arc::clone(&captured_body);
-    let router = Router::new().route(
-        "/v1/tax/locations",
-        post(move |body: String| {
-            let request_body = Arc::clone(&request_body);
-            async move {
-                *request_body
-                    .lock()
-                    .expect("captured request body lock to be available") = body;
-                Json(json!({"id": "loc_created"}))
-            }
-        }),
-    );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-    let input = sample_performance_location_input();
-
+async fn test_automatic_tax_location_sends_iso_country_and_state_codes() {
     // Create the performance location through the provider boundary
-    let readiness = provider
-        .create_performance_location(&input, super::STRIPE_API_VERSION)
-        .await
-        .expect("complete ISO codes to create a performance location");
-    server.abort();
+    let input = sample_performance_location_input();
+    let (readiness, form_fields) = create_location_and_capture_form(&input).await;
 
     // Check Stripe receives code values rather than display names
-    let form_fields: BTreeMap<String, String> = serde_urlencoded::from_str(
-        &captured_body
-            .lock()
-            .expect("captured request body lock to be available"),
-    )
-    .expect("captured request body to be valid form data");
     assert_eq!(readiness.provider_tax_location_id, "loc_created");
     assert_eq!(
         form_fields.get("address[country]").map(String::as_str),
@@ -152,7 +96,7 @@ async fn automatic_tax_location_sends_iso_country_and_state_codes() {
 }
 
 #[tokio::test]
-async fn automatic_tax_location_classifies_state_errors_only_from_exact_parameter() {
+async fn test_automatic_tax_location_classifies_state_errors_only_from_exact_parameter() {
     // Check a missing state is reported only when Stripe identifies address[state]
     let missing = performance_location_error(
         json!({"error": {"message": "State is required", "param": "address[state]"}}),
@@ -190,7 +134,7 @@ async fn automatic_tax_location_classifies_state_errors_only_from_exact_paramete
 }
 
 #[tokio::test]
-async fn automatic_tax_location_keeps_country_and_address_errors_distinct() {
+async fn test_automatic_tax_location_keeps_country_and_address_errors_distinct() {
     // Check a rejected country remains distinct from a subdivision failure
     let country = performance_location_error(
         json!({"error": {"message": "Country is invalid", "param": "address[country]"}}),
@@ -223,101 +167,71 @@ async fn automatic_tax_location_keeps_country_and_address_errors_distinct() {
 }
 
 #[test]
-fn automatic_tax_product_cache_rejects_each_incomplete_or_changed_field() {
+fn test_automatic_tax_product_cache_matches_only_a_complete_active_product() {
+    // Check the complete provider Product matches the checkout snapshot
+    assert!(StripeProvider::tax_product_matches(
+        &sample_stripe_tax_product(),
+        "Ticket",
+        "loc_cached",
+        "txcd_50013001"
+    ));
+
     // Setup mutations covering every Product field used by checkout
-    let scenarios = [
-        {
-            let mut product = sample_stripe_tax_product();
-            product.active = false;
-            product
-        },
-        {
-            let mut product = sample_stripe_tax_product();
+    let cases: [(&str, Mutation<StripeTaxProductResponse>); 5] = [
+        ("inactive product", |product| product.active = false),
+        ("changed name", |product| {
             product.name = "Different ticket".to_string();
-            product
-        },
-        {
-            let mut product = sample_stripe_tax_product();
-            product.tax_details = None;
-            product
-        },
-        {
-            let mut product = sample_stripe_tax_product();
+        }),
+        ("missing tax details", |product| product.tax_details = None),
+        ("changed performance location", |product| {
             product
                 .tax_details
                 .as_mut()
                 .expect("sample tax details to exist")
                 .performance_location = Some("loc_other".to_string());
-            product
-        },
-        {
-            let mut product = sample_stripe_tax_product();
+        }),
+        ("changed tax code", |product| {
             product
                 .tax_details
                 .as_mut()
                 .expect("sample tax details to exist")
                 .tax_code = Some("txcd_other".to_string());
-            product
-        },
+        }),
     ];
 
-    for product in scenarios {
+    for (case, mutate) in cases {
         // Compare each changed Product with the persisted snapshot
-        assert!(!StripeProvider::tax_product_matches(
-            &product,
-            "Ticket",
-            "loc_cached",
-            "txcd_50013001"
-        ));
+        let mut product = sample_stripe_tax_product();
+        mutate(&mut product);
+        assert!(
+            !StripeProvider::tax_product_matches(&product, "Ticket", "loc_cached", "txcd_50013001"),
+            "{case}"
+        );
     }
 }
 
-#[test]
-fn automatic_tax_product_cache_requires_a_complete_active_match() {
-    // Setup the complete provider Product expected by the checkout snapshot
-    let product = sample_stripe_tax_product();
-
-    // Compare the cached Product with every immutable checkout field
-    assert!(StripeProvider::tax_product_matches(
-        &product,
-        "Ticket",
-        "loc_cached",
-        "txcd_50013001"
-    ));
-}
-
 #[tokio::test]
-async fn automatic_tax_product_propagates_cached_product_provider_errors() {
+async fn test_automatic_tax_product_propagates_cached_product_provider_errors() {
     // Setup a matching cache snapshot whose provider lookup fails
     let router = Router::new().route(
         "/v1/products/prod_cached",
         get(|| async { (StatusCode::SERVICE_UNAVAILABLE, "provider unavailable") }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-    let mut input = sample_checkout_session_input();
-    let fingerprint = StripeProvider::provider_fingerprint(&[
-        &input.ticket_title,
-        "loc_cached",
-        input.tax_code.as_deref().expect("sample tax code to exist"),
-    ]);
-    input.cached_product_fingerprint = Some(fingerprint);
-    input.cached_provider_tax_product_id = Some("prod_cached".to_string());
+    let provider = spawn_stripe_provider(router).await;
+    let (input, _) = cached_tax_product_input();
 
     // Resolve the cached Product through the provider boundary
     let err = provider
         .create_tax_product(&input, super::STRIPE_API_VERSION, "loc_cached")
         .await
         .expect_err("provider retrieval failure to remain actionable");
-    server.abort();
 
     // Check transient provider failures are not treated as cache misses
     assert!(format!("{err:#}").contains("Product retrieval failed (503 Service Unavailable)"));
 }
 
 #[tokio::test]
-async fn automatic_tax_product_replaces_mismatched_cache_with_stable_idempotency_key() {
+async fn test_automatic_tax_product_replaces_mismatched_cache_with_stable_idempotency_key() {
     // Setup a cached Product that no longer matches the persisted snapshot
     let idempotency_keys = Arc::new(Mutex::new(Vec::new()));
     let captured_keys = Arc::clone(&idempotency_keys);
@@ -355,17 +269,8 @@ async fn automatic_tax_product_replaces_mismatched_cache_with_stable_idempotency
                 }
             }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-    let mut input = sample_checkout_session_input();
-    let fingerprint = StripeProvider::provider_fingerprint(&[
-        &input.ticket_title,
-        "loc_cached",
-        input.tax_code.as_deref().expect("sample tax code to exist"),
-    ]);
-    input.cached_product_fingerprint = Some(fingerprint.clone());
-    input.cached_provider_tax_product_id = Some("prod_cached".to_string());
+    let provider = spawn_stripe_provider(router).await;
+    let (input, fingerprint) = cached_tax_product_input();
 
     // Retry the same replacement operation through the provider boundary
     for _ in 0..2 {
@@ -376,7 +281,6 @@ async fn automatic_tax_product_replaces_mismatched_cache_with_stable_idempotency
         assert_eq!(product_id, "prod_replacement");
         assert_eq!(returned_fingerprint, fingerprint);
     }
-    server.abort();
 
     // Check replacement attempts use the same cache-identity-derived key
     let replacement_fingerprint =
@@ -393,7 +297,7 @@ async fn automatic_tax_product_replaces_mismatched_cache_with_stable_idempotency
 }
 
 #[tokio::test]
-async fn automatic_tax_product_replaces_provider_deleted_cache_entry() {
+async fn test_automatic_tax_product_replaces_provider_deleted_cache_entry() {
     // Setup a matching cache snapshot whose provider Product was deleted
     let router = Router::new()
         .route(
@@ -404,24 +308,14 @@ async fn automatic_tax_product_replaces_provider_deleted_cache_entry() {
             "/v1/products",
             post(|| async { Json(json!({"id": "prod_replacement"})) }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-    let mut input = sample_checkout_session_input();
-    let fingerprint = StripeProvider::provider_fingerprint(&[
-        &input.ticket_title,
-        "loc_cached",
-        input.tax_code.as_deref().expect("sample tax code to exist"),
-    ]);
-    input.cached_product_fingerprint = Some(fingerprint.clone());
-    input.cached_provider_tax_product_id = Some("prod_cached".to_string());
+    let provider = spawn_stripe_provider(router).await;
+    let (input, fingerprint) = cached_tax_product_input();
 
     // Resolve the deleted cached Product through the provider boundary
     let (product_id, returned_fingerprint) = provider
         .create_tax_product(&input, super::STRIPE_API_VERSION, "loc_cached")
         .await
         .expect("deleted cached Product to be replaced");
-    server.abort();
 
     // Check provider deletion creates a replacement with the same durable fingerprint
     assert_eq!(product_id, "prod_replacement");
@@ -429,7 +323,7 @@ async fn automatic_tax_product_replaces_provider_deleted_cache_entry() {
 }
 
 #[tokio::test]
-async fn automatic_tax_product_reuses_complete_cached_product() {
+async fn test_automatic_tax_product_reuses_complete_cached_product() {
     // Setup a cached Product that still matches every persisted snapshot field
     let router = Router::new().route(
         "/v1/products/prod_cached",
@@ -444,24 +338,14 @@ async fn automatic_tax_product_reuses_complete_cached_product() {
             }))
         }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-    let mut input = sample_checkout_session_input();
-    let fingerprint = StripeProvider::provider_fingerprint(&[
-        &input.ticket_title,
-        "loc_cached",
-        input.tax_code.as_deref().expect("sample tax code to exist"),
-    ]);
-    input.cached_product_fingerprint = Some(fingerprint.clone());
-    input.cached_provider_tax_product_id = Some("prod_cached".to_string());
+    let provider = spawn_stripe_provider(router).await;
+    let (input, fingerprint) = cached_tax_product_input();
 
     // Resolve the matching cached Product through the provider boundary
     let (product_id, returned_fingerprint) = provider
         .create_tax_product(&input, super::STRIPE_API_VERSION, "loc_cached")
         .await
         .expect("complete cached Product to be reused");
-    server.abort();
 
     // Check the provider Product and persisted fingerprint remain stable
     assert_eq!(product_id, "prod_cached");
@@ -469,7 +353,7 @@ async fn automatic_tax_product_reuses_complete_cached_product() {
 }
 
 #[test]
-fn build_application_fee_refund_form_fields_records_request_identity() {
+fn test_build_application_fee_refund_form_fields_records_request_identity() {
     // Setup an adjustment with an upper-case purchase currency
     let purchase_id = Uuid::new_v4();
     let input = sample_application_fee_adjustment_input(purchase_id);
@@ -507,7 +391,7 @@ fn build_application_fee_refund_form_fields_records_request_identity() {
 }
 
 #[test]
-fn build_checkout_session_form_fields_includes_platform_fee_when_configured() {
+fn test_build_checkout_session_form_fields_includes_platform_fee_when_configured() {
     // Setup a checkout with a snapshotted platform fee
     let provider = sample_stripe_provider();
     let mut input = sample_checkout_session_input();
@@ -524,7 +408,7 @@ fn build_checkout_session_form_fields_includes_platform_fee_when_configured() {
 }
 
 #[test]
-fn build_checkout_session_form_fields_omits_platform_fee_when_zero() {
+fn test_build_checkout_session_form_fields_populates_checkout_contract() {
     // Setup a checkout without a platform fee
     let provider = sample_stripe_provider();
     let input = sample_checkout_session_input();
@@ -532,17 +416,7 @@ fn build_checkout_session_form_fields_omits_platform_fee_when_zero() {
     // Build the provider form fields
     let form_fields = checkout_session_form_fields_map(&provider, &input);
 
-    // Check no application fee is sent to Stripe
-    assert!(!form_fields.contains_key("payment_intent_data[application_fee_amount]"));
-}
-
-#[test]
-fn build_checkout_session_form_fields_populates_checkout_metadata() {
-    let provider = sample_stripe_provider();
-    let input = sample_checkout_session_input();
-
-    let form_fields = checkout_session_form_fields_map(&provider, &input);
-
+    // Check the return URLs, metadata and line item identify the purchase
     assert_eq!(
         form_fields.get("cancel_url"),
         Some(
@@ -562,7 +436,6 @@ fn build_checkout_session_form_fields_populates_checkout_metadata() {
         form_fields.get("payment_intent_data[metadata][discount_code]"),
         Some(&"EARLYBIRD".to_string())
     );
-    assert!(!form_fields.keys().any(|key| key.starts_with("transfer_data")));
     assert_eq!(
         form_fields.get("metadata[environment]"),
         Some(&"test".to_string())
@@ -574,20 +447,21 @@ fn build_checkout_session_form_fields_populates_checkout_metadata() {
                 .to_string()
         )
     );
+
+    // Check the direct charge carries no transfer or zero application fee
+    assert!(!form_fields.keys().any(|key| key.starts_with("transfer_data")));
+    assert!(!form_fields.contains_key("payment_intent_data[application_fee_amount]"));
+
+    // Check checkout is restricted to card payments only
+    assert_eq!(
+        form_fields.get("payment_method_types[0]"),
+        Some(&"card".to_string())
+    );
+    assert!(!form_fields.contains_key("payment_method_types[1]"));
 }
 
 #[test]
-fn build_checkout_session_form_fields_restricts_checkout_to_card_payments() {
-    let provider = sample_stripe_provider();
-    let input = sample_checkout_session_input();
-
-    let form_fields = provider.build_checkout_session_form_fields(&input, Some("prod_ticket"));
-
-    assert!(form_fields.contains(&("payment_method_types[0]".to_string(), "card".to_string())));
-}
-
-#[test]
-fn build_refund_form_fields_only_refunds_the_direct_charge() {
+fn test_build_refund_form_fields_only_refunds_the_direct_charge() {
     // Setup a refund for a direct charge
     let input = sample_refund_payment_input();
 
@@ -609,18 +483,75 @@ fn build_refund_form_fields_only_refunds_the_direct_charge() {
 }
 
 #[tokio::test]
-async fn create_checkout_session_enforces_venue_tax_registration() {
+async fn test_create_checkout_session_enforces_venue_tax_registration() {
+    // Setup a sponsor registered only in New York and count tax and Checkout writes
+    let input = sample_checkout_session_input();
+    let writes = Arc::new(AtomicUsize::new(0));
+    let (location_writes, product_writes, session_writes) = (
+        Arc::clone(&writes),
+        Arc::clone(&writes),
+        Arc::clone(&writes),
+    );
+    let router = tax_ready_account_router()
+        .route(
+            "/v1/tax/registrations",
+            get(|| async {
+                Json(json!({
+                    "data": [{
+                        "country": "US",
+                        "country_options": {"us": {"state": "NY"}},
+                        "id": "taxreg_us_ny",
+                        "status": "active"
+                    }],
+                    "has_more": false
+                }))
+            }),
+        )
+        .route(
+            "/v1/tax/locations",
+            post(move || {
+                location_writes.fetch_add(1, Ordering::SeqCst);
+                async { Json(json!({"id": "loc_us_ca"})) }
+            }),
+        )
+        .route(
+            "/v1/products",
+            post(move || {
+                product_writes.fetch_add(1, Ordering::SeqCst);
+                async { Json(json!({"id": "prod_ticket"})) }
+            }),
+        )
+        .route(
+            "/v1/checkout/sessions",
+            post(move || {
+                session_writes.fetch_add(1, Ordering::SeqCst);
+                async {
+                    Json(json!({"id": "cs_unexpected", "url": "https://checkout.stripe.test/x"}))
+                }
+            }),
+        );
+    let provider = spawn_stripe_provider(router).await;
+
+    // Try to create Checkout for the California venue
+    let err = provider
+        .create_checkout_session(&input)
+        .await
+        .expect_err("missing venue registration to block Checkout");
+
+    // Check readiness fails before any tax resource or session is created
+    assert!(
+        format!("{err:#}")
+            .contains("fiscal sponsor Stripe account needs an active tax registration for US-CA"),
+        "{err:#}"
+    );
+    assert_eq!(writes.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn test_create_checkout_session_provisions_automatic_tax_resources() {
     // Setup a complete automatic-tax Checkout API for a California venue
     let input = sample_checkout_session_input();
-    let router = Router::new()
-        .route(
-            "/v1/accounts/acct_test_123",
-            get(|| async { Json(sample_stripe_account_response()) }),
-        )
-        .route(
-            "/v1/tax/settings",
-            get(|| async { Json(json!({"status": "active"})) }),
-        )
+    let router = tax_ready_account_router()
         .route(
             "/v1/tax/registrations",
             get(|headers: HeaderMap| async move {
@@ -649,30 +580,107 @@ async fn create_checkout_session_enforces_venue_tax_registration() {
         )
         .route(
             "/v1/checkout/sessions",
-            post(|| async {
+            post(|body: String| async move {
+                let form: BTreeMap<String, String> =
+                    serde_urlencoded::from_str(&body).expect("checkout form to parse");
+                assert_eq!(
+                    form.get("automatic_tax[enabled]"),
+                    Some(&"true".to_string())
+                );
+                assert_eq!(
+                    form.get("line_items[0][price_data][product]"),
+                    Some(&"prod_ticket".to_string())
+                );
+                assert!(!form.keys().any(|key| key.contains("[tax_rates]")));
+
                 Json(json!({
                     "id": "cs_automatic_tax",
                     "url": "https://checkout.stripe.test/automatic-tax"
                 }))
             }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Create Checkout after revalidating the snapshotted venue jurisdiction
     let session = provider
         .create_checkout_session(&input)
         .await
         .expect("matching venue registration to allow Checkout");
-    server.abort();
 
-    // Check automatic-tax Checkout proceeds after registration readiness
+    // Check the provisioned tax resources are returned for caching
     assert_eq!(session.provider_session_id, "cs_automatic_tax");
+    assert_eq!(
+        session.provider_tax_location_id.as_deref(),
+        Some("loc_us_ca")
+    );
+    assert_eq!(
+        session.provider_tax_product_id.as_deref(),
+        Some("prod_ticket")
+    );
 }
 
 #[tokio::test]
-async fn create_checkout_session_scopes_the_direct_charge_and_invoice_request() {
+async fn test_create_checkout_session_rejects_invalid_input_before_contacting_stripe() {
+    // Setup inputs that every checkout must reject locally
+    let cases: [(&str, Mutation<CreateCheckoutSessionInput>, &str); 3] = [
+        (
+            "zero amount",
+            |input| input.amount_minor = 0,
+            "Stripe checkout requires a positive amount",
+        ),
+        (
+            "fee equal to amount",
+            |input| input.provisional_platform_fee_amount_minor = input.amount_minor,
+            "Stripe application fee must be less than the ticket amount",
+        ),
+        (
+            "fee above amount",
+            |input| input.provisional_platform_fee_amount_minor = input.amount_minor + 1,
+            "Stripe application fee must be less than the ticket amount",
+        ),
+    ];
+    let provider = spawn_stripe_provider(Router::new()).await;
+
+    for (case, mutate, expected) in cases {
+        let mut input = sample_checkout_session_input();
+        mutate(&mut input);
+
+        // Create the checkout against an API with no routes
+        let err = provider.create_checkout_session(&input).await.expect_err(case);
+
+        // Check the local guard rejects the input
+        assert_eq!(err.to_string(), expected, "{case}");
+    }
+}
+
+#[tokio::test]
+async fn test_create_checkout_session_rejects_no_tax_checkout_with_tax_rates() {
+    // Setup a no-tax checkout that still carries a stale manual Tax Rate
+    let mut input = sample_checkout_session_input();
+    input.manual_tax_rate_ids = Some(vec!["txr_stale".to_string()]);
+    input.tax_calculation_mode = TicketTaxCalculationMode::None;
+    input.tax_code = None;
+    let router = Router::new().route(
+        "/v1/accounts/acct_test_123",
+        get(|| async { Json(sample_stripe_account_response()) }),
+    );
+    let provider = spawn_stripe_provider(router).await;
+
+    // Try to create the session
+    let err = provider
+        .create_checkout_session(&input)
+        .await
+        .expect_err("no-tax checkout with Tax Rates to be rejected");
+
+    // Check the stale selection is rejected before Checkout is created
+    assert_eq!(
+        err.to_string(),
+        "no-tax checkout cannot include Stripe Tax Rates"
+    );
+}
+
+#[tokio::test]
+async fn test_create_checkout_session_scopes_the_direct_charge_and_invoice_request() {
     // Setup a manual-tax checkout and a Stripe-shaped connected-account API
     let mut input = sample_checkout_session_input();
     input.manual_tax_rate_ids = Some(vec!["txr_state".to_string(), "txr_local".to_string()]);
@@ -749,16 +757,13 @@ async fn create_checkout_session_scopes_the_direct_charge_and_invoice_request() 
                 }))
             }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Create the connected-account Checkout Session
     let session = provider
         .create_checkout_session(&input)
         .await
         .expect("direct-charge Checkout Session to be created");
-    server.abort();
 
     // Check the account-scoped provider identity is retained for reconciliation
     assert_eq!(session.provider_object_account_id, "acct_test_123");
@@ -767,7 +772,7 @@ async fn create_checkout_session_scopes_the_direct_charge_and_invoice_request() 
 }
 
 #[tokio::test]
-async fn create_checkout_session_omits_tax_fields_for_no_tax_mode() {
+async fn test_create_checkout_session_omits_tax_fields_for_no_tax_mode() {
     // Setup a no-tax checkout and a connected-account API
     let mut input = sample_checkout_session_input();
     input.manual_tax_rate_ids = Some(Vec::new());
@@ -794,282 +799,156 @@ async fn create_checkout_session_omits_tax_fields_for_no_tax_mode() {
                 }))
             }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Create the session without attaching a tax mechanism
     let session = provider
         .create_checkout_session(&input)
         .await
         .expect("no-tax Checkout Session to be created");
-    server.abort();
 
     // Check the connected-account session is returned normally
     assert_eq!(session.provider_session_id, "cs_no_tax");
 }
 
 #[test]
-fn find_matching_application_fee_refund_adopts_keyed_converted_refund_with_recorded_request() {
-    // Setup a keyed refund Stripe reports in the platform currency with OCG's recorded request
+fn test_find_matching_application_fee_refund_adopts_matching_refunds() {
+    // Setup an adjustment and listed refunds for its purchase and kind
     let purchase_id = Uuid::new_v4();
     let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
-    refund.currency = "eur".to_string();
-    refund
-        .metadata
-        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
-    refund
-        .metadata
-        .insert("requested_amount_minor".to_string(), "125".to_string());
-    refund
-        .metadata
-        .insert("requested_currency".to_string(), "usd".to_string());
-
-    // Reuse the refund because the converted provider amount is not comparable
-    let matched = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect("application-fee refund lookup to parse")
-        .expect("converted keyed refund to be reused");
-
-    // Check the durable identity is adopted through its recorded request
-    assert_eq!(matched.id, "fr_keyed_123");
-}
-
-#[test]
-fn find_matching_application_fee_refund_adopts_legacy_converted_refund_with_recorded_request() {
-    // Setup a purchase-kind refund Stripe converted that still carries OCG's recorded request
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_legacy_123", 105);
-    refund.currency = "eur".to_string();
-    refund
-        .metadata
-        .insert("requested_amount_minor".to_string(), "125".to_string());
-    refund
-        .metadata
-        .insert("requested_currency".to_string(), "usd".to_string());
-
-    // Reuse the leftover through the request recorded at creation
-    let matched = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect("application-fee refund lookup to parse")
-        .expect("converted legacy refund to be reused");
-
-    // Check the recorded request identifies the converted leftover
-    assert_eq!(matched.id, "fr_legacy_123");
-}
-
-#[test]
-fn find_matching_application_fee_refund_prefers_idempotency_key() {
-    // Setup a leftover purchase-kind match ahead of the durable identity
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let leftover = sample_application_fee_refund(purchase_id, "fr_other_123", 125);
-    let mut matched = sample_application_fee_refund(purchase_id, "fr_keyed_123", 125);
-    matched
-        .metadata
-        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
-
-    // Select the refund created under this adjustment's idempotency key
     let refund =
-        StripeProvider::find_matching_application_fee_refund(&input, vec![leftover, matched])
-            .expect("application-fee refund lookup to parse")
-            .expect("idempotency-key match to be reused");
+        |id: &str, amount_minor| sample_application_fee_refund(purchase_id, id, amount_minor);
+    let cases = [
+        (
+            "keyed converted refund with recorded request",
+            vec![recorded(
+                keyed(in_currency(refund("fr_keyed_123", 105), "eur"), &input),
+                125,
+                "usd",
+            )],
+            "fr_keyed_123",
+        ),
+        (
+            "legacy converted refund with recorded request",
+            vec![recorded(
+                in_currency(refund("fr_legacy_123", 105), "eur"),
+                125,
+                "usd",
+            )],
+            "fr_legacy_123",
+        ),
+        (
+            "idempotency key wins over an earlier legacy match",
+            vec![
+                refund("fr_other_123", 125),
+                keyed(refund("fr_keyed_123", 125), &input),
+            ],
+            "fr_keyed_123",
+        ),
+        (
+            "legacy amount match",
+            vec![refund("fr_legacy_123", 125)],
+            "fr_legacy_123",
+        ),
+        (
+            "matching idempotency key",
+            vec![keyed(refund("fr_keyed_123", 125), &input)],
+            "fr_keyed_123",
+        ),
+        (
+            "legacy mismatch skipped when a later amount matches",
+            vec![refund("fr_wrong_123", 10), refund("fr_legacy_123", 125)],
+            "fr_legacy_123",
+        ),
+    ];
 
-    // Check the durable identity wins over an earlier purchase-kind match
-    assert_eq!(refund.id, "fr_keyed_123");
+    for (case, refunds, expected_id) in cases {
+        // Match the listed refunds against the adjustment
+        let matched = StripeProvider::find_matching_application_fee_refund(&input, refunds)
+            .unwrap_or_else(|err| panic!("{case}: {err:#}"))
+            .unwrap_or_else(|| panic!("{case}: expected a matching refund"));
+
+        // Check the expected provider refund is adopted
+        assert_eq!(matched.id, expected_id, "{case}");
+    }
 }
 
 #[test]
-fn find_matching_application_fee_refund_rejects_converted_refund_with_recorded_request_mismatch() {
-    // Setup a keyed converted refund whose recorded request is for another adjustment amount
+fn test_find_matching_application_fee_refund_rejects_divergent_refunds() {
+    // Setup an adjustment and listed refunds whose provider fields diverge
     let purchase_id = Uuid::new_v4();
     let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
-    refund.currency = "eur".to_string();
-    refund
-        .metadata
-        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
-    refund
-        .metadata
-        .insert("requested_amount_minor".to_string(), "99".to_string());
-    refund
-        .metadata
-        .insert("requested_currency".to_string(), "usd".to_string());
+    let refund =
+        |id: &str, amount_minor| sample_application_fee_refund(purchase_id, id, amount_minor);
+    let keyed_rejection = |reported: &str, reason: &str| {
+        format!(
+            "existing Stripe application-fee refund fr_keyed_123 has {reported} but the adjustment requests 125 usd ({reason}); inspect it in the Stripe Dashboard and record the verified return through financial recovery"
+        )
+    };
+    let cases = [
+        (
+            "converted keyed refund with recorded request mismatch",
+            vec![recorded(
+                keyed(in_currency(refund("fr_keyed_123", 105), "eur"), &input),
+                99,
+                "usd",
+            )],
+            keyed_rejection("105 eur (recorded request 99 usd)", "recorded request differs"),
+        ),
+        (
+            "keyed amount mismatch is not replaced by a sibling",
+            vec![
+                keyed(refund("fr_keyed_123", 10), &input),
+                refund("fr_other_123", 125),
+            ],
+            keyed_rejection("10 usd", "provider amount differs"),
+        ),
+        (
+            "keyed currency mismatch without recorded request",
+            vec![keyed(in_currency(refund("fr_keyed_123", 105), "eur"), &input)],
+            keyed_rejection(
+                "105 eur",
+                "provider currency differs and no recorded request is available",
+            ),
+        ),
+        (
+            "legacy amount mismatch",
+            vec![refund("fr_wrong_123", 10)],
+            "existing Stripe application-fee refund has the wrong amount (fr_wrong_123 has 10 usd; expected 125 usd)"
+                .to_string(),
+        ),
+        (
+            "legacy currency mismatch",
+            vec![in_currency(refund("fr_legacy_123", 125), "eur")],
+            "existing Stripe application-fee refund has the wrong amount (fr_legacy_123 has 125 eur; expected 125 usd)"
+                .to_string(),
+        ),
+        (
+            "multiple legacy amount matches",
+            vec![refund("fr_first_123", 125), refund("fr_second_123", 125)],
+            "multiple Stripe application-fee refunds match this adjustment (fr_first_123, fr_second_123)"
+                .to_string(),
+        ),
+        (
+            "keyed recorded request mismatch",
+            vec![recorded(keyed(refund("fr_keyed_123", 125), &input), 99, "usd")],
+            keyed_rejection("125 usd (recorded request 99 usd)", "recorded request differs"),
+        ),
+    ];
 
-    // Reject the refund because the only comparable evidence disagrees
-    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect_err("converted recorded request mismatch to be rejected");
+    for (case, refunds, expected) in cases {
+        // Match the listed refunds against the adjustment
+        let Err(err) = StripeProvider::find_matching_application_fee_refund(&input, refunds) else {
+            panic!("{case}: expected the refund to be rejected");
+        };
 
-    // Check the provider amount and recorded request both remain visible
-    assert!(err.to_string().contains("fr_keyed_123"));
-    assert!(err.to_string().contains("105 eur"));
-    assert!(err.to_string().contains("(recorded request 99 usd)"));
-    assert!(err.to_string().contains("125 usd ("));
+        // Check the failure names the divergent provider refund
+        assert_eq!(err.to_string(), expected, "{case}");
+    }
 }
 
 #[test]
-fn find_matching_application_fee_refund_rejects_idempotency_key_amount_mismatch() {
-    // Setup a keyed refund whose amount diverged, plus a later amount match
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut keyed = sample_application_fee_refund(purchase_id, "fr_keyed_123", 10);
-    keyed
-        .metadata
-        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
-    let sibling = sample_application_fee_refund(purchase_id, "fr_other_123", 125);
-
-    // Reconcile the durable identity before considering purchase-kind leftovers
-    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![keyed, sibling])
-        .expect_err("idempotency-key amount mismatch to be rejected");
-
-    // Check the keyed refund is not silently replaced by a sibling
-    assert!(err.to_string().contains("fr_keyed_123"));
-    assert!(err.to_string().contains("10"));
-    assert!(err.to_string().contains("125"));
-}
-
-#[test]
-fn find_matching_application_fee_refund_rejects_keyed_currency_mismatch() {
-    // Setup a keyed refund in another currency without the request OCG records at creation
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 105);
-    refund.currency = "eur".to_string();
-    refund
-        .metadata
-        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
-
-    // Reject the durable identity because the converted amount cannot be verified
-    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect_err("unverifiable keyed currency mismatch to be rejected");
-
-    // Check the failure points operators at the existing refund
-    assert!(err.to_string().contains("fr_keyed_123"));
-    assert!(err.to_string().contains("105 eur"));
-    assert!(err.to_string().contains("125 usd"));
-    assert!(err.to_string().contains("no recorded request"));
-    assert!(err.to_string().contains("financial recovery"));
-}
-
-#[test]
-fn find_matching_application_fee_refund_rejects_legacy_amount_mismatch() {
-    // Setup a pre-identity leftover whose purchase and kind match the wrong amount
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let leftover = sample_application_fee_refund(purchase_id, "fr_wrong_123", 10);
-
-    // Reconcile the leftover without creating a replacement refund
-    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![leftover])
-        .expect_err("legacy amount mismatch to be rejected");
-
-    // Check the conflicting leftover remains actionable
-    assert!(err.to_string().contains("fr_wrong_123"));
-    assert!(err.to_string().contains("10"));
-    assert!(err.to_string().contains("125"));
-}
-
-#[test]
-fn find_matching_application_fee_refund_rejects_legacy_currency_mismatch() {
-    // Setup a pre-identity purchase-kind refund denominated in another currency
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_legacy_123", 125);
-    refund.currency = "eur".to_string();
-
-    // Reject the leftover instead of reusing an unlike denomination
-    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect_err("legacy currency mismatch to be rejected");
-
-    // Check the divergent leftover remains actionable
-    assert!(err.to_string().contains("fr_legacy_123"));
-    assert!(err.to_string().contains("125 eur"));
-    assert!(err.to_string().contains("125 usd"));
-}
-
-#[test]
-fn find_matching_application_fee_refund_rejects_multiple_legacy_amount_matches() {
-    // Setup two pre-identity refunds that both match purchase, kind, and amount
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let first = sample_application_fee_refund(purchase_id, "fr_first_123", 125);
-    let second = sample_application_fee_refund(purchase_id, "fr_second_123", 125);
-
-    // Refuse to pick an arbitrary matching leftover
-    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![first, second])
-        .expect_err("ambiguous legacy matches to be rejected");
-
-    // Check both provider identifiers remain in the failure
-    assert!(err.to_string().contains("fr_first_123"));
-    assert!(err.to_string().contains("fr_second_123"));
-}
-
-#[test]
-fn find_matching_application_fee_refund_rejects_recorded_request_mismatch() {
-    // Setup a keyed refund whose recorded request diverges from the adjustment
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 125);
-    refund
-        .metadata
-        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
-    refund
-        .metadata
-        .insert("requested_amount_minor".to_string(), "99".to_string());
-    refund
-        .metadata
-        .insert("requested_currency".to_string(), "usd".to_string());
-
-    // Reject the recorded request even though the provider amount matches
-    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect_err("recorded request mismatch to be rejected");
-
-    // Check the recorded and expected amounts remain actionable
-    assert!(err.to_string().contains("fr_keyed_123"));
-    assert!(err.to_string().contains("99 usd"));
-    assert!(err.to_string().contains("125 usd"));
-}
-
-#[test]
-fn find_matching_application_fee_refund_returns_legacy_amount_match() {
-    // Setup a pre-identity refund that matches purchase, kind, and amount
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let refunds = vec![sample_application_fee_refund(
-        purchase_id,
-        "fr_legacy_123",
-        125,
-    )];
-
-    // Reuse the leftover created before idempotency-key metadata existed
-    let refund = StripeProvider::find_matching_application_fee_refund(&input, refunds)
-        .expect("application-fee refund lookup to parse")
-        .expect("legacy amount match to be reused");
-
-    // Check the matching leftover is returned for durable storage
-    assert_eq!(refund.id, "fr_legacy_123");
-}
-
-#[test]
-fn find_matching_application_fee_refund_returns_matching_idempotency_key() {
-    // Setup a refund stored under this adjustment's durable identity
-    let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 125);
-    refund
-        .metadata
-        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
-
-    // Reuse the provider object created for this adjustment
-    let matched = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
-        .expect("application-fee refund lookup to parse")
-        .expect("idempotency-key match to be reused");
-
-    // Check the durable identity is returned for durable storage
-    assert_eq!(matched.id, "fr_keyed_123");
-}
-
-#[test]
-fn find_matching_application_fee_refund_returns_none_when_unmatched() {
+fn test_find_matching_application_fee_refund_returns_none_when_unmatched() {
     // Setup refunds that share some metadata but not this adjustment
     let purchase_id = Uuid::new_v4();
     let other_purchase_id = Uuid::new_v4();
@@ -1092,122 +971,131 @@ fn find_matching_application_fee_refund_returns_none_when_unmatched() {
 }
 
 #[test]
-fn find_matching_application_fee_refund_skips_legacy_mismatch_when_amount_matches() {
-    // Setup an earlier leftover with the wrong amount ahead of the expected refund
+fn test_find_matching_refund_result_selects_matching_refunds() {
+    // Setup listed refunds for the purchase and the lookups they answer
     let purchase_id = Uuid::new_v4();
-    let input = sample_application_fee_adjustment_input(purchase_id);
-    let leftover = sample_application_fee_refund(purchase_id, "fr_wrong_123", 10);
-    let matched = sample_application_fee_refund(purchase_id, "fr_legacy_123", 125);
-
-    // Reuse the amount-matching leftover instead of bailing on the first hit
-    let refund =
-        StripeProvider::find_matching_application_fee_refund(&input, vec![leftover, matched])
-            .expect("application-fee refund lookup to parse")
-            .expect("legacy amount match to be reused");
-
-    // Check the expected leftover is selected despite an earlier mismatch
-    assert_eq!(refund.id, "fr_legacy_123");
-}
-
-#[test]
-fn find_matching_refund_result_ignores_terminal_refunds_when_unpinned() {
-    // Setup an unpinned purchase refund lookup
-    let purchase_id = Uuid::new_v4();
-    let input = sample_find_refund_input(purchase_id);
-
-    for status in ["canceled", "failed"] {
-        // Find refunds without pinning a provider refund id
-        let refunds = vec![sample_listed_refund(purchase_id, "re_test_123", status)];
-
-        // Check terminal refunds do not block a fresh attempt
-        assert_eq!(
-            StripeProvider::find_matching_refund_result(&input, refunds)
-                .expect("refund lookup to parse"),
+    let listed = |id: &str, status: &str| sample_listed_refund(purchase_id, id, status);
+    let mut wrong_amount = listed("re_test_123", "succeeded");
+    wrong_amount.amount = 2_400;
+    let cases = [
+        (
+            "succeeded refund",
+            vec![listed("re_test_123", "succeeded")],
             None,
-            "expected {status} refund to be ignored"
+            Some(("re_test_123", RefundPaymentStatus::Succeeded)),
+        ),
+        (
+            "pending refund",
+            vec![listed("re_test_123", "pending")],
+            None,
+            Some(("re_test_123", RefundPaymentStatus::Pending)),
+        ),
+        (
+            "refund requiring action",
+            vec![listed("re_test_123", "requires_action")],
+            None,
+            Some(("re_test_123", RefundPaymentStatus::Pending)),
+        ),
+        (
+            "canceled refund when unpinned",
+            vec![listed("re_test_123", "canceled")],
+            None,
+            None,
+        ),
+        (
+            "failed refund when unpinned",
+            vec![listed("re_test_123", "failed")],
+            None,
+            None,
+        ),
+        (
+            "failed refund when pinned",
+            vec![listed("re_failed_123", "failed")],
+            Some("re_failed_123"),
+            Some(("re_failed_123", RefundPaymentStatus::Failed)),
+        ),
+        (
+            "succeeded refund preferred over pending",
+            vec![
+                listed("re_pending_123", "pending"),
+                listed("re_succeeded_123", "succeeded"),
+            ],
+            None,
+            Some(("re_succeeded_123", RefundPaymentStatus::Succeeded)),
+        ),
+        ("refund with another amount", vec![wrong_amount], None, None),
+        (
+            "refund for another purchase",
+            vec![sample_listed_refund(
+                Uuid::new_v4(),
+                "re_other_123",
+                "succeeded",
+            )],
+            None,
+            None,
+        ),
+        (
+            "pinned refund absent from the listing",
+            vec![listed("re_test_123", "succeeded")],
+            Some("re_missing_123"),
+            None,
+        ),
+    ];
+
+    for (case, refunds, pinned, expected) in cases {
+        // Find the matching refund for the optionally pinned lookup
+        let mut input = sample_find_refund_input(purchase_id);
+        input.provider_refund_id = pinned.map(str::to_string);
+        let refund = StripeProvider::find_matching_refund_result(&input, refunds)
+            .unwrap_or_else(|err| panic!("{case}: {err:#}"));
+
+        // Check the selected refund and its mapped status
+        assert_eq!(
+            refund
+                .as_ref()
+                .map(|refund| (refund.provider_refund_id.as_str(), refund.status)),
+            expected,
+            "{case}"
         );
     }
 }
 
-#[test]
-fn find_matching_refund_result_prefers_succeeded_refunds() {
-    // Setup matching pending and successful provider refunds
+#[tokio::test]
+async fn test_find_refund_scopes_the_lookup_to_the_connected_account_payment() {
+    // Setup the connected-account refund listing for the payment intent
     let purchase_id = Uuid::new_v4();
-    let input = sample_find_refund_input(purchase_id);
-    let refunds = vec![
-        sample_listed_refund(purchase_id, "re_pending_123", "pending"),
-        sample_listed_refund(purchase_id, "re_succeeded_123", "succeeded"),
-    ];
+    let router = Router::new().route(
+        "/v1/refunds",
+        get(move |headers: HeaderMap, uri: Uri| async move {
+            assert_eq!(headers["stripe-account"], "acct_test_123");
+            assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
+            assert_eq!(uri.query(), Some("payment_intent=pi_test_123&limit=100"));
+            Json(json!({
+                "data": [{
+                    "amount": 2500,
+                    "id": "re_test_123",
+                    "metadata": {"event_purchase_id": purchase_id},
+                    "status": "pending"
+                }]
+            }))
+        }),
+    );
+    let provider = spawn_stripe_provider(router).await;
 
-    // Find the most useful matching provider refund
-    let refund = StripeProvider::find_matching_refund_result(&input, refunds)
-        .expect("refund lookup to parse")
-        .expect("matching refund to exist");
+    // Look up the purchase refund through the provider boundary
+    let refund = provider
+        .find_refund(&sample_find_refund_input(purchase_id))
+        .await
+        .expect("refund lookup to succeed")
+        .expect("listed refund to match");
 
-    // Check provider success takes precedence over pending state
-    assert_eq!(refund.provider_refund_id, "re_succeeded_123");
-    assert_eq!(refund.status, RefundPaymentStatus::Succeeded);
-}
-
-#[test]
-fn find_matching_refund_result_returns_matching_succeeded_refund() {
-    // Setup a matching successful provider refund
-    let purchase_id = Uuid::new_v4();
-    let input = sample_find_refund_input(purchase_id);
-    let refunds = vec![sample_listed_refund(
-        purchase_id,
-        "re_test_123",
-        "succeeded",
-    )];
-
-    // Find the matching provider refund
-    let refund = StripeProvider::find_matching_refund_result(&input, refunds)
-        .expect("refund lookup to parse")
-        .expect("succeeded refund to match");
-
-    // Check the matching successful refund is returned
+    // Check the listed refund is mapped
     assert_eq!(refund.provider_refund_id, "re_test_123");
-    assert_eq!(refund.status, RefundPaymentStatus::Succeeded);
-}
-
-#[test]
-fn find_matching_refund_result_returns_pending_refund_statuses() {
-    // Setup a purchase refund lookup
-    let purchase_id = Uuid::new_v4();
-    let input = sample_find_refund_input(purchase_id);
-
-    for status in ["pending", "requires_action"] {
-        // Find each pending provider refund status
-        let refunds = vec![sample_listed_refund(purchase_id, "re_test_123", status)];
-        let refund = StripeProvider::find_matching_refund_result(&input, refunds)
-            .expect("refund lookup to parse")
-            .expect("pending refund to match");
-
-        // Check the provider status maps to a pending refund
-        assert_eq!(refund.status, RefundPaymentStatus::Pending);
-    }
-}
-
-#[test]
-fn find_matching_refund_result_returns_terminal_refund_when_pinned() {
-    // Setup a lookup pinned to a terminal provider refund
-    let purchase_id = Uuid::new_v4();
-    let mut input = sample_find_refund_input(purchase_id);
-    input.provider_refund_id = Some("re_failed_123".to_string());
-    let refunds = vec![sample_listed_refund(purchase_id, "re_failed_123", "failed")];
-
-    // Find the pinned provider refund
-    let refund = StripeProvider::find_matching_refund_result(&input, refunds)
-        .expect("refund lookup to parse")
-        .expect("pinned refund to match");
-
-    // Check the pinned terminal refund is returned for reconciliation
-    assert_eq!(refund.provider_refund_id, "re_failed_123");
-    assert_eq!(refund.status, RefundPaymentStatus::Failed);
+    assert_eq!(refund.status, RefundPaymentStatus::Pending);
 }
 
 #[tokio::test]
-async fn get_checkout_financial_context_reads_authoritative_connected_account_amounts() {
+async fn test_get_checkout_financial_context_reads_authoritative_connected_account_amounts() {
     // Setup an expanded Checkout Session response in the connected account
     let router = Router::new().route(
         "/v1/checkout/sessions/cs_test_123",
@@ -1233,9 +1121,7 @@ async fn get_checkout_financial_context_reads_authoritative_connected_account_am
             }))
         }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Retrieve the expanded provider context used by purchase reconciliation
     let context = provider
@@ -1245,7 +1131,6 @@ async fn get_checkout_financial_context_reads_authoritative_connected_account_am
         })
         .await
         .expect("Checkout financial context to be retrieved");
-    server.abort();
 
     // Check authoritative tax, total, and object references are preserved
     assert_eq!(
@@ -1259,7 +1144,7 @@ async fn get_checkout_financial_context_reads_authoritative_connected_account_am
 }
 
 #[tokio::test]
-async fn get_checkout_financial_context_rejects_unpaid_session() {
+async fn test_get_checkout_financial_context_rejects_unpaid_session() {
     // Setup an unpaid Checkout Session response
     let router = Router::new().route(
         "/v1/checkout/sessions/cs_test_unpaid",
@@ -1275,9 +1160,7 @@ async fn get_checkout_financial_context_rejects_unpaid_session() {
             }))
         }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Retrieve the financial context from the unpaid session
     let error = provider
@@ -1288,15 +1171,15 @@ async fn get_checkout_financial_context_rejects_unpaid_session() {
         .await
         .expect_err("unpaid Checkout Session to be rejected");
 
-    // Stop the provider fixture after the request completes
-    server.abort();
-
     // Check the unpaid provider state is rejected
-    assert!(error.to_string().contains("not paid"));
+    assert_eq!(
+        error.to_string(),
+        "Stripe Checkout Session is not paid (status: unpaid)"
+    );
 }
 
 #[tokio::test]
-async fn get_financial_document_scopes_invoice_retrieval_to_its_connected_account() {
+async fn test_get_financial_document_scopes_invoice_retrieval_to_its_connected_account() {
     // Setup an invoice response in the account that owns the direct charge
     let router = Router::new().route(
         "/v1/invoices/in_test_123",
@@ -1310,9 +1193,7 @@ async fn get_financial_document_scopes_invoice_retrieval_to_its_connected_accoun
             }))
         }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Retrieve the current attendee-facing provider document
     let document = provider
@@ -1323,7 +1204,6 @@ async fn get_financial_document_scopes_invoice_retrieval_to_its_connected_accoun
         })
         .await
         .expect("account-scoped invoice to be retrieved");
-    server.abort();
 
     // Check Stripe's current URLs are returned without exposing the secret key
     assert_eq!(
@@ -1337,7 +1217,7 @@ async fn get_financial_document_scopes_invoice_retrieval_to_its_connected_accoun
 }
 
 #[tokio::test]
-async fn list_tax_rates_scopes_filters_and_paginates() {
+async fn test_list_tax_rates_scopes_filters_and_paginates() {
     // Setup two provider pages with defensive inactive and incompatible entries
     let router = Router::new().route(
         "/v1/tax_rates",
@@ -1394,9 +1274,7 @@ async fn list_tax_rates_scopes_filters_and_paginates() {
             }
         }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // List account-owned rates compatible with exclusive ticket prices
     let rates = provider
@@ -1406,7 +1284,6 @@ async fn list_tax_rates_scopes_filters_and_paginates() {
         })
         .await
         .expect("compatible Tax Rates to be listed");
-    server.abort();
 
     // Check pagination order and provider metadata are preserved
     assert_eq!(
@@ -1418,7 +1295,7 @@ async fn list_tax_rates_scopes_filters_and_paginates() {
 }
 
 #[tokio::test]
-async fn list_tax_rates_propagates_provider_errors() {
+async fn test_list_tax_rates_propagates_provider_errors() {
     // Setup a provider failure from the connected-account Tax Rate endpoint
     let router = Router::new().route(
         "/v1/tax_rates",
@@ -1429,9 +1306,7 @@ async fn list_tax_rates_propagates_provider_errors() {
             )
         }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // List the connected account's rates while Stripe is unavailable
     let err = provider
@@ -1441,14 +1316,13 @@ async fn list_tax_rates_propagates_provider_errors() {
         })
         .await
         .expect_err("provider failure to be returned");
-    server.abort();
 
     // Check the listing error preserves the provider response context
     assert!(err.to_string().contains("temporarily unavailable"));
 }
 
 #[tokio::test]
-async fn reconcile_application_fee_adjustment_accepts_created_refund_converted_to_platform_currency()
+async fn test_reconcile_application_fee_adjustment_accepts_created_refund_converted_to_platform_currency()
  {
     // Setup an empty lookup, a purchase-currency fee, and a creation response Stripe converted
     let purchase_id = Uuid::new_v4();
@@ -1480,16 +1354,13 @@ async fn reconcile_application_fee_adjustment_accepts_created_refund_converted_t
                 },
             ),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Reconcile an adjustment whose refund Stripe reports in the platform currency
     let result = provider
         .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(purchase_id))
         .await
         .expect("converted created refund to be accepted");
-    server.abort();
 
     // Check the created refund is accepted through its recorded request
     assert_eq!(
@@ -1499,113 +1370,8 @@ async fn reconcile_application_fee_adjustment_accepts_created_refund_converted_t
 }
 
 #[tokio::test]
-async fn reconcile_application_fee_adjustment_accepts_fee_without_settlement_transaction() {
-    // Setup an empty lookup and a fee whose settlement transaction is null
-    let router = Router::new()
-        .route(
-            "/v1/application_fees/fee_test_123",
-            get(|| async {
-                Json(json!({
-                    "amount": 125,
-                    "amount_refunded": 0,
-                    "balance_transaction": null,
-                    "currency": "usd"
-                }))
-            }),
-        )
-        .route(
-            "/v1/application_fees/fee_test_123/refunds",
-            get(|| async { Json(json!({"data": [], "has_more": false})) }).post(
-                |body: String| async move {
-                    let form: BTreeMap<String, String> =
-                        serde_urlencoded::from_str(&body).expect("application-fee form to parse");
-                    assert_eq!(form.get("amount"), Some(&"125".to_string()));
-                    Json(sample_application_fee_refund_json(
-                        "fr_test_123",
-                        125,
-                        "usd",
-                    ))
-                },
-            ),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Reconcile the adjustment against a fee Stripe has not settled yet
-    let result = provider
-        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
-            Uuid::new_v4(),
-        ))
-        .await
-        .expect("unsettled fee adjustment to be reconciled");
-    server.abort();
-
-    // Check the refund is created in the fee currency
-    assert_eq!(result.provider_application_fee_refund_id, "fr_test_123");
-}
-
-#[tokio::test]
-async fn reconcile_application_fee_adjustment_adopts_converted_keyed_refund() {
-    // Setup a listed keyed refund Stripe reports in the platform currency
-    let purchase_id = Uuid::new_v4();
-    let router = Router::new()
-        .route(
-            "/v1/application_fees/fee_test_123",
-            get(|| async {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "converted keyed refund must not fetch the fee",
-                )
-            }),
-        )
-        .route(
-            "/v1/application_fees/fee_test_123/refunds",
-            get(move || async move {
-                Json(json!({
-                    "data": [{
-                        "amount": 105,
-                        "currency": "eur",
-                        "id": "fr_converted_123",
-                        "metadata": {
-                            "event_purchase_id": purchase_id,
-                            "idempotency_key": "fee-adjustment-test",
-                            "kind": "tax-reconciliation",
-                            "requested_amount_minor": "125",
-                            "requested_currency": "usd"
-                        }
-                    }],
-                    "has_more": false
-                }))
-            })
-            .post(|| async {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "converted keyed refund must not be created again",
-                )
-            }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Retry the adjustment after Stripe already moved the converted refund
-    let result = provider
-        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(purchase_id))
-        .await
-        .expect("converted keyed refund to be adopted");
-    server.abort();
-
-    // Check the existing refund is adopted without moving money again
-    assert_eq!(
-        result.provider_application_fee_refund_id,
-        "fr_converted_123"
-    );
-}
-
-#[tokio::test]
-async fn reconcile_application_fee_adjustment_adopts_stale_claim_refund_after_remaining_rejection()
-{
+async fn test_reconcile_application_fee_adjustment_adopts_stale_claim_refund_after_remaining_rejection()
+ {
     // Setup a listing that gains the keyed refund after the first attempt and a fully refunded fee
     let purchase_id = Uuid::new_v4();
     let input = sample_application_fee_adjustment_input(purchase_id);
@@ -1655,9 +1421,7 @@ async fn reconcile_application_fee_adjustment_adopts_stale_claim_refund_after_re
                 }
             }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Reconcile while the stale claim's refund is not listed yet
     let err = provider
@@ -1666,6 +1430,7 @@ async fn reconcile_application_fee_adjustment_adopts_stale_claim_refund_after_re
         .expect_err("insufficient remaining amount to be rejected");
 
     // Check the attempt fails without creating another refund
+    assert!(err.to_string().contains("fee_test_123 has 0 usd unrefunded"));
     assert!(err.to_string().contains("may already exist"));
     assert_eq!(fee_retrievals.load(Ordering::SeqCst), 1);
     assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
@@ -1683,7 +1448,6 @@ async fn reconcile_application_fee_adjustment_adopts_stale_claim_refund_after_re
         .reconcile_application_fee_adjustment(&input)
         .await
         .expect("keyed refund to be adopted");
-    server.abort();
 
     // Check the existing refund is adopted without retrieving the fee or creating again
     assert_eq!(result.provider_application_fee_refund_id, "fr_stale_123");
@@ -1692,51 +1456,49 @@ async fn reconcile_application_fee_adjustment_adopts_stale_claim_refund_after_re
 }
 
 #[tokio::test]
-async fn reconcile_application_fee_adjustment_creates_refund_for_any_settlement_representation() {
-    // Exercise every way Stripe can represent the fee's settlement
-    let mut fees = vec![
-        json!({
-            "amount": 125,
-            "amount_refunded": 0,
-            "balance_transaction": {"amount": 105, "currency": "eur"},
-            "currency": "usd"
-        }),
-        json!({
-            "amount": 125,
-            "amount_refunded": 0,
-            "balance_transaction": "txn_test_123",
-            "currency": "usd"
-        }),
-        json!({"amount": 125, "amount_refunded": 0, "currency": "usd"}),
+async fn test_reconcile_application_fee_adjustment_creates_refund_within_remaining_fee() {
+    // Setup fees that cover the adjustment in every settlement representation
+    let cases = [
+        (
+            "eur settlement transaction",
+            json!({
+                "amount": 125,
+                "amount_refunded": 0,
+                "balance_transaction": {"amount": 105, "currency": "eur"},
+                "currency": "usd"
+            }),
+        ),
+        (
+            "settlement transaction id",
+            json!({
+                "amount": 125,
+                "amount_refunded": 0,
+                "balance_transaction": "txn_test_123",
+                "currency": "usd"
+            }),
+        ),
+        (
+            "null settlement transaction",
+            json!({
+                "amount": 125,
+                "amount_refunded": 0,
+                "balance_transaction": null,
+                "currency": "usd"
+            }),
+        ),
+        (
+            "absent settlement transaction",
+            json!({"amount": 125, "amount_refunded": 0, "currency": "usd"}),
+        ),
+        (
+            "exact remaining amount",
+            json!({"amount": 200, "amount_refunded": 75, "currency": "usd"}),
+        ),
     ];
-    for fee in fees.drain(..) {
-        // Setup an empty lookup, the fee, and the creation response
-        let router = Router::new()
-            .route(
-                "/v1/application_fees/fee_test_123",
-                get(move || {
-                    let fee = fee.clone();
-                    async move { Json(fee) }
-                }),
-            )
-            .route(
-                "/v1/application_fees/fee_test_123/refunds",
-                get(|| async { Json(json!({"data": [], "has_more": false})) }).post(
-                    |body: String| async move {
-                        let form: BTreeMap<String, String> = serde_urlencoded::from_str(&body)
-                            .expect("application-fee form to parse");
-                        assert_eq!(form.get("amount"), Some(&"125".to_string()));
-                        Json(sample_application_fee_refund_json(
-                            "fr_test_123",
-                            125,
-                            "usd",
-                        ))
-                    },
-                ),
-            );
-        let (api_base_url, server) = spawn_stripe_api(router).await;
-        let mut provider = sample_stripe_provider();
-        provider.api_base_url = api_base_url;
+
+    for (case, fee) in cases {
+        let (provider, fee_retrievals, refund_creations) =
+            spawn_application_fee_api(fee, json!({"data": [], "has_more": false})).await;
 
         // Reconcile the adjustment against the fee's own denomination
         let result = provider
@@ -1744,16 +1506,20 @@ async fn reconcile_application_fee_adjustment_creates_refund_for_any_settlement_
                 Uuid::new_v4(),
             ))
             .await
-            .expect("fee adjustment to be reconciled regardless of settlement");
-        server.abort();
+            .unwrap_or_else(|err| panic!("{case}: {err:#}"));
 
-        // Check the refund is created in the purchase currency
-        assert_eq!(result.provider_application_fee_refund_id, "fr_test_123");
+        // Check one refund is created in the purchase currency without clamping
+        assert_eq!(
+            result.provider_application_fee_refund_id, "fr_test_123",
+            "{case}"
+        );
+        assert_eq!(fee_retrievals.load(Ordering::SeqCst), 1, "{case}");
+        assert_eq!(refund_creations.load(Ordering::SeqCst), 1, "{case}");
     }
 }
 
 #[tokio::test]
-async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_platform() {
+async fn test_reconcile_application_fee_adjustment_looks_up_before_creating_on_the_platform() {
     // Setup an empty lookup, the fee retrieval, and the creation response
     let purchase_id = Uuid::new_v4();
     let router = Router::new()
@@ -1813,114 +1579,145 @@ async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_pl
                 ))
             }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Reconcile the durable adjustment through lookup-before-create
     let result = provider
         .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(purchase_id))
         .await
         .expect("application-fee adjustment to be reconciled");
-    server.abort();
 
     // Check the platform-owned provider object is returned for durable storage
     assert_eq!(result.provider_application_fee_refund_id, "fr_test_123");
 }
 
 #[tokio::test]
-async fn reconcile_application_fee_adjustment_refunds_exact_remaining_amount() {
-    // Setup an empty lookup and a fee whose unrefunded amount equals the adjustment
-    let router = Router::new()
-        .route(
-            "/v1/application_fees/fee_test_123",
-            get(|| async {
-                Json(json!({"amount": 200, "amount_refunded": 75, "currency": "usd"}))
+async fn test_reconcile_application_fee_adjustment_rejects_fee_without_room_before_creating() {
+    // Setup fees that cannot absorb the 125 usd adjustment
+    let cases = [
+        (
+            "amount above remaining fee",
+            json!({"amount": 125, "amount_refunded": 25, "currency": "usd"}),
+            [
+                "fee_test_123 has 100 usd unrefunded",
+                "requests 125 usd",
+                "may already exist, retry the adjustment",
+            ],
+        ),
+        (
+            "fee currency mismatch",
+            json!({
+                "amount": 105,
+                "amount_refunded": 0,
+                "balance_transaction": {"amount": 125, "currency": "usd"},
+                "currency": "eur"
             }),
-        )
-        .route(
-            "/v1/application_fees/fee_test_123/refunds",
-            get(|| async { Json(json!({"data": [], "has_more": false})) }).post(
-                |body: String| async move {
-                    let form: BTreeMap<String, String> =
-                        serde_urlencoded::from_str(&body).expect("application-fee form to parse");
-                    assert_eq!(form.get("amount"), Some(&"125".to_string()));
-                    Json(sample_application_fee_refund_json(
-                        "fr_test_123",
-                        125,
-                        "usd",
-                    ))
-                },
-            ),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+            [
+                "fee_test_123 is denominated in eur",
+                "requests 125 usd",
+                "record it through financial recovery",
+            ],
+        ),
+        (
+            "invalid refunded balance",
+            json!({"amount": 125, "amount_refunded": 150, "currency": "usd"}),
+            [
+                "fee_test_123 reports an invalid refunded amount",
+                "(150 of 125)",
+                "inspect it in the Stripe Dashboard",
+            ],
+        ),
+    ];
 
-    // Reconcile an adjustment that consumes the whole remaining fee
-    let result = provider
-        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
-            Uuid::new_v4(),
-        ))
-        .await
-        .expect("exact remaining amount to be refunded");
-    server.abort();
+    for (case, fee, expected_fragments) in cases {
+        let (provider, fee_retrievals, refund_creations) =
+            spawn_application_fee_api(fee, json!({"data": [], "has_more": false})).await;
 
-    // Check the refund is created without clamping
-    assert_eq!(result.provider_application_fee_refund_id, "fr_test_123");
+        // Reconcile the adjustment against the fee
+        let Err(err) = provider
+            .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
+                Uuid::new_v4(),
+            ))
+            .await
+        else {
+            panic!("{case}: expected the adjustment to be rejected");
+        };
+
+        // Check the failure is actionable and no refund is created
+        for fragment in expected_fragments {
+            assert!(err.to_string().contains(fragment), "{case}: {err}");
+        }
+        assert_eq!(fee_retrievals.load(Ordering::SeqCst), 1, "{case}");
+        assert_eq!(refund_creations.load(Ordering::SeqCst), 0, "{case}");
+    }
 }
 
 #[tokio::test]
-async fn reconcile_application_fee_adjustment_rejects_amount_above_remaining_fee() {
-    // Setup an empty lookup and a fee already partially refunded
-    let refund_creations = Arc::new(AtomicUsize::new(0));
-    let router = Router::new()
-        .route(
-            "/v1/application_fees/fee_test_123",
-            get(|| async {
-                Json(json!({"amount": 125, "amount_refunded": 25, "currency": "usd"}))
-            }),
-        )
-        .route(
-            "/v1/application_fees/fee_test_123/refunds",
-            get(|| async { Json(json!({"data": [], "has_more": false})) }).post({
-                let refund_creations = Arc::clone(&refund_creations);
-                move || {
-                    let refund_creations = Arc::clone(&refund_creations);
-                    async move {
-                        refund_creations.fetch_add(1, Ordering::SeqCst);
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "oversized application-fee refund must not be created",
-                        )
-                    }
-                }
-            }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+async fn test_reconcile_application_fee_adjustment_rejects_invalid_input_before_contacting_stripe()
+{
+    // Setup adjustments that must be rejected locally
+    let cases: [(&str, Mutation<ApplicationFeeAdjustmentInput>, &str); 3] = [
+        (
+            "zero amount",
+            |input| input.amount_minor = 0,
+            "application-fee adjustment amount must be positive",
+        ),
+        (
+            "negative amount",
+            |input| input.amount_minor = -1,
+            "application-fee adjustment amount must be positive",
+        ),
+        (
+            "blank connected seller",
+            |input| input.connected_seller_id = " ".to_string(),
+            "application-fee adjustment is missing connected seller account",
+        ),
+    ];
+    let provider = spawn_stripe_provider(Router::new()).await;
 
-    // Reconcile an adjustment larger than the unrefunded fee
+    for (case, mutate, expected) in cases {
+        let mut input = sample_application_fee_adjustment_input(Uuid::new_v4());
+        mutate(&mut input);
+
+        // Reconcile against an API with no routes
+        let err = provider
+            .reconcile_application_fee_adjustment(&input)
+            .await
+            .expect_err(case);
+
+        // Check the local guard rejects the adjustment
+        assert_eq!(err.to_string(), expected, "{case}");
+    }
+}
+
+#[tokio::test]
+async fn test_reconcile_application_fee_adjustment_rejects_truncated_refund_listing() {
+    // Setup a truncated listing ahead of the fee retrieval and creation endpoints
+    let (provider, fee_retrievals, refund_creations) = spawn_application_fee_api(
+        json!({"amount": 125, "amount_refunded": 0, "currency": "usd"}),
+        json!({"data": [], "has_more": true}),
+    )
+    .await;
+
+    // Reconcile an adjustment whose existing refunds cannot be fully listed
     let err = provider
         .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
             Uuid::new_v4(),
         ))
         .await
-        .expect_err("insufficient remaining amount to be rejected");
-    server.abort();
+        .expect_err("truncated listing to fail closed");
 
-    // Check the failure steers operators to retry before recording an external return
-    assert!(err.to_string().contains("fee_test_123"));
-    assert!(err.to_string().contains("100 usd"));
-    assert!(err.to_string().contains("125 usd"));
-    assert!(err.to_string().contains("may already exist"));
-    assert!(err.to_string().contains("retry"));
+    // Check the failure stops before retrieving the fee or creating a refund
+    assert!(
+        err.to_string().contains("fee_test_123 has more than 100 refunds"),
+        "{err}"
+    );
+    assert_eq!(fee_retrievals.load(Ordering::SeqCst), 0);
     assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
 }
 
 #[tokio::test]
-async fn reconcile_application_fee_adjustment_rejects_created_refund_with_unexpected_amount() {
+async fn test_reconcile_application_fee_adjustment_rejects_created_refund_with_unexpected_amount() {
     // Setup an empty lookup, a matching fee, and a creation response in another denomination
     let router = Router::new()
         .route(
@@ -1937,9 +1734,7 @@ async fn reconcile_application_fee_adjustment_rejects_created_refund_with_unexpe
                 ))
             }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Reconcile an adjustment whose created refund diverges from the request
     let err = provider
@@ -1948,216 +1743,22 @@ async fn reconcile_application_fee_adjustment_rejects_created_refund_with_unexpe
         ))
         .await
         .expect_err("unexpected created refund to be rejected");
-    server.abort();
 
     // Check the failure names the created refund for operator inspection
-    assert!(err.to_string().contains("fr_test_123"));
-    assert!(err.to_string().contains("105 eur"));
-    assert!(err.to_string().contains("inspect"));
+    assert!(
+        err.to_string()
+            .contains("created application-fee refund fr_test_123 with 105 eur"),
+        "{err}"
+    );
+    assert!(
+        err.to_string()
+            .contains("requests 125 usd (recorded request differs); inspect it"),
+        "{err}"
+    );
 }
 
 #[tokio::test]
-async fn reconcile_application_fee_adjustment_rejects_fee_currency_mismatch() {
-    // Setup an empty lookup and a fee denominated in another currency than the purchase
-    let refund_creations = Arc::new(AtomicUsize::new(0));
-    let router = Router::new()
-        .route(
-            "/v1/application_fees/fee_test_123",
-            get(|| async {
-                Json(json!({
-                    "amount": 105,
-                    "amount_refunded": 0,
-                    "balance_transaction": {"amount": 125, "currency": "usd"},
-                    "currency": "eur"
-                }))
-            }),
-        )
-        .route(
-            "/v1/application_fees/fee_test_123/refunds",
-            get(|| async { Json(json!({"data": [], "has_more": false})) }).post({
-                let refund_creations = Arc::clone(&refund_creations);
-                move || {
-                    let refund_creations = Arc::clone(&refund_creations);
-                    async move {
-                        refund_creations.fetch_add(1, Ordering::SeqCst);
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "cross-currency application-fee refund must not be created",
-                        )
-                    }
-                }
-            }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Reconcile an adjustment OCG cannot map onto the fee currency
-    let err = provider
-        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
-            Uuid::new_v4(),
-        ))
-        .await
-        .expect_err("fee currency mismatch to fail fast");
-    server.abort();
-
-    // Check the failure directs operators toward manual financial recovery
-    assert!(err.to_string().contains("fee_test_123"));
-    assert!(err.to_string().contains("eur"));
-    assert!(err.to_string().contains("125 usd"));
-    assert!(err.to_string().contains("financial recovery"));
-    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
-}
-
-#[tokio::test]
-async fn reconcile_application_fee_adjustment_rejects_fully_refunded_fee() {
-    // Setup an empty lookup and a fee with nothing left to refund
-    let refund_creations = Arc::new(AtomicUsize::new(0));
-    let router = Router::new()
-        .route(
-            "/v1/application_fees/fee_test_123",
-            get(|| async {
-                Json(json!({"amount": 125, "amount_refunded": 125, "currency": "usd"}))
-            }),
-        )
-        .route(
-            "/v1/application_fees/fee_test_123/refunds",
-            get(|| async { Json(json!({"data": [], "has_more": false})) }).post({
-                let refund_creations = Arc::clone(&refund_creations);
-                move || {
-                    let refund_creations = Arc::clone(&refund_creations);
-                    async move {
-                        refund_creations.fetch_add(1, Ordering::SeqCst);
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "exhausted application-fee refund must not be created",
-                        )
-                    }
-                }
-            }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Reconcile an adjustment against an exhausted fee
-    let err = provider
-        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
-            Uuid::new_v4(),
-        ))
-        .await
-        .expect_err("fully refunded fee to be rejected");
-    server.abort();
-
-    // Check the failure reports no remaining amount and creates nothing
-    assert!(err.to_string().contains("0 usd"));
-    assert!(err.to_string().contains("may already exist"));
-    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
-}
-
-#[tokio::test]
-async fn reconcile_application_fee_adjustment_rejects_invalid_refunded_balance() {
-    // Setup an empty lookup and a fee reporting more refunded than collected
-    let refund_creations = Arc::new(AtomicUsize::new(0));
-    let router = Router::new()
-        .route(
-            "/v1/application_fees/fee_test_123",
-            get(|| async {
-                Json(json!({"amount": 125, "amount_refunded": 150, "currency": "usd"}))
-            }),
-        )
-        .route(
-            "/v1/application_fees/fee_test_123/refunds",
-            get(|| async { Json(json!({"data": [], "has_more": false})) }).post({
-                let refund_creations = Arc::clone(&refund_creations);
-                move || {
-                    let refund_creations = Arc::clone(&refund_creations);
-                    async move {
-                        refund_creations.fetch_add(1, Ordering::SeqCst);
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "application-fee refund must not be created for malformed fee",
-                        )
-                    }
-                }
-            }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Reconcile an adjustment against a fee whose balance fields are inconsistent
-    let err = provider
-        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
-            Uuid::new_v4(),
-        ))
-        .await
-        .expect_err("invalid refunded balance to be rejected");
-    server.abort();
-
-    // Check the failure reports the malformed balance and creates nothing
-    assert!(err.to_string().contains("fee_test_123"));
-    assert!(err.to_string().contains("150 of 125"));
-    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
-}
-
-#[tokio::test]
-async fn reconcile_application_fee_adjustment_rejects_truncated_refund_listing() {
-    // Setup a truncated listing ahead of the fee retrieval and creation endpoints
-    let fee_retrievals = Arc::new(AtomicUsize::new(0));
-    let refund_creations = Arc::new(AtomicUsize::new(0));
-    let router = Router::new()
-        .route(
-            "/v1/application_fees/fee_test_123",
-            get({
-                let fee_retrievals = Arc::clone(&fee_retrievals);
-                move || {
-                    let fee_retrievals = Arc::clone(&fee_retrievals);
-                    async move {
-                        fee_retrievals.fetch_add(1, Ordering::SeqCst);
-                        Json(json!({"amount": 125, "amount_refunded": 0, "currency": "usd"}))
-                    }
-                }
-            }),
-        )
-        .route(
-            "/v1/application_fees/fee_test_123/refunds",
-            get(|| async { Json(json!({"data": [], "has_more": true})) }).post({
-                let refund_creations = Arc::clone(&refund_creations);
-                move || {
-                    let refund_creations = Arc::clone(&refund_creations);
-                    async move {
-                        refund_creations.fetch_add(1, Ordering::SeqCst);
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "application-fee refund must not be created for truncated listing",
-                        )
-                    }
-                }
-            }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Reconcile an adjustment whose existing refunds cannot be fully listed
-    let err = provider
-        .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(
-            Uuid::new_v4(),
-        ))
-        .await
-        .expect_err("truncated listing to fail closed");
-    server.abort();
-
-    // Check the failure stops before retrieving the fee or creating a refund
-    assert!(err.to_string().contains("fee_test_123"));
-    assert!(err.to_string().contains("more than 100 refunds"));
-    assert_eq!(fee_retrievals.load(Ordering::SeqCst), 0);
-    assert_eq!(refund_creations.load(Ordering::SeqCst), 0);
-}
-
-#[tokio::test]
-async fn reconcile_application_fee_adjustment_reuses_matching_listed_refund() {
+async fn test_reconcile_application_fee_adjustment_reuses_matching_listed_refund() {
     // Setup a listed refund stored under this adjustment's durable identity
     let purchase_id = Uuid::new_v4();
     let router = Router::new()
@@ -2197,23 +1798,20 @@ async fn reconcile_application_fee_adjustment_reuses_matching_listed_refund() {
                 )
             }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Reconcile the durable adjustment against the existing provider object
     let result = provider
         .reconcile_application_fee_adjustment(&sample_application_fee_adjustment_input(purchase_id))
         .await
         .expect("application-fee adjustment to be reused");
-    server.abort();
 
     // Check the listed provider object is returned without another create
     assert_eq!(result.provider_application_fee_refund_id, "fr_existing_123");
 }
 
 #[tokio::test]
-async fn reconcile_credit_note_previews_and_issues_the_full_connected_account_document() {
+async fn test_reconcile_credit_note_previews_and_issues_the_full_connected_account_document() {
     // Setup the invoice, preview, and issue endpoints for a full refund document
     let router = Router::new()
         .route(
@@ -2286,25 +1884,13 @@ async fn reconcile_credit_note_previews_and_issues_the_full_connected_account_do
                 Json(json!({"data": [{"id": "il_test_123"}]}))
             }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Reconcile the full credit note against the existing customer refund
     let result = provider
-        .reconcile_credit_note(&CreditNoteInput {
-            amount_minor: 2750,
-            connected_seller_id: "acct_test_123".to_string(),
-            event_purchase_id: Uuid::new_v4(),
-            event_purchase_refund_id: Uuid::new_v4(),
-            idempotency_key: "credit-note-test".to_string(),
-            provider_invoice_id: "in_test_123".to_string(),
-            provider_refund_id: "re_test_123".to_string(),
-            tax_amount_minor: 250,
-        })
+        .reconcile_credit_note(&sample_credit_note_input())
         .await
         .expect("full credit note to be issued");
-    server.abort();
 
     // Check the issued provider document identity and current PDF are preserved
     assert_eq!(result.provider_credit_note_id, "cn_test_123");
@@ -2315,9 +1901,105 @@ async fn reconcile_credit_note_previews_and_issues_the_full_connected_account_do
 }
 
 #[tokio::test]
-async fn refund_payment_fails_within_the_request_deadline_when_the_provider_stalls() {
+async fn test_reconcile_credit_note_adopts_existing_document_for_the_refund() {
+    // Setup a listing that already holds the credit note issued for this refund
+    let input = sample_credit_note_input();
+    let refund_id = input.event_purchase_refund_id;
+    let router = Router::new().route(
+        "/v1/credit_notes",
+        get(move || async move {
+            Json(json!({"data": [
+                {
+                    "amount": 2750,
+                    "id": "cn_other_refund",
+                    "metadata": {"event_purchase_refund_id": Uuid::new_v4()},
+                    "pdf": null,
+                    "total_taxes": [{"amount": 250}]
+                },
+                {
+                    "amount": 2750,
+                    "id": "cn_existing_123",
+                    "metadata": {"event_purchase_refund_id": refund_id},
+                    "pdf": "https://credit-note.stripe.test/existing.pdf",
+                    "total_taxes": [{"amount": 250}]
+                }
+            ]}))
+        }),
+    );
+    let provider = spawn_stripe_provider(router).await;
+
+    // Reconcile the credit note without the invoice-line, preview or issue routes
+    let result = provider
+        .reconcile_credit_note(&input)
+        .await
+        .expect("existing credit note to be adopted");
+
+    // Check the listed document for this refund is adopted
+    assert_eq!(result.provider_credit_note_id, "cn_existing_123");
+    assert_eq!(
+        result.provider_pdf_url.as_deref(),
+        Some("https://credit-note.stripe.test/existing.pdf")
+    );
+}
+
+#[tokio::test]
+async fn test_reconcile_credit_note_rejects_existing_document_with_mismatched_amounts() {
+    // Setup a listed credit note for this refund whose tax credit diverges
+    let input = sample_credit_note_input();
+    let refund_id = input.event_purchase_refund_id;
+    let router = Router::new().route(
+        "/v1/credit_notes",
+        get(move || async move {
+            Json(json!({"data": [{
+                "amount": 2750,
+                "id": "cn_existing_123",
+                "metadata": {"event_purchase_refund_id": refund_id},
+                "pdf": null,
+                "total_taxes": [{"amount": 200}]
+            }]}))
+        }),
+    );
+    let provider = spawn_stripe_provider(router).await;
+
+    // Reconcile the credit note against the divergent document
+    let err = provider
+        .reconcile_credit_note(&input)
+        .await
+        .expect_err("mismatched existing credit note to be rejected");
+
+    // Check the divergent document is not adopted
+    assert_eq!(
+        err.to_string(),
+        "Stripe credit-note preview does not match the full purchase refund"
+    );
+}
+
+#[tokio::test]
+async fn test_reconcile_credit_note_rejects_invalid_amounts_before_contacting_stripe() {
+    // Setup credit notes that must be rejected locally
+    let cases: [(&str, Mutation<CreditNoteInput>); 3] = [
+        ("zero amount", |input| input.amount_minor = 0),
+        ("negative amount", |input| input.amount_minor = -1),
+        ("negative tax amount", |input| input.tax_amount_minor = -1),
+    ];
+    let provider = spawn_stripe_provider(Router::new()).await;
+
+    for (case, mutate) in cases {
+        let mut input = sample_credit_note_input();
+        mutate(&mut input);
+
+        // Reconcile against an API with no routes
+        let err = provider.reconcile_credit_note(&input).await.expect_err(case);
+
+        // Check the local guard rejects the amounts
+        assert_eq!(err.to_string(), "credit-note amounts are invalid", "{case}");
+    }
+}
+
+#[tokio::test]
+async fn test_refund_payment_fails_within_the_request_deadline_when_the_provider_stalls() {
     // Setup a provider endpoint that accepts connections and never answers
-    let (api_base_url, server) = spawn_stalled_stripe_api().await;
+    let api_base_url = spawn_stalled_stripe_api().await;
     let mut provider = sample_stripe_provider_with_deadlines(HttpClientConfig {
         connect_timeout_secs: 1,
         request_timeout_secs: 1,
@@ -2331,7 +2013,6 @@ async fn refund_payment_fails_within_the_request_deadline_when_the_provider_stal
     )
     .await
     .expect("refund call to return within the configured deadline");
-    server.abort();
 
     // Check the failure is the client deadline rather than a provider response
     let err = result.expect_err("stalled provider to fail the refund");
@@ -2344,7 +2025,7 @@ async fn refund_payment_fails_within_the_request_deadline_when_the_provider_stal
 }
 
 #[tokio::test]
-async fn refund_payment_scopes_the_full_refund_to_the_connected_account() {
+async fn test_refund_payment_scopes_the_full_refund_to_the_connected_account() {
     // Setup the connected-account refund endpoint and capture its request
     let input = sample_refund_payment_input();
     let purchase_id = input.purchase_id;
@@ -2366,16 +2047,13 @@ async fn refund_payment_scopes_the_full_refund_to_the_connected_account() {
             Json(json!({"id": "re_test_123", "status": "succeeded"}))
         }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Create the full direct-charge refund
     let result = provider
         .refund_payment(&input)
         .await
         .expect("connected-account refund to be created");
-    server.abort();
 
     // Check the normalized successful provider result
     assert_eq!(result.provider_refund_id, "re_test_123");
@@ -2383,7 +2061,7 @@ async fn refund_payment_scopes_the_full_refund_to_the_connected_account() {
 }
 
 #[test]
-fn refund_result_rejects_unknown_statuses() {
+fn test_refund_result_rejects_unknown_statuses() {
     // Map an unsupported provider refund status
     let err = StripeProvider::refund_result("re_test_123".to_string(), "unknown")
         .expect_err("unknown refund status should be rejected");
@@ -2393,7 +2071,8 @@ fn refund_result_rejects_unknown_statuses() {
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_accepts_dashboard_created_account_and_automatic_tax_readiness() {
+async fn test_validate_fiscal_sponsor_accepts_dashboard_created_account_and_automatic_tax_readiness()
+ {
     // Setup a Dashboard-created connected account with Standard-like responsibilities and Tax
     let router = Router::new()
         .route(
@@ -2430,30 +2109,19 @@ async fn validate_fiscal_sponsor_accepts_dashboard_created_account_and_automatic
                 }))
             }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Validate the exact readiness required by automatic-tax event setup
     let result = provider
-        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            provider: PaymentProvider::Stripe,
-
-            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "PT".to_string(),
-                state_code: None,
-            }),
-        })
+        .validate_fiscal_sponsor(&readiness_input(Some(jurisdiction("PT", None))))
         .await;
-    server.abort();
 
     // Check both account and Tax readiness are accepted
     result.expect("ready fiscal sponsor to pass validation");
 }
 
 #[test]
-fn validate_fiscal_sponsor_accepts_matching_canadian_tax_registrations() {
+fn test_tax_registration_matches_canadian_country_wide_and_province_registrations() {
     // Setup country-wide and province-specific active Canadian registrations
     let country_wide: StripeTaxRegistrationResponse = serde_json::from_value(json!({
         "country": "CA",
@@ -2474,14 +2142,8 @@ fn validate_fiscal_sponsor_accepts_matching_canadian_tax_registrations() {
         "status": "active"
     }))
     .expect("province-specific Canadian registration to deserialize");
-    let ontario = TicketTaxJurisdiction {
-        country_code: "CA".to_string(),
-        state_code: Some("ON".to_string()),
-    };
-    let british_columbia = TicketTaxJurisdiction {
-        country_code: "CA".to_string(),
-        state_code: Some("BC".to_string()),
-    };
+    let ontario = jurisdiction("CA", Some("ON"));
+    let british_columbia = jurisdiction("CA", Some("BC"));
 
     // Check country-wide registrations cover Canada while province registrations remain exact
     assert!(StripeProvider::tax_registration_matches(
@@ -2498,20 +2160,41 @@ fn validate_fiscal_sponsor_accepts_matching_canadian_tax_registrations() {
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_accepts_us_registration_without_venue_state() {
+async fn test_validate_fiscal_sponsor_accepts_us_registration_without_venue_state() {
     // Setup a ready sponsor with an active state registration
-    let router = Router::new()
-        .route(
-            "/v1/accounts/acct_test_123",
-            get(|| async { Json(sample_stripe_account_response()) }),
-        )
-        .route(
-            "/v1/tax/settings",
-            get(|| async { Json(json!({"status": "active"})) }),
-        )
-        .route(
-            "/v1/tax/registrations",
-            get(|| async {
+    let router = tax_ready_account_router().route(
+        "/v1/tax/registrations",
+        get(|| async {
+            Json(json!({
+                "data": [{
+                    "country": "US",
+                    "country_options": {"us": {"state": "CA"}},
+                    "id": "taxreg_us_ca",
+                    "status": "active"
+                }],
+                "has_more": false
+            }))
+        }),
+    );
+    let provider = spawn_stripe_provider(router).await;
+
+    // Validate country-level registration coverage until the venue state is known
+    let result = provider
+        .validate_fiscal_sponsor(&readiness_input(Some(jurisdiction("US", None))))
+        .await;
+
+    // Allow performance-location validation to report the missing venue state
+    result.expect("active US registration to pass when the venue state is not known");
+}
+
+#[tokio::test]
+async fn test_validate_fiscal_sponsor_paginates_active_tax_registrations() {
+    // Setup a matching United States registration on the second provider page
+    let router = tax_ready_account_router().route(
+        "/v1/tax/registrations",
+        get(|uri: Uri| async move {
+            let query = uri.query().expect("registration query to be present");
+            if query.contains("starting_after=taxreg_es") {
                 Json(json!({
                     "data": [{
                         "country": "US",
@@ -2521,95 +2204,35 @@ async fn validate_fiscal_sponsor_accepts_us_registration_without_venue_state() {
                     }],
                     "has_more": false
                 }))
-            }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Validate country-level registration coverage until the venue state is known
-    let result = provider
-        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            provider: PaymentProvider::Stripe,
-
-            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "US".to_string(),
-                state_code: None,
-            }),
-        })
-        .await;
-    server.abort();
-
-    // Allow performance-location validation to report the missing venue state
-    result.expect("active US registration to pass when the venue state is not known");
-}
-
-#[tokio::test]
-async fn validate_fiscal_sponsor_paginates_active_tax_registrations() {
-    // Setup a matching United States registration on the second provider page
-    let router = Router::new()
-        .route(
-            "/v1/accounts/acct_test_123",
-            get(|| async { Json(sample_stripe_account_response()) }),
-        )
-        .route(
-            "/v1/tax/settings",
-            get(|| async { Json(json!({"status": "active"})) }),
-        )
-        .route(
-            "/v1/tax/registrations",
-            get(|uri: Uri| async move {
-                let query = uri.query().expect("registration query to be present");
-                if query.contains("starting_after=taxreg_es") {
-                    Json(json!({
-                        "data": [{
-                            "country": "US",
-                            "country_options": {"us": {"state": "CA"}},
-                            "id": "taxreg_us_ca",
-                            "status": "active"
-                        }],
-                        "has_more": false
-                    }))
-                } else {
-                    assert!(query.contains("limit=100"));
-                    assert!(query.contains("status=active"));
-                    Json(json!({
-                        "data": [{
-                            "country": "ES",
-                            "country_options": {},
-                            "id": "taxreg_es",
-                            "status": "active"
-                        }],
-                        "has_more": true
-                    }))
-                }
-            }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+            } else {
+                assert!(query.contains("limit=100"));
+                assert!(query.contains("status=active"));
+                Json(json!({
+                    "data": [{
+                        "country": "ES",
+                        "country_options": {},
+                        "id": "taxreg_es",
+                        "status": "active"
+                    }],
+                    "has_more": true
+                }))
+            }
+        }),
+    );
+    let provider = spawn_stripe_provider(router).await;
 
     // Validate a subdivision-scoped venue through both registration pages
     let result = provider
-        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            provider: PaymentProvider::Stripe,
-
-            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "US".to_string(),
-                state_code: Some("CA".to_string()),
-            }),
-        })
+        .validate_fiscal_sponsor(&readiness_input(Some(jurisdiction("US", Some("CA")))))
         .await;
-    server.abort();
 
     // Check a later matching registration satisfies readiness
     result.expect("matching paginated registration to pass readiness");
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_rejects_account_controlled_response_without_conditional_fields() {
+async fn test_validate_fiscal_sponsor_rejects_account_controlled_response_without_conditional_fields()
+ {
     // Setup an OAuth-shaped account response without platform-only controller properties
     let router = Router::new().route(
         "/v1/accounts/acct_test_123",
@@ -2622,21 +2245,13 @@ async fn validate_fiscal_sponsor_rejects_account_controlled_response_without_con
             }))
         }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Validate the unsupported account through the public provider boundary
     let err = provider
-        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            provider: PaymentProvider::Stripe,
-
-            automatic_tax_jurisdiction: None,
-        })
+        .validate_fiscal_sponsor(&readiness_input(None))
         .await
         .expect_err("account-controlled sponsor should fail readiness validation");
-    server.abort();
 
     // Keep the unsupported account model organizer-correctable
     assert!(matches!(
@@ -2647,46 +2262,26 @@ async fn validate_fiscal_sponsor_rejects_account_controlled_response_without_con
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_rejects_empty_incomplete_registration_page() {
+async fn test_validate_fiscal_sponsor_rejects_empty_incomplete_registration_page() {
     // Setup an internally inconsistent paginated registration response
-    let router = Router::new()
-        .route(
-            "/v1/accounts/acct_test_123",
-            get(|| async { Json(sample_stripe_account_response()) }),
-        )
-        .route(
-            "/v1/tax/settings",
-            get(|| async { Json(json!({"status": "active"})) }),
-        )
-        .route(
-            "/v1/tax/registrations",
-            get(|| async { Json(json!({"data": [], "has_more": true})) }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let router = tax_ready_account_router().route(
+        "/v1/tax/registrations",
+        get(|| async { Json(json!({"data": [], "has_more": true})) }),
+    );
+    let provider = spawn_stripe_provider(router).await;
 
     // Validate readiness without allowing an unsafe pagination loop
     let err = provider
-        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            provider: PaymentProvider::Stripe,
-
-            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "PT".to_string(),
-                state_code: None,
-            }),
-        })
+        .validate_fiscal_sponsor(&readiness_input(Some(jurisdiction("PT", None))))
         .await
         .expect_err("malformed registration pagination to fail closed");
-    server.abort();
 
     // Preserve malformed provider responses as internal failures
     assert!(matches!(err, FiscalSponsorReadinessError::Unexpected(_)));
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_rejects_inactive_automatic_tax_settings() {
+async fn test_validate_fiscal_sponsor_rejects_inactive_automatic_tax_settings() {
     // Setup a charge-ready connected account whose Tax settings are inactive
     let router = Router::new()
         .route(
@@ -2697,24 +2292,13 @@ async fn validate_fiscal_sponsor_rejects_inactive_automatic_tax_settings() {
             "/v1/tax/settings",
             get(|| async { Json(json!({"status": "pending"})) }),
         );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Validate automatic-tax readiness through the public provider boundary
     let err = provider
-        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            provider: PaymentProvider::Stripe,
-
-            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "PT".to_string(),
-                state_code: None,
-            }),
-        })
+        .validate_fiscal_sponsor(&readiness_input(Some(jurisdiction("PT", None))))
         .await
         .expect_err("inactive Stripe Tax settings to fail closed");
-    server.abort();
 
     // Check the actionable provider-readiness error is preserved
     assert!(matches!(
@@ -2725,7 +2309,7 @@ async fn validate_fiscal_sponsor_rejects_inactive_automatic_tax_settings() {
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_rejects_incompatible_controller_configuration() {
+async fn test_validate_fiscal_sponsor_rejects_incompatible_controller_configuration() {
     // Setup every controller property that can violate the required account model
     let scenarios = [
         (
@@ -2763,180 +2347,122 @@ async fn validate_fiscal_sponsor_rejects_incompatible_controller_configuration()
                 async move { Json(account) }
             }),
         );
-        let (api_base_url, server) = spawn_stripe_api(router).await;
-        let mut provider = sample_stripe_provider();
-        provider.api_base_url = api_base_url;
+        let provider = spawn_stripe_provider(router).await;
 
         // Validate the incompatible account through the public provider boundary
         let err = provider
-            .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-                connected_seller_id: "acct_test_123".to_string(),
-                provider: PaymentProvider::Stripe,
-
-                automatic_tax_jurisdiction: None,
-            })
+            .validate_fiscal_sponsor(&readiness_input(None))
             .await
             .expect_err(&format!("{scenario} should fail readiness validation"));
-        server.abort();
 
         // Check every controller mismatch remains an organizer-correctable failure
-        assert!(matches!(
-            err,
-            FiscalSponsorReadinessError::NotReady(ref message)
-                if message == super::STRIPE_ACCOUNT_CONTROLLER_READINESS_ERROR
-        ));
+        assert!(
+            matches!(
+                err,
+                FiscalSponsorReadinessError::NotReady(ref message)
+                    if message == super::STRIPE_ACCOUNT_CONTROLLER_READINESS_ERROR
+            ),
+            "{scenario}"
+        );
     }
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_rejects_missing_us_state_registration() {
+async fn test_validate_fiscal_sponsor_rejects_missing_us_state_registration() {
     // Setup active registrations that do not cover the event's United States state
-    let router = Router::new()
-        .route(
-            "/v1/accounts/acct_test_123",
-            get(|| async { Json(sample_stripe_account_response()) }),
-        )
-        .route(
-            "/v1/tax/settings",
-            get(|| async { Json(json!({"status": "active"})) }),
-        )
-        .route(
-            "/v1/tax/registrations",
-            get(|| async {
-                Json(json!({
-                    "data": [
-                        {
-                            "country": "US",
-                            "country_options": {"us": {"state": "NY"}},
-                            "id": "taxreg_us_ny",
-                            "status": "active"
-                        },
-                        {
-                            "country": "US",
-                            "country_options": {"us": {}},
-                            "id": "taxreg_us_missing_state",
-                            "status": "active"
-                        }
-                    ],
-                    "has_more": false
-                }))
-            }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let router = tax_ready_account_router().route(
+        "/v1/tax/registrations",
+        get(|| async {
+            Json(json!({
+                "data": [
+                    {
+                        "country": "US",
+                        "country_options": {"us": {"state": "NY"}},
+                        "id": "taxreg_us_ny",
+                        "status": "active"
+                    },
+                    {
+                        "country": "US",
+                        "country_options": {"us": {}},
+                        "id": "taxreg_us_missing_state",
+                        "status": "active"
+                    }
+                ],
+                "has_more": false
+            }))
+        }),
+    );
+    let provider = spawn_stripe_provider(router).await;
 
     // Validate an event whose state is absent from the sponsor's registrations
     let err = provider
-        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            provider: PaymentProvider::Stripe,
-
-            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "US".to_string(),
-                state_code: Some("CA".to_string()),
-            }),
-        })
+        .validate_fiscal_sponsor(&readiness_input(Some(jurisdiction("US", Some("CA")))))
         .await
         .expect_err("wrong or missing state registrations to fail readiness");
-    server.abort();
 
     // Check the missing jurisdiction remains organizer-actionable
     assert!(matches!(
         err,
         FiscalSponsorReadinessError::NotReady(ref message)
-            if message.contains("active tax registration for US-CA")
+            if message == "fiscal sponsor Stripe account needs an active tax registration for US-CA"
     ));
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_treats_provider_outage_as_unexpected() {
+async fn test_validate_fiscal_sponsor_treats_provider_outage_as_unexpected() {
     // Setup a transient provider-side account retrieval failure
     let router = Router::new().route(
         "/v1/accounts/acct_test_123",
         get(|| async { StatusCode::SERVICE_UNAVAILABLE }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Validate the account through the public provider boundary
     let err = provider
-        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            provider: PaymentProvider::Stripe,
-
-            automatic_tax_jurisdiction: None,
-        })
+        .validate_fiscal_sponsor(&readiness_input(None))
         .await
         .expect_err("Stripe outage to fail readiness validation");
-    server.abort();
 
     // Preserve infrastructure failures as internal errors
     assert!(matches!(err, FiscalSponsorReadinessError::Unexpected(_)));
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_treats_tax_registration_outage_as_unexpected() {
+async fn test_validate_fiscal_sponsor_treats_tax_registration_outage_as_unexpected() {
     // Setup a provider outage after account and Tax settings validation succeeds
-    let router = Router::new()
-        .route(
-            "/v1/accounts/acct_test_123",
-            get(|| async { Json(sample_stripe_account_response()) }),
-        )
-        .route(
-            "/v1/tax/settings",
-            get(|| async { Json(json!({"status": "active"})) }),
-        )
-        .route(
-            "/v1/tax/registrations",
-            get(|| async { StatusCode::SERVICE_UNAVAILABLE }),
-        );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let router = tax_ready_account_router().route(
+        "/v1/tax/registrations",
+        get(|| async { StatusCode::SERVICE_UNAVAILABLE }),
+    );
+    let provider = spawn_stripe_provider(router).await;
 
     // Validate readiness while the registration endpoint is unavailable
     let err = provider
-        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            provider: PaymentProvider::Stripe,
-
-            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "PT".to_string(),
-                state_code: None,
-            }),
-        })
+        .validate_fiscal_sponsor(&readiness_input(Some(jurisdiction("PT", None))))
         .await
         .expect_err("Stripe registration outage to fail readiness");
-    server.abort();
 
     // Preserve transient provider failures as internal errors
     assert!(matches!(err, FiscalSponsorReadinessError::Unexpected(_)));
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_treats_unknown_account_as_not_ready() {
+async fn test_validate_fiscal_sponsor_treats_unknown_account_as_not_ready() {
     // Setup the provider response returned for an unknown connected account
     let router = Router::new().route(
         "/v1/accounts/acct_unknown",
         get(|| async { StatusCode::NOT_FOUND }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
 
     // Validate the unknown account through the public provider boundary
     let err = provider
         .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
             connected_seller_id: "acct_unknown".to_string(),
-            provider: PaymentProvider::Stripe,
-
-            automatic_tax_jurisdiction: None,
+            ..readiness_input(None)
         })
         .await
         .expect_err("unknown Stripe account to fail readiness validation");
-    server.abort();
 
     // Keep organizer-correctable account selection failures user-facing
     assert!(matches!(
@@ -2947,301 +2473,215 @@ async fn validate_fiscal_sponsor_treats_unknown_account_as_not_ready() {
 }
 
 #[tokio::test]
-async fn validate_tax_rates_accepts_active_rate_without_valid_venue_jurisdiction() {
-    // Setup an active compatible rate while the event form has no valid country yet
-    let router = Router::new().route(
-        "/v1/tax_rates",
-        get(|| async {
-            Json(json!({
-                "data": [{
-                    "active": true,
-                    "display_name": "Custom tax",
-                    "id": "txr_custom",
-                    "inclusive": true,
-                    "percentage": 5.0
-                }],
-                "has_more": false
-            }))
-        }),
-    );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Validate account ownership and behavior without malformed geographic matching
-    let result = provider
-        .validate_tax_rates(&ValidateTaxRatesInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            manual_tax_rate_ids: vec!["txr_custom".to_string()],
-            tax_behavior: TicketTaxBehavior::Inclusive,
-
-            jurisdiction: None,
-        })
-        .await;
-    server.abort();
+async fn test_validate_tax_rates_accepts_active_rate_without_valid_venue_jurisdiction() {
+    // Validate an active countryless rate while the event form has no valid country yet
+    let result = validate_tax_rates_against(
+        json!([{
+            "active": true,
+            "display_name": "Custom tax",
+            "id": "txr_custom",
+            "inclusive": true,
+            "percentage": 5.0
+        }]),
+        &["txr_custom"],
+        TicketTaxBehavior::Inclusive,
+        None,
+    )
+    .await;
 
     // Defer venue errors to the event validation boundary
     result.expect("active Tax Rate to pass while the venue jurisdiction is invalid");
 }
 
 #[tokio::test]
-async fn validate_tax_rates_accepts_matching_country_and_state() {
-    // Setup country-wide and state-specific active rates covering the venue
-    let router = Router::new().route(
-        "/v1/tax_rates",
-        get(|headers: HeaderMap| async move {
-            assert_eq!(headers["stripe-account"], "acct_test_123");
-            Json(json!({
-                "data": [
-                    {
-                        "active": true,
-                        "country": "US",
-                        "display_name": "Sales tax",
-                        "id": "txr_country",
-                        "inclusive": false,
-                        "percentage": 8.0
-                    },
-                    {
-                        "active": true,
-                        "country": "US",
-                        "display_name": "State tax",
-                        "id": "txr_state",
-                        "inclusive": false,
-                        "percentage": 1.0,
-                        "state": "CA"
-                    }
-                ],
-                "has_more": false
-            }))
-        }),
-    );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Revalidate every selected rate against the event venue
-    let result = provider
-        .validate_tax_rates(&ValidateTaxRatesInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            manual_tax_rate_ids: vec!["txr_country".to_string(), "txr_state".to_string()],
-            tax_behavior: TicketTaxBehavior::Exclusive,
-
-            jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "US".to_string(),
-                state_code: Some("CA".to_string()),
-            }),
-        })
-        .await;
-    server.abort();
+async fn test_validate_tax_rates_accepts_matching_country_and_state() {
+    // Revalidate country-wide and state-specific exclusive rates against the venue
+    let result = validate_tax_rates_against(
+        json!([
+            {
+                "active": true,
+                "country": "US",
+                "display_name": "Sales tax",
+                "id": "txr_country",
+                "inclusive": false,
+                "percentage": 8.0
+            },
+            {
+                "active": true,
+                "country": "US",
+                "display_name": "State tax",
+                "id": "txr_state",
+                "inclusive": false,
+                "percentage": 1.0,
+                "state": "CA"
+            }
+        ]),
+        &["txr_country", "txr_state"],
+        TicketTaxBehavior::Exclusive,
+        Some(jurisdiction("US", Some("CA"))),
+    )
+    .await;
 
     // Check both compatible jurisdiction shapes remain selectable
     result.expect("matching Tax Rates to pass readiness");
 }
 
 #[tokio::test]
-async fn validate_tax_rates_accepts_state_rate_without_venue_state() {
-    // Setup a state-specific active rate for a venue whose state is not stored
-    let router = Router::new().route(
-        "/v1/tax_rates",
-        get(|| async {
-            Json(json!({
-                "data": [{
-                    "active": true,
-                    "country": "US",
-                    "display_name": "State tax",
-                    "id": "txr_state",
-                    "inclusive": true,
-                    "percentage": 8.0,
-                    "state": "CA"
-                }],
-                "has_more": false
-            }))
-        }),
-    );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Revalidate at country level because the venue subdivision is unknown
-    let result = provider
-        .validate_tax_rates(&ValidateTaxRatesInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            manual_tax_rate_ids: vec!["txr_state".to_string()],
-            tax_behavior: TicketTaxBehavior::Inclusive,
-
-            jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "US".to_string(),
-                state_code: None,
-            }),
-        })
-        .await;
-    server.abort();
+async fn test_validate_tax_rates_accepts_state_rate_without_venue_state() {
+    // Revalidate a state-specific rate at country level for a venue without a stored state
+    let result = validate_tax_rates_against(
+        json!([{
+            "active": true,
+            "country": "US",
+            "display_name": "State tax",
+            "id": "txr_state",
+            "inclusive": true,
+            "percentage": 8.0,
+            "state": "CA"
+        }]),
+        &["txr_state"],
+        TicketTaxBehavior::Inclusive,
+        Some(jurisdiction("US", None)),
+    )
+    .await;
 
     // Preserve compatibility for stored venues without subdivision codes
     result.expect("state-specific Tax Rate to pass when the venue state is unknown");
 }
 
 #[tokio::test]
-async fn validate_tax_rates_rejects_countryless_rate() {
-    // Setup an active rate without Stripe jurisdiction metadata
-    let router = Router::new().route(
-        "/v1/tax_rates",
-        get(|| async {
-            Json(json!({
-                "data": [{
-                    "active": true,
-                    "display_name": "Custom tax",
-                    "id": "txr_countryless",
-                    "inclusive": true,
-                    "percentage": 5.0
-                }],
-                "has_more": false
-            }))
-        }),
-    );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Revalidate the rate against a known event jurisdiction
-    let err = provider
-        .validate_tax_rates(&ValidateTaxRatesInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            manual_tax_rate_ids: vec!["txr_countryless".to_string()],
-            tax_behavior: TicketTaxBehavior::Inclusive,
-
-            jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "PT".to_string(),
-                state_code: None,
-            }),
-        })
-        .await
-        .expect_err("countryless Tax Rate to fail readiness");
-    server.abort();
+async fn test_validate_tax_rates_rejects_countryless_rate() {
+    // Revalidate an active rate without jurisdiction metadata against a known venue
+    let err = validate_tax_rates_against(
+        json!([{
+            "active": true,
+            "display_name": "Custom tax",
+            "id": "txr_countryless",
+            "inclusive": true,
+            "percentage": 5.0
+        }]),
+        &["txr_countryless"],
+        TicketTaxBehavior::Inclusive,
+        Some(jurisdiction("PT", None)),
+    )
+    .await
+    .expect_err("countryless Tax Rate to fail readiness");
 
     // Check the organizer is told to declare the venue country
     assert!(matches!(
         err,
         FiscalSponsorReadinessError::NotReady(ref message)
-            if message.contains("must declare a country")
+            if message == "manual Stripe Tax Rate txr_countryless must declare a country matching the event venue"
     ));
 }
 
 #[tokio::test]
-async fn validate_tax_rates_rejects_missing_or_incompatible_ids() {
-    // Setup an account whose active compatible list does not contain the selection
-    let router = Router::new().route(
-        "/v1/tax_rates",
-        get(|| async { Json(json!({"data": [], "has_more": false})) }),
-    );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+async fn test_validate_tax_rates_rejects_empty_or_duplicate_selection_before_contacting_stripe() {
+    // Setup selections that cannot identify a unique set of Tax Rates
+    let cases: [(&str, Vec<String>); 4] = [
+        ("empty selection", vec![]),
+        (
+            "duplicate selection",
+            vec!["txr_state".to_string(), "txr_state".to_string()],
+        ),
+        ("blank identifier", vec![String::new()]),
+        ("padded identifier", vec![" txr_state".to_string()]),
+    ];
+    let provider = spawn_stripe_provider(Router::new()).await;
 
-    // Revalidate the selected identifier against that connected account
-    let err = provider
-        .validate_tax_rates(&ValidateTaxRatesInput {
-            connected_seller_id: "acct_test_123".to_string(),
-            manual_tax_rate_ids: vec!["txr_missing".to_string()],
-            tax_behavior: TicketTaxBehavior::Inclusive,
-
-            jurisdiction: Some(TicketTaxJurisdiction {
-                country_code: "PT".to_string(),
-                state_code: None,
-            }),
-        })
-        .await
-        .expect_err("missing Tax Rate to be rejected");
-    server.abort();
-
-    // Check provider drift remains an organizer-actionable readiness failure
-    assert!(matches!(err, FiscalSponsorReadinessError::NotReady(_)));
-}
-
-#[tokio::test]
-async fn validate_tax_rates_rejects_wrong_country_or_state() {
-    // Setup active rates whose country and state each conflict with the venue
-    let router = Router::new().route(
-        "/v1/tax_rates",
-        get(|| async {
-            Json(json!({
-                "data": [
-                    {
-                        "active": true,
-                        "country": "IE",
-                        "display_name": "Irish VAT",
-                        "id": "txr_ie",
-                        "inclusive": true,
-                        "percentage": 23.0
-                    },
-                    {
-                        "active": true,
-                        "country": "US",
-                        "display_name": "New York tax",
-                        "id": "txr_ny",
-                        "inclusive": true,
-                        "percentage": 8.875,
-                        "state": "NY"
-                    }
-                ],
-                "has_more": false
-            }))
-        }),
-    );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
-
-    // Validate each mismatched selection against a California venue
-    for rate_id in ["txr_ie", "txr_ny"] {
+    for (case, manual_tax_rate_ids) in cases {
+        // Validate the selection against an API with no routes
         let err = provider
             .validate_tax_rates(&ValidateTaxRatesInput {
                 connected_seller_id: "acct_test_123".to_string(),
-                manual_tax_rate_ids: vec![rate_id.to_string()],
+                manual_tax_rate_ids,
                 tax_behavior: TicketTaxBehavior::Inclusive,
 
-                jurisdiction: Some(TicketTaxJurisdiction {
-                    country_code: "US".to_string(),
-                    state_code: Some("CA".to_string()),
-                }),
+                jurisdiction: None,
             })
             .await
-            .expect_err("mismatched Tax Rate to fail readiness");
-        assert!(matches!(
-            err,
-            FiscalSponsorReadinessError::NotReady(ref message)
-                if message.contains("does not cover the event venue US-CA")
-        ));
+            .expect_err(case);
+
+        // Check the local guard rejects the selection
+        assert!(
+            matches!(
+                err,
+                FiscalSponsorReadinessError::NotReady(ref message)
+                    if message == "manual ticket tax requires at least one unique Stripe Tax Rate"
+            ),
+            "{case}: {err:?}"
+        );
     }
-    server.abort();
 }
 
-#[test]
-fn verify_and_parse_webhook_accepts_recent_signature() {
-    // Setup provider and webhook payload
-    let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","livemode":false,"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#;
-    let signature_header = sample_signature_header(body, Utc::now().timestamp());
+#[tokio::test]
+async fn test_validate_tax_rates_rejects_missing_ids() {
+    // Revalidate a selection absent from the account's active compatible rates
+    let err = validate_tax_rates_against(
+        json!([]),
+        &["txr_missing"],
+        TicketTaxBehavior::Inclusive,
+        Some(jurisdiction("PT", None)),
+    )
+    .await
+    .expect_err("missing Tax Rate to be rejected");
 
-    // Verify and parse the webhook payload
-    let webhook_event = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect("recent webhook to verify");
+    // Check provider drift remains an organizer-actionable readiness failure
+    assert!(matches!(
+        err,
+        FiscalSponsorReadinessError::NotReady(ref message)
+            if message == "manual Stripe Tax Rates must be active in the fiscal sponsor account and match the ticket tax display"
+    ));
+}
 
-    // Check the parsed event matches expectations
-    assert_eq!(
-        webhook_event,
-        PaymentsWebhookEvent::CheckoutCompleted {
-            connected_account_id: "acct_test_123".to_string(),
-            is_live: false,
-            provider_session_id: "cs_test_123".to_string(),
+#[tokio::test]
+async fn test_validate_tax_rates_rejects_wrong_country_or_state() {
+    // Setup active rates whose country and state each conflict with the venue
+    let rates = json!([
+        {
+            "active": true,
+            "country": "IE",
+            "display_name": "Irish VAT",
+            "id": "txr_ie",
+            "inclusive": true,
+            "percentage": 23.0
+        },
+        {
+            "active": true,
+            "country": "US",
+            "display_name": "New York tax",
+            "id": "txr_ny",
+            "inclusive": true,
+            "percentage": 8.875,
+            "state": "NY"
         }
-    );
+    ]);
+
+    // Validate each mismatched selection against a California venue
+    for rate_id in ["txr_ie", "txr_ny"] {
+        let err = validate_tax_rates_against(
+            rates.clone(),
+            &[rate_id],
+            TicketTaxBehavior::Inclusive,
+            Some(jurisdiction("US", Some("CA"))),
+        )
+        .await
+        .expect_err("mismatched Tax Rate to fail readiness");
+        let expected =
+            format!("manual Stripe Tax Rate {rate_id} does not cover the event venue US-CA");
+        assert!(
+            matches!(
+                err,
+                FiscalSponsorReadinessError::NotReady(ref message) if *message == expected
+            ),
+            "{rate_id}: {err:?}"
+        );
+    }
 }
 
 #[test]
-fn verify_and_parse_webhook_accepts_rotated_signature() {
-    // Setup provider and webhook payload
+fn test_verify_and_parse_webhook_accepts_rotated_signature() {
+    // Setup a header whose matching signature follows one from a rotated secret
     let provider = sample_stripe_provider();
     let body = r#"{"account":"acct_test_123","livemode":false,"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#;
     let timestamp = Utc::now().timestamp();
@@ -3249,14 +2689,14 @@ fn verify_and_parse_webhook_accepts_rotated_signature() {
         StripeProvider::compute_signature("whsec_connect_test", &format!("{timestamp}.{body}"));
     let rotated_signature =
         StripeProvider::compute_signature("whsec_rotated", &format!("{timestamp}.{body}"));
-    let signature_header = format!("t={timestamp},v1={expected_signature},v1={rotated_signature}");
+    let signature_header = format!("t={timestamp},v1={rotated_signature},v1={expected_signature}");
 
     // Verify and parse the webhook payload
     let webhook_event = provider
         .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
         .expect("rotated webhook to verify");
 
-    // Check the parsed event matches expectations
+    // Check any matching v1 signature is accepted
     assert_eq!(
         webhook_event,
         PaymentsWebhookEvent::CheckoutCompleted {
@@ -3268,7 +2708,7 @@ fn verify_and_parse_webhook_accepts_rotated_signature() {
 }
 
 #[test]
-fn verify_and_parse_webhook_maps_application_fee_created_events() {
+fn test_verify_and_parse_webhook_maps_application_fee_created_events() {
     // Setup a platform application fee bound to a connected-account charge
     let provider = sample_stripe_provider();
     let body = r#"{"livemode":false,"type":"application_fee.created","data":{"object":{"id":"fee_test_123","account":"acct_test_123","amount":62,"charge":"ch_test_123"}}}"#;
@@ -3298,59 +2738,94 @@ fn verify_and_parse_webhook_maps_application_fee_created_events() {
 }
 
 #[test]
-fn verify_and_parse_webhook_maps_checkout_session_expired_events() {
-    // Setup provider and webhook payload
-    let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","livemode":false,"type":"checkout.session.expired","data":{"object":{"id":"cs_test_123","payment_intent":null}}}"#;
-    let signature_header = sample_signature_header(body, Utc::now().timestamp());
-
-    // Verify and parse the webhook payload
-    let webhook_event = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect("expired webhook to verify");
-
-    // Check the parsed event matches expectations
-    assert_eq!(
-        webhook_event,
-        PaymentsWebhookEvent::CheckoutExpired {
-            connected_account_id: "acct_test_123".to_string(),
-            is_live: false,
-            provider_session_id: "cs_test_123".to_string(),
-        }
-    );
-}
-
-#[test]
-fn verify_and_parse_webhook_maps_invoice_paid_events() {
-    // Setup a paid invoice bound to an OCG purchase
+fn test_verify_and_parse_webhook_maps_connected_events() {
+    // Setup signed connected-account payloads and the events they normalize to
     let provider = sample_stripe_provider();
     let purchase_id = Uuid::new_v4();
-    let body = format!(
-        r#"{{"account":"acct_test_123","livemode":false,"type":"invoice.paid","data":{{"object":{{"id":"in_test_123","hosted_invoice_url":"https://stripe.test/invoices/in_test_123","invoice_pdf":"https://stripe.test/invoices/in_test_123.pdf","metadata":{{"event_purchase_id":"{purchase_id}"}}}}}}}}"#
-    );
-    let signature_header = sample_signature_header(&body, Utc::now().timestamp());
+    let refund_body = |event_type: &str, status: &str| {
+        format!(
+            r#"{{"account":"acct_test_123","livemode":false,"type":"{event_type}","data":{{"object":{{"id":"re_test_123","amount":2500,"currency":"usd","metadata":{{"event_purchase_id":"{purchase_id}"}},"payment_intent":"pi_test_123","status":"{status}"}}}}}}"#
+        )
+    };
+    let refund_event = |status| PaymentsWebhookEvent::RefundUpdated {
+        amount_minor: 2_500,
+        connected_account_id: "acct_test_123".to_string(),
+        currency_code: "usd".to_string(),
+        is_live: false,
+        provider_payment_reference: "pi_test_123".to_string(),
+        provider_refund_id: "re_test_123".to_string(),
+        purchase_id,
+        status,
+    };
+    let cases = [
+        (
+            "completed checkout",
+            r#"{"account":"acct_test_123","livemode":false,"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#.to_string(),
+            PaymentsWebhookEvent::CheckoutCompleted {
+                connected_account_id: "acct_test_123".to_string(),
+                is_live: false,
+                provider_session_id: "cs_test_123".to_string(),
+            },
+        ),
+        (
+            "expired checkout",
+            r#"{"account":"acct_test_123","livemode":false,"type":"checkout.session.expired","data":{"object":{"id":"cs_test_123","payment_intent":null}}}"#.to_string(),
+            PaymentsWebhookEvent::CheckoutExpired {
+                connected_account_id: "acct_test_123".to_string(),
+                is_live: false,
+                provider_session_id: "cs_test_123".to_string(),
+            },
+        ),
+        (
+            "paid invoice",
+            format!(
+                r#"{{"account":"acct_test_123","livemode":false,"type":"invoice.paid","data":{{"object":{{"id":"in_test_123","hosted_invoice_url":"https://stripe.test/invoices/in_test_123","invoice_pdf":"https://stripe.test/invoices/in_test_123.pdf","metadata":{{"event_purchase_id":"{purchase_id}"}}}}}}}}"#
+            ),
+            PaymentsWebhookEvent::InvoicePaid {
+                connected_account_id: "acct_test_123".to_string(),
+                hosted_url: "https://stripe.test/invoices/in_test_123".to_string(),
+                is_live: false,
+                provider_invoice_id: "in_test_123".to_string(),
+                purchase_id,
+                pdf_url: Some("https://stripe.test/invoices/in_test_123.pdf".to_string()),
+            },
+        ),
+        (
+            "created refund",
+            refund_body("refund.created", "pending"),
+            refund_event(RefundPaymentStatus::Pending),
+        ),
+        (
+            "failed refund",
+            refund_body("refund.failed", "failed"),
+            refund_event(RefundPaymentStatus::Failed),
+        ),
+        (
+            "succeeded refund update",
+            refund_body("refund.updated", "succeeded"),
+            refund_event(RefundPaymentStatus::Succeeded),
+        ),
+        (
+            "refund without purchase metadata",
+            r#"{"account":"acct_test_123","livemode":false,"type":"refund.updated","data":{"object":{"id":"re_test_123","status":"succeeded"}}}"#.to_string(),
+            PaymentsWebhookEvent::Noop,
+        ),
+    ];
 
-    // Verify and normalize the provider event
-    let webhook_event = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), &body)
-        .expect("invoice webhook to verify");
+    for (case, body, expected) in cases {
+        // Sign and parse the connected-account payload
+        let signature_header = sample_signature_header(&body, Utc::now().timestamp());
+        let webhook_event = provider
+            .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), &body)
+            .unwrap_or_else(|err| panic!("{case}: {err:#}"));
 
-    // Check the durable invoice identity and attendee document URLs
-    assert_eq!(
-        webhook_event,
-        PaymentsWebhookEvent::InvoicePaid {
-            connected_account_id: "acct_test_123".to_string(),
-            hosted_url: "https://stripe.test/invoices/in_test_123".to_string(),
-            is_live: false,
-            provider_invoice_id: "in_test_123".to_string(),
-            purchase_id,
-            pdf_url: Some("https://stripe.test/invoices/in_test_123.pdf".to_string()),
-        }
-    );
+        // Check the normalized provider event
+        assert_eq!(webhook_event, expected, "{case}");
+    }
 }
 
 #[test]
-fn verify_and_parse_webhook_rejects_endpoint_scope_mismatch() {
+fn test_verify_and_parse_webhook_rejects_endpoint_scope_mismatch() {
     // Setup a connected-account event signed with the platform endpoint secret
     let provider = sample_stripe_provider();
     let body = r#"{"account":"acct_test_123","livemode":false,"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123"}}}"#;
@@ -3374,26 +2849,119 @@ fn verify_and_parse_webhook_rejects_endpoint_scope_mismatch() {
 }
 
 #[test]
-fn verify_and_parse_webhook_rejects_mode_mismatch() {
-    // Setup a live event for a test-mode deployment
+fn test_verify_and_parse_webhook_rejects_invalid_connected_payloads() {
+    // Setup signed connected-account payloads that must not reach reconciliation
     let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","livemode":true,"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123"}}}"#;
-    let signature_header = sample_signature_header(body, Utc::now().timestamp());
+    let purchase_id = Uuid::new_v4();
+    let refund_body = |object: &str| {
+        format!(
+            r#"{{"account":"acct_test_123","livemode":false,"type":"refund.updated","data":{{"object":{{"id":"re_test_123",{object},"metadata":{{"event_purchase_id":"{purchase_id}"}},"status":"succeeded"}}}}}}"#
+        )
+    };
+    let cases = [
+        (
+            "live event in test mode",
+            r#"{"account":"acct_test_123","livemode":true,"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123"}}}"#.to_string(),
+            "Stripe webhook mode does not match payments configuration",
+        ),
+        (
+            "missing mode",
+            r#"{"account":"acct_test_123","type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#.to_string(),
+            "error parsing Stripe webhook payload: missing field `livemode` at line 1 column 133",
+        ),
+        (
+            "missing payload object",
+            r#"{"account":"acct_test_123","livemode":false,"type":"checkout.session.completed","data":{"object":null}}"#.to_string(),
+            "Stripe webhook payload is missing object data",
+        ),
+        (
+            "unsupported event type",
+            r#"{"account":"acct_test_123","livemode":false,"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123","payment_intent":"pi_test_123"}}}"#.to_string(),
+            "unsupported Stripe webhook event: payment_intent.succeeded",
+        ),
+        (
+            "refund missing amount",
+            refund_body(r#""currency":"usd","payment_intent":"pi_test_123""#),
+            "Stripe refund webhook is missing amount",
+        ),
+        (
+            "refund missing currency",
+            refund_body(r#""amount":2500,"payment_intent":"pi_test_123""#),
+            "Stripe refund webhook is missing currency",
+        ),
+        (
+            "refund missing payment intent",
+            refund_body(r#""amount":2500,"currency":"usd""#),
+            "Stripe refund webhook is missing payment intent",
+        ),
+    ];
 
-    // Verify the signed event against configured payment mode
-    let err = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect_err("live event in test mode to fail");
+    for (case, body, expected) in cases {
+        // Sign and parse the payload
+        let signature_header = sample_signature_header(&body, Utc::now().timestamp());
+        let Err(err) =
+            provider.verify_and_parse_webhook(&sample_webhook_headers(&signature_header), &body)
+        else {
+            panic!("{case}: expected the webhook to be rejected");
+        };
 
-    // Check the mode mismatch cannot reach reconciliation
-    assert_eq!(
-        err.to_string(),
-        "Stripe webhook mode does not match payments configuration"
-    );
+        // Check the full error chain identifies the rejected payload
+        assert_eq!(format!("{err:#}"), expected, "{case}");
+    }
 }
 
 #[test]
-fn verify_and_parse_webhook_returns_noop_for_unsupported_platform_events() {
+fn test_verify_and_parse_webhook_rejects_invalid_signature_headers() {
+    // Setup signature headers that must not authenticate a valid payload
+    let provider = sample_stripe_provider();
+    let body = r#"{"account":"acct_test_123","livemode":false,"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#;
+    let now = Utc::now().timestamp();
+    let signature =
+        StripeProvider::compute_signature("whsec_connect_test", &format!("{now}.{body}"));
+    let ten_minutes = TimeDelta::minutes(10).num_seconds();
+    let cases = [
+        (
+            "invalid signature",
+            format!("t={now},v1=invalid"),
+            "invalid Stripe webhook signature",
+        ),
+        (
+            "missing signature",
+            format!("t={now}"),
+            "missing Stripe webhook signature",
+        ),
+        (
+            "missing timestamp",
+            format!("v1={signature}"),
+            "missing Stripe webhook timestamp",
+        ),
+        (
+            "stale timestamp",
+            sample_signature_header(body, now - ten_minutes),
+            "stale Stripe webhook timestamp",
+        ),
+        (
+            "future timestamp",
+            sample_signature_header(body, now + ten_minutes),
+            "stale Stripe webhook timestamp",
+        ),
+    ];
+
+    for (case, signature_header, expected) in cases {
+        // Verify the payload with the signature header
+        let Err(err) =
+            provider.verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
+        else {
+            panic!("{case}: expected the webhook to be rejected");
+        };
+
+        // Check the header failure is identified
+        assert_eq!(err.to_string(), expected, "{case}");
+    }
+}
+
+#[test]
+fn test_verify_and_parse_webhook_returns_noop_for_unsupported_platform_events() {
     // Setup a valid platform event that does not belong to payment reconciliation
     let provider = sample_stripe_provider();
     let body =
@@ -3414,227 +2982,94 @@ fn verify_and_parse_webhook_returns_noop_for_unsupported_platform_events() {
     assert_eq!(webhook_event, PaymentsWebhookEvent::Noop);
 }
 
-#[test]
-fn verify_and_parse_webhook_supports_refund_lifecycle_events() {
-    // Setup provider and refund lifecycle scenarios
-    let provider = sample_stripe_provider();
-    let purchase_id = Uuid::new_v4();
-    let scenarios = [
-        ("refund.created", "pending", RefundPaymentStatus::Pending),
-        ("refund.failed", "failed", RefundPaymentStatus::Failed),
-        (
-            "refund.updated",
-            "succeeded",
-            RefundPaymentStatus::Succeeded,
-        ),
-    ];
-
-    for (event_type, status, expected_status) in scenarios {
-        let body = format!(
-            r#"{{"account":"acct_test_123","livemode":false,"type":"{event_type}","data":{{"object":{{"id":"re_test_123","amount":2500,"currency":"usd","metadata":{{"event_purchase_id":"{purchase_id}"}},"payment_intent":"pi_test_123","status":"{status}"}}}}}}"#
-        );
-        let signature_header = sample_signature_header(&body, Utc::now().timestamp());
-
-        // Verify and parse the webhook payload
-        let webhook_event = provider
-            .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), &body)
-            .expect("refund webhook to verify");
-
-        // Check the parsed event matches expectations
-        assert_eq!(
-            webhook_event,
-            PaymentsWebhookEvent::RefundUpdated {
-                amount_minor: 2_500,
-                connected_account_id: "acct_test_123".to_string(),
-                currency_code: "usd".to_string(),
-                is_live: false,
-                provider_payment_reference: "pi_test_123".to_string(),
-                provider_refund_id: "re_test_123".to_string(),
-                purchase_id,
-                status: expected_status,
-            }
-        );
-    }
-}
-
-#[test]
-fn verify_and_parse_webhook_supports_refunds_without_purchase_metadata_as_noop() {
-    // Setup provider and webhook payload
-    let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","livemode":false,"type":"refund.updated","data":{"object":{"id":"re_test_123","status":"succeeded"}}}"#;
-    let signature_header = sample_signature_header(body, Utc::now().timestamp());
-
-    // Verify and parse the webhook payload
-    let webhook_event = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect("unrelated refund webhook to verify");
-
-    // Check the unrelated refund is acknowledged without reconciliation
-    assert_eq!(webhook_event, PaymentsWebhookEvent::Noop);
-}
-
-#[test]
-fn verify_and_parse_webhook_validates_incomplete_refund_events() {
-    // Setup provider and incomplete OCG refund payloads
-    let provider = sample_stripe_provider();
-    let purchase_id = Uuid::new_v4();
-    let scenarios = [
-        (
-            format!(
-                r#"{{"account":"acct_test_123","livemode":false,"type":"refund.updated","data":{{"object":{{"id":"re_test_123","currency":"usd","metadata":{{"event_purchase_id":"{purchase_id}"}},"payment_intent":"pi_test_123","status":"succeeded"}}}}}}"#
-            ),
-            "Stripe refund webhook is missing amount",
-        ),
-        (
-            format!(
-                r#"{{"account":"acct_test_123","livemode":false,"type":"refund.updated","data":{{"object":{{"id":"re_test_123","amount":2500,"metadata":{{"event_purchase_id":"{purchase_id}"}},"payment_intent":"pi_test_123","status":"succeeded"}}}}}}"#
-            ),
-            "Stripe refund webhook is missing currency",
-        ),
-        (
-            format!(
-                r#"{{"account":"acct_test_123","livemode":false,"type":"refund.updated","data":{{"object":{{"id":"re_test_123","amount":2500,"currency":"usd","metadata":{{"event_purchase_id":"{purchase_id}"}},"status":"succeeded"}}}}}}"#
-            ),
-            "Stripe refund webhook is missing payment intent",
-        ),
-    ];
-
-    for (body, expected_error) in scenarios {
-        // Sign and parse each incomplete provider payload
-        let signature_header = sample_signature_header(&body, Utc::now().timestamp());
-        let err = provider
-            .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), &body)
-            .expect_err("incomplete refund webhook to fail");
-
-        // Check the missing financial field is identified
-        assert_eq!(err.to_string(), expected_error);
-    }
-}
-
-#[test]
-fn verify_and_parse_webhook_validates_invalid_signature() {
-    // Setup provider and webhook payload
-    let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#;
-    let signature_header = format!("t={},v1=invalid", Utc::now().timestamp());
-
-    // Verify and parse the webhook payload
-    let err = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect_err("invalid webhook signature to be rejected");
-
-    // Check the returned error matches expectations
-    assert_eq!(err.to_string(), "invalid Stripe webhook signature");
-}
-
-#[test]
-fn verify_and_parse_webhook_validates_missing_payload_object() {
-    // Setup provider and webhook payload
-    let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","livemode":false,"type":"checkout.session.completed","data":{"object":null}}"#;
-    let signature_header = sample_signature_header(body, Utc::now().timestamp());
-
-    // Verify and parse the webhook payload
-    let err = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect_err("webhook without object data to be rejected");
-
-    // Check the returned error matches expectations
-    assert_eq!(
-        err.to_string(),
-        "Stripe webhook payload is missing object data"
-    );
-}
-
-#[test]
-fn verify_and_parse_webhook_validates_missing_signature_header() {
-    // Setup provider and webhook payload
-    let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#;
-    let signature_header = format!("t={}", Utc::now().timestamp());
-
-    // Verify and parse the webhook payload
-    let err = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect_err("webhook without signature to be rejected");
-
-    // Check the returned error matches expectations
-    assert_eq!(err.to_string(), "missing Stripe webhook signature");
-}
-
-#[test]
-fn verify_and_parse_webhook_validates_missing_webhook_mode() {
-    // Setup a signed provider payload without its required mode marker
-    let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#;
-    let signature_header = sample_signature_header(body, Utc::now().timestamp());
-
-    // Verify and parse the incomplete webhook payload
-    let err = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect_err("webhook without livemode to be rejected");
-
-    // Check the missing provider mode cannot silently become test mode
-    assert!(format!("{err:#}").contains("missing field `livemode`"));
-}
-
-#[test]
-fn verify_and_parse_webhook_validates_webhook_timestamp_missing() {
-    // Setup provider and webhook payload
-    let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#;
-    let signature = StripeProvider::compute_signature(
-        "whsec_connect_test",
-        &format!("{}.{body}", Utc::now().timestamp()),
-    );
-    let signature_header = format!("v1={signature}");
-
-    // Verify and parse the webhook payload
-    let err = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect_err("webhook without timestamp to be rejected");
-
-    // Check the returned error matches expectations
-    assert_eq!(err.to_string(), "missing Stripe webhook timestamp");
-}
-
-#[test]
-fn verify_and_parse_webhook_validates_webhook_timestamp_staleness() {
-    // Setup provider and stale webhook payload
-    let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","type":"checkout.session.expired","data":{"object":{"id":"cs_test_123","payment_intent":null}}}"#;
-    let signature_header =
-        sample_signature_header(body, (Utc::now() - TimeDelta::minutes(10)).timestamp());
-
-    // Verify and parse the webhook payload
-    let err = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect_err("stale webhook to be rejected");
-
-    // Check the returned error matches expectations
-    assert_eq!(err.to_string(), "stale Stripe webhook timestamp");
-}
-
-#[test]
-fn verify_and_parse_webhook_validates_webhook_type() {
-    // Setup provider and webhook payload
-    let provider = sample_stripe_provider();
-    let body = r#"{"account":"acct_test_123","livemode":false,"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123","payment_intent":"pi_test_123"}}}"#;
-    let signature_header = sample_signature_header(body, Utc::now().timestamp());
-
-    // Verify and parse the webhook payload
-    let err = provider
-        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
-        .expect_err("unsupported webhook event to be rejected");
-
-    // Check the returned error matches expectations
-    assert_eq!(
-        err.to_string(),
-        "unsupported Stripe webhook event: payment_intent.succeeded"
-    );
-}
-
 // Helpers.
+
+/// Mutation a table case applies to a sample input.
+type Mutation<T> = fn(&mut T);
+
+/// Returns checkout input whose cached Product snapshot matches `loc_cached`, and its fingerprint.
+fn cached_tax_product_input() -> (CreateCheckoutSessionInput, String) {
+    let mut input = sample_checkout_session_input();
+    let fingerprint = StripeProvider::provider_fingerprint(&[
+        &input.ticket_title,
+        "loc_cached",
+        input.tax_code.as_deref().expect("sample tax code to exist"),
+    ]);
+    input.cached_product_fingerprint = Some(fingerprint.clone());
+    input.cached_provider_tax_product_id = Some("prod_cached".to_string());
+
+    (input, fingerprint)
+}
+
+/// Converts checkout session form fields into a map for assertions.
+fn checkout_session_form_fields_map(
+    provider: &StripeProvider,
+    input: &CreateCheckoutSessionInput,
+) -> BTreeMap<String, String> {
+    provider
+        .build_checkout_session_form_fields(input, Some("prod_ticket"))
+        .into_iter()
+        .collect()
+}
+
+/// Creates a performance location against a mocked Stripe API and returns the sent form.
+async fn create_location_and_capture_form(
+    input: &PerformanceLocationInput,
+) -> (AutomaticTaxReadiness, BTreeMap<String, String>) {
+    let captured_body = Arc::new(Mutex::new(String::new()));
+    let request_body = Arc::clone(&captured_body);
+    let router = Router::new().route(
+        "/v1/tax/locations",
+        post(move |body: String| {
+            *request_body
+                .lock()
+                .expect("captured request body lock to be available") = body;
+            async { Json(json!({"id": "loc_created"})) }
+        }),
+    );
+    let provider = spawn_stripe_provider(router).await;
+
+    let readiness = provider
+        .create_performance_location(input, super::STRIPE_API_VERSION)
+        .await
+        .expect("performance location to be created");
+    let form_fields = serde_urlencoded::from_str(
+        &captured_body
+            .lock()
+            .expect("captured request body lock to be available"),
+    )
+    .expect("captured request body to be valid form data");
+
+    (readiness, form_fields)
+}
+
+/// Returns an application-fee refund reported in another currency.
+fn in_currency(
+    mut refund: StripeApplicationFeeRefund,
+    currency: &str,
+) -> StripeApplicationFeeRefund {
+    refund.currency = currency.to_string();
+    refund
+}
+
+/// Returns a venue tax jurisdiction.
+fn jurisdiction(country_code: &str, state_code: Option<&str>) -> TicketTaxJurisdiction {
+    TicketTaxJurisdiction {
+        country_code: country_code.to_string(),
+        state_code: state_code.map(str::to_string),
+    }
+}
+
+/// Stores an application-fee refund under the adjustment's idempotency key.
+fn keyed(
+    mut refund: StripeApplicationFeeRefund,
+    input: &ApplicationFeeAdjustmentInput,
+) -> StripeApplicationFeeRefund {
+    refund
+        .metadata
+        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
+    refund
+}
 
 /// Returns the classified error from a mocked Stripe performance-location response.
 async fn performance_location_error(
@@ -3648,30 +3083,42 @@ async fn performance_location_error(
             async move { (StatusCode::BAD_REQUEST, Json(response)) }
         }),
     );
-    let (api_base_url, server) = spawn_stripe_api(router).await;
-    let mut provider = sample_stripe_provider();
-    provider.api_base_url = api_base_url;
+    let provider = spawn_stripe_provider(router).await;
     let mut input = sample_performance_location_input();
     input.venue.state_code = state_code.map(str::to_string);
 
-    let error = provider
+    provider
         .create_performance_location(&input, super::STRIPE_API_VERSION)
         .await
-        .expect_err("mocked Stripe error to be classified");
-    server.abort();
-
-    error
+        .expect_err("mocked Stripe error to be classified")
 }
 
-/// Converts checkout session form fields into a map for assertions.
-fn checkout_session_form_fields_map(
-    provider: &StripeProvider,
-    input: &CreateCheckoutSessionInput,
-) -> BTreeMap<String, String> {
-    provider
-        .build_checkout_session_form_fields(input, Some("prod_ticket"))
-        .into_iter()
-        .collect()
+/// Returns readiness input for the sample connected account.
+fn readiness_input(
+    automatic_tax_jurisdiction: Option<TicketTaxJurisdiction>,
+) -> FiscalSponsorReadinessInput {
+    FiscalSponsorReadinessInput {
+        connected_seller_id: "acct_test_123".to_string(),
+        provider: PaymentProvider::Stripe,
+
+        automatic_tax_jurisdiction,
+    }
+}
+
+/// Adds a recorded creation request to an application-fee refund.
+fn recorded(
+    mut refund: StripeApplicationFeeRefund,
+    amount_minor: i64,
+    currency: &str,
+) -> StripeApplicationFeeRefund {
+    refund.metadata.insert(
+        "requested_amount_minor".to_string(),
+        amount_minor.to_string(),
+    );
+    refund
+        .metadata
+        .insert("requested_currency".to_string(), currency.to_string());
+    refund
 }
 
 /// Creates sample application-fee adjustment input.
@@ -3722,19 +3169,6 @@ fn sample_application_fee_refund_json(
     })
 }
 
-/// Creates sample performance-location input.
-fn sample_performance_location_input() -> PerformanceLocationInput {
-    let checkout = sample_checkout_session_input();
-
-    PerformanceLocationInput {
-        connected_seller_id: checkout.seller.connected_account_id,
-        venue: checkout.venue,
-
-        cached_fingerprint: None,
-        cached_provider_tax_location_id: None,
-    }
-}
-
 /// Creates sample checkout session input.
 fn sample_checkout_session_input() -> CreateCheckoutSessionInput {
     CreateCheckoutSessionInput {
@@ -3781,6 +3215,20 @@ fn sample_checkout_session_input() -> CreateCheckoutSessionInput {
     }
 }
 
+/// Creates sample credit-note input for a full purchase refund.
+fn sample_credit_note_input() -> CreditNoteInput {
+    CreditNoteInput {
+        amount_minor: 2750,
+        connected_seller_id: "acct_test_123".to_string(),
+        event_purchase_id: Uuid::new_v4(),
+        event_purchase_refund_id: Uuid::new_v4(),
+        idempotency_key: "credit-note-test".to_string(),
+        provider_invoice_id: "in_test_123".to_string(),
+        provider_refund_id: "re_test_123".to_string(),
+        tax_amount_minor: 250,
+    }
+}
+
 /// Creates sample refund lookup input.
 fn sample_find_refund_input(purchase_id: Uuid) -> FindRefundInput {
     FindRefundInput {
@@ -3801,6 +3249,19 @@ fn sample_listed_refund(purchase_id: Uuid, id: &str, status: &str) -> StripeList
         status: status.to_string(),
 
         metadata: BTreeMap::from([("event_purchase_id".to_string(), purchase_id.to_string())]),
+    }
+}
+
+/// Creates sample performance-location input.
+fn sample_performance_location_input() -> PerformanceLocationInput {
+    let checkout = sample_checkout_session_input();
+
+    PerformanceLocationInput {
+        connected_seller_id: checkout.seller.connected_account_id,
+        venue: checkout.venue,
+
+        cached_fingerprint: None,
+        cached_provider_tax_location_id: None,
     }
 }
 
@@ -3884,15 +3345,68 @@ fn sample_webhook_headers(signature_header: &str) -> HeaderMap {
     headers
 }
 
+/// Starts an application-fee API serving `fee` and `listing`.
+///
+/// Returns the provider plus fee-retrieval and refund-creation counters. Refund creation
+/// requires the 125 minor-unit request and returns the created 125 usd refund.
+async fn spawn_application_fee_api(
+    fee: serde_json::Value,
+    listing: serde_json::Value,
+) -> (StripeProvider, Arc<AtomicUsize>, Arc<AtomicUsize>) {
+    let fee_retrievals = Arc::new(AtomicUsize::new(0));
+    let refund_creations = Arc::new(AtomicUsize::new(0));
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get({
+                let fee_retrievals = Arc::clone(&fee_retrievals);
+                move || {
+                    fee_retrievals.fetch_add(1, Ordering::SeqCst);
+                    let fee = fee.clone();
+                    async move { Json(fee) }
+                }
+            }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get(move || {
+                let listing = listing.clone();
+                async move { Json(listing) }
+            })
+            .post({
+                let refund_creations = Arc::clone(&refund_creations);
+                move |body: String| {
+                    refund_creations.fetch_add(1, Ordering::SeqCst);
+                    async move {
+                        let form: BTreeMap<String, String> = serde_urlencoded::from_str(&body)
+                            .expect("application-fee form to parse");
+                        assert_eq!(form.get("amount"), Some(&"125".to_string()));
+                        Json(sample_application_fee_refund_json(
+                            "fr_test_123",
+                            125,
+                            "usd",
+                        ))
+                    }
+                }
+            }),
+        );
+
+    (
+        spawn_stripe_provider(router).await,
+        fee_retrievals,
+        refund_creations,
+    )
+}
+
 /// Spawns a listener that accepts connections and never responds, returning its base URL.
-async fn spawn_stalled_stripe_api() -> (String, JoinHandle<()>) {
+async fn spawn_stalled_stripe_api() -> String {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("stalled Stripe API listener to bind");
     let address = listener
         .local_addr()
         .expect("stalled Stripe API listener address to exist");
-    let server = tokio::spawn(async move {
+    tokio::spawn(async move {
         // Keep every accepted connection open without writing a response
         let mut connections = Vec::new();
         loop {
@@ -3901,20 +3415,71 @@ async fn spawn_stalled_stripe_api() -> (String, JoinHandle<()>) {
         }
     });
 
-    (format!("http://{address}/v1"), server)
+    format!("http://{address}/v1")
 }
 
-/// Starts a local Stripe-shaped API for provider-boundary tests.
-async fn spawn_stripe_api(router: Router) -> (String, JoinHandle<()>) {
+/// Starts a local Stripe-shaped API and returns a provider pointed at it.
+///
+/// The server task is detached; the test runtime stops it when the test ends.
+async fn spawn_stripe_provider(router: Router) -> StripeProvider {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("test Stripe API listener to bind");
     let address = listener
         .local_addr()
         .expect("test Stripe API listener address to exist");
-    let server = tokio::spawn(async move {
+    tokio::spawn(async move {
         axum::serve(listener, router).await.expect("test Stripe API to serve");
     });
 
-    (format!("http://{address}/v1"), server)
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = format!("http://{address}/v1");
+    provider
+}
+
+/// Returns a router serving a ready sample connected account with active Stripe Tax settings.
+fn tax_ready_account_router() -> Router {
+    Router::new()
+        .route(
+            "/v1/accounts/acct_test_123",
+            get(|| async { Json(sample_stripe_account_response()) }),
+        )
+        .route(
+            "/v1/tax/settings",
+            get(|| async { Json(json!({"status": "active"})) }),
+        )
+}
+
+/// Validates selected Tax Rates against a mocked connected-account rate listing.
+///
+/// The listing route checks the account scope and the inclusive filter for `tax_behavior`.
+async fn validate_tax_rates_against(
+    rates: serde_json::Value,
+    manual_tax_rate_ids: &[&str],
+    tax_behavior: TicketTaxBehavior,
+    jurisdiction: Option<TicketTaxJurisdiction>,
+) -> Result<(), FiscalSponsorReadinessError> {
+    let inclusive = format!("inclusive={}", tax_behavior == TicketTaxBehavior::Inclusive);
+    let router = Router::new().route(
+        "/v1/tax_rates",
+        get(move |headers: HeaderMap, uri: Uri| async move {
+            assert_eq!(headers["stripe-account"], "acct_test_123");
+            assert!(
+                uri.query().is_some_and(|query| query.contains(&inclusive)),
+                "expected {inclusive} in {uri}"
+            );
+            Json(json!({"data": rates, "has_more": false}))
+        }),
+    );
+    let provider = spawn_stripe_provider(router).await;
+
+    provider
+        .validate_tax_rates(&ValidateTaxRatesInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            manual_tax_rate_ids: manual_tax_rate_ids.iter().map(ToString::to_string).collect(),
+            tax_behavior,
+
+            jurisdiction,
+        })
+        .await
 }

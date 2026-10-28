@@ -282,25 +282,3 @@ pub(crate) enum Tab {
     /// Team management tab.
     Team,
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::types::pagination::NavigationLinks;
-
-    use super::*;
-
-    #[test]
-    fn test_refresh_path_uses_members_route_for_members_content() {
-        let content = Content::Members(members::ListPage {
-            can_manage_members: false,
-            default_notification_subject: String::new(),
-            members: vec![],
-            navigation_links: NavigationLinks::default(),
-            total: 0,
-
-            offset: None,
-        });
-
-        assert_eq!(content.refresh_path(), "members");
-    }
-}

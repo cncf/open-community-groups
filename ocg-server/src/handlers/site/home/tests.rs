@@ -1,17 +1,15 @@
 use axum::{
-    body::{Body, to_bytes},
+    body::Body,
     http::{
-        HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, VARY},
+        HeaderValue, StatusCode,
+        header::{CACHE_CONTROL, VARY},
     },
 };
-use tower::ServiceExt;
 
 use crate::{
-    db::mock::MockDB,
+    db::mock::{MockDB, expect_site_settings},
     handlers::tests::*,
     router::{CACHE_CONTROL_PUBLIC_SHARED, PUBLIC_SHARED_CACHE_VARY},
-    services::notifications::MockNotificationsManager,
 };
 
 #[tokio::test]
@@ -24,30 +22,19 @@ async fn test_page_success() {
     db.expect_get_site_recently_added_groups()
         .times(1)
         .returning(|| Ok(vec![]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_site_settings(&mut db);
     db.expect_get_site_upcoming_events()
         .times(2)
         .returning(|_| Ok(vec![]));
     db.expect_list_communities().times(1).returning(|| Ok(vec![]));
 
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder().method("GET").uri("/").body(Body::empty()).unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8")
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
@@ -56,5 +43,4 @@ async fn test_page_success() {
         parts.headers.get(VARY).unwrap(),
         &HeaderValue::from_static(PUBLIC_SHARED_CACHE_VARY)
     );
-    assert!(!bytes.is_empty());
 }

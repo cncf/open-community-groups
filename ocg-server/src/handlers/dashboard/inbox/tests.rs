@@ -5,27 +5,24 @@ use uuid::Uuid;
 use super::requested_conversation_id;
 
 #[test]
-fn test_requested_conversation_id_ignores_malformed_id() {
-    let query = HashMap::from([("conversation_id".to_string(), "invalid".to_string())]);
-
-    assert_eq!(requested_conversation_id(&query), None);
-}
-
-#[test]
-fn test_requested_conversation_id_returns_none_without_parameter() {
-    assert_eq!(requested_conversation_id(&HashMap::new()), None);
-}
-
-#[test]
-fn test_requested_conversation_id_returns_valid_id() {
+fn test_requested_conversation_id() {
     let inbox_conversation_id = Uuid::new_v4();
-    let query = HashMap::from([(
-        "conversation_id".to_string(),
-        inbox_conversation_id.to_string(),
-    )]);
+    let cases = [
+        ("missing parameter", None, None),
+        ("malformed id", Some("invalid".to_string()), None),
+        (
+            "valid id",
+            Some(inbox_conversation_id.to_string()),
+            Some(inbox_conversation_id),
+        ),
+    ];
 
-    assert_eq!(
-        requested_conversation_id(&query),
-        Some(inbox_conversation_id)
-    );
+    for (label, value, expected) in cases {
+        let query: HashMap<String, String> = value
+            .map(|value| ("conversation_id".to_string(), value))
+            .into_iter()
+            .collect();
+
+        assert_eq!(requested_conversation_id(&query), expected, "case {label}");
+    }
 }

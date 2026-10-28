@@ -228,69 +228,87 @@ mod tests {
 
     use crate::types::{
         event::EventEnrollmentStatus,
-        questionnaire::{QuestionnaireQuestion, QuestionnaireQuestionKind},
-        tests::sample_event_summary,
+        tests::{sample_survey_question, sample_user_event},
     };
 
-    use super::{UserEvent, UserEventRole};
+    use super::UserEventRole;
 
     #[test]
-    fn can_cancel_attendance_allows_attendee_status() {
-        let user_event = sample_user_event();
+    fn test_can_cancel_attendance_follows_status_and_roles() {
+        use UserEventRole::{Attendee, Host, Offer, Organizer, Speaker};
 
-        assert!(user_event.can_cancel_attendance());
-    }
+        // (case, enrollment status, has paid purchase, roles, can cancel)
+        let cases = [
+            (
+                "attendee",
+                EventEnrollmentStatus::Attendee,
+                false,
+                vec![Attendee],
+                true,
+            ),
+            (
+                "attendee organizer",
+                EventEnrollmentStatus::Attendee,
+                false,
+                vec![Attendee, Organizer],
+                true,
+            ),
+            (
+                "attendee host",
+                EventEnrollmentStatus::Attendee,
+                false,
+                vec![Attendee, Host],
+                false,
+            ),
+            (
+                "attendee offer",
+                EventEnrollmentStatus::Attendee,
+                false,
+                vec![Attendee, Offer],
+                false,
+            ),
+            (
+                "attendee organizer with paid purchase",
+                EventEnrollmentStatus::Attendee,
+                true,
+                vec![Attendee, Organizer],
+                false,
+            ),
+            (
+                "attendee speaker",
+                EventEnrollmentStatus::Attendee,
+                false,
+                vec![Attendee, Speaker],
+                false,
+            ),
+            (
+                "organizer without attendee role",
+                EventEnrollmentStatus::Attendee,
+                false,
+                vec![Organizer],
+                false,
+            ),
+            (
+                "waitlisted attendee",
+                EventEnrollmentStatus::Waitlisted,
+                false,
+                vec![Attendee],
+                false,
+            ),
+        ];
+        for (case, enrollment_status, has_paid_purchase, roles, can_cancel) in cases {
+            let mut user_event = sample_user_event(Uuid::new_v4());
+            user_event.enrollment_status = Some(enrollment_status);
+            user_event.has_paid_purchase = has_paid_purchase;
+            user_event.roles = roles;
 
-    #[test]
-    fn can_cancel_attendance_allows_attendee_organizer() {
-        let mut user_event = sample_user_event();
-        user_event.roles = vec![UserEventRole::Attendee, UserEventRole::Organizer];
-
-        assert!(user_event.can_cancel_attendance());
-    }
-
-    #[test]
-    fn can_cancel_attendance_rejects_attendee_organizer_with_paid_purchase() {
-        let mut user_event = sample_user_event();
-        user_event.has_paid_purchase = true;
-        user_event.roles = vec![UserEventRole::Attendee, UserEventRole::Organizer];
-
-        assert!(!user_event.can_cancel_attendance());
-    }
-
-    #[test]
-    fn can_cancel_attendance_rejects_attendee_with_contributor_or_offer_roles() {
-        for role in [
-            UserEventRole::Host,
-            UserEventRole::Offer,
-            UserEventRole::Speaker,
-        ] {
-            let mut user_event = sample_user_event();
-            user_event.roles = vec![UserEventRole::Attendee, role];
-
-            assert!(!user_event.can_cancel_attendance(), "role: {role}");
+            assert_eq!(user_event.can_cancel_attendance(), can_cancel, "{case}");
         }
     }
 
     #[test]
-    fn can_cancel_attendance_rejects_organizer_without_attendee_role() {
-        let mut user_event = sample_user_event();
-        user_event.roles = vec![UserEventRole::Organizer];
-
-        assert!(!user_event.can_cancel_attendance());
-    }
-
-    #[test]
-    fn can_cancel_attendance_rejects_other_statuses() {
-        let mut user_event = sample_user_event();
-        user_event.enrollment_status = Some(EventEnrollmentStatus::Waitlisted);
-
-        assert!(!user_event.can_cancel_attendance());
-    }
-
-    #[test]
-    fn can_cancel_checkout_allows_pending_payment() {
-        let mut user_event = sample_user_event();
+    fn test_can_cancel_checkout_allows_pending_payment() {
+        let mut user_event = sample_user_event(Uuid::new_v4());
         user_event.enrollment_status = Some(EventEnrollmentStatus::PendingPayment);
         user_event.roles = vec![];
 
@@ -298,17 +316,17 @@ mod tests {
     }
 
     #[test]
-    fn can_cancel_checkout_rejects_attendee() {
-        let user_event = sample_user_event();
+    fn test_can_cancel_checkout_rejects_attendee() {
+        let user_event = sample_user_event(Uuid::new_v4());
 
         assert!(!user_event.can_cancel_checkout());
     }
 
     #[test]
-    fn can_complete_registration_questions_allows_active_checkout_hold_after_closed_window() {
-        let mut user_event = sample_user_event();
+    fn test_can_complete_registration_questions_allows_active_checkout_hold_after_closed_window() {
+        let mut user_event = sample_user_event(Uuid::new_v4());
         user_event.enrollment_status = Some(EventEnrollmentStatus::PendingPayment);
-        user_event.registration_questions = vec![sample_question()];
+        user_event.registration_questions = vec![sample_survey_question(Uuid::new_v4())];
         user_event.event.registration_ends_at = Some(Utc::now() - Duration::hours(1));
 
         assert!(user_event.can_complete_registration_questions());
@@ -320,10 +338,10 @@ mod tests {
     }
 
     #[test]
-    fn can_complete_registration_questions_allows_manual_invitation_after_closed_window() {
-        let mut user_event = sample_user_event();
+    fn test_can_complete_registration_questions_allows_manual_invitation_after_closed_window() {
+        let mut user_event = sample_user_event(Uuid::new_v4());
         user_event.manually_invited = true;
-        user_event.registration_questions = vec![sample_question()];
+        user_event.registration_questions = vec![sample_survey_question(Uuid::new_v4())];
         user_event.event.registration_ends_at = Some(Utc::now() - Duration::hours(1));
 
         assert!(user_event.can_complete_registration_questions());
@@ -331,9 +349,9 @@ mod tests {
     }
 
     #[test]
-    fn can_complete_registration_questions_rejects_closed_window() {
-        let mut user_event = sample_user_event();
-        user_event.registration_questions = vec![sample_question()];
+    fn test_can_complete_registration_questions_rejects_closed_window() {
+        let mut user_event = sample_user_event(Uuid::new_v4());
+        user_event.registration_questions = vec![sample_survey_question(Uuid::new_v4())];
         user_event.event.registration_ends_at = Some(Utc::now() - Duration::hours(1));
 
         assert!(!user_event.can_complete_registration_questions());
@@ -341,8 +359,8 @@ mod tests {
     }
 
     #[test]
-    fn has_active_offer_requires_offer_identifier_and_role() {
-        let mut user_event = sample_user_event();
+    fn test_has_active_offer_requires_offer_identifier_and_role() {
+        let mut user_event = sample_user_event(Uuid::new_v4());
         user_event.admission_offer_id = Some(Uuid::from_u128(1));
 
         assert!(!user_event.has_active_offer());
@@ -353,7 +371,7 @@ mod tests {
     }
 
     #[test]
-    fn user_event_role_parses_organizer_with_label() {
+    fn test_user_event_role_parses_organizer_with_label() {
         let role: UserEventRole = serde_json::from_value(json!("organizer")).unwrap();
 
         assert_eq!(role, UserEventRole::Organizer);
@@ -361,42 +379,4 @@ mod tests {
     }
 
     // Helpers.
-
-    /// Sample free-text registration question.
-    fn sample_question() -> QuestionnaireQuestion {
-        QuestionnaireQuestion {
-            id: Uuid::new_v4(),
-            kind: QuestionnaireQuestionKind::FreeText,
-            prompt: "Any dietary notes?".to_string(),
-            required: false,
-
-            options: vec![],
-        }
-    }
-
-    /// Sample user event row with cancelable attendee attendance.
-    fn sample_user_event() -> UserEvent {
-        UserEvent {
-            event: sample_event_summary(Uuid::new_v4(), Uuid::new_v4()),
-            has_paid_purchase: false,
-            manually_invited: false,
-            registration_questions: vec![],
-            roles: vec![UserEventRole::Attendee],
-
-            admission_offer_id: None,
-            admission_offer_source: None,
-            admission_offer_status: None,
-            amount_minor: None,
-            currency_code: None,
-            enrollment_status: Some(EventEnrollmentStatus::Attendee),
-            event_ticket_type_id: None,
-            external_payment: None,
-            offer_expires_at: None,
-            registration_answers: None,
-            refund_rejection_reason: None,
-            refund_request_status: None,
-            resume_checkout_url: None,
-            ticket_title: None,
-        }
-    }
 }

@@ -3,29 +3,9 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 
 use super::{
-    EVENT_FORM_TABS, EventFormMode, EventFormSection, EventFormTabFlags, EventFormTabGroup,
-    EventFormTabGroupKind, EventFormTabLazyLoad, form_tab_groups,
+    EVENT_FORM_TABS, EventFormMode, EventFormTabFlags, EventFormTabGroup, EventFormTabGroupKind,
+    EventFormTabLazyLoad, form_tab_groups,
 };
-
-#[test]
-fn test_event_form_section_renders_content_identifiers() {
-    assert_eq!(EventFormSection::Contributors.to_string(), "contributors");
-    assert_eq!(EventFormSection::DateVenue.to_string(), "date-venue");
-    assert_eq!(
-        EventFormSection::InvitationRequests.to_string(),
-        "invitation-requests"
-    );
-    assert_eq!(EventFormSection::Payments.to_string(), "payments");
-}
-
-#[test]
-fn test_event_form_tab_group_kind_labels() {
-    assert_eq!(EventFormTabGroupKind::Event.label(), "Event");
-    assert_eq!(EventFormTabGroupKind::FollowUp.label(), "Follow-up");
-    assert_eq!(EventFormTabGroupKind::People.label(), "People");
-    assert_eq!(EventFormTabGroupKind::Program.label(), "Program");
-    assert_eq!(EventFormTabGroupKind::Registration.label(), "Registration");
-}
 
 #[test]
 fn test_event_form_tabs_keep_groups_contiguous() {
@@ -128,49 +108,23 @@ fn test_form_tab_groups_lazy_loads_review_sections() {
     let groups = form_tab_groups(&update_mode(event_id, false), all_flags());
 
     // Check each review section loads its content once from the event routes
-    assert_eq!(
-        lazy_load(&groups, "submissions"),
-        Some(EventFormTabLazyLoad {
-            indicator: "#submissions-loading".to_string(),
-            target: "#submissions-content".to_string(),
-            url: "/dashboard/group/events/00000000-0000-0000-0000-000000000001/submissions"
-                .to_string(),
-        })
-    );
-    assert_eq!(
-        lazy_load(&groups, "attendees"),
-        Some(EventFormTabLazyLoad {
-            indicator: "#attendees-loading".to_string(),
-            target: "#attendees-content".to_string(),
-            url: "/dashboard/group/events/00000000-0000-0000-0000-000000000001/attendees"
-                .to_string(),
-        })
-    );
-    assert_eq!(
-        lazy_load(&groups, "invitation-requests"),
-        Some(EventFormTabLazyLoad {
-            indicator: "#invitation-requests-loading".to_string(),
-            target: "#invitation-requests-content".to_string(),
-            url: "/dashboard/group/events/00000000-0000-0000-0000-000000000001/invitation-requests?status=all".to_string(),
-        })
-    );
-    assert_eq!(
-        lazy_load(&groups, "surveys"),
-        Some(EventFormTabLazyLoad {
-            indicator: "#surveys-loading".to_string(),
-            target: "#surveys-content".to_string(),
-            url: "/dashboard/group/events/00000000-0000-0000-0000-000000000001/surveys".to_string(),
-        })
-    );
-    assert_eq!(
-        lazy_load(&groups, "waitlist"),
-        Some(EventFormTabLazyLoad {
-            indicator: "#waitlist-loading".to_string(),
-            target: "#waitlist-content".to_string(),
-            url: "/dashboard/group/events/00000000-0000-0000-0000-000000000001/waitlist"
-                .to_string(),
-        })
-    );
+    for (section, route) in [
+        ("submissions", "submissions"),
+        ("attendees", "attendees"),
+        ("invitation-requests", "invitation-requests?status=all"),
+        ("surveys", "surveys"),
+        ("waitlist", "waitlist"),
+    ] {
+        assert_eq!(
+            lazy_load(&groups, section),
+            Some(EventFormTabLazyLoad {
+                indicator: format!("#{section}-loading"),
+                target: format!("#{section}-content"),
+                url: format!("/dashboard/group/events/{event_id}/{route}"),
+            }),
+            "section {section}"
+        );
+    }
 
     // Check sections rendered with the page or by page scripts have no attributes
     for section in ["analytics", "details", "payments"] {

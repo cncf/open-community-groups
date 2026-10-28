@@ -13,6 +13,8 @@ use tokio::{
 };
 use tokio_util::sync::CancellationToken;
 
+use crate::test_util::wait_until;
+
 use super::{BackgroundTasks, WorkerExit, WorkerIteration, WorkerStatus, run_worker};
 
 #[tokio::test(start_paused = true)]
@@ -333,17 +335,4 @@ async fn test_run_worker_pause_waits_for_complete_duration() {
     tokio::time::advance(Duration::from_secs(1)).await;
     worker_task.await.expect("worker driver to stop cleanly");
     assert_eq!(call_count.load(Ordering::SeqCst), 2);
-}
-
-// Helpers.
-
-/// Polls `condition` until it holds, failing the test after five seconds.
-async fn wait_until(condition: impl Fn() -> bool) {
-    timeout(Duration::from_secs(5), async {
-        while !condition() {
-            sleep(Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .expect("condition to hold within the wait budget");
 }

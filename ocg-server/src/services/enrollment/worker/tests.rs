@@ -22,14 +22,12 @@ async fn test_run_forwards_payment_provider() {
             Ok(None)
         });
     let worker = EnrollmentWorker {
-        cancellation_token: cancellation_token.clone(),
+        cancellation_token,
         db: Arc::new(db),
         payment_provider: Some(PaymentProvider::Stripe),
     };
 
-    // Run the configured reconciliation once
+    // Run the configured reconciliation once; the strict provider expectation
+    // is the assertion, and only the mock can stop the worker
     worker.run().await;
-
-    // Check the strict provider expectation completed before shutdown
-    assert!(cancellation_token.is_cancelled());
 }

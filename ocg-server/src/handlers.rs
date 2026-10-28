@@ -114,24 +114,25 @@ mod helpers_tests {
     };
 
     use crate::{
-        config::HttpServerConfig,
+        config::tests::sample_server_cfg,
         router::{CACHE_CONTROL_PUBLIC_SHARED, PUBLIC_SHARED_CACHE_VARY},
     };
 
     use super::*;
 
     #[test]
-    fn test_extend_public_shared_cache_headers_rejects_invalid_extra_header_name() {
-        let result = extend_public_shared_cache_headers(&[("invalid header", "value")]);
+    fn test_extend_public_shared_cache_headers_rejects_invalid_extra_headers() {
+        // Setup labeled extra headers that cannot be encoded
+        let cases = [
+            ("invalid name", ("invalid header", "value")),
+            ("invalid value", ("x-test", "invalid\nvalue")),
+        ];
 
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_extend_public_shared_cache_headers_rejects_invalid_extra_header_value() {
-        let result = extend_public_shared_cache_headers(&[("x-test", "invalid\nvalue")]);
-
-        assert!(result.is_err());
+        // Check each extra header is rejected
+        for (case, extra_header) in cases {
+            let result = extend_public_shared_cache_headers(&[extra_header]);
+            assert!(result.is_err(), "{case}");
+        }
     }
 
     #[test]
@@ -147,67 +148,105 @@ mod helpers_tests {
     }
 
     #[test]
-    fn test_request_headers_match_site_origin_accepts_normalized_default_port() {
-        let server_cfg = sample_server_cfg("https://example.test");
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            REFERER,
-            HeaderValue::from_static("https://example.test:443/page"),
+    fn test_request_headers_match_site_origin() {
+        // Setup labeled site origins and request headers with the expected match
+        type Case = (
+            &'static str,
+            &'static str,
+            Option<&'static [u8]>,
+            Option<&'static str>,
+            bool,
         );
+        let cases: [Case; 11] = [
+            (
+                "matching origin",
+                "https://example.test",
+                Some(b"https://example.test"),
+                None,
+                true,
+            ),
+            (
+                "matching referer without origin",
+                "https://example.test",
+                None,
+                Some("https://example.test/page"),
+                true,
+            ),
+            (
+                "referer with normalized default port",
+                "https://example.test",
+                None,
+                Some("https://example.test:443/page"),
+                true,
+            ),
+            (
+                "host compared case-insensitively",
+                "https://Example.Test",
+                Some(b"https://EXAMPLE.TEST"),
+                None,
+                true,
+            ),
+            (
+                "origin preferred over matching referer",
+                "https://example.test",
+                Some(b"https://evil.test"),
+                Some("https://example.test/page"),
+                false,
+            ),
+            (
+                "mismatched referer without origin",
+                "https://example.test",
+                None,
+                Some("https://evil.test/page"),
+                false,
+            ),
+            (
+                "mismatched port",
+                "https://example.test:8443",
+                Some(b"https://example.test"),
+                None,
+                false,
+            ),
+            (
+                "mismatched scheme",
+                "https://example.test",
+                Some(b"http://example.test"),
+                None,
+                false,
+            ),
+            (
+                "non-UTF-8 origin",
+                "https://example.test",
+                Some(&[0xFF]),
+                None,
+                false,
+            ),
+            (
+                "unparsable referer",
+                "https://example.test",
+                None,
+                Some("not a url"),
+                false,
+            ),
+            ("missing headers", "https://example.test", None, None, false),
+        ];
 
-        assert!(request_headers_match_site_origin(&server_cfg, &headers).unwrap());
-    }
-
-    #[test]
-    fn test_request_headers_match_site_origin_falls_back_to_referer() {
-        let server_cfg = sample_server_cfg("https://example.test");
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            REFERER,
-            HeaderValue::from_static("https://example.test/page"),
-        );
-
-        assert!(request_headers_match_site_origin(&server_cfg, &headers).unwrap());
-    }
-
-    #[test]
-    fn test_request_headers_match_site_origin_matches_host_case_insensitively() {
-        let server_cfg = sample_server_cfg("https://Example.Test");
-        let mut headers = HeaderMap::new();
-        headers.insert(ORIGIN, HeaderValue::from_static("https://EXAMPLE.TEST"));
-
-        assert!(request_headers_match_site_origin(&server_cfg, &headers).unwrap());
-    }
-
-    #[test]
-    fn test_request_headers_match_site_origin_prefers_origin_over_referer() {
-        let server_cfg = sample_server_cfg("https://example.test");
-        let mut headers = HeaderMap::new();
-        headers.insert(ORIGIN, HeaderValue::from_static("https://evil.test"));
-        headers.insert(
-            REFERER,
-            HeaderValue::from_static("https://example.test/page"),
-        );
-
-        assert!(!request_headers_match_site_origin(&server_cfg, &headers).unwrap());
-    }
-
-    #[test]
-    fn test_request_headers_match_site_origin_rejects_mismatched_port() {
-        let server_cfg = sample_server_cfg("https://example.test:8443");
-        let mut headers = HeaderMap::new();
-        headers.insert(ORIGIN, HeaderValue::from_static("https://example.test"));
-
-        assert!(!request_headers_match_site_origin(&server_cfg, &headers).unwrap());
-    }
-
-    #[test]
-    fn test_request_headers_match_site_origin_rejects_mismatched_scheme() {
-        let server_cfg = sample_server_cfg("https://example.test");
-        let mut headers = HeaderMap::new();
-        headers.insert(ORIGIN, HeaderValue::from_static("http://example.test"));
-
-        assert!(!request_headers_match_site_origin(&server_cfg, &headers).unwrap());
+        // Check each case resolves the expected match
+        for (case, base_url, origin, referer, expected) in cases {
+            let server_cfg = sample_server_cfg(base_url);
+            let mut headers = HeaderMap::new();
+            if let Some(origin) = origin {
+                headers.insert(ORIGIN, HeaderValue::from_bytes(origin).unwrap());
+            }
+            if let Some(referer) = referer {
+                headers.insert(REFERER, HeaderValue::from_str(referer).unwrap());
+            }
+            assert_eq!(
+                request_headers_match_site_origin(&server_cfg, &headers).unwrap(),
+                expected,
+                "{case}"
+            );
+        }
     }
 
     #[test]
@@ -218,67 +257,29 @@ mod helpers_tests {
     }
 
     #[test]
-    fn test_request_headers_match_site_origin_rejects_non_utf8_origin() {
-        let server_cfg = sample_server_cfg("https://example.test");
-        let mut headers = HeaderMap::new();
-        headers.insert(ORIGIN, HeaderValue::from_bytes(&[0xFF]).unwrap());
+    fn test_trim_public_gallery_images() {
+        // Setup labeled galleries with the expected public gallery
+        let urls = |count: usize| (0..count).map(sample_photo_url).collect::<Vec<_>>();
+        let cases = [
+            ("no gallery", None, None),
+            ("short gallery", Some(urls(2)), Some(urls(2))),
+            (
+                "long gallery",
+                Some(urls(MAX_PUBLIC_GALLERY_IMAGES + 1)),
+                Some(urls(MAX_PUBLIC_GALLERY_IMAGES)),
+            ),
+        ];
 
-        assert!(!request_headers_match_site_origin(&server_cfg, &headers).unwrap());
-    }
-
-    #[test]
-    fn test_request_headers_match_site_origin_rejects_when_headers_are_missing() {
-        let server_cfg = sample_server_cfg("https://example.test");
-
-        assert!(!request_headers_match_site_origin(&server_cfg, &HeaderMap::new()).unwrap());
-    }
-
-    #[test]
-    fn test_trim_public_gallery_images_keeps_none_unchanged() {
-        let mut photos_urls = None;
-
-        trim_public_gallery_images(&mut photos_urls);
-
-        assert_eq!(photos_urls, None);
-    }
-
-    #[test]
-    fn test_trim_public_gallery_images_keeps_short_vec_unchanged() {
-        let mut photos_urls = Some(vec![sample_photo_url(0), sample_photo_url(1)]);
-
-        trim_public_gallery_images(&mut photos_urls);
-
-        assert_eq!(
-            photos_urls,
-            Some(vec![sample_photo_url(0), sample_photo_url(1)])
-        );
-    }
-
-    #[test]
-    fn test_trim_public_gallery_images_truncates_long_vec() {
-        let mut photos_urls = Some((0..=MAX_PUBLIC_GALLERY_IMAGES).map(sample_photo_url).collect());
-
-        trim_public_gallery_images(&mut photos_urls);
-
-        assert_eq!(
-            photos_urls.as_ref().map(Vec::len),
-            Some(MAX_PUBLIC_GALLERY_IMAGES)
-        );
-        assert_eq!(
-            photos_urls.as_ref().and_then(|photos_urls| photos_urls.last()),
-            Some(&sample_photo_url(MAX_PUBLIC_GALLERY_IMAGES - 1))
-        );
-    }
-
-    // Helpers
-
-    fn sample_server_cfg(base_url: &str) -> HttpServerConfig {
-        HttpServerConfig {
-            base_url: base_url.to_string(),
-            ..Default::default()
+        // Check each gallery keeps at most the leading public images
+        for (case, mut photos_urls, expected) in cases {
+            trim_public_gallery_images(&mut photos_urls);
+            assert_eq!(photos_urls, expected, "{case}");
         }
     }
 
+    // Helpers.
+
+    /// Builds the URL of the gallery photo at `idx`.
     fn sample_photo_url(idx: usize) -> String {
         format!("https://example.test/photo-{idx}.png")
     }

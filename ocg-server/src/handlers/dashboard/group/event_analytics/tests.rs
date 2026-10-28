@@ -1,19 +1,13 @@
 use axum::{
-    body::{Body, to_bytes},
-    http::{
-        Request, StatusCode,
-        header::{COOKIE, LOCATION},
-    },
+    body::Body,
+    http::{Request, StatusCode, header::LOCATION},
 };
-use axum_login::tower_sessions::session;
 use chrono::{Duration, Utc};
-use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    services::notifications::MockNotificationsManager,
     types::{dashboard::group::event_analytics::EventAnalytics, permissions::GroupPermission},
 };
 
@@ -25,11 +19,19 @@ async fn test_page_explains_missing_daily_charts_for_unpublished_events() {
     stats.event.published_at = None;
     stats.range = None;
 
-    // Run the request
-    let (response_status, body) = request_page(stats).await;
+    // Setup database mock
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_page_reads(&mut db, &ids, event_id, stats);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, page_request(&ids, event_id)).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the daily charts are replaced by an explanation
-    assert_eq!(response_status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("data-event-analytics-range-unavailable"));
     assert!(body.contains("this event is not published"));
     assert!(!body.contains("id=\"event-views-daily-chart\""));
@@ -44,11 +46,19 @@ async fn test_page_explains_missing_daily_charts_without_publication_date() {
     stats.event.published_at = None;
     stats.range = None;
 
-    // Run the request
-    let (response_status, body) = request_page(stats).await;
+    // Setup database mock
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_page_reads(&mut db, &ids, event_id, stats);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, page_request(&ids, event_id)).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the explanation names the missing publication date
-    assert_eq!(response_status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("which is not recorded for this event"));
     assert!(!body.contains("this event is not published"));
     assert!(!body.contains("id=\"event-views-daily-chart\""));
@@ -61,11 +71,19 @@ async fn test_page_hides_check_ins_before_the_event_ends() {
     stats.event.ends_at = Some(Utc::now() + Duration::days(3));
     stats.event.starts_at = Some(Utc::now() + Duration::days(2));
 
-    // Run the request
-    let (response_status, body) = request_page(stats).await;
+    // Setup database mock
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_page_reads(&mut db, &ids, event_id, stats);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, page_request(&ids, event_id)).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the check-in card and section are omitted
-    assert_eq!(response_status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(!body.contains("Check-in rate"));
     assert!(!body.contains("data-event-analytics-check-ins"));
     assert!(!body.contains("id=\"event-check-ins-chart\""));
@@ -79,11 +97,19 @@ async fn test_page_hides_surveys_without_ready_surveys() {
     stats.surveys.total_eligible_count = 0;
     stats.surveys.total_eligible_respondents_count = 0;
 
-    // Run the request
-    let (response_status, body) = request_page(stats).await;
+    // Setup database mock
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_page_reads(&mut db, &ids, event_id, stats);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, page_request(&ids, event_id)).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the surveys section is omitted
-    assert_eq!(response_status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(!body.contains("data-event-analytics-surveys"));
     assert!(!body.contains("Overall response rate"));
 }
@@ -95,107 +121,72 @@ async fn test_page_hides_tickets_for_free_events() {
     stats.event.is_paid = false;
     stats.tickets = None;
 
-    // Run the request
-    let (response_status, body) = request_page(stats).await;
+    // Setup database mock
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_page_reads(&mut db, &ids, event_id, stats);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, page_request(&ids, event_id)).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the tickets section is omitted
-    assert_eq!(response_status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(!body.contains("data-event-analytics-tickets"));
     assert!(!body.contains("role=\"progressbar\""));
 }
 
 #[tokio::test]
 async fn test_page_redirects_users_without_group_access() {
-    // Setup identifiers
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
     // Setup a session whose user lost access to every group
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(false));
+    expect_group_session(&mut db, &ids);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::Read, false);
     db.expect_list_user_groups()
         .times(1)
-        .withf(move |uid| *uid == user_id)
+        .withf(move |uid| *uid == ids.user_id)
         .returning(|_| Ok(vec![]));
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
-            record.id == session_id && !record.data.contains_key("selected_group_id")
+            record.id == ids.session_id && !record.data.contains_key("selected_group_id")
         })
         .returning(|_| Ok(()));
     db.expect_group_has_event().never();
     db.expect_get_event_analytics().never();
 
-    // Run the request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/events/{event_id}/analytics"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, _) = send(router, page_request(&ids, event_id)).await;
 
     // Check the user is sent away before any analytics read
-    assert_eq!(response.status(), StatusCode::SEE_OTHER);
+    assert_eq!(parts.status, StatusCode::SEE_OTHER);
     assert_eq!(
-        response.headers().get(LOCATION).unwrap(),
+        parts.headers.get(LOCATION).unwrap(),
         "/dashboard/user?tab=invitations"
     );
 }
 
 #[tokio::test]
 async fn test_page_returns_not_found_for_unavailable_events() {
-    // Setup identifiers
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
     // Setup a foreign, co-hosted or deleted event
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
     db.expect_group_has_event()
         .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .withf(move |gid, eid| *gid == ids.group_id && *eid == event_id)
         .returning(|_, _| Ok(false));
     db.expect_get_event_analytics().never();
 
-    // Run the request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/events/{event_id}/analytics"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, page_request(&ids, event_id)).await;
 
     // Check the cached statistics are never served
     assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
@@ -203,45 +194,23 @@ async fn test_page_returns_not_found_for_unavailable_events() {
 
 #[tokio::test]
 async fn test_page_returns_not_found_without_stats() {
-    // Setup identifiers
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
     // Setup an available event whose statistics are missing
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
     db.expect_group_has_event()
         .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .withf(move |gid, eid| *gid == ids.group_id && *eid == event_id)
         .returning(|_, _| Ok(true));
     db.expect_get_event_analytics()
         .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .withf(move |gid, eid| *gid == ids.group_id && *eid == event_id)
         .returning(|_, _| Ok(None));
 
-    // Run the request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/events/{event_id}/analytics"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, page_request(&ids, event_id)).await;
 
     // Check the missing statistics are reported as not found
     assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
@@ -249,11 +218,19 @@ async fn test_page_returns_not_found_without_stats() {
 
 #[tokio::test]
 async fn test_page_success() {
-    // Run the request for a past paid event
-    let (response_status, body) = request_page(sample_event_analytics()).await;
+    // Setup database mock for a past paid event
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_page_reads(&mut db, &ids, event_id, sample_event_analytics());
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, page_request(&ids, event_id)).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check the summary cards
-    assert_eq!(response_status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("Page views"));
     assert!(body.contains("Fill rate"));
     assert!(body.contains("40%"));
@@ -334,11 +311,19 @@ async fn test_page_warns_when_attribution_is_inconsistent() {
     let mut stats = sample_event_analytics();
     stats.traffic.attribution_consistent = false;
 
-    // Run the request
-    let (response_status, body) = request_page(stats).await;
+    // Setup database mock
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_page_reads(&mut db, &ids, event_id, stats);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, page_request(&ids, event_id)).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check shares are replaced by warnings and raw totals remain
-    assert_eq!(response_status, StatusCode::OK);
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("Traffic source attribution is unavailable"));
     assert!(body.contains("Shares of page views are unavailable"));
     assert!(!body.contains("id=\"event-utm-share-chart\""));
@@ -347,48 +332,26 @@ async fn test_page_warns_when_attribution_is_inconsistent() {
 
 // Helpers.
 
-/// Requests the analytics tab as a read-only group user and returns the
-/// response status and body.
-async fn request_page(stats: EventAnalytics) -> (StatusCode, String) {
-    // Setup identifiers
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
+/// Expects the read-only group access and analytics reads of an available
+/// event with the given statistics.
+fn expect_page_reads(db: &mut MockDB, ids: &DashboardIds, event_id: Uuid, stats: EventAnalytics) {
+    let ids = *ids;
 
-    // Setup a read-only group session and the analytics reads
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::Read,
-    );
+    expect_group_access(db, &ids, GroupPermission::Read);
     db.expect_group_has_event()
         .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .withf(move |gid, eid| *gid == ids.group_id && *eid == event_id)
         .returning(|_, _| Ok(true));
     db.expect_get_event_analytics()
         .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .withf(move |gid, eid| *gid == ids.group_id && *eid == event_id)
         .returning(move |_, _| Ok(Some(stats.clone())));
+}
 
-    // Run the request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/events/{event_id}/analytics"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    (parts.status, String::from_utf8(bytes.to_vec()).unwrap())
+/// Builds the analytics tab request for the event.
+fn page_request(ids: &DashboardIds, event_id: Uuid) -> Request<Body> {
+    get_request(
+        &format!("/dashboard/group/events/{event_id}/analytics"),
+        ids.session_id,
+    )
 }

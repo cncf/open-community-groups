@@ -122,6 +122,59 @@ mod tests {
         assert!(!output.contains("database-password-sensitive-value"));
     }
 
+    #[test]
+    fn test_config_validate_checks_base_redirect_url() {
+        // (case, base_redirect_url, expected error)
+        let cases = [
+            ("https URL", "https://ocg.example.test", None),
+            ("http URL with port", "http://localhost:9000", None),
+            (
+                "relative URL",
+                "/community",
+                Some("server.base_redirect_url must be an absolute http(s) URL"),
+            ),
+            (
+                "unsupported scheme",
+                "ftp://ocg.example.test",
+                Some("server.base_redirect_url must be an absolute http(s) URL"),
+            ),
+            (
+                "unparseable URL",
+                "https://ocg example",
+                Some("server.base_redirect_url is invalid: invalid uri character"),
+            ),
+        ];
+
+        for (case, base_redirect_url, expected) in cases {
+            let mut cfg = sample_config();
+            cfg.server.base_redirect_url = base_redirect_url.to_string();
+
+            let result = cfg.validate().map_err(|err| err.to_string());
+
+            assert_eq!(result.err().as_deref(), expected, "{case}");
+        }
+    }
+
+    #[test]
+    fn test_http_server_config_redirect_host_suffix_uses_base_url_host() {
+        for (case, base_redirect_url) in [
+            ("bare host", "https://ocg.example.test"),
+            ("trailing slash", "https://ocg.example.test/"),
+            ("port and path", "http://ocg.example.test:9000/base"),
+        ] {
+            let server_cfg = HttpServerConfig {
+                base_redirect_url: base_redirect_url.to_string(),
+                ..HttpServerConfig::default()
+            };
+
+            assert_eq!(
+                server_cfg.redirect_host_suffix(),
+                "redirects.ocg.example.test",
+                "{case}"
+            );
+        }
+    }
+
     // Helpers.
 
     fn sample_config() -> Config {

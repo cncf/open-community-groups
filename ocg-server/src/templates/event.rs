@@ -152,6 +152,34 @@ mod tests {
     }
 
     #[test]
+    fn test_open_graph_image_url_prefers_group_image_over_community_image() {
+        // (case, group image, community image, expected)
+        let cases = [
+            (
+                "group image",
+                Some("/images/group.png"),
+                Some("/images/community.png"),
+                Some("https://example.test/images/og/group.png"),
+            ),
+            (
+                "community image fallback",
+                None,
+                Some("/images/community.png"),
+                Some("https://example.test/images/og/community.png"),
+            ),
+            ("no image", None, None, None),
+        ];
+
+        for (case, group_image, community_image, expected) in cases {
+            let mut page = sample_page(None, chrono_tz::UTC);
+            page.event.group.og_image_url = group_image.map(str::to_string);
+            page.event.community.og_image_url = community_image.map(str::to_string);
+
+            assert_eq!(page.open_graph_image_url().as_deref(), expected, "{case}");
+        }
+    }
+
+    #[test]
     fn test_page_renders_host_for_paid_event_with_seller() {
         let mut page = sample_page(None, chrono_tz::UTC);
         page.event.seller_display_name = Some("Example Payee <Ltd>".to_string());
