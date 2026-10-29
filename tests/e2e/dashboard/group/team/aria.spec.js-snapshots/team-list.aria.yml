@@ -1,0 +1,35 @@
+- text: Group Team
+- link "Open documentation":
+  - /url: /docs#/guides/group-dashboard?id=team-organizer-capacity
+- text: 1 - 2 of 2 members
+- button "Add member"
+- table:
+  - rowgroup:
+    - row "Member Position Role Actions":
+      - columnheader "Member"
+      - columnheader "Position"
+      - columnheader "Role"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "ET E2E Member Three Invitation sent e2e-member-3 - Viewer":
+      - cell "ET E2E Member Three Invitation sent e2e-member-3"
+      - cell "-"
+      - cell "Viewer":
+        - combobox "Role":
+          - option "Admin"
+          - option "Check-In Manager"
+          - option "Events Manager"
+          - option "Viewer" [selected]
+      - cell:
+        - group
+    - row "EO E2E Organizer One e2e-organizer-1 - Admin":
+      - cell "EO E2E Organizer One e2e-organizer-1"
+      - cell "-"
+      - cell "Admin":
+        - combobox "Role" [disabled]:
+          - option "Admin" [selected]
+          - option "Check-In Manager"
+          - option "Events Manager"
+          - option "Viewer"
+      - cell:
+        - group

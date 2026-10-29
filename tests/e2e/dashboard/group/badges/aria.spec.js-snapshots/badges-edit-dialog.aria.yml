@@ -1,0 +1,15 @@
+- dialog "Edit E2E ARIA badge":
+  - heading "Edit E2E ARIA badge" [level=3]
+  - button "Close modal"
+  - text: Name *
+  - textbox "Name *": E2E ARIA badge
+  - text: Description *
+  - textbox "Description *": Recognizes E2E ARIA contributors.
+  - text: Criteria *
+  - textbox "Criteria *": Help run an E2E ARIA event.
+  - group "Artwork *":
+    - text: ""
+    - radio "Badge artwork 1" [checked]
+    - text: Badge artwork 1
+  - button "Cancel"
+  - button "Save"

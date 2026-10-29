@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     db::mock::{MockDB, expect_site_settings},
-    handlers::tests::*,
+    handlers::{badges::USER_PROFILE_BADGES_LIMIT, tests::*},
     types::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
@@ -31,7 +31,7 @@ async fn test_page_account_tab_success() {
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db).build().await;
-    let request = get_request("/dashboard/user", ids.session_id);
+    let request = get_request("/dashboard/user?tab=account", ids.session_id);
     let (parts, bytes) = send(router, request).await;
 
     // Check the account form renders with the timezones and the password form,
@@ -60,10 +60,12 @@ async fn test_page_badges_tab_success() {
     let request = get_request("/dashboard/user?tab=badges", ids.session_id);
     let (parts, bytes) = send(router, request).await;
 
-    // Check the full dashboard renders the badges list
+    // Check the full dashboard renders the badges list with the public profile limit
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
-    assert!(body.contains("Your profile modal displays the first"));
+    assert!(body.contains(&format!(
+        "Your profile modal displays the first {USER_PROFILE_BADGES_LIMIT} visible badges in the order shown here."
+    )));
 }
 
 #[tokio::test]
@@ -323,11 +325,11 @@ async fn test_page_notifications_tab_success() {
     let request = get_request("/dashboard/user?tab=notifications", ids.session_id);
     let (parts, bytes) = send(router, request).await;
 
-    // Check the notifications content and refresh route render
+    // Check the notifications content renders without a content refresh route
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("id=\"notification-preferences-form\""));
-    assert!(body.contains("hx-get=\"/dashboard/user/notifications\""));
+    assert!(!body.contains("hx-get=\"/dashboard/user/notifications\""));
     assert!(body.contains("/static/js/dashboard/user/notification-group-mutes."));
     assert!(body.contains("/static/js/dashboard/user/notification-preferences."));
 }
@@ -540,6 +542,36 @@ async fn test_page_surveys_tab_warns_about_unavailable_survey() {
     assert!(body.contains("This survey is closed or isn&#39;t available to you."));
     assert!(!body.contains("data-open-on-load"));
     assert_eq!(menu_item_count(body, "/dashboard/user?tab=surveys"), None);
+}
+
+#[tokio::test]
+async fn test_page_without_known_tab_defaults_to_account() {
+    // Setup requests without a known tab
+    let cases = [
+        ("missing tab", "/dashboard/user"),
+        ("unknown tab", "/dashboard/user?tab=bogus"),
+    ];
+
+    for (case, uri) in cases {
+        // Setup identifiers and database mock
+        let ids = DashboardIds::new();
+        let mut db = home_db(&ids, 0);
+        db.expect_list_timezones()
+            .times(1)
+            .returning(|| Ok(vec!["UTC".to_string(), "America/New_York".to_string()]));
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db).build().await;
+        let request = get_request(uri, ids.session_id);
+        let (parts, bytes) = send(router, request).await;
+
+        // Check the account form is rendered
+        assert_eq!(parts.status, StatusCode::OK, "{case}");
+        let body = std::str::from_utf8(&bytes).unwrap();
+        assert!(body.contains("id=\"user-details-form\""), "{case}");
+        assert!(body.contains("America/New_York"), "{case}");
+        assert!(body.contains("id=\"password-form\""), "{case}");
+    }
 }
 
 // Helpers.

@@ -1,0 +1,7 @@
+- region "Badges":
+  - heading "Badges" [level=1]
+  - link "Open badge documentation":
+    - /url: /docs#/guides/badges?id=profile-listing-and-order
+  - paragraph: /Choose which badges appear on your profile, set their order, share credentials, or permanently revoke them\. Your profile modal displays the first \d+ visible badges in the order shown here\. Direct credential links remain public even when a badge is not shown on your profile\./
+  - heading "No active badges yet" [level=2]
+  - paragraph: Badges awarded by your groups will appear here.

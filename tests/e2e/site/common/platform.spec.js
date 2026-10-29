@@ -1,7 +1,14 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../fixtures.js";
 
-import { TEST_COMMUNITY_NAME, TEST_EVENT_IDS } from "../../seed.js";
-import { buildE2eUrl, navigateToPath } from "../../utils.js";
+import { queryE2eDatabase, queryE2eDatabaseRows, sqlString } from "../../database.js";
+import {
+  TEST_COMMUNITY_NAME,
+  TEST_EVENT_IDS,
+  TEST_EVENT_SLUGS,
+  TEST_GROUP_SLUGS,
+  TEST_USER_CREDENTIALS,
+} from "../../seed.js";
+import { buildE2eUrl, logInWithSeededUser, navigateToPath } from "../../utils.js";
 
 const FAVICON_CACHE_CONTROL = "public, max-age=604800";
 const SITE_FAVICON_URL = "https://static.example.com/e2e/favicon.ico";
@@ -18,6 +25,34 @@ const DISABLED_IDENTITY_PROVIDER_PATHS = [
   "/log-in/oidc/linuxfoundation",
   "/log-in/oidc/linuxfoundation/callback",
 ];
+
+// Public shared-cache pages; the event is TEST_EVENT_IDS.alpha.one.
+const PUBLIC_PAGE_PATHS = [
+  "/",
+  `/${TEST_COMMUNITY_NAME}`,
+  `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}`,
+  `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alpha[0]}`,
+];
+
+// Redirector mappings seeded as legacy URLs in 20_groups.sql and 30_events.sql.
+const SEEDED_REDIRECTS = [
+  {
+    legacyPath: "/events/alpha-event-1",
+    newPath: `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alpha[0]}`,
+  },
+  {
+    legacyPath: "/groups/platform-ops-meetup",
+    newPath: `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}`,
+  },
+];
+
+// Cookie holding the tower-sessions id, which is also the `auth_session` primary key.
+const SESSION_COOKIE_NAME = "id";
+
+// Logged-in and anonymous markers; public pages only render the placeholder that loads the user menu.
+const LOGGED_IN_MARKER = 'data-logged-in="true"';
+const LOGGED_OUT_MARKER = 'data-logged-in="false"';
+const USER_MENU_PLACEHOLDER = 'hx-get="/section/user-menu"';
 
 const CROSS_SITE_MUTATION_CASES = [
   {
@@ -130,6 +165,34 @@ test.describe("site platform request contracts", () => {
     });
   }
 
+  test("every redirector target path resolves to a page", async ({ request }) => {
+    // The redirector sends legacy URLs to list_redirects() new_path values on this server.
+    const redirects = queryE2eDatabaseRows(
+      "select community_name, legacy_path, new_path from list_redirects()",
+    ).map(([communityName, legacyPath, newPath]) => ({ communityName, legacyPath, newPath }));
+
+    // Verify the seeded mappings are listed with normalized legacy paths.
+    expect(redirects).toEqual(
+      expect.arrayContaining(
+        SEEDED_REDIRECTS.map((redirect) => ({ communityName: TEST_COMMUNITY_NAME, ...redirect })),
+      ),
+    );
+
+    for (const { newPath } of redirects) {
+      await test.step(newPath, async () => {
+        // Verify the target answers 200, or 307 to a page that answers 200.
+        const response = await request.get(buildE2eUrl(newPath), { maxRedirects: 0 });
+        if (response.status() === 307) {
+          const location = new URL(response.headers().location, buildE2eUrl(newPath));
+          const redirected = await request.get(location.href, { maxRedirects: 0 });
+          expect(redirected.status()).toBe(200);
+        } else {
+          expect(response.status()).toBe(200);
+        }
+      });
+    }
+  });
+
   test("cross-site page view POST is rejected before analytics are accepted", async ({ request }) => {
     // event::track_view also requires same-origin evidence, but the router middleware rejects first.
     const response = await request.post(buildE2eUrl(`/events/${TEST_EVENT_IDS.alpha.one}/views`), {
@@ -140,3 +203,73 @@ test.describe("site platform request contracts", () => {
     expect(response.status()).toBe(403);
   });
 });
+
+test.describe("public pages with a session cookie", () => {
+  test("a valid session gets the anonymous shared-cache page", async ({ member1Page }) => {
+    // Positive control: the same request context is logged in on the private user menu section.
+    const userMenu = await member1Page.request.get(buildE2eUrl("/section/user-menu"));
+    expect(userMenu.status()).toBe(200);
+    await expect(userMenu.text()).resolves.toContain(LOGGED_IN_MARKER);
+
+    for (const path of PUBLIC_PAGE_PATHS) {
+      await test.step(path, async () => {
+        // Verify the cookie neither personalizes nor reaches the shared-cache response.
+        await expectAnonymousPublicPage(member1Page.request, path);
+      });
+    }
+  });
+
+  test("a stale session cookie is not removed by shared-cache pages", async ({ browser, browserHealth }) => {
+    // Create an isolated browser context and page.
+    const context = await browser.newContext();
+    browserHealth.track(context);
+    const page = await context.newPage();
+
+    try {
+      // Log in with a dedicated context, then delete its session so the cookie becomes stale.
+      await logInWithSeededUser(page, TEST_USER_CREDENTIALS.empty);
+      const sessionCookie = await getSessionCookie(context);
+      queryE2eDatabase(`delete from auth_session where auth_session_id = ${sqlString(sessionCookie.value)}`);
+
+      for (const path of PUBLIC_PAGE_PATHS) {
+        await test.step(path, async () => {
+          // Verify the public response carries no removal cookie (BUG-10).
+          await expectAnonymousPublicPage(page.request, path);
+        });
+      }
+
+      // Verify the stale cookie is still sent, so the private user menu sees it and removes it.
+      const keptCookie = await getSessionCookie(context);
+      expect(keptCookie.value).toBe(sessionCookie.value);
+      const userMenu = await page.request.get(buildE2eUrl("/section/user-menu"));
+      expect(userMenu.status()).toBe(200);
+      await expect(userMenu.text()).resolves.toContain(LOGGED_OUT_MARKER);
+      expect(userMenu.headers()["set-cookie"]).toMatch(new RegExp(`^${SESSION_COOKIE_NAME}=;`));
+    } finally {
+      // Close the isolated browser context.
+      await context.close();
+    }
+  });
+});
+
+/** Asserts a public page answers with an anonymous, cookie-free shared-cache response. */
+const expectAnonymousPublicPage = async (request, path) => {
+  const response = await request.get(buildE2eUrl(path), { maxRedirects: 0 });
+  const headers = response.headers();
+  const body = await response.text();
+
+  expect(response.status()).toBe(200);
+  expect(headers["cache-control"]).toMatch(/^public\b/);
+  expect(headers["set-cookie"]).toBeUndefined();
+  expect(body).toContain(USER_MENU_PLACEHOLDER);
+  expect(body).not.toContain(LOGGED_IN_MARKER);
+};
+
+/** Returns the session cookie of a browser context, failing when it is missing. */
+const getSessionCookie = async (context) => {
+  const sessionCookie = (await context.cookies()).find((cookie) => cookie.name === SESSION_COOKIE_NAME);
+
+  expect(sessionCookie, "authenticated context should carry a session cookie").toBeDefined();
+
+  return sessionCookie;
+};

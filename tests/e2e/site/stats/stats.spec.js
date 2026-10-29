@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../fixtures.js";
 import { navigateToPath } from "../../utils.js";
 
 const PUBLIC_STATS_CHART_IDS = [

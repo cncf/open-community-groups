@@ -140,22 +140,24 @@ impl Content {
         matches!(self, Content::Surveys(_))
     }
 
-    /// Returns the partial path used to refresh the dashboard content.
-    fn refresh_path(&self) -> &'static str {
+    /// Returns the partial path used to refresh the dashboard content, if the
+    /// tab has actions that refresh it.
+    fn refresh_path(&self) -> Option<&'static str> {
         match self {
-            // The account page has no list route and keeps the submissions fallback
-            Content::Account(_) | Content::Submissions(_) => "submissions",
-            Content::Badges(_) => "badges",
-            Content::CheckIn(_) => "check-in",
-            Content::Events(_) => "events",
-            Content::Groups(_) => "groups",
-            Content::Inbox(_) | Content::InboxConversation(_) => "inbox",
-            Content::Invitations(_) => "invitations",
-            Content::Logs(_) => "logs",
-            Content::Notifications(_) => "notifications",
-            Content::Purchases(_) => "purchases",
-            Content::SessionProposals(_) => "session-proposals",
-            Content::Surveys(_) => "surveys",
+            // These tabs update in place and have no refresh route
+            Content::Account(_)
+            | Content::Badges(_)
+            | Content::CheckIn(_)
+            | Content::Notifications(_) => None,
+            Content::Events(_) => Some("events"),
+            Content::Groups(_) => Some("groups"),
+            Content::Inbox(_) | Content::InboxConversation(_) => Some("inbox"),
+            Content::Invitations(_) => Some("invitations"),
+            Content::Logs(_) => Some("logs"),
+            Content::Purchases(_) => Some("purchases"),
+            Content::SessionProposals(_) => Some("session-proposals"),
+            Content::Submissions(_) => Some("submissions"),
+            Content::Surveys(_) => Some("surveys"),
         }
     }
 }
@@ -234,7 +236,7 @@ mod tests {
 
                     offset: None,
                 }),
-                "events",
+                Some("events"),
             ),
             (
                 Content::Invitations(invitations::ListPage {
@@ -242,7 +244,7 @@ mod tests {
                     event_invitations: vec![],
                     group_invitations: vec![],
                 }),
-                "invitations",
+                Some("invitations"),
             ),
             (
                 Content::Surveys(surveys::ListPage {
@@ -255,12 +257,19 @@ mod tests {
                     survey: None,
                     warning: None,
                 }),
-                "surveys",
+                Some("surveys"),
+            ),
+            (
+                Content::Badges(badges::ListPage {
+                    badges: vec![],
+                    max_public_profile_badges: 0,
+                }),
+                None,
             ),
         ];
 
         for (content, expected) in cases {
-            assert_eq!(content.refresh_path(), expected, "{expected}");
+            assert_eq!(content.refresh_path(), expected, "{expected:?}");
         }
     }
 }

@@ -1,0 +1,18 @@
+- text: Logs
+- link "Open documentation":
+  - /url: /docs#/guides/user-dashboard?id=audit-logs
+- paragraph: Review actions you performed from your user dashboard.
+- text: 0 logs
+- button "Filters"
+- table "Audit logs table":
+  - rowgroup:
+    - row "Action Target Date Details":
+      - columnheader "Action"
+      - columnheader "Target"
+      - columnheader "Date"
+      - columnheader "Details"
+  - rowgroup:
+    - row "No audit log entries found. Try adjusting the current filters or date range.":
+      - cell "No audit log entries found. Try adjusting the current filters or date range.":
+        - text: ""
+        - paragraph: Try adjusting the current filters or date range.

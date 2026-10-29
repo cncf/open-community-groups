@@ -96,7 +96,9 @@
             <td class="hidden px-3 py-4 lg:table-cell xl:px-5">{{ survey_status_badge(survey = survey) -}}</td>
             <td class="hidden px-3 py-4 xl:table-cell xl:px-5">{{ survey_date(survey = survey) -}}</td>
             <td class="w-36 px-3 py-4 text-right xl:px-5">
+              {% let action_label = crate::templates::dashboard::user::surveys::survey_action_label(survey) -%}
               <button type="button"
+                      aria-label="{{ action_label }}: {{ survey.title }}"
                       hx-get="/dashboard/user/surveys/{{ survey.event_survey_id }}"
                       hx-target="#user-event-survey-modal-content"
                       hx-swap="innerHTML"
@@ -106,16 +108,7 @@
                       data-user-event-survey-open
                       data-htmx-response
                       data-error-message="This survey is no longer available. Please refresh the page and try again."
-                      class="btn-primary-outline btn-mini whitespace-nowrap">
-                {% if survey.is_closed() -%}
-                  View answers
-                {% else if survey.answered -%}
-                  Edit answers
-                {% else -%}
-                  Answer
-                {% endif -%}
-                <span class="sr-only">: {{ survey.title }}</span>
-              </button>
+                      class="btn-primary-outline btn-mini whitespace-nowrap">{{ action_label }}</button>
             </td>
           </tr>
         {% endfor -%}

@@ -1,0 +1,21 @@
+- dialog "Event preview":
+  - button "Close event preview"
+  - heading "Event preview" [level=3]
+  - paragraph: Review your event draft before publishing.
+  - button "Close modal"
+  - text: Missing or incomplete details Online meeting details
+  - img "Banner"
+  - navigation "Breadcrumb":
+    - list:
+      - listitem: Home
+      - listitem: Platform Engineering Community
+      - listitem: /E2E temporary group [0-9a-f]{8}/
+      - listitem: E2E ARIA event
+  - text: /E2E temporary group [0-9a-f]{8}/
+  - heading "E2E ARIA event" [level=1]
+  - text: Virtual
+  - button "Attend event" [disabled]
+  - button "More event actions" [disabled]
+  - text: Event date June 15, 2035 6:00 PM - 8:00 PM UTC Location Virtual event About this event
+  - paragraph: Owned event used by E2E coverage.
+  - text: Organizers E2E Organizer One

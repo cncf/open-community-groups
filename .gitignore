@@ -3,8 +3,13 @@
 .vscode
 /target
 /tests/e2e/node_modules
+/tests/e2e/blob-report
+/tests/e2e/coverage-reports
+/tests/e2e/merged-report
 /tests/e2e/playwright-report
+/tests/e2e/runs
 /tests/e2e/test-results
+/tests/unit/coverage
 /tests/unit/node_modules
 /tmp
 Chart.lock

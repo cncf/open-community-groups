@@ -1,0 +1,9 @@
+- region "Badges":
+  - heading "Badges" [level=1]
+  - paragraph: Create and manage recognition badges for your group.
+  - text: Search badges
+  - textbox "Search badges"
+  - button "Add badge"
+  - text: 0 badges
+  - heading "Create your first badge" [level=2]
+  - paragraph: Upload artwork first, then define what the badge recognizes.

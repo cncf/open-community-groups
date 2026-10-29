@@ -4,9 +4,14 @@ import {
   TEST_COMMUNITY_IDS,
   TEST_COMMUNITY_TITLE,
   TEST_COMMUNITY_TITLE_2,
+  TEST_COMMUNITY_TITLE_EMPTY,
   TEST_GROUP_SLUGS,
 } from "../../../seed.js";
 import { navigateToPath, waitForActionResponse } from "../../../utils.js";
+
+// Sidebar warning shown while the selected community is inactive.
+const COMMUNITY_DEACTIVATED_WARNING =
+  "This community has been deactivated. Please contact the site administrators.";
 
 test.describe("community dashboard navigation", () => {
   test("shows the dashboard shell, selector, and primary navigation", async ({ adminCommunityPage }) => {
@@ -43,6 +48,30 @@ test.describe("community dashboard navigation", () => {
     await expect(adminCommunityPage.locator('a[hx-get="/dashboard/community?tab=logs"]')).toContainText(
       "Logs",
     );
+  });
+
+  test("shows the deactivated warning for an inactive community", async ({ adminEmptyCommunityPage }) => {
+    // Load the dashboard of the seeded inactive community.
+    await navigateToPath(adminEmptyCommunityPage, "/dashboard/community?tab=groups");
+
+    // Verify the selected community and its deactivated warning.
+    await expect(adminEmptyCommunityPage.locator("#community-selector-button")).toContainText(
+      TEST_COMMUNITY_TITLE_EMPTY,
+    );
+    await expect(
+      adminEmptyCommunityPage.getByText(COMMUNITY_DEACTIVATED_WARNING, { exact: true }),
+    ).toBeVisible();
+  });
+
+  test("hides the deactivated warning for an active community", async ({ adminCommunityPage }) => {
+    // Load the dashboard of the seeded active community.
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+
+    // Verify the selected community renders without the deactivated warning.
+    await expect(adminCommunityPage.locator("#community-selector-button")).toContainText(
+      TEST_COMMUNITY_TITLE,
+    );
+    await expect(adminCommunityPage.getByText(COMMUNITY_DEACTIVATED_WARNING, { exact: true })).toHaveCount(0);
   });
 
   test("community navigation can open a selected group dashboard", async ({ adminCommunityPage }) => {

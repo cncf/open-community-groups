@@ -1,0 +1,11 @@
+- region "Check-In":
+  - heading "Check-In" [level=1]
+  - paragraph:
+    - text: Select an event, then scan attendee QR codes continuously. For manual check-in, open an event's attendee list from
+    - link "Events":
+      - /url: /dashboard/group?tab=events
+    - text: .
+  - article:
+    - text: E2E ARIA event
+    - button "Scan Attendee Codes for E2E ARIA event"
+    - text: Jun 15 Virtual Jun 15, 2035 · 6:00 PM UTC

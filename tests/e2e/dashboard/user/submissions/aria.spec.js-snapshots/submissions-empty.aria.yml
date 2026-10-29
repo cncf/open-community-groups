@@ -1,0 +1,15 @@
+- text: Submissions
+- link "Open documentation":
+  - /url: /docs#/guides/user-dashboard?id=submissions-track-and-respond
+- paragraph: Track and manage your call for speakers submissions.
+- text: 0 submissions
+- table:
+  - rowgroup:
+    - row "Event Proposal Status Actions":
+      - columnheader "Event"
+      - columnheader "Proposal"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "You don't have any submissions yet.":
+      - cell "You don't have any submissions yet."

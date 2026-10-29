@@ -1,0 +1,5 @@
+- /children: deep-equal
+- main:
+  - text: Stats
+  - paragraph: Global growth trends across all communities.
+  - text: /Groups Total \d+ Members Total \d+ Events Total \d+ Attendees Total \d+/

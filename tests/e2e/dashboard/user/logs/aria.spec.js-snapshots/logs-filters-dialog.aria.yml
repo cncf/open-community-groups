@@ -1,0 +1,38 @@
+- dialog "Filter logs":
+  - heading "Filter logs" [level=3]
+  - button "Close modal"
+  - text: Action
+  - combobox "Action":
+    - option "All actions"
+    - option "Community team invitation accepted"
+    - option "Community team invitation rejected"
+    - option "Event ticket offer declined"
+    - option "Event attendee invitation accepted"
+    - option "Event attendee invitation rejected"
+    - option "Group notifications muted"
+    - option "Group notifications unmuted"
+    - option "Group team invitation accepted"
+    - option "Group team invitation rejected"
+    - option "Inbox conversation started"
+    - option "Inbox message sent"
+    - option "Session proposal added"
+    - option "Session proposal co-speaker invitation accepted"
+    - option "Session proposal co-speaker invitation rejected"
+    - option "Session proposal deleted"
+    - option "Session proposal updated"
+    - option "Submission resubmitted"
+    - option "Submission withdrawn"
+    - option "User details updated" [selected]
+    - option "Notification preferences updated"
+    - option "User password updated"
+  - text: From
+  - textbox "From"
+  - text: To
+  - textbox "To"
+  - text: Sort by
+  - combobox "Sort by":
+    - option "Newest first" [selected]
+    - option "Oldest first"
+  - link "Reset":
+    - /url: /dashboard/user?tab=logs
+  - button "Apply"

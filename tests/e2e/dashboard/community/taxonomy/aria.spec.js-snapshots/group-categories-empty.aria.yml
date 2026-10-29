@@ -1,0 +1,14 @@
+- text: Group Categories
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=group-categories-group-taxonomy
+- text: 0 categories
+- button "Add Group Category"
+- table:
+  - rowgroup:
+    - row "Name Groups Actions":
+      - columnheader "Name"
+      - columnheader "Groups"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No group categories found for this community yet.":
+      - cell "No group categories found for this community yet."

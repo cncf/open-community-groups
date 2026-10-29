@@ -1,0 +1,31 @@
+- main:
+  - text: Automatic payment processing is unavailable. Historical records remain accessible, and external refunds can still be recorded after the money is returned outside OCG. Refunds
+  - link "Open documentation":
+    - /url: /docs#/guides/group-dashboard?id=refunds
+  - paragraph: Review attendee requests and track provider and external refunds through completion.
+  - text: Search refunds
+  - textbox "Search refunds":
+    - /placeholder: Search attendee, event, or ticket
+  - text: Event
+  - combobox "Event":
+    - option "All events" [selected]
+  - text: Refund status
+  - combobox "Refund status":
+    - option "Active" [selected]
+    - option "Needs attention"
+    - option "Completed"
+    - option "All"
+  - text: 0 operations
+  - table "Refunds list":
+    - rowgroup:
+      - row "Attendee Event Refund Status Actions":
+        - columnheader "Attendee"
+        - columnheader "Event"
+        - columnheader "Refund"
+        - columnheader "Status"
+        - columnheader "Actions"
+    - rowgroup:
+      - row "No refunds found There is no unfinished refund work for this group.":
+        - cell "No refunds found There is no unfinished refund work for this group.":
+          - text: ""
+          - paragraph: There is no unfinished refund work for this group.

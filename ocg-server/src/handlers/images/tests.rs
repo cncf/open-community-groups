@@ -10,9 +10,12 @@ use serde_json::{Value, json};
 
 use crate::{
     db::mock::MockDB,
-    handlers::tests::{
-        DashboardIds, TestRouterBuilder, assert_empty_response, authenticated_request,
-        expect_session, request, sample_server_cfg, send,
+    handlers::{
+        error::{INVALID_REQUEST_PAYLOAD, REQUEST_PAYLOAD_TOO_LARGE},
+        tests::{
+            DEFAULT_BODY_LIMIT_BYTES, DashboardIds, TestRouterBuilder, assert_empty_response,
+            authenticated_request, expect_session, request, sample_server_cfg, send,
+        },
     },
     router::CACHE_CONTROL_PRIVATE_NO_STORE,
     services::images::MockImageStorage,
@@ -405,6 +408,148 @@ async fn test_upload_rejects_missing_referer_when_hotlinking_disabled() {
 }
 
 #[tokio::test]
+async fn test_upload_rejects_oversized_image() {
+    // Setup a signed-in uploader and an image storage that must not be written
+    let ids = DashboardIds::new();
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    let mut storage = MockImageStorage::new();
+    storage.expect_save().never();
+
+    // Setup router and send an image over the size limit
+    let router = TestRouterBuilder::new(db)
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = upload_request(
+        ids.session_id,
+        multipart_body(None, &vec![0; MAX_IMAGE_SIZE_BYTES + 1]),
+        Some("https://example.test/dashboard"),
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the oversized image is rejected before validation
+    assert_eq!(parts.status, StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "image exceeds 1MB limit"
+    );
+}
+
+#[tokio::test]
+async fn test_upload_rejects_unreadable_multipart_body() {
+    // Setup one unreadable body per multipart error class with its response
+    let cases: Vec<(&str, Vec<u8>, StatusCode, &str)> = vec![
+        (
+            "body over the request limit",
+            multipart_body(None, &vec![0; DEFAULT_BODY_LIMIT_BYTES + 1]),
+            StatusCode::PAYLOAD_TOO_LARGE,
+            REQUEST_PAYLOAD_TOO_LARGE,
+        ),
+        (
+            "field without a closing boundary",
+            format!(
+                "--{UPLOAD_BOUNDARY}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"example.png\"\r\n\r\nincomplete"
+            )
+            .into_bytes(),
+            StatusCode::BAD_REQUEST,
+            INVALID_REQUEST_PAYLOAD,
+        ),
+        (
+            "truncated field headers",
+            format!("--{UPLOAD_BOUNDARY}\r\nContent-Disposition: form-data; name=\"file\"")
+                .into_bytes(),
+            StatusCode::BAD_REQUEST,
+            INVALID_REQUEST_PAYLOAD,
+        ),
+    ];
+
+    for (case, body, expected_status, expected_body) in cases {
+        // Setup a signed-in uploader and an image storage that must not be written
+        let ids = DashboardIds::new();
+        let mut db = MockDB::new();
+        expect_session(&mut db, &ids);
+        let mut storage = MockImageStorage::new();
+        storage.expect_save().never();
+
+        // Setup router and send the unreadable multipart body
+        let router = TestRouterBuilder::new(db)
+            .with_image_storage(storage)
+            .with_server_cfg(sample_server_cfg("https://example.test"))
+            .build()
+            .await;
+        let request = upload_request(ids.session_id, body, Some("https://example.test/dashboard"));
+        let (parts, bytes) = send(router, request).await;
+
+        // Check the client error is answered with axum's status and a fixed body
+        assert_eq!(parts.status, expected_status, "{case}");
+        assert_eq!(String::from_utf8_lossy(&bytes), expected_body, "{case}");
+    }
+}
+
+#[tokio::test]
+async fn test_upload_rejects_unknown_target() {
+    // Setup a signed-in uploader and an image storage that must not be written
+    let ids = DashboardIds::new();
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    let mut storage = MockImageStorage::new();
+    storage.expect_save().never();
+
+    // Setup router and send an upload with an unknown target
+    let router = TestRouterBuilder::new(db)
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let request = upload_request(
+        ids.session_id,
+        multipart_body(Some("unknown"), PNG_BYTES),
+        Some("https://example.test/dashboard"),
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the unknown target is rejected as a bad request
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "unknown image target"
+    );
+}
+
+#[tokio::test]
+async fn test_upload_rejects_unsafe_svg() {
+    // Setup a signed-in uploader and an image storage that must not be written
+    let ids = DashboardIds::new();
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    let mut storage = MockImageStorage::new();
+    storage.expect_save().never();
+
+    // Setup router and send an SVG with a script element
+    let router = TestRouterBuilder::new(db)
+        .with_image_storage(storage)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let svg_bytes = br#"<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>"#;
+    let request = upload_request(
+        ids.session_id,
+        multipart_body_with_file_name(None, "example.svg", svg_bytes),
+        Some("https://example.test/dashboard"),
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the unsafe SVG is rejected as unprocessable
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "unsupported image format"
+    );
+}
+
+#[tokio::test]
 async fn test_upload_rejects_wrong_ad_banner_dimensions() {
     // Setup a signed-in uploader and an image storage that must not be written
     let ids = DashboardIds::new();
@@ -513,8 +658,13 @@ async fn test_upload_stores_image_and_returns_url() {
 /// Multipart boundary of the upload requests.
 const UPLOAD_BOUNDARY: &str = "X-BOUNDARY";
 
-/// Encodes an upload multipart body with an optional target field.
+/// Encodes an upload multipart body for `example.png` with an optional target field.
 fn multipart_body(target: Option<&str>, bytes: &[u8]) -> Vec<u8> {
+    multipart_body_with_file_name(target, "example.png", bytes)
+}
+
+/// Encodes an upload multipart body with an optional target field and a file name.
+fn multipart_body_with_file_name(target: Option<&str>, file_name: &str, bytes: &[u8]) -> Vec<u8> {
     let mut body = Vec::new();
     if let Some(target) = target {
         body.extend_from_slice(
@@ -524,7 +674,7 @@ fn multipart_body(target: Option<&str>, bytes: &[u8]) -> Vec<u8> {
     }
     body.extend_from_slice(
         format!(
-            "--{UPLOAD_BOUNDARY}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"example.png\"\r\nContent-Type: image/png\r\n\r\n"
+            "--{UPLOAD_BOUNDARY}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{file_name}\"\r\nContent-Type: application/octet-stream\r\n\r\n"
         )
         .as_bytes(),
     );

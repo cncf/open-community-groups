@@ -7,7 +7,8 @@
 -- ============================================================================
 
 -- Past test event whose surveys cover every state; a test event keeps it out of
--- public listings, statistics and survey emails
+-- public listings, statistics and survey emails. Check-ins and survey open
+-- notifications keep their offsets from the fixed 10:00 to 12:00 Madrid slot
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, published_at, test_event, starts_at,
@@ -24,8 +25,8 @@ insert into event (
     true,
     now() - interval '20 days',
     true,
-    now() - interval '3 days',
-    now() - interval '3 days' + interval '2 hours'
+    (current_date - interval '3 days' + interval '10 hours') at time zone 'Europe/Madrid',
+    (current_date - interval '3 days' + interval '12 hours') at time zone 'Europe/Madrid'
 );
 
 -- Free ticket type of the survey event
@@ -89,19 +90,19 @@ insert into event_attendee (
     '55555555-5555-5555-5555-555555555971',
     '77777777-7777-7777-7777-777777777705',
     true,
-    now() - interval '3 days' - interval '5 minutes',
+    (current_date - interval '3 days' + interval '9 hours 55 minutes') at time zone 'Europe/Madrid',
     now() - interval '10 days'
 ), (
     '55555555-5555-5555-5555-555555555971',
     '77777777-7777-7777-7777-777777777971',
     true,
-    now() - interval '3 days' - interval '10 minutes',
+    (current_date - interval '3 days' + interval '9 hours 50 minutes') at time zone 'Europe/Madrid',
     now() - interval '9 days'
 ), (
     '55555555-5555-5555-5555-555555555971',
     '77777777-7777-7777-7777-777777777972',
     true,
-    now() - interval '3 days' + interval '5 minutes',
+    (current_date - interval '3 days' + interval '10 hours 5 minutes') at time zone 'Europe/Madrid',
     now() - interval '8 days'
 ), (
     '55555555-5555-5555-5555-555555555971',
@@ -147,7 +148,7 @@ insert into event_survey (
     '77777777-7777-7777-7777-777777777703',
     'Tell us how the sessions went so we can plan the next event.',
     now() - interval '2 days',
-    now() - interval '3 days' + interval '2 hours',
+    (current_date - interval '3 days' + interval '12 hours') at time zone 'Europe/Madrid',
     4,
     now() - interval '4 days'
 );
@@ -169,7 +170,7 @@ insert into event_survey (
     'ready',
     'Venue feedback',
     now() - interval '2 days',
-    now() - interval '3 days' + interval '2 hours',
+    (current_date - interval '3 days' + interval '12 hours') at time zone 'Europe/Madrid',
     3
 );
 
@@ -216,7 +217,7 @@ insert into event_survey (
     'Early feedback',
     now() - interval '1 day',
     now() - interval '2 days' - interval '12 hours',
-    now() - interval '3 days' + interval '2 hours',
+    (current_date - interval '3 days' + interval '12 hours') at time zone 'Europe/Madrid',
     4
 );
 
@@ -290,7 +291,7 @@ insert into event_survey (
     'ready',
     'Analytics session survey',
     now() - interval '2 days',
-    now() - interval '3 days' + interval '2 hours',
+    (current_date - interval '3 days' + interval '12 hours') at time zone 'Europe/Madrid',
     2
 );
 
@@ -311,7 +312,7 @@ insert into event_survey (
     'Analytics venue survey',
     now() - interval '1 day',
     now() - interval '2 days',
-    now() - interval '3 days' + interval '2 hours',
+    (current_date - interval '3 days' + interval '12 hours') at time zone 'Europe/Madrid',
     2
 );
 

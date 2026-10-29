@@ -12,9 +12,13 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::mock::MockDB,
-    handlers::tests::{
-        TestRouterBuilder, assert_empty_response, assert_html_response, request, sample_badges_cfg,
-        sample_server_cfg, sample_site_settings, send,
+    handlers::{
+        error::{INVALID_REQUEST_PAYLOAD, REQUEST_PAYLOAD_TOO_LARGE},
+        tests::{
+            DEFAULT_BODY_LIMIT_BYTES, TestRouterBuilder, assert_empty_response,
+            assert_html_response, request, sample_badges_cfg, sample_server_cfg,
+            sample_site_settings, send,
+        },
     },
     router::{CACHE_CONTROL_PRIVATE_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
     services::badges::{CredentialInput, EmailIdentity, SsiBadgesManager, png},
@@ -60,7 +64,10 @@ async fn test_credential_html_response_uses_public_snapshot_and_cache_contract()
     let user_badge_id = award.user_badge_id;
     let mut db = MockDB::new();
     expect_award_page_reads(&mut db, award);
-    let router = TestRouterBuilder::new(db).build().await;
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(badges_server_config())
+        .build()
+        .await;
 
     // Request the browser representation
     let request = request("GET", &format!("/badges/credentials/{user_badge_id}"))
@@ -76,7 +83,20 @@ async fn test_credential_html_response_uses_public_snapshot_and_cache_contract()
         parts.headers.get(CACHE_CONTROL).unwrap(),
         CACHE_CONTROL_PUBLIC_SHARED
     );
-    assert!(String::from_utf8_lossy(&bytes).contains("Test Badge"));
+
+    // Check share metadata uses absolute public URLs
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    let url = format!("https://badges.example.test/badges/credentials/{user_badge_id}");
+    let image = "https://badges.example.test/images/badges/test-badge.png";
+    for tag in [
+        "<title>Test Badge badge</title>".to_string(),
+        format!(r#"<meta property="og:url" content="{url}">"#),
+        format!(r#"<meta property="og:image" content="{image}">"#),
+        format!(r#"<meta name="twitter:image" content="{image}">"#),
+        r#"src="/images/badges/test-badge.png""#.to_string(),
+    ] {
+        assert!(body.contains(&tag), "missing {tag}");
+    }
 }
 
 #[tokio::test]
@@ -426,6 +446,51 @@ async fn test_verify_post_flags_stale_email_bound_award_as_superseded() {
     let body = String::from_utf8_lossy(&bytes);
     assert!(body.contains("Authentic but superseded by a newer export"));
     assert!(!body.contains("Valid and active"));
+}
+
+#[tokio::test]
+async fn test_verify_post_rejects_unreadable_multipart_body() {
+    // Setup one unreadable body per multipart error class with its response
+    let cases: Vec<(&str, Request<Body>, StatusCode, &str)> = vec![
+        (
+            "body over the request limit",
+            png_verify_request(&vec![0; DEFAULT_BODY_LIMIT_BYTES + 1]),
+            StatusCode::PAYLOAD_TOO_LARGE,
+            REQUEST_PAYLOAD_TOO_LARGE,
+        ),
+        (
+            "field without a closing boundary",
+            verify_request(
+                format!(
+                    "--{VERIFY_BOUNDARY}\r\nContent-Disposition: form-data; name=\"credential\"\r\n\r\nincomplete"
+                )
+                .into_bytes(),
+            ),
+            StatusCode::BAD_REQUEST,
+            INVALID_REQUEST_PAYLOAD,
+        ),
+        (
+            "truncated field headers",
+            verify_request(
+                format!("--{VERIFY_BOUNDARY}\r\nContent-Disposition: form-data; name=\"credential\"")
+                    .into_bytes(),
+            ),
+            StatusCode::BAD_REQUEST,
+            INVALID_REQUEST_PAYLOAD,
+        ),
+    ];
+
+    for (case, request, expected_status, expected_body) in cases {
+        // Setup router without database reads, since verification never starts
+        let router = TestRouterBuilder::new(MockDB::new()).build().await;
+
+        // Submit the unreadable multipart body
+        let (parts, bytes) = send(router, request).await;
+
+        // Check the client error is answered with axum's status and a fixed body
+        assert_eq!(parts.status, expected_status, "{case}");
+        assert_eq!(String::from_utf8_lossy(&bytes), expected_body, "{case}");
+    }
 }
 
 #[tokio::test]

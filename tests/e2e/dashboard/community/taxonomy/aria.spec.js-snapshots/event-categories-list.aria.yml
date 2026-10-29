@@ -1,0 +1,24 @@
+- text: Event Categories
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=event-categories-event-taxonomy
+- text: 2 categories
+- button "Add Event Category"
+- table:
+  - rowgroup:
+    - row "Name Events Actions":
+      - columnheader "Name"
+      - columnheader "Events"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row "E2E ARIA event category one 1 Edit event category: E2E ARIA event category one Delete event category: E2E ARIA event category one"':
+      - cell "E2E ARIA event category one"
+      - cell "1"
+      - 'cell "Edit event category: E2E ARIA event category one Delete event category: E2E ARIA event category one"':
+        - 'button "Edit event category: E2E ARIA event category one"'
+        - 'button "Delete event category: E2E ARIA event category one" [disabled]'
+    - 'row "E2E ARIA event category two 0 Edit event category: E2E ARIA event category two Delete event category: E2E ARIA event category two"':
+      - cell "E2E ARIA event category two"
+      - cell "0"
+      - 'cell "Edit event category: E2E ARIA event category two Delete event category: E2E ARIA event category two"':
+        - 'button "Edit event category: E2E ARIA event category two"'
+        - 'button "Delete event category: E2E ARIA event category two"'

@@ -441,6 +441,44 @@ async fn test_download_csv_rejects_event_above_supported_export_size() {
 }
 
 #[tokio::test]
+async fn test_download_csv_returns_not_found_for_event_of_another_group() {
+    // Setup identifiers
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock without an event summary for the selected group
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    db.expect_find_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| {
+            *cid == ids.community_id && *gid == ids.group_id && *eid == event_id
+        })
+        .returning(|_, _, _| Ok(None));
+    db.expect_search_event_attendees()
+        .times(1)
+        .withf(move |gid, eid, _| *gid == ids.group_id && *eid == event_id)
+        .returning(|_, _, _| {
+            Ok(AttendeesOutput {
+                all_attendees_email_recipient_total: 0,
+                attendees: vec![],
+                total: 0,
+            })
+        });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/attendees.csv"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the export is not found
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn test_download_csv_success() {
     // Setup identifiers and data structures
     let ids = DashboardIds::new();
@@ -609,6 +647,36 @@ async fn test_download_csv_with_answers_success() {
             "No Answers,Example,Engineer,No,2024-01-01 12:00 UTC,,,,,,,,,\n",
         ),
     );
+}
+
+#[tokio::test]
+async fn test_download_csv_with_answers_returns_not_found_for_event_of_another_group() {
+    // Setup identifiers
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock without an event summary for the selected group
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    db.expect_find_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| {
+            *cid == ids.community_id && *gid == ids.group_id && *eid == event_id
+        })
+        .returning(|_, _, _| Ok(None));
+    db.expect_get_event_registration_questions().never();
+    db.expect_search_event_attendees().never();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/attendees-with-answers.csv"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the export is not found before loading attendee data
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -1024,6 +1092,36 @@ async fn test_list_page_rejects_zero_pagination_limit() {
         String::from_utf8(bytes.to_vec()).unwrap(),
         "limit: lower than 1\n"
     );
+}
+
+#[tokio::test]
+async fn test_list_page_returns_not_found_for_event_of_another_group() {
+    // Setup identifiers
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock without an event summary for the selected group
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    db.expect_find_event_summary_dashboard()
+        .times(1)
+        .withf(move |cid, gid, eid| {
+            *cid == ids.community_id && *gid == ids.group_id && *eid == event_id
+        })
+        .returning(|_, _, _| Ok(None));
+    db.expect_get_event_registration_questions().never();
+    db.expect_search_event_attendees().never();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/attendees"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the page is not found before loading attendee data
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -1867,12 +1965,12 @@ fn expect_export_reads(
     let event = sample_event_summary(event_id);
 
     expect_group_access(db, &ids, GroupPermission::Read);
-    db.expect_get_event_summary()
+    db.expect_find_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == ids.community_id && *gid == ids.group_id && *eid == event_id
         })
-        .returning(move |_, _, _| Ok(event.clone()));
+        .returning(move |_, _, _| Ok(Some(event.clone())));
     db.expect_search_event_attendees()
         .times(1)
         .withf(move |gid, eid, filters| {
@@ -1899,12 +1997,12 @@ fn expect_list_page_context(
     expect_group_access(db, &ids, GroupPermission::Read);
     expect_group_permission_result(db, &ids, GroupPermission::CheckInsWrite, true);
     expect_group_permission_result(db, &ids, GroupPermission::EventsWrite, can_manage_events);
-    db.expect_get_event_summary_dashboard()
+    db.expect_find_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == ids.community_id && *gid == ids.group_id && *eid == event_id
         })
-        .returning(move |_, _, _| Ok(event.clone()));
+        .returning(move |_, _, _| Ok(Some(event.clone())));
     db.expect_get_event_registration_questions()
         .times(1)
         .withf(move |cid, eid| *cid == ids.community_id && *eid == event_id)

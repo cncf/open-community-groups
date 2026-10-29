@@ -1,0 +1,20 @@
+- text: Ticket Types
+- paragraph: Use one ticket type per tier and add price windows for scheduled pricing. Paid ticket prices require an in-person or hybrid event with a venue name, address, city, postal code, and country. Ticket prices are fixed at 0 until payments are configured.
+- button "Add ticket type"
+- table:
+  - rowgroup:
+    - row "Name Price Seats Status Actions":
+      - columnheader "Name"
+      - columnheader "Price"
+      - columnheader "Seats"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - row /General admission Public Free \d+ Active/:
+      - cell "General admission Public"
+      - cell "Free"
+      - cell /\d+/
+      - cell "Active"
+      - cell:
+        - button "Edit"
+        - button "Every event needs at least one ticket type" [disabled]

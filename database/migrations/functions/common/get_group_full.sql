@@ -27,6 +27,8 @@ returns json as $$
         'city', g.city,
         'country_code', g.country_code,
         'country_name', g.country_name,
+        -- Expose the group's own logo so editors do not persist the fallback
+        'custom_logo_url', g.logo_url,
         'description', g.description,
         'description_short', g.description_short,
         'external_payments_seller_display_name', g.external_payments_seller_display_name,

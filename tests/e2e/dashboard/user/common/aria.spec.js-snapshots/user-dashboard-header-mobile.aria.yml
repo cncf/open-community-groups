@@ -1,0 +1,6 @@
+- button "Open dashboard menu"
+- banner:
+  - navigation "Main navigation":
+    - link "Go to homepage":
+      - /url: /
+    - button "EU"

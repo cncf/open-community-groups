@@ -1,0 +1,5 @@
+- menu:
+  - listitem:
+    - menuitem "All eligible attendees"
+  - listitem:
+    - menuitem "Choose attendees"

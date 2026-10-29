@@ -1,0 +1,13 @@
+- /children: deep-equal
+- navigation "Breadcrumb":
+  - list:
+    - listitem:
+      - link "Home":
+        - /url: /
+    - listitem:
+      - link "Platform Engineering Community":
+        - /url: /e2e-test-community
+    - listitem:
+      - link "Platform Ops Meetup":
+        - /url: /e2e-test-community/group/test-group-alpha
+    - listitem: Upcoming In-Person Event

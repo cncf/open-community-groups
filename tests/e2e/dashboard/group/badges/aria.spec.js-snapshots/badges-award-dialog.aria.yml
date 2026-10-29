@@ -1,0 +1,11 @@
+- dialog "Award badge":
+  - heading "Award badge" [level=3]
+  - button "Close award badge dialog"
+  - text: Search badges
+  - searchbox "Search badges"
+  - radiogroup "Badge":
+    - radio "E2E ARIA badge badge artwork E2E ARIA badge"
+    - img "E2E ARIA badge badge artwork"
+    - text: E2E ARIA badge
+  - button "Cancel"
+  - button "Award" [disabled]

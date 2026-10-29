@@ -1,11 +1,18 @@
 import { randomUUID } from "node:crypto";
 
 import { queryE2eDatabase, queryE2eDatabaseRows } from "../database.js";
-import { TEST_GROUP_IDS, TEST_USER_IDS } from "../seed.js";
-import { cleanupEventsByIds } from "./events.js";
+import { TEST_EVENT_CATEGORY_IDS, TEST_GROUP_IDS, TEST_USER_IDS } from "../seed.js";
+import { cleanupEventsByIds, insertOwnedEvent } from "./events.js";
+
+// Event categories of each seeded community, keyed like `TEST_GROUP_IDS`.
+const COMMUNITY_EVENT_CATEGORY_IDS = {
+  community1: TEST_EVENT_CATEGORY_IDS.general,
+  community2: TEST_EVENT_CATEGORY_IDS.meetups,
+};
 
 /**
- * Deletes co-hosted events plus the co-host rows and notifications they produced.
+ * Deletes co-hosted events plus their co-host rows. The notifications they produced are left to
+ * the `notifications` fixture, which also deletes their template data.
  * @param {string[]} eventIds - Exact event identifiers created by the scenario.
  */
 export const cleanupCohostEvents = (eventIds) => {
@@ -16,19 +23,7 @@ export const cleanupCohostEvents = (eventIds) => {
 
   const eventIdArray = `array[${ids.map((eventId) => `'${eventId}'::uuid`).join(", ")}]`;
 
-  // Co-host emails only carry event names, so match both identifiers and unique names.
-  queryE2eDatabase(`
-    delete from notification n
-    using notification_template_data ntd, event e
-    where n.notification_template_data_id = ntd.notification_template_data_id
-    and e.event_id = any(${eventIdArray})
-    and (
-      strpos(ntd.data::text, e.event_id::text) > 0
-      or strpos(ntd.data::text, e.name) > 0
-    );
-
-    delete from event_cohost where event_id = any(${eventIdArray});
-  `);
+  queryE2eDatabase(`delete from event_cohost where event_id = any(${eventIdArray});`);
   cleanupEventsByIds(ids);
 };
 
@@ -97,7 +92,6 @@ export const setupCohostEvent = ({
   const suffix = eventId.replace(/-/g, "").slice(0, 8);
   const name = `E2E co-hosted event ${suffix}`;
   const slug = `e2e-cohosted-event-${suffix}`;
-  const ticketTypeId = randomUUID();
   const invitationIds = Object.fromEntries(cohosts.map(({ groupId }) => [groupId, randomUUID()]));
   const cohostValues = cohosts.map(
     ({ groupId, status = "pending" }) => `(
@@ -110,70 +104,51 @@ export const setupCohostEvent = ({
       ${status === "pending" ? "null" : "current_timestamp"}
     )`,
   );
-  const attendeeInsert =
-    attendeeUserIds.length > 0
-      ? `insert into event_attendee (event_id, user_id, status)
-         values ${attendeeUserIds.map((userId) => `('${eventId}', '${userId}'::uuid, 'confirmed')`).join(", ")};`
-      : "";
-  const cohostInsert =
-    cohostValues.length > 0
-      ? `insert into event_cohost (
-           event_id, group_id, event_cohost_status_id, invitation_id, invited_by, approved_at, responded_at
-         ) values ${cohostValues.join(", ")};`
-      : "";
 
-  queryE2eDatabase(`
-    insert into event (
-      event_id,
-      name,
-      slug,
-      description,
-      description_short,
-      timezone,
-      event_category_id,
-      event_kind_id,
-      group_id,
-      published,
-      published_at,
-      published_by,
-      starts_at,
-      ends_at,
-      meeting_join_url
-    ) values (
-      '${eventId}',
-      '${name}',
-      '${slug}',
-      'Disposable event used by E2E co-hosting coverage.',
-      'Disposable co-hosting coverage.',
-      'UTC',
-      (
-        select ec.event_category_id
-        from event_category ec
-        join "group" g on g.community_id = ec.community_id
-        where g.group_id = '${ownerGroupId}'::uuid
-        order by ec.event_category_id
-        limit 1
-      ),
-      'virtual',
-      '${ownerGroupId}',
-      ${published},
-      ${published ? "current_timestamp" : "null"},
-      ${published ? `'${TEST_USER_IDS.organizer1}'::uuid` : "null"},
-      current_timestamp + interval '${days} days',
-      current_timestamp + interval '${days} days 2 hours',
-      'https://meet.example.com/e2e-cohosted-event'
-    );
+  insertOwnedEvent({
+    attendeeUserIds,
+    categoryId: getOwnerEventCategoryId(ownerGroupId),
+    description: "Disposable event used by E2E co-hosting coverage.",
+    descriptionShort: "Disposable co-hosting coverage.",
+    eventId,
+    groupId: ownerGroupId,
+    meetingJoinUrl: "https://meet.example.com/e2e-cohosted-event",
+    name,
+    organizerUserIds: [],
+    published,
+    slug,
+    startsIn: `${days} days`,
+    tiers: [{ key: "general", seats: 100, title: "General admission" }],
+  });
 
-    insert into event_ticket_type (event_ticket_type_id, active, event_id, "order", seats_total, title)
-    values ('${ticketTypeId}', true, '${eventId}', 1, 100, 'General admission');
-
-    insert into event_ticket_price_window (event_ticket_price_window_id, amount_minor, event_ticket_type_id)
-    values ('${randomUUID()}', 0, '${ticketTypeId}');
-
-    ${cohostInsert}
-
-    ${attendeeInsert}
-  `);
+  if (cohostValues.length > 0) {
+    try {
+      queryE2eDatabase(`
+        insert into event_cohost (
+          event_id, group_id, event_cohost_status_id, invitation_id, invited_by, approved_at, responded_at
+        ) values ${cohostValues.join(", ")};
+      `);
+    } catch (error) {
+      cleanupEventsByIds([eventId]);
+      throw error;
+    }
+  }
 
   return { eventId, invitationIds, name, slug };
+};
+
+/**
+ * Returns the event category of the seeded community that owns a seeded group.
+ * @param {string} groupId - Seeded group identifier.
+ * @returns {string} Event category identifier.
+ */
+const getOwnerEventCategoryId = (groupId) => {
+  const community = Object.keys(TEST_GROUP_IDS).find((key) =>
+    Object.values(TEST_GROUP_IDS[key]).includes(groupId),
+  );
+  if (community === undefined) {
+    throw new Error(`setupCohostEvent: ${groupId} is not a seeded group`);
+  }
+
+  return COMMUNITY_EVENT_CATEGORY_IDS[community];
 };

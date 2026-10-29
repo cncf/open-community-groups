@@ -1,6 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 import { TEST_EVENT_ANALYTICS_SURVEYS } from "../../../data-graphs/surveys.js";
 import { TEST_EVENT_ANALYTICS, TEST_UNPUBLISHED_EVENT } from "../../../seed.js";
+import { waitForActionResponse } from "../../../utils.js";
 import { openEventUpdateFormByName } from "./helpers.js";
 
 test.describe("group dashboard event analytics tab", () => {
@@ -255,15 +256,11 @@ const clickAnalyticsTab = (page) => page.locator('button[data-section="analytics
  * @returns {Promise<import("@playwright/test").Locator>} Analytics content locator.
  */
 const openAnalyticsSection = async (page, eventId, activate) => {
-  const [response] = await Promise.all([
-    page.waitForResponse(
-      (candidate) =>
-        candidate.request().method() === "GET" &&
-        candidate.url().includes(`/dashboard/group/events/${eventId}/analytics`),
-    ),
-    activate(page),
-  ]);
-  expect(response.ok()).toBe(true);
+  await waitForActionResponse(page, () => activate(page), {
+    method: "GET",
+    pathname: `/dashboard/group/events/${eventId}/analytics`,
+    status: 200,
+  });
 
   const content = page.locator("#analytics-content");
   await expect(content).toHaveAttribute("data-analytics-state", "loaded");

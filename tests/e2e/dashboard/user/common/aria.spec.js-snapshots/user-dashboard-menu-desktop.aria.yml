@@ -1,0 +1,28 @@
+- navigation "Dashboard navigation":
+  - text: User Dashboard User
+  - link "My Groups":
+    - /url: /dashboard/user?tab=groups
+  - link "My Events":
+    - /url: /dashboard/user?tab=events
+  - link "Surveys":
+    - /url: /dashboard/user?tab=surveys
+  - link "Purchases & documents":
+    - /url: /dashboard/user?tab=purchases
+  - link "Profile":
+    - /url: /dashboard/user?tab=account
+  - link "Notifications":
+    - /url: /dashboard/user?tab=notifications
+  - link "Badges":
+    - /url: /dashboard/user?tab=badges
+  - link "Invitations":
+    - /url: /dashboard/user?tab=invitations
+  - link "Inbox":
+    - /url: /dashboard/user?tab=inbox
+  - text: Call for Speakers
+  - link "Session proposals":
+    - /url: /dashboard/user?tab=session-proposals
+  - link "Submissions":
+    - /url: /dashboard/user?tab=submissions
+  - text: AUDIT
+  - link "Logs":
+    - /url: /dashboard/user?tab=logs

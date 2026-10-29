@@ -1,0 +1,966 @@
+[
+  {
+    "method": "GET",
+    "path": "/"
+  },
+  {
+    "method": "GET",
+    "path": "/apple-touch-icon-precomposed.png"
+  },
+  {
+    "method": "GET",
+    "path": "/apple-touch-icon.png"
+  },
+  {
+    "method": "GET",
+    "path": "/badges/credentials/{user_badge_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/badges/issuers/{group_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/badges/issuers/{group_id}/keys/{key_multibase}"
+  },
+  {
+    "method": "GET",
+    "path": "/badges/status-lists/{badge_status_list_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/badges/verify"
+  },
+  {
+    "method": "POST",
+    "path": "/badges/verify"
+  },
+  {
+    "method": "POST",
+    "path": "/communities/{community_id}/views"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/account/update/details"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/account/update/password"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/analytics"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/contact"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/community/contact/recipients"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/event-categories"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/event-categories/add"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/community/event-categories/add"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/community/event-categories/{event_category_id}/delete"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/event-categories/{event_category_id}/update"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/community/event-categories/{event_category_id}/update"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/group-categories"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/group-categories/add"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/community/group-categories/add"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/community/group-categories/{group_category_id}/delete"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/group-categories/{group_category_id}/update"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/community/group-categories/{group_category_id}/update"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/groups"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/groups/add"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/community/groups/add"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/community/groups/{group_id}/activate"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/community/groups/{group_id}/deactivate"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/community/groups/{group_id}/delete"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/groups/{group_id}/update"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/community/groups/{group_id}/update"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/logs"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/community/notifications"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/regions"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/regions/add"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/community/regions/add"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/community/regions/{region_id}/delete"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/regions/{region_id}/update"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/community/regions/{region_id}/update"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/settings/update"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/community/settings/update"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/team"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/community/team/add"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/community/team/{user_id}/delete"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/community/team/{user_id}/role"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/community/users/search"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/community/{community_id}/select"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/admission-offers/{admission_offer_id}/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/analytics"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/artwork"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/awards"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/badges"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/badges"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/badges/artwork"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/group/badges/artwork/{badge_artwork_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/badges/award"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/badges/awards/{user_badge_id}/revoke"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/badges/options"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/group/badges/{badge_id}"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/badges/{badge_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/check-in"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/cohosts"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/cohosts/{invitation_id}/approve"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/cohosts/{invitation_id}/cancel"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/cohosts/{invitation_id}/reject"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/community/{community_id}/select"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/add"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/events/add"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/cohosts/groups"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/events/preview"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/search"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/tax-rates"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/analytics"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/attendees"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/attendees-with-answers.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/attendees.csv"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/events/{event_id}/attendees/invite"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/group/events/{event_id}/attendees/{user_id}/attendance"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/events/{event_id}/attendees/{user_id}/check-in"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/events/{event_id}/attendees/{user_id}/invitation-request/accept"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/events/{event_id}/attendees/{user_id}/invitation-request/reissue"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/events/{event_id}/attendees/{user_id}/invitation-request/reject"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/events/{event_id}/automatic-tax/readiness"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/badges/recipients"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/events/{event_id}/cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/events/{event_id}/check-ins/scan"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/group/events/{event_id}/delete"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/details"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/invitation-requests"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/events/{event_id}/publish"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/events/{event_id}/purchases/{event_purchase_id}/external-payment"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/submissions"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/events/{event_id}/submissions/{cfs_submission_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/surveys"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/surveys/add"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/events/{event_id}/surveys/add"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/delete"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses/{user_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/results"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/results/questions/{question_id}/answers"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/status"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/update"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/events/{event_id}/surveys/{event_survey_id}/update"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/events/{event_id}/unpublish"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/update"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/events/{event_id}/update"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/{event_id}/waitlist"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/inbox"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/inbox/{inbox_conversation_id}"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/inbox/{inbox_conversation_id}/close"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/inbox/{inbox_conversation_id}/mark-spam"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/inbox/{inbox_conversation_id}/replies"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/inbox/{inbox_conversation_id}/unmark-spam"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/logs"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/members"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/notifications"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/notifications/{event_id}"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/payment-jobs/recovery"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/payment-jobs/{payment_job_id}/retry"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/refunds"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/refunds/recovery"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/refunds/{event_purchase_id}/approve"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/refunds/{event_purchase_id}/reject"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/settings/update"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/settings/update"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/sponsors"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/sponsors/add"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/sponsors/add"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/group/sponsors/{group_sponsor_id}/delete"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/sponsors/{group_sponsor_id}/featured"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/sponsors/{group_sponsor_id}/update"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/sponsors/{group_sponsor_id}/update"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/team"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/team/add"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/group/team/{user_id}/delete"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/team/{user_id}/role"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/users/search"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/group/{group_id}/select"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/badges/order"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/user/badges/{user_badge_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/badges/{user_badge_id}/export"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/badges/{user_badge_id}/listing"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/check-in/{event_id}/qr-code"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/events"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/user/events/{community_name}/{event_id}/attendance"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/events/{community_name}/{event_id}/registration-answers"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/groups"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/user/groups/{community_name}/{group_id}/membership"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/inbox"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/inbox/{inbox_conversation_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/user/inbox/{inbox_conversation_id}/messages"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/invitations"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/invitations/community/{community_id}/accept"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/invitations/community/{community_id}/reject"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/invitations/event-offers/{admission_offer_id}/decline"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/invitations/group/{group_id}/accept"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/invitations/group/{group_id}/reject"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/logs"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/notifications/group-options"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/notifications/muted-groups"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/user/notifications/muted-groups/{group_id}"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/notifications/muted-groups/{group_id}"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/notifications/preferences"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/purchases"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/purchases/{event_purchase_id}/credit-notes/{event_purchase_credit_note_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/purchases/{event_purchase_id}/invoice"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/session-proposals"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/user/session-proposals"
+  },
+  {
+    "method": "DELETE",
+    "path": "/dashboard/user/session-proposals/{session_proposal_id}"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/session-proposals/{session_proposal_id}"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/session-proposals/{session_proposal_id}/co-speaker-invitation/accept"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/session-proposals/{session_proposal_id}/co-speaker-invitation/reject"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/submissions"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/submissions/{cfs_submission_id}/resubmit"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/submissions/{cfs_submission_id}/withdraw"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/surveys"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/surveys/{event_survey_id}"
+  },
+  {
+    "method": "PUT",
+    "path": "/dashboard/user/surveys/{event_survey_id}/response"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/users/search"
+  },
+  {
+    "method": "GET",
+    "path": "/docs"
+  },
+  {
+    "method": "POST",
+    "path": "/events/{event_id}/views"
+  },
+  {
+    "method": "GET",
+    "path": "/explore"
+  },
+  {
+    "method": "GET",
+    "path": "/explore/events-results-section"
+  },
+  {
+    "method": "GET",
+    "path": "/explore/events-section"
+  },
+  {
+    "method": "GET",
+    "path": "/explore/events/search"
+  },
+  {
+    "method": "GET",
+    "path": "/explore/events/{event_id}/card"
+  },
+  {
+    "method": "GET",
+    "path": "/explore/groups-results-section"
+  },
+  {
+    "method": "GET",
+    "path": "/explore/groups-section"
+  },
+  {
+    "method": "GET",
+    "path": "/explore/groups/search"
+  },
+  {
+    "method": "GET",
+    "path": "/explore/groups/{group_id}/card"
+  },
+  {
+    "method": "GET",
+    "path": "/favicon.ico"
+  },
+  {
+    "method": "POST",
+    "path": "/groups/{group_id}/views"
+  },
+  {
+    "method": "GET",
+    "path": "/health-check"
+  },
+  {
+    "method": "POST",
+    "path": "/images"
+  },
+  {
+    "method": "GET",
+    "path": "/images/badges/{file_name}"
+  },
+  {
+    "method": "GET",
+    "path": "/images/og/{file_name}"
+  },
+  {
+    "method": "GET",
+    "path": "/images/{file_name}"
+  },
+  {
+    "method": "GET",
+    "path": "/log-in"
+  },
+  {
+    "method": "POST",
+    "path": "/log-in"
+  },
+  {
+    "method": "GET",
+    "path": "/log-in/oauth2/{provider}"
+  },
+  {
+    "method": "GET",
+    "path": "/log-in/oauth2/{provider}/callback"
+  },
+  {
+    "method": "GET",
+    "path": "/log-in/oidc/{provider}"
+  },
+  {
+    "method": "GET",
+    "path": "/log-in/oidc/{provider}/callback"
+  },
+  {
+    "method": "POST",
+    "path": "/log-out"
+  },
+  {
+    "method": "GET",
+    "path": "/section/user-menu"
+  },
+  {
+    "method": "GET",
+    "path": "/sign-up"
+  },
+  {
+    "method": "POST",
+    "path": "/sign-up"
+  },
+  {
+    "method": "GET",
+    "path": "/static/{*file}"
+  },
+  {
+    "method": "GET",
+    "path": "/stats"
+  },
+  {
+    "method": "GET",
+    "path": "/users/{username}/badges"
+  },
+  {
+    "method": "GET",
+    "path": "/verify-email/{code}"
+  },
+  {
+    "method": "POST",
+    "path": "/webhooks/payments"
+  },
+  {
+    "method": "POST",
+    "path": "/webhooks/payments/connected"
+  },
+  {
+    "method": "POST",
+    "path": "/webhooks/zoom"
+  },
+  {
+    "method": "GET",
+    "path": "/{community}"
+  },
+  {
+    "method": "POST",
+    "path": "/{community}/event/{event_id}/attend"
+  },
+  {
+    "method": "GET",
+    "path": "/{community}/event/{event_id}/cfs-modal"
+  },
+  {
+    "method": "POST",
+    "path": "/{community}/event/{event_id}/cfs-submissions"
+  },
+  {
+    "method": "DELETE",
+    "path": "/{community}/event/{event_id}/checkout"
+  },
+  {
+    "method": "POST",
+    "path": "/{community}/event/{event_id}/checkout"
+  },
+  {
+    "method": "POST",
+    "path": "/{community}/event/{event_id}/contact"
+  },
+  {
+    "method": "GET",
+    "path": "/{community}/event/{event_id}/contact-modal"
+  },
+  {
+    "method": "GET",
+    "path": "/{community}/event/{event_id}/enrollment"
+  },
+  {
+    "method": "DELETE",
+    "path": "/{community}/event/{event_id}/leave"
+  },
+  {
+    "method": "POST",
+    "path": "/{community}/event/{event_id}/refund-request"
+  },
+  {
+    "method": "POST",
+    "path": "/{community}/group/{group_id}/join"
+  },
+  {
+    "method": "DELETE",
+    "path": "/{community}/group/{group_id}/leave"
+  },
+  {
+    "method": "GET",
+    "path": "/{community}/group/{group_id}/membership"
+  },
+  {
+    "method": "GET",
+    "path": "/{community}/group/{group_slug}"
+  },
+  {
+    "method": "GET",
+    "path": "/{community}/group/{group_slug}/event/{event_slug}"
+  },
+  {
+    "method": "GET",
+    "path": "/{community}/group/{group_slug}/event/{event_slug}/availability"
+  }
+]

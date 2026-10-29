@@ -1,0 +1,13 @@
+- row /E2E ARIA attended event Platform Ops Meetup [A-Z][a-z]{2} \d{2}, \d{4} \d{2}:\d{2} [AP]M UTC Attendee/:
+  - rowheader "E2E ARIA attended event Platform Ops Meetup":
+    - link "E2E ARIA attended event":
+      - /url: /e2e-test-community/group/test-group-alpha/event/e2e-aria-attended-event
+    - text: ""
+  - cell /[A-Z][a-z]{2} \d{2}, \d{4} \d{2}:\d{2} [AP]M UTC/
+  - cell "Attendee"
+  - cell
+  - cell:
+    - group:
+      - menu:
+        - listitem:
+          - menuitem "Cancel attendance"

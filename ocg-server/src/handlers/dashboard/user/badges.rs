@@ -1,7 +1,6 @@
 //! User dashboard badge listing, ordering, revocation, and export handlers.
 
 use anyhow::Result;
-use askama::Template;
 use axum::{
     Json,
     extract::{Path, State},
@@ -9,7 +8,7 @@ use axum::{
         HeaderMap, HeaderValue, StatusCode, header::CACHE_CONTROL, header::CONTENT_DISPOSITION,
         header::CONTENT_TYPE, header::RETRY_AFTER,
     },
-    response::{Html, IntoResponse, Response},
+    response::{IntoResponse, Response},
 };
 use serde::Deserialize;
 use tracing::instrument;
@@ -86,16 +85,6 @@ pub(crate) async fn export(
     Ok((headers, png).into_response())
 }
 
-/// Render the active user badge list.
-#[instrument(skip_all)]
-pub(crate) async fn list_page(
-    CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Render active awards through the shared page preparation path
-    Ok(Html(prepare_list_page(&db, user.user_id).await?.render()?))
-}
-
 // Actions handlers.
 
 /// Permanently revoke one active badge owned by the current user.
@@ -158,7 +147,7 @@ pub(crate) struct OrderInput {
 
 // Helpers.
 
-/// Prepare the active badge list for the dashboard shell and partial route.
+/// Prepare the active badge list for the user dashboard page.
 pub(crate) async fn prepare_list_page(db: &DynDB, user_id: Uuid) -> Result<ListPage, HandlerError> {
     // Load only active awards owned by the dashboard user
     Ok(ListPage {

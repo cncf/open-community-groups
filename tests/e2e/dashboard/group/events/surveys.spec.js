@@ -12,7 +12,14 @@ import {
   setupOwnedSurveyResponse,
   setupOwnedSurveyTextAnswers,
 } from "../../../data-graphs/surveys.js";
-import { expectTableHeaders, navigateToPath, uniqueName, waitForActionResponse } from "../../../utils.js";
+import {
+  confirmAlert,
+  dismissAlert,
+  expectTableHeaders,
+  navigateToPath,
+  uniqueName,
+  waitForActionResponse,
+} from "../../../utils.js";
 import { openCurrentEventEditorSection, openEventUpdateFormByName } from "./helpers.js";
 
 const { attendeeIds, event, surveys } = TEST_EVENT_SURVEYS;
@@ -70,8 +77,6 @@ test.describe("group dashboard event surveys tab", () => {
   test("organizer creates, schedules, closes, reopens and deletes a survey, with an audit trail", async ({
     organizerGroupPage,
   }) => {
-    test.setTimeout(120_000);
-
     const page = organizerGroupPage;
     const title = uniqueName("Survey");
 
@@ -109,7 +114,7 @@ test.describe("group dashboard event surveys tab", () => {
       expect(addParams.get("audience")).toBe("confirmed");
       expect(addParams.get("questions[0][kind]")).toBe("single-select");
       expect(addParams.has("name")).toBe(false);
-      await dismissAlert(page, "You have successfully added the survey.");
+      await dismissAlert(page, { message: "You have successfully added the survey." });
       const surveyId = queryE2eDatabase(`
         select event_survey_id
         from event_survey
@@ -142,7 +147,7 @@ test.describe("group dashboard event surveys tab", () => {
       const updateParams = new URLSearchParams((await updateRequest).postData() || "");
       expect(updateParams.get("closes_at")).toBe("2099-05-20T18:30:00");
       expect(updateParams.get("revision")).toBe("1");
-      await dismissAlert(page, "You have successfully updated the survey.");
+      await dismissAlert(page, { message: "You have successfully updated the survey." });
       await expect(row).toContainText("May 20, 2099");
       await expect(row).toContainText("06:30 PM CEST");
 
@@ -152,8 +157,11 @@ test.describe("group dashboard event surveys tab", () => {
       );
       await openSurveyActions(content, title);
       await row.getByRole("button", { name: `Mark ready: ${title}` }).click();
-      await confirmAlert(page, "Mark this survey ready? Test events do not email attendees.", "Mark ready");
-      await dismissAlert(page, "You have successfully marked the survey ready.");
+      await confirmAlert(page, {
+        message: "Mark this survey ready? Test events do not email attendees.",
+        button: "Mark ready",
+      });
+      await dismissAlert(page, { message: "You have successfully marked the survey ready." });
       const statusParams = new URLSearchParams((await statusRequest).postData() || "");
       expect(statusParams.get("action")).toBe("mark-ready");
       expect(statusParams.get("revision")).toBe("2");
@@ -163,20 +171,20 @@ test.describe("group dashboard event surveys tab", () => {
       // Close and reopen the survey.
       await openSurveyActions(content, title);
       await row.getByRole("button", { name: `Close: ${title}` }).click();
-      await confirmAlert(page, "Close this survey?", "Close");
-      await dismissAlert(page, "You have successfully closed the survey.");
+      await confirmAlert(page, { message: "Close this survey?", button: "Close" });
+      await dismissAlert(page, { message: "You have successfully closed the survey." });
       await expect(row.locator(".custom-badge")).toHaveText("Closed");
       await openSurveyActions(content, title);
       await row.getByRole("button", { name: `Reopen: ${title}` }).click();
-      await confirmAlert(page, "Reopen this survey?", "Reopen");
-      await dismissAlert(page, "You have successfully reopened the survey.");
+      await confirmAlert(page, { message: "Reopen this survey?", button: "Reopen" });
+      await dismissAlert(page, { message: "You have successfully reopened the survey." });
       await expect(row.locator(".custom-badge")).toHaveText("Open");
 
       // Delete the survey behind its confirmation.
       await openSurveyActions(content, title);
       await row.getByRole("button", { name: `Delete survey: ${title}` }).click();
-      await confirmAlert(page, "Delete this survey? This cannot be undone.", "Delete");
-      await dismissAlert(page, "You have successfully deleted the survey.");
+      await confirmAlert(page, { message: "Delete this survey? This cannot be undone.", button: "Delete" });
+      await dismissAlert(page, { message: "You have successfully deleted the survey." });
       await expect(row).toHaveCount(0);
 
       // Verify every change was audited and the deletion is listed in the group logs.
@@ -227,19 +235,21 @@ test.describe("group dashboard event surveys tab", () => {
       await expect(row.locator(".custom-badge")).toHaveText("Draft");
       await openSurveyActions(content, owned.title);
       await row.getByRole("button", { name: `Mark ready: ${owned.title}` }).click();
-      await confirmAlert(page, "Mark this survey ready? Test events do not email attendees.", "Mark ready");
-      await dismissAlert(page, "You have successfully marked the survey ready.");
+      await confirmAlert(page, {
+        message: "Mark this survey ready? Test events do not email attendees.",
+        button: "Mark ready",
+      });
+      await dismissAlert(page, { message: "You have successfully marked the survey ready." });
       await expect(row.locator(".custom-badge")).toHaveText("Scheduled");
 
       // Move the scheduled survey back to draft.
       await openSurveyActions(content, owned.title);
       await row.getByRole("button", { name: `Back to draft: ${owned.title}` }).click();
-      await confirmAlert(
-        page,
-        "Move this survey back to draft? It will not open until it is marked ready again.",
-        "Back to draft",
-      );
-      await dismissAlert(page, "You have successfully moved the survey back to draft.");
+      await confirmAlert(page, {
+        message: "Move this survey back to draft? It will not open until it is marked ready again.",
+        button: "Back to draft",
+      });
+      await dismissAlert(page, { message: "You have successfully moved the survey back to draft." });
       await expect(row.locator(".custom-badge")).toHaveText("Draft");
       expect(readSurveyAuditLogs(owned.id).map(({ action }) => action)).toEqual([
         "event_survey_marked_ready",
@@ -757,7 +767,7 @@ test.describe("group dashboard event surveys tab", () => {
         status: 204,
         urlIncludes: `/surveys/${owned.id}/update`,
       });
-      await dismissAlert(page, "You have successfully updated the survey.");
+      await dismissAlert(page, { message: "You have successfully updated the survey." });
 
       // Verify the list shows the new title and the questions are unchanged.
       await expect(getSurveyRow(content, editedTitle)).toBeVisible();
@@ -792,7 +802,7 @@ test.describe("group dashboard event surveys tab", () => {
 
     // Keep editing when the Back link would discard the edits.
     await content.getByRole("button", { name: "Back to surveys" }).click();
-    await confirmAlert(page, "You have unsaved survey changes.", "Keep editing");
+    await confirmAlert(page, { message: "You have unsaved survey changes.", button: "Keep editing" });
     await expect(titleInput).toHaveValue(title);
 
     // Switch sections and verify the edits survive.
@@ -808,7 +818,7 @@ test.describe("group dashboard event surveys tab", () => {
       page,
       async () => {
         await content.getByRole("button", { name: "Back to surveys" }).click();
-        await confirmAlert(page, "You have unsaved survey changes.", "Discard changes");
+        await confirmAlert(page, { message: "You have unsaved survey changes.", button: "Discard changes" });
       },
       { method: "GET", urlEndsWith: `/dashboard/group/events/${event.id}/surveys` },
     );
@@ -843,7 +853,7 @@ test.describe("group dashboard event surveys tab", () => {
     await page.evaluate(() =>
       window.htmx.ajax("GET", window.location.pathname, { swap: "none", target: "#dashboard-spinner" }),
     );
-    await dismissAlert(page, DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
+    await dismissAlert(page, { message: DIRTY_DEPLOYMENT_BLOCKED_MESSAGE });
     expect(await page.evaluate(() => window.e2eSurveyFormMarker === true)).toBe(true);
     await expect(titleInput).toHaveValue(title);
 
@@ -932,21 +942,6 @@ const closeSurveyActions = async (content, title) => {
   const trigger = getSurveyRow(content, title).getByLabel(`Open survey actions for ${title}`);
   await content.page().keyboard.press("Escape");
   await expect(trigger.locator("..")).not.toHaveAttribute("open", "");
-};
-
-/** Confirms or declines the open confirmation dialog after checking its message. */
-const confirmAlert = async (page, message, buttonName) => {
-  const popup = page.locator(".swal2-popup");
-  await expect(popup).toContainText(message);
-  await popup.getByRole("button", { name: buttonName }).click();
-};
-
-/** Verifies and dismisses a success alert. */
-const dismissAlert = async (page, message) => {
-  const popup = page.locator(".swal2-popup");
-  await expect(popup).toContainText(message);
-  await page.locator(".swal2-confirm").click();
-  await expect(popup).toBeHidden();
 };
 
 /** Returns the row of a survey in the surveys list. */

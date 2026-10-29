@@ -1,16 +1,24 @@
 import { expect } from "../../../fixtures.js";
 
 import { setupTicketOffer } from "../../../data-graphs/events.js";
-import { routeNextRequestWithQuery, waitForActionResponse } from "../../../utils.js";
-import { openGroupEventsTabWithEvent } from "./helpers.js";
+import { dismissAlert, waitForActionResponse, waitForResponseMatching } from "../../../utils.js";
+import { openEventSection } from "./helpers.js";
 
-/** Verifies and dismisses the error alert shown for a failed ticket allocation. */
-export const expectErrorAlert = async (page, message) => {
-  const popup = page.locator(".swal2-popup");
-  await expect(popup).toHaveCount(1);
-  await expect(popup).toContainText(message);
-  await page.getByRole("button", { name: "OK" }).click();
-  await expect(popup).toBeHidden();
+// Error shown when an organizer allocates a ticket in a sold-out tier.
+const SOLD_OUT_CONFLICT_MESSAGE =
+  "This ticket type is sold out. Add seats or cancel a pending offer before allocating another ticket.";
+
+/**
+ * Runs a ticket allocation against a tier that sold out after the page rendered, waits for its
+ * 409 conflict response and dismisses the sold-out alert.
+ * @param {import("@playwright/test").Page} page - Organizer page.
+ * @param {() => Promise<unknown>|unknown} action - Click that sends the allocation request.
+ * @param {{ matcher: object }} options - `waitForActionResponse` matcher without the status, which
+ *   is pinned to 409.
+ */
+export const expectStaleCapacityConflict = async (page, action, { matcher }) => {
+  await waitForActionResponse(page, action, { ...matcher, status: 409 });
+  await dismissAlert(page, { message: SOLD_OUT_CONFLICT_MESSAGE });
 };
 
 /** Returns visible status badges matching the supplied text within a root locator. */
@@ -29,54 +37,25 @@ export const holdSeat = (event, ticketTypeKey, userId) => {
 };
 
 /** Opens an event's attendees tab and returns the attendees content locator. */
-export const openAttendeesTab = async (page, eventName, eventId, query = "") => {
-  const eventRow = await openGroupEventsTabWithEvent(page, eventName);
-
-  await waitForActionResponse(page, () => eventRow.locator('td button[aria-label^="Edit event:"]').click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${eventId}/update`,
+export const openAttendeesTab = (page, eventName, eventId, query = "") =>
+  openEventSection(page, {
+    contentSelector: "#attendees-content",
+    eventId,
+    eventName,
+    query,
+    section: "attendees",
+    tableName: "Attendees list",
   });
-
-  // The tab buttons only exist once the event update form has loaded.
-  const attendeesTab = page.locator('button[data-section="attendees"]');
-  if (query !== "") {
-    await routeNextRequestWithQuery(page, `/dashboard/group/events/${eventId}/attendees`, query);
-  }
-
-  await waitForActionResponse(page, () => attendeesTab.click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${eventId}/attendees`,
-  });
-
-  const attendeesContent = page.locator("#attendees-content");
-
-  // Wait until the attendees tab has swapped in its table.
-  await expect(attendeesContent.getByRole("table", { name: "Attendees list" })).toBeVisible();
-
-  return attendeesContent;
-};
 
 /** Opens an event's invitation requests tab and returns the requests content locator. */
-export const openInvitationRequestsTab = async (page, eventName, eventId) => {
-  const eventRow = await openGroupEventsTabWithEvent(page, eventName);
-  await waitForActionResponse(page, () => eventRow.locator('td button[aria-label^="Edit event:"]').click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${eventId}/update`,
+export const openInvitationRequestsTab = (page, eventName, eventId) =>
+  openEventSection(page, {
+    contentSelector: "#invitation-requests-content",
+    eventId,
+    eventName,
+    section: "invitation-requests",
+    tableName: "Invitation requests",
   });
-  await waitForActionResponse(
-    page,
-    () => page.locator('button[data-section="invitation-requests"]').click(),
-    {
-      method: "GET",
-      urlIncludes: `/dashboard/group/events/${eventId}/invitation-requests`,
-    },
-  );
-
-  const requestsContent = page.locator("#invitation-requests-content");
-  await expect(requestsContent.getByRole("table", { name: "Invitation requests" })).toBeVisible();
-
-  return requestsContent;
-};
 
 /** Submits the attendee invitation modal for one user and returns the modal locator. */
 export const submitAttendeeInvitation = async (
@@ -110,9 +89,8 @@ export const submitAttendeeInvitation = async (
 
 /** Returns a promise for the next successful refresh of one event editor section. */
 export const waitForEventSectionRefresh = (page, eventId, section) =>
-  page.waitForResponse(
-    (response) =>
-      response.request().method() === "GET" &&
-      response.url().includes(`/dashboard/group/events/${eventId}/${section}`) &&
-      response.ok(),
-  );
+  waitForResponseMatching(page, {
+    method: "GET",
+    pathname: `/dashboard/group/events/${eventId}/${section}`,
+    status: 200,
+  });

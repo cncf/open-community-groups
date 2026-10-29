@@ -1,0 +1,11 @@
+- text: Co-hosts
+- paragraph: Invite other groups to co-host this event.
+- text: Co-hosts must be added and must respond before the event can be published. Co-hosts can't be changed while the event is published. Co-hosts can't be changed while the event is published. If you unpublish it to change them, it can't be published again until every newly added group responds. Community
+- combobox "Community" [disabled]:
+  - option "Developer Experience Community" [selected]
+  - option "Platform Engineering Community"
+- paragraph: Choose a community, then search for a group to invite.
+- text: Co-host group
+- combobox "Co-host group" [disabled]
+- status
+- text: No co-hosts selected.

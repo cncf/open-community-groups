@@ -3,10 +3,19 @@ import { expect, test } from "../../../fixtures.js";
 import { expectPaginationNavigation, navigateToPath } from "../../../utils.js";
 
 const FILTERED_USER_LOGS_PATH = "/dashboard/user?tab=logs&action=user_details_updated";
-const USER_DETAILS_LOGS_PATH = "/dashboard/user?tab=logs&action=session_proposal_added";
 const USER_LOGS_PATH = "/dashboard/user?tab=logs";
 
 test.describe("user dashboard logs view", () => {
+  test("empty state explains when a user has no audit history", async ({ emptyUserPage }) => {
+    // Load logs for the dedicated user without audit records.
+    await navigateToPath(emptyUserPage, USER_LOGS_PATH);
+    const dashboardContent = emptyUserPage.locator("#dashboard-content");
+
+    // Verify the zero count and empty audit guidance remain visible.
+    await expect(dashboardContent).toContainText("0 logs");
+    await expect(dashboardContent).toContainText("No audit log entries found.");
+  });
+
   test("member can move between user log result pages", async ({ member1Page }) => {
     // Sort oldest first so the first pages hold distinct seeded rows, not rows added by other tests.
     await expectPaginationNavigation(
@@ -25,6 +34,13 @@ test.describe("user dashboard logs view", () => {
     const auditLogRows = dashboardContent.locator("tr.audit-log-row");
     await expect(auditLogRows.nth(0)).toContainText("User details updated");
     await expect(auditLogRows.nth(1)).toContainText("Session proposal added");
+
+    // Verify the seeded session proposal row renders its target and detail fields.
+    const sessionProposalRow = auditLogRows.nth(1);
+    await expect(sessionProposalRow).toContainText("Cloud Native Operations Deep Dive");
+    const detailsCard = sessionProposalRow.locator("[data-audit-log-details-card]");
+    await expect(detailsCard).toContainText("Seeded logs fixture");
+    await expect(detailsCard).toContainText("advanced");
 
     // Load the filtered user logs URL.
     await navigateToPath(member1Page, FILTERED_USER_LOGS_PATH);
@@ -49,33 +65,6 @@ test.describe("user dashboard logs view", () => {
     await expect(filtersModal).toBeVisible();
     await expect(filtersModal.locator("#audit-actor")).toHaveCount(0);
     await expect(filtersModal.locator("#audit-action")).toHaveValue("user_details_updated");
-  });
-
-  test("member can open seeded user log details", async ({ member1Page }) => {
-    // Load the user logs URL filtered to a seeded detail row.
-    await navigateToPath(member1Page, USER_DETAILS_LOGS_PATH);
-
-    // Find the dashboard content.
-    const dashboardContent = member1Page.locator("#dashboard-content");
-    const auditLogRow = dashboardContent.locator("tr.audit-log-row").first();
-
-    // Verify member can open seeded user log details.
-    await expect(auditLogRow).toContainText("Session proposal added");
-    await expect(auditLogRow).toContainText("Cloud Native Operations Deep Dive");
-
-    // Find the View log details control.
-    const detailsButton = auditLogRow.getByRole("button", {
-      name: "View log details",
-    });
-    await expect(detailsButton).toBeVisible();
-    await detailsButton.click();
-    await expect(detailsButton).toHaveAttribute("aria-expanded", "true");
-
-    // Set up details popover.
-    const detailsPopover = dashboardContent.locator("[data-audit-log-details-card]").first();
-    await expect(detailsPopover).toBeVisible();
-    await expect(detailsPopover).toContainText("Seeded logs fixture");
-    await expect(detailsPopover).toContainText("advanced");
   });
 
   test("member can apply empty log filters and reset them", async ({ member1Page }) => {

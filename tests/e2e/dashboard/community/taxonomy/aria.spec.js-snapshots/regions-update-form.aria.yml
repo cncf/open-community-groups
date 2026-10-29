@@ -1,0 +1,9 @@
+- text: Region Details
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=regions-geographic-scope
+- paragraph: Update the region for this community.
+- text: Name *
+- textbox "Name *": E2E ARIA region one
+- paragraph: /Region display name\. Max \d+ characters\./
+- button "Cancel"
+- button "Update Region"

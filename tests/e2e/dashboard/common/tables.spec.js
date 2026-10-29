@@ -1,6 +1,12 @@
 import { expect, test } from "../../fixtures.js";
-import { queryE2eDatabase } from "../../database.js";
 import {
+  cleanupEventEnrollment,
+  setupCommunityTeamInvitation,
+  setupEventInvitation,
+  setupGroupTeamInvitation,
+} from "../../data-graphs/invitations.js";
+import {
+  TEST_COMMUNITY_IDS,
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
   TEST_GROUP_IDS,
@@ -9,21 +15,16 @@ import {
   TEST_REGISTRATION_WINDOW_EVENTS,
   TEST_USER_IDS,
 } from "../../seed.js";
-import {
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
-  navigateToPath,
-  routeNextRequestWithQuery,
-  waitForActionResponse,
-} from "../../utils.js";
+import { expectTableColumnsAtViewport, expectTableHeaders, navigateToPath } from "../../utils.js";
 import { openAttendeesTab, openInvitationRequestsTab } from "../group/events/attendees-helpers.js";
-import { openEventUpdateFormByName, openPaymentsSection } from "../group/events/helpers.js";
 import {
-  ensureEventInvitation,
-  openUserDashboardPath,
-  resetCommunityInvitation,
-  resetGroupInvitation,
-} from "../user/helpers.js";
+  openCfsEventSubmissionsTab,
+  openDashboardWaitlist,
+  openEventUpdateFormByName,
+  openPaymentsSection,
+} from "../group/events/helpers.js";
+import { openRefundsDashboard } from "../group/refunds/helpers.js";
+import { openPurchasesDashboard, openUserDashboardPath } from "../user/helpers.js";
 
 const GROUP_EVENTS_HEADERS = ["Name", "Location", "Date", "Type", "Status", "Attendees", "Actions"];
 
@@ -43,18 +44,12 @@ const GROUP_EVENTS_BREAKPOINTS = [
 
 const TABLE_EVENT_INVITATION = {
   eventId: TEST_EVENT_IDS.alpha.one,
-  groupId: TEST_GROUP_IDS.community1.alpha,
   userId: TEST_USER_IDS.pending1,
 };
 
-/** Deletes the seeded table event invitation offer from admission_offer. */
+/** Removes the owned table event invitation and any enrollment state of its pair. */
 const cleanupTableEventInvitation = () => {
-  queryE2eDatabase(`
-    delete from admission_offer
-    where event_id = '${TABLE_EVENT_INVITATION.eventId}'
-    and user_id = '${TABLE_EVENT_INVITATION.userId}'
-    and source = 'organizer_invitation';
-  `);
+  cleanupEventEnrollment(TABLE_EVENT_INVITATION);
 };
 
 // One entry per dashboard table; each becomes an independently reported test.
@@ -336,7 +331,7 @@ const TABLE_CASES = [
     name: "group event submissions",
     fixture: "eventsManagerGroupPage",
     open: async (page) => {
-      const submissionsContent = await openGroupEventSubmissionsTab(page);
+      const submissionsContent = await openCfsEventSubmissionsTab(page);
 
       return submissionsContent.getByRole("table");
     },
@@ -539,8 +534,8 @@ const TABLE_CASES = [
   {
     name: "user invitation communities",
     fixture: "pending1Page",
-    open: async (page, fixtures) => {
-      const invitationsContent = await openPendingInvitationTables(page, fixtures);
+    open: async (page) => {
+      const invitationsContent = await openPendingInvitationTables(page);
 
       return invitationsContent.locator("table", {
         has: page.getByRole("columnheader", { name: "Community" }),
@@ -559,8 +554,8 @@ const TABLE_CASES = [
   {
     name: "user invitation events",
     fixture: "pending1Page",
-    open: async (page, fixtures) => {
-      const invitationsContent = await openPendingInvitationTables(page, fixtures);
+    open: async (page) => {
+      const invitationsContent = await openPendingInvitationTables(page);
 
       return invitationsContent.locator("table", {
         has: page.getByRole("columnheader", { name: "Event" }),
@@ -579,8 +574,8 @@ const TABLE_CASES = [
   {
     name: "user invitation groups",
     fixture: "pending1Page",
-    open: async (page, fixtures) => {
-      const invitationsContent = await openPendingInvitationTables(page, fixtures);
+    open: async (page) => {
+      const invitationsContent = await openPendingInvitationTables(page);
 
       return invitationsContent
         .locator("table", {
@@ -746,86 +741,15 @@ const TABLE_CASES = [
   },
 ];
 
-/** Returns dashboard table cases that use the requested fixture. */
-const tableCasesForFixture = (fixture) => TABLE_CASES.filter((tableCase) => tableCase.fixture === fixture);
-
 test.describe("dashboard tables", () => {
-  for (const tableCase of tableCasesForFixture("adminCommunityPage")) {
-    test(`${tableCase.name} table exposes every column at its responsive breakpoint`, async ({
-      adminCommunityPage,
-    }) => {
-      await runTableCase(tableCase, adminCommunityPage);
-    });
-  }
+  for (const tableCase of TABLE_CASES) {
+    test(`${tableCase.name} table exposes every column at its responsive breakpoint`, async ({ pageAs }) => {
+      const page = await pageAs(tableCase.fixture);
 
-  for (const tableCase of tableCasesForFixture("eventsManagerGroupPage")) {
-    test(`${tableCase.name} table exposes every column at its responsive breakpoint`, async ({
-      eventsManagerGroupPage,
-    }) => {
-      await runTableCase(tableCase, eventsManagerGroupPage);
-    });
-  }
-
-  for (const tableCase of tableCasesForFixture("member1Page")) {
-    test(`${tableCase.name} table exposes every column at its responsive breakpoint`, async ({
-      member1Page,
-    }) => {
-      await runTableCase(tableCase, member1Page);
-    });
-  }
-
-  for (const tableCase of tableCasesForFixture("organizerGroupPage")) {
-    test(`${tableCase.name} table exposes every column at its responsive breakpoint`, async ({
-      organizerGroupPage,
-    }) => {
-      await runTableCase(tableCase, organizerGroupPage);
-    });
-  }
-
-  for (const tableCase of tableCasesForFixture("pending1Page")) {
-    test(`${tableCase.name} table exposes every column at its responsive breakpoint`, async ({
-      adminCommunityPage,
-      pending1Page,
-    }) => {
-      await runTableCase(tableCase, pending1Page, { adminCommunityPage });
+      await runTableCase(tableCase, page);
     });
   }
 });
-
-/** Opens the dashboard waitlist tab and returns its content panel. */
-const openDashboardWaitlist = async (page, query = "") => {
-  await navigateToPath(page, "/dashboard/group?tab=events");
-
-  const eventRow = page.locator("tr", {
-    hasText: "Dashboard Waitlist Table Lab",
-  });
-  await expect(eventRow).toBeVisible();
-
-  await waitForActionResponse(
-    page,
-    () => eventRow.locator('td button[aria-label="Edit event: Dashboard Waitlist Table Lab"]').click(),
-    {
-      method: "GET",
-      urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/update`,
-    },
-  );
-
-  const waitlistTab = page.locator('button[data-section="waitlist"]');
-  if (query !== "") {
-    await routeNextRequestWithQuery(
-      page,
-      `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
-      query,
-    );
-  }
-
-  await waitForActionResponse(page, () => waitlistTab.click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
-  });
-
-  return page.locator("#waitlist-content");
-};
 
 /** Opens a group events table and returns it after optional past-tab selection. */
 const openGroupEventsTable = async (page, tableName, contentSelector) => {
@@ -841,83 +765,29 @@ const openGroupEventsTable = async (page, tableName, contentSelector) => {
   return page.getByRole("table", { name: tableName });
 };
 
-/** Opens the group event submissions tab and returns its content panel. */
-const openGroupEventSubmissionsTab = async (page, query = "") => {
-  await navigateToPath(page, "/dashboard/group?tab=events");
-
-  const eventRow = page.locator("tr", {
-    hasText: "Event With Active CFS",
+/** Prepares pending1's pending invitations and returns the user invitation dashboard content. */
+const openPendingInvitationTables = async (page) => {
+  setupCommunityTeamInvitation({
+    communityId: TEST_COMMUNITY_IDS.community1,
+    role: "viewer",
+    userId: TEST_USER_IDS.pending1,
   });
-  await expect(eventRow).toBeVisible();
-
-  await waitForActionResponse(page, () => eventRow.locator('td button[aria-label^="Edit event:"]').click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update`,
+  setupGroupTeamInvitation({
+    groupId: TEST_GROUP_IDS.community1.beta,
+    role: "events-manager",
+    userId: TEST_USER_IDS.pending1,
   });
-
-  const submissionsTab = page.locator('button[data-section="submissions"]');
-  if (query !== "") {
-    await routeNextRequestWithQuery(
-      page,
-      `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/submissions`,
-      query,
-    );
-  }
-
-  await waitForActionResponse(page, () => submissionsTab.click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/submissions`,
-  });
-
-  return page.locator("#submissions-content");
-};
-
-/** Prepares pending invitations and returns the user invitation dashboard content. */
-const openPendingInvitationTables = async (page, { adminCommunityPage }) => {
-  await resetCommunityInvitation(adminCommunityPage, TEST_USER_IDS.pending1, "viewer");
-  await resetGroupInvitation(
-    adminCommunityPage,
-    TEST_GROUP_IDS.community1.beta,
-    TEST_USER_IDS.pending1,
-    "events-manager",
-  );
-  cleanupTableEventInvitation();
-  await ensureEventInvitation(
-    adminCommunityPage,
-    TABLE_EVENT_INVITATION.groupId,
-    TABLE_EVENT_INVITATION.eventId,
-    TABLE_EVENT_INVITATION.userId,
-  );
+  setupEventInvitation(TABLE_EVENT_INVITATION);
   await openUserDashboardPath("/dashboard/user?tab=invitations", page);
 
   return page.locator("#dashboard-content");
 };
 
-/** Opens the user purchases dashboard and returns the content panel. */
-const openPurchasesDashboard = async (page) => {
-  await navigateToPath(page, "/dashboard/user?tab=purchases");
-
-  const dashboardContent = page.locator("#dashboard-content");
-  await expect(dashboardContent.getByText("Purchases & documents", { exact: true })).toBeVisible();
-
-  return dashboardContent;
-};
-
-/** Opens the group refunds dashboard and returns the content panel. */
-const openRefundsDashboard = async (page) => {
-  await navigateToPath(page, "/dashboard/group?tab=refunds");
-
-  const dashboardContent = page.locator("#dashboard-content");
-  await expect(dashboardContent.getByRole("table", { name: "Refunds list" })).toBeVisible();
-
-  return dashboardContent;
-};
-
 /** Runs a dashboard table case and restores its optional cleanup state. */
-const runTableCase = async (tableCase, page, fixtures = {}) => {
+const runTableCase = async (tableCase, page) => {
   try {
     tableCase.cleanup?.();
-    const table = await tableCase.open(page, fixtures);
+    const table = await tableCase.open(page);
 
     await expectTableHeaders(table, tableCase.headers);
 

@@ -100,6 +100,7 @@ export class UserChip extends LitWrapper {
           aria-label=${isClickable ? `View ${displayName}'s profile` : ""}
         >
           <logo-image
+            aria-hidden="true"
             image-url=${imageUrl}
             placeholder=${initials}
             size="size-[24px]"
@@ -126,7 +127,13 @@ export class UserChip extends LitWrapper {
         @keydown=${isClickable ? this._handleKeydown : null}
         aria-label=${isClickable ? `View ${displayName}'s profile` : ""}
       >
-        <logo-image image-url=${imageUrl} size=${avatarSize} placeholder=${initials} font-size="text-lg">
+        <logo-image
+          aria-hidden="true"
+          image-url=${imageUrl}
+          size=${avatarSize}
+          placeholder=${initials}
+          font-size="text-lg"
+        >
         </logo-image>
         <div class="leading-tight min-w-0">
           <div class="font-semibold text-stone-900 truncate ${nameSize}">${displayName}</div>

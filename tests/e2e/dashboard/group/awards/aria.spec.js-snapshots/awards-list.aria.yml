@@ -1,0 +1,20 @@
+- table "Awards list":
+  - rowgroup:
+    - row "Recipient Badge Source Awarded Status Actions":
+      - columnheader "Recipient"
+      - columnheader "Badge"
+      - columnheader "Source"
+      - columnheader "Awarded"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row /E2E Member Three E2E ARIA badge Group \d+-\d+-\d+ Active View credential: E2E ARIA badge Revoke credential: E2E ARIA badge/':
+      - cell "E2E Member Three"
+      - cell "E2E ARIA badge"
+      - cell "Group"
+      - cell /\d+-\d+-\d+/
+      - cell "Active"
+      - 'cell "View credential: E2E ARIA badge Revoke credential: E2E ARIA badge"':
+        - 'link "View credential: E2E ARIA badge"':
+          - /url: /\/badges\/credentials\/[0-9a-f-]{36}/
+        - 'button "Revoke credential: E2E ARIA badge"'

@@ -1,7 +1,8 @@
 import { expect, test } from "../../fixtures.js";
 
-import { queryE2eDatabase } from "../../database.js";
+import { getSeedClock, queryE2eDatabase } from "../../database.js";
 import {
+  TEST_CALENDAR_EVENTS,
   TEST_COHOSTED_EVENT,
   TEST_COMMUNITY_NAME,
   TEST_COMMUNITY_NAME_2,
@@ -11,10 +12,10 @@ import {
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
 } from "../../seed.js";
-import { buildE2eUrl, getSectionLink, navigateToGroup } from "../../utils.js";
+import { buildE2eUrl, dismissAlert, getSectionLink, navigateToGroup } from "../../utils.js";
 
 // Owner group credited on co-host group event cards.
-const COHOSTED_EVENT_OWNER_GROUP_NAME = "E2E Second Group Epsilon";
+const COHOSTED_EVENT_OWNER_GROUP_NAME = TEST_GROUP_NAMES.epsilon;
 
 test.describe("group page", () => {
   test.beforeEach(async ({ page }) => {
@@ -206,12 +207,13 @@ test.describe("group page", () => {
       page.getByText("Primary meetup used for end-to-end dashboard and site coverage.", { exact: true }),
     ).toBeVisible();
     await expect(page.getByText(/\d+ members/)).toBeVisible();
-    const currentMonth = new Intl.DateTimeFormat("en-US", {
+    // The group was created when the seed loaded, so its month follows the seed clock.
+    const seedMonth = new Intl.DateTimeFormat("en-US", {
       month: "long",
       timeZone: "UTC",
       year: "numeric",
-    }).format(new Date());
-    await expect(page.getByText(currentMonth, { exact: true })).toBeVisible();
+    }).format(getSeedClock(TEST_CALENDAR_EVENTS.thisMonth.id).monthStart);
+    await expect(page.getByText(seedMonth, { exact: true })).toBeVisible();
     await expect(page.getByAltText("Tech Corp logo")).toBeVisible();
   });
 
@@ -317,7 +319,7 @@ test.describe("group page", () => {
     await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
 
     // Close the dialog and verify its scroll lock is released.
-    await page.locator(".swal2-confirm").click();
+    await dismissAlert(page, { message: "Failed to copy link. Please try again." });
     await shareDialog.getByRole("button", { name: "Close modal" }).click();
     await expect(shareDialog).toHaveCount(0);
     await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");

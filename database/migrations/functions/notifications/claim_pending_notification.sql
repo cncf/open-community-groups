@@ -13,15 +13,17 @@ returns table (
     template_data jsonb
 ) as $$
 begin
-    -- Check rate limit params are valid
+    -- Require a positive rate limit
     if p_delivery_rate_limit <= 0 then
         raise exception 'delivery rate limit must be positive';
     end if;
+
+    -- Require a positive rate limit window
     if p_delivery_rate_limit_window_seconds <= 0 then
         raise exception 'delivery rate limit window must be positive';
     end if;
 
-    -- Serialize delivery reservations across all workers and server instances.
+    -- Serialize delivery reservations across all workers and server instances
     perform pg_advisory_xact_lock(hashtextextended('ocg:notification-delivery-rate-limit', 0));
 
     -- Check if the rate limit has been reached
@@ -52,8 +54,7 @@ begin
             or (
                 n.kind in (
                     'event-admission-offer-canceled',
-                    'event-admission-offer-created',
-                    'event-invitation'
+                    'event-admission-offer-created'
                 )
                 and u.registration_status = 'pre-registered'
             )

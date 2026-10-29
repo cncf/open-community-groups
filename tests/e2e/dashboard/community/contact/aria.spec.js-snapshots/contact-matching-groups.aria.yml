@@ -1,0 +1,4 @@
+- group:
+  - text: 1 person (1 team seat across 1 group) Hide groups
+  - list "Matching groups":
+    - listitem: /E2E temporary group [0-9a-f]{8} E2E temporary group category [0-9a-f]{8} · E2E ARIA region 1 seat/

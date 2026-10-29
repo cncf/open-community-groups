@@ -3,6 +3,9 @@ import { expect, test } from "../../../fixtures.js";
 import { TEST_EVENT_NAME, TEST_GROUP_IDS, TEST_GROUP_NAMES, TEST_GROUP_SLUGS } from "../../../seed.js";
 import { navigateToPath, waitForActionResponse } from "../../../utils.js";
 
+// Sidebar warning shown while the selected group is inactive.
+const GROUP_DEACTIVATED_WARNING = "This group has been deactivated. Please contact a community admin.";
+
 test.describe("group dashboard navigation", () => {
   test("leaving Check-In keeps the page header mounted", async ({ organizerGroupPage }) => {
     // Load Check-In and mark the header node before desktop tab navigation.
@@ -13,11 +16,11 @@ test.describe("group dashboard navigation", () => {
     });
 
     // Open Events through the dashboard menu and wait for its HTMX response.
-    const eventsResponse = organizerGroupPage.waitForResponse((response) =>
-      response.url().includes("/dashboard/group?tab=events"),
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=events"]').click(),
+      { method: "GET", params: { tab: "events" }, pathname: "/dashboard/group", status: 200 },
     );
-    await organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=events"]').click();
-    expect((await eventsResponse).ok()).toBe(true);
 
     // Verify navigation updates dashboard state without replacing the page header.
     await expect(organizerGroupPage).toHaveURL(/\/dashboard\/group\?tab=events$/u);
@@ -39,13 +42,14 @@ test.describe("group dashboard navigation", () => {
     // A dashboard tab swap closes the confirmation before replacing its view.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openCancellationAlert();
-    const settingsResponse = organizerGroupPage.waitForResponse(
-      (response) => response.url().includes("/dashboard/group?tab=settings") && response.ok(),
+    await waitForActionResponse(
+      organizerGroupPage,
+      () =>
+        organizerGroupPage
+          .locator('a[hx-get="/dashboard/group?tab=settings"]')
+          .evaluate((settingsLink) => settingsLink.click()),
+      { method: "GET", params: { tab: "settings" }, pathname: "/dashboard/group", status: 200 },
     );
-    await organizerGroupPage
-      .locator('a[hx-get="/dashboard/group?tab=settings"]')
-      .evaluate((settingsLink) => settingsLink.click());
-    await settingsResponse;
     await expect(organizerGroupPage.locator(".swal2-popup")).toBeHidden();
 
     // A boosted full-page link also leaves no confirmation dialog behind.
@@ -106,6 +110,26 @@ test.describe("group dashboard navigation", () => {
       "href",
       /\/e2e-test-community\/group\/test-group-alpha$/,
     );
+  });
+
+  test("shows the deactivated warning for an inactive group", async ({ organizerEmptyGroupPage }) => {
+    // Load the dashboard of the seeded inactive group.
+    await navigateToPath(organizerEmptyGroupPage, "/dashboard/group?tab=events");
+
+    // Verify the selected group and its deactivated warning.
+    await expect(organizerEmptyGroupPage.locator("#group-selector-button")).toContainText(
+      TEST_GROUP_NAMES.empty,
+    );
+    await expect(organizerEmptyGroupPage.getByText(GROUP_DEACTIVATED_WARNING, { exact: true })).toBeVisible();
+  });
+
+  test("hides the deactivated warning for an active group", async ({ organizerGroupPage }) => {
+    // Load the dashboard of the seeded active group.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    // Verify the selected group renders without the deactivated warning.
+    await expect(organizerGroupPage.locator("#group-selector-button")).toContainText(TEST_GROUP_NAMES.alpha);
+    await expect(organizerGroupPage.getByText(GROUP_DEACTIVATED_WARNING, { exact: true })).toHaveCount(0);
   });
 
   test("organizer can filter groups in the dashboard selector", async ({ organizerGroupPage }) => {

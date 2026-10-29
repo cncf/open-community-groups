@@ -1,0 +1,14 @@
+- dialog "Complete refund recovery":
+  - heading "Complete refund recovery" [level=3]
+  - button "Close modal"
+  - paragraph: Confirm the attendee was refunded outside OCG, then record the external reference and the evidence you reviewed.
+  - term: Attendee
+  - definition: E2E Pending One
+  - term: Event
+  - definition: E2E ARIA event
+  - text: External refund reference *
+  - textbox "External refund reference *"
+  - text: Evidence reviewed *
+  - textbox "Evidence reviewed *"
+  - button "Cancel"
+  - button "Complete recovery"

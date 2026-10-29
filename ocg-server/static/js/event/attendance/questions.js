@@ -40,10 +40,7 @@ export const blockAttendanceRequestForQuestions = (event, target, container) => 
   }
 
   if (target.dataset.attendanceRole === "attend-btn") {
-    if (
-      meta.ticketModalRequired ||
-      (isWaitlistJoinAction(meta) && !isCompletingRegistrationQuestions(target))
-    ) {
+    if (meta.ticketModalRequired || isWaitlistJoinAction(meta)) {
       return false;
     }
 
@@ -128,14 +125,6 @@ export const handleAttendanceSubmit = (event) => {
     }
   }
 };
-
-/**
- * Returns true when the attendee must complete promoted waitlist questions.
- * @param {HTMLElement|null} button - Primary attend button
- * @returns {boolean} Whether the button is completing pending questions
- */
-export const isCompletingRegistrationQuestions = (button) =>
-  button instanceof HTMLButtonElement && button.dataset.registrationQuestionsPending === "true";
 
 /**
  * Returns true when the primary attendance action will join the waitlist.

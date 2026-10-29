@@ -2,13 +2,10 @@ import { expect, test } from "../../fixtures.js";
 
 import { queryE2eDatabase } from "../../database.js";
 import { TEST_EXTERNAL_PAYMENT_EVENTS, TEST_USER_IDS } from "../../seed.js";
-import { getAttendButton } from "../../site/event/helpers.js";
-import { navigateToPath, waitForActionResponse } from "../../utils.js";
+import { getAttendButton, getCheckoutButton, getTicketModal } from "../../site/event/helpers.js";
+import { confirmAlert, dismissAlert, navigateToPath, waitForActionResponse } from "../../utils.js";
 import {
   EXTERNAL_GROUP_ID,
-  dismissAlert,
-  getCheckoutButton,
-  getTicketModal,
   markExternalPurchasePaid,
   openExternalEvent,
   resetExternalPaymentFixtures,
@@ -16,9 +13,11 @@ import {
 } from "./external-helpers.js";
 
 test.describe("external payment settings", () => {
-  test.describe.configure({ mode: "serial" });
-
   test.beforeEach(() => {
+    resetExternalPaymentFixtures();
+  });
+
+  test.afterEach(() => {
     resetExternalPaymentFixtures();
   });
 
@@ -51,10 +50,10 @@ test.describe("external payment settings", () => {
       );
       expect(await checkoutResponse.json()).toEqual({ conflict: "payment-setup-unavailable" });
       await expect(ticketModal).toBeHidden();
-      await expect(member2Page.locator(".swal2-popup")).toContainText(
-        "Payment is temporarily unavailable for this ticket. Try again later or contact the organizer.",
-      );
-      await dismissAlert(member2Page);
+      await dismissAlert(member2Page, {
+        message:
+          "Payment is temporarily unavailable for this ticket. Try again later or contact the organizer.",
+      });
 
       // Verify group settings explain the ineligible payment state.
       await navigateToPath(organizerExternalGroupPage, "/dashboard/group?tab=settings");
@@ -76,7 +75,7 @@ test.describe("external payment settings", () => {
         `),
       ).toBe("completed");
     } finally {
-      // Restore operator eligibility for the remaining serial journeys.
+      // Restore operator eligibility for later journeys.
       queryE2eDatabase("select sync_external_payments_config(array['US']::text[], 72, 336);");
     }
   });
@@ -164,10 +163,9 @@ test.describe("external payment settings", () => {
         status: 422,
         urlIncludes: "/dashboard/group/settings/update",
       });
-      await expect(organizerExternalGroupPage.locator(".swal2-popup")).toContainText(
-        "external payments cannot be disabled while published external paid events are upcoming",
-      );
-      await dismissAlert(organizerExternalGroupPage);
+      await dismissAlert(organizerExternalGroupPage, {
+        message: "external payments cannot be disabled while published external paid events are upcoming",
+      });
 
       // An eligible country change still cannot strand events in another country.
       queryE2eDatabase("select sync_external_payments_config(array['US', 'CA']::text[], 72, 336);");
@@ -187,10 +185,9 @@ test.describe("external payment settings", () => {
         status: 422,
         urlIncludes: "/dashboard/group/settings/update",
       });
-      await expect(organizerExternalGroupPage.locator(".swal2-popup")).toContainText(
-        "published external paid events require a venue in the group country",
-      );
-      await dismissAlert(organizerExternalGroupPage);
+      await dismissAlert(organizerExternalGroupPage, {
+        message: "published external paid events require a venue in the group country",
+      });
     } finally {
       // Restore the external payment allowlist.
       queryE2eDatabase("select sync_external_payments_config(array['US']::text[], 72, 336);");
@@ -227,6 +224,66 @@ test.describe("external payment settings", () => {
     await expect(unpublishAlert).toContainText(/confirmed attendees?.*remain/iu);
     await unpublishAlert.getByRole("button", { name: "No" }).click();
     await expect(unpublishAlert).toBeHidden();
+  });
+
+  test("unpublishing expires pending external reservations and keeps confirmed attendees", async ({
+    member1Page,
+    member2Page,
+    notifications,
+    organizerExternalGroupPage,
+  }) => {
+    const event = TEST_EXTERNAL_PAYMENT_EVENTS.lifecycle;
+
+    // Confirm member2 through checkout and mark paid, then leave member1's reservation pending.
+    await startExternalCheckout(member2Page, event);
+    await markExternalPurchasePaid(
+      organizerExternalGroupPage,
+      event,
+      "E2E Member Two",
+      "Bank transfer received before unpublishing",
+    );
+    await startExternalCheckout(member1Page, event);
+    const unpublishCheckpoint = notifications.checkpoint();
+
+    // Confirm the external unpublish dialog from the events list.
+    await navigateToPath(organizerExternalGroupPage, "/dashboard/group?tab=events");
+    const eventRow = organizerExternalGroupPage.locator("#dashboard-content tbody tr", {
+      hasText: event.name,
+    });
+    await eventRow.locator(".btn-actions").click();
+    await eventRow.locator('button[id^="unpublish-event-"]').click();
+    await waitForActionResponse(
+      organizerExternalGroupPage,
+      () =>
+        confirmAlert(organizerExternalGroupPage, {
+          message: "Pending reservations awaiting external payment will expire",
+        }),
+      {
+        method: "PUT",
+        pathname: `/dashboard/group/events/${event.id}/unpublish`,
+        status: 204,
+      },
+    );
+
+    // Only the pending payer is told not to send money.
+    notifications.expectNew(
+      [
+        {
+          kind: "event-external-payment-expired",
+          templateDataContains: { do_not_pay: true, event_id: event.id },
+          userIds: [TEST_USER_IDS.member1],
+        },
+      ],
+      { since: unpublishCheckpoint },
+    );
+
+    // The event is unpublished, the pending hold expired and the paid attendee stays registered.
+    expect(JSON.parse(queryE2eDatabase(unpublishStateSql(event.id)))).toEqual({
+      member1PurchaseStatus: "expired",
+      member2AttendeeStatus: "confirmed",
+      member2PurchaseStatus: "completed",
+      published: false,
+    });
   });
 
   // Exercise copying external payment values into a blank event form.
@@ -355,3 +412,22 @@ test.describe("external payment settings", () => {
     }
   });
 });
+
+/** Returns SQL that reads the publication and enrollment state checked after unpublishing. */
+const unpublishStateSql = (eventId) => `
+  select json_build_object(
+    'member1PurchaseStatus', (
+      select status from event_purchase
+      where event_id = '${eventId}' and user_id = '${TEST_USER_IDS.member1}'
+    ),
+    'member2AttendeeStatus', (
+      select status from event_attendee
+      where event_id = '${eventId}' and user_id = '${TEST_USER_IDS.member2}'
+    ),
+    'member2PurchaseStatus', (
+      select status from event_purchase
+      where event_id = '${eventId}' and user_id = '${TEST_USER_IDS.member2}'
+    ),
+    'published', (select published from event where event_id = '${eventId}')
+  );
+`;

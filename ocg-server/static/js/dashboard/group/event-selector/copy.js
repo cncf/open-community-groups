@@ -116,7 +116,7 @@ export const applyCopiedEventDetails = async (details) => {
   setTextValue("registration_starts_at", "");
   setCategoryValue(details);
   setSelectValue("kind_id", details.kind);
-  setImageFieldValue("logo_url", details.logo_url);
+  setImageFieldValue("logo_url", details.custom_logo_url);
   setImageFieldValue("banner_url", details.banner_url);
   setImageFieldValue("banner_mobile_url", details.banner_mobile_url);
   setTextValue("description_short", details.description_short);

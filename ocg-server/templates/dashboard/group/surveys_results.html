@@ -95,7 +95,9 @@
                   <p class="text-xs text-stone-500">
                     Showing {{ text.answers.len() }} of {{ (text.total as i64)|num_fmt }} answer{{ text.total|pluralize }}
                   </p>
+                  {% let view_all_label = crate::templates::dashboard::group::surveys::view_all_answers_label(*text.total) -%}
                   <button type="button"
+                          aria-label="{{ view_all_label }}: {{ question.prompt }}"
                           hx-get="{{ crate::templates::dashboard::group::surveys::text_answers_url(*event.event_id, *survey.event_survey_id, *question.question_id) }}"
                           hx-target="#event-survey-text-answers-modal-content"
                           hx-swap="innerHTML"
@@ -105,9 +107,7 @@
                           data-event-survey-text-answers-open
                           data-htmx-response
                           data-error-message="Something went wrong loading these answers. Please try again later."
-                          class="btn-primary-outline btn-mini">
-                    {{ crate::templates::dashboard::group::surveys::view_all_answers_label(*text.total) }}<span class="sr-only">: {{ question.prompt }}</span>
-                  </button>
+                          class="btn-primary-outline btn-mini">{{ view_all_label }}</button>
                 </div>
                 {# End view all answers -#}
               {% endif -%}

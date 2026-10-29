@@ -1,0 +1,17 @@
+- text: Surveys
+- link "Open documentation":
+  - /url: /docs#/guides/user-dashboard?id=surveys-event-feedback
+- paragraph: Feedback surveys about events you attended. Answer open surveys and review the answers you gave to closed ones.
+- text: 0 surveys
+- table:
+  - rowgroup:
+    - row "Survey Status Closing Actions":
+      - columnheader "Survey"
+      - columnheader "Status"
+      - columnheader "Closing"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No surveys yet Surveys appear here when the organizers of an event you attended ask for your feedback.":
+      - cell "No surveys yet Surveys appear here when the organizers of an event you attended ask for your feedback.":
+        - text: ""
+        - paragraph: Surveys appear here when the organizers of an event you attended ask for your feedback.

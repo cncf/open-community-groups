@@ -1,0 +1,11 @@
+- text: Analytics
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=analytics-momentum
+- paragraph: Community statistics and growth trends. Analytics are cached for up to an hour and may not display up to date information.
+- tablist "Analytics summary":
+  - tab "Groups 0 Active, non-deleted groups" [selected]
+  - tab "Members 0 Members across all groups"
+  - tab "Events 0 Published, upcoming or past"
+  - tab "Attendees 0 RSVPs across all events"
+  - tab "Page views 0 Community, group, and event page views"
+- tabpanel "Groups": Groups Total No data available yet No data available yet Running total No data available yet No data available yet No data available yet Per month No data available yet No data available yet No data available yet

@@ -1,0 +1,13 @@
+- dialog "Always sent":
+  - heading "Always sent" [level=3]
+  - button "Close modal"
+  - paragraph: These emails can't be turned off because they're about your account or need your attention.
+  - list:
+    - listitem: "Account: email verification and team invitations."
+    - listitem: "Registrations: confirmations, group welcome emails, tickets, invitations, waitlist changes and offers."
+    - listitem: "Payments: instructions, reminders, expirations and refund decisions."
+    - listitem: "Event changes: cancellations and reschedules of events you attend or speak at."
+    - listitem: "Speaking: speaker confirmations, CFS updates and co-speaker invitations."
+    - listitem: "Conversations: replies from groups you wrote to."
+    - listitem: "Organizer actions: refund requests and co-hosting invitations, since someone needs to act on them."
+  - button "Close"

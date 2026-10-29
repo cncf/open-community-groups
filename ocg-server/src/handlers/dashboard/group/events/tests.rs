@@ -354,6 +354,42 @@ async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases
 }
 
 #[tokio::test]
+async fn test_update_page_leaves_logo_field_empty_without_own_logo() {
+    // Setup identifiers and an event whose logo falls back to the group logo
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut event_full = sample_event_full(ids.community_id, event_id, ids.group_id);
+    event_full.custom_logo_url = None;
+    event_full.group.logo_url = "https://example.test/group-logo.png".to_string();
+    event_full.logo_url = "https://example.test/group-logo.png".to_string();
+
+    // Setup database mock without enrollment rows
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, true);
+    expect_update_page_reads(
+        &mut db,
+        &ids,
+        event_full,
+        EventCohostsEditor::default(),
+        None,
+    );
+    expect_invitation_requests_tab_search(&mut db, &ids, event_id, 0);
+    expect_waitlist_tab_search(&mut db, &ids, event_id, 0);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = update_page_request(&ids, event_id);
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the fallback logo stays out of the form but remains available to the preview
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert_image_field_value(&body, "logo_url", "");
+    assert!(body.contains(r#"data-group-logo-url="https://example.test/group-logo.png""#));
+}
+
+#[tokio::test]
 async fn test_update_page_shows_enabled_invitation_requests_tab_without_search() {
     // Setup identifiers and an approval event without the waitlist
     let ids = DashboardIds::new();
@@ -493,6 +529,8 @@ async fn test_update_page_success() {
     let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
     let mut event_full = sample_event_full(ids.community_id, event_id, ids.group_id);
+    event_full.custom_logo_url = Some("https://example.test/event-logo.png".to_string());
+    event_full.logo_url = "https://example.test/event-logo.png".to_string();
     event_full.payment_currency_code = Some("USD".to_string());
     let organizers = event_full.organizers.clone();
 
@@ -521,6 +559,7 @@ async fn test_update_page_success() {
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert_image_field_value(&body, "logo_url", "https://example.test/event-logo.png");
     assert!(body.contains(">Tickets</"));
     assert!(body.contains("free-only"));
 
@@ -794,7 +833,10 @@ async fn test_details_success() {
     // Setup identifiers and data structures
     let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
-    let event_full = sample_event_full(ids.community_id, event_id, ids.group_id);
+    let event_full = EventFull {
+        custom_logo_url: Some("https://example.test/event-logo.png".to_string()),
+        ..sample_event_full(ids.community_id, event_id, ids.group_id)
+    };
     let event_full_db = event_full.clone();
 
     // Setup database mock

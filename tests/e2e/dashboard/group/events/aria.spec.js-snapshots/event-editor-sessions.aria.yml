@@ -1,0 +1,4 @@
+- text: Sessions Manage sessions for your event. Sessions are displayed sorted by start time.
+- heading "Friday, June 15, 2035" [level=3]
+- button "Add session"
+- text: No sessions scheduled yet. Click "Add session" to create one.

@@ -1,0 +1,5 @@
+- region "Check-In":
+  - heading "Check-In" [level=1]
+  - paragraph: Present your event QR code to an organizer when you arrive.
+  - heading "No events awaiting check-in" [level=2]
+  - paragraph: Confirmed upcoming events will appear here until you check in.

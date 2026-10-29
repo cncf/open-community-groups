@@ -1,0 +1,24 @@
+- navigation "Dashboard navigation":
+  - text: Community Dashboard Community
+  - button /E2E aria community [0-9a-f]{8}/
+  - link "Settings":
+    - /url: /dashboard/community?tab=settings
+  - link "Team":
+    - /url: /dashboard/community?tab=team
+  - link "Regions":
+    - /url: /dashboard/community?tab=regions
+  - link "Group Categories":
+    - /url: /dashboard/community?tab=group-categories
+  - link "Event Categories":
+    - /url: /dashboard/community?tab=event-categories
+  - text: Analytics
+  - link "Analytics":
+    - /url: /dashboard/community?tab=analytics
+  - text: Groups
+  - link "Groups":
+    - /url: /dashboard/community?tab=groups
+  - link "Contact":
+    - /url: /dashboard/community?tab=contact
+  - text: AUDIT
+  - link "Logs":
+    - /url: /dashboard/community?tab=logs

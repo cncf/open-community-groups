@@ -180,6 +180,20 @@ mod tests {
     }
 
     #[test]
+    fn test_page_renders_calendar_year_in_iso_week_of_next_year() {
+        // December 30, 2030 belongs to the first ISO week of 2031
+        let page = sample_page(
+            Some(Utc.with_ymd_and_hms(2030, 12, 30, 18, 0, 0).unwrap()),
+            chrono_tz::UTC,
+        );
+
+        let body = page.render().unwrap();
+
+        assert!(body.contains("30, 2030"));
+        assert!(!body.contains("2031"));
+    }
+
+    #[test]
     fn test_page_renders_host_for_paid_event_with_seller() {
         let mut page = sample_page(None, chrono_tz::UTC);
         page.event.seller_display_name = Some("Example Payee <Ltd>".to_string());

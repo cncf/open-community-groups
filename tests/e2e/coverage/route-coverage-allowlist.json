@@ -1,0 +1,86 @@
+[
+  {
+    "method": "GET",
+    "path": "/apple-touch-icon-precomposed.png",
+    "reason": "non-2xx-by-design",
+    "note": "The router answers apple-touch-icon probes with an explicit 404, so no hit is below 400; site/common/platform.spec.js asserts the 404.",
+    "coveredBy": "e2e:site/common/platform.spec.js"
+  },
+  {
+    "method": "GET",
+    "path": "/apple-touch-icon.png",
+    "reason": "non-2xx-by-design",
+    "note": "The router answers apple-touch-icon probes with an explicit 404, so no hit is below 400; site/common/platform.spec.js asserts the 404.",
+    "coveredBy": "e2e:site/common/platform.spec.js"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/group/events/tax-rates",
+    "reason": "provider-only",
+    "note": "Lists the fiscal sponsor's active Stripe Tax Rates; e2e uses fake Stripe credentials and never reaches Stripe.",
+    "coveredBy": "rust:test_tax_rates_returns_rates"
+  },
+  {
+    "method": "POST",
+    "path": "/dashboard/group/events/{event_id}/automatic-tax/readiness",
+    "reason": "provider-only",
+    "note": "Checks the event venue with Stripe Tax; e2e uses fake Stripe credentials and never reaches Stripe.",
+    "coveredBy": "rust:test_automatic_tax_readiness_reports_cache"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/purchases/{event_purchase_id}/credit-notes/{event_purchase_credit_note_id}",
+    "reason": "provider-only",
+    "note": "Redirects to a fresh Stripe credit-note URL fetched from the connected account; e2e uses fake Stripe credentials, so it never answers below 400.",
+    "coveredBy": "rust:test_credit_note_document_success"
+  },
+  {
+    "method": "GET",
+    "path": "/dashboard/user/purchases/{event_purchase_id}/invoice",
+    "reason": "provider-only",
+    "note": "Redirects to a fresh Stripe invoice URL fetched from the connected account; e2e uses fake Stripe credentials, so it never answers below 400.",
+    "coveredBy": "rust:test_invoice_document_success"
+  },
+  {
+    "method": "GET",
+    "path": "/log-in/oauth2/{provider}",
+    "reason": "disabled-in-e2e",
+    "note": "OAuth2 log-in is disabled in e2e (server.yml login.github is false), so the route is not mounted; site/common/platform.spec.js asserts it answers 404.",
+    "coveredBy": "rust:test_oauth2_redirect_success"
+  },
+  {
+    "method": "GET",
+    "path": "/log-in/oauth2/{provider}/callback",
+    "reason": "disabled-in-e2e",
+    "note": "OAuth2 log-in is disabled in e2e (server.yml login.github is false), so the route is not mounted; site/common/platform.spec.js asserts it answers 404.",
+    "coveredBy": "rust:test_oauth2_callback_success"
+  },
+  {
+    "method": "GET",
+    "path": "/log-in/oidc/{provider}",
+    "reason": "disabled-in-e2e",
+    "note": "OIDC log-in is disabled in e2e (server.yml login.linuxfoundation is false), so the route is not mounted; site/common/platform.spec.js asserts it answers 404.",
+    "coveredBy": "rust:test_oidc_redirect_success"
+  },
+  {
+    "method": "GET",
+    "path": "/log-in/oidc/{provider}/callback",
+    "reason": "disabled-in-e2e",
+    "note": "OIDC log-in is disabled in e2e (server.yml login.linuxfoundation is false), so the route is not mounted; site/common/platform.spec.js asserts it answers 404.",
+    "coveredBy": "rust:test_oidc_callback_success"
+  },
+  {
+    "method": "GET",
+    "path": "/static/{*file}",
+    "reason": "untraced",
+    "note": "Mounted outside the trace layer, so static responses emit no route-hit event although every page loads static assets.",
+    "coveredBy": "rust:test_static_handler_serves_assets_with_cache_policy"
+  },
+  {
+    "method": "POST",
+    "path": "/webhooks/payments/connected",
+    "reason": "non-2xx-by-design",
+    "note": "Covered by 2xx hits; the entry explains its 5xx: an invoice webhook whose connected account does not match the seller answers 500 so Stripe retries, and the spec asserts it.",
+    "coveredBy": "e2e:workflows/payments/stripe-webhooks.spec.js"
+  }
+]

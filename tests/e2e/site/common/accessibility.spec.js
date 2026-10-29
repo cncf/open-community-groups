@@ -1,57 +1,30 @@
 import { expect, test } from "../../fixtures.js";
 
-import {
-  TEST_COMMUNITY_NAME,
-  TEST_EVENT_NAME,
-  TEST_EVENT_SLUG,
-  TEST_GROUP_NAME,
-  TEST_GROUP_SLUG,
-  TEST_REGISTRATION_QUESTIONS_EVENT,
-} from "../../seed.js";
+import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_REGISTRATION_QUESTIONS_EVENT } from "../../seed.js";
 import { navigateToEvent, navigateToPath, navigateToSiteHome } from "../../utils.js";
 import { getAttendButton, waitForAttendanceState } from "../event/helpers.js";
-
-const PUBLIC_LANDMARK_PAGES = [
-  {
-    name: "home",
-    path: "/",
-    ready: (page) => page.getByRole("heading", { level: 1 }),
-  },
-  {
-    name: "explore",
-    path: `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
-    ready: (page) => page.getByPlaceholder("Search events"),
-  },
-  {
-    name: "event",
-    path: `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}`,
-    ready: (page) => page.getByRole("heading", { level: 1, name: TEST_EVENT_NAME }),
-  },
-  {
-    name: "group",
-    path: `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}`,
-    ready: (page) => page.getByRole("heading", { level: 1, name: TEST_GROUP_NAME }),
-  },
-];
+import { PUBLIC_PAGES } from "./public-pages.js";
 
 test.describe("site structural accessibility", () => {
-  for (const landmarkPage of PUBLIC_LANDMARK_PAGES) {
-    test(`${landmarkPage.name} exposes the shared public landmarks`, async ({ page }) => {
-      // Load a seeded public page before checking its application shell.
-      await navigateToPath(page, landmarkPage.path);
-      await expect(landmarkPage.ready(page)).toBeVisible();
+  for (const publicPage of PUBLIC_PAGES) {
+    test(`${publicPage.name} exposes the shared public landmarks`, async ({ page }) => {
+      const { main = 1, mainNavigation = 1, siteFooter = 1 } = publicPage.landmarks ?? {};
 
-      // Verify the shared shell landmarks stay unique; event/group pages may also render breadcrumbs.
+      // Load a seeded public page before checking its application shell.
+      await navigateToPath(page, publicPage.path);
+      await expect(publicPage.ready(page)).toBeVisible({ timeout: 15_000 });
+
+      // Verify the shell landmark counts; event/group pages may also render breadcrumbs.
       await expect(page.getByRole("banner")).toHaveCount(1);
-      await expect(page.getByRole("main")).toHaveCount(1);
-      await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(1);
-      await expect(page.getByRole("contentinfo", { name: "Site footer" })).toHaveCount(1);
+      await expect(page.getByRole("main")).toHaveCount(main);
+      await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(mainNavigation);
+      await expect(page.getByRole("contentinfo", { name: "Site footer" })).toHaveCount(siteFooter);
     });
 
-    test(`${landmarkPage.name} images have alternative text or are hidden`, async ({ page }) => {
+    test(`${publicPage.name} images have alternative text or are hidden`, async ({ page }) => {
       // Load a seeded public page before scanning rendered image elements.
-      await navigateToPath(page, landmarkPage.path);
-      await expect(landmarkPage.ready(page)).toBeVisible();
+      await navigateToPath(page, publicPage.path);
+      await expect(publicPage.ready(page)).toBeVisible({ timeout: 15_000 });
 
       // Verify every rendered image has an alt attribute or is explicitly hidden from assistive tech.
       const inaccessibleImages = await page

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../fixtures.js";
 import {
   TEST_CANCELED_PUBLIC_EVENT,
   TEST_COHOSTED_EVENT,
@@ -26,6 +26,7 @@ import {
   navigateToEvent,
   navigateToPath,
   routeEmptyBasemap,
+  waitForResponseMatching,
 } from "../../utils.js";
 import { selectLabels } from "../../dashboard/group/events/event-form-helpers.js";
 
@@ -39,18 +40,20 @@ const COHOSTED_EVENT_COHOSTS = [
   {
     communityDisplayName: "Developer Experience Community",
     href: `/${TEST_COMMUNITY_NAME_2}/group/${TEST_GROUP_SLUGS.community2.delta}`,
-    name: "E2E Second Group Delta",
+    name: TEST_GROUP_NAMES.delta,
   },
   {
     communityDisplayName: "Developer Experience Community",
     href: `/${TEST_COMMUNITY_NAME_2}/group/${TEST_GROUP_SLUGS.community2.zeta}`,
-    name: "E2E Second Group Zeta",
+    name: TEST_GROUP_NAMES.zeta,
   },
 ];
 
 const DASHBOARD_WAITLIST_EVENT_SLUG = "alpha-dashboard-waitlist-lab";
 
 const OPEN_GRAPH_IMAGE_FILE_NAME = "7744970faed216a0b2d3be30ffef5aeb1bd6b65c5407ccc4f3dd824d132f1656.png";
+
+const PRIMARY_EVENT_DESCRIPTION = "Upcoming in-person event used for attendance and dashboard coverage.";
 
 const PRIMARY_EVENT_LOCATION = "Tech Conference Center, 123 Main Street, New York, NY, United States";
 
@@ -60,21 +63,30 @@ test.describe("event page", () => {
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
   });
 
-  test("breadcrumb navigation is visible", async ({ page }) => {
-    // Verify the event breadcrumb renders in the page header.
-    const breadcrumb = page.locator("breadcrumb-nav");
-    await expect(breadcrumb).toBeVisible();
-  });
-
-  test("event name displays as h1 heading", async ({ page }) => {
-    // Target the event heading from the public page.
-    const heading = page.getByRole("heading", {
-      level: 1,
-      name: TEST_EVENT_NAME,
+  test("event header shows breadcrumb, title, group link and kind", async ({ page }) => {
+    await test.step("breadcrumb ends at the event", async () => {
+      const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
+      await expect(breadcrumb).toBeVisible();
+      await expect(breadcrumb).toContainText(TEST_EVENT_NAME);
     });
 
-    // Verify the event name renders as the primary heading.
-    await expect(heading).toBeVisible();
+    await test.step("event name is the h1 heading", async () => {
+      await expect(page.getByRole("heading", { level: 1, name: TEST_EVENT_NAME })).toBeVisible();
+    });
+
+    await test.step("group link points to the hosting group", async () => {
+      const groupLink = page.getByRole("link", { name: TEST_GROUP_NAME }).last();
+      await expect(groupLink).toBeVisible();
+      await expect(groupLink).toHaveAttribute("href", `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}`);
+    });
+
+    await test.step("kind badge shows the in-person kind", async () => {
+      const kindBadge = getIntroSection(page)
+        .locator(".custom-badge")
+        .filter({ hasText: /^in-person$/ });
+      await expect(kindBadge).toBeVisible();
+      await expect(kindBadge).toHaveText("in-person");
+    });
   });
 
   test("event page exposes its canonical URL and page title", async ({ page }) => {
@@ -157,20 +169,15 @@ test.describe("event page", () => {
 
     // Watch the public availability endpoint before reloading the event page.
     const availabilityPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}/availability`;
-    const availabilityResponsePromise = page
-      .waitForResponse(
-        (response) =>
-          response.request().method() === "GET" && new URL(response.url()).pathname === availabilityPath,
-      )
-      .then(async (response) => ({
-        availability: await response.json(),
-        responseIsOk: response.ok(),
-      }));
+    const availabilityPromise = waitForResponseMatching(page, {
+      method: "GET",
+      pathname: availabilityPath,
+      status: 200,
+    }).then((response) => response.json());
 
     // Reload the page and read the same payload used by the availability UI.
     await page.reload();
-    const { availability, responseIsOk } = await availabilityResponsePromise;
-    expect(responseIsOk).toBeTruthy();
+    const availability = await availabilityPromise;
     expect(availability.capacity).toBe(100);
     expect(availability.remaining_capacity).toBeGreaterThan(0);
 
@@ -213,67 +220,80 @@ test.describe("event page", () => {
     expect(imageResponse.headers()["cache-control"]).toContain("immutable");
   });
 
-  test("group link displays and links correctly", async ({ page }) => {
-    // Verify the event header links back to the hosting group page.
-    const groupLink = page.getByRole("link", { name: TEST_GROUP_NAME }).last();
-
-    // Verify group link displays and links correctly.
-    await expect(groupLink).toBeVisible();
-    await expect(groupLink).toHaveAttribute("href", `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}`);
-  });
-
-  test("event kind badge displays for event", async ({ page }) => {
-    // Verify the event kind badge renders in the event header.
-    const badge = page.getByText(/^(in-person|virtual|hybrid)$/i).first();
-    await expect(badge).toBeVisible();
-  });
-
-  test("event date section renders with heading", async ({ page }) => {
-    // Verify the event date section heading is present.
-    await expect(page.getByText("Event date", { exact: true })).toBeVisible();
-  });
-
-  test("event date displays the alpha event formatted date", async ({ page }) => {
-    // Resolve the expected alpha event date from the page's seeded event data.
-    const eventDateSection = getEventInfoSection(page, "Event date");
-    const expectedDate = await getPrimaryEventDateParts(page);
-
-    // Verify the alpha event renders its exact date and time range.
-    await expect(eventDateSection.getByText(expectedDate.date, { exact: true })).toBeVisible();
-    await expect(eventDateSection.getByText(expectedDate.timeRange, { exact: true })).toBeVisible();
-    await expect(eventDateSection.getByText("TBD", { exact: true })).toHaveCount(0);
-  });
-
-  test("location section renders with heading", async ({ page }) => {
-    // Verify the location section heading is present.
-    await expect(page.getByText("Location", { exact: true })).toBeVisible();
-  });
-
-  test("location section displays the alpha event venue", async ({ page }) => {
-    // Target the alpha event location section and map control.
-    const locationSection = getEventInfoSection(page, "Location");
-    const mapButton = locationSection.getByRole("button", {
-      name: "Open full map view",
+  test("event info cards show date, venue and capacity", async ({ page }) => {
+    await test.step("date card shows the seeded date and time range", async () => {
+      const eventDateSection = getEventInfoSection(page, "Event date");
+      const expectedDate = await getPrimaryEventDateParts(page);
+      await expect(page.getByText("Event date", { exact: true })).toBeVisible();
+      await expect(eventDateSection.getByText(expectedDate.date, { exact: true })).toBeVisible();
+      await expect(eventDateSection.getByText(expectedDate.timeRange, { exact: true })).toBeVisible();
+      await expect(eventDateSection.getByText("TBD", { exact: true })).toHaveCount(0);
     });
 
-    // Verify the alpha event renders its exact venue and map trigger.
-    await expect(locationSection.getByText(PRIMARY_EVENT_LOCATION, { exact: true }).first()).toBeVisible();
-    await expect(mapButton.first()).toBeVisible();
-    await expect(locationSection.getByText("Virtual event", { exact: true })).toHaveCount(0);
-    await expect(locationSection.getByText("Location not provided", { exact: true })).toHaveCount(0);
-  });
+    await test.step("location card shows the seeded venue and map trigger", async () => {
+      const locationSection = getEventInfoSection(page, "Location");
+      await expect(page.getByText("Location", { exact: true })).toBeVisible();
+      await expect(locationSection.getByText(PRIMARY_EVENT_LOCATION, { exact: true }).first()).toBeVisible();
+      await expect(locationSection.getByRole("button", { name: "Open full map view" }).first()).toBeVisible();
+      await expect(locationSection.getByText("Virtual event", { exact: true })).toHaveCount(0);
+      await expect(locationSection.getByText("Location not provided", { exact: true })).toHaveCount(0);
+    });
 
-  test.describe("primary event seed data", () => {
-    test("capacity displays when set", async ({ page }) => {
-      // Verify the event capacity label is rendered.
+    await test.step("capacity shows the seeded limit", async () => {
       await expect(page.getByText(/Capacity:\s*100/)).toBeVisible();
     });
+  });
 
-    test("location displays venue information for in-person event", async ({ page }) => {
-      // Verify the in-person event includes its venue city.
-      await expect(page.getByText(/New York/).first()).toBeVisible();
+  test("event content sections show seeded description, tags, links, gallery, people and agenda", async ({
+    page,
+  }) => {
+    await test.step("about section shows the seeded description", async () => {
+      const aboutSection = getEventAboutSection(page);
+      await expect(aboutSection).toContainText("About this event");
+      await expect(aboutSection.locator(".markdown")).toContainText(PRIMARY_EVENT_DESCRIPTION);
     });
 
+    await test.step("tags section lists the seeded tags", async () => {
+      await expect(page.getByText("Tags", { exact: true }).first()).toBeVisible();
+      for (const tag of ["meetup", "tech", "networking"]) {
+        await expect(page.getByText(tag, { exact: true })).toBeVisible();
+      }
+    });
+
+    await test.step("meetup link points to the seeded event page", async () => {
+      const meetupLink = page.getByRole("link", { name: "Meetup", exact: true });
+      await expect(meetupLink).toBeVisible();
+      await expect(meetupLink).toHaveAttribute("href", "https://www.meetup.com/test-group/events/123456789/");
+    });
+
+    await test.step("gallery section renders the images gallery", async () => {
+      await expect(page.getByText("Gallery", { exact: true }).first()).toBeVisible();
+      await expect(page.locator("images-gallery")).toBeVisible();
+    });
+
+    await test.step("people sections list the seeded sponsor, hosts and speakers", async () => {
+      await expect(getPeopleSection(page, "Sponsors")).toContainText("Tech Corp");
+      await expect(getPeopleSection(page, "Hosts")).toContainText("E2E Organizer One");
+      await expect(getPeopleSection(page, "Featured speakers")).toContainText("E2E Member One");
+      await expect(getPeopleSection(page, "Speakers")).toContainText("E2E Member Two");
+    });
+
+    await test.step("agenda lists the seeded sessions and their speakers", async () => {
+      await expect(page.getByText("Agenda", { exact: true })).toBeVisible();
+      await expect(page.getByText("Opening Keynote")).toBeVisible();
+      await expect(page.getByText("Technical Workshop")).toBeVisible();
+
+      // The labels filter is omitted when no session has labels.
+      await expect(page.locator("#agenda-label-filter")).toHaveCount(0);
+
+      const keynoteItem = page.locator("li", { hasText: "Opening Keynote" });
+      await expect(keynoteItem.getByText("SPEAKERS", { exact: true })).toBeVisible();
+      await expect(keynoteItem.getByText("E2E Member One")).toBeVisible();
+      await expect(keynoteItem.getByText("E2E Member Two")).toBeVisible();
+    });
+  });
+
+  test.describe("primary event interactions", () => {
     test("location map modal opens and closes", async ({ page }) => {
       // Target the public location map and modal elements.
       const locationSection = getEventInfoSection(page, "Location");
@@ -342,51 +362,6 @@ test.describe("event page", () => {
       await expect(mapButton).toBeFocused();
     });
 
-    test("about section renders with heading and description", async ({ page }) => {
-      // Target the about section markdown content.
-      const aboutSection = getEventAboutSection(page);
-      const description = aboutSection.locator(".markdown");
-
-      // Verify the about section includes heading and description text.
-      await expect(aboutSection).toContainText("About this event");
-      await expect(description).toContainText(/\S/);
-    });
-
-    test("tags section renders when event has tags", async ({ page }) => {
-      // Verify the event tags section is present.
-      await expect(page.getByText("Tags", { exact: true }).first()).toBeVisible();
-    });
-
-    test("individual tags display correctly", async ({ page }) => {
-      // Verify each expected event tag is visible.
-      await expect(page.getByText("meetup", { exact: true })).toBeVisible();
-
-      // Verify the remaining expected event tags are visible.
-      await expect(page.getByText("tech", { exact: true })).toBeVisible();
-      await expect(page.getByText("networking", { exact: true })).toBeVisible();
-    });
-
-    test("meetup social link is visible", async ({ page }) => {
-      // Target the event Meetup link.
-      const meetupLink = page.getByRole("link", {
-        name: "Meetup",
-        exact: true,
-      });
-
-      // Verify the Meetup link points to the configured event page.
-      await expect(meetupLink).toBeVisible();
-      await expect(meetupLink).toHaveAttribute("href", "https://www.meetup.com/test-group/events/123456789/");
-    });
-
-    test("gallery section renders with photos", async ({ page }) => {
-      // Verify the event gallery section and image gallery render.
-      await expect(page.getByText("Gallery", { exact: true }).first()).toBeVisible();
-
-      // Verify the gallery component is present.
-      const gallery = page.locator("images-gallery");
-      await expect(gallery).toBeVisible();
-    });
-
     test("gallery handles broken images in thumbnails and carousel", async ({ page }) => {
       // Target the gallery thumbnail with a broken fixture image.
       const gallery = page.locator("images-gallery");
@@ -421,45 +396,6 @@ test.describe("event page", () => {
       // Verify navigating to the valid image shows the next slide.
       await modal.getByRole("button", { name: "Next" }).click();
       await expect(modal.locator(".z-30.translate-x-0").locator(`img[alt="${validImageAlt}"]`)).toBeVisible();
-    });
-
-    test("sponsors section renders with sponsor badge", async ({ page }) => {
-      // Verify public sponsor content is shown for the event.
-      await expect(page.getByText("Sponsors", { exact: true })).toBeVisible();
-
-      // Verify the seeded sponsor appears in the section.
-      await expect(page.getByText("Tech Corp")).toBeVisible();
-    });
-
-    test("hosts section renders", async ({ page }) => {
-      // Verify the event hosts section is present.
-      await expect(page.getByText("Hosts", { exact: true })).toBeVisible();
-    });
-
-    test("speakers section renders with featured and regular speakers", async ({ page }) => {
-      // Verify featured and regular speaker sections are present.
-      await expect(page.getByText("Featured speakers", { exact: true })).toBeVisible();
-
-      // Verify the regular speakers section is present.
-      await expect(page.getByText("Speakers", { exact: true })).toBeVisible();
-    });
-
-    test("agenda section renders with sessions", async ({ page }) => {
-      // Verify the agenda includes the expected session names.
-      await expect(page.getByText("Agenda", { exact: true })).toBeVisible();
-
-      // Verify seeded agenda sessions are visible.
-      await expect(page.getByText("Opening Keynote")).toBeVisible();
-      await expect(page.getByText("Technical Workshop")).toBeVisible();
-
-      // Verify the labels filter is omitted when no session has labels.
-      await expect(page.locator("#agenda-label-filter")).toHaveCount(0);
-
-      // Verify the keynote session lists its featured and regular speakers.
-      const keynoteItem = page.locator("li", { hasText: "Opening Keynote" });
-      await expect(keynoteItem.getByText("SPEAKERS", { exact: true })).toBeVisible();
-      await expect(keynoteItem.getByText("E2E Member One")).toBeVisible();
-      await expect(keynoteItem.getByText("E2E Member Two")).toBeVisible();
     });
   });
 });
@@ -496,20 +432,15 @@ test.describe("event page - sold-out availability", () => {
     // Watch availability while loading the dedicated full event fixture.
     const eventSlug = "alpha-waitlist-lab";
     const availabilityPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${eventSlug}/availability`;
-    const availabilityResponsePromise = page
-      .waitForResponse(
-        (response) =>
-          response.request().method() === "GET" && new URL(response.url()).pathname === availabilityPath,
-      )
-      .then(async (response) => ({
-        availability: await response.json(),
-        responseIsOk: response.ok(),
-      }));
+    const availabilityPromise = waitForResponseMatching(page, {
+      method: "GET",
+      pathname: availabilityPath,
+      status: 200,
+    }).then((response) => response.json());
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, eventSlug);
 
     // Verify the server and page both expose the exhausted capacity state.
-    const { availability, responseIsOk } = await availabilityResponsePromise;
-    expect(responseIsOk).toBeTruthy();
+    const availability = await availabilityPromise;
     expect(availability.capacity).toBe(1);
     expect(availability.remaining_capacity).toBe(0);
     await expect(page.locator("[data-availability-capacity]")).toHaveText("1");
@@ -545,25 +476,6 @@ test.describe("event page - responsive", () => {
     });
 
     // Verify the mobile page sections are visible.
-    await expect(heading).toBeVisible();
-
-    // Assert the expected content is visible.
-    await expect(getEventInfoSection(page, "Event date")).toBeVisible();
-    await expect(getEventInfoSection(page, "Location")).toBeVisible();
-    await expect(getEventAboutSection(page)).toBeVisible();
-  });
-
-  test("event page renders correctly on desktop viewport", async ({ page }) => {
-    // Load the event page for the desktop viewport.
-    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
-
-    // Find the heading.
-    const heading = page.getByRole("heading", {
-      level: 1,
-      name: TEST_EVENT_NAME,
-    });
-
-    // Verify the desktop page sections are visible.
     await expect(heading).toBeVisible();
 
     // Assert the expected content is visible.
@@ -847,6 +759,9 @@ const formatUtcTime = (date) =>
     minute: "2-digit",
     timeZone: "UTC",
   }).format(date);
+
+/** Selects an event people section, such as hosts or speakers, by its heading. */
+const getPeopleSection = (page, heading) => page.getByText(heading, { exact: true }).locator("..");
 
 /** Returns the primary event date text expected from data-starts. */
 const getPrimaryEventDateParts = async (page) => {

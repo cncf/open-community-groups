@@ -79,6 +79,10 @@ const COMMUNITY_PAGE_VIEW_CHARTS = [
     kind: "daily",
   },
 ];
+// Summary cards act as tabs only from the xl breakpoint, where they are clickable
+// and show the selected card; below it the "Analytics tabs" list is the tab UI.
+const SUMMARY_TABS_MEDIA_QUERY = "(min-width: 80rem)";
+const SUMMARY_TABS_SELECTOR = "[data-analytics-summary]";
 
 /**
  * Render page view charts.
@@ -613,7 +617,11 @@ const setupAnalyticsTabs = (stats, palette) => {
 
   const showTab = (tab) => {
     tabButtons.forEach((btn) => {
-      btn.dataset.active = btn.dataset.analyticsTab === tab ? "true" : "false";
+      const active = btn.dataset.analyticsTab === tab ? "true" : "false";
+      btn.dataset.active = active;
+      if (btn.getAttribute("role") === "tab") {
+        btn.setAttribute("aria-selected", active);
+      }
     });
 
     tabContents.forEach((content) => {
@@ -624,6 +632,7 @@ const setupAnalyticsTabs = (stats, palette) => {
     initTabCharts(tab).catch((error) => console.error("Failed to initialize analytics charts", error));
   };
 
+  setupSummaryTabs(document.querySelector(SUMMARY_TABS_SELECTOR));
   showTab("groups");
 
   tabButtons.forEach((button) => {
@@ -631,6 +640,51 @@ const setupAnalyticsTabs = (stats, palette) => {
       const tab = button.dataset.analyticsTab;
       showTab(tab);
     });
+  });
+};
+
+/**
+ * Keep the summary cards exposed as tabs only while they are the visible tab UI.
+ * @param {HTMLElement|null} summary - Summary cards container.
+ */
+const setupSummaryTabs = (summary) => {
+  if (!summary || typeof window.matchMedia !== "function") {
+    return;
+  }
+
+  const query = window.matchMedia(SUMMARY_TABS_MEDIA_QUERY);
+  const handleChange = () => {
+    // Analytics content swapped out: stop following the viewport.
+    if (!summary.isConnected) {
+      query.removeEventListener("change", handleChange);
+      return;
+    }
+    syncSummaryTabs(summary, query.matches);
+  };
+
+  syncSummaryTabs(summary, query.matches);
+  query.addEventListener("change", handleChange);
+};
+
+/**
+ * Expose the summary cards as a tab list at xl and as plain stat cards below it.
+ * @param {HTMLElement} summary - Summary cards container.
+ * @param {boolean} isTabList - Whether the cards are the visible tab UI.
+ */
+const syncSummaryTabs = (summary, isTabList) => {
+  summary.setAttribute("role", isTabList ? "tablist" : "group");
+  summary.querySelectorAll("[data-analytics-tab]").forEach((card) => {
+    if (isTabList) {
+      card.setAttribute("role", "tab");
+      card.setAttribute("aria-selected", card.dataset.active === "true" ? "true" : "false");
+      card.setAttribute("aria-controls", `analytics-panel-${card.dataset.analyticsTab}`);
+      card.removeAttribute("tabindex");
+    } else {
+      card.removeAttribute("role");
+      card.removeAttribute("aria-selected");
+      card.removeAttribute("aria-controls");
+      card.setAttribute("tabindex", "-1");
+    }
   });
 };
 

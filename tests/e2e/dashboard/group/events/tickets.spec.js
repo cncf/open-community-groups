@@ -1,7 +1,19 @@
 import { expect, test } from "../../../fixtures.js";
-import { TEST_PAYMENT_EVENT_IDS, TEST_PAYMENT_EVENT_NAMES, TEST_TICKETING_EVENTS } from "../../../seed.js";
-import { queryE2eDatabase } from "../../../database.js";
-import { navigateToPath, selectTimezone, uniqueName } from "../../../utils.js";
+import {
+  TEST_EVENT_CATEGORY_IDS,
+  TEST_PAYMENT_EVENT_IDS,
+  TEST_PAYMENT_EVENT_NAMES,
+  TEST_TICKETING_EVENTS,
+} from "../../../seed.js";
+import { queryE2eDatabase, restoreRow, snapshotRow } from "../../../database.js";
+import {
+  futureDate,
+  navigateToPath,
+  selectTimezone,
+  uniqueName,
+  waitForActionResponse,
+  waitForResponseMatching,
+} from "../../../utils.js";
 import { fillEventVenue, fillMarkdownEditor } from "../../form-helpers.js";
 import {
   addDiscountCode,
@@ -16,6 +28,9 @@ import {
   openDetailsSection,
   setAutomaticMeetingCapacity,
 } from "./event-form-helpers.js";
+
+// Path of the update form an event row's edit button loads.
+const EVENT_UPDATE_PATHNAME = /^\/dashboard\/group\/events\/[0-9a-f-]+\/update$/;
 
 test.describe("group dashboard event Tickets tab", () => {
   test("organizer sees free-only tickets when group payments are unavailable", async ({
@@ -55,16 +70,11 @@ test.describe("group dashboard event Tickets tab", () => {
     await expect(eventRow).toBeVisible();
 
     // Open the existing event and wait for update content.
-    await Promise.all([
-      organizerGroupWithoutPaymentsPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/dashboard/group/events/") &&
-          response.url().includes("/update") &&
-          response.ok(),
-      ),
-      eventRow.locator('td button[aria-label^="Edit event:"]').click(),
-    ]);
+    await waitForActionResponse(
+      organizerGroupWithoutPaymentsPage,
+      () => eventRow.locator('td button[aria-label^="Edit event:"]').click(),
+      { method: "GET", pathname: EVENT_UPDATE_PATHNAME, status: 200 },
+    );
 
     // Verify the update form exposes free-only ticket controls.
     await expect(organizerGroupWithoutPaymentsPage.locator('button[data-section="payments"]')).toBeVisible();
@@ -161,9 +171,7 @@ test.describe("group dashboard event Tickets tab", () => {
     // The seeded draft event carries dated price windows and a dated discount code, which only
     // register as a ticketing change when their timestamps are compared without normalization.
     const eventId = TEST_PAYMENT_EVENT_IDS.draft;
-    const originalDescriptionShort = queryE2eDatabase(
-      `select coalesce(description_short, '') from event where event_id = '${eventId}'`,
-    );
+    const eventSnapshot = snapshotRow({ key: { event_id: eventId }, table: "event" });
     const ticketingConfigurationBefore = readTicketingConfiguration(eventId);
     const updatedDescriptionShort = uniqueName("dated ticketing round trip");
 
@@ -187,10 +195,8 @@ test.describe("group dashboard event Tickets tab", () => {
       );
       expect(readTicketingConfiguration(eventId)).toBe(ticketingConfigurationBefore);
     } finally {
-      // Restore the original event summary without changing ticketing.
-      queryE2eDatabase(
-        `update event set description_short = nullif('${originalDescriptionShort}', '') where event_id = '${eventId}'`,
-      );
+      // Restore the whole seeded event row; the save also normalizes columns it did not edit.
+      restoreRow(eventSnapshot);
     }
   });
 
@@ -216,9 +222,11 @@ test.describe("group dashboard event Tickets tab", () => {
 
     // Open the event whose saved manual rate is absent from the provider response.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
-    const taxRatesResponsePromise = organizerGroupPage.waitForResponse(
-      (response) => response.url().includes("/dashboard/group/events/tax-rates") && response.ok(),
-    );
+    const taxRatesResponsePromise = waitForResponseMatching(organizerGroupPage, {
+      method: "GET",
+      pathname: "/dashboard/group/events/tax-rates",
+      status: 200,
+    });
     await openEventUpdateFormByName(
       organizerGroupPage,
       TEST_TICKETING_EVENTS.manualTaxUnavailable.name,
@@ -357,8 +365,6 @@ test.describe("group dashboard event Tickets tab", () => {
   test("organizer can configure paid tiers without contacting the payment provider", async ({
     organizerGroupPage,
   }) => {
-    test.setTimeout(90_000);
-
     // Create a unique event name for the tiered payment flow.
     const eventName = uniqueName("Paid Tier Event");
 
@@ -372,7 +378,7 @@ test.describe("group dashboard event Tickets tab", () => {
     // Fill the core event details.
     await organizerGroupPage.locator("#name").fill(eventName);
     await organizerGroupPage.locator("#kind_id").selectOption("virtual");
-    await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#category_id").selectOption(TEST_EVENT_CATEGORY_IDS.general);
     await organizerGroupPage.locator("#description_short").fill("Paid dashboard event for payment coverage.");
     await fillMarkdownEditor(
       organizerGroupPage,
@@ -388,8 +394,8 @@ test.describe("group dashboard event Tickets tab", () => {
     // Fill schedule and online meeting details.
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
-    await organizerGroupPage.locator("#starts_at").fill("2030-11-12T18:00");
-    await organizerGroupPage.locator("#ends_at").fill("2030-11-12T20:00");
+    await organizerGroupPage.locator("#starts_at").fill(futureDate({ days: 290, hour: 18 }));
+    await organizerGroupPage.locator("#ends_at").fill(futureDate({ days: 290, hour: 20 }));
     await enableAutomaticMeetingCreation(organizerGroupPage);
 
     // Open payments before editing the default admission tier.
@@ -414,8 +420,8 @@ test.describe("group dashboard event Tickets tab", () => {
       description: "Paid tier with early-bird pricing.",
       seatsTotal: "30",
       priceWindows: [
-        { amount: "2500", endsAt: "2030-10-01T23:59" },
-        { amount: "3000", startsAt: "2030-10-02T00:00" },
+        { amount: "2500", endsAt: futureDate({ days: 248, hour: 23, minute: 59 }) },
+        { amount: "3000", startsAt: futureDate({ days: 249, hour: 0 }) },
       ],
     });
 

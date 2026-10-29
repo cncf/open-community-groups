@@ -108,6 +108,7 @@ export class ImagesGallery extends LitWrapper {
             <div class="hidden md:block">
               <button
                 class="relative w-full overflow-hidden rounded-lg bg-white outline outline-offset-1 outline-1 outline-stone-300 transition-all hover:outline-primary-300 hover:shadow-sm"
+                aria-label="Open ${this.altImage} image ${index + 1}"
                 @click=${() => this._openModal(index)}
               >
                 <img
@@ -154,6 +155,7 @@ export class ImagesGallery extends LitWrapper {
             @click=${this._closeModal}
           >
             <div class="svg-icon size-8 bg-stone-800 icon-close"></div>
+            <span class="sr-only">Close</span>
           </button>
           <!-- End close button -->
 

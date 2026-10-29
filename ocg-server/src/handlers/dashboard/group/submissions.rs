@@ -48,17 +48,22 @@ pub(crate) async fn list_page(
     ValidatedQuery(filters): ValidatedQuery<CfsSubmissionsFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event submissions (checking event belongs to group for event-keyed labels)
-    let (can_manage_events, _event, labels, submissions) = tokio::try_join!(
+    let (can_manage_events, event, labels, submissions) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary(community_id, group_id, event_id), // ensure event belongs to group
+        db.find_event_summary(community_id, group_id, event_id),
         db.list_event_labels(event_id),
         db.list_event_cfs_submissions(group_id, event_id, &filters)
     )?;
+
+    // Reject events outside the selected group
+    if event.is_none() {
+        return Err(HandlerError::NotFound);
+    }
 
     // Prepare template
     let base_path = format!("/dashboard/group/events/{event_id}/submissions");

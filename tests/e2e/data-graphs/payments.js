@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { queryE2eDatabase } from "../database.js";
+import { queryE2eDatabase, sqlString } from "../database.js";
 
 const PAYMENT_SELLER_SNAPSHOT =
   '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}';
@@ -157,6 +157,137 @@ export const setupOwnedCompletedRefundPurchase = ({ eventId, userId }) => {
   `);
 
   return { eventId, purchaseId, userId };
+};
+
+/**
+ * Creates exhausted credit-note work on a finalized refund that an organizer can complete
+ * outside OCG.
+ * @param {{ eventId: string, userId: string }} input - Financial work owner.
+ * @returns {{
+ *   attendeeName: string,
+ *   creditNoteId: string,
+ *   eventId: string,
+ *   paymentJobId: string,
+ *   purchaseId: string,
+ *   refundId: string,
+ *   refundPaymentJobId: string,
+ *   userId: string
+ * }}
+ */
+export const setupExhaustedFinancialWorkGraph = ({ eventId, userId }) => {
+  const graph = {
+    ...baseDirectRefundGraph({ eventId, userId }),
+    creditNoteId: randomUUID(),
+    refundPaymentJobId: randomUUID(),
+  };
+
+  // Match by event/user so stale purchases from interrupted runs are removed.
+  cleanupOwnedPaymentPurchase({ eventId, userId });
+
+  // One transaction: the completed refund job's deferred outcome check needs the finalized refund.
+  queryE2eDatabase(`
+    ${insertConfirmedAttendeeSql(graph)}
+    ${insertDirectRefundPurchaseSql(graph, {
+      checkoutLabel: "exhausted_financial_work",
+      purchaseStatus: "refunded",
+      refunded: true,
+    })}
+
+    insert into payment_job (
+      attempt_count,
+      completed_at,
+      event_purchase_id,
+      failure_message,
+      idempotency_key,
+      kind,
+      next_attempt_at,
+      payment_job_id,
+      payment_provider_id,
+      status
+    ) values (
+      1,
+      current_timestamp - interval '1 day',
+      ${sqlString(graph.purchaseId)}::uuid,
+      null,
+      ${sqlString(`event-purchase-refund-${graph.purchaseId}`)},
+      'event-purchase-refund',
+      current_timestamp + interval '100 years',
+      ${sqlString(graph.refundPaymentJobId)}::uuid,
+      'stripe',
+      'completed'
+    ), (
+      10,
+      null,
+      ${sqlString(graph.purchaseId)}::uuid,
+      'Credit note attempts exhausted',
+      ${sqlString(`event-purchase-credit-note-${graph.refundId}`)},
+      'event-purchase-credit-note',
+      current_timestamp + interval '100 years',
+      ${sqlString(graph.paymentJobId)}::uuid,
+      'stripe',
+      'failed'
+    );
+
+    insert into event_purchase_refund (
+      amount_minor,
+      currency_code,
+      event_purchase_id,
+      event_purchase_refund_id,
+      kind,
+      payment_job_id,
+      payment_provider_id,
+      status,
+      terminal_failure,
+
+      event_refund_request_id,
+      finalized_at,
+      provider_refund_id
+    ) values (
+      5000,
+      'USD',
+      ${sqlString(graph.purchaseId)}::uuid,
+      ${sqlString(graph.refundId)}::uuid,
+      'event-cancellation',
+      ${sqlString(graph.refundPaymentJobId)}::uuid,
+      'stripe',
+      'finalized',
+      false,
+
+      null,
+      current_timestamp - interval '1 day',
+      ${sqlString(`re_e2e_exhausted_financial_work_${shortId(graph.refundId)}`)}
+    );
+
+    insert into event_purchase_credit_note (
+      amount_minor,
+      currency_code,
+      event_purchase_credit_note_id,
+      event_purchase_refund_id,
+      payment_job_id,
+      payment_provider_id,
+      provider_object_account_id,
+      tax_amount_minor,
+
+      provider_credit_note_id,
+      provider_hosted_url,
+      provider_pdf_url
+    ) values (
+      5000,
+      'USD',
+      ${sqlString(graph.creditNoteId)}::uuid,
+      ${sqlString(graph.refundId)}::uuid,
+      ${sqlString(graph.paymentJobId)}::uuid,
+      'stripe',
+      'acct_e2e_alpha',
+      0,
+
+      null,
+      null,
+      null
+    );
+  `);
+
+  return graph;
 };
 
 /**
@@ -447,6 +578,57 @@ export const setupRecoverableRefundGraph = ({ eventId, userId }) => {
 };
 
 /**
+ * Creates a confirmed attendee with a completed external purchase and no refund request.
+ * @param {{ eventId: string, userId: string }} input - Purchase owner.
+ * @returns {{ attendeeName: string, eventId: string, purchaseId: string, userId: string }}
+ */
+export const setupOwnedExternalCompletedPurchase = ({ eventId, userId }) => {
+  const graph = { attendeeName: getUserName(userId), eventId, purchaseId: randomUUID(), userId };
+
+  cleanupOwnedPaymentPurchase({ eventId, userId });
+
+  queryE2eDatabase(`
+    ${insertConfirmedAttendeeSql(graph)}
+
+    insert into event_purchase (
+      event_purchase_id,
+      amount_minor,
+      completed_at,
+      currency_code,
+      discount_amount_minor,
+      event_id,
+      event_ticket_type_id,
+      provider_payment_reference,
+      status,
+      ticket_title,
+      user_id,
+
+      charge_model,
+      external_payment_details,
+      external_payment_marked_by_user_id
+    ) values (
+      ${sqlString(graph.purchaseId)}::uuid,
+      5000,
+      current_timestamp - interval '1 day',
+      'USD',
+      0,
+      ${sqlString(eventId)}::uuid,
+      ${firstTicketTypeSql(eventId)},
+      ${sqlString(`external-ref-${shortId(graph.purchaseId)}`)},
+      'completed',
+      'External admission',
+      ${sqlString(userId)}::uuid,
+
+      'external',
+      'Bank transfer received',
+      ${sqlString(userId)}::uuid
+    );
+  `);
+
+  return graph;
+};
+
+/**
  * Creates a pending direct-charge checkout hold for one attendee.
  * @param {{
  *   eventId: string,
@@ -578,7 +760,7 @@ const insertConfirmedAttendeeSql = ({ eventId, userId }) => `
 /** Builds the insert statement for a purchase that a refund can target directly. */
 const insertDirectRefundPurchaseSql = (
   { eventId, purchaseId, userId },
-  { checkoutLabel, purchaseStatus },
+  { checkoutLabel, purchaseStatus, refunded = false },
 ) => `
     insert into event_purchase (
       event_purchase_id,
@@ -623,7 +805,7 @@ const insertDirectRefundPurchaseSql = (
       ${sqlString(`cs_e2e_${checkoutLabel}_${shortId(purchaseId)}`)},
       ${sqlString(`https://checkout.stripe.test/cs_e2e_${checkoutLabel}_${shortId(purchaseId)}`)},
       ${sqlString(`pi_e2e_${checkoutLabel}_${shortId(purchaseId)}`)},
-      null,
+      ${refunded ? "current_timestamp - interval '1 day'" : "null"},
       ${sqlString(purchaseStatus)},
       'VIP pass',
       ${sqlString(userId)}::uuid,
@@ -647,6 +829,3 @@ const insertDirectRefundPurchaseSql = (
 
 /** Returns a shortened identifier for readable E2E labels. */
 const shortId = (id) => id.replaceAll("-", "").slice(0, 12);
-
-/** Escapes a value for embedding in E2E SQL. */
-const sqlString = (value) => `'${String(value).replaceAll("'", "''")}'`;

@@ -41,6 +41,13 @@ describe("session-speaker-modal", () => {
     expect(document.body.style.overflow).to.equal("hidden");
     expect(document.body.dataset.modalOpenCount).to.equal("1");
     expect(focusCalls).to.equal(1);
+
+    // Verify the modal is exposed as a dialog named by its title.
+    const dialog = element.querySelector('[role="dialog"]');
+    expect(dialog.getAttribute("aria-modal")).to.equal("true");
+    expect(element.querySelector(`#${dialog.getAttribute("aria-labelledby")}`).textContent.trim()).to.equal(
+      "Add speaker",
+    );
   });
 
   it("ignores disabled users and accepts selectable ones", async () => {
@@ -124,6 +131,45 @@ describe("session-speaker-modal", () => {
     expect(element._featured).to.equal(false);
     expect(document.body.style.overflow).to.equal("");
     expect(document.body.dataset.modalOpenCount).to.equal("0");
+  });
+
+  it("keeps Tab inside the open modal and refocuses the trigger on close", async () => {
+    // Open the modal from an external trigger so the focus origin is recorded.
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    document.body.append(trigger);
+    const element = await mountLitComponent("session-speaker-modal");
+    const pressKey = (key, shiftKey = false) => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key, shiftKey, bubbles: true, cancelable: true }));
+    };
+
+    try {
+      trigger.focus();
+      element.open();
+      await element.updateComplete;
+      await element.querySelector("user-search-field").updateComplete;
+      const dialog = element.querySelector('[role="dialog"]');
+      const closeButton = dialog.querySelector("button");
+
+      // Verify opening moves focus into the search field.
+      expect(document.activeElement).to.equal(dialog.querySelector("[data-user-search-input]"));
+
+      // Verify Shift+Tab on the first control wraps inside the dialog and Tab wraps back.
+      closeButton.focus();
+      pressKey("Tab", true);
+      expect(dialog.contains(document.activeElement)).to.equal(true);
+      expect(document.activeElement).to.not.equal(closeButton);
+      pressKey("Tab");
+      expect(document.activeElement).to.equal(closeButton);
+
+      // Verify Escape closes the modal and returns focus to the trigger.
+      pressKey("Escape");
+      await element.updateComplete;
+      expect(element._isOpen).to.equal(false);
+      expect(document.activeElement).to.equal(trigger);
+    } finally {
+      trigger.remove();
+    }
   });
 
   it("closes on escape once the modal is open", async () => {

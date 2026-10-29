@@ -160,8 +160,10 @@ describe("dashboard group event survey templates", () => {
       'data-htmx-response data-error-message="Something went wrong loading these answers. Please try again later."',
     );
     expect(results).to.include(
-      "{{ crate::templates::dashboard::group::surveys::view_all_answers_label(*text.total) }}",
+      "{% let view_all_label = crate::templates::dashboard::group::surveys::view_all_answers_label(*text.total) -%}",
     );
+    expect(results).to.include('aria-label="{{ view_all_label }}: {{ question.prompt }}"');
+    expect(results).to.include('class="btn-primary-outline btn-mini">{{ view_all_label }}</button>');
     expect(results).to.include(
       '<div id="event-survey-text-answers-modal" role="dialog" aria-modal="true" aria-labelledby="event-survey-text-answers-modal-title" aria-hidden="true"',
     );

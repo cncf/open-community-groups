@@ -1,8 +1,15 @@
 use anyhow::anyhow;
-use axum::body::to_bytes;
+use axum::{
+    body::{Body, to_bytes},
+    extract::{FromRequest, Multipart},
+    http::{Request, header::CONTENT_TYPE},
+};
 use serde::Deserialize;
 
-use crate::{db::contract_tests::helpers::contract_tests_pool, router::serde_qs_config};
+use crate::{
+    db::contract_tests::helpers::contract_tests_pool, handlers::tests::DEFAULT_BODY_LIMIT_BYTES,
+    router::serde_qs_config,
+};
 
 use super::*;
 
@@ -69,6 +76,18 @@ async fn test_handler_errors_map_to_responses() {
             HandlerError::Forbidden,
             StatusCode::FORBIDDEN,
             "",
+        ),
+        (
+            "Multipart body over the request limit",
+            HandlerError::Multipart(multipart_error(over_limit_multipart_body()).await),
+            StatusCode::PAYLOAD_TOO_LARGE,
+            REQUEST_PAYLOAD_TOO_LARGE,
+        ),
+        (
+            "Multipart malformed body",
+            HandlerError::Multipart(multipart_error(b"--B\r\nContent-Disposition".to_vec()).await),
+            StatusCode::BAD_REQUEST,
+            INVALID_REQUEST_PAYLOAD,
         ),
         (
             "NotFound",
@@ -292,6 +311,31 @@ async fn test_serde_qs_error_returns_422_with_fixed_body() {
 struct Limit {
     #[allow(dead_code)]
     limit: usize,
+}
+
+/// Reads the multipart `body` with axum's default body limit and returns the
+/// error raised by its first field.
+async fn multipart_error(body: Vec<u8>) -> MultipartError {
+    // Setup the multipart extractor over the body
+    let request = Request::builder()
+        .header(CONTENT_TYPE, "multipart/form-data; boundary=B")
+        .body(Body::from(body))
+        .unwrap();
+    let mut multipart = Multipart::from_request(request, &()).await.unwrap();
+
+    // Read the first field until the body fails to parse
+    match multipart.next_field().await {
+        Ok(field) => field.unwrap().bytes().await.unwrap_err(),
+        Err(err) => err,
+    }
+}
+
+/// Encodes one multipart field larger than axum's default body limit.
+fn over_limit_multipart_body() -> Vec<u8> {
+    let mut body = b"--B\r\nContent-Disposition: form-data; name=\"file\"\r\n\r\n".to_vec();
+    body.resize(body.len() + DEFAULT_BODY_LIMIT_BYTES + 1, 0);
+    body.extend_from_slice(b"\r\n--B--\r\n");
+    body
 }
 
 /// Renders the error into a response and returns its status and body text.

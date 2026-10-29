@@ -1,6 +1,9 @@
 use uuid::Uuid;
 
-use super::{CheckInScanRejection, InvalidCredential, ScannedCredential, parse_credential};
+use super::{
+    CheckInScanRejection, InvalidCredential, MAX_CREDENTIAL_LEN, ScannedCredential,
+    format_credential, parse_credential,
+};
 
 #[test]
 fn test_check_in_scan_rejection_from_db_message_maps_known_messages() {
@@ -27,6 +30,41 @@ fn test_check_in_scan_rejection_from_db_message_maps_known_messages() {
             "{message}"
         );
     }
+}
+
+#[test]
+fn test_format_credential_round_trips_through_parse_credential() {
+    // Setup identifier pairs, including the boundary UUID values
+    let cases = [
+        (Uuid::from_u128(1), Uuid::from_u128(2)),
+        (Uuid::nil(), Uuid::max()),
+        (Uuid::max(), Uuid::nil()),
+    ];
+
+    // Parse every formatted credential back into its identifiers
+    for (event_id, check_in_code) in cases {
+        assert_eq!(
+            parse_credential(&format_credential(event_id, check_in_code)),
+            Ok(ScannedCredential {
+                check_in_code,
+                event_id,
+            }),
+            "{event_id}:{check_in_code}"
+        );
+    }
+}
+
+#[test]
+fn test_format_credential_uses_versioned_wire_format() {
+    // Format a credential with deterministic identifiers
+    let credential = format_credential(Uuid::from_u128(1), Uuid::from_u128(2));
+
+    // Check the literal the scanner parses and the accepted length bound
+    assert_eq!(
+        credential,
+        "ocg-check-in:v1:00000000-0000-0000-0000-000000000001:00000000-0000-0000-0000-000000000002"
+    );
+    assert!(credential.len() <= MAX_CREDENTIAL_LEN);
 }
 
 #[test]

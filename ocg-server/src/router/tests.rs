@@ -1,8 +1,16 @@
+use std::{collections::BTreeSet, env, fs, path::Path};
+
 use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
-    http::{HeaderValue, Method, StatusCode, Uri, header::LOCATION},
+    http::{
+        HeaderValue, Method, StatusCode, Uri,
+        header::{LOCATION, SET_COOKIE},
+        response::Parts,
+    },
 };
+use axum_login::tower_sessions::session;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
@@ -13,12 +21,18 @@ use crate::{
 
 use super::*;
 
+/// Response header the matched-path test layer echoes the matched path in.
+const MATCHED_PATH_TEST_HEADER: &str = "x-test-matched-path";
+
 /// Dashboard routes posting a request body too long for a query string
 /// without changing state.
 ///
 /// Only their `POST` method is guarded by read access instead of a write
 /// permission.
 const READ_ONLY_POST_ROUTES: [&str; 1] = ["/dashboard/community/contact/recipients"];
+
+/// E2E route manifest path, relative to the server crate directory.
+const ROUTE_MANIFEST_PATH: &str = "../tests/e2e/coverage/route-manifest.json";
 
 /// Dashboard mutation routes that only change the session's selected scope.
 ///
@@ -28,6 +42,35 @@ const SCOPE_SELECTION_ROUTES: [&str; 3] = [
     "/dashboard/group/community/{community_id}/select",
     "/dashboard/group/{group_id}/select",
 ];
+
+/// Environment variable that makes the manifest test rewrite the E2E manifest.
+const UPDATE_ROUTE_MANIFEST_ENV: &str = "OCG_UPDATE_ROUTE_MANIFEST";
+
+/// Unsafe routes registered after the browser same-origin guard layer.
+///
+/// Providers call these webhooks server to server and authenticate with
+/// signatures, so the real-router guard test exempts exactly these paths.
+const WEBHOOK_ROUTES: [&str; 3] = [
+    "/webhooks/payments",
+    "/webhooks/payments/connected",
+    "/webhooks/zoom",
+];
+
+/// Route entry of the E2E route manifest.
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
+struct RouteManifestEntry {
+    /// HTTP method routed on the path.
+    method: String,
+    /// Route path template, as reported by the matched path.
+    path: String,
+}
+
+impl RouteManifestEntry {
+    /// Returns the `METHOD path` label used in mismatch reports.
+    fn label(&self) -> String {
+        format!("{} {}", self.method, self.path)
+    }
+}
 
 #[tokio::test]
 async fn test_browser_same_origin_middleware_enforces_browser_signals() {
@@ -132,6 +175,48 @@ async fn test_browser_same_origin_middleware_enforces_browser_signals() {
         }
         let (parts, _) = send(router.clone(), request.body(Body::empty()).unwrap()).await;
         assert_eq!(parts.status, expected_status, "{case}");
+    }
+}
+
+/// Only routes declared with a path literal in `.route(` calls of the router
+/// sources are covered; routes registered through helpers are missed.
+#[tokio::test]
+async fn test_browser_same_origin_protects_every_unsafe_route() {
+    // Setup the application router with every login-dependent route mounted
+    let mut server_cfg = sample_server_cfg("https://example.test");
+    server_cfg.login.email = true;
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_server_cfg(server_cfg)
+        .build()
+        .await;
+
+    // Collect the declared unsafe routes and split out the exempt webhook routes
+    let (webhook_routes, unsafe_routes): (Vec<_>, Vec<_>) = declared_routes()
+        .into_iter()
+        .filter(|(_, method)| *method != Method::GET)
+        .partition(|(path, _)| WEBHOOK_ROUTES.contains(&path.as_str()));
+    let webhook_paths: Vec<_> = webhook_routes.iter().map(|(path, _)| path.as_str()).collect();
+    assert_eq!(
+        webhook_paths, WEBHOOK_ROUTES,
+        "every WEBHOOK_ROUTES entry should be a declared unsafe route"
+    );
+    assert!(
+        !unsafe_routes.is_empty(),
+        "router should expose unsafe routes"
+    );
+
+    // Check every unsafe route rejects cross-site requests before its handler runs
+    for (path, method) in unsafe_routes {
+        let request = request(method.as_str(), &concrete_uri(&path))
+            .header("Sec-Fetch-Site", "cross-site")
+            .body(Body::empty())
+            .unwrap();
+        let (parts, _) = send(router.clone(), request).await;
+        assert_eq!(
+            parts.status,
+            StatusCode::FORBIDDEN,
+            "{method} {path} is not protected by the browser same-origin guard"
+        );
     }
 }
 
@@ -256,24 +341,47 @@ async fn test_dashboard_mutation_routes_require_write_permission() {
 
     // Check every write route is rejected before its handler runs
     for (path, method) in write_routes {
-        let uri = path
-            .split('/')
-            .map(|segment| {
-                if segment.starts_with('{') {
-                    Uuid::new_v4().to_string()
-                } else {
-                    segment.to_string()
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("/");
-        let request = empty_request(method.as_str(), &uri, ids.session_id);
+        let request = empty_request(method.as_str(), &concrete_uri(&path), ids.session_id);
         let (parts, _) = send(router.clone(), request).await;
         assert_eq!(
             parts.status,
             StatusCode::FORBIDDEN,
             "{method} {path} is not protected by a write permission layer"
         );
+    }
+}
+
+#[test]
+fn test_dashboard_refresh_paths_are_routed_gets() {
+    // Collect the declared routes and the dashboard home refresh path sources
+    let routes = declared_routes();
+    let homes = [
+        (
+            "/dashboard/group",
+            include_str!("../templates/dashboard/group/home.rs"),
+        ),
+        (
+            "/dashboard/user",
+            include_str!("../templates/dashboard/user/home.rs"),
+        ),
+    ];
+
+    // Check every refresh path resolves to a declared GET route
+    for (prefix, source) in homes {
+        let refresh_paths = refresh_path_literals(source);
+        assert!(
+            !refresh_paths.is_empty(),
+            "{prefix} home should declare refresh paths"
+        );
+        for refresh_path in refresh_paths {
+            let path = format!("{prefix}/{refresh_path}");
+            assert!(
+                routes
+                    .iter()
+                    .any(|(route, method)| *route == path && *method == Method::GET),
+                "refresh path {path} is not a declared GET route"
+            );
+        }
     }
 }
 
@@ -450,6 +558,55 @@ async fn test_payments_webhook_route_is_not_mounted_without_payments_config() {
 }
 
 #[tokio::test]
+async fn test_public_shared_cache_page_omits_set_cookie_with_stale_session() {
+    // Setup database mock without the stored session
+    let session_id = session::Id::default();
+    let mut db = site_settings_db();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(|_| Ok(None));
+    db.expect_get_user_by_id().never();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, get_request("/docs", session_id)).await;
+
+    // Check the public response does not remove the stale cookie
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_public_response_without_set_cookie(&parts);
+}
+
+#[tokio::test]
+async fn test_public_shared_cache_page_omits_set_cookie_with_valid_session() {
+    // Setup database mock with an authenticated session
+    let ids = DashboardIds::new();
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    expect_site_settings(&mut db);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, get_request("/docs", ids.session_id)).await;
+
+    // Check the public response does not carry the session cookie
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_public_response_without_set_cookie(&parts);
+}
+
+#[tokio::test]
+async fn test_public_shared_cache_page_omits_set_cookie_without_session() {
+    // Setup router and send request
+    let router = TestRouterBuilder::new(site_settings_db()).build().await;
+    let request = request("GET", "/docs").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the public response does not set a cookie
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_public_response_without_set_cookie(&parts);
+}
+
+#[tokio::test]
 async fn test_redirect_old_hosts_passes_other_hosts_through() {
     // Setup router with redirect host configuration
     let router = redirect_old_hosts_router();
@@ -484,6 +641,172 @@ async fn test_redirect_old_hosts_redirects_matching_host() {
         parts.headers.get(LOCATION).unwrap(),
         &HeaderValue::from_static("https://example.com")
     );
+}
+
+#[tokio::test]
+async fn test_redirects_to_log_in_flags_only_log_in_guard_rejections() {
+    // Setup the application router with a read-only authenticated session
+    let ids = DashboardIds::new();
+    let db = permission_scoped_db(&ids, |permission| permission == GroupPermission::Read);
+    let router = TestRouterBuilder::new(db).build().await;
+
+    // Define guard rejections and responses whose handler or permission layer ran
+    let cohost_approve_uri = format!("/dashboard/group/cohosts/{}/approve", Uuid::new_v4());
+    let cases = [
+        (
+            "anonymous page request to a guarded route",
+            request("GET", "/dashboard/user").body(Body::empty()).unwrap(),
+            StatusCode::TEMPORARY_REDIRECT,
+            true,
+        ),
+        (
+            "anonymous htmx request to a guarded route",
+            request("GET", "/dashboard/user")
+                .header("HX-Request", "true")
+                .body(Body::empty())
+                .unwrap(),
+            StatusCode::TEMPORARY_REDIRECT,
+            true,
+        ),
+        (
+            "log out handler redirect to log in",
+            request("POST", "/log-out").body(Body::empty()).unwrap(),
+            StatusCode::SEE_OTHER,
+            false,
+        ),
+        (
+            "authenticated request rejected by a permission layer",
+            empty_request("PUT", &cohost_approve_uri, ids.session_id),
+            StatusCode::FORBIDDEN,
+            false,
+        ),
+        (
+            "anonymous request to a public route",
+            request("GET", "/health-check").body(Body::empty()).unwrap(),
+            StatusCode::OK,
+            false,
+        ),
+    ];
+
+    // Send each request and check the status and the log-in redirect flag
+    for (case, request, expected_status, expected) in cases {
+        let (parts, _) = send(router.clone(), request).await;
+        assert_eq!(parts.status, expected_status, "{case}");
+        if parts.status.is_redirection() {
+            let location = parts.headers.get(LOCATION).unwrap().to_str().unwrap();
+            assert!(location.starts_with(LOG_IN_URL), "{case}: {location}");
+        }
+        let response = axum::http::Response::from_parts(parts, ());
+        assert_eq!(
+            route_hits::redirects_to_log_in(&response),
+            expected,
+            "{case}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_request_matched_path_reports_route_template_or_fallback() {
+    // Setup a router whose outer layer echoes the matched path, like the request span
+    let group_router = Router::new().route(
+        "/{group_id}/members",
+        get(|| async { StatusCode::NO_CONTENT }),
+    );
+    let router = Router::new()
+        .route(
+            "/events/{event_id}",
+            get(|| async { StatusCode::NO_CONTENT }),
+        )
+        .nest("/dashboard/group", group_router)
+        .fallback(|| async { StatusCode::NOT_FOUND })
+        .layer(middleware::from_fn(echo_matched_path));
+
+    // Define matched routes, nested routes and unmatched paths
+    let cases = [
+        (
+            "route with a path parameter",
+            "/events/b4c5e5c6-1f4a-4a3e-9d43-3f7e6d3c6b1a",
+            "/events/{event_id}",
+        ),
+        (
+            "nested route",
+            "/dashboard/group/b4c5e5c6-1f4a-4a3e-9d43-3f7e6d3c6b1a/members",
+            "/dashboard/group/{group_id}/members",
+        ),
+        ("unmatched path", "/missing/page", "fallback"),
+    ];
+
+    // Send each request and check the matched path seen by the layer
+    for (case, uri, expected) in cases {
+        let request = request("GET", uri).body(Body::empty()).unwrap();
+        let (parts, _) = send(router.clone(), request).await;
+        assert_eq!(
+            parts.headers.get(MATCHED_PATH_TEST_HEADER).map(HeaderValue::as_bytes),
+            Some(expected.as_bytes()),
+            "{case}"
+        );
+    }
+}
+
+#[test]
+fn test_route_manifest_matches_e2e_manifest() {
+    // Build the manifest from the router sources
+    let manifest = route_manifest();
+    let manifest_path = Path::new(env!("CARGO_MANIFEST_DIR")).join(ROUTE_MANIFEST_PATH);
+
+    // Rewrite the E2E manifest when an update is requested
+    if env::var(UPDATE_ROUTE_MANIFEST_ENV).is_ok_and(|value| value == "1") {
+        let mut json = serde_json::to_string_pretty(&manifest).unwrap();
+        json.push('\n');
+        fs::write(&manifest_path, json).unwrap();
+    }
+
+    // Read the committed E2E manifest
+    let committed: Vec<RouteManifestEntry> = fs::read_to_string(&manifest_path)
+        .ok()
+        .and_then(|json| serde_json::from_str(&json).ok())
+        .unwrap_or_else(|| {
+            panic!(
+                "{ROUTE_MANIFEST_PATH} should be a route manifest; run `just e2e-route-manifest`"
+            )
+        });
+
+    // Check the committed manifest lists the declared routes in order
+    let declared: BTreeSet<_> = manifest.iter().map(RouteManifestEntry::label).collect();
+    let listed: BTreeSet<_> = committed.iter().map(RouteManifestEntry::label).collect();
+    let missing: Vec<_> = declared.difference(&listed).collect();
+    let stale: Vec<_> = listed.difference(&declared).collect();
+    assert!(
+        missing.is_empty() && stale.is_empty(),
+        "route manifest is out of date, run `just e2e-route-manifest` (missing: {missing:?}, stale: {stale:?})"
+    );
+    assert_eq!(
+        committed, manifest,
+        "route manifest order or duplicates differ, run `just e2e-route-manifest`"
+    );
+}
+
+#[test]
+fn test_route_manifest_parses_every_route_declaration() {
+    // Collect the route calls and the parsed declarations of every router section
+    let route_calls: usize = router_sections()
+        .iter()
+        .map(|(_, section)| section.matches(".route(").count())
+        .sum();
+    let declarations = route_declarations();
+
+    // Check every route call was parsed into a declaration with a method
+    assert_eq!(
+        declarations.len(),
+        route_calls,
+        "every .route( call should be parsed"
+    );
+    for (path, methods) in &declarations {
+        assert!(
+            !methods.is_empty(),
+            "route {path} should declare a DELETE, GET, PATCH, POST or PUT method"
+        );
+    }
 }
 
 #[tokio::test]
@@ -673,6 +996,31 @@ async fn test_zoom_webhook_route_is_not_mounted_when_zoom_is_disabled() {
 
 // Helpers.
 
+/// Asserts the response is public shared-cache and carries no `Set-Cookie`.
+fn assert_public_response_without_set_cookie(parts: &Parts) {
+    let cache_control = parts.headers.get(CACHE_CONTROL).unwrap().to_str().unwrap();
+    assert!(cache_control.starts_with("public"), "{cache_control}");
+    let set_cookies: Vec<_> = parts.headers.get_all(SET_COOKIE).iter().collect();
+    assert!(
+        set_cookies.is_empty(),
+        "unexpected Set-Cookie: {set_cookies:?}"
+    );
+}
+
+/// Replaces every `{...}` segment of a route path with a random UUID.
+fn concrete_uri(path: &str) -> String {
+    path.split('/')
+        .map(|segment| {
+            if segment.starts_with('{') {
+                Uuid::new_v4().to_string()
+            } else {
+                segment.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
 /// Checks whether the route arguments call the given axum method router.
 fn contains_method_call(args: &str, name: &str) -> bool {
     let needle = format!("{name}(");
@@ -686,67 +1034,46 @@ fn contains_method_call(args: &str, name: &str) -> bool {
 
 /// Extracts the mutation routes declared by the community and group dashboard routers.
 fn dashboard_mutation_routes() -> Vec<(String, Method)> {
-    const SOURCE: &str = include_str!("dashboard.rs");
-    const MUTATION_METHODS: [(&str, Method); 4] = [
-        ("delete", Method::DELETE),
-        ("patch", Method::PATCH),
-        ("post", Method::POST),
-        ("put", Method::PUT),
-    ];
-    let sections = [
-        (
-            "/dashboard/community",
-            "fn setup_community_dashboard_router",
-            "fn setup_group_dashboard_router",
-        ),
-        (
-            "/dashboard/group",
-            "fn setup_group_dashboard_router",
-            "fn setup_user_dashboard_router",
-        ),
-    ];
+    declared_routes()
+        .into_iter()
+        .filter(|(path, method)| {
+            let in_dashboard = ["/dashboard/community", "/dashboard/group"].iter().any(|prefix| {
+                path.strip_prefix(prefix)
+                    .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+            });
+            in_dashboard && *method != Method::GET
+        })
+        .collect()
+}
 
-    // Scan each router function for route declarations and their method chains
-    let mut routes = Vec::new();
-    for (prefix, start_marker, end_marker) in sections {
-        let start = SOURCE.find(start_marker).expect("router function should exist");
-        let end = SOURCE.find(end_marker).expect("router function should exist");
-        let mut rest = &SOURCE[start..end];
-        while let Some(index) = rest.find(".route(") {
-            rest = &rest[index + ".route(".len()..];
+/// Extracts the routes declared by the main and dashboard router sources,
+/// deduped and sorted by path and method.
+///
+/// Only `.route(` calls with a path literal are seen; routes registered
+/// through helpers are missed.
+fn declared_routes() -> Vec<(String, Method)> {
+    // Flatten every route declaration into one entry per method
+    let mut routes: Vec<_> = route_declarations()
+        .into_iter()
+        .flat_map(|(path, methods)| methods.into_iter().map(move |method| (path.clone(), method)))
+        .collect();
 
-            // Read the path literal and the arguments up to the matching parenthesis
-            let path_start = rest.find('"').expect("route path should be a literal") + 1;
-            let path_end =
-                path_start + rest[path_start..].find('"').expect("route path should close");
-            let path = &rest[path_start..path_end];
-            let mut depth = 1;
-            let mut args_end = rest.len();
-            for (i, c) in rest.char_indices() {
-                match c {
-                    '(' => depth += 1,
-                    ')' => {
-                        depth -= 1;
-                        if depth == 0 {
-                            args_end = i;
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            let args = &rest[path_end..args_end];
-
-            // Record every mutation method routed on this path
-            for (name, method) in &MUTATION_METHODS {
-                if contains_method_call(args, name) {
-                    routes.push((format!("{prefix}{path}"), method.clone()));
-                }
-            }
-            rest = &rest[args_end..];
-        }
-    }
+    // Dedupe and sort the routes by path and method
+    routes.sort_by(|(a_path, a_method), (b_path, b_method)| {
+        a_path
+            .cmp(b_path)
+            .then_with(|| a_method.as_str().cmp(b_method.as_str()))
+    });
+    routes.dedup();
     routes
+}
+
+/// Echoes the request's matched path in a response header.
+async fn echo_matched_path(request: Request, next: Next) -> axum::response::Response {
+    let matched_path = HeaderValue::from_str(request_matched_path(&request)).unwrap();
+    let mut response = next.run(request).await;
+    response.headers_mut().insert(MATCHED_PATH_TEST_HEADER, matched_path);
+    response
 }
 
 /// Builds a database answering every session read of a user with a selected
@@ -784,6 +1111,159 @@ fn redirect_old_hosts_router() -> Router {
             redirect_old_hosts,
         ))
         .with_state(server_cfg)
+}
+
+/// Collects the path literals returned by the `refresh_path` function in the
+/// given dashboard home template source.
+fn refresh_path_literals(source: &str) -> Vec<&str> {
+    // Locate the function body up to its matching closing brace
+    let start = source
+        .find("fn refresh_path(")
+        .expect("refresh_path function should exist");
+    let body_start = start + source[start..].find('{').expect("function body should open");
+    let mut depth = 0;
+    let mut body_end = source.len();
+    for (i, c) in source[body_start..].char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    body_end = body_start + i;
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let body = &source[body_start..body_end];
+
+    // Read the string literal returned by each match arm, plain or in `Some`
+    body.split("=>")
+        .skip(1)
+        .filter_map(|arm| {
+            let arm = arm.trim_start();
+            let literal = arm.strip_prefix("Some(").unwrap_or(arm).strip_prefix('"')?;
+            Some(&literal[..literal.find('"').expect("path literal should close")])
+        })
+        .collect()
+}
+
+/// Extracts every `.route(` declaration of the router sections in source
+/// order, with its full path and the methods it routes.
+fn route_declarations() -> Vec<(String, Vec<Method>)> {
+    const ROUTE_METHODS: [(&str, Method); 5] = [
+        ("delete", Method::DELETE),
+        ("get", Method::GET),
+        ("patch", Method::PATCH),
+        ("post", Method::POST),
+        ("put", Method::PUT),
+    ];
+
+    // Scan each router section for route declarations and their method chains
+    let mut declarations = Vec::new();
+    for (prefix, section) in router_sections() {
+        let mut rest = section;
+        while let Some(index) = rest.find(".route(") {
+            rest = &rest[index + ".route(".len()..];
+
+            // Read the path literal and the arguments up to the matching parenthesis
+            let path_start = rest.len() - rest.trim_start().len();
+            assert!(
+                rest[path_start..].starts_with('"'),
+                "route path should be a literal: .route({}",
+                &rest[..rest.len().min(80)]
+            );
+            let path_start = path_start + 1;
+            let path_end =
+                path_start + rest[path_start..].find('"').expect("route path should close");
+            let path = &rest[path_start..path_end];
+            let mut depth = 1;
+            let mut args_end = rest.len();
+            for (i, c) in rest.char_indices() {
+                match c {
+                    '(' => depth += 1,
+                    ')' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            args_end = i;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            let args = &rest[path_end..args_end];
+
+            // Record the methods routed on this path, mapping a nested root to the prefix
+            let full_path = if path == "/" && !prefix.is_empty() {
+                prefix.to_string()
+            } else {
+                format!("{prefix}{path}")
+            };
+            let methods = ROUTE_METHODS
+                .iter()
+                .filter(|(name, _)| contains_method_call(args, name))
+                .map(|(_, method)| method.clone())
+                .collect();
+            declarations.push((full_path, methods));
+            rest = &rest[args_end..];
+        }
+    }
+    declarations
+}
+
+/// Lists the declared routes as E2E route manifest entries.
+fn route_manifest() -> Vec<RouteManifestEntry> {
+    declared_routes()
+        .into_iter()
+        .map(|(path, method)| RouteManifestEntry {
+            method: method.to_string(),
+            path,
+        })
+        .collect()
+}
+
+/// Returns the route prefix and source text of each router section that
+/// declares application routes.
+fn router_sections() -> [(&'static str, &'static str); 4] {
+    const DASHBOARD_SOURCE: &str = include_str!("dashboard.rs");
+    const ROUTER_SOURCE: &str = include_str!("../router.rs");
+    let sections = [
+        (
+            ROUTER_SOURCE,
+            "",
+            "pub(crate) async fn setup(",
+            Some("// Handlers."),
+        ),
+        (
+            DASHBOARD_SOURCE,
+            "/dashboard/community",
+            "fn setup_community_dashboard_router",
+            Some("fn setup_group_dashboard_router"),
+        ),
+        (
+            DASHBOARD_SOURCE,
+            "/dashboard/group",
+            "fn setup_group_dashboard_router",
+            Some("fn setup_user_dashboard_router"),
+        ),
+        (
+            DASHBOARD_SOURCE,
+            "/dashboard/user",
+            "fn setup_user_dashboard_router",
+            None,
+        ),
+    ];
+
+    // Cut each section from its start marker to its end marker or the end of file
+    sections.map(|(source, prefix, start_marker, end_marker)| {
+        let start = source.find(start_marker).expect("router section should exist");
+        let end = end_marker.map_or(source.len(), |marker| {
+            source.find(marker).expect("router section end should exist")
+        });
+        (prefix, &source[start..end])
+    })
 }
 
 /// Builds a database answering the site settings read of a rendered page.

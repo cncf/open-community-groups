@@ -1,40 +1,45 @@
 import { expect, test } from "../../fixtures.js";
 import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS, TEST_REGISTRATION_WINDOW_EVENTS } from "../../seed.js";
-import { getAttendanceContainer, getAttendButton, waitForAttendanceState } from "./helpers.js";
+import {
+  getAttendanceContainer,
+  getAttendButton,
+  getCheckoutButton,
+  getTicketModal,
+  waitForAttendanceState,
+} from "./helpers.js";
 import { navigateToEvent } from "../../utils.js";
 
+const CLOSED_PAID_WINDOW_CASES = [
+  {
+    event: TEST_REGISTRATION_WINDOW_EVENTS.paidFuture,
+    message: /Registration opens/,
+    name: "until registration opens",
+  },
+  {
+    event: TEST_REGISTRATION_WINDOW_EVENTS.paidClosed,
+    message: /Registration closed/,
+    name: "after registration closes",
+  },
+];
+
 test.describe("event registration windows", () => {
-  test("paid events disable checkout until registration opens", async ({ member2Page }) => {
-    // Load the paid event before its registration window opens.
-    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.paidFuture);
+  for (const windowCase of CLOSED_PAID_WINDOW_CASES) {
+    test(`paid events disable checkout ${windowCase.name}`, async ({ member2Page }) => {
+      // Load the paid event outside its registration window.
+      await navigateToRegistrationWindowEvent(member2Page, windowCase.event);
 
-    // Verify registration-window state blocks ticket checkout controls.
-    await expectRegistrationWindowState(member2Page, false, /Registration opens/);
-    await expect(getAttendButton(member2Page)).toContainText("Get ticket");
-    await expect(getAttendButton(member2Page)).toBeDisabled();
-    await expect(getTicketOption(member2Page)).toBeDisabled();
-    await expect(getDiscountCodeInput(member2Page)).toBeDisabled();
-    await expect(getCheckoutButton(member2Page)).toBeDisabled();
-    await expect(
-      getTicketModal(member2Page).locator('[data-attendance-role="ticket-type-status-label"]'),
-    ).toHaveText("Registration not open");
-  });
-
-  test("paid events disable checkout after registration closes", async ({ member2Page }) => {
-    // Load the paid event after its registration window closes.
-    await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.paidClosed);
-
-    // Verify closed registration blocks ticket checkout controls.
-    await expectRegistrationWindowState(member2Page, false, /Registration closed/);
-    await expect(getAttendButton(member2Page)).toContainText("Get ticket");
-    await expect(getAttendButton(member2Page)).toBeDisabled();
-    await expect(getTicketOption(member2Page)).toBeDisabled();
-    await expect(getDiscountCodeInput(member2Page)).toBeDisabled();
-    await expect(getCheckoutButton(member2Page)).toBeDisabled();
-    await expect(
-      getTicketModal(member2Page).locator('[data-attendance-role="ticket-type-status-label"]'),
-    ).toHaveText("Registration not open");
-  });
+      // Verify the registration-window state blocks ticket checkout controls.
+      await expectRegistrationWindowState(member2Page, false, windowCase.message);
+      await expect(getAttendButton(member2Page)).toContainText("Get ticket");
+      await expect(getAttendButton(member2Page)).toBeDisabled();
+      await expect(getTicketOption(member2Page)).toBeDisabled();
+      await expect(getDiscountCodeInput(member2Page)).toBeDisabled();
+      await expect(getCheckoutButton(member2Page)).toBeDisabled();
+      await expect(
+        getTicketModal(member2Page).locator('[data-attendance-role="ticket-type-status-label"]'),
+      ).toHaveText("Registration not open");
+    });
+  }
 
   test("paid events allow checkout controls while registration is open", async ({ member2Page }) => {
     // Load the paid event while registration is open.
@@ -149,14 +154,8 @@ const expectRegistrationWindowState = async (page, open, messagePattern) => {
   await expect(container).toHaveAttribute("data-registration-window-message", messagePattern);
 };
 
-/** Returns the checkout action inside the ticket modal. */
-const getCheckoutButton = (page) => page.locator('[data-attendance-role="checkout-btn"]');
-
 /** Returns the discount code field inside the ticket modal. */
 const getDiscountCodeInput = (page) => page.locator('[data-attendance-role="discount-code-input"]');
-
-/** Returns the ticket selection modal. */
-const getTicketModal = (page) => page.locator('[data-attendance-role="ticket-modal"]');
 
 /** Returns the first ticket type option in the modal. */
 const getTicketOption = (page) => page.locator('[data-attendance-role="ticket-type-option"]').first();

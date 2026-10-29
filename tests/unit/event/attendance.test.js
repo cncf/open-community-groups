@@ -2,10 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/event/attendance.js";
 import { getAttendanceMeta } from "/static/js/event/attendance-dom.js";
-import {
-  showRegistrationQuestionsPendingState,
-  showSignedOutAttendanceState,
-} from "/static/js/event/attendance-view.js";
+import { showSignedOutAttendanceState } from "/static/js/event/attendance-view.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import {
@@ -283,29 +280,6 @@ describe("event attendance", () => {
     expect(menuJoinLink.classList.contains("hidden")).to.equal(false);
     expect(menuJoinLink.classList.contains("max-xl:flex")).to.equal(true);
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
-  });
-
-  it("allows manually invited users to complete registration questions after the window closes", () => {
-    // Render an event after the public registration window closed.
-    const { attendButton, container } = renderAttendanceDom({
-      registrationWindowOpen: "false",
-      registrationWindowUnavailableTitle: "Registration closed May 1, 2099.",
-    });
-    const meta = getAttendanceMeta(container);
-
-    // Non-manual pending registrations are blocked by the closed window.
-    showRegistrationQuestionsPendingState(container, meta, {
-      manually_invited: false,
-    });
-    expect(attendButton.disabled).to.equal(true);
-    expect(attendButton.title).to.equal("Registration closed May 1, 2099.");
-
-    // Organizer-created invitations can still answer the required questions.
-    showRegistrationQuestionsPendingState(container, meta, {
-      manually_invited: true,
-    });
-    expect(attendButton.disabled).to.equal(false);
-    expect(attendButton.hasAttribute("title")).to.equal(false);
   });
 
   it("handles attendance clicks after the page body is swapped", () => {
@@ -822,125 +796,6 @@ describe("event attendance", () => {
     );
   });
 
-  it("opens registration questions for promoted waitlist attendees", () => {
-    // Render waitlist controls with registration questions.
-    const { attendButton, checker, container, loadingButton, questionsModal } =
-      renderAttendanceDom({
-        capacity: "10",
-        includeRegistrationQuestions: true,
-        remainingCapacity: "0",
-        waitlistEnabled: "true",
-      });
-
-    // Apply the promoted waitlist state from the attendance check.
-    dispatchHtmxAfterRequest(checker, {
-      responseText: JSON.stringify({
-        status: "registration-questions-pending",
-      }),
-    });
-
-    // Verify opens registration questions for promoted waitlist attendees.
-    expect(attendButton.classList.contains("hidden")).to.equal(false);
-    expect(
-      attendButton.querySelector("[data-attendance-label]")?.textContent,
-    ).to.equal("Complete registration");
-    expect(
-      attendButton
-        .querySelector("[data-attendance-icon]")
-        ?.classList.contains("icon-list-check"),
-    ).to.equal(true);
-
-    // Click the attend button.
-    attendButton.click();
-
-    // Assert the stored follow-up action.
-    expect(container.dataset.questionsContinueAction).to.equal("attend");
-    expect(questionsModal.classList.contains("hidden")).to.equal(false);
-    expect(attendButton.classList.contains("hidden")).to.equal(false);
-    expect(loadingButton.classList.contains("hidden")).to.equal(true);
-  });
-
-  it("blocks promoted waitlist completion until registration questions are answered", () => {
-    // Render waitlist controls before the attendee is promoted.
-    const { attendButton, checker, questionsModal } = renderAttendanceDom({
-      capacity: "10",
-      includeRegistrationQuestions: true,
-      remainingCapacity: "0",
-      waitlistEnabled: "true",
-    });
-    const event = new CustomEvent("htmx:beforeRequest", {
-      bubbles: true,
-      cancelable: true,
-    });
-
-    dispatchHtmxAfterRequest(checker, {
-      responseText: JSON.stringify({
-        status: "registration-questions-pending",
-      }),
-    });
-    attendButton.dispatchEvent(event);
-
-    // Assert whether the event was prevented.
-    expect(event.defaultPrevented).to.equal(true);
-    expect(questionsModal.classList.contains("hidden")).to.equal(false);
-  });
-
-  it("completes ticketed pending questions without reopening ticket selection", () => {
-    // Render a ticketed promoted-attendee state with required questions.
-    const { attendButton, checker, container, loadingButton, questionsModal } =
-      renderAttendanceDom({
-        includeRegistrationQuestions: true,
-      });
-    container.dataset.hasVisibleTicketTypes = "true";
-    container.dataset.isSimpleRsvp = "false";
-    container.insertAdjacentHTML(
-      "beforeend",
-      `
-        <div id="ticket-modal" data-attendance-role="ticket-modal" class="hidden">
-          <input data-attendance-role="ticket-type-option" type="radio" value="ticket-1" />
-        </div>
-      `,
-    );
-    const ticketModal = container.querySelector(
-      '[data-attendance-role="ticket-modal"]',
-    );
-    const registrationAnswer = questionsModal.querySelector(
-      "[data-question-answer]",
-    );
-    const registrationForm = questionsModal.querySelector(
-      '[data-attendance-role="registration-form"]',
-    );
-
-    dispatchHtmxAfterRequest(checker, {
-      responseText: JSON.stringify({
-        status: "registration-questions-pending",
-      }),
-    });
-    const unansweredEvent = dispatchHtmxBeforeRequest(
-      attendButton,
-      {},
-      { cancelable: true },
-    );
-    expect(unansweredEvent.defaultPrevented).to.equal(true);
-    attendButton.click();
-    registrationAnswer.value = "Vegetarian lunch";
-    registrationForm.dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true }),
-    );
-
-    // Valid answers resume the attendance request without looping through ticket choice.
-    expect(questionsModal.classList.contains("hidden")).to.equal(true);
-    expect(ticketModal.classList.contains("hidden")).to.equal(true);
-    const resumedEvent = dispatchHtmxBeforeRequest(
-      attendButton,
-      {},
-      { cancelable: true },
-    );
-    expect(resumedEvent.defaultPrevented).to.equal(false);
-    expect(attendButton.classList.contains("hidden")).to.equal(true);
-    expect(loadingButton.classList.contains("hidden")).to.equal(false);
-  });
-
   it("shows sign-in info for waitlists and confirms leaving the waitlist", async () => {
     // Render the attendance fixture.
     const { signinButton, leaveButton } = renderAttendanceDom();
@@ -1191,7 +1046,7 @@ describe("event attendance", () => {
       responseText: JSON.stringify({
         admission_offer_id: "offer-2",
         event_ticket_type_id: "ticket-1",
-        status: "registration-questions-pending",
+        status: "invitation-approved",
       }),
     });
 

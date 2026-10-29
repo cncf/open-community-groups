@@ -1,0 +1,16 @@
+- table "Inbox conversations":
+  - rowgroup:
+    - row "Event User Last message":
+      - columnheader "Event"
+      - columnheader "User"
+      - columnheader "Last message"
+      - columnheader:
+        - group: Status
+  - rowgroup:
+    - 'row /E2E ARIA event ET E2E Member Three User: “Is the venue step-free\?” [A-Z][a-z]{2} \d+, \d+ · \d+:\d+ [AP]M UTC Open/':
+      - cell "E2E ARIA event"
+      - rowheader "ET E2E Member Three"
+      - 'cell /User: “Is the venue step-free\?” [A-Z][a-z]{2} \d+, \d+ · \d+:\d+ [AP]M UTC/':
+        - paragraph: "User: “Is the venue step-free?”"
+        - time: /[A-Z][a-z]{2} \d+, \d+ · \d+:\d+ [AP]M UTC/
+      - cell "Open"

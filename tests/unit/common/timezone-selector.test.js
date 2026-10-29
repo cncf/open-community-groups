@@ -44,6 +44,8 @@ describe("timezone-selector", () => {
     // The selected timezone is mirrored into the hidden input and button.
     expect(input?.value).to.equal("Europe/Madrid");
     expect(input?.required).to.equal(true);
+    expect(input?.getAttribute("aria-hidden")).to.equal("true");
+    expect(input?.tabIndex).to.equal(-1);
     expect(button?.textContent).to.include("Europe/Madrid");
   });
 

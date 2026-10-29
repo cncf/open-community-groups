@@ -1,0 +1,36 @@
+- status: Analytics loaded.
+- text: Analytics
+- link "Open documentation":
+  - /url: /docs#/guides/event-operations?id=analytics
+- paragraph: Traffic, registrations, attendance and survey responses for this event. Analytics are cached for up to an hour and may not display up to date information.
+- text: Page views 0 Page loads, not unique visitors Registrations 0 Confirmed attendees Fill rate 0% Registrations of the event capacity Conversion - Approximate registrations per page view Traffic
+- paragraph: Page views of the event page and the UTM links that brought visitors to it.
+- text: Total page views 0 Page loads across all days Attributed views 0 - of page views, from links with UTM values Unattributed views 0 - of page views, without recorded UTM values Page views per day
+- paragraph: /UTC days from \d+-\d+-\d+, the publication day, to \d+-\d+-\d+\. The first and last days cover the full UTC day\./
+- text: No data available yet
+- paragraph: /0 page views, from \d+-\d+-\d+ to \d+-\d+-\d+ \(UTC days\)\./
+- text: Traffic sources
+- paragraph:
+  - text: No page views with UTM attribution yet. Add the accepted
+  - link "UTM values":
+    - /url: /dashboard/group?tab=settings
+  - text: in the group settings and use them in the links you share.
+  - link "Learn more about UTM tracking":
+    - /url: /docs#/guides/group-dashboard?id=utm-tracking
+  - text: .
+- text: Registrations
+- paragraph: How registrations grew, how attendees got in and the current enrollment state.
+- text: Registrations per day
+- paragraph: Registrations are dated by when they were created, which is approximate.
+- text: No data available yet
+- paragraph: /0 registrations, from \d+-\d+-\d+ to \d+-\d+-\d+ \(UTC days\)\./
+- text: Fill curve No data available yet
+- paragraph: /Registrations grew from 0 to 0, from \d+-\d+-\d+ to \d+-\d+-\d+ \(UTC days\)\./
+- text: Funnel No data available yet
+- paragraph: Page views 0, Registrations 0.
+- text: How attendees registered No data available yet
+- paragraph: "Registrations by path: ."
+- text: Enrollment state Cancellations 0 Attendances canceled Waiting list 0 People waiting for a seat Invitation requests 0 0 pending · 0 accepted · 0 rejected Audience
+- paragraph: Who registered for this event, based on the current registrations.
+- text: New attendees 0 No earlier attendance at this group's events Returning attendees 0 Attended an earlier event of this group Joined during registration 0 0 of them registered
+- paragraph: '/Registration window: [A-Z][a-z]{2} \d+, \d+ \d+:\d+ \(publication\) to [A-Z][a-z]{2} \d+, \d+ \d+:\d+ \(no registration close\), UTC\./'

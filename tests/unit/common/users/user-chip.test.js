@@ -34,6 +34,9 @@ describe("user-chip", () => {
     expect(
       element.querySelector("logo-image")?.getAttribute("placeholder"),
     ).to.equal("AL");
+
+    // The avatar repeats the visible name, so it is hidden from assistive tech.
+    expect(element.querySelector("logo-image")?.getAttribute("aria-hidden")).to.equal("true");
   });
 
   it("dispatches the user modal event on click when display-modal is enabled", async () => {

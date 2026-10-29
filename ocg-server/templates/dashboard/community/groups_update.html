@@ -145,7 +145,7 @@
           </div>
           {# End Group Description -#}
 
-          {% let logo_value -%}value="{{ group.logo_url }}"{%- endlet %}
+          {% let logo_value -%}value="{%- if let Some(custom_logo_url) = &group.custom_logo_url -%}{{ custom_logo_url }}{%- endif -%}"{%- endlet %}
         {% let banner_value -%}value="{%- if let Some(banner_url) = &group.banner_url -%}{{ banner_url }}{%- endif -%}"{%- endlet %}
       {% let banner_mobile_value -%}value="{%- if let Some(banner_mobile_url) = &group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endlet %}
     {% let og_image_value -%}value="{%- if let Some(og_image_url) = &group.og_image_url -%}{{ og_image_url }}{%- endif -%}"{%- endlet %}

@@ -922,6 +922,75 @@ async fn db_contracts_event_ticketing_configuration_changed_ignores_dated_editor
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_find_event_summary_dashboard_deserializes() -> Result<()> {
+    // Setup the contract database and event fixture
+    let db = contract_tests_db()?;
+
+    // Load the dashboard event summary through the Rust contract
+    let event = db
+        .find_event_summary_dashboard(community_id(), group_id(), event_id())
+        .await?
+        .expect("group event should have a dashboard summary");
+
+    // Check shared summary fields
+    assert_eq!(event.event_id, event_id());
+    assert!(event.has_registration_questions);
+    assert_eq!(event.kind, EventKind::Hybrid);
+
+    // Check dashboard-only fields
+    assert_eq!(event.attendee_count, Some(2));
+    assert_eq!(
+        event.created_by_display_name.as_deref(),
+        Some("Contract Organizer")
+    );
+    assert_eq!(
+        event.created_by_username.as_deref(),
+        Some("contract-organizer")
+    );
+    assert_eq!(
+        event.delete_eligibility,
+        Some(EventDeleteEligibility::CancelFirst)
+    );
+    assert_eq!(event.pending_cohosts_count, Some(0));
+
+    // Check the full ticket type inventory is included
+    let ticket_types = event.ticket_types.as_deref().unwrap_or_default();
+    assert_eq!(ticket_types.len(), 1);
+    assert_eq!(ticket_types[0].title, "General Admission");
+
+    // Check only pending co-hosting invitations are counted
+    let cohosted_event = db
+        .find_event_summary_dashboard(community_id(), subgroup_id(), cohost_matrix_event_id())
+        .await?
+        .expect("subgroup event should have a dashboard summary");
+    assert_eq!(cohosted_event.pending_cohosts_count, Some(2));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_find_event_summary_dashboard_returns_none_for_event_of_another_group()
+-> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load the dashboard event summary through a group the event does not belong to
+    let event = db
+        .find_event_summary_dashboard(community_id(), subgroup_id(), event_id())
+        .await?;
+
+    // Check the foreign pairing has no summary
+    assert!(
+        event.is_none(),
+        "foreign event should have no summary, got {event:?}"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_cfs_submission_notification_data_deserializes() -> Result<()> {
     // Setup the contract database and submission fixture
     let db = contract_tests_db()?;
@@ -1176,52 +1245,6 @@ async fn db_contracts_get_event_cohost_notification_data_deserializes() -> Resul
         .expect("deleted event content to be returned");
     assert_eq!(deleted.event_id, cohost_deleted_event_id());
     assert_eq!(deleted.status, EventCohostStatus::EventDeleted);
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_get_event_summary_dashboard_deserializes() -> Result<()> {
-    // Setup the contract database and event fixture
-    let db = contract_tests_db()?;
-
-    // Load the dashboard event summary through the Rust contract
-    let event = db
-        .get_event_summary_dashboard(community_id(), group_id(), event_id())
-        .await?;
-
-    // Check shared summary fields
-    assert_eq!(event.event_id, event_id());
-    assert!(event.has_registration_questions);
-    assert_eq!(event.kind, EventKind::Hybrid);
-
-    // Check dashboard-only fields
-    assert_eq!(event.attendee_count, Some(2));
-    assert_eq!(
-        event.created_by_display_name.as_deref(),
-        Some("Contract Organizer")
-    );
-    assert_eq!(
-        event.created_by_username.as_deref(),
-        Some("contract-organizer")
-    );
-    assert_eq!(
-        event.delete_eligibility,
-        Some(EventDeleteEligibility::CancelFirst)
-    );
-    assert_eq!(event.pending_cohosts_count, Some(0));
-
-    // Check the full ticket type inventory is included
-    let ticket_types = event.ticket_types.as_deref().unwrap_or_default();
-    assert_eq!(ticket_types.len(), 1);
-    assert_eq!(ticket_types[0].title, "General Admission");
-
-    // Check only pending co-hosting invitations are counted
-    let cohosted_event = db
-        .get_event_summary_dashboard(community_id(), subgroup_id(), cohost_matrix_event_id())
-        .await?;
-    assert_eq!(cohosted_event.pending_cohosts_count, Some(2));
 
     Ok(())
 }

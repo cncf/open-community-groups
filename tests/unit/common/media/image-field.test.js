@@ -637,6 +637,43 @@ describe("image-field", () => {
     form.remove();
   });
 
+  it("names the direct-upload drop zone from its label and visible prompt", async () => {
+    // Render the verification upload drop zone.
+    const element = await mountLitComponent("image-field", {
+      directUpload: true,
+      label: "Exported PNG",
+      name: "png",
+    });
+
+    // The accessible name keeps the visible prompt text (label in name).
+    const dropZone = element.querySelector('[role="button"]');
+    const nameParts = dropZone
+      .getAttribute("aria-labelledby")
+      .split(" ")
+      .map((id) => document.getElementById(id).textContent.replace(/\s+/g, " ").trim());
+    expect(dropZone.hasAttribute("aria-label")).to.equal(false);
+    expect(nameParts).to.deep.equal(["Exported PNG", "Click to upload or drag and drop a file"]);
+  });
+
+  it("names the preview from its label and visible prompt", async () => {
+    // Render an empty image field and read the preview name parts.
+    const element = await mountLitComponent("image-field", { label: "Logo", name: "logo_url" });
+    const readNameParts = () =>
+      element
+        .querySelector("[data-image-upload-preview]")
+        .getAttribute("aria-labelledby")
+        .split(" ")
+        .map((id) => document.getElementById(id)?.textContent.replace(/\s+/g, " ").trim());
+
+    // The empty preview keeps its visible prompt in the name (label in name).
+    expect(readNameParts()).to.deep.equal(["Logo", "Click or drop image"]);
+
+    // A preview showing an image is named as a change action.
+    element.value = "https://example.com/image.png";
+    await element.updateComplete;
+    expect(readNameParts()).to.deep.equal(["Logo", "Change image"]);
+  });
+
   it("does not give direct-upload-only file inputs an empty name", async () => {
     // Render an image field that uploads through its component endpoint.
     const element = await mountLitComponent("image-field", {

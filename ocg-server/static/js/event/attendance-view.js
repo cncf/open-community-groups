@@ -33,7 +33,6 @@ import { initializeTicketModalControls } from "/static/js/event/attendance-ticke
 const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
 const OPEN_PAYMENT_PAGE_LABEL = "Open payment page";
 const CLAIM_TICKET_LABEL = "Claim ticket";
-const COMPLETE_REGISTRATION_LABEL = "Complete registration";
 const CONFIRM_RSVP_LABEL = "Confirm RSVP";
 const PAID_TICKETS_UNAVAILABLE_LABEL = "Tickets unavailable";
 const REFUND_PROCESSING_LABEL = "Refund processing";
@@ -50,7 +49,6 @@ const REQUEST_PENDING_CANCEL_ARIA_LABEL = `${REQUEST_PENDING_LABEL} – cancel r
 
 const ATTEND_EVENT_ICON = "icon-user-plus";
 const CANCEL_ACTION_ICON = "icon-cancel";
-const QUESTIONS_TAB_ICON = "icon-list-check";
 const REQUEST_INVITATION_ICON = "icon-request-invitation";
 
 const CANCEL_CHECKOUT_TITLE = "Release this ticket hold and choose again.";
@@ -456,34 +454,6 @@ export const showPrimaryRequestLoading = (container, role) => {
  */
 export const showRefundLoadingState = (container) => {
   setRefundLoadingState(container, true);
-};
-
-/**
- * Shows the state for attendees promoted from the waitlist who need answers.
- * @param {HTMLElement} container - Attendance container element
- * @param {{canceled: boolean, isPastEvent: boolean}} meta - Attendance metadata
- */
-export const showRegistrationQuestionsPendingState = (container, meta, response = {}) => {
-  showPrimaryAttendanceState(
-    container,
-    meta,
-    "attendButton",
-    withRegistrationWindowState(
-      meta,
-      {
-        icon: QUESTIONS_TAB_ICON,
-        label: COMPLETE_REGISTRATION_LABEL,
-      },
-      {
-        allowManualInvitation: response.manually_invited === true,
-      },
-    ),
-  );
-
-  const { attendButton } = getPrimaryControls(container);
-  if (attendButton instanceof HTMLButtonElement) {
-    attendButton.dataset.registrationQuestionsPending = "true";
-  }
 };
 
 /**
@@ -1088,7 +1058,6 @@ const resetPrimaryControls = (container) => {
   if (attendButton instanceof HTMLButtonElement) {
     delete attendButton.dataset.resumeUrl;
     delete attendButton.dataset.openInNewTab;
-    delete attendButton.dataset.registrationQuestionsPending;
   }
   hideExternalPaymentDetails(container);
   if (checkoutResumeButton instanceof HTMLButtonElement) {

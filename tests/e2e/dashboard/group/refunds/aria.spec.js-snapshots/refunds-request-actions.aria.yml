@@ -1,0 +1,5 @@
+- list:
+  - listitem:
+    - button "Approve refund"
+  - listitem:
+    - button "Reject refund"

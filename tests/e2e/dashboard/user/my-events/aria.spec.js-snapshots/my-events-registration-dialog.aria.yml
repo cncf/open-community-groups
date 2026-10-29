@@ -1,0 +1,31 @@
+- dialog "Registration questions":
+  - heading "Registration questions" [level=3]
+  - paragraph: Registration Answers Lab
+  - button "Close modal"
+  - group "1 What are you hoping to learn from this event? *":
+    - text: ""
+    - textbox "1 What are you hoping to learn from this event? *": I want practical patterns for incident readiness. I am also comparing governance models for our internal platform.
+  - group "2 Preferred session format *":
+    - text: ""
+    - radio "Hands-on workshop" [checked]
+    - text: Hands-on workshop
+    - radio "Panel discussion"
+    - text: Panel discussion
+    - radio "Lightning talks"
+    - text: Lightning talks
+  - group "3 Topics you want covered *":
+    - text: ""
+    - checkbox "Platform reliability" [checked]
+    - text: Platform reliability
+    - checkbox "Developer experience" [checked]
+    - text: Developer experience
+    - checkbox "Security and compliance"
+    - text: Security and compliance
+    - checkbox "Open source governance" [checked]
+    - text: Open source governance
+  - group "4 Anything the organizers should know?":
+    - text: ""
+    - textbox "4 Anything the organizers should know?": Vegetarian lunch if food is provided.
+  - paragraph: "* Questions marked with an asterisk are required."
+  - button "Cancel"
+  - button "Save answers"

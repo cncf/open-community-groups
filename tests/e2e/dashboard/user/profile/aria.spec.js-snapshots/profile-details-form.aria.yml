@@ -1,0 +1,59 @@
+- text: Personal Details
+- link "Open documentation":
+  - /url: /docs#/guides/user-dashboard?id=profile-public-identity
+- paragraph: Your basic profile information.
+- text: Name *
+- textbox "Name *": E2E Empty User
+- paragraph: /Your display name visible to other users\. Max \d+ characters\./
+- text: Timezone
+- button "Select a timezone"
+- paragraph: Your preferred timezone.
+- text: Company
+- textbox "Company"
+- paragraph: /The organization or company you work for\. Max \d+ characters\./
+- text: Title
+- textbox "Title"
+- paragraph: /Your professional title or role \(e\.g\. Software Engineer, Product Manager\)\. Max \d+ characters\./
+- text: Photo
+- button "Photo Click or drop image":
+  - paragraph: Click or drop image
+- paragraph: "/Images must be \\d+ x \\d+ px \\(square\\)\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Photo"
+- button "Remove image" [disabled]
+- text: Bio
+- textbox "Bio"
+- paragraph: /A description about yourself and your background\. Max \d+ characters\./
+- text: Interests (topics and technologies you're interested in)
+- textbox "Interest 1":
+  - /placeholder: ""
+- button "Remove item" [disabled]
+- button "Add Interest"
+- text: Location
+- paragraph: Optional location information.
+- text: City
+- textbox "City"
+- paragraph: /The city where you're based\. Max \d+ characters\./
+- text: Country
+- textbox "Country"
+- paragraph: /Your country of residence\. Max \d+ characters\./
+- text: Social links
+- paragraph: Optional social media profiles and website links.
+- text: Website
+- textbox "Website":
+  - /placeholder: https://example.com
+- text: LinkedIn
+- textbox "LinkedIn":
+  - /placeholder: https://linkedin.com/in/username
+- text: Bluesky
+- textbox "Bluesky":
+  - /placeholder: https://bsky.app/profile/username
+- text: X (formerly Twitter)
+- textbox "X (formerly Twitter)":
+  - /placeholder: https://x.com/username
+- text: Facebook
+- textbox "Facebook":
+  - /placeholder: https://facebook.com/username
+- text: GitHub
+- textbox "GitHub":
+  - /placeholder: https://github.com/username
+- button "Save"

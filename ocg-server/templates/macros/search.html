@@ -30,12 +30,14 @@
              autocomplete="off" />
       <div class="absolute right-[40px] top-[10px] block peer-placeholder-shown:hidden">
         <button id="clean-search"
+                aria-label="Clear search"
                 class="mr-2 mt-[2px] block peer-placeholder-shown:hidden">
           <div class="svg-icon h-5 w-5 bg-stone-400 hover:bg-stone-700 transition-colors icon-close"></div>
         </button>
       </div>
       <div class="absolute inset-y-0 right-[6px] flex items-center">
         <button id="search-btn"
+                aria-label="Search"
                 class="btn-tertiary group inline-flex h-[30px] w-[30px] items-center justify-center p-2">
           <div class="svg-icon h-4 w-4 mx-auto icon-magnifying-glass"></div>
         </button>
@@ -43,7 +45,9 @@
 
       {% if with_help -%}
         <div class="absolute hidden -right-[1.5rem] top-0 md:block">
-          <button id="open-search-tips-modal" data-modal-toggle="search-tips">
+          <button id="open-search-tips-modal"
+                  data-modal-toggle="search-tips"
+                  aria-label="Search tips">
             <div class="svg-icon w-4 h-4 bg-stone-300 hover:bg-stone-700 transition-colors icon-question-mark"></div>
           </button>
         </div>

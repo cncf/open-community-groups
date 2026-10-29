@@ -24,17 +24,15 @@ const webServerTimeout = Number(process.env.OCG_E2E_SERVER_TIMEOUT || 300_000);
 const webServerCwd = path.resolve(__dirname, "../..");
 // Output folder for Playwright's HTML report.
 const reportDir = path.resolve(__dirname, "playwright-report");
-// Output folder for Playwright artifacts such as traces and videos.
+// Output folder for the blob report written in CI, merged into one report by `merge.config.js`.
+const blobReportDir = path.resolve(__dirname, "blob-report");
+// Output folder for Playwright artifacts such as traces and screenshots.
 const resultsDir = path.resolve(__dirname, "test-results");
+// Reporter summarizing browser-health and navigation-retry annotations; never changes the exit status.
+const diagnosticsReporterPath = path.resolve(__dirname, "reporters/diagnostics.js");
 // Preflight script that aborts the run unless the server and psql target the same database.
 const preflightPath = path.resolve(__dirname, "preflight.js");
-// Fast cross-browser specs that make up the smoke projects.
-const smokeSpecPaths = [
-  "workflows/navigation/navigation.spec.js",
-  "dashboard/common/dashboard.spec.js",
-  "site/common/header.spec.js",
-];
-// Deep runs need a deterministic browser environment for stable snapshots.
+// Deterministic browser environment for stable ARIA snapshots, shared by the smoke projects.
 const deepUseOverrides = {
   colorScheme: "light",
   locale: "en-US",
@@ -43,6 +41,8 @@ const deepUseOverrides = {
 };
 // Tag that restricts a test to the mobile project.
 const mobileTestPattern = /@mobile/;
+// Tag that adds a desktop test to the Firefox and WebKit smoke projects.
+const smokeTestPattern = /@smoke/;
 
 const webServer =
   shouldStartServer && webServerCommand
@@ -58,44 +58,47 @@ const webServer =
 export default defineConfig({
   testDir: __dirname,
   globalSetup: preflightPath,
-  fullyParallel: false,
+  // Each worker owns a stack and every test owns the rows it changes, so the tests of one file can
+  // run on different stacks.
+  fullyParallel: true,
   // Tests share their stack's database, so each worker needs a stack of its own.
   workers: Math.max(stacks.length, 1),
+  // Fail CI runs that would silently skip tests because of a stray test.only.
+  forbidOnly: !!process.env.CI,
   retries: 0,
   expect: {
-    toHaveScreenshot: { maxDiffPixelRatio: 0.03 },
+    // ARIA snapshot files (`toMatchAriaSnapshot({ name })`) sit next to their spec and are shared
+    // by every project, so a desktop and a mobile test can match the same file.
+    toMatchAriaSnapshot: { pathTemplate: "{testFileDir}/{testFileName}-snapshots/{arg}{ext}" },
   },
-  reporter: [["html", { open: "never", outputFolder: reportDir }], ["list"]],
+  // CI runs write blob reports for the merge-reports job (parallel.sh moves them into the run archive
+  // with OCG_E2E_RUN_ARCHIVE); local runs keep the HTML report.
+  reporter: process.env.CI
+    ? [["blob", { outputDir: blobReportDir }], ["list"], [diagnosticsReporterPath]]
+    : [["html", { open: "never", outputFolder: reportDir }], ["list"], [diagnosticsReporterPath]],
   outputDir: resultsDir,
-  snapshotPathTemplate: "{testFileDir}/{testFileName}-snapshots/{arg}-{projectName}{ext}",
   use: {
     baseURL,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
-    video: "retain-on-failure",
+    // Failure traces already hold the page snapshots; videos only slow the runs down.
+    video: "off",
   },
   projects: [
     {
-      name: "chromium-smoke",
-      testMatch: smokeSpecPaths,
-      grepInvert: mobileTestPattern,
-      use: { ...devices["Desktop Chrome"] },
-    },
-    {
       name: "firefox-smoke",
-      testMatch: smokeSpecPaths,
+      grep: smokeTestPattern,
       grepInvert: mobileTestPattern,
-      use: { ...devices["Desktop Firefox"] },
+      use: { ...devices["Desktop Firefox"], ...deepUseOverrides },
     },
     {
       name: "webkit-smoke",
-      testMatch: smokeSpecPaths,
+      grep: smokeTestPattern,
       grepInvert: mobileTestPattern,
-      use: { ...devices["Desktop Safari"] },
+      use: { ...devices["Desktop Safari"], ...deepUseOverrides },
     },
     {
       name: "chromium-deep",
-      testIgnore: smokeSpecPaths,
       grepInvert: mobileTestPattern,
       use: { ...devices["Desktop Chrome"], ...deepUseOverrides },
     },

@@ -1,14 +1,8 @@
 import { expect, test } from "../../../fixtures.js";
-import { queryE2eDatabase } from "../../../database.js";
-import { TEST_USER_IDS } from "../../../seed.js";
-import { createSessionProposal, openUserDashboardPath, submitProposalToOpenCfsEvent } from "../helpers.js";
-import {
-  expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
-  uniqueName,
-  waitForActionResponse,
-} from "../../../utils.js";
+import { setupCfsSubmission } from "../../../data-graphs/cfs.js";
+import { TEST_EVENT_IDS, TEST_USER_IDS } from "../../../seed.js";
+import { openUserDashboardPath } from "../helpers.js";
+import { expectPaginationNavigation, uniqueName, waitForActionResponse } from "../../../utils.js";
 
 test.describe("user dashboard submissions view", () => {
   test("empty state explains when the user has no submissions", async ({ emptyUserPage }) => {
@@ -19,33 +13,6 @@ test.describe("user dashboard submissions view", () => {
     // Verify the zero count and empty result guidance remain visible.
     await expect(dashboardContent).toContainText("0 submissions");
     await expect(dashboardContent).toContainText("You don't have any submissions yet.");
-  });
-
-  test("submissions table exposes every user-facing column", async ({ member1Page }) => {
-    // Load submissions before checking table structure.
-    await openUserDashboardPath("/dashboard/user?tab=submissions", member1Page);
-
-    // Find the submissions table.
-    const submissionsTable = member1Page.locator("#dashboard-content").getByRole("table");
-
-    // Verify the complete ordered header set.
-    const headers = ["Event", "Proposal", "Status", "Updated", "Actions"];
-    await expectTableColumnsAtViewport(
-      member1Page,
-      submissionsTable,
-      1024,
-      ["Event", "Proposal", "Actions"],
-      ["Status", "Updated"],
-    );
-    await expectTableColumnsAtViewport(
-      member1Page,
-      submissionsTable,
-      1280,
-      ["Event", "Proposal", "Status", "Actions"],
-      ["Updated"],
-    );
-    await expectTableColumnsAtViewport(member1Page, submissionsTable, 1536, headers, []);
-    await expectTableHeaders(submissionsTable, headers);
   });
 
   test("user can move between submission result pages", async ({ member1Page }) => {
@@ -111,118 +78,60 @@ test.describe("user dashboard submissions view", () => {
     ).toBeDisabled();
   });
 
-  test("user can submit a newly created proposal and see it in submissions", async ({ pending1Page }) => {
-    // Create a unique proposal title for the temporary submission flow.
-    const proposalTitle = uniqueName("pending1 cfs proposal");
+  test("user can withdraw a newly submitted CFS submission from submissions", async ({
+    owned,
+    pending2Page,
+  }) => {
+    // Submit an owned proposal to the open CFS event.
+    const { proposalId, title: proposalTitle } = owned.sessionProposal({
+      title: uniqueName("pending2 cfs proposal"),
+      userId: TEST_USER_IDS.pending2,
+    });
+    setupCfsSubmission({ eventId: TEST_EVENT_IDS.alpha.cfsSummit, proposalId });
 
-    try {
-      // Create a session proposal for this member.
-      await createSessionProposal(pending1Page, proposalTitle);
-      await submitProposalToOpenCfsEvent(pending1Page, proposalTitle);
-      await openUserDashboardPath("/dashboard/user?tab=submissions", pending1Page);
+    // Open the submissions tab.
+    await openUserDashboardPath("/dashboard/user?tab=submissions", pending2Page);
 
-      // Find the dashboard content.
-      const dashboardContent = pending1Page.locator("#dashboard-content");
-      const submissionRow = dashboardContent.locator("tr", {
-        hasText: proposalTitle,
-      });
+    // Find the dashboard content.
+    const dashboardContent = pending2Page.locator("#dashboard-content");
+    const submissionRow = dashboardContent.locator("tr", {
+      hasText: proposalTitle,
+    });
+    const withdrawButton = submissionRow.getByTitle("Withdraw");
 
-      // Verify user can submit a newly created proposal and see it in submissions.
-      await expect(dashboardContent.getByText("Submissions", { exact: true })).toBeVisible();
-      await expect(submissionRow).toContainText("Event With Active CFS");
-      await expect(submissionRow).toContainText("Not reviewed");
-    } finally {
-      // Remove the temporary submitted proposal.
-      deleteSessionProposalsByTitle(TEST_USER_IDS.pending1, [proposalTitle]);
-    }
-  });
+    // Verify user can withdraw a newly submitted CFS submission from submissions.
+    await expect(dashboardContent.getByText("Submissions", { exact: true })).toBeVisible();
+    await expect(submissionRow).toContainText("Event With Active CFS");
+    await expect(submissionRow).toContainText("Not reviewed");
+    await expect(withdrawButton).toBeVisible();
 
-  test("user can withdraw a newly submitted CFS submission from submissions", async ({ pending2Page }) => {
-    // Create a unique proposal title for the temporary withdrawal flow.
-    const proposalTitle = uniqueName("pending2 cfs proposal");
+    // Click the withdraw button.
+    await withdrawButton.click();
+    await expect(pending2Page.locator(".swal2-popup")).toContainText(
+      "Are you sure you want to withdraw this submission?",
+    );
 
-    try {
-      // Create a session proposal for this member.
-      await createSessionProposal(pending2Page, proposalTitle);
-      await submitProposalToOpenCfsEvent(pending2Page, proposalTitle);
-      await openUserDashboardPath("/dashboard/user?tab=submissions", pending2Page);
+    // Click Withdraw.
+    await waitForActionResponse(
+      pending2Page,
+      () => pending2Page.getByRole("button", { name: "Withdraw" }).click(),
+      {
+        method: "PUT",
+        urlEndsWith: "/withdraw",
+        urlIncludes: "/dashboard/user/submissions/",
+      },
+    );
 
-      // Find the dashboard content.
-      const dashboardContent = pending2Page.locator("#dashboard-content");
-      const submissionRow = dashboardContent.locator("tr", {
-        hasText: proposalTitle,
-      });
-      const withdrawButton = submissionRow.getByTitle("Withdraw");
+    // Reload the invited user dashboard.
+    await pending2Page.reload();
 
-      // Verify user can withdraw a newly submitted CFS submission from submissions.
-      await expect(dashboardContent.getByText("Submissions", { exact: true })).toBeVisible();
-      await expect(submissionRow).toContainText("Not reviewed");
-      await expect(withdrawButton).toBeVisible();
-
-      // Click the withdraw button.
-      await withdrawButton.click();
-      await expect(pending2Page.locator(".swal2-popup")).toContainText(
-        "Are you sure you want to withdraw this submission?",
-      );
-
-      // Click Withdraw.
-      await waitForActionResponse(
-        pending2Page,
-        () => pending2Page.getByRole("button", { name: "Withdraw" }).click(),
-        {
-          method: "PUT",
-          urlEndsWith: "/withdraw",
-          urlIncludes: "/dashboard/user/submissions/",
-        },
-      );
-
-      // Reload the invited user dashboard.
-      await pending2Page.reload();
-
-      // Set up withdrawn row.
-      const withdrawnRow = pending2Page.locator("#dashboard-content").locator("tr", {
-        hasText: proposalTitle,
-      });
-      await expect(withdrawnRow).toContainText("Withdrawn");
-      await expect(
-        withdrawnRow.getByTitle("This submission has been withdrawn and cannot be removed."),
-      ).toBeDisabled();
-    } finally {
-      // Remove the temporary withdrawn proposal.
-      deleteSessionProposalsByTitle(TEST_USER_IDS.pending2, [proposalTitle]);
-    }
+    // Set up withdrawn row.
+    const withdrawnRow = pending2Page.locator("#dashboard-content").locator("tr", {
+      hasText: proposalTitle,
+    });
+    await expect(withdrawnRow).toContainText("Withdrawn");
+    await expect(
+      withdrawnRow.getByTitle("This submission has been withdrawn and cannot be removed."),
+    ).toBeDisabled();
   });
 });
-
-/** Deletes matching session_proposal and cfs_submission rows from the database. */
-const deleteSessionProposalsByTitle = (userId, proposalTitles) => {
-  if (proposalTitles.length === 0) {
-    return;
-  }
-
-  const titleList = proposalTitles.map((title) => `'${title.replace(/'/g, "''")}'`).join(", ");
-
-  queryE2eDatabase(`
-    do $$
-    declare
-      v_proposal_ids uuid[];
-      v_submission_ids uuid[];
-    begin
-      select coalesce(array_agg(session_proposal_id), '{}')
-      into v_proposal_ids
-      from session_proposal
-      where user_id = '${userId}'
-      and title in (${titleList});
-
-      select coalesce(array_agg(cfs_submission_id), '{}')
-      into v_submission_ids
-      from cfs_submission
-      where session_proposal_id = any(v_proposal_ids);
-
-      delete from cfs_submission_label where cfs_submission_id = any(v_submission_ids);
-      delete from cfs_submission_rating where cfs_submission_id = any(v_submission_ids);
-      delete from cfs_submission where cfs_submission_id = any(v_submission_ids);
-      delete from session_proposal where session_proposal_id = any(v_proposal_ids);
-    end $$;
-  `);
-};

@@ -1,0 +1,68 @@
+- dialog "Add session":
+  - heading "Add session" [level=3]
+  - button "Close modal"
+  - text: Session Title *
+  - textbox "Session Title *"
+  - text: Session Type *
+  - combobox "Session Type *":
+    - option "Select type" [selected]
+    - option "Hybrid"
+    - option "In-Person"
+    - option "Virtual"
+  - text: Start Time *
+  - textbox "Start Time *"
+  - text: End Time
+  - textbox "End Time"
+  - text: Location
+  - textbox "Location":
+    - /placeholder: Optional - physical location or meeting room
+  - text: Description
+  - application:
+    - toolbar:
+      - button "Bold": 
+      - button "Italic": 
+      - button "Heading": 
+      - text: "|"
+      - button "Quote": 
+      - button "Generic List": 
+      - button "Numbered List": 
+      - button "Check List": 
+      - text: "|"
+      - button "Create Link": 
+      - button "Insert Table": 
+      - button "Insert Horizontal Line": 
+      - text: "|"
+      - button "Toggle Preview": 
+      - text: "|"
+      - button "Undo": 
+      - button "Redo": 
+  - text: Speakers
+  - button "Add speaker"
+  - paragraph: Add speakers or presenters for this session.
+  - text: No speakers added yet. Session meeting details
+  - radio "Use my own meeting link Paste a Zoom, Teams, Meet, or other link." [checked]
+  - text: Use my own meeting link
+  - paragraph: Paste a Zoom, Teams, Meet, or other link.
+  - 'radio "Create meeting automatically We will create and manage a meeting when you save this event. Complete these requirements to enable this option: Set start and end times." [disabled]'
+  - text: Create meeting automatically
+  - paragraph: We will create and manage a meeting when you save this event.
+  - paragraph: "Complete these requirements to enable this option:"
+  - list:
+    - listitem: Set start and end times.
+  - text: Meeting URL
+  - textbox "Meeting URL":
+    - /placeholder: https://meet.example.com/123456789
+  - paragraph: Zoom, Teams, Meet, or any other video link.
+  - text: Join instructions (optional)
+  - textbox "Join instructions (optional)":
+    - /placeholder: Add passcodes, waiting room details, or other attendee instructions.
+  - paragraph: Shown with the meeting details on the public event page.
+  - text: Final public recording URL (optional)
+  - textbox "Final public recording URL (optional)":
+    - /placeholder: https://youtube.com/watch?v=...
+  - paragraph: Optional final recording URL, such as a processed upload or a reviewed provider recording.
+  - checkbox "Publish recording publicly"
+  - text: Publish recording publicly
+  - paragraph: Controls whether public visitors can see the final public recording URL.
+  - button "Cancel"
+  - button "Add session"

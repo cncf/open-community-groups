@@ -8,7 +8,7 @@
 
 -- Test events keep the analytics fixtures out of public listings and stats:
 -- a past paid event with traffic, attribution and check-ins, and a future free
--- event.
+-- event. Check-ins keep their offsets from the fixed 10:00 Madrid start.
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, payment_currency_code, published, published_at,
@@ -26,8 +26,8 @@ insert into event (
     true,
     now() - interval '20 days',
     true,
-    now() - interval '3 days',
-    now() - interval '3 days' + interval '2 hours',
+    (current_date - interval '3 days' + interval '10 hours') at time zone 'Europe/Madrid',
+    (current_date - interval '3 days' + interval '12 hours') at time zone 'Europe/Madrid',
     '[{"id": "5a555555-5555-5555-5555-555555555961", "kind": "single-select", "prompt": "Role", "required": false, "options": [{"id": "5b555555-5555-5555-5555-555555555961", "label": "Developer"}, {"id": "5b555555-5555-5555-5555-555555555962", "label": "Operator"}]}, {"id": "5a555555-5555-5555-5555-555555555962", "kind": "multi-select", "prompt": "Interests", "required": false, "options": [{"id": "5b555555-5555-5555-5555-555555555971", "label": "AI"}, {"id": "5b555555-5555-5555-5555-555555555972", "label": "Cloud"}, {"id": "5b555555-5555-5555-5555-555555555973", "label": "Databases"}, {"id": "5b555555-5555-5555-5555-555555555974", "label": "DevOps"}, {"id": "5b555555-5555-5555-5555-555555555975", "label": "Frontend"}, {"id": "5b555555-5555-5555-5555-555555555976", "label": "Mobile"}, {"id": "5b555555-5555-5555-5555-555555555977", "label": "Networking"}, {"id": "5b555555-5555-5555-5555-555555555978", "label": "Observability"}, {"id": "5b555555-5555-5555-5555-555555555979", "label": "Platform engineering"}, {"id": "5b555555-5555-5555-5555-555555555980", "label": "Security"}, {"id": "5b555555-5555-5555-5555-555555555981", "label": "Storage"}, {"id": "5b555555-5555-5555-5555-555555555982", "label": "WebAssembly"}]}]'::jsonb
 ), (
     '55555555-5555-5555-5555-555555555962',
@@ -42,8 +42,8 @@ insert into event (
     true,
     now() - interval '2 days',
     true,
-    now() + interval '20 days',
-    now() + interval '20 days 2 hours',
+    date_trunc('day', now()) + interval '20 days 10 hours',
+    date_trunc('day', now()) + interval '20 days 12 hours',
     '[]'::jsonb
 );
 
@@ -105,14 +105,14 @@ insert into event_attendee (
     '55555555-5555-5555-5555-555555555961',
     '77777777-7777-7777-7777-777777777961',
     true,
-    now() - interval '3 days' - interval '10 minutes',
+    (current_date - interval '3 days' + interval '9 hours 50 minutes') at time zone 'Europe/Madrid',
     now() - interval '10 days',
     '{"answers": [{"question_id": "5a555555-5555-5555-5555-555555555961", "value": "5b555555-5555-5555-5555-555555555961"}, {"question_id": "5a555555-5555-5555-5555-555555555962", "value": ["5b555555-5555-5555-5555-555555555971", "5b555555-5555-5555-5555-555555555972"]}]}'::jsonb
 ), (
     '55555555-5555-5555-5555-555555555961',
     '77777777-7777-7777-7777-777777777962',
     true,
-    now() - interval '3 days' + interval '5 minutes',
+    (current_date - interval '3 days' + interval '10 hours 5 minutes') at time zone 'Europe/Madrid',
     now() - interval '6 days',
     '{"answers": [{"question_id": "5a555555-5555-5555-5555-555555555961", "value": "5b555555-5555-5555-5555-555555555962"}, {"question_id": "5a555555-5555-5555-5555-555555555962", "value": ["5b555555-5555-5555-5555-555555555971"]}]}'::jsonb
 );

@@ -1,0 +1,19 @@
+- text: Groups
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=groups-portfolio
+- text: Search groups
+- textbox "Search groups"
+- button "Add Group"
+- text: 0 groups
+- table:
+  - rowgroup:
+    - row "Name Location Category Actions":
+      - columnheader "Name"
+      - columnheader "Location"
+      - columnheader "Category"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "It looks like you haven't created any groups yet. Groups created by this community will be listed here. You can create a new group by clicking on the Add Group button in the top right corner.":
+      - cell "It looks like you haven't created any groups yet. Groups created by this community will be listed here. You can create a new group by clicking on the Add Group button in the top right corner.":
+        - text: ""
+        - paragraph: Groups created by this community will be listed here. You can create a new group by clicking on the Add Group button in the top right corner.

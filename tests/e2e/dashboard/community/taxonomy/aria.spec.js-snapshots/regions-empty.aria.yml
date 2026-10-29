@@ -1,0 +1,14 @@
+- text: Regions
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=regions-geographic-scope
+- text: 0 regions
+- button "Add Region"
+- table:
+  - rowgroup:
+    - row "Name Groups Actions":
+      - columnheader "Name"
+      - columnheader "Groups"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No regions found for this community yet.":
+      - cell "No regions found for this community yet."

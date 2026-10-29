@@ -1,0 +1,9 @@
+- row "Event With Active CFS Platform Ops Meetup E2E ARIA submitted proposal Not reviewed":
+  - cell "Event With Active CFS Platform Ops Meetup":
+    - link "Event With Active CFS":
+      - /url: /e2e-test-community/group/test-group-alpha/event/alpha-cfs-summit
+    - text: ""
+  - cell "E2E ARIA submitted proposal"
+  - cell "Not reviewed"
+  - cell:
+    - button "Withdraw"
