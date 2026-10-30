@@ -11,7 +11,7 @@ account receives the payment minus the platform fee. The OCG (Linux
 Foundation) Stripe account receives only the platform fee, currently 10% of the
 price excluding tax, and never receives the full ticket price.
 
-![How ticket payments are split between the fiscal sponsor and OCG Stripe accounts](../images/payments-split.svg)
+![How ticket payments are split between the fiscal sponsor and OCG Stripe accounts](../images/payments-split.svg ':class=docs-diagram')
 
 In OCG, a group is ready for paid events through Stripe only when both of these
 are true:
