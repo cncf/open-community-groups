@@ -227,12 +227,12 @@ describe("co-hosts templates", () => {
       await loadTemplate("/ocg-server/templates/dashboard/group/event_preview.html"),
     );
 
-    // Verify the fallback icon is decorative and the statuses use green and amber.
+    // Verify the fallback icon is decorative and the statuses use the success and warning tones.
     expect(template).to.include(
       '<div class="svg-icon size-5 bg-stone-400 icon-groups" aria-hidden="true"></div>',
     );
-    expect(template).to.include('border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Approved');
-    expect(template).to.include('border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Pending');
+    expect(template).to.include('badge-success">Approved');
+    expect(template).to.include('badge-warning">Pending');
   });
 
   it("renders co-hosted event and owner group logos with the shared square logo", async () => {
@@ -251,16 +251,17 @@ describe("co-hosts templates", () => {
     expect(template).not.to.include("<logo-image");
   });
 
-  it("caps the co-hosted event cell width so long names truncate", async () => {
+  it("bounds the co-hosted event cell so long names truncate", async () => {
     // Load the group dashboard co-hosts list.
     const template = normalizeWhitespace(
       await loadTemplate("/ocg-server/templates/dashboard/group/cohosts_list.html"),
     );
 
-    // Verify the event cell is bounded like the events list name cell.
-    expect(template).to.include(
-      '<th scope="row" class="px-3 py-4 font-medium text-stone-900 min-w-[100px] max-w-[250px] xl:px-5">',
-    );
+    // Verify the event cell takes the remaining width and lets long names truncate.
+    const rowHeaderClass = template.match(/<th scope="row" class="([^"]*)">/u)?.[1] ?? "";
+
+    expect(rowHeaderClass.split(" ")).to.include("max-w-0");
+    expect(template).not.to.include("max-w-[250px]");
     expect(template).to.include(
       '<div class="truncate" title="{{ event.event_name }}">{{ event.event_name }}</div>',
     );

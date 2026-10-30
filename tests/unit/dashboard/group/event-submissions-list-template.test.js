@@ -24,4 +24,17 @@ describe("dashboard group event submissions list template", () => {
     // Verify the sort control stays aligned with the input when chips wrap.
     expect(template).to.include('<div class="flex flex-col gap-3 md:flex-row md:items-start">');
   });
+
+  it("summarizes the compact submission labels behind a labels trigger", async () => {
+    // Load the submissions list template before checking the compact labels.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the compact labels use the shared summary with a per-submission tooltip id.
+    expect(template).to.include(
+      "{% let submission_labels_tooltip_id -%}submission-labels-{{ submission.cfs_submission_id }}{%- endlet %}",
+    );
+    expect(template).to.include(
+      "{{ dashboard::labels_summary(labels = submission.labels, tooltip_id = submission_labels_tooltip_id) -}}",
+    );
+  });
 });

@@ -17,7 +17,7 @@
           aria-controls="analytics-panel-groups"
           data-analytics-tab="groups"
           data-active="true"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden 2xl:data-[active=true]:[&_span.tab-peak]:block">
     <div class="text-sm text-stone-600">Groups</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
       {{ stats.groups.total|num_fmt }}
@@ -31,7 +31,7 @@
           aria-controls="analytics-panel-members"
           data-analytics-tab="members"
           data-active="false"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden 2xl:data-[active=true]:[&_span.tab-peak]:block">
     <div class="text-sm text-stone-600">Members</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
       {{ stats.members.total|num_fmt }}
@@ -45,7 +45,7 @@
           aria-controls="analytics-panel-events"
           data-analytics-tab="events"
           data-active="false"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden 2xl:data-[active=true]:[&_span.tab-peak]:block">
     <div class="text-sm text-stone-600">Events</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
       {{ stats.events.total|num_fmt }}
@@ -59,7 +59,7 @@
           aria-controls="analytics-panel-attendees"
           data-analytics-tab="attendees"
           data-active="false"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden 2xl:data-[active=true]:[&_span.tab-peak]:block">
     <div class="text-sm text-stone-600">Attendees</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
       {{ stats.attendees.total|num_fmt }}
@@ -73,7 +73,7 @@
           aria-controls="analytics-panel-page-views"
           data-analytics-tab="page-views"
           data-active="false"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden 2xl:data-[active=true]:[&_span.tab-peak]:block">
     <div class="text-sm text-stone-600">Page views</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
       {{ stats.page_views.total_views|num_fmt }}
@@ -84,62 +84,62 @@
 </div>
 {# End summary stat cards #}
 
-<div class="xl:hidden mt-10 overflow-x-auto border-b border-stone-200">
-  <ul class="flex flex-nowrap items-center gap-1.5 min-w-max -mb-px text-xs sm:text-sm font-medium text-center"
+<div class="xl:hidden mt-10 overflow-x-auto">
+  <ul class="flex flex-nowrap items-center gap-1 min-w-max border-b border-stone-200 text-xs lg:text-sm font-medium text-center"
       role="tablist"
       aria-label="Analytics tabs">
-    <li>
+    <li role="presentation" class="-mb-px">
       <button type="button"
               role="tab"
               aria-selected="true"
               aria-controls="analytics-panel-groups"
               data-analytics-tab="groups"
               data-active="true"
-              class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+              class="cursor-pointer inline-flex items-center justify-center px-2.5 py-2 lg:px-4 lg:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
         Groups
       </button>
     </li>
-    <li>
+    <li role="presentation" class="-mb-px">
       <button type="button"
               role="tab"
               aria-selected="false"
               aria-controls="analytics-panel-members"
               data-analytics-tab="members"
               data-active="false"
-              class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+              class="cursor-pointer inline-flex items-center justify-center px-2.5 py-2 lg:px-4 lg:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
         Members
       </button>
     </li>
-    <li>
+    <li role="presentation" class="-mb-px">
       <button type="button"
               role="tab"
               aria-selected="false"
               aria-controls="analytics-panel-events"
               data-analytics-tab="events"
               data-active="false"
-              class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+              class="cursor-pointer inline-flex items-center justify-center px-2.5 py-2 lg:px-4 lg:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
         Events
       </button>
     </li>
-    <li>
+    <li role="presentation" class="-mb-px">
       <button type="button"
               role="tab"
               aria-selected="false"
               aria-controls="analytics-panel-attendees"
               data-analytics-tab="attendees"
               data-active="false"
-              class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+              class="cursor-pointer inline-flex items-center justify-center px-2.5 py-2 lg:px-4 lg:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
         Attendees
       </button>
     </li>
-    <li>
+    <li role="presentation" class="-mb-px">
       <button type="button"
               role="tab"
               aria-selected="false"
               aria-controls="analytics-panel-page-views"
               data-analytics-tab="page-views"
               data-active="false"
-              class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+              class="cursor-pointer inline-flex items-center justify-center px-2.5 py-2 lg:px-4 lg:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
         Page views
       </button>
     </li>

@@ -27,14 +27,15 @@
   <div class="mb-10">
     <div class="overflow-hidden bg-white">
       <div class="relative overflow-visible">
-        <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+        <table class="table-auto w-full dashboard-table">
           {# Table header -#}
-          <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+          <thead class="dashboard-table-head">
             <tr>
               <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
-              <th scope="col" class="px-3 xl:px-5 py-3">Invited by</th>
+              <th scope="col" class="px-3 xl:px-5 py-3 w-2/5">Invited by</th>
               <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Updated</th>
-              <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
+              <th scope="col"
+                  class="dashboard-table-actions py-3 w-px whitespace-nowrap">
                 <span class="sr-only">Actions</span>
               </th>
             </tr>
@@ -46,15 +47,15 @@
               <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
                 {# Proposal -#}
                 <td class="px-3 xl:px-5 py-4">
-                  <div class="font-medium text-stone-900 line-clamp-1">{{ invitation.session_proposal.title }}</div>
+                  <div class="font-medium text-stone-900 line-clamp-1 wrap-anywhere">{{ invitation.session_proposal.title }}</div>
                 </td>
                 {# End proposal -#}
                 {# Invited by -#}
-                <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-                  <div class="flex items-center space-x-3">
-                    <logo-image {% if let Some(photo_url) = &invitation.speaker_photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-8" placeholder="{{ self::user_initials(None, invitation.speaker_name.as_str()) }}">
+                <td class="px-3 xl:px-5 py-4 max-w-0">
+                  <div class="flex min-w-0 items-center gap-3">
+                    <logo-image class="shrink-0" {% if let Some(photo_url) = &invitation.speaker_photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-8" placeholder="{{ self::user_initials(None, invitation.speaker_name.as_str()) }}">
                     </logo-image>
-                    <div class="font-medium text-stone-900">{{ invitation.speaker_name }}</div>
+                    <div class="min-w-0 truncate font-medium text-stone-900">{{ invitation.speaker_name }}</div>
                   </div>
                 </td>
                 {# End invited by -#}
@@ -68,7 +69,7 @@
                 </td>
                 {# End updated date -#}
                 {# Actions -#}
-                <td class="px-3 xl:px-5 py-4 w-[152px]">
+                <td class="dashboard-table-actions py-4 w-px whitespace-nowrap">
                   <div class="flex items-center justify-end gap-2">
                     <button type="button"
                             class="btn-tertiary p-2"
@@ -132,15 +133,15 @@
 {# Session proposals table -#}
 <div>
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+    <table class="table-auto w-full dashboard-table">
       {# Table header -#}
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <thead class="dashboard-table-head">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
           <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Co-speaker</th>
           <th scope="col" class="px-3 xl:px-5 py-3 hidden 2xl:table-cell">Updated</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
+          <th scope="col" class="dashboard-table-actions py-3 w-[152px]">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -170,17 +171,22 @@
             {# Session proposal row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Proposal -#}
-              <td class="px-3 xl:px-5 py-4">
+              <td class="px-3 xl:px-5 py-4 w-full max-w-0">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
+                {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
+                  <div class="mt-0.5 truncate text-xs text-stone-500 xl:hidden">
+                    with {{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}
+                  </div>
+                {% endif -%}
               </td>
               {# End proposal -#}
               {# Co-speaker -#}
               <td class="px-3 xl:px-5 py-4 text-nowrap hidden xl:table-cell">
                 {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
-                  <div class="flex items-center space-x-3">
-                    <logo-image {% if let Some(photo_url) = &co_speaker.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-8" placeholder="{{ self::user_initials(co_speaker.name.as_deref() , co_speaker.username.as_str()) }}">
+                  <div class="flex min-w-0 items-center gap-3">
+                    <logo-image class="shrink-0" {% if let Some(photo_url) = &co_speaker.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-8" placeholder="{{ self::user_initials(co_speaker.name.as_deref() , co_speaker.username.as_str()) }}">
                     </logo-image>
-                    <div class="font-medium text-stone-900">
+                    <div class="max-w-48 truncate font-medium text-stone-900">
                       {{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}
                     </div>
                   </div>
@@ -197,22 +203,22 @@
               </td>
               {# End updated date -#}
               {# Status -#}
-              <td class="px-3 xl:px-5 py-4">
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if session_proposal.linked_session_id.is_some() -%}
                   {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5") , title = "This session proposal has been approved and linked to an event's session.") -}}
                 {% else if session_proposal.has_submissions -%}
                   {{ badges::status_badge(label = "Submitted", extra_styles = Some("px-2.5 py-0.5") , title = "This proposal has already been submitted to at least one event call for speakers.") -}}
                 {% else if session_proposal.session_proposal_status_id == "ready-for-submission" -%}
-                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , published = true, extra_styles = Some("px-2.5 py-0.5") , title = "This proposal can be submitted to event call for speakers.") -}}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , published = true, extra_styles = Some("px-2.5 py-0.5") , title = "This proposal can be submitted to event call for speakers.", compact_label = "Ready") -}}
                 {% else if session_proposal.session_proposal_status_id == "declined-by-co-speaker" -%}
-                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5") , title = "The invited co-speaker declined this proposal. To submit it to any event, you'll need to remove the co-speaker.") -}}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5") , title = "The invited co-speaker declined this proposal. To submit it to any event, you'll need to remove the co-speaker.", compact_label = "Declined") -}}
                 {% else -%}
-                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5") , title = "This proposal is waiting for co-speaker response.") -}}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5") , title = "This proposal is waiting for co-speaker response.", compact_label = "Awaiting") -}}
                 {% endif -%}
               </td>
               {# End status -#}
               {# Actions -#}
-              <td class="px-3 xl:px-5 py-4 w-[152px]">
+              <td class="dashboard-table-actions py-4 w-[152px]">
                 <div class="flex items-center justify-end gap-2">
                   {% set edit_disabled = session_proposal.linked_session_id.is_some() -%}
                   <button type="button"

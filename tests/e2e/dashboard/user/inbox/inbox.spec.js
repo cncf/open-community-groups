@@ -34,6 +34,37 @@ test.describe("user dashboard inbox view", () => {
     await expect(messages.getByText("You", { exact: true })).toHaveCount(0);
   });
 
+  test("member conversation header keeps the message count on md screens", async ({ member2Page }) => {
+    // Load the seeded conversation on the narrowest dashboard viewport
+    await member2Page.setViewportSize({ width: 768, height: 900 });
+    await navigateToPath(member2Page, `${INBOX_PATH}&conversation_id=${TEST_INBOX_CONVERSATION.id}`);
+    const header = member2Page.locator("#inbox-conversation header");
+
+    // Verify the user scope, which has no header actions, still shows the message count
+    await expect(header.getByText(/^\d+ messages?$/)).toBeVisible();
+  });
+
+  test("member inbox list shows the last activity under the status below xl", async ({ member2Page }) => {
+    // Load the inbox list at the narrowest lg viewport, where the last message column is hidden
+    await member2Page.setViewportSize({ width: 1024, height: 900 });
+    await navigateToPath(member2Page, INBOX_PATH);
+    const row = member2Page
+      .locator("[data-inbox-conversation-row]")
+      .filter({ hasText: TEST_INBOX_CONVERSATION.reply });
+    const visibleTimes = row.locator("time").filter({ visible: true });
+
+    // Verify only the short status-cell date is visible, with the organizers as last writers
+    await expect(visibleTimes).toHaveCount(1);
+    await expect(visibleTimes).toHaveText(/^[A-Z][a-z]{2} \d{2}, \d{4}$/);
+    await expect(row.getByText("From organizers", { exact: true })).toBeVisible();
+
+    // Verify xl moves the date and the last writer back to the last message column
+    await member2Page.setViewportSize({ width: 1280, height: 900 });
+    await expect(row.getByText("From organizers", { exact: true })).toBeHidden();
+    await expect(visibleTimes).toHaveCount(1);
+    await expect(visibleTimes).not.toHaveText(/^[A-Z][a-z]{2} \d{2}, \d{4}$/);
+  });
+
   test("member filters conversations by status without a spam option", async ({ member1Page, owned }) => {
     // Prepare an open and a spam conversation of the member
     const openQuestion = uniqueName("open inbox question");

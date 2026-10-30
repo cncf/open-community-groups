@@ -514,7 +514,9 @@ export const getVerticalBarCategoryAxisConfig = (categories = []) => {
 };
 
 /**
- * Shared sizing rules for vertical bar charts.
+ * Shared sizing rules for vertical bar charts. The minimum bar width is kept
+ * only for 12 categories or fewer, so denser series such as 30-day bars keep
+ * their gaps on narrow charts.
  * @param {number} count - Number of categories.
  * @returns {Object} Bar sizing options.
  */
@@ -524,7 +526,7 @@ export const getVerticalBarSeriesStyle = (count = 0) => {
 
   return {
     barMaxWidth: isVeryDenseSeries ? 8 : hasDenseSeries ? 11 : 35,
-    ...(hasDenseSeries ? {} : { barMinWidth: 12 }),
+    ...(count <= 12 ? { barMinWidth: 12 } : {}),
     barCategoryGap: isVeryDenseSeries ? "35%" : hasDenseSeries ? "45%" : "30%",
   };
 };
@@ -858,12 +860,7 @@ export const createStackedMonthlyChart = (title, months, seriesData, palette, op
     title: getChartTitleConfig(title, palette, description),
     color: colors,
     tooltip: Object.assign(getAxisTooltipConfig(), { axisPointer: { type: "shadow" } }),
-    legend: {
-      type: seriesData.length > 5 ? "scroll" : "plain",
-      bottom: 10,
-      left: "center",
-      textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },
-    },
+    legend: getStackedLegendConfig(),
     grid: { left: 70, right: 40, bottom: 100, top: getChartGridTop(description) },
     xAxis: getVerticalBarCategoryAxisConfig(months),
     yAxis: getValueAxisConfig(),
@@ -896,12 +893,7 @@ export const createStackedAreaChart = (title, seriesData, palette, options = {})
       title: getChartTitleConfig(title, palette, description),
       color: colors,
       tooltip: getAxisTooltipConfig(),
-      legend: {
-        type: seriesData.length > 5 ? "scroll" : "plain",
-        bottom: 10,
-        left: "center",
-        textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },
-      },
+      legend: getStackedLegendConfig(),
       grid: { left: 70, right: 40, bottom: 90, top: getChartGridTop(description, 60) },
       xAxis: {
         type: "time",
@@ -985,7 +977,7 @@ export const createHorizontalBarChart = (title, categoryData, palette, options =
       data: categoryData.map((d) => d.name),
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: uiColors.text, fontSize: 12 },
+      axisLabel: { color: uiColors.text, fontSize: 12, width: 120, overflow: "truncate" },
     },
     series: [
       {
@@ -1050,6 +1042,8 @@ export const createPieChart = (title, name, data, palette, options = {}) => {
       itemWidth: isBottomLegend ? 8 : 10,
       itemHeight: isBottomLegend ? 8 : 10,
       itemGap: isBottomLegend ? 8 : 12,
+      // Truncated entries show their full name on hover
+      tooltip: { show: true },
       textStyle: { fontFamily: dashboardFontFamily, fontSize: isBottomLegend ? 11 : 14 },
       formatter: (label) => {
         const maxLength = isBottomLegend ? 14 : 25;
@@ -1066,6 +1060,8 @@ export const createPieChart = (title, name, data, palette, options = {}) => {
         radius: isBottomLegend ? ["32%", "56%"] : ["30%", "55%"],
         center: isBottomLegend ? ["50%", "54%"] : ["28%", "58%"],
         avoidLabelOverlap: true,
+        // Compact bottom-legend pies hide slice labels that would overlap
+        ...(isBottomLegend ? { labelLayout: { hideOverlap: true } } : {}),
         itemStyle: { borderColor: uiColors.surface, borderWidth: 2 },
         label: {
           show: showLabels,
@@ -1191,7 +1187,7 @@ export const createStackedDailyBarChart = (title, days, seriesData, palette, opt
     title: getChartTitleConfig(title, palette, description),
     color: colors,
     tooltip: Object.assign(getAxisTooltipConfig(), { axisPointer: { type: "shadow" } }),
-    legend: getStackedLegendConfig(seriesData.length),
+    legend: getStackedLegendConfig(),
     grid: { left: 70, right: 40, bottom: 100, top: getChartGridTop(description) },
     xAxis: getDailyCategoryAxisConfig(days),
     yAxis: getValueAxisConfig(),
@@ -1241,13 +1237,13 @@ const getExplicitSeriesColors = (seriesData, palette) => {
 };
 
 /**
- * Build the bottom legend used by stacked charts.
- * @param {number} count - Number of series.
+ * Build the bottom legend used by stacked charts: one row, scrolling when the
+ * entries overflow it.
  * @returns {Object} ECharts legend config.
  */
-const getStackedLegendConfig = (count) => {
+const getStackedLegendConfig = () => {
   return {
-    type: count > 5 ? "scroll" : "plain",
+    type: "scroll",
     bottom: 10,
     left: "center",
     textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },

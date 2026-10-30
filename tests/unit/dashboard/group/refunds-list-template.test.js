@@ -108,7 +108,10 @@ describe("dashboard group refunds list template", () => {
     // Verify refund rows expose each status and audit detail.
     expect(template).to.include("refund.status.label()");
     expect(template).to.include("badges::payment_status_badge");
-    expect(template).to.include("refund.status.tone()");
+    expect(template).to.include(
+      "tone = crate::templates::dashboard::group::refunds::status_tone(&refund.status).as_str()",
+    );
+    expect(template).not.to.include("refund.status.tone()");
     expect(template).to.include("refund.failure_message");
     expect(template).to.include("refund.attempt_count");
     expect(template).to.include("attempt_count > 0 && refund.can_retry()");
@@ -121,40 +124,27 @@ describe("dashboard group refunds list template", () => {
     // Load the refunds list template before checking refund detail placement.
     const template = normalizeWhitespace(await loadTemplate());
 
-    const refundAmountIndex = template.indexOf(
-      "data-localized-currency>{{ refund.formatted_amount() }}</span>",
+    const refundTriggerIndex = template.indexOf(
+      "{% call dashboard::tooltip_badge_trigger(tooltip_id = refund_details_tooltip_id,",
     );
     const externalBadgeIndex = template.indexOf(
       'badges::common_badge(content = "External"',
     );
     const statusColumnIndex = template.indexOf(
       '<td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">',
-      refundAmountIndex,
+      refundTriggerIndex,
     );
 
-    // Verify the stone price badge owns an accessible details tooltip.
+    // Verify the neutral price badge owns an accessible details tooltip.
+    expect(refundTriggerIndex).to.be.greaterThan(-1);
     expect(template).to.include(
-      "data-localized-currency>{{ refund.formatted_amount() }}</span>",
+      "{% let refund_details_tooltip_id -%}refund-details-{{ refund.event_purchase_id }}{%- endlet %}",
     );
     expect(template).to.include(
-      'class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"',
+      '{% call dashboard::tooltip_badge_trigger(tooltip_id = refund_details_tooltip_id, title = "Refund details", label = refund.formatted_amount(), tone = "neutral", currency = true, width_classes = "w-72") -%}',
     );
     expect(template).not.to.include("icon-info");
-    expect(template).to.include(
-      "relative inline-flex cursor-help rounded-full",
-    );
-    expect(template).to.include(
-      "-end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500",
-    );
-    expect(template).to.include(
-      "refund-details-{{ refund.event_purchase_id }}",
-    );
-    expect(template).to.include(
-      'aria-describedby="{{ refund_details_tooltip_id }}"',
-    );
-    expect(template).to.include("dashboard::tooltip_panel(");
-    expect(template).to.include('title = "Refund details"');
-    expect(template).to.include('width_classes = "w-72"');
+    expect(template).not.to.include("group/refund-details");
     expect(template).to.include(
       '<span class="block font-semibold text-stone-500">Ticket</span>',
     );
@@ -191,21 +181,16 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include(
       '<span class="block font-semibold text-stone-500">Review</span>',
     );
-    expect(template).to.include("group-hover/refund-details:visible");
-    expect(template).to.include("group-focus-within/refund-details:visible");
 
     // Keep the payment source visually attached to the refund amount.
     expect(template).to.include(
-      'class="flex flex-wrap items-center gap-1.5 md:flex-nowrap"',
-    );
-    expect(template).to.include(
-      'badges::common_badge(content = "External", extra_styles = Some("shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"))',
+      'badges::common_badge(content = "External", extra_styles = Some("shrink-0 badge-neutral"))',
     );
     expect(template).to.include('<div class="shrink-0 xl:hidden">');
     expect(
       template.match(/badges::common_badge\(content = "External"/gu) ?? [],
     ).to.have.lengthOf(1);
-    expect(externalBadgeIndex).to.be.greaterThan(refundAmountIndex);
+    expect(externalBadgeIndex).to.be.greaterThan(refundTriggerIndex);
     expect(externalBadgeIndex).to.be.lessThan(statusColumnIndex);
   });
 
@@ -229,7 +214,7 @@ describe("dashboard group refunds list template", () => {
       'class="w-[40%] px-3 py-3 xl:w-auto xl:px-5">Attendee',
     );
     expect(template).to.include(
-      'class="w-[40%] px-3 py-4 xl:w-auto xl:max-w-64 xl:px-5"',
+      'class="w-[40%] max-w-0 px-3 py-4 xl:w-auto xl:max-w-64 xl:px-5"',
     );
     expect(template).to.include(
       'class="mb-2 truncate font-medium text-stone-900 xl:hidden"',
@@ -256,9 +241,8 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include(
       '<caption class="border-b border-amber-200 bg-amber-50 px-3 py-3 text-left text-amber-900 xl:px-5">',
     );
-    expect(template).to.include(
-      'class="relative mt-8 mb-10 overflow-x-auto lg:overflow-x-visible"',
-    );
+    expect(template).to.include('class="relative mt-8 mb-10 overflow-visible"');
+    expect(template).not.to.include("min-w-[64rem]");
     expect(template).to.include("Financial work needs attention");
     expect(template).to.include("Automatic retries are exhausted.");
     expect(template).to.include(
@@ -267,24 +251,32 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include(
       "financial-failure-{{ recovery.payment_job_id }}",
     );
-    expect(template).to.include(
-      '<th scope="col" class="px-3 py-3 xl:px-5">Attendee</th>',
+
+    // Verify the financial work columns keep their order.
+    const financialTable = template.slice(
+      template.indexOf('aria-label="Financial work needing attention"'),
+      template.indexOf("{# End exhausted financial work -#}"),
     );
-    expect(template).to.include(
-      '<th scope="col" class="px-3 py-3 xl:px-5">Event</th>',
+    const headerIndexes = [
+      "Attendee",
+      "Event",
+      "Amount",
+      "Operation",
+      "Status",
+    ].map((header) => financialTable.indexOf(`">${header}</th>`));
+
+    headerIndexes.forEach((headerIndex) => {
+      expect(headerIndex).to.be.greaterThan(-1);
+    });
+    expect([...headerIndexes].sort((a, b) => a - b)).to.deep.equal(
+      headerIndexes,
     );
-    expect(template).to.include(
-      '<th scope="col" class="px-3 py-3 xl:px-5">Operation</th>',
-    );
-    expect(template).to.include(
-      '<th scope="col" class="px-3 py-3 xl:px-5">Status</th>',
-    );
-    expect(template).not.to.include(
-      '<th scope="col" class="px-3 py-3 xl:px-5">Attempts</th>',
-    );
-    expect(template).to.include(
-      '<td class="px-3 py-4 text-stone-900 xl:px-5">{{ recovery.operation }}</td>',
-    );
+    expect(financialTable).not.to.include(">Attempts</th>");
+
+    // Verify the operation renders in its own column and under the amount.
+    expect(
+      financialTable.match(/>\{\{ recovery\.operation \}\}</g) ?? [],
+    ).to.have.lengthOf(2);
     expect(template).not.to.include(
       '<th scope="col" class="px-4 py-3 text-right">Actions</th>',
     );
@@ -294,22 +286,26 @@ describe("dashboard group refunds list template", () => {
       ),
     ).to.have.lengthOf(2);
     expect(template).to.include('<span class="sr-only">Actions</span>');
-    expect(template).to.include('title = "Last failure"');
+
+    // Verify the failure badge uses the shared tooltip trigger with a descriptive name.
+    expect(template).to.include(
+      "{% let failure_aria_label -%}Needs retry: view last failure for {{ recovery.operation }}{%- endlet %}",
+    );
+    expect(template).to.include(
+      '{% call dashboard::tooltip_badge_trigger(tooltip_id = failure_tooltip_id, title = "Last failure", label = "Needs retry", tone = "danger", aria_label = failure_aria_label, width_classes = "w-80") -%}',
+    );
     expect(template).to.include(
       "{{ recovery.failure_message }} ({{ recovery.attempt_count }} attempt{% if recovery.attempt_count != 1 %}s{% endif %})",
-    );
-    expect(template).to.include(
-      'class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-red-800"',
-    );
-    expect(template).to.include(
-      '<span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">Needs retry</span>',
     );
     expect(template).not.to.include(
       '<span class="block font-semibold text-stone-500">Attempts</span>',
     );
-    expect(template).to.include(
-      'class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800"',
-    );
+
+    // Verify the retry count badges use the danger tone.
+    expect(
+      template.match(/<span class="custom-badge badge-danger">/g) ?? [],
+    ).to.have.lengthOf(2);
+    expect(template).not.to.include("border-red-800 bg-red-100");
     expect(template).to.include("data-financial-recovery-open");
     expect(template).to.include(
       'data-financial-recovery-payment-job-id="{{ recovery.payment_job_id }}"',
@@ -417,6 +413,11 @@ describe("dashboard group refunds list template", () => {
       "refund-recovery-requirement-{{ refund.event_purchase_id }}",
     );
     expect(template).to.include('aria-describedby="{{ recovery_tooltip_id }}"');
+    // Presses on the disabled button must reach the focusable tooltip trigger span.
+    expect(template).to.match(
+      /<button type="button" disabled aria-disabled="true" class="[^"]*\bpointer-events-none\b[^"]*"/,
+    );
+    expect(template).to.include("{% call dashboard::tooltip_panel(");
     expect(template).to.include('title = "Recovery unavailable"');
     expect(template).to.include('alignment_classes = "end-1"');
     expect(template).to.include('id="refund-recovery-modal"');

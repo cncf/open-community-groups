@@ -123,12 +123,11 @@
 
         {# UTM combinations table -#}
         <div class="mt-6 overflow-x-auto">
-          <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500"
-                 data-utm-combinations>
+          <table class="table-auto w-full dashboard-table" data-utm-combinations>
             <caption class="caption-bottom pt-3 text-left text-xs text-stone-500">
               Top 10 combinations by views; sorting applies to these rows.
             </caption>
-            <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+            <thead class="dashboard-table-head">
               <tr>
                 <th scope="col" class="group px-3 py-3 xl:px-5" aria-sort="none">
                   <button type="button"
@@ -203,9 +202,9 @@
                     data-views="{{ combination.views }}"
                     data-first-day="{{ combination.first_day }}"
                     data-last-day="{{ combination.last_day }}">
-                  <td class="px-3 py-3 text-stone-900 xl:px-5">{{ combination.utm_source.as_deref().unwrap_or("Not specified") }}</td>
-                  <td class="px-3 py-3 xl:px-5">{{ combination.utm_medium.as_deref().unwrap_or("Not specified") }}</td>
-                  <td class="px-3 py-3 xl:px-5">{{ combination.utm_campaign.as_deref().unwrap_or("Not specified") }}</td>
+                  <td class="break-all px-3 py-3 text-stone-900 xl:px-5">{{ combination.utm_source.as_deref().unwrap_or("Not specified") }}</td>
+                  <td class="break-all px-3 py-3 xl:px-5">{{ combination.utm_medium.as_deref().unwrap_or("Not specified") }}</td>
+                  <td class="break-all px-3 py-3 xl:px-5">{{ combination.utm_campaign.as_deref().unwrap_or("Not specified") }}</td>
                   <td class="px-3 py-3 text-right xl:px-5">{{ combination.views|num_fmt }}</td>
                   <td class="px-3 py-3 text-right xl:px-5">{{ self.share_label(combination.views) }}</td>
                   <td class="hidden px-3 py-3 2xl:table-cell xl:px-5">{{ combination.first_day }}</td>
@@ -344,11 +343,11 @@
       </ul>
       {% if !tickets.discount_codes.is_empty() -%}
         <div class="mt-8 overflow-x-auto">
-          <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+          <table class="table-auto w-full dashboard-table">
             <caption class="caption-bottom pt-3 text-left text-xs text-stone-500">
               Redemptions count purchases that still hold a seat.
             </caption>
-            <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+            <thead class="dashboard-table-head">
               <tr>
                 <th scope="col" class="px-3 py-3 xl:px-5">Code</th>
                 <th scope="col" class="px-3 py-3 xl:px-5">Title</th>
@@ -360,7 +359,7 @@
               {% for discount_code in tickets.discount_codes -%}
                 <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
                   <td class="px-3 py-3 font-mono text-stone-900 xl:px-5">
-                    {{ discount_code.code }}
+                    <span class="break-all">{{ discount_code.code }}</span>
                     {% if !discount_code.active -%}
                       <span class="ms-1 font-sans text-xs text-stone-500">(inactive)</span>
                     {% endif -%}

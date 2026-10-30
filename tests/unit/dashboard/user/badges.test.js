@@ -80,7 +80,7 @@ describe("user dashboard badges", () => {
     expect(template).to.include('trigger-label="Share {{ badge.snapshot.name }} badge credential"');
     expect(template).to.include('trigger-variant="icon"');
     expect(template).to.include('url="/badges/credentials/{{ badge.user_badge_id }}"');
-    expect(template).to.include('class="mt-3 flex cursor-pointer items-center justify-end"');
+    expect(template).to.include('class="flex cursor-pointer items-center justify-end lg:mt-3"');
     expect(template).to.not.include('<span aria-hidden="true">·</span>');
   });
 

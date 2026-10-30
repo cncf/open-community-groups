@@ -71,18 +71,23 @@ describe("dashboard user events list template", () => {
     expect(template).to.include(
       "{% else if let Some(enrollment_status_label) = item.enrollment_status_label() -%}",
     );
-    expect(template).to.include("{{ badges::payment_status_badge(label = enrollment_status_label) -}}");
+    expect(template).to.include(
+      '{{ badges::payment_status_badge(label = enrollment_status_label, tone = "neutral") -}}',
+    );
     expect(template).to.include(
       '{{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5")) -}}',
     );
-    expect(template).to.include('{% if role.label() == "Event offer" -%}');
     expect(template).to.include(
-      '{{ badges::common_badge(content = role.label() , extra_styles = Some("border-yellow-800 bg-yellow-100 px-2.5 py-0.5 text-yellow-800")) -}}',
+      "{% if *role == crate::types::dashboard::user::events::UserEventRole::Offer -%}",
     );
+    expect(template).to.include(
+      '{{ badges::common_badge(content = role.label() , extra_styles = Some("badge-pending")) -}}',
+    );
+    expect(template).not.to.include('role.label() == "Event offer"');
     expect(template).to.include('<span class="xl:hidden">Status / role</span>');
     expect(template).to.include('<span class="hidden xl:inline">Role</span>');
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-3 w-56">Status</th>');
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4 w-56"');
+    expect(template).to.include(">Status</th>");
+    expect(template).to.include('colspan="3">');
     expect(template).to.include('colspan="5">{% include "dashboard/placeholders/user_events_table.html"');
     expect(template).to.include('colspan="6"> {% include "dashboard/placeholders/user_events_table.html"');
   });
@@ -95,33 +100,39 @@ describe("dashboard user events list template", () => {
     expect(template).to.include(
       "item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)",
     );
-    expect(template).to.include('{{ badges::payment_status_badge(label = "Refund requested") -}}');
+    expect(template).to.include(
+      '{{ badges::payment_status_badge(label = "Refund requested", tone = "warning") -}}',
+    );
     expect(template).to.include(
       "item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving)",
     );
-    expect(template).to.include('{{ badges::payment_status_badge(label = "Refund processing") -}}');
+    expect(template).to.include(
+      '{{ badges::payment_status_badge(label = "Refund processing", tone = "neutral") -}}',
+    );
     expect(template).to.include(
       "item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approved)",
     );
-    expect(template).to.include('{{ badges::payment_status_badge(label = "Refund approved") -}}');
+    expect(template).to.include(
+      '{{ badges::payment_status_badge(label = "Refund approved", tone = "neutral") -}}',
+    );
     expect(template).to.include(
       "item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Rejected)",
     );
-    expect(template).to.include('{{ badges::payment_status_badge(label = "Refund rejected") -}}');
+    expect(template).to.include(
+      '{{ badges::payment_status_badge(label = "Refund rejected", tone = "danger") -}}',
+    );
     expect(template).to.include(
       "{% if let Some(refund_rejection_reason) = &item.refund_rejection_reason -%}",
     );
     expect(template).to.include('{{ refund_status_badge(item, "mobile") -}}');
     expect(template).to.include('{{ refund_status_badge(item, "desktop") -}}');
     expect(template).not.to.include("icon-info");
-    expect(template).to.include("relative inline-flex cursor-help rounded-full");
-    expect(template).to.include("refund-rejection-reason-{{ item.event.event_id }}-{{ status_instance }}");
-    expect(template).to.include('aria-describedby="{{ refund_rejection_tooltip_id }}"');
-    expect(template).to.include("dashboard::tooltip_panel(");
-    expect(template).to.include('title = "Refund request"');
-    expect(template).to.include("-end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-red-800");
-    expect(template).to.include("group-hover/refund-reason:visible");
-    expect(template).to.include("group-focus-within/refund-reason:visible");
+    expect(template).to.include(
+      "{% let refund_rejection_tooltip_id -%}refund-rejection-reason-{{ item.event.event_id }}-{{ status_instance }}{%- endlet %}",
+    );
+    expect(template).to.include(
+      '{% call dashboard::tooltip_badge_trigger(tooltip_id = refund_rejection_tooltip_id, title = "Refund request", label = "Refund rejected", tone = "danger") -%}',
+    );
     expect(template).to.include('<span class="block font-semibold text-stone-500">Reason</span>');
     expect(template).to.include(
       '<span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ refund_rejection_reason }}</span>',
@@ -165,15 +176,12 @@ describe("dashboard user events list template", () => {
       "{% macro external_payment_status_badge(external_payment, timezone, status_instance) -%}",
     );
     expect(template).to.include(
-      "external-payment-details-{{ external_payment.reference }}-{{ status_instance }}",
+      "{% let external_payment_tooltip_id -%}external-payment-details-{{ external_payment.reference }}-{{ status_instance }}{%- endlet %}",
     );
-    expect(template).to.include('aria-describedby="{{ external_payment_tooltip_id }}"');
-    expect(template).to.include('{{ badges::payment_status_badge(label = "Payment pending") -}}');
-    expect(template).to.include("-end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500");
-    expect(template).to.include("dashboard::tooltip_panel(");
-    expect(template).to.include('title = "Payment details"');
-    expect(template).to.include("group-hover/external-payment-details:visible");
-    expect(template).to.include("group-focus-within/external-payment-details:visible");
+    expect(template).to.include(
+      '{% call dashboard::tooltip_badge_trigger(tooltip_id = external_payment_tooltip_id, title = "Payment details", label = "Payment pending", tone = "neutral", width_classes = "w-80") -%}',
+    );
+    expect(template).not.to.include("dashboard::tooltip_panel(");
     expect(template).to.include('<span class="block font-semibold text-stone-500">Deadline</span>');
     expect(template).to.include(
       'external_payment.deadline.with_timezone(timezone).format("%b %-e, %Y at %-I:%M %p %Z")',

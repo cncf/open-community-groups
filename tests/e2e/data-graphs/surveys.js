@@ -276,13 +276,14 @@ export const setupOwnedEventSurvey = ({
  * users as confirmed attendees, so ready surveys added to it open immediately and reach only those
  * users. It has one free ticket type, as every event needs one. Test events never send survey
  * emails. Remove it with `cleanupEventsByIds`, which also removes its surveys and responses.
- * @param {{ attendeeUserIds: string[] }} input - Confirmed attendees of the event.
+ * @param {{ attendeeUserIds: string[], name?: string }} input - Confirmed attendees of the event
+ *   and a `name` replacing the generated one (for long-data layout coverage).
  * @returns {{ id: string, name: string }} Event identifier and name.
  */
-export const setupOwnedSurveyEvent = ({ attendeeUserIds }) => {
+export const setupOwnedSurveyEvent = ({ attendeeUserIds, name: eventName }) => {
   const id = randomUUID();
   const suffix = id.slice(0, 8);
-  const name = `E2E survey event ${suffix}`;
+  const name = eventName ?? `E2E survey event ${suffix}`;
 
   insertOwnedEvent({
     attendeeUserIds,

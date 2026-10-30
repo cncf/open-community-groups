@@ -1,10 +1,6 @@
 import { expect } from "@open-wc/testing";
 
-import {
-  hasSpeaker,
-  normalizeSpeakers,
-  speakerKey,
-} from "/static/js/dashboard/event/sessions/speaker-utils.js";
+import { hasSpeaker, normalizeSpeakers, speakerKey } from "/static/js/common/users/speaker-utils.js";
 
 describe("speaker-utils", () => {
   it("normalizes nested user data and featured flags", () => {

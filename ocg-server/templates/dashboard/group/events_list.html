@@ -65,11 +65,10 @@
   </div>
   {# Upcoming events table -#}
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8"
+    <table class="table-auto w-full dashboard-table rtl:text-right mb-8"
            role="table"
            aria-label="Upcoming events list">
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
-             role="rowgroup">
+      <thead class="dashboard-table-head" role="rowgroup">
         {# Table header -#}
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
@@ -78,7 +77,8 @@
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Type</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Attendees</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
+          <th scope="col"
+              class="dashboard-table-actions py-3 w-[152px] min-w-[152px]">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -106,7 +106,7 @@
             {# Event row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <th scope="row"
-                  class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
+                  class="px-3 xl:px-5 py-4 font-medium text-stone-900 w-full max-w-0">
                 <div class="flex items-center">
                   <div class="min-w-0">
                     {# Event name -#}
@@ -209,7 +209,7 @@
               {# End attendees -#}
 
               {# Actions -#}
-              <td class="px-3 xl:px-5 py-4 w-[152px]">
+              <td class="dashboard-table-actions py-4 w-[152px] min-w-[152px]">
                 <div class="flex items-center justify-end gap-2">
                   {# Update event button -#}
                   <div>
@@ -368,11 +368,10 @@
   </div>
   {# Past events table -#}
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8"
+    <table class="table-auto w-full dashboard-table rtl:text-right mb-8"
            role="table"
            aria-label="Past events list">
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
-             role="rowgroup">
+      <thead class="dashboard-table-head" role="rowgroup">
         {# Table header -#}
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
@@ -381,7 +380,8 @@
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Type</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Attendees</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
+          <th scope="col"
+              class="dashboard-table-actions py-3 w-[152px] min-w-[152px]">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -409,7 +409,7 @@
             {# Event row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <th scope="row"
-                  class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
+                  class="px-3 xl:px-5 py-4 font-medium text-stone-900 w-full max-w-0">
                 <div class="flex items-center">
                   <div class="min-w-0">
                     {# Event name -#}
@@ -512,7 +512,7 @@
               {# End attendees -#}
 
               {# Actions -#}
-              <td class="px-3 xl:px-5 py-4 w-[152px]">
+              <td class="dashboard-table-actions py-4 w-[152px] min-w-[152px]">
                 <div class="flex items-center justify-end gap-2">
                   {# Update event button -#}
                   <div>

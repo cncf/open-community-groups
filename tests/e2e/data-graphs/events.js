@@ -435,6 +435,60 @@ export const setupCompletedFreePurchases = ({ eventId, ticketTypeId, userIds }) 
 };
 
 /**
+ * Creates a published future event with four 36-38 character labels and one session assigned to
+ * all of them, so the session card collapses its labels behind the counter at every editor width.
+ * Release it with `cleanupEventsByIds([eventId])`; the session and its label assignments cascade.
+ * `labelNames` follows the display order: event labels are listed by name.
+ * @param {{ groupId: string }} options - Group that owns the event.
+ * @returns {{ eventId: string, labelNames: string[], name: string, sessionName: string }}
+ */
+export const setupLabeledSessionEvent = ({ groupId }) => {
+  const eventId = randomUUID();
+  const sessionName = "Labeled session card";
+  const labels = [
+    { color: "#AB9DF2", name: "Cloud native security and compliance" },
+    { color: "#A9DC76", name: "Community building and open governance" },
+    { color: "#78DCE8", name: "Developer experience and tooling track" },
+    { color: "#FFD866", name: "Observability and platform engineering" },
+  ].map((label) => ({ ...label, labelId: randomUUID() }));
+  const { name, slug } = buildOwnedEventIdentity("labeled session event", eventId);
+
+  insertOwnedEvent({
+    description: "Owned event used by E2E session card labels coverage.",
+    eventId,
+    groupId,
+    name,
+    slug,
+    startsIn: "60 days",
+  });
+
+  // The session spans the first hour of the event, inside its bounds.
+  queryE2eDatabase(`
+    insert into event_label (event_label_id, event_id, name, color)
+    values ${labels
+      .map(
+        (label) =>
+          `(${sqlUuid(label.labelId)}, ${sqlUuid(eventId)}, ${sqlString(label.name)}, ${sqlString(label.color)})`,
+      )
+      .join(", ")};
+
+    with new_session as (
+      insert into session (event_id, name, session_kind_id, starts_at, ends_at)
+      select event_id, ${sqlString(sessionName)}, 'virtual', starts_at, starts_at + interval '1 hour'
+      from event
+      where event_id = ${sqlUuid(eventId)}
+      returning session_id
+    )
+    insert into session_label (session_id, event_label_id)
+    select new_session.session_id, label.event_label_id
+    from new_session
+    cross join unnest(${sqlUuidArray(labels.map((label) => label.labelId))}) as label(event_label_id);
+  `);
+
+  return { eventId, labelNames: labels.map((label) => label.name), name, sessionName };
+};
+
+/**
  * Creates a future event for notification suppression checks.
  * @param {{
  *   attendeeUserIds?: string[],

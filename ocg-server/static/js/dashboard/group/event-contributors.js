@@ -1,5 +1,5 @@
 import { markDatasetReady } from "/static/js/common/dom.js";
-import { normalizeSpeakers } from "/static/js/dashboard/event/sessions/speaker-utils.js";
+import { normalizeSpeakers } from "/static/js/common/users/speaker-utils.js";
 import "/static/js/dashboard/group/session-speakers-table.js";
 
 /**

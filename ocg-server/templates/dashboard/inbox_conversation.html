@@ -42,12 +42,12 @@
   <div class="relative">
     <header class="rounded-lg border border-stone-200 bg-white">
       {# Conversation title -#}
-      <div class="px-4 py-4 sm:px-6 sm:py-5">
+      <div class="px-4 py-3 lg:px-6 lg:py-5">
         <div class="break-words text-sm font-semibold uppercase tracking-wide text-stone-500">
           {{ conversation.group_name }} · {{ conversation.community_display_name }}
         </div>
         <h1 id="inbox-conversation-title"
-            class="mt-1 break-words text-xl font-semibold leading-tight text-stone-900 lg:text-2xl">
+            class="mt-1 break-words text-lg font-semibold leading-tight text-stone-900 lg:text-xl xl:text-2xl">
           {% if let Some(event) = conversation.event -%}
             {% if let Some(event_url) = conversation.event_url() -%}
               <a href="{{ event_url|safe_href }}"
@@ -67,7 +67,7 @@
       {# End conversation title -#}
 
       {# Conversation facts -#}
-      <div class="flex min-h-12.5 flex-wrap items-center gap-x-6 gap-y-2 border-t border-stone-200 px-4 py-3 text-xs text-stone-600 sm:px-6 xl:max-2xl:min-h-0">
+      <div class="flex min-h-12.5 flex-wrap items-center gap-x-6 gap-y-2 border-t border-stone-200 px-4 py-3 text-xs text-stone-600 lg:px-6 xl:max-2xl:min-h-0">
         {{ badges::inbox_status_badge(status = conversation.status) -}}
         <span class="hidden items-center gap-1.5 xl:flex">
           <span class="svg-icon size-3.5 shrink-0 icon-calendar bg-stone-500"
@@ -79,7 +79,8 @@
                 aria-hidden="true"></span>
           <span>Last message <time datetime="{{ conversation.last_message_at.to_rfc3339() }}">{{ conversation.last_message_at.format("%b %d, %Y · %I:%M %p UTC") }}</time></span>
         </span>
-        <span class="flex items-center gap-1.5">
+        <span class="{% if scope.is_group() %}hidden lg:flex{% else %}flex{% endif %}
+                     items-center gap-1.5">
           <span class="svg-icon size-3.5 shrink-0 icon-email bg-stone-500"
                 aria-hidden="true"></span>
           <span>{{ conversation.messages.len() }} message{{ conversation.messages.len()|pluralize }}</span>
@@ -90,7 +91,7 @@
 
     {% if can_close() || can_mark_spam() || can_unmark_spam() -%}
       {# Conversation actions -#}
-      <div class="absolute bottom-px end-4.25 flex h-12.5 flex-wrap items-center justify-end gap-3 sm:end-6.25 xl:max-2xl:static xl:max-2xl:mt-3 xl:max-2xl:h-auto">
+      <div class="absolute bottom-px end-4.25 flex h-12.5 flex-wrap items-center justify-end gap-3 lg:end-6.25 xl:max-2xl:static xl:max-2xl:mt-3 xl:max-2xl:h-auto">
         {% if can_close() -%}
           {% if let Some(close_url) = scope.close_url(conversation.inbox_conversation_id) -%}
             <button id="inbox-close-button"

@@ -51,6 +51,9 @@ Each area supports a different part of your participation in OCG: groups, events
 feedback, attendee check-in, profile, email preferences, portable credentials, access, conversations with organizers, proposals,
 submissions, and audit visibility.
 
+Badges marked with a small dot show details on hover, keyboard focus, click or tap; press Escape
+to hide them.
+
 ## My Groups
 
 `My Groups` lists active groups where you are a member or an accepted group team member. The
@@ -183,7 +186,7 @@ Each row shows the event, ticket, fiscal-sponsor seller, amount paid, purchase
 or refund status, and available provider documents. Open invoice and issued
 credit-note links in a new tab. A processing label means Stripe has not issued
 the document yet or OCG is still reconciling its current link. Purchases paid
-outside OCG are labeled `Externally managed`; their documents menu shows
+outside OCG are labeled `External`; their documents menu shows
 `Managed outside OCG` instead of invoice or credit-note links, so ask the
 organizer directly for receipts.
 
@@ -350,7 +353,8 @@ If organizer dashboards still do not appear, see
 organizers from `Contact organizers` in the `About this event` section of event pages, newest
 activity first. Each row shows the group, its community, the latest message, the event you wrote about, and the
 status: `Open` while the organizers have not answered your latest message, `Answered` after they
-reply, `Closed` when they close it, and `Spam` when they mark it as spam.
+reply, `Closed` when they close it, and `Spam` when they mark it as spam. On narrower screens,
+the latest message is hidden and the date and who wrote last appear under the status.
 
 Open a conversation to read the whole thread and send a follow-up. Writing to a closed
 conversation reopens it. When organizers reply, you receive the reply by email with a link to the
@@ -393,6 +397,9 @@ Every proposal has one of these base statuses:
 - `Ready for submission`
 - `Awaiting co-speaker response`
 - `Declined by co-speaker`
+
+On narrower screens, the list shows the short labels `Ready`, `Awaiting` and `Declined`. Screen
+readers always announce the full status.
 
 On top of the base status, derived badges may also appear:
 
@@ -437,6 +444,10 @@ The statuses you will see most often are:
 - `Rejected`
 - `Withdrawn`
 
+On narrower screens, `Information requested` reads `Info requested` in the list. A submission's
+labels also collapse there: a single label shows as its chip, and several labels show as an
+`N labels` badge that lists them on hover, focus, click or tap.
+
 Available actions depend on status. `Resubmit` appears when the status is
 `Information requested`. `Withdraw` stays available while the submission is active and not
 finalized, and is blocked for finalized or linked outcomes.
@@ -465,6 +476,8 @@ Coverage in this view includes:
 Rows are ordered by newest first by default, and you can switch the ordering to oldest first. You
 can filter by `Action` and date range, and pagination keeps the active filters applied. When an
 audit row has extra metadata, `Details` opens a popover with it.
+
+On narrower screens the popover also lists the columns hidden at that width (target and type).
 
 Note that this screen shows actions performed by the signed-in user; it does not try to list
 unrelated actions performed by other people against your account.

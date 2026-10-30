@@ -169,4 +169,76 @@ test.describe("group badge award history", () => {
       cleanupCredential(credential);
     }
   });
+
+  test("revocation details show inline at xl and in a tooltip below xl", async ({ organizerGroupPage }) => {
+    const credential = setupRevocableCredential({
+      eventId: TEST_EVENT_IDS.alpha.one,
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      userId: TEST_USER_IDS.member2,
+    });
+    const revocationReason = "Credential revoked by the responsive award E2E scenario.";
+
+    try {
+      // Find the owned active credential.
+      await organizerGroupPage.setViewportSize({ width: 1280, height: 900 });
+      await navigateToPath(organizerGroupPage, AWARDS_PATH);
+      const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+      const searchInput = dashboardContent.getByRole("textbox", {
+        name: "Search awards",
+      });
+      await searchInput.fill(credential.badgeName);
+      await waitForActionResponse(organizerGroupPage, () => searchInput.press("Enter"), {
+        ...AWARDS_REFRESH_RESPONSE,
+        params: { awards_query: credential.badgeName },
+      });
+      const credentialRow = dashboardContent
+        .locator(`a[href="/badges/credentials/${credential.userBadgeId}"]`)
+        .locator("xpath=ancestor::tr");
+      await expect(credentialRow).toContainText("Active");
+      await expect(dashboardContent.locator("[data-group-badges]")).toHaveAttribute(
+        "data-group-badges-ready",
+        "true",
+      );
+
+      // Revoke it with a private reason.
+      await credentialRow.getByRole("button", { name: `Revoke credential: ${credential.badgeName}` }).click();
+      const revokeDialog = organizerGroupPage.getByRole("dialog", {
+        name: `Revoke ${credential.badgeName}`,
+      });
+      await revokeDialog.getByLabel("Internal reason").fill(revocationReason);
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => revokeDialog.getByRole("button", { name: "Permanently revoke" }).click(),
+        {
+          method: "POST",
+          urlEndsWith: `/badges/awards/${credential.userBadgeId}/revoke`,
+          status: 204,
+        },
+      );
+
+      // Verify the reason shows inline at xl without the compact trigger.
+      const revokedTrigger = credentialRow.getByRole("button", { name: "Revoked", exact: true });
+      await expect(
+        credentialRow.getByText(revocationReason, { exact: true }).filter({ visible: true }),
+      ).toBeVisible();
+      await expect(revokedTrigger).toBeHidden();
+
+      // Verify the compact trigger describes the revocation below xl.
+      await organizerGroupPage.setViewportSize({ width: 1024, height: 900 });
+      const revocationTooltip = organizerGroupPage.locator(`#award-revocation-${credential.userBadgeId}`);
+      await expect(revokedTrigger).toBeVisible();
+      await expect(revokedTrigger).toHaveAttribute(
+        "aria-describedby",
+        `award-revocation-${credential.userBadgeId}`,
+      );
+      await revokedTrigger.focus();
+      await expect(revocationTooltip).toBeVisible();
+      await expect(revocationTooltip).toHaveAttribute("role", "tooltip");
+      await expect(revocationTooltip).toContainText("Revoked on");
+      await expect(revocationTooltip).toContainText(revocationReason);
+    } finally {
+      // Remove temporary credential data.
+      cleanupCredential(credential);
+    }
+  });
 });

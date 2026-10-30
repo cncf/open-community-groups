@@ -289,6 +289,7 @@ async fn test_page_success() {
     assert!(body.contains("data-event-analytics-survey>"));
     assert!(body.contains("Feedback"));
     assert!(body.contains(">Closed</span>"));
+    assert!(body.contains("custom-badge badge-danger"));
     assert!(body.contains(r#"<span class="xl:hidden">3 / 4</span>"#));
     assert!(
         body.contains(

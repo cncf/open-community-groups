@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import { initializeEventEnrollmentState } from "/static/js/dashboard/event/ticketing.js";
+import { TicketingEditorBase } from "/static/js/dashboard/event/ticketing/editor-base.js";
 import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
@@ -157,6 +158,35 @@ describe("ticketing editors", () => {
     expect(rowCells[3].className).to.not.contain("hidden");
     expect(rowCells[3].textContent).to.contain("Active");
     expect(rowCells[0].textContent).to.not.contain("25 seats");
+  });
+
+  it("renders ticket type status through the shared active badge", async () => {
+    // Prepare an active ticket type row.
+    const uiRoot = mountTicketTypesUi();
+    const ticketType = {
+      active: true,
+      seats_total: 25,
+      title: "General admission",
+      price_windows: [{ amount_minor: 3000, starts_at: "", ends_at: "" }],
+    };
+    uiRoot.setAttribute("ticket-types", JSON.stringify([ticketType]));
+    await uiRoot.updateComplete;
+
+    // Verify the shared helper renders the active state and the actions header name.
+    const statusCell = () => uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td')[3];
+    const actionsHeader = [...uiRoot.querySelectorAll("thead th")].at(-1);
+    expect(uiRoot).to.be.instanceOf(TicketingEditorBase);
+    expect(uiRoot._renderActiveBadge).to.equal(TicketingEditorBase.prototype._renderActiveBadge);
+    expect(statusCell().querySelectorAll(".custom-badge")).to.have.length(1);
+    expect(statusCell().textContent.trim()).to.equal("Active");
+    expect(actionsHeader.querySelector(".sr-only")?.textContent.trim()).to.equal("Actions");
+    expect(actionsHeader.textContent.trim()).to.equal("Actions");
+
+    // Deactivate the ticket type and verify the inactive state.
+    uiRoot.setAttribute("ticket-types", JSON.stringify([{ ...ticketType, active: false }]));
+    await uiRoot.updateComplete;
+    expect(statusCell().querySelectorAll(".custom-badge")).to.have.length(1);
+    expect(statusCell().textContent.trim()).to.equal("Inactive");
   });
 
   it("adds ticket types through the modal and emits ticket-types-changed", async () => {
@@ -1170,6 +1200,41 @@ describe("ticketing editors", () => {
 
     // Verify the compact usage survives dependent rerenders.
     expect(uiRoot.textContent).to.contain("12 / 50");
+  });
+
+  it("renders discount status through the shared active badge", async () => {
+    // Prepare an active discount row with the longest allowed code.
+    const uiRoot = mountDiscountCodesUi();
+    const longCode = "EARLYSUPPORTER".padEnd(40, "X");
+    const discountCode = {
+      active: true,
+      code: longCode,
+      kind: "percentage",
+      percentage: 20,
+      title: "Early supporter",
+    };
+    uiRoot.setAttribute("discount-codes", JSON.stringify([discountCode]));
+    await uiRoot.updateComplete;
+
+    // Verify the compact and 2xl status cells, the compact code line and the actions header name.
+    const rowCells = () => uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td');
+    const actionsHeader = [...uiRoot.querySelectorAll("thead th")].at(-1);
+    const compactLines = [...rowCells()[0].querySelectorAll("div")].map((line) => line.textContent.trim());
+    expect(uiRoot).to.be.instanceOf(TicketingEditorBase);
+    expect(uiRoot._renderActiveBadge).to.equal(TicketingEditorBase.prototype._renderActiveBadge);
+    expect(longCode).to.have.length(40);
+    expect(compactLines).to.include(longCode);
+    expect(rowCells()[0].textContent).to.contain("Active");
+    expect(rowCells()[2].textContent.trim()).to.equal("Active");
+    expect(actionsHeader.querySelector(".sr-only")?.textContent.trim()).to.equal("Actions");
+    expect(actionsHeader.textContent.trim()).to.equal("Actions");
+
+    // Deactivate the discount and verify both status cells follow.
+    uiRoot.setAttribute("discount-codes", JSON.stringify([{ ...discountCode, active: false }]));
+    await uiRoot.updateComplete;
+    expect(rowCells()[0].querySelectorAll(".custom-badge")).to.have.length(3);
+    expect(rowCells()[0].textContent).to.contain("Inactive");
+    expect(rowCells()[2].textContent.trim()).to.equal("Inactive");
   });
 
   it("self-bootstraps ticketing editors from page controls after reconnecting", async () => {

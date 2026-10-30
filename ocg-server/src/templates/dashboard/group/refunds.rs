@@ -3,10 +3,15 @@
 use askama::Template;
 use uuid::Uuid;
 
-use crate::types::dashboard::group::refunds::{
-    GroupFinancialRecovery, GroupRefund, RefundEvent, RefundsView,
+use crate::{
+    templates::{dashboard::BadgeTone, helpers::user_initials},
+    types::{
+        dashboard::group::refunds::{
+            GroupFinancialRecovery, GroupRefund, GroupRefundStatus, RefundEvent, RefundsView,
+        },
+        pagination,
+    },
 };
-use crate::{templates::helpers::user_initials, types::pagination};
 
 // Pages templates.
 
@@ -43,5 +48,72 @@ impl ListPage {
     /// Returns whether an event filter option is selected.
     fn is_event_selected(&self, event_id: &Uuid) -> bool {
         self.event_id.as_ref() == Some(event_id)
+    }
+}
+
+// Helpers.
+
+/// Returns the badge tone used for a refund status. Askama passes the status
+/// by reference.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+pub(crate) fn status_tone(status: &GroupRefundStatus) -> BadgeTone {
+    match status {
+        GroupRefundStatus::NeedsReview => BadgeTone::Warning,
+        GroupRefundStatus::RecoveryRequired
+        | GroupRefundStatus::Rejected
+        | GroupRefundStatus::RetryableFailure => BadgeTone::Danger,
+        GroupRefundStatus::AwaitingCheckout
+        | GroupRefundStatus::Processing
+        | GroupRefundStatus::Queued
+        | GroupRefundStatus::Refunded => BadgeTone::Neutral,
+    }
+}
+
+// Tests.
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        templates::dashboard::BadgeTone, types::dashboard::group::refunds::GroupRefundStatus,
+    };
+
+    use super::status_tone;
+
+    #[test]
+    fn test_status_tone() {
+        let cases = [
+            (
+                "awaiting checkout",
+                GroupRefundStatus::AwaitingCheckout,
+                BadgeTone::Neutral,
+            ),
+            (
+                "needs review",
+                GroupRefundStatus::NeedsReview,
+                BadgeTone::Warning,
+            ),
+            (
+                "processing",
+                GroupRefundStatus::Processing,
+                BadgeTone::Neutral,
+            ),
+            ("queued", GroupRefundStatus::Queued, BadgeTone::Neutral),
+            (
+                "recovery required",
+                GroupRefundStatus::RecoveryRequired,
+                BadgeTone::Danger,
+            ),
+            ("refunded", GroupRefundStatus::Refunded, BadgeTone::Neutral),
+            ("rejected", GroupRefundStatus::Rejected, BadgeTone::Danger),
+            (
+                "retryable failure",
+                GroupRefundStatus::RetryableFailure,
+                BadgeTone::Danger,
+            ),
+        ];
+
+        for (case, status, expected) in cases {
+            assert_eq!(status_tone(&status), expected, "{case}");
+        }
     }
 }

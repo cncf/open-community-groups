@@ -173,6 +173,25 @@ export const setupBadgeStatusList = ({ groupId }) => {
 };
 
 /**
+ * Revokes a disposable credential now with an internal reason, as the dashboard revoke action
+ * does without its status list update. Revoked credentials cannot stay listed, so it is unlisted
+ * in the same update. `cleanupCredential` still deletes it.
+ * @param {{ reason: string, userBadgeId: string }} input - Credential created by
+ *   `setupRevocableCredential` and the revocation reason.
+ * @returns {void}
+ */
+export const setupCredentialRevocation = ({ reason, userBadgeId }) => {
+  queryE2eDatabase(`
+    update user_badge
+    set
+      is_listed = false,
+      revocation_reason = ${sqlString(reason)},
+      revoked_at = current_timestamp
+    where user_badge_id = ${sqlString(userBadgeId)}::uuid;
+  `);
+};
+
+/**
  * Creates a disposable active credential that can be permanently revoked and deleted.
  * @param {{ badgeId?: string, eventId?: string, groupId: string, userId: string }} input - Credential owner.
  * @returns {{

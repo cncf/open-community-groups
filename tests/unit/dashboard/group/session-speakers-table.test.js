@@ -75,4 +75,46 @@ describe("session-speakers-table", () => {
     expect(featuredCell.querySelector(".sr-only")).to.not.equal(null);
     expect(featuredCell.textContent).to.not.include("—");
   });
+
+  it("marks featured session speakers in the identity cell without a title", async () => {
+    // Render one featured and one regular session speaker.
+    const element = await mountLitComponent("session-speakers-table", {
+      sessions: [
+        {
+          name: "Opening",
+          speakers: [
+            { user_id: "21", username: "grace", name: "Grace Hopper", featured: true },
+            { user_id: "22", username: "ada", name: "Ada Lovelace", featured: false },
+          ],
+        },
+      ],
+    });
+    const rows = [...element.querySelectorAll("tbody tr")];
+    const featuredRow = rows.find((row) => row.textContent.includes("Grace Hopper"));
+    const regularRow = rows.find((row) => row.textContent.includes("Ada Lovelace"));
+    const marker = featuredRow.children[0].querySelector("[data-featured-speaker-marker]");
+
+    // Verify only the featured row carries the marker and its accessible text.
+    expect(marker).to.not.equal(null);
+    expect(marker.querySelector(".sr-only").textContent.trim()).to.equal("Featured speaker");
+    expect(featuredRow.children[0].querySelector("[title]")).to.equal(null);
+    expect(regularRow.children[0].querySelector("[data-featured-speaker-marker]")).to.equal(null);
+  });
+
+  it("drops the actions column from the read-only empty state", async () => {
+    // Render the table without badge awards or session-level speakers.
+    const element = await mountLitComponent("session-speakers-table", {
+      canAwardBadges: false,
+      sessions: [],
+    });
+    const table = element.querySelector('table[aria-label="Session-level speakers"]');
+
+    // Verify the headers and the empty-state colspan without actions.
+    expect([...table.querySelectorAll("th")].map((header) => header.textContent.trim())).to.deep.equal([
+      "Name",
+      "Featured",
+      "Sessions",
+    ]);
+    expect(table.querySelector("tbody td").getAttribute("colspan")).to.equal("3");
+  });
 });

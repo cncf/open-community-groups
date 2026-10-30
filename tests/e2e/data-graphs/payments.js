@@ -160,6 +160,38 @@ export const setupOwnedCompletedRefundPurchase = ({ eventId, userId }) => {
 };
 
 /**
+ * Creates a percentage discount code on an owned event. It cascades when the event is removed.
+ * @param {{ active?: boolean, code: string, eventId: string, percentage?: number, title: string }} input -
+ *   Discount code fields; codes are unique per event.
+ * @returns {{ code: string, discountCodeId: string }}
+ */
+export const setupEventDiscountCode = ({ active = true, code, eventId, percentage = 10, title }) => {
+  const discountCodeId = randomUUID();
+
+  queryE2eDatabase(`
+    insert into event_discount_code (
+      event_discount_code_id,
+      active,
+      code,
+      event_id,
+      kind,
+      percentage,
+      title
+    ) values (
+      ${sqlString(discountCodeId)}::uuid,
+      ${active},
+      ${sqlString(code)},
+      ${sqlString(eventId)}::uuid,
+      'percentage',
+      ${Number(percentage)},
+      ${sqlString(title)}
+    );
+  `);
+
+  return { code, discountCodeId };
+};
+
+/**
  * Creates exhausted credit-note work on a finalized refund that an organizer can complete
  * outside OCG.
  * @param {{ eventId: string, userId: string }} input - Financial work owner.

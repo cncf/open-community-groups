@@ -24,8 +24,8 @@ describe("dashboard user invitations list template", () => {
     expect(groupInvitations).to.be.greaterThan(eventInvitations);
     expect(communityInvitations).to.be.greaterThan(groupInvitations);
     expect(template.match(/mb-12/gu)).to.have.length(2);
-    expect(template).to.include('{# Groups Invitations -#} <div>');
-    expect(template).to.include('{# Community Invitations -#} <div>');
+    expect(template).to.include("{# Groups Invitations -#} <div>");
+    expect(template).to.include("{# Community Invitations -#} <div>");
     expect(template).not.to.include("mb-10");
     expect(template).not.to.include('class="pt-12"');
     expect(template).to.not.include("border-t border-stone-900/10");
@@ -50,22 +50,14 @@ describe("dashboard user invitations list template", () => {
     expect(template).to.include("{{ invitation.source_label() }}");
     expect(template).to.include("{% else if let Some(price_label) = invitation.price_label() -%}");
     expect(template).to.include("data-localized-currency");
-    expect(template).to.include("group/event-offer-details relative inline-flex shrink-0");
     expect(template).to.include(
-      'class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"',
+      "{% let event_offer_tooltip_id -%}event-offer-details-{{ invitation.admission_offer_id }}{%- endlet %}",
     );
     expect(template).to.include(
-      "event-offer-details-{{ invitation.admission_offer_id }}",
+      '{% call dashboard::tooltip_badge_trigger(tooltip_id = event_offer_tooltip_id, title = "Ticket offer", label = price_label, tone = "neutral", currency = true) -%}',
     );
-    expect(template).to.include('aria-describedby="{{ event_offer_tooltip_id }}"');
-    expect(template).to.include("dashboard::tooltip_panel(");
-    expect(template).to.include('title = "Ticket offer"');
-    expect(template).to.include("-end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500");
-    expect(template).to.include("group-hover/event-offer-details:visible");
-    expect(template).to.include("group-focus-within/event-offer-details:visible");
-    expect(template).to.include(
-      '<span class="block font-semibold text-stone-500">Ticket type</span>',
-    );
+    expect(template).not.to.include("dashboard::tooltip_panel(");
+    expect(template).to.include('<span class="block font-semibold text-stone-500">Ticket type</span>');
     expect(template).to.include(
       '<span class="mt-0.5 block text-stone-900">{{ invitation.ticket_title }}</span>',
     );
@@ -81,9 +73,30 @@ describe("dashboard user invitations list template", () => {
       "Your price is confirmed when you first claim the offer. If checkout has already started, retries keep that confirmed price.",
     );
     expect(template).to.include(
-      'class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"',
+      '<div class="custom-badge badge-success" data-localized-currency>{{ price_label }}</div>',
     );
     expect(template).to.include("{% if invitation.is_simple_rsvp %}Confirm by{% else %}Claim by{% endif %}");
+  });
+
+  it("spans each empty state across the columns visible at each breakpoint", async () => {
+    // Load the invitations template before checking the per-breakpoint empty cells.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the event table hides Starts below lg.
+    for (const colspan of [4, 5]) {
+      expect(template).to.include(
+        `colspan="${colspan}"> {% include "dashboard/placeholders/user_event_invitations_table.html"`,
+      );
+    }
+
+    // Verify the group and community tables hide Created below lg.
+    for (const placeholder of ["user_group_invitations_table", "user_community_invitations_table"]) {
+      for (const colspan of [3, 4]) {
+        expect(template).to.include(
+          `colspan="${colspan}"> {% include "dashboard/placeholders/${placeholder}.html"`,
+        );
+      }
+    }
   });
 
   it("renders claim decline resume and cancel checkout actions", async () => {
@@ -117,9 +130,7 @@ describe("dashboard user invitations list template", () => {
     // Load the invitations template before checking external payment actions.
     const template = normalizeWhitespace(await loadTemplate());
 
-    expect(template).to.include(
-      "{% if let Some(external_payment) = &invitation.external_payment -%}",
-    );
+    expect(template).to.include("{% if let Some(external_payment) = &invitation.external_payment -%}");
     expect(template).to.include('href="{{ external_payment.url }}"');
     expect(template).to.include('target="_blank"');
     expect(template).to.include('rel="noopener noreferrer"');
@@ -130,9 +141,7 @@ describe("dashboard user invitations list template", () => {
     expect(template).to.include(
       '<div>Reference: <span class="font-mono">{{ external_payment.reference }}</span></div>',
     );
-    expect(template).to.include(
-      "{% if let Some(instructions) = &external_payment.instructions -%}",
-    );
+    expect(template).to.include("{% if let Some(instructions) = &external_payment.instructions -%}");
     expect(template).to.include(
       "{% else if let Some(resume_checkout_url) = &invitation.resume_checkout_url -%}",
     );

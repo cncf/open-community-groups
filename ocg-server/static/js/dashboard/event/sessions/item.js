@@ -8,10 +8,10 @@ import { normalizeLabels } from "/static/js/common/labels.js";
 import "/static/js/common/label-selector.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isObjectEmpty, parseJsonAttribute } from "/static/js/common/utils.js";
+import { normalizeSpeakers } from "/static/js/common/users/speaker-utils.js";
 import "/static/js/common/users/speakers-selector.js";
 import "/static/js/common/online-event-details.js";
 import { combineDateAndTime, extractTimePart } from "/static/js/dashboard/event/sessions/datetime.js";
-import { normalizeSpeakers } from "/static/js/dashboard/event/sessions/speaker-utils.js";
 
 /**
  * Returns a valid maxlength attribute value or omits the attribute.

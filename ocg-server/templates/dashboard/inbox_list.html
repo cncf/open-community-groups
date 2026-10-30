@@ -63,19 +63,19 @@
 
   {# Conversations table -#}
   <div class="relative overflow-visible">
-    <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+    <table class="table-fixed w-full dashboard-table mb-8"
            aria-label="Inbox conversations">
       {# Table columns -#}
       <colgroup>
-        <col class="w-[200px] 2xl:w-[240px]" />
-        <col class="w-[200px] 2xl:w-[240px]" />
-        <col />
-        <col class="w-[130px]" />
+        <col class="xl:w-[200px] 2xl:w-[240px]" />
+        <col class="xl:w-[200px] 2xl:w-[240px]" />
+        <col class="hidden xl:table-column" />
+        <col class="w-[120px] xl:w-[130px]" />
         <col class="hidden 2xl:table-column w-[190px]" />
       </colgroup>
       {# End table columns -#}
       {# Table header -#}
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <thead class="dashboard-table-head">
         <tr>
           {% if scope.is_group() -%}
             <th scope="col" class="px-3 xl:px-5 py-1.5">Event</th>
@@ -84,7 +84,7 @@
             <th scope="col" class="px-3 xl:px-5 py-1.5">Group</th>
             <th scope="col" class="px-3 xl:px-5 py-1.5">Event</th>
           {% endif -%}
-          <th scope="col" class="px-3 xl:px-5 py-1.5">Last message</th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5">Last message</th>
           <th scope="col" class="px-3 xl:px-5 py-1.5">
             {% call dashboard::table_filter_menu(id = "inbox-status-filter-options", label = "Status", is_active = !is_unfiltered(), dropdown_classes = "end-0") -%}
             <div class="py-2">
@@ -111,9 +111,11 @@
         {% if conversations.is_empty() -%}
           {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
-            <td class="2xl:hidden px-8 py-16 text-center" colspan="4">
+            <td class="xl:hidden px-8 py-16 text-center" colspan="3">
               {% include "dashboard/placeholders/inbox_table.html" -%}
             </td>
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-16 text-center"
+                colspan="4">{% include "dashboard/placeholders/inbox_table.html" -%}</td>
             <td class="hidden 2xl:table-cell px-8 py-16 text-center" colspan="5">
               {% include "dashboard/placeholders/inbox_table.html" -%}
             </td>
@@ -150,15 +152,15 @@
                     {% endif -%}
                   {% endif -%}
                   <div class="min-w-0">
+                    {% if !scope.is_group() -%}
+                      <div class="title-preheader mb-0.5">{{ conversation.community_display_name }}</div>
+                    {% endif -%}
                     <div class="truncate
                                 {% if scope.is_group() && conversation.user.is_none() -%}
                                   font-normal text-stone-500
                                 {% else -%}
                                   font-medium text-stone-900
                                 {% endif -%}">{{ counterpart_label(conversation) }}</div>
-                    {% if !scope.is_group() -%}
-                      <div class="truncate text-xs font-normal text-stone-500">{{ conversation.community_display_name }}</div>
-                    {% endif -%}
                   </div>
                 </div>
               </th>
@@ -167,7 +169,7 @@
                 {{ event_cell(conversation) -}}
               {% endif -%}
               {# Last message -#}
-              <td class="px-3 xl:px-5 py-4">
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
                 <p class="line-clamp-2 break-words text-xs text-stone-600">
                   {% if conversation.last_message_kind.is_from_group() -%}
                     <span class="font-medium text-stone-700">Organizers:</span>
@@ -187,6 +189,11 @@
               {# Status -#}
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
                 {{ badges::inbox_status_badge(status = conversation.status) -}}
+                <div class="mt-1 text-xs text-stone-500 xl:hidden">
+                  <time datetime="{{ conversation.last_message_at.to_rfc3339() }}"
+                        class="block">{{ conversation.last_message_at.format("%b %d, %Y") }}</time>
+                  <span class="block truncate">From {{ last_writer_label(conversation)|lower }}</span>
+                </div>
               </td>
               {# End status -#}
               {# Last activity -#}

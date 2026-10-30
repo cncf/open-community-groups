@@ -447,15 +447,14 @@
 
 {# Attendees table -#}
 <div class="relative overflow-visible pb-12">
-  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+  <table class="table-auto w-full dashboard-table mb-8"
          role="table"
          aria-label="Attendees list">
     {# Table header -#}
-    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
-           role="rowgroup">
+    <thead class="dashboard-table-head" role="rowgroup">
       <tr>
         <th scope="col"
-            class="hidden px-3 xl:px-5 py-1.5 w-12"
+            class="hidden px-3 xl:px-5 py-1.5 w-10"
             data-attendee-email-selection-column>
           <span class="sr-only">Select for email</span>
         </th>
@@ -533,7 +532,7 @@
           </div>
           {% endcall -%}
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-1.5 w-[72px]">
+        <th scope="col" class="dashboard-table-actions py-1.5 w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -549,7 +548,7 @@
           || event_ticket_type_ids.is_some()
           || title.is_some() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center" colspan="7">
+          <td class="px-8 py-12 text-center" colspan="8">
             {% if has_active_attendee_filters -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
             {% else -%}
@@ -563,7 +562,7 @@
           {# Attendee row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Email selection -#}
-            <td class="hidden px-3 xl:px-5 py-4 w-12"
+            <td class="hidden px-3 xl:px-5 py-4 w-10"
                 data-attendee-email-selection-column>
               {% if can_manage_events && !event.canceled && (attendee.can_receive_attendee_email || attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed) -%}
                 <input type="checkbox"
@@ -596,7 +595,7 @@
                 </div>
               </div>
               {% endcall -%}
-              <div class="ms-[60px] mt-1 min-w-0 lg:hidden">
+              <div class="mt-2 min-w-0 lg:hidden">
                 {% if attendee.ticket_title.is_some() -%}
                   <div class="truncate text-xs text-stone-600">{{ attendee.ticket_title|assigned_or("RSVP invitation") }}</div>
                 {% endif -%}
@@ -693,7 +692,7 @@
             {# End checked in toggle -#}
 
             {# Actions -#}
-            <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
+            <td class="dashboard-table-actions py-4 w-[72px] text-right">
               <div class="relative inline-flex justify-end">
                 {% if (attendee.registration_answers.is_some() && !registration_questions.is_empty())
                   || (can_manage_events
@@ -1209,30 +1208,19 @@
 {% macro attendee_offer_status_badge(attendee, event, label, canceled, status_instance) -%}
   {% if let Some(offer_expires_at) = &attendee.offer_expires_at -%}
     {% let attendee_offer_tooltip_id -%}attendee-offer-deadline-{{ attendee.user.user_id }}-{{ status_instance }}{%- endlet %}
-  <span class="group/offer-deadline relative inline-flex shrink-0">
-    <button type="button"
-            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-            aria-describedby="{{ attendee_offer_tooltip_id }}">
-      {{ badges::status_badge(label = label, canceled = canceled) -}}
-      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
-                   {% if canceled %}bg-red-800{% else %}bg-amber-800{% endif %}"
-            aria-hidden="true"></span>
-    </button>
-    {% call dashboard::tooltip_panel(
-      id = attendee_offer_tooltip_id,
-      title = "Ticket offer",
-      visibility_classes = "group-hover/offer-deadline:visible group-hover/offer-deadline:opacity-100 group-focus-within/offer-deadline:visible group-focus-within/offer-deadline:opacity-100"
-    ) -%}
-    <span class="block">
-      <span class="block font-semibold text-stone-500">
-        {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}Expired{% else %}Deadline{% endif %}
-      </span>
-      <span class="mt-0.5 block text-stone-900">
-        {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
-      </span>
+  {# djlint:off #}
+  {% let offer_tone -%}{% if canceled %}danger{% else %}warning{% endif %}{%- endlet %}
+  {# djlint:on #}
+  {% call dashboard::tooltip_badge_trigger(tooltip_id = attendee_offer_tooltip_id, title = "Ticket offer", label = label, tone = offer_tone) -%}
+  <span class="block">
+    <span class="block font-semibold text-stone-500">
+      {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}Expired{% else %}Deadline{% endif %}
     </span>
-    {% endcall -%}
+    <span class="mt-0.5 block text-stone-900">
+      {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+    </span>
   </span>
+  {% endcall -%}
 {% else -%}
   {{ badges::status_badge(label = label, canceled = canceled) -}}
 {% endif -%}
@@ -1243,34 +1231,20 @@
 {% macro attendee_external_payment_status_badge(attendee, status_instance) -%}
   {% if attendee.external_payment_deadline.is_some() || attendee.external_payment_reference.is_some() -%}
     {% let external_payment_tooltip_id -%}attendee-external-payment-details-{{ attendee.user.user_id }}-{{ status_instance }}{%- endlet %}
-  <span class="group/external-payment-details relative inline-flex shrink-0">
-    <button type="button"
-            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-            aria-describedby="{{ external_payment_tooltip_id }}">
-      {{ badges::status_badge(label = "Payment pending") -}}
-      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-amber-800"
-            aria-hidden="true"></span>
-    </button>
-    {% call dashboard::tooltip_panel(
-      id = external_payment_tooltip_id,
-      title = "External payment",
-      visibility_classes = "group-hover/external-payment-details:visible group-hover/external-payment-details:opacity-100 group-focus-within/external-payment-details:visible group-focus-within/external-payment-details:opacity-100",
-      width_classes = "w-80"
-    ) -%}
-    {% if let Some(deadline) = attendee.external_payment_deadline -%}
-      <span class="block">
-        <span class="block font-semibold text-stone-500">Confirm by</span>
-        <span class="mt-0.5 block text-stone-900">{{ deadline.format("%b %d, %Y at %H:%M UTC") }}</span>
-      </span>
-    {% endif -%}
-    {% if let Some(reference) = attendee.external_payment_reference -%}
-      <span class="block">
-        <span class="block font-semibold text-stone-500">Reference</span>
-        <span class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ reference }}</span>
-      </span>
-    {% endif -%}
-    {% endcall -%}
-  </span>
+  {% call dashboard::tooltip_badge_trigger(tooltip_id = external_payment_tooltip_id, title = "External payment", label = "Payment pending", tone = "warning", width_classes = "w-80") -%}
+  {% if let Some(deadline) = attendee.external_payment_deadline -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Confirm by</span>
+      <span class="mt-0.5 block text-stone-900">{{ deadline.format("%b %d, %Y at %H:%M UTC") }}</span>
+    </span>
+  {% endif -%}
+  {% if let Some(reference) = attendee.external_payment_reference -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Reference</span>
+      <span class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ reference }}</span>
+    </span>
+  {% endif -%}
+  {% endcall -%}
 {% else -%}
   {{ badges::status_badge(label = "Payment pending") -}}
 {% endif -%}
@@ -1343,50 +1317,36 @@
 {% macro attendee_external_payment_detail(attendee, detail_instance) -%}
   {% if attendee.externally_paid -%}
     {% let external_payment_paid_tooltip_id -%}attendee-external-payment-paid-{{ attendee.user.user_id }}-{{ detail_instance }}{%- endlet %}
-  <span class="group/external-payment-paid relative inline-flex shrink-0">
-    <button type="button"
-            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-            aria-describedby="{{ external_payment_paid_tooltip_id }}">
-      {{ badges::common_badge(content = "External", extra_styles = Some("border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700")) -}}
-      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500"
-            aria-hidden="true"></span>
-    </button>
-    {% call dashboard::tooltip_panel(
-      id = external_payment_paid_tooltip_id,
-      title = "External payment",
-      visibility_classes = "group-hover/external-payment-paid:visible group-hover/external-payment-paid:opacity-100 group-focus-within/external-payment-paid:visible group-focus-within/external-payment-paid:opacity-100",
-      width_classes = "w-80"
-    ) -%}
-    <span class="block">
-      <span class="block font-semibold text-stone-500">Status</span>
-      <span class="mt-0.5 block text-stone-900">Paid externally</span>
-    </span>
-    {% if let Some(paid_at) = attendee.completed_at -%}
-      <span class="block">
-        <span class="block font-semibold text-stone-500">Confirmed on</span>
-        <span class="mt-0.5 block text-stone-900">{{ paid_at.format("%b %d, %Y at %H:%M UTC") }}</span>
-      </span>
-    {% endif -%}
-    {% if let Some(marked_by) = &attendee.external_payment_marked_by -%}
-      <span class="block">
-        <span class="block font-semibold text-stone-500">Marked by</span>
-        <span class="mt-0.5 block text-stone-900">{{ marked_by }}</span>
-      </span>
-    {% endif -%}
-    {% if let Some(reference) = attendee.external_payment_reference -%}
-      <span class="block">
-        <span class="block font-semibold text-stone-500">Reference</span>
-        <span class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ reference }}</span>
-      </span>
-    {% endif -%}
-    {% if let Some(details) = &attendee.external_payment_details -%}
-      <span class="block">
-        <span class="block font-semibold text-stone-500">Note</span>
-        <span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ details }}</span>
-      </span>
-    {% endif -%}
-    {% endcall -%}
+  {% call dashboard::tooltip_badge_trigger(tooltip_id = external_payment_paid_tooltip_id, title = "External payment", label = "External", tone = "neutral", width_classes = "w-80") -%}
+  <span class="block">
+    <span class="block font-semibold text-stone-500">Status</span>
+    <span class="mt-0.5 block text-stone-900">Paid externally</span>
   </span>
+  {% if let Some(paid_at) = attendee.completed_at -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Confirmed on</span>
+      <span class="mt-0.5 block text-stone-900">{{ paid_at.format("%b %d, %Y at %H:%M UTC") }}</span>
+    </span>
+  {% endif -%}
+  {% if let Some(marked_by) = &attendee.external_payment_marked_by -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Marked by</span>
+      <span class="mt-0.5 block text-stone-900">{{ marked_by }}</span>
+    </span>
+  {% endif -%}
+  {% if let Some(reference) = attendee.external_payment_reference -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Reference</span>
+      <span class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ reference }}</span>
+    </span>
+  {% endif -%}
+  {% if let Some(details) = &attendee.external_payment_details -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Note</span>
+      <span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ details }}</span>
+    </span>
+  {% endif -%}
+  {% endcall -%}
 {% endif -%}
 {% endmacro attendee_external_payment_detail -%}
 {# End external payment detail. #}

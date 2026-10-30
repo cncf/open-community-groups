@@ -68,15 +68,15 @@
 
 {# Groups Table -#}
 <div class="relative overflow-visible mt-5">
-  <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8">
-    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+  <table class="table-auto w-full dashboard-table rtl:text-right mb-8">
+    <thead class="dashboard-table-head">
       {# Table header -#}
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Location</th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Created</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Category</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
+        <th scope="col" class="dashboard-table-actions py-3 w-[152px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -116,9 +116,13 @@
           {# Group row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             <th scope="row"
-                class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
+                class="w-full min-w-[160px] max-w-0 px-3 xl:px-5 py-4 font-medium text-stone-900">
               <div class="flex items-center">
                 <div class="min-w-0">
+                  {# Group category -#}
+                  <div class="title-preheader mb-0.5 xl:hidden">{{ group.category.name }}</div>
+                  {# End group category -#}
+
                   {# Group name -#}
                   <div class="max-w-full truncate flex items-center gap-x-2">
                     <button type="button"
@@ -126,19 +130,16 @@
                             class="truncate cursor-pointer text-left bg-transparent border-0 p-0"
                             aria-label="Open group dashboard: {{ group.name }}">{{ group.name }}</button>
                     {% if !group.active -%}
-                      <span class="custom-badge inline-block border-amber-600 bg-amber-600 px-2.5 py-0.5 leading-4 text-white">Inactive</span>
+                      <span class="custom-badge badge-warning inline-block">Inactive</span>
                     {% endif -%}
                   </div>
                   {# End group name -#}
 
-                  {# Mobile category and location -#}
-                  <div class="block xl:hidden mt-1.5 space-y-1 text-xs text-stone-500">
-                    <div class="max-w-full truncate">{{ group.category.name }}</div>
-                    {% if let Some(location) = &group.location(40) -%}
-                      <div class="max-w-full truncate">{{ location }}</div>
-                    {% endif -%}
-                  </div>
-                  {# End mobile category and location -#}
+                  {# Mobile location -#}
+                  {% if let Some(location) = &group.location(40) -%}
+                    <div class="mt-1.5 max-w-full truncate text-xs text-stone-500 xl:hidden">{{ location }}</div>
+                  {% endif -%}
+                  {# End mobile location -#}
                 </div>
               </div>
             </th>
@@ -166,7 +167,7 @@
             {# End category -#}
 
             {# Actions -#}
-            <td class="px-3 xl:px-5 py-4 w-[152px]">
+            <td class="dashboard-table-actions py-4 w-[152px]">
               <div class="flex items-center justify-end gap-2">
                 {# Update group button -#}
                 <div>

@@ -92,7 +92,7 @@ describe("dashboard group invitation requests list template", () => {
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"',
     );
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"');
-    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-24 text-right"');
+    expect(template).to.include('class="dashboard-table-actions py-1.5 w-24 text-right"');
     expect(template).to.include('<span class="sr-only">Actions</span>');
     expect(template).to.include('class="xl:hidden px-8 py-12 text-center" colspan="3"');
     expect(template).to.include('class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4"');
@@ -181,16 +181,16 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include("Private admission");
     expect(template).to.include("request.offered_ticket_title.as_deref()");
     expect(template).to.include("Ticket offer");
-    expect(template).to.include("group/request-offer relative inline-flex shrink-0");
-    expect(template).to.include('aria-describedby="{{ request_offer_tooltip_id }}"');
-    expect(template).to.include("dashboard::tooltip_panel(");
+    expect(template).to.include(
+      "invitation-request-offer-details-{{ request.user.user_id }}{% if stacked %}-stacked{% endif %}",
+    );
+    expect(template).to.include(
+      "{% let offer_tone -%}{% if canceled %}danger{% else if published %}success{% else %}warning{% endif %}{%- endlet %}",
+    );
+    expect(template).to.include(
+      '{% call dashboard::tooltip_badge_trigger(tooltip_id = request_offer_tooltip_id, title = "Ticket offer", label = label, tone = offer_tone) -%}',
+    );
     expect(template).to.include('title = "Ticket offer"');
-    expect(template).to.include("group-hover/request-offer:visible");
-    expect(template).to.include("group-focus-within/request-offer:visible");
-    expect(template).to.include("border-2 border-white");
-    expect(template).to.include("bg-amber-800");
-    expect(template).to.include("bg-red-800");
-    expect(template).to.include("bg-green-800");
     expect(template).not.to.include("icon-info");
     expect(template).to.not.include("Offer status");
     expect(template).to.not.include("Checkout in progress");

@@ -448,7 +448,7 @@ export class GalleryField extends LitWrapper {
           <p class="form-legend">${this._instructions}</p>
         </div>
 
-        <div class="grid grid-cols-3 gap-6 md:gap-8 sm:grid-cols-4">
+        <div class="grid grid-cols-3 gap-6 sm:grid-cols-4 md:grid-cols-3 md:gap-8 lg:grid-cols-4">
           ${this.images.map(
             (imageUrl, index) => html`
               <div

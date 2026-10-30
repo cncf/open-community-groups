@@ -200,10 +200,12 @@ describe("dashboard group event analytics template", () => {
     expect(template).to.include("Counts are per survey");
     expect(template).to.not.match(/\/surveys(?!\.html)/);
 
-    // Assert the shared state badge covers every survey state.
-    ["Draft", "Scheduled", "Open", "Closed"].forEach((state) =>
-      expect(macros).to.include(`{% when crate::types::event_survey::EventSurveyState::${state} -%}`),
+    // Assert the shared state badge takes its label and tone from the typed survey state.
+    expect(macros).to.include("label = crate::templates::dashboard::group::surveys::state_label(state)");
+    expect(macros).to.include(
+      "tone = crate::templates::dashboard::group::surveys::state_tone(state).as_str()",
     );
+    expect(macros).to.not.include("{% when crate::types::event_survey::EventSurveyState::");
   });
 
   it("shares the stat card and chart slot macros with the group analytics page", async () => {
@@ -213,8 +215,9 @@ describe("dashboard group event analytics template", () => {
 
     // Assert the macro contracts.
     expect(macros).to.include(
-      '{% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0, wrapper_class = "", has_data = true, summary = "") -%}',
+      '{% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0, wrapper_class = "", has_data = true, summary = "", padding_class = "px-2 py-4 md:p-4 xl:p-6") -%}',
     );
+    expect(macros).to.include("rounded-lg {{ padding_class }} {{ wrapper_class }}");
     expect(macros).to.include("{% if has_data && data.len() > min_points + 0 -%}");
     expect(macros).to.include('<p class="sr-only">{{ summary }}</p>');
     expect(macros).to.include('{% macro stat_card(title, value, description, extra_class = "") -%}');

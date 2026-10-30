@@ -590,8 +590,8 @@ class TicketTypesEditor extends TicketingEditorBase {
       (row) => row._row_id,
       (row) => html`
         <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
-          <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
-            <div class="font-medium text-stone-900">${this._ticketTitle(row)}</div>
+          <td class="px-3 xl:px-5 py-4 min-w-[180px]">
+            <div class="font-medium text-stone-900 wrap-anywhere">${this._ticketTitle(row)}</div>
             <div class="mt-1 text-xs text-stone-500">
               ${row.availability === "invitation_only" ? "Invitation only" : "Public"}
             </div>
@@ -600,23 +600,9 @@ class TicketTypesEditor extends TicketingEditorBase {
             ${this._ticketPriceSummary(row)}
           </td>
           <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${row.seats_total || "—"}</td>
-          <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-            ${
-              row.active
-                ? html`<span
-                    class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
-                  >
-                    Active
-                  </span>`
-                : html`<span
-                    class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
-                  >
-                    Inactive
-                  </span>`
-            }
-          </td>
-          <td class="px-3 xl:px-5 py-4">
-            <div class="flex items-center justify-start gap-1 xl:justify-end">
+          <td class="px-3 xl:px-5 py-4 whitespace-nowrap">${this._renderActiveBadge(row.active)}</td>
+          <td class="dashboard-table-actions py-4">
+            <div class="flex items-center justify-end gap-1">
               <button
                 type="button"
                 class="rounded-full p-2 transition-colors ${
@@ -789,15 +775,17 @@ class TicketTypesEditor extends TicketingEditorBase {
     return html`
       ${this._renderHiddenFields()}
 
-      <div data-ticketing-role="table-wrapper" class="relative overflow-x-auto xl:overflow-visible">
-        <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
-          <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <div data-ticketing-role="table-wrapper" class="relative overflow-x-auto 2xl:overflow-visible">
+        <table class="dashboard-table table-auto w-full">
+          <thead class="dashboard-table-head">
             <tr>
               <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
               <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Price</th>
               <th scope="col" class="px-3 xl:px-5 py-3">Seats</th>
               <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-              <th scope="col" class="px-3 xl:px-5 py-3 text-right">Actions</th>
+              <th scope="col" class="dashboard-table-actions py-3 text-right">
+                <span class="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody data-ticketing-role="empty-state" class=${this._rows.length > 0 ? "hidden" : ""}>

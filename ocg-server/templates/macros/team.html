@@ -2,19 +2,19 @@
 
 {# Team member identity cell -#}
 {# Used by community and group dashboard team lists. -#}
-{% macro member_identity_cell(image_attr, placeholder, display_name, username, show_username, accepted) -%}
+{% macro member_identity_cell(photo_url, name, username, placeholder, accepted) -%}
   <td class="px-3 xl:px-5 py-4 max-w-0">
     <div class="flex items-center space-x-5">
-      <logo-image {{ image_attr|safe }} size="size-10" placeholder="{{ placeholder }}">
+      <logo-image {% if let Some(url) = photo_url %}image-url="{{ url }}"{% endif %} size="size-10" placeholder="{{ placeholder }}">
       </logo-image>
       <div class="min-w-0">
-        <div class="flex items-center space-x-3 mb-1 min-w-0">
-          <div class="font-medium text-stone-900 truncate min-w-0">{{ display_name|safe }}</div>
+        <div class="flex items-center gap-x-3 mb-1 min-w-0">
+          <div class="font-medium text-stone-900 truncate min-w-0">{{ name.as_deref()|assigned_or(username) }}</div>
           {% if !accepted -%}
-            {{ badges::invitation_badge(label = "Invitation sent") -}}
+            {{ badges::invitation_badge(label = "Invitation sent", extra_styles = Some("hidden 2xl:inline-block")) -}}
           {% endif -%}
         </div>
-        {% if show_username -%}
+        {% if name.is_some() -%}
           <div class="text-xs text-stone-600 truncate">{{ username }}</div>
         {% endif -%}
       </div>

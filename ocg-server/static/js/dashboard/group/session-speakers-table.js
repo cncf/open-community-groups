@@ -6,8 +6,8 @@ import {
   renderContributorIdentity,
   renderFeaturedContributorState,
 } from "/static/js/common/users/contributor-row.js";
+import { normalizeSpeakers, speakerKey } from "/static/js/common/users/speaker-utils.js";
 import { parseSessionsAttribute } from "/static/js/dashboard/event/sessions/attributes.js";
-import { normalizeSpeakers, speakerKey } from "/static/js/dashboard/event/sessions/speaker-utils.js";
 
 /** Read-only event contributor table for speakers assigned at session level. */
 export class SessionSpeakersTable extends LitWrapper {
@@ -60,15 +60,15 @@ export class SessionSpeakersTable extends LitWrapper {
 
     return html`
       <div class="mt-4 overflow-visible">
-        <table class="w-full text-left text-sm text-stone-600" aria-label="Session-level speakers">
-          <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
+        <table class="dashboard-table w-full" aria-label="Session-level speakers">
+          <thead class="dashboard-table-head">
             <tr>
-              <th scope="col" class="px-4 py-3">Name</th>
-              <th scope="col" class="w-40 px-4 py-3 text-center">Featured</th>
-              <th scope="col" class="px-4 py-3">Sessions</th>
+              <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+              <th scope="col" class="hidden 2xl:table-cell w-40 px-3 xl:px-5 py-3 text-center">Featured</th>
+              <th scope="col" class="px-3 xl:px-5 py-3">Sessions</th>
               ${
                 hasActions
-                  ? html`<th scope="col" class="w-[72px] px-4 py-3">
+                  ? html`<th scope="col" class="w-[72px] dashboard-table-actions py-3">
                       <span class="sr-only">Actions</span>
                     </th>`
                   : ""
@@ -87,16 +87,21 @@ export class SessionSpeakersTable extends LitWrapper {
                     rows,
                     (speaker) => speakerKey(speaker),
                     (speaker) => {
+                      const joined = speaker.sessionNames.join(", ");
                       return html`
                         <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
-                          <td class="px-4 py-3">${renderContributorIdentity(speaker)}</td>
-                          <td class="w-40 px-4 py-3 text-center">
+                          <td class="w-2/5 max-w-0 px-3 xl:px-5 py-4">
+                            ${renderContributorIdentity(speaker, { featured: speaker.featured })}
+                          </td>
+                          <td class="hidden 2xl:table-cell w-40 px-3 xl:px-5 py-4 text-center">
                             ${renderFeaturedContributorState(speaker.featured)}
                           </td>
-                          <td class="px-4 py-3 text-stone-700">${speaker.sessionNames.join(", ")}</td>
+                          <td class="px-3 xl:px-5 py-4 text-stone-700">
+                            <div class="line-clamp-3 wrap-anywhere" title=${joined}>${joined}</div>
+                          </td>
                           ${
                             hasActions
-                              ? html`<td class="px-4 py-3 text-right">
+                              ? html`<td class="dashboard-table-actions py-4 text-right">
                                   ${renderContributorActions({
                                     actionLabel: "session speaker",
                                     awardsDisabled: this.awardsDisabled,

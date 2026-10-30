@@ -25,12 +25,15 @@
 {# End header -#}
 
 {# Audit logs table -#}
+{# The date column returns at lg when the actor column is shown. -#}
+{# djlint:off #}
+{% let date_cell_visibility -%}{% if show_actor %}hidden lg:table-cell{% endif %}{%- endlet %}
+{# djlint:on #}
 <div class="relative mt-5 overflow-visible">
-  <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500"
+  <table class="table-fixed w-full dashboard-table"
          role="table"
          aria-label="Audit logs table">
-    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
-           role="rowgroup">
+    <thead class="dashboard-table-head" role="rowgroup">
       {# Table header -#}
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Action</th>
@@ -38,8 +41,8 @@
           <th scope="col" class="px-3 xl:px-5 py-3 w-48">Actor</th>
         {% endif -%}
         <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Target</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-36">Date</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-24">Details</th>
+        <th scope="col" class="{{ date_cell_visibility }} px-3 xl:px-5 py-3 w-36">Date</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-20 lg:w-24">Details</th>
       </tr>
       {# End table header -#}
     </thead>
@@ -48,9 +51,11 @@
         {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           {% if show_actor -%}
-            <td class="xl:hidden px-8 py-12 text-center" colspan="4">
+            <td class="lg:hidden px-8 py-12 text-center" colspan="3">
               {% include "dashboard/placeholders/audit_logs_table.html" -%}
             </td>
+            <td class="hidden lg:table-cell xl:hidden px-8 py-12 text-center"
+                colspan="4">{% include "dashboard/placeholders/audit_logs_table.html" -%}</td>
             <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="5">
               {% include "dashboard/placeholders/audit_logs_table.html" -%}
             </td>
@@ -90,14 +95,14 @@
             {# End target -#}
 
             {# Date -#}
-            <td class="px-3 xl:px-5 py-4 w-36 whitespace-nowrap">
+            <td class="{{ date_cell_visibility }} px-3 xl:px-5 py-4 w-36 whitespace-nowrap">
               <div class="font-medium text-stone-900">{{ log.created_at.format("%b %d, %Y") }}</div>
               <div class="mt-1 text-xs text-stone-600">{{ log.created_at.format("%I:%M %p UTC") }}</div>
             </td>
             {# End date -#}
 
             {# Details -#}
-            <td class="px-3 xl:px-5 py-4 w-24">
+            <td class="px-3 xl:px-5 py-4 w-20 lg:w-24">
               <div data-audit-log-details-group
                    class="{% if log.details.is_empty() -%}
                             group relative ml-auto inline-flex align-middle xl:hidden {%- else -%} group relative ml-auto inline-flex align-middle {%- endif %}">
@@ -127,6 +132,14 @@
                         <div class="text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">Type</div>
                         <div class="min-w-0 wrap-break-word text-sm/5 font-medium text-stone-900">{{ log.resource_type_label }}</div>
                       </div>
+                      {% if show_actor -%}
+                        <div class="grid grid-cols-[9rem_minmax(0,1fr)] items-start gap-x-5 py-2.5 lg:hidden">
+                          <div class="text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">Date</div>
+                          <div class="min-w-0 wrap-break-word text-sm/5 font-medium text-stone-900">
+                            {{ log.created_at.format("%b %d, %Y %I:%M %p UTC") }}
+                          </div>
+                        </div>
+                      {% endif -%}
                       {% for detail in log.details -%}
                         <div class="grid grid-cols-[9rem_minmax(0,1fr)] items-start gap-x-5 py-2.5">
                           <div class="text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">

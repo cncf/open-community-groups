@@ -8,6 +8,7 @@ import { openEventUpdateFormByName } from "../group/events/helpers.js";
 
 // Representative dashboard tabs. `open` leaves the page on the scanned view without saving;
 // `ready` is visible once the view, including the components allowlist entries match, rendered.
+// `viewport` (optional) is set before `open`, for views whose markup differs below xl.
 const DASHBOARD_TABS = [
   {
     fixture: "adminCommunityPage",
@@ -20,6 +21,13 @@ const DASHBOARD_TABS = [
     name: "community settings",
     open: (page) => navigateToPath(page, "/dashboard/community?tab=settings"),
     ready: (page) => page.locator("markdown-editor#description .CodeMirror"),
+  },
+  {
+    fixture: "adminCommunityPage",
+    name: "community analytics",
+    open: (page) => navigateToPath(page, "/dashboard/community?tab=analytics"),
+    ready: (page) => page.getByRole("tablist", { name: "Analytics tabs" }),
+    viewport: { width: 1024, height: 900 },
   },
   {
     fixture: "organizerGroupPage",
@@ -58,6 +66,9 @@ test.describe("dashboard tabs axe scan", () => {
     test(`${dashboardTab.name} has no critical or serious axe violations`, async ({ pageAs }) => {
       // Open the seeded dashboard view and let HTMX finish any swaps before scanning.
       const page = await pageAs(dashboardTab.fixture);
+      if (dashboardTab.viewport) {
+        await page.setViewportSize(dashboardTab.viewport);
+      }
       await dashboardTab.open(page);
       await expect(page.locator("#dashboard-content")).toBeVisible();
       await expect(dashboardTab.ready(page)).toBeVisible({ timeout: 15_000 });

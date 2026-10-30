@@ -168,7 +168,7 @@
 {% block dashboard_main -%}
   {% let current_selection = current_selection_details() -%}
   {# Keep page-level warnings outside partial content swaps. -#}
-  <div class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 lg:p-12">
+  <div class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 xl:p-12">
     {% if content.is_refunds() && !payments_ready -%}
       {{ dashboard::permission_warning(message = "Automatic payment processing is unavailable. Historical records remain accessible, and external refunds can still be recorded after the money is returned outside OCG.") -}}
     {% endif -%}

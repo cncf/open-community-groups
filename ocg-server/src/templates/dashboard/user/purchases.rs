@@ -2,7 +2,12 @@
 
 use askama::Template;
 
-use crate::types::{dashboard::user::purchases::PurchaseDocument, pagination};
+use crate::{
+    templates::dashboard::BadgeTone,
+    types::{
+        dashboard::user::purchases::PurchaseDocument, pagination, payments::EventPurchaseStatus,
+    },
+};
 
 // Pages templates.
 
@@ -21,19 +26,38 @@ pub(crate) struct ListPage {
     pub offset: Option<usize>,
 }
 
+// Helpers.
+
+/// Returns the badge tone used for a purchase status.
+pub(crate) fn status_tone(purchase: &PurchaseDocument) -> BadgeTone {
+    match purchase.status {
+        EventPurchaseStatus::Completed => BadgeTone::Success,
+        EventPurchaseStatus::RefundRecoveryPending | EventPurchaseStatus::RefundRequested => {
+            BadgeTone::Warning
+        }
+        EventPurchaseStatus::Expired
+        | EventPurchaseStatus::Pending
+        | EventPurchaseStatus::Refunded
+        | EventPurchaseStatus::RefundPending => BadgeTone::Neutral,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use askama::Template;
     use chrono::{TimeZone, Utc};
     use uuid::Uuid;
 
-    use crate::types::{
-        dashboard::user::purchases::{CreditNoteDocument, PurchaseDocument},
-        pagination::NavigationLinks,
-        payments::EventPurchaseStatus,
+    use crate::{
+        templates::dashboard::BadgeTone,
+        types::{
+            dashboard::user::purchases::{CreditNoteDocument, PurchaseDocument},
+            pagination::NavigationLinks,
+            payments::EventPurchaseStatus,
+        },
     };
 
-    use super::ListPage;
+    use super::{ListPage, status_tone};
 
     #[test]
     fn test_list_page_renders_document_routes_for_past_refunded_purchase() {
@@ -56,6 +80,8 @@ mod tests {
             "/dashboard/user/purchases/{event_purchase_id}/credit-notes/{event_purchase_credit_note_id}"
         )));
         assert!(html.contains("Refunded"));
+        assert!(html.contains("custom-badge badge-neutral"));
+        assert!(!html.contains("badge-pending"));
         assert!(html.contains("Event Jul 01, 2026"));
         assert!(html.contains("target=\"_blank\""));
         assert!(html.contains("rel=\"noopener noreferrer\""));
@@ -73,6 +99,46 @@ mod tests {
 
         assert!(html.contains("Invoice processing"));
         assert!(html.contains("Credit note processing"));
+    }
+
+    #[test]
+    fn test_status_tone() {
+        let cases = [
+            (
+                "completed",
+                EventPurchaseStatus::Completed,
+                BadgeTone::Success,
+            ),
+            ("expired", EventPurchaseStatus::Expired, BadgeTone::Neutral),
+            ("pending", EventPurchaseStatus::Pending, BadgeTone::Neutral),
+            (
+                "refunded",
+                EventPurchaseStatus::Refunded,
+                BadgeTone::Neutral,
+            ),
+            (
+                "refund pending",
+                EventPurchaseStatus::RefundPending,
+                BadgeTone::Neutral,
+            ),
+            (
+                "refund recovery pending",
+                EventPurchaseStatus::RefundRecoveryPending,
+                BadgeTone::Warning,
+            ),
+            (
+                "refund requested",
+                EventPurchaseStatus::RefundRequested,
+                BadgeTone::Warning,
+            ),
+        ];
+
+        for (case, status, expected) in cases {
+            let mut purchase = sample_purchase(Uuid::new_v4());
+            purchase.status = status;
+
+            assert_eq!(status_tone(&purchase), expected, "{case}");
+        }
     }
 
     fn render_purchase(purchase: PurchaseDocument) -> String {

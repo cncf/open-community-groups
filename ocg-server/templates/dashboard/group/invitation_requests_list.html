@@ -163,12 +163,11 @@
 
   {# Invitation requests table -#}
   <div class="relative overflow-visible pb-12">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+    <table class="table-auto w-full dashboard-table mb-8"
            role="table"
            aria-label="Invitation requests">
       {# Table header -#}
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
-             role="rowgroup">
+      <thead class="dashboard-table-head" role="rowgroup">
         <tr>
           <th scope="col"
               class="px-3 xl:px-5 py-1.5 xl:w-[30%] min-[1920px]:w-[22%]!">
@@ -217,7 +216,7 @@
             <span class="whitespace-nowrap">Requested</span>
           </th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40">Reviewed</th>
-          <th scope="col" class="px-3 xl:px-5 py-1.5 w-24 text-right">
+          <th scope="col" class="dashboard-table-actions py-1.5 w-24 text-right">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -322,7 +321,7 @@
               {# End reviewed -#}
 
               {# Actions -#}
-              <td class="px-3 xl:px-5 py-4 w-24">
+              <td class="dashboard-table-actions py-4 w-24">
                 {% let has_registration_answers = request.registration_answers.is_some() && !registration_questions.is_empty() -%}
                 {% let can_review_request = request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending
                   || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
@@ -574,46 +573,35 @@
 {# Invitation request ticket offer badge with offer details tooltip. #}
 {% macro invitation_request_offer_badge(request, event, label, canceled, published, stacked) -%}
   {% let request_offer_tooltip_id -%}invitation-request-offer-details-{{ request.user.user_id }}{% if stacked %}-stacked{% endif %}{%- endlet %}
-<span class="group/request-offer relative inline-flex shrink-0">
-  <button type="button"
-          class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-          aria-describedby="{{ request_offer_tooltip_id }}">
-    {{ badges::status_badge(label = label, canceled = canceled, published = published) -}}
-    <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
-                 {% if canceled %}bg-red-800{% else if published %}bg-green-800{% else %}bg-amber-800{% endif %}"
-          aria-hidden="true"></span>
-  </button>
-  {% call dashboard::tooltip_panel(
-    id = request_offer_tooltip_id,
-    title = "Ticket offer",
-    visibility_classes = "group-hover/request-offer:visible group-hover/request-offer:opacity-100 group-focus-within/request-offer:visible group-focus-within/request-offer:opacity-100"
-  ) -%}
-  <span class="block">
-    <span class="block font-semibold text-stone-500">Ticket type</span>
-    <span class="mt-0.5 block text-stone-900">
-      {{ request.offered_ticket_title.as_deref() |assigned_or("RSVP invitation") }}
-    </span>
+{# djlint:off #}
+{% let offer_tone -%}{% if canceled %}danger{% else if published %}success{% else %}warning{% endif %}{%- endlet %}
+{# djlint:on #}
+{% call dashboard::tooltip_badge_trigger(tooltip_id = request_offer_tooltip_id, title = "Ticket offer", label = label, tone = offer_tone) -%}
+<span class="block">
+  <span class="block font-semibold text-stone-500">Ticket type</span>
+  <span class="mt-0.5 block text-stone-900">
+    {{ request.offered_ticket_title.as_deref() |assigned_or("RSVP invitation") }}
   </span>
-  {% if let Some(offer_expires_at) = &request.offer_expires_at -%}
-    {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
-      || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
-      || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
-      <span class="block">
-        <span class="block font-semibold text-stone-500">
-          {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
-            Expired
-          {% else -%}
-            Deadline
-          {% endif -%}
-        </span>
-        <span class="mt-0.5 block text-stone-900">
-          {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
-        </span>
-      </span>
-    {% endif -%}
-  {% endif -%}
-  {% endcall -%}
 </span>
+{% if let Some(offer_expires_at) = &request.offer_expires_at -%}
+  {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+    || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
+    || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">
+        {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+          Expired
+        {% else -%}
+          Deadline
+        {% endif -%}
+      </span>
+      <span class="mt-0.5 block text-stone-900">
+        {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+      </span>
+    </span>
+  {% endif -%}
+{% endif -%}
+{% endcall -%}
 {% endmacro invitation_request_offer_badge -%}
 {# End invitation request ticket offer badge. #}
 

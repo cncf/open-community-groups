@@ -507,8 +507,8 @@ class DiscountCodesEditor extends TicketingEditorBase {
         return html`
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
             <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
-              <div class="font-medium text-stone-900">${this._discountTitle(row)}</div>
-              <div class="mt-2 text-xs font-medium text-stone-600 2xl:hidden">
+              <div class="font-medium text-stone-900 wrap-anywhere">${this._discountTitle(row)}</div>
+              <div class="mt-2 text-xs font-medium text-stone-600 break-all 2xl:hidden">
                 ${row.code?.trim() || "CODE"}
               </div>
               <div class="mt-3 flex flex-wrap items-center gap-2 2xl:hidden">
@@ -518,50 +518,26 @@ class DiscountCodesEditor extends TicketingEditorBase {
                 <span class="custom-badge inline-flex items-center bg-stone-100 px-2.5 py-0.5 text-stone-700">
                   ${this._discountValueSummary(row)}
                 </span>
-                ${
-                  row.active
-                    ? html`<span
-                        class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
-                      >
-                        Active
-                      </span>`
-                    : html`<span
-                        class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
-                      >
-                        Inactive
-                      </span>`
-                }
+                ${this._renderActiveBadge(row.active)}
               </div>
             </td>
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
               ${this._discountRedemptionsSummary(row)}
             </td>
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
-              ${
-                row.active
-                  ? html`<span
-                      class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
-                    >
-                      Active
-                    </span>`
-                  : html`<span
-                      class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
-                    >
-                      Inactive
-                    </span>`
-              }
+              ${this._renderActiveBadge(row.active)}
             </td>
             <td class="px-3 xl:px-5 py-4">
-              <div class="text-sm text-stone-700">${this._discountAvailabilitySummary(row)}</div>
+              <div class="text-stone-700">${this._discountAvailabilitySummary(row)}</div>
             </td>
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
               ${valueSummary}
             </td>
-            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap font-medium text-stone-700">
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 break-all font-medium text-stone-700">
               ${row.code?.trim() || "CODE"}
             </td>
-            <td class="px-3 xl:px-5 py-4">
-              <div class="flex items-center justify-start gap-1 xl:justify-end">
+            <td class="dashboard-table-actions py-4">
+              <div class="flex items-center justify-end gap-1">
                 <button
                   type="button"
                   class="rounded-full p-2 transition-colors ${
@@ -681,8 +657,8 @@ class DiscountCodesEditor extends TicketingEditorBase {
       ${this._renderHiddenFields()}
 
       <div data-ticketing-role="table-wrapper" class="relative overflow-x-auto 2xl:overflow-visible">
-        <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
-          <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <table class="dashboard-table table-auto w-full">
+          <thead class="dashboard-table-head">
             <tr>
               <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
               <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Redemptions</th>
@@ -690,7 +666,9 @@ class DiscountCodesEditor extends TicketingEditorBase {
               <th scope="col" class="px-3 xl:px-5 py-3">Availability</th>
               <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Value</th>
               <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Code</th>
-              <th scope="col" class="px-3 xl:px-5 py-3 text-right">Actions</th>
+              <th scope="col" class="dashboard-table-actions py-3 text-right">
+                <span class="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody data-ticketing-role="empty-state" class=${this._rows.length > 0 ? "hidden" : ""}>

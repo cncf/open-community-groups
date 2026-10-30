@@ -1,7 +1,7 @@
 {# Analytics chart container #}
 {# Used by public stats and dashboard analytics pages. #}
-{% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0, wrapper_class = "", has_data = true, summary = "") -%}
-  <div class="bg-white border border-stone-200 rounded-lg px-2 py-4 md:p-6 {{ wrapper_class }}">
+{% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0, wrapper_class = "", has_data = true, summary = "", padding_class = "px-2 py-4 md:p-4 xl:p-6") -%}
+  <div class="bg-white border border-stone-200 rounded-lg {{ padding_class }} {{ wrapper_class }}">
     {% if has_data && data.len() > min_points + 0 -%}
       <div id="{{ chart_id }}" class="{{ class }}">
         <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">

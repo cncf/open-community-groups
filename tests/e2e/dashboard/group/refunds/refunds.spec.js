@@ -147,7 +147,17 @@ test.describe("group dashboard refunds", () => {
     await expect(recoveryAction).toHaveAttribute("aria-disabled", "true");
     const recoveryTooltipTrigger = recoveryAction.locator("xpath=..");
     const recoveryTooltip = recoveryTooltipTrigger.getByRole("tooltip");
-    await recoveryTooltipTrigger.focus();
+
+    // A press on the disabled action reaches its wrapper, which takes focus and keeps the
+    // explanation open once the pointer leaves.
+    await recoveryAction.scrollIntoViewIfNeeded();
+    const recoveryActionBox = await recoveryAction.boundingBox();
+    await groupViewerPage.mouse.click(
+      recoveryActionBox.x + recoveryActionBox.width / 2,
+      recoveryActionBox.y + recoveryActionBox.height / 2,
+    );
+    await expect(recoveryTooltipTrigger).toBeFocused();
+    await groupViewerPage.mouse.move(0, 0);
     await expect(recoveryTooltip).toBeVisible();
     await expect(
       recoveryTooltip.getByText("Events write access is required to complete refund recovery."),

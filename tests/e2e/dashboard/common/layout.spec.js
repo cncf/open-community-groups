@@ -10,6 +10,32 @@ import {
 } from "../../seed.js";
 import { getCommunityBanner, navigateToPath } from "../../utils.js";
 
+// One entry per dashboard scope; `title` is the menu shell title the header content aligns with.
+const DASHBOARD_CHROME_CASES = [
+  { fixture: "member1Page", name: "user", path: "/dashboard/user?tab=events", title: "User Dashboard" },
+  {
+    fixture: "organizerGroupPage",
+    name: "group",
+    path: "/dashboard/group?tab=members",
+    title: "Group Dashboard",
+  },
+  {
+    fixture: "adminCommunityPage",
+    name: "community",
+    path: "/dashboard/community?tab=groups",
+    title: "Community Dashboard",
+  },
+];
+
+// Sidebar width and content padding, in px, at the edges of the lg and xl bands.
+const DASHBOARD_CHROME_WIDTHS = [
+  { padding: 24, sidebar: 225, width: 1023 },
+  { padding: 24, sidebar: 225, width: 1024 },
+  { padding: 24, sidebar: 225, width: 1279 },
+  { padding: 48, sidebar: 300, width: 1280 },
+  { padding: 48, sidebar: 300, width: 1373 },
+];
+
 const GRID_CASES = [
   {
     name: "site communities",
@@ -102,6 +128,37 @@ test.describe("dashboard layout", () => {
     await expect(openMenuButton).toBeHidden();
   });
 
+  for (const chromeCase of DASHBOARD_CHROME_CASES) {
+    test(`${chromeCase.name} dashboard sizes the sidebar, header and content padding per breakpoint`, async ({
+      pageAs,
+    }) => {
+      // Load the dashboard at the widest md width before measuring its chrome.
+      const page = await pageAs(chromeCase.fixture);
+      await page.setViewportSize({ width: DASHBOARD_CHROME_WIDTHS[0].width, height: 900 });
+      await navigateToPath(page, chromeCase.path);
+      const sidebar = page.locator("aside#dashboard-menu-drawer");
+      const menuTitle = sidebar.getByText(chromeCase.title, { exact: true });
+      const headerContent = page.locator("#dashboard-header #header");
+      const contentShell = page.locator("#dashboard-main-content > :first-child");
+      await expect(menuTitle).toBeVisible();
+      await expect(headerContent).toBeVisible();
+
+      // Verify the sidebar width, header alignment and content padding at each width.
+      for (const { padding, sidebar: sidebarWidth, width } of DASHBOARD_CHROME_WIDTHS) {
+        await test.step(`${width}px`, async () => {
+          await page.setViewportSize({ width, height: 900 });
+          await expect
+            .poll(async () => Math.abs((await getBoundingRectValue(sidebar, "width")) - sidebarWidth))
+            .toBeLessThanOrEqual(1);
+          const headerLeft = await getBoundingRectValue(headerContent, "left");
+          const titleLeft = await getBoundingRectValue(menuTitle, "left");
+          expect(Math.abs(headerLeft - titleLeft)).toBeLessThanOrEqual(0.5);
+          await expect(contentShell).toHaveCSS("padding-left", `${padding}px`);
+        });
+      }
+    });
+  }
+
   for (const gridCase of GRID_CASES) {
     test(`${gridCase.name} grid changes columns at declared breakpoints`, async ({ page }) => {
       // Load the page at the first asserted breakpoint before measuring the grid.
@@ -120,6 +177,29 @@ test.describe("dashboard layout", () => {
       }
     });
   }
+
+  test("community settings gallery shows 3 columns at md and 4 from lg", async ({ adminCommunityPage }) => {
+    // Load community settings at the narrowest md viewport.
+    await adminCommunityPage.setViewportSize({ width: 768, height: 900 });
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
+    const galleryGrid = adminCommunityPage
+      .locator('gallery-field[field-name="photos_urls"] div.grid')
+      .first();
+    await expect(galleryGrid).toBeVisible();
+
+    // Verify each breakpoint reports the declared gallery column count.
+    for (const { columns, name, width } of [
+      { columns: 3, name: "md", width: 768 },
+      { columns: 3, name: "md widest", width: 1023 },
+      { columns: 4, name: "lg", width: 1024 },
+      { columns: 4, name: "xl", width: 1280 },
+    ]) {
+      await test.step(`${name}: ${width}px`, async () => {
+        await adminCommunityPage.setViewportSize({ width, height: 900 });
+        await expect.poll(() => getGridColumnCount(galleryGrid)).toBe(columns);
+      });
+    }
+  });
 
   test("community cards show a darker inset shadow on hover", async ({ page }) => {
     // Load the public home page and target a seeded community card.
@@ -140,6 +220,15 @@ test.describe("dashboard layout", () => {
       .not.toBe("none");
   });
 });
+
+/**
+ * Returns one edge or size of an element's bounding client rect.
+ * @param {import("@playwright/test").Locator} locator - Element to measure.
+ * @param {"left"|"width"} property - Bounding rect property to read.
+ * @returns {Promise<number>} Measured value in CSS pixels.
+ */
+const getBoundingRectValue = (locator, property) =>
+  locator.evaluate((element, key) => element.getBoundingClientRect()[key], property);
 
 /** Returns the computed CSS grid column count for a grid element. */
 const getGridColumnCount = (grid) =>

@@ -20,7 +20,7 @@
       <ul id="{{ options_id }}" class="space-y-4">
         {% for option in crate::templates::questionnaire::option_shares(question) -%}
           <li {% if option.hidden %}hidden data-question-option-hidden{% endif %}>
-            <div class="flex items-baseline justify-between gap-3 text-sm">
+            <div class="flex items-baseline justify-between gap-3 text-xs lg:text-sm">
               <span class="min-w-0 break-words text-stone-900">{{ option.label }}</span>
               <span class="shrink-0 text-stone-600">{{ option.count|num_fmt }} · {{ option.share_label }}</span>
             </div>

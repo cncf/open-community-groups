@@ -2,6 +2,20 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 
+{# Purchase status, external and event canceled badges. -#}
+{% macro purchase_status_badges(purchase, container_classes) -%}
+  <div class="{{ container_classes }}">
+    {{ badges::payment_status_badge(label = purchase.status_label() , tone = crate::templates::dashboard::user::purchases::status_tone(purchase).as_str()) -}}
+    {% if purchase.externally_managed -%}
+      {{ badges::common_badge(content = "External", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700")) -}}
+    {% endif -%}
+    {% if purchase.event_canceled -%}
+      {{ badges::common_badge(content = "Event canceled", extra_styles = Some("border-red-200 bg-red-50 px-2.5 py-0.5 text-red-800")) -}}
+    {% endif -%}
+  </div>
+{% endmacro purchase_status_badges -%}
+{# End purchase status badges. #}
+
 {# Dashboard User Purchase Documents List -#}
 {{ dashboard::page_title(title = "Purchases & documents", docs_href = "/docs#/guides/user-dashboard?id=purchases-and-financial-documents",
   description = "Invoices and credit notes for your paid tickets, including past and canceled events.") -}}
@@ -12,15 +26,15 @@
   </div>
 </div>
 
-<div class="relative overflow-x-auto lg:overflow-x-visible">
-  <table class="w-full table-auto text-left text-xs text-stone-500 lg:text-sm">
-    <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
+<div class="relative overflow-visible">
+  <table class="dashboard-table w-full table-auto">
+    <thead class="dashboard-table-head">
       <tr>
         <th scope="col" class="px-3 py-3 xl:px-5">Event</th>
         <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Purchased</th>
         <th scope="col" class="px-3 py-3 xl:px-5">Amount</th>
         <th scope="col" class="hidden px-3 py-3 lg:table-cell xl:px-5">Status</th>
-        <th scope="col" class="w-[72px] px-3 py-3 text-right xl:px-5">
+        <th scope="col" class="dashboard-table-actions w-[72px] py-3 text-right">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -43,14 +57,13 @@
         {% for purchase in purchases -%}
           <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
             <th scope="row"
-                class="min-w-[180px] px-3 py-4 font-medium text-stone-900 xl:px-5">
+                class="min-w-[180px] px-3 py-4 font-medium text-stone-900 xl:w-full xl:max-w-0 xl:px-5 2xl:w-auto 2xl:max-w-none">
+              <div class="title-preheader max-w-48 2xl:max-w-xs">{{ purchase.group_name }}</div>
               <a href="/{{ purchase.community_name }}/group/{{ purchase.public_group_slug() }}/event/{{ purchase.event_slug }}"
                  target="_blank"
                  rel="noopener noreferrer"
-                 class="block max-w-48 truncate hover:underline 2xl:max-w-xs">{{ purchase.event_name }}</a>
-              <div class="mt-0.5 max-w-48 truncate text-xs font-normal text-stone-400 2xl:max-w-xs">
-                {{ purchase.group_name }} · {{ purchase.ticket_title }}
-              </div>
+                 class="mt-0.5 block max-w-48 truncate hover:underline 2xl:max-w-xs">{{ purchase.event_name }}</a>
+              <div class="mt-0.5 max-w-48 truncate text-xs font-normal text-stone-400 2xl:max-w-xs">{{ purchase.ticket_title }}</div>
               <div class="mt-0.5 text-xs font-normal text-stone-500 xl:hidden">
                 Purchased
                 {% if let Some(completed_at) = purchase.completed_at -%}
@@ -59,15 +72,7 @@
                   {{ purchase.created_at.format("%b %d, %Y at %H:%M UTC") }}
                 {% endif -%}
               </div>
-              <div class="mt-1 flex flex-wrap gap-1.5 lg:hidden">
-                {{ badges::payment_status_badge(label = purchase.status_label()) -}}
-                {% if purchase.externally_managed -%}
-                  {{ badges::common_badge(content = "Externally managed", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700")) -}}
-                {% endif -%}
-                {% if purchase.event_canceled -%}
-                  {{ badges::common_badge(content = "Event canceled", extra_styles = Some("border-red-200 bg-red-50 px-2.5 py-0.5 text-red-800")) -}}
-                {% endif -%}
-              </div>
+              {{ purchase_status_badges(purchase, "mt-1 flex flex-wrap gap-1.5 lg:hidden") -}}
             </th>
             <td class="hidden whitespace-nowrap px-3 py-4 xl:table-cell xl:px-5">
               {% if let Some(completed_at) = purchase.completed_at -%}
@@ -90,17 +95,9 @@
               {% endif -%}
             </td>
             <td class="hidden px-3 py-4 lg:table-cell xl:px-5">
-              <div class="flex flex-wrap gap-1.5">
-                {{ badges::payment_status_badge(label = purchase.status_label()) -}}
-                {% if purchase.externally_managed -%}
-                  {{ badges::common_badge(content = "Externally managed", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700")) -}}
-                {% endif -%}
-                {% if purchase.event_canceled -%}
-                  {{ badges::common_badge(content = "Event canceled", extra_styles = Some("border-red-200 bg-red-50 px-2.5 py-0.5 text-red-800")) -}}
-                {% endif -%}
-              </div>
+              {{ purchase_status_badges(purchase, "flex flex-wrap gap-1.5") -}}
             </td>
-            <td class="w-[72px] px-3 py-4 text-right xl:px-5">
+            <td class="dashboard-table-actions w-[72px] py-4 text-right">
               <details data-actions-menu class="group relative inline-flex justify-end">
                 <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
                          aria-label="Open document actions for {{ purchase.event_name }}"

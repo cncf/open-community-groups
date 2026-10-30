@@ -10,7 +10,7 @@ import {
   trapModalFocus,
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
-import { speakerKey } from "/static/js/dashboard/event/sessions/speaker-utils.js";
+import { speakerKey } from "/static/js/common/users/speaker-utils.js";
 
 /**
  * Modal component for selecting session speakers with featured flag support.

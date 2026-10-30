@@ -56,6 +56,15 @@ describe("dashboard user home template", () => {
     );
   });
 
+  it("loads the tooltip panel enhancement for dashboard content", async () => {
+    // Load the user dashboard shell before checking the tooltip wiring.
+    const template = await loadTemplate();
+
+    // Verify the tooltip module loads and its dashboard content scope is rendered.
+    expect(template).to.include('<script type="module" src="/static/js/common/tooltip-panel.js">');
+    expect(template).to.include('<div id="dashboard-content"');
+  });
+
   it("loads notification scripts and links the notifications menu item", async () => {
     // Load the user dashboard shell before checking the notifications contracts.
     const template = await loadTemplate();

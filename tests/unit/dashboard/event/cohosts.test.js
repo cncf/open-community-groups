@@ -551,13 +551,25 @@ describe("event co-hosts selector", () => {
     // Verify the status pills use the shared dashboard status colors.
     const [approved, pending] = element.querySelectorAll(".custom-badge");
     expect(approved.textContent.trim()).to.equal("Approved");
-    expect([...approved.classList]).to.include.members([
-      "border-green-800",
-      "bg-green-100",
-      "text-green-800",
-    ]);
+    expect([...approved.classList]).to.include.members(["custom-badge", "badge-success"]);
     expect(pending.textContent.trim()).to.equal("Pending");
-    expect([...pending.classList]).to.include.members(["border-amber-800", "bg-amber-100", "text-amber-800"]);
+    expect([...pending.classList]).to.include.members(["custom-badge", "badge-warning"]);
+  });
+
+  it("marks inactive co-host groups with a neutral badge", async () => {
+    const selected = [
+      { group_active: false, group_id: "group-1", logo_url: LOGO_URL, name: "One", status: "approved" },
+    ];
+
+    // Render an approved co-host whose group is inactive.
+    const element = mountSelector(`selected-cohosts='${JSON.stringify(selected)}'`);
+    await element.updateComplete;
+
+    // Verify the inactive pill follows the status pill with the neutral tone.
+    const [approved, inactive] = element.querySelectorAll(".custom-badge");
+    expect([...approved.classList]).to.include.members(["custom-badge", "badge-success"]);
+    expect(inactive.textContent).to.equal("Inactive group");
+    expect([...inactive.classList]).to.include.members(["custom-badge", "badge-neutral"]);
   });
 
   it("shows the community above the group name on selected co-host cards", async () => {
@@ -578,7 +590,7 @@ describe("event co-hosts selector", () => {
     // Verify the community label precedes the group name with the card popover styles.
     const [community, name] = element.querySelector(".rounded-xl .min-w-0.flex-1").children;
     expect(community.textContent.trim()).to.equal("Distributed AI Forum");
-    expect([...community.classList]).to.include.members(["uppercase", "text-stone-400", "truncate"]);
+    expect(community.classList.contains("title-preheader")).to.equal(true);
     expect(name.textContent.trim()).to.equal("Distributed AI Atlanta");
     expect([...name.classList]).to.include.members(["font-semibold", "text-black", "truncate"]);
   });

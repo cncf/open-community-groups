@@ -90,10 +90,13 @@ export const renderContributorActions = ({
 
 /**
  * Renders a contributor identity cell with an avatar and username.
+ * The featured marker pairs with the Featured column, which is only shown from 2xl.
  * @param {{name?: string, photo_url?: string, username?: string}} contributor Contributor data
+ * @param {object} [options] Identity options
+ * @param {boolean} [options.featured] Whether to show the featured speaker marker below 2xl
  * @returns {import("lit").TemplateResult} Contributor identity template
  */
-export const renderContributorIdentity = (contributor) => {
+export const renderContributorIdentity = (contributor, { featured = false } = {}) => {
   const displayName = contributorDisplayName(contributor);
 
   return html`
@@ -106,7 +109,17 @@ export const renderContributorIdentity = (contributor) => {
         hide-border="true"
       ></logo-image>
       <div class="min-w-0">
-        <div class="truncate font-medium text-stone-900">${displayName}</div>
+        <div class="flex min-w-0 items-center gap-1.5">
+          <div class="truncate font-medium text-stone-900">${displayName}</div>
+          ${
+            featured
+              ? html`<span class="inline-flex shrink-0 2xl:hidden" data-featured-speaker-marker>
+                  <span class="svg-icon size-3.5 icon-star bg-amber-500" aria-hidden="true"></span>
+                  <span class="sr-only">Featured speaker</span>
+                </span>`
+              : ""
+          }
+        </div>
         <div class="truncate text-xs text-stone-500">@${contributor.username || ""}</div>
       </div>
     </div>

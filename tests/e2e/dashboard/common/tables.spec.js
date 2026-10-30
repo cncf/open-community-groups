@@ -22,6 +22,7 @@ import {
   openDashboardWaitlist,
   openEventUpdateFormByName,
   openPaymentsSection,
+  showEventEditorSection,
 } from "../group/events/helpers.js";
 import { openRefundsDashboard } from "../group/refunds/helpers.js";
 import { openPurchasesDashboard, openUserDashboardPath } from "../user/helpers.js";
@@ -120,6 +121,11 @@ const TABLE_CASES = [
     headers: ["Action", "Actor", "Target", "Date", "Details"],
     breakpoints: [
       {
+        width: 768,
+        visible: ["Action", "Actor", "Details"],
+        hidden: ["Target", "Date"],
+      },
+      {
         width: 1024,
         visible: ["Action", "Actor", "Date", "Details"],
         hidden: ["Target"],
@@ -178,9 +184,14 @@ const TABLE_CASES = [
     headers: ["Recipient", "Badge", "Source", "Awarded", "Status", "Actions"],
     breakpoints: [
       {
+        width: 768,
+        visible: ["Recipient", "Badge", "Status", "Actions"],
+        hidden: ["Source", "Awarded"],
+      },
+      {
         width: 1024,
-        visible: ["Recipient", "Badge", "Awarded", "Status", "Actions"],
-        hidden: ["Source"],
+        visible: ["Recipient", "Badge", "Status", "Actions"],
+        hidden: ["Source", "Awarded"],
       },
       {
         width: 1280,
@@ -201,6 +212,38 @@ const TABLE_CASES = [
     breakpoints: [
       { width: 1024, visible: ["Badge", "Actions"], hidden: ["Description"] },
       { width: 1280, visible: ["Badge", "Description", "Actions"], hidden: [] },
+    ],
+  },
+  {
+    name: "group cohosts",
+    fixture: "organizerGroupPage",
+    open: async (page) => {
+      await navigateToPath(page, "/dashboard/group?tab=cohosts");
+
+      return page.getByRole("table", { name: "Co-hosted events list" });
+    },
+    headers: ["Event", "Owning group", "Date", "Status", "Actions"],
+    breakpoints: [
+      {
+        width: 768,
+        visible: ["Event", "Status", "Actions"],
+        hidden: ["Owning group", "Date"],
+      },
+      {
+        width: 1024,
+        visible: ["Event", "Status", "Actions"],
+        hidden: ["Owning group", "Date"],
+      },
+      {
+        width: 1280,
+        visible: ["Event", "Owning group", "Status", "Actions"],
+        hidden: ["Date"],
+      },
+      {
+        width: 1536,
+        visible: ["Event", "Owning group", "Date", "Status", "Actions"],
+        hidden: [],
+      },
     ],
   },
   {
@@ -328,6 +371,34 @@ const TABLE_CASES = [
     ],
   },
   {
+    name: "group event session speakers",
+    fixture: "organizerGroupPage",
+    open: (page) => openEventContributorsTable(page, "Session-level speakers"),
+    headers: ["Name", "Featured", "Sessions", "Actions"],
+    breakpoints: [
+      {
+        width: 1280,
+        visible: ["Name", "Sessions", "Actions"],
+        hidden: ["Featured"],
+      },
+      {
+        width: 1536,
+        visible: ["Name", "Featured", "Sessions", "Actions"],
+        hidden: [],
+      },
+    ],
+  },
+  {
+    name: "group event speakers",
+    fixture: "organizerGroupPage",
+    open: (page) => openEventContributorsTable(page, "Event speakers"),
+    headers: ["Name", "Featured", "Actions"],
+    breakpoints: [
+      { width: 1280, visible: ["Name", "Actions"], hidden: ["Featured"] },
+      { width: 1536, visible: ["Name", "Featured", "Actions"], hidden: [] },
+    ],
+  },
+  {
     name: "group event submissions",
     fixture: "eventsManagerGroupPage",
     open: async (page) => {
@@ -425,6 +496,73 @@ const TABLE_CASES = [
     breakpoints: GROUP_EVENTS_BREAKPOINTS,
   },
   {
+    name: "group financial work",
+    fixture: "organizerGroupPage",
+    open: async (page) => {
+      const dashboardContent = await openRefundsDashboard(
+        page,
+        "/dashboard/group?tab=refunds&view=attention&limit=20",
+      );
+
+      return dashboardContent.getByRole("table", { name: "Financial work needing attention" });
+    },
+    headers: ["Attendee", "Event", "Amount", "Operation", "Status", "Actions"],
+    breakpoints: [
+      {
+        width: 768,
+        visible: ["Attendee", "Amount", "Status", "Actions"],
+        hidden: ["Event", "Operation"],
+      },
+      {
+        width: 1024,
+        visible: ["Attendee", "Amount", "Status", "Actions"],
+        hidden: ["Event", "Operation"],
+      },
+      {
+        width: 1280,
+        visible: ["Attendee", "Event", "Amount", "Status", "Actions"],
+        hidden: ["Operation"],
+      },
+      {
+        width: 1536,
+        visible: ["Attendee", "Event", "Amount", "Operation", "Status", "Actions"],
+        hidden: [],
+      },
+    ],
+  },
+  {
+    name: "group inbox",
+    fixture: "organizerGroupPage",
+    open: async (page) => {
+      await navigateToPath(page, "/dashboard/group?tab=inbox");
+
+      return page.getByRole("table", { name: "Inbox conversations" });
+    },
+    headers: ["Event", "User", "Last message", "Status", "Last activity"],
+    breakpoints: [
+      {
+        width: 768,
+        visible: ["Event", "User", "Status"],
+        hidden: ["Last message", "Last activity"],
+      },
+      {
+        width: 1024,
+        visible: ["Event", "User", "Status"],
+        hidden: ["Last message", "Last activity"],
+      },
+      {
+        width: 1280,
+        visible: ["Event", "User", "Last message", "Status"],
+        hidden: ["Last activity"],
+      },
+      {
+        width: 1536,
+        visible: ["Event", "User", "Last message", "Status", "Last activity"],
+        hidden: [],
+      },
+    ],
+  },
+  {
     name: "group logs",
     fixture: "organizerGroupPage",
     open: async (page) => {
@@ -434,6 +572,11 @@ const TABLE_CASES = [
     },
     headers: ["Action", "Actor", "Target", "Date", "Details"],
     breakpoints: [
+      {
+        width: 768,
+        visible: ["Action", "Actor", "Details"],
+        hidden: ["Target", "Date"],
+      },
       {
         width: 1024,
         visible: ["Action", "Actor", "Date", "Details"],
@@ -532,6 +675,38 @@ const TABLE_CASES = [
     ],
   },
   {
+    name: "user inbox",
+    fixture: "member2Page",
+    open: async (page) => {
+      await navigateToPath(page, "/dashboard/user?tab=inbox");
+
+      return page.getByRole("table", { name: "Inbox conversations" });
+    },
+    headers: ["Group", "Event", "Last message", "Status", "Last activity"],
+    breakpoints: [
+      {
+        width: 768,
+        visible: ["Group", "Event", "Status"],
+        hidden: ["Last message", "Last activity"],
+      },
+      {
+        width: 1024,
+        visible: ["Group", "Event", "Status"],
+        hidden: ["Last message", "Last activity"],
+      },
+      {
+        width: 1280,
+        visible: ["Group", "Event", "Last message", "Status"],
+        hidden: ["Last activity"],
+      },
+      {
+        width: 1536,
+        visible: ["Group", "Event", "Last message", "Status", "Last activity"],
+        hidden: [],
+      },
+    ],
+  },
+  {
     name: "user invitation communities",
     fixture: "pending1Page",
     open: async (page) => {
@@ -544,6 +719,11 @@ const TABLE_CASES = [
     cleanup: cleanupTableEventInvitation,
     headers: ["Community", "Role", "Created", "Actions"],
     breakpoints: [
+      {
+        width: 768,
+        visible: ["Community", "Role", "Actions"],
+        hidden: ["Created"],
+      },
       {
         width: 1024,
         visible: ["Community", "Role", "Created", "Actions"],
@@ -564,6 +744,11 @@ const TABLE_CASES = [
     cleanup: cleanupTableEventInvitation,
     headers: ["Event", "Offer", "Starts", "Expires", "Actions"],
     breakpoints: [
+      {
+        width: 768,
+        visible: ["Event", "Offer", "Expires", "Actions"],
+        hidden: ["Starts"],
+      },
       {
         width: 1024,
         visible: ["Event", "Offer", "Starts", "Expires", "Actions"],
@@ -587,6 +772,11 @@ const TABLE_CASES = [
     headers: ["Group", "Role", "Created", "Actions"],
     breakpoints: [
       {
+        width: 768,
+        visible: ["Group", "Role", "Actions"],
+        hidden: ["Created"],
+      },
+      {
         width: 1024,
         visible: ["Group", "Role", "Created", "Actions"],
         hidden: [],
@@ -603,6 +793,11 @@ const TABLE_CASES = [
     },
     headers: ["Action", "Target", "Date", "Details"],
     breakpoints: [
+      {
+        width: 768,
+        visible: ["Action", "Date", "Details"],
+        hidden: ["Target"],
+      },
       {
         width: 1024,
         visible: ["Action", "Date", "Details"],
@@ -653,6 +848,11 @@ const TABLE_CASES = [
     headers: ["Group", "Member since", "Role", "Actions"],
     breakpoints: [
       {
+        width: 768,
+        visible: ["Group", "Role", "Actions"],
+        hidden: ["Member since"],
+      },
+      {
         width: 1024,
         visible: ["Group", "Member since", "Role", "Actions"],
         hidden: [],
@@ -669,6 +869,11 @@ const TABLE_CASES = [
     },
     headers: ["Event", "Purchased", "Amount", "Status", "Actions"],
     breakpoints: [
+      {
+        width: 768,
+        visible: ["Event", "Amount", "Actions"],
+        hidden: ["Purchased", "Status"],
+      },
       {
         width: 1024,
         visible: ["Event", "Amount", "Status", "Actions"],
@@ -739,6 +944,21 @@ const TABLE_CASES = [
       },
     ],
   },
+  {
+    name: "user surveys",
+    fixture: "member1Page",
+    open: async (page) => {
+      await openUserDashboardPath("/dashboard/user?tab=surveys", page);
+
+      return page.locator("#dashboard-content").getByRole("table");
+    },
+    headers: ["Survey", "Status", "Closing", "Actions"],
+    breakpoints: [
+      { width: 768, visible: ["Survey", "Actions"], hidden: ["Status", "Closing"] },
+      { width: 1024, visible: ["Survey", "Status", "Actions"], hidden: ["Closing"] },
+      { width: 1280, visible: ["Survey", "Status", "Closing", "Actions"], hidden: [] },
+    ],
+  },
 ];
 
 test.describe("dashboard tables", () => {
@@ -750,6 +970,20 @@ test.describe("dashboard tables", () => {
     });
   }
 });
+
+/**
+ * Opens the contributors section of the seeded alpha event editor and returns one of its tables.
+ * The section is client-side only, so it is shown without waiting for a section request.
+ * @param {import("@playwright/test").Page} page - Organizer page.
+ * @param {string} tableName - Accessible name of the contributors table.
+ * @returns {Promise<import("@playwright/test").Locator>} Contributors table locator.
+ */
+const openEventContributorsTable = async (page, tableName) => {
+  await openEventUpdateFormByName(page, TEST_EVENT_NAMES.alpha[0], TEST_EVENT_IDS.alpha.one);
+  await showEventEditorSection(page, "contributors");
+
+  return page.locator('[data-content="contributors"]').getByRole("table", { name: tableName });
+};
 
 /** Opens a group events table and returns it after optional past-tab selection. */
 const openGroupEventsTable = async (page, tableName, contentSelector) => {

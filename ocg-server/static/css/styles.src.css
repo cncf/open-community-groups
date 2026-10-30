@@ -81,7 +81,7 @@
 
   /* Toggle switch track, placed right after an `sr-only peer` checkbox */
   .toggle-track {
-    @apply relative h-6 w-11 rounded-full bg-stone-200 transition-colors
+    @apply relative h-6 w-11 shrink-0 rounded-full bg-stone-200 transition-colors
       peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300
       peer-checked:bg-primary-500
       after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-all after:content-['']
@@ -152,6 +152,45 @@
 
   .custom-badge.canceled {
     @apply border-red-300 text-red-500;
+  }
+
+  /* Badge tones, combined with `custom-badge`; never with `canceled` */
+  .badge-danger {
+    @apply border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800;
+  }
+
+  .badge-neutral {
+    @apply border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700;
+  }
+
+  .badge-pending {
+    @apply border-yellow-800 bg-yellow-100 px-2.5 py-0.5 text-yellow-800;
+  }
+
+  .badge-success {
+    @apply border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800;
+  }
+
+  .badge-warning {
+    @apply border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800;
+  }
+
+  /* Small uppercase context line shown above a title */
+  .title-preheader {
+    @apply truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-500;
+  }
+
+  /* Shared dashboard table typography */
+  .dashboard-table {
+    @apply text-xs xl:text-sm text-left text-stone-500;
+  }
+
+  .dashboard-table-head {
+    @apply text-[0.65rem]/4 xl:text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200;
+  }
+
+  .dashboard-table-actions {
+    @apply px-1.5 xl:px-5;
   }
 
   .card {
@@ -640,6 +679,12 @@ input:placeholder-shown {
 }
 /* End tooltip */
 
+/* Tooltip dismissed with Escape stays hidden while still hovered or focused */
+[data-tooltip-dismissed] [data-tooltip-panel] {
+  opacity: 0;
+  visibility: hidden;
+}
+
 .audit-log-details-popover {
   max-width: calc(100vw - 2rem);
   width: min(30rem, calc(100vw - 2rem));
@@ -672,14 +717,15 @@ input:placeholder-shown {
   }
 }
 
-.audit-log-row:nth-last-child(-n+4) .audit-log-details-popover {
+/* Placed above the trigger by audit-logs.js when there is no room below */
+.audit-log-details-popover[data-placement="top"] {
   bottom: 100%;
   padding-bottom: 0.75rem;
   padding-top: 0;
   top: auto;
 }
 
-.audit-log-row:nth-last-child(-n+4) .audit-log-details-popover::after {
+.audit-log-details-popover[data-placement="top"]::after {
   border-bottom-color: transparent;
   border-top-color: rgb(231, 229, 228);
   bottom: 1px;

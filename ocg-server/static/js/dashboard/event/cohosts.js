@@ -469,9 +469,7 @@ export class CohostsSelector extends LitWrapper {
             <div class="flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-white p-4">
               ${this._renderLogo(cohost, "size-15 md:size-18", "size-13 md:size-16")}
               <div class="min-w-0 flex-1">
-                <div class="truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400">
-                  ${cohost.community_display_name}
-                </div>
+                <div class="title-preheader">${cohost.community_display_name}</div>
                 <div class="mt-0.5 truncate text-sm/5 font-semibold text-black">${cohost.name}</div>
                 <div class="mt-2 flex flex-wrap gap-1.5">${this._renderStatusPills(cohost)}</div>
               </div>
@@ -526,18 +524,13 @@ export class CohostsSelector extends LitWrapper {
    */
   _renderStatusPills(cohost) {
     const statusLabel = cohost.status === STATUS_APPROVED ? "Approved" : "Pending";
-    const statusClass =
-      cohost.status === STATUS_APPROVED
-        ? "border-green-800 bg-green-100 text-green-800"
-        : "border-amber-800 bg-amber-100 text-amber-800";
+    const statusClass = cohost.status === STATUS_APPROVED ? "badge-success" : "badge-warning";
 
     return html`
-      <span class="custom-badge px-2.5 py-0.5 ${statusClass}">${statusLabel}</span>
+      <span class="custom-badge ${statusClass}">${statusLabel}</span>
       ${
         cohost.group_active === false
-          ? html`<span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">
-              Inactive group
-            </span>`
+          ? html`<span class="custom-badge badge-neutral">Inactive group</span>`
           : ""
       }
     `;

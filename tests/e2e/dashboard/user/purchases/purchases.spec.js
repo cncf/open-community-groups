@@ -1,9 +1,12 @@
 import { expect, test } from "../../../fixtures.js";
+import { setupOwnedExternalCompletedPurchase } from "../../../data-graphs/payments.js";
 import {
   TEST_COMMUNITY_NAME,
+  TEST_GROUP_IDS,
   TEST_GROUP_SLUG,
   TEST_PAYMENT_EVENT_NAMES,
   TEST_PURCHASE_DOCUMENT_IDS,
+  TEST_USER_IDS,
 } from "../../../seed.js";
 import { buildE2eUrl, expectPaginationNavigation } from "../../../utils.js";
 import { getPurchaseRow, openPurchasesDashboard } from "../helpers.js";
@@ -96,6 +99,59 @@ test.describe("user dashboard purchases", () => {
     await expect(purchaseRow).toContainText("Paid");
     await purchaseRow.getByLabel(`Open document actions for ${TEST_PAYMENT_EVENT_NAMES.refunds}`).click();
     await expect(purchaseRow.getByRole("menuitem", { name: "Invoice processing" })).toBeDisabled();
+  });
+
+  test("keeps the document menu of a single purchase unclipped at md", async ({ pending1Page }) => {
+    // Open the only purchase of the dedicated user at the md review width.
+    await pending1Page.setViewportSize({ width: 771, height: 900 });
+    const dashboardContent = await openPurchasesDashboard(pending1Page);
+    await expect(dashboardContent.locator("tbody tr")).toHaveCount(1);
+    const purchaseRow = getPurchaseRow(dashboardContent, TEST_PAYMENT_EVENT_NAMES.refunds);
+
+    // Open the document menu below the last table row.
+    await purchaseRow.getByLabel(`Open document actions for ${TEST_PAYMENT_EVENT_NAMES.refunds}`).click();
+    const lastMenuItem = purchaseRow.getByRole("menuitem").last();
+    await expect(lastMenuItem).toBeVisible();
+
+    // Verify the last item is inside the viewport and receives hits at its centre (not clipped).
+    const menuItemHit = await lastMenuItem.evaluate((item) => {
+      const box = item.getBoundingClientRect();
+      const target = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+
+      return {
+        hitsItem: target !== null && item.contains(target),
+        insideViewport:
+          box.top >= 0 && box.left >= 0 && box.bottom <= window.innerHeight && box.right <= window.innerWidth,
+      };
+    });
+    expect(menuItemHit).toEqual({ hitsItem: true, insideViewport: true });
+
+    // Verify the dashboard content does not scroll horizontally.
+    const contentWidths = await dashboardContent.evaluate((content) => ({
+      clientWidth: content.clientWidth,
+      scrollWidth: content.scrollWidth,
+    }));
+    expect(contentWidths.scrollWidth).toBeLessThanOrEqual(contentWidths.clientWidth);
+  });
+
+  test("labels externally managed purchases as External", async ({ member2Page, owned }) => {
+    // Create an owned paid event with a completed external purchase for the attendee.
+    const event = owned.event({
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      paymentCurrencyCode: "USD",
+      tiers: [{ amountMinor: 5000, key: "general", seats: 10, title: "General admission" }],
+    });
+    setupOwnedExternalCompletedPurchase({ eventId: event.eventId, userId: TEST_USER_IDS.member2 });
+
+    // Verify the visible status badges use the short External label.
+    const dashboardContent = await openPurchasesDashboard(member2Page);
+    const purchaseRow = getPurchaseRow(dashboardContent, event.name);
+    await expect(purchaseRow.getByText("External", { exact: true }).filter({ visible: true })).toHaveCount(1);
+    await expect(purchaseRow).not.toContainText("Externally managed");
+
+    // Verify the document menu explains the purchase is managed outside OCG.
+    await purchaseRow.getByLabel(`Open document actions for ${event.name}`).click();
+    await expect(purchaseRow.getByText("Managed outside OCG")).toBeVisible();
   });
 
   test("shows processing and failed credit note states", async ({

@@ -26,13 +26,13 @@
 
 {# Group categories table -#}
 <div class="relative overflow-visible mt-5">
-  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8">
+  <table class="table-auto w-full dashboard-table mb-8">
     {# Table header -#}
-    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+    <thead class="dashboard-table-head">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Groups</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
+        <th scope="col" class="dashboard-table-actions py-3 w-[112px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -66,7 +66,7 @@
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4">{{ groups_count }}</td>
             {# End groups count -#}
             {# Actions -#}
-            <td class="px-3 xl:px-5 py-4 w-[112px]">
+            <td class="dashboard-table-actions py-4 w-[112px]">
               <div class="flex items-center justify-end gap-2">
                 <button hx-get="/dashboard/community/group-categories/{{ category.group_category_id }}/update"
                         hx-target="#dashboard-content"

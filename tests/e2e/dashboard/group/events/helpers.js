@@ -173,20 +173,11 @@ export const openCurrentEventEditorSection = async (
   { query = "", tableName } = {},
 ) => {
   const sectionPath = `/dashboard/group/events/${eventId}/${section}`;
-  const sectionTab = page.locator(`button[data-section="${section}"]`);
   if (query !== "") {
     await routeNextRequestWithQuery(page, sectionPath, query);
   }
 
-  const openSection = async () => {
-    if (await sectionTab.isVisible()) {
-      await sectionTab.click();
-      return;
-    }
-
-    await page.locator('[data-event-page="update"] [data-section-select]').selectOption(section);
-  };
-  await waitForActionResponse(page, openSection, {
+  await waitForActionResponse(page, () => selectEventEditorSection(page, section), {
     method: "GET",
     pathname: sectionPath,
     status: 200,
@@ -198,6 +189,34 @@ export const openCurrentEventEditorSection = async (
   }
 
   return content;
+};
+
+/**
+ * Shows a client-side section of the update editor, one that loads no partial, and waits for it.
+ * @param {import("@playwright/test").Page} page - Playwright page with the update editor open.
+ * @param {string} section - Section data attribute.
+ * @returns {Promise<void>}
+ */
+export const showEventEditorSection = async (page, section) => {
+  await selectEventEditorSection(page, section);
+  await expect(page.locator(`[data-content="${section}"]`)).toBeVisible();
+};
+
+/**
+ * Selects an update editor section through its tab, or through the compact section select that
+ * replaces the tabs below xl.
+ * @param {import("@playwright/test").Page} page - Playwright page with the update editor open.
+ * @param {string} section - Section data attribute.
+ * @returns {Promise<void>}
+ */
+const selectEventEditorSection = async (page, section) => {
+  const sectionTab = page.locator(`button[data-section="${section}"]`);
+  if (await sectionTab.isVisible()) {
+    await sectionTab.click();
+    return;
+  }
+
+  await page.locator('[data-event-page="update"] [data-section-select]').selectOption(section);
 };
 
 /**
@@ -408,6 +427,38 @@ export const expectSearchDropdownInViewport = async (page, input, dropdown, { ab
   expect(dropdownBox.y).toBeGreaterThanOrEqual(0);
   expect(dropdownBottom).toBeLessThanOrEqual(viewportHeight);
   expect(above ? opensAbove : opensAbove || opensBelow).toBe(true);
+};
+
+/**
+ * Asserts that the session card labels fit their row: every chip and the counter stay inside it,
+ * and the visible chips plus the counter number account for every label. The row clips its
+ * overflow, which `toBeVisible()` ignores, so the boxes are compared instead. Polled, because the
+ * card refits its labels in an animation frame after a resize.
+ * @param {import("@playwright/test").Locator} sessionCard - Session card with a labels counter.
+ * @param {number} labelsCount - Labels assigned to the session.
+ * @returns {Promise<void>}
+ */
+export const expectSessionLabelsFit = async (sessionCard, labelsCount) => {
+  await expect
+    .poll(() =>
+      sessionCard.evaluate((card) => {
+        const row = card.querySelector("[data-session-labels]");
+        const counter = row?.querySelector("[data-session-labels-more]");
+        if (!counter) {
+          return null;
+        }
+
+        const rowBox = row.getBoundingClientRect();
+        const chips = [...row.querySelectorAll("[data-session-label]")];
+        const inside = [...chips, counter]
+          .map((element) => element.getBoundingClientRect())
+          .every((box) => box.left >= rowBox.left - 0.5 && box.right <= rowBox.right + 0.5);
+        const hiddenCount = Number.parseInt(counter.querySelector("button").textContent.replace("+", ""), 10);
+
+        return { inside, total: chips.length + hiddenCount };
+      }),
+    )
+    .toEqual({ inside: true, total: labelsCount });
 };
 
 /**

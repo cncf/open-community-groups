@@ -169,4 +169,94 @@ test.describe("group dashboard logs view", () => {
     await expect(firstDetailsPopover).toBeHidden();
     await expect(secondDetailsPopover).toBeVisible();
   });
+
+  test("organizer sees the log date in the details popover on narrow screens", async ({
+    organizerGroupPage,
+  }) => {
+    // Load a seeded detail row at the narrowest dashboard width, where the date column is hidden.
+    await organizerGroupPage.setViewportSize({ width: 768, height: 900 });
+    await navigateToPath(organizerGroupPage, GROUP_DETAILS_LOGS_PATH);
+    const auditLogRow = organizerGroupPage
+      .locator("#dashboard-content tr.audit-log-row", { hasText: "Tech Corp" })
+      .first();
+
+    // Open the row details.
+    const detailsButton = auditLogRow.getByRole("button", { name: "View log details" });
+    await detailsButton.click();
+    await expect(detailsButton).toHaveAttribute("aria-expanded", "true");
+
+    // Verify the popover lists the date with the other hidden columns.
+    const detailsCard = auditLogRow.locator("[data-audit-log-details-card]");
+    await expect(detailsCard).toBeVisible();
+    await expect(detailsCard.getByText("Date", { exact: true })).toBeVisible();
+    await expect(detailsCard.getByText("Type", { exact: true })).toBeVisible();
+
+    // Verify the date row is hidden again once the date column returns.
+    await organizerGroupPage.setViewportSize({ width: 1024, height: 900 });
+    await expect(detailsCard.getByText("Date", { exact: true })).toBeHidden();
+    await expect(detailsCard.getByText("Type", { exact: true })).toBeVisible();
+  });
+
+  test("organizer sees log details above the trigger when there is no room below", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the full logs list in a short viewport.
+    const viewport = { width: 1024, height: 600 };
+    await organizerGroupPage.setViewportSize(viewport);
+    await navigateToPath(organizerGroupPage, GROUP_LOGS_PATH);
+    const logRows = organizerGroupPage.locator("#dashboard-content tr.audit-log-row");
+    await expect(logRows.first()).toBeVisible();
+
+    // Open the last row details with the row at the viewport bottom.
+    const lastRow = logRows.last();
+    await scrollRowIntoView(lastRow, "end");
+    await lastRow.getByRole("button", { name: "View log details" }).click();
+
+    // Verify the card flips above the trigger and stays inside the viewport.
+    const lastCard = lastRow.locator("[data-audit-log-details-card]");
+    await expect(lastCard).toBeVisible();
+    await expect(lastCard).toHaveAttribute("data-placement", "top");
+    await expectInsideViewport(lastCard, viewport);
+
+    // Open the first row details with the row just below the fixed header.
+    const firstRow = logRows.first();
+    await scrollRowIntoView(firstRow, "start");
+    await firstRow.getByRole("button", { name: "View log details" }).click();
+
+    // Verify the first card opens below its trigger and the last one closes.
+    const firstCard = firstRow.locator("[data-audit-log-details-card]");
+    await expect(firstCard).toBeVisible();
+    await expect(firstCard).not.toHaveAttribute("data-placement");
+    await expect(lastCard).toBeHidden();
+  });
 });
+
+/**
+ * Checks that an element's bounding box sits inside the viewport.
+ * @param {import("@playwright/test").Locator} locator - Element to measure.
+ * @param {{ height: number, width: number }} viewport - Current viewport size.
+ */
+const expectInsideViewport = async (locator, viewport) => {
+  const box = await locator.boundingBox();
+
+  expect(box).not.toBeNull();
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+};
+
+/**
+ * Scrolls a table row to the bottom of the viewport, or just below the fixed dashboard header.
+ * @param {import("@playwright/test").Locator} row - Row to scroll into view.
+ * @param {"end"|"start"} block - Viewport edge the row is aligned to.
+ */
+const scrollRowIntoView = async (row, block) => {
+  await row.evaluate((element, alignment) => {
+    element.scrollIntoView({ block: alignment });
+    if (alignment === "start") {
+      const header = document.getElementById("dashboard-header");
+      window.scrollBy(0, -((header?.getBoundingClientRect().height ?? 0) + 16));
+    }
+  }, block);
+};

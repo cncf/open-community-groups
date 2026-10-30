@@ -67,6 +67,14 @@ test.describe("group dashboard inbox view", () => {
     await expect(dates.first()).toBeHidden();
     await expect(dates.last()).toBeHidden();
     await expectActionsInsideHeader(header, closeButton, true);
+
+    // Verify md screens hide the message count and keep the actions clear of the status badge
+    await organizerGroupPage.setViewportSize({ width: 768, height: 900 });
+    const messageCount = header.getByText(/^\d+ messages?$/);
+    await expect(messageCount).toHaveCount(1);
+    await expect(messageCount).toBeHidden();
+    await expectActionsInsideHeader(header, closeButton, true);
+    await expectBoxesApart(closeButton, header.locator(".custom-badge"));
   });
 
   test("group viewer has no inbox access", async ({ groupViewerPage }) => {
@@ -300,4 +308,25 @@ const expectActionsInsideHeader = async (header, action, inside) => {
       return actionBox.y + actionBox.height <= headerBox.y + headerBox.height;
     })
     .toBe(inside);
+};
+
+/**
+ * Verifies that two elements render without overlapping boxes.
+ * @param {import("@playwright/test").Locator} first - First element
+ * @param {import("@playwright/test").Locator} second - Second element
+ * @returns {Promise<void>}
+ */
+const expectBoxesApart = async (first, second) => {
+  await expect
+    .poll(async () => {
+      const firstBox = await first.boundingBox();
+      const secondBox = await second.boundingBox();
+      return (
+        firstBox.x + firstBox.width <= secondBox.x ||
+        secondBox.x + secondBox.width <= firstBox.x ||
+        firstBox.y + firstBox.height <= secondBox.y ||
+        secondBox.y + secondBox.height <= firstBox.y
+      );
+    })
+    .toBe(true);
 };

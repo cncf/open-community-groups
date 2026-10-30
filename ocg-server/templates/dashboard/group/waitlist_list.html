@@ -132,12 +132,11 @@
 
 {# Waitlist table -#}
 <div class="relative overflow-visible pb-12" data-events-list-page>
-  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+  <table class="table-auto w-full dashboard-table mb-8"
          role="table"
          aria-label="Waitlist entries">
     {# Table header -#}
-    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
-           role="rowgroup">
+    <thead class="dashboard-table-head" role="rowgroup">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-1.5 xl:w-[30%]">
           <span class="whitespace-nowrap">Entry</span>
@@ -163,7 +162,7 @@
             class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40">
           <span class="whitespace-nowrap">Created</span>
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-1.5 w-[72px]">
+        <th scope="col" class="dashboard-table-actions py-1.5 w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -273,7 +272,7 @@
             </td>
             {# End created date -#}
             {# Actions -#}
-            <td class="px-3 xl:px-5 py-4 w-[72px]">
+            <td class="dashboard-table-actions py-4 w-[72px]">
               {% let is_queued = entry.admission_offer_id.is_none() -%}
               {% let has_active_offer = entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
                 || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
@@ -417,30 +416,19 @@
 {% macro waitlist_offer_status_badge(entry, event, label, canceled, published) -%}
   {% if let Some(offer_expires_at) = &entry.offer_expires_at -%}
     {% let waitlist_offer_tooltip_id -%}waitlist-offer-deadline-{{ entry.user.user_id }}{%- endlet %}
-  <span class="group/offer-deadline relative inline-flex shrink-0">
-    <button type="button"
-            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-            aria-describedby="{{ waitlist_offer_tooltip_id }}">
-      {{ badges::status_badge(label = label, canceled = canceled, published = published) -}}
-      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
-                   {% if canceled %}bg-red-800{% else if published %}bg-green-800{% else %}bg-amber-800{% endif %}"
-            aria-hidden="true"></span>
-    </button>
-    {% call dashboard::tooltip_panel(
-      id = waitlist_offer_tooltip_id,
-      title = "Ticket offer",
-      visibility_classes = "group-hover/offer-deadline:visible group-hover/offer-deadline:opacity-100 group-focus-within/offer-deadline:visible group-focus-within/offer-deadline:opacity-100"
-    ) -%}
-    <span class="block">
-      <span class="block font-semibold text-stone-500">
-        {% if entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}Expired{% else %}Deadline{% endif %}
-      </span>
-      <span class="mt-0.5 block text-stone-900">
-        {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
-      </span>
+  {# djlint:off #}
+  {% let offer_tone -%}{% if canceled %}danger{% else if published %}success{% else %}warning{% endif %}{%- endlet %}
+  {# djlint:on #}
+  {% call dashboard::tooltip_badge_trigger(tooltip_id = waitlist_offer_tooltip_id, title = "Ticket offer", label = label, tone = offer_tone) -%}
+  <span class="block">
+    <span class="block font-semibold text-stone-500">
+      {% if entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}Expired{% else %}Deadline{% endif %}
     </span>
-    {% endcall -%}
+    <span class="mt-0.5 block text-stone-900">
+      {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+    </span>
   </span>
+  {% endcall -%}
 {% else -%}
   {{ badges::status_badge(label = label, canceled = canceled, published = published) -}}
 {% endif -%}

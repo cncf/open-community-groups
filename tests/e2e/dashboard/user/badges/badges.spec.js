@@ -4,6 +4,7 @@ import { cleanupCredential, setupRevocableCredential } from "../../../data-graph
 import { TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
 import { buildE2eUrl, navigateToPath, waitForActionResponse } from "../../../utils.js";
 
+const BADGE_LAYOUT_WIDTHS = [768, 1024, 1280];
 const HOST_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada06";
 
 test.describe("user dashboard badges", () => {
@@ -76,30 +77,45 @@ test.describe("user dashboard badges", () => {
     await member1Page.getByRole("button", { name: "Cancel" }).click();
 
     // Measure the card layout after every action returns to its resting state.
-    const layout = await hostBadge.evaluate((badge) => {
-      const actions = badge.querySelector('[role="group"]');
-      const title = badge.querySelector("h2");
-      const description = title?.parentElement?.nextElementSibling;
-
-      if (!actions || !description || !title) {
-        throw new Error("Badge card layout elements are missing");
-      }
-
-      const actionsBounds = actions.getBoundingClientRect();
-      const descriptionBounds = description.getBoundingClientRect();
-      const titleBounds = title.getBoundingClientRect();
-
-      return {
-        actionsLeft: actionsBounds.left,
-        actionsTop: actionsBounds.top,
-        descriptionRight: descriptionBounds.right,
-        titleTop: titleBounds.top,
-      };
-    });
+    const layout = await measureBadgeCard(hostBadge);
 
     // Verify actions align with the title without constraining description width.
     expect(Math.abs(layout.actionsTop - layout.titleTop)).toBeLessThanOrEqual(1);
     expect(layout.descriptionRight).toBeGreaterThan(layout.actionsLeft);
+  });
+
+  test("keeps the credential card layout at each dashboard band", async ({ member1Page }) => {
+    // Load the badge dashboard at the narrowest supported width.
+    await member1Page.setViewportSize({ width: 768, height: 900 });
+    await navigateToPath(member1Page, "/dashboard/user?tab=badges");
+    const hostBadge = member1Page.locator("[data-user-badge-id]").filter({
+      has: member1Page.getByRole("heading", { name: "Host", exact: true }),
+    });
+    const listingToggle = hostBadge.getByRole("checkbox", { name: "Show on profile" });
+    await expect(member1Page.locator("[data-badge-order-list]")).toHaveAttribute(
+      "data-badge-controls-ready",
+      "true",
+    );
+
+    for (const width of BADGE_LAYOUT_WIDTHS) {
+      // Resize and measure the resting card layout.
+      await member1Page.setViewportSize({ width, height: 900 });
+      const layout = await measureBadgeCard(hostBadge);
+
+      // Verify actions align with the title without constraining description width.
+      expect(Math.abs(layout.actionsTop - layout.titleTop), `${width}px title row`).toBeLessThanOrEqual(1);
+      expect(layout.descriptionRight, `${width}px description width`).toBeGreaterThan(layout.actionsLeft);
+
+      // Verify the description clamp and the listing toggle placement per band.
+      expect(layout.descriptionLineClamp, `${width}px description clamp`).toBe(width < 1280 ? "2" : "none");
+      if (width < 1024) {
+        expect(layout.toggleTop, `${width}px toggle below artwork`).toBeGreaterThan(layout.artworkBottom);
+      }
+
+      // Verify the listing toggle still receives pointer input.
+      expect(layout.toggleHit, `${width}px toggle hit test`).toBe(true);
+      await expect(listingToggle).toBeEnabled();
+    }
   });
 
   test("share modal links to the public credential page", async ({ member1Page }) => {
@@ -254,6 +270,44 @@ test.describe("user dashboard badges", () => {
     }
   });
 });
+
+/**
+ * Measures the badge card title row, description, artwork and listing toggle.
+ * @param {import("@playwright/test").Locator} badge - Badge row locator.
+ * @returns {Promise<object>} Card bounds, description clamp and toggle hit test.
+ */
+const measureBadgeCard = (badge) =>
+  badge.evaluate((card) => {
+    const actions = card.querySelector('[role="group"]');
+    const artwork = card.querySelector("[data-badge-artwork]");
+    const title = card.querySelector("h2");
+    const description = title?.parentElement?.nextElementSibling;
+    const toggle = card.querySelector("[data-badge-listing]")?.closest("label");
+
+    if (!actions || !artwork || !description || !title || !toggle) {
+      throw new Error("Badge card layout elements are missing");
+    }
+
+    const actionsBounds = actions.getBoundingClientRect();
+    const descriptionBounds = description.getBoundingClientRect();
+    const titleBounds = title.getBoundingClientRect();
+    const toggleBounds = toggle.getBoundingClientRect();
+    const hitTarget = document.elementFromPoint(
+      toggleBounds.left + toggleBounds.width / 2,
+      toggleBounds.top + toggleBounds.height / 2,
+    );
+
+    return {
+      actionsLeft: actionsBounds.left,
+      actionsTop: actionsBounds.top,
+      artworkBottom: artwork.getBoundingClientRect().bottom,
+      descriptionLineClamp: getComputedStyle(description).webkitLineClamp,
+      descriptionRight: descriptionBounds.right,
+      titleTop: titleBounds.top,
+      toggleHit: Boolean(hitTarget && toggle.contains(hitTarget)),
+      toggleTop: toggleBounds.top,
+    };
+  });
 
 /** Sets the listing toggle value and dispatches its change event. */
 const setListingValue = (toggle, isListed) =>

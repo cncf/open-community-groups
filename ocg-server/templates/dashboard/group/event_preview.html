@@ -173,9 +173,9 @@
                           <div class="min-w-0 flex-1">
                             <div class="truncate text-sm font-semibold text-stone-900">{{ cohost.name_label() }}</div>
                             {% if cohost.is_approved() -%}
-                              <span class="custom-badge mt-2 inline-block border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Approved</span>
+                              <span class="custom-badge mt-2 inline-block badge-success">Approved</span>
                             {% else -%}
-                              <span class="custom-badge mt-2 inline-block border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Pending</span>
+                              <span class="custom-badge mt-2 inline-block badge-warning">Pending</span>
                             {% endif -%}
                           </div>
                         </div>

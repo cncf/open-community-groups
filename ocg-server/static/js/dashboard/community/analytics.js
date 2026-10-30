@@ -17,6 +17,7 @@ import {
 import { initializePageViewCharts } from "/static/js/dashboard/analytics-page-views.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
 import { initializeOnReadyAndHtmxLoad, setElementHidden } from "/static/js/common/dom.js";
+import { getNextLoopedIndex } from "/static/js/common/keyboard.js";
 import { addRenderedChart, initializeChartsFromJsonMarker } from "/static/js/common/charts/stats.js";
 
 const COMMUNITY_ANALYTICS_DATA_SELECTOR = "[data-community-analytics]";
@@ -85,6 +86,44 @@ const SUMMARY_TABS_MEDIA_QUERY = "(min-width: 80rem)";
 const SUMMARY_TABS_SELECTOR = "[data-analytics-summary]";
 
 /**
+ * Resolve the tab an arrow, Home or End key moves to within the exposed tab list.
+ * Modified keys are left to the browser (for example Alt+ArrowLeft goes back in history).
+ * @param {HTMLElement} button - Tab button that received the key.
+ * @param {KeyboardEvent} event - Keydown event.
+ * @returns {HTMLElement|null} Target tab, or null when the key or button does not apply.
+ */
+const getKeyboardTargetTab = (button, event) => {
+  if (event.altKey || event.ctrlKey || event.metaKey) {
+    return null;
+  }
+
+  // Summary cards below xl sit in a role="group" container and are not tabs.
+  const tabList = button.closest('[role="tablist"]');
+  if (!tabList) {
+    return null;
+  }
+
+  const tabs = Array.from(tabList.querySelectorAll('[role="tab"][data-analytics-tab]'));
+  const index = tabs.indexOf(button);
+  if (index === -1) {
+    return null;
+  }
+
+  let targetIndex = null;
+  if (event.key === "ArrowRight") {
+    targetIndex = getNextLoopedIndex(index, tabs.length, 1);
+  } else if (event.key === "ArrowLeft") {
+    targetIndex = getNextLoopedIndex(index, tabs.length, -1);
+  } else if (event.key === "Home") {
+    targetIndex = 0;
+  } else if (event.key === "End") {
+    targetIndex = tabs.length - 1;
+  }
+
+  return targetIndex === null ? null : tabs[targetIndex];
+};
+
+/**
  * Render page view charts.
  * @param {Object} pageViews - Page views stats payload.
  * @param {Object} palette - Theme palette.
@@ -140,6 +179,7 @@ const initGroupsCharts = async (groups = {}, palette) => {
     "groups-region-chart",
     createPieChart("Groups by Region", "Groups", regionData, palette, {
       description: "Current groups split by region",
+      legendPosition: "bottom",
     }),
     hasChartData(regionData),
   );
@@ -278,6 +318,7 @@ const initMembersCharts = async (members = {}, palette) => {
     "members-region-chart",
     createPieChart("Members by Region", "Members", regionData, palette, {
       description: "Current members split by region",
+      legendPosition: "bottom",
     }),
     hasChartData(regionData),
   );
@@ -352,6 +393,7 @@ const initEventsCharts = async (events = {}, palette) => {
     "events-region-chart",
     createPieChart("Events by Region", "Events", regionData, palette, {
       description: "Published events split by region",
+      legendPosition: "bottom",
     }),
     hasChartData(regionData),
   );
@@ -494,6 +536,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
     "attendees-region-chart",
     createPieChart("Attendees by Region", "Attendees", regionData, palette, {
       description: "Total RSVPs split by group region",
+      legendPosition: "bottom",
     }),
     hasChartData(regionData),
   );
@@ -617,10 +660,11 @@ const setupAnalyticsTabs = (stats, palette) => {
 
   const showTab = (tab) => {
     tabButtons.forEach((btn) => {
-      const active = btn.dataset.analyticsTab === tab ? "true" : "false";
-      btn.dataset.active = active;
+      const isActive = btn.dataset.analyticsTab === tab;
+      btn.dataset.active = isActive ? "true" : "false";
       if (btn.getAttribute("role") === "tab") {
-        btn.setAttribute("aria-selected", active);
+        btn.setAttribute("aria-selected", isActive ? "true" : "false");
+        btn.setAttribute("tabindex", isActive ? "0" : "-1");
       }
     });
 
@@ -639,6 +683,16 @@ const setupAnalyticsTabs = (stats, palette) => {
     button.addEventListener("click", () => {
       const tab = button.dataset.analyticsTab;
       showTab(tab);
+    });
+    button.addEventListener("keydown", (event) => {
+      const targetTab = getKeyboardTargetTab(button, event);
+      if (!targetTab) {
+        return;
+      }
+
+      event.preventDefault();
+      targetTab.focus();
+      showTab(targetTab.dataset.analyticsTab);
     });
   });
 };
@@ -678,7 +732,7 @@ const syncSummaryTabs = (summary, isTabList) => {
       card.setAttribute("role", "tab");
       card.setAttribute("aria-selected", card.dataset.active === "true" ? "true" : "false");
       card.setAttribute("aria-controls", `analytics-panel-${card.dataset.analyticsTab}`);
-      card.removeAttribute("tabindex");
+      card.setAttribute("tabindex", card.dataset.active === "true" ? "0" : "-1");
     } else {
       card.removeAttribute("role");
       card.removeAttribute("aria-selected");

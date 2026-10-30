@@ -7,12 +7,8 @@ import {
   renderFeaturedContributorState,
 } from "/static/js/common/users/contributor-row.js";
 import "/static/js/common/users/selected-user-pill.js";
-import "/static/js/dashboard/event/sessions/speaker-modal.js";
-import {
-  normalizeSpeakers,
-  speakerKey,
-  hasSpeaker,
-} from "/static/js/dashboard/event/sessions/speaker-utils.js";
+import "/static/js/common/users/speaker-modal.js";
+import { normalizeSpeakers, speakerKey, hasSpeaker } from "/static/js/common/users/speaker-utils.js";
 
 /**
  * Shared speakers selector with featured flag support.
@@ -182,14 +178,14 @@ export class SpeakersSelector extends LitWrapper {
     const hasActions = !this.disabled || Boolean(this.canAwardBadges && this.eventId);
     return html`
       <div class="mt-4 overflow-visible">
-        <table class="w-full text-left text-sm text-stone-600" aria-label="Event speakers">
-          <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
+        <table class="dashboard-table w-full" aria-label="Event speakers">
+          <thead class="dashboard-table-head">
             <tr>
-              <th scope="col" class="px-4 py-3">Name</th>
-              <th scope="col" class="w-40 px-4 py-3 text-center">Featured</th>
+              <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+              <th scope="col" class="hidden 2xl:table-cell w-40 px-3 xl:px-5 py-3 text-center">Featured</th>
               ${
                 hasActions
-                  ? html`<th scope="col" class="w-[72px] px-4 py-3">
+                  ? html`<th scope="col" class="w-[72px] dashboard-table-actions py-3">
                       <span class="sr-only">Actions</span>
                     </th>`
                   : ""
@@ -210,13 +206,15 @@ export class SpeakersSelector extends LitWrapper {
                     (speaker) => {
                       return html`
                         <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
-                          <td class="px-4 py-3">${renderContributorIdentity(speaker)}</td>
-                          <td class="w-40 px-4 py-3 text-center">
+                          <td class="max-w-0 px-3 xl:px-5 py-4">
+                            ${renderContributorIdentity(speaker, { featured: speaker.featured })}
+                          </td>
+                          <td class="hidden 2xl:table-cell w-40 px-3 xl:px-5 py-4 text-center">
                             ${renderFeaturedContributorState(speaker.featured)}
                           </td>
                           ${
                             hasActions
-                              ? html`<td class="px-4 py-3 text-right">
+                              ? html`<td class="dashboard-table-actions py-4 text-right">
                                   ${renderContributorActions({
                                     actionLabel: "speaker",
                                     awardsDisabled: this.awardsDisabled,

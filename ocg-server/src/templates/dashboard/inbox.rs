@@ -4,7 +4,7 @@ use askama::Template;
 use uuid::Uuid;
 
 use crate::{
-    templates::{filters, helpers::user_initials},
+    templates::{dashboard::BadgeTone, filters, helpers::user_initials},
     types::{
         inbox::{InboxConversation, InboxConversationStatus, InboxConversationSummary},
         pagination,
@@ -122,6 +122,21 @@ impl ListPage {
     pub(crate) fn is_unfiltered(&self) -> bool {
         self.status.is_none()
     }
+
+    /// Returns who wrote the last message of a conversation, from the point of
+    /// view of the dashboard rendering the list.
+    pub(crate) fn last_writer_label(
+        &self,
+        conversation: &InboxConversationSummary,
+    ) -> &'static str {
+        if conversation.last_message_kind.is_from_group() {
+            "Organizers"
+        } else if self.scope.is_group() {
+            "User"
+        } else {
+            "You"
+        }
+    }
 }
 
 // Types.
@@ -216,6 +231,18 @@ impl InboxScope {
 }
 
 // Helpers.
+
+/// Returns the badge tone used for a conversation status. Askama passes the
+/// status by reference.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+pub(crate) fn status_tone(status: &InboxConversationStatus) -> BadgeTone {
+    match status {
+        InboxConversationStatus::Answered => BadgeTone::Success,
+        InboxConversationStatus::Closed => BadgeTone::Neutral,
+        InboxConversationStatus::Open => BadgeTone::Warning,
+        InboxConversationStatus::Spam => BadgeTone::Danger,
+    }
+}
 
 /// Returns the label shown for a user, or the deleted-user label.
 fn user_label(user: Option<&User>) -> String {

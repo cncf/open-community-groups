@@ -1,10 +1,7 @@
 import { expect, waitUntil } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/sessions/card.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 // Labels long enough to overflow a narrow card.
 const LONG_LABELS = [
@@ -24,6 +21,19 @@ const LONG_LABELS = [
     name: "Developer experience and tooling",
   },
 ];
+
+// Tailwind's sr-only rule; unit tests load no stylesheet.
+const SR_ONLY_CSS = `.sr-only {
+  border-width: 0;
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}`;
 
 describe("session-card", () => {
   useMountedElementsCleanup("session-card");
@@ -77,9 +87,7 @@ describe("session-card", () => {
     // Disabled cards and actions do not expose interactive rollover styles.
     expect(element.firstElementChild.classList.contains("hover:border-primary-300")).to.equal(false);
     expect(element.firstElementChild.classList.contains("hover:shadow-sm")).to.equal(false);
-    expect(Array.from(element.querySelectorAll("button")).every((button) => button.disabled)).to.equal(
-      true,
-    );
+    expect(Array.from(element.querySelectorAll("button")).every((button) => button.disabled)).to.equal(true);
   });
 
   it("renders chips for the named labels assigned to the session", async () => {
@@ -119,9 +127,9 @@ describe("session-card", () => {
 
     // No labels row or labeled card height is reserved.
     expect(element.querySelector("[data-session-labels]")).to.equal(null);
-    expect(
-      element.querySelector("[data-session-content]").classList.contains("min-h-[4.625rem]"),
-    ).to.equal(false);
+    expect(element.querySelector("[data-session-content]").classList.contains("min-h-[4.625rem]")).to.equal(
+      false,
+    );
   });
 
   it("stretches the time bar to the card content height", async () => {
@@ -142,10 +150,11 @@ describe("session-card", () => {
 
     // Only the first label stays visible and the counter shows the hidden labels.
     const chips = Array.from(element.querySelectorAll(".custom-badge"));
-    const moreButton = element.querySelector("[data-session-labels-more]");
+    const moreTrigger = element.querySelector("[data-session-labels-more]");
+    const moreButton = moreTrigger.querySelector("button");
     expect(chips.map((chip) => chip.textContent.trim())).to.deep.equal([LONG_LABELS[0].name]);
-    expect(moreButton.textContent.trim().startsWith("+2")).to.equal(true);
-    expect(moreButton.getAttribute("aria-label")).to.equal("2 more labels");
+    expect(moreTrigger.textContent.trim().startsWith("+2")).to.equal(true);
+    expect(normalizeWhitespace(moreButton.textContent)).to.equal("+2 more labels");
 
     // The counter tooltip lists every assigned label.
     const tooltip = element.querySelector('[role="tooltip"]');
@@ -172,28 +181,137 @@ describe("session-card", () => {
     expect(ids[0]).to.be.a("string");
     expect(ids[0]).to.not.equal(ids[1]);
   });
+
+  it("renders the counter as a tooltip trigger next to its panel", async () => {
+    // Render a narrow session card with long labels.
+    const element = await mountNarrowCard("Opening Keynote");
+
+    // The wrapper holds the trigger button and its tooltip panel as siblings.
+    const moreTrigger = element.querySelector("[data-session-labels-more]");
+    const moreButton = moreTrigger.querySelector(":scope > button");
+    const tooltip = moreTrigger.querySelector(":scope > [role='tooltip'][data-tooltip-panel]");
+    expect(moreButton.getAttribute("aria-describedby")).to.equal(tooltip.id);
+    expect(moreButton.contains(tooltip)).to.equal(false);
+
+    // The trigger only uses tooltip semantics, with its name taken from its text.
+    expect(moreButton.hasAttribute("aria-expanded")).to.equal(false);
+    expect(moreButton.hasAttribute("aria-controls")).to.equal(false);
+    expect(moreButton.hasAttribute("aria-label")).to.equal(false);
+  });
+
+  it("names a single hidden label in the singular", async () => {
+    // Render a narrow session card with two long labels.
+    const element = await mountNarrowCard("Opening Keynote", { labels: LONG_LABELS.slice(0, 2) });
+
+    // One chip stays visible and the counter names the hidden label.
+    const moreButton = element.querySelector("[data-session-labels-more] button");
+    expect(element.querySelectorAll(".custom-badge")).to.have.length(1);
+    expect(normalizeWhitespace(moreButton.textContent)).to.equal("+1 more label");
+  });
+
+  it("moves every label to the counter when no chip fits", async () => {
+    // Hide the counter's sr-only suffix as the stylesheet does, so the counter has its real width.
+    const srOnlyStyle = document.createElement("style");
+    srOnlyStyle.textContent = SR_ONLY_CSS;
+    document.head.append(srOnlyStyle);
+
+    try {
+      // Render a narrow card, then leave less than the minimum chip width (48px) next to the counter.
+      const element = await mountNarrowCard("Opening Keynote");
+      const row = element.querySelector("[data-session-labels]");
+      const counterWidth = element
+        .querySelector("[data-session-labels-more] > button")
+        .getBoundingClientRect().width;
+      const chromeWidth = element.getBoundingClientRect().width - row.clientWidth;
+      element.style.width = `${chromeWidth + counterWidth + 40}px`;
+      await waitUntil(
+        () => element.querySelector(".custom-badge") === null,
+        "labels were not moved to the counter",
+      );
+
+      // No chip renders and the counter shows the labels total.
+      const moreButton = element.querySelector("[data-session-labels-more] button");
+      expect(normalizeWhitespace(moreButton.textContent)).to.equal("3 labels");
+      expect(element.querySelectorAll("[data-session-label-name]")).to.have.length(LONG_LABELS.length);
+    } finally {
+      srOnlyStyle.remove();
+    }
+  });
+
+  it("fits the labels after a hidden container is shown", async () => {
+    // Render a narrow session card inside a hidden container.
+    const container = document.createElement("div");
+    container.hidden = true;
+    document.body.append(container);
+    const element = await mountNarrowCard("Opening Keynote", { parent: container });
+
+    // Showing the container fits the labels behind the counter.
+    container.hidden = false;
+    await waitUntil(() => isFittedBehindCounter(element), "labels were not fitted after showing");
+  });
+
+  it("fits the labels again after the card is hidden and shown", async () => {
+    // Render a narrow session card inside a visible container.
+    const container = document.createElement("div");
+    document.body.append(container);
+    const element = await mountNarrowCard("Opening Keynote", { parent: container });
+    await waitUntil(() => isFittedBehindCounter(element), "labels were not fitted on first show");
+
+    // Hiding the container drops the fit until the card has a width again.
+    container.hidden = true;
+    await waitUntil(
+      () => element.querySelectorAll(".custom-badge").length === LONG_LABELS.length,
+      "labels were not measured again after hiding",
+    );
+
+    // Showing the container fits the labels again.
+    container.hidden = false;
+    await waitUntil(() => isFittedBehindCounter(element), "labels were not fitted after showing again");
+  });
 });
 
 /**
- * Mounts a 200px wide session card assigned to every long label.
+ * Checks whether a narrow card shows one chip and the "+2" counter.
+ * @param {HTMLElement} element Session card element.
+ * @returns {boolean} Whether the labels are fitted behind the counter.
+ */
+const isFittedBehindCounter = (element) =>
+  element.querySelectorAll(".custom-badge").length === 1 &&
+  normalizeWhitespace(element.querySelector("[data-session-labels-more] button")?.textContent || "") ===
+    "+2 more labels";
+
+/**
+ * Mounts a narrow session card assigned to every given label.
  * @param {string} name Session name.
+ * @param {{labels?: Array<Object>, parent?: HTMLElement, width?: string}} [options] Labels, the
+ *   element the card is appended to and the card width.
  * @returns {Promise<HTMLElement>} Settled session card.
  */
-const mountNarrowCard = async (name) => {
+const mountNarrowCard = async (
+  name,
+  { labels = LONG_LABELS, parent = document.body, width = "200px" } = {},
+) => {
   const element = document.createElement("session-card");
   element.style.display = "block";
-  element.style.width = "200px";
+  element.style.width = width;
   Object.assign(element, {
-    labels: LONG_LABELS,
+    labels,
     session: {
-      label_ids: LONG_LABELS.map((label) => label.event_label_id),
+      label_ids: labels.map((label) => label.event_label_id),
       name,
     },
   });
-  document.body.append(element);
+  parent.append(element);
   await settleCard(element);
   return element;
 };
+
+/**
+ * Collapses whitespace runs and trims the result.
+ * @param {string} value Text to normalize.
+ * @returns {string} Normalized text.
+ */
+const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 /**
  * Waits until the card finishes its labels measurement updates.

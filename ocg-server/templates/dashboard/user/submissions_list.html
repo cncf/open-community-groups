@@ -17,7 +17,7 @@
 {# Submissions table -#}
 <div>
   <div class="relative overflow-visible">
-    <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500">
+    <table class="table-fixed w-full dashboard-table">
       {# Table columns -#}
       <colgroup>
         <col />
@@ -27,14 +27,14 @@
         <col class="w-[112px]" />
       </colgroup>
       {# End table columns -#}
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <thead class="dashboard-table-head">
         {# Table header -#}
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Event</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Updated</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
+          <th scope="col" class="dashboard-table-actions py-3 w-[112px]">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -61,32 +61,39 @@
           {# End empty state -#}
         {% else -%}
           {% for submission in submissions -%}
+            {# djlint:off #}
+            {% let labels_tooltip_id -%}user-submission-labels-{{ submission.cfs_submission_id }}{%- endlet %}
+            {% let status_compact_label -%}{% if submission.status_id == "information-requested" %}Info requested{% endif %}{%- endlet %}
+            {# djlint:on #}
             {# Submission row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Event -#}
               <td class="px-3 xl:px-5 py-4">
+                <div class="title-preheader">{{ submission.event.group_name }}</div>
                 <a href="/{{ submission.event.community_name }}/group/{{ submission.event.public_group_slug() }}/event/{{ submission.event.slug }}"
                    target="_blank"
                    rel="noopener noreferrer"
-                   class="font-medium text-stone-900 hover:underline line-clamp-1">
+                   class="mt-0.5 font-medium text-stone-900 hover:underline line-clamp-1">
                   {{ submission.event.name }}
                 </a>
-                <div class="text-xs text-stone-400 truncate">{{ submission.event.group_name }}</div>
               </td>
               {# End event -#}
               {# Proposal -#}
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
                 {% if !submission.labels.is_empty() -%}
-                  <div class="mt-2 flex flex-wrap gap-1.5 min-w-0">
+                  <div class="mt-2 hidden xl:flex flex-wrap gap-1.5 min-w-0">
                     {% for label in submission.labels -%}
                       {{ badges::label_chip(name = &label.name, color = &label.color) -}}
                     {% endfor -%}
                   </div>
+                  <div class="mt-2 xl:hidden">
+                    {{ dashboard::labels_summary(labels = submission.labels, tooltip_id = labels_tooltip_id) -}}
+                  </div>
                 {% endif -%}
-                <div class="mt-2 xl:hidden inline-flex items-center gap-2">
-                  <span class="text-xs text-stone-400 uppercase">Status</span>
-                  {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5")) -}}
+                <div class="mt-2 flex flex-wrap items-center gap-2 xl:hidden">
+                  <span class="sr-only">Status</span>
+                  {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, compact_label = status_compact_label, extra_styles = Some("px-2.5 py-0.5")) -}}
                 </div>
               </td>
               {# End proposal -#}
@@ -105,7 +112,7 @@
               </td>
               {# End updated date -#}
               {# Actions -#}
-              <td class="px-3 xl:px-5 py-4 w-[112px]">
+              <td class="dashboard-table-actions py-4 w-[112px]">
                 <div class="flex items-center justify-end gap-2">
                   {% if submission.status_id == "information-requested" -%}
                     <button type="button"

@@ -107,12 +107,14 @@ export const setupGroupSponsor = ({ groupId }) => {
  *   communityId?: string,
  *   groupCategoryId?: string,
  *   memberUserId?: string,
+ *   name?: string,
  *   regionId?: string,
  *   teamRole?: string,
  *   teamUserId?: string,
  *   withArtwork?: boolean
  * }} [options] - Status, community with one of its group categories, region, accepted team row
- *   (`teamRole` for `teamUserId`), group member and artwork.
+ *   (`teamRole` for `teamUserId`), group member, artwork and a unique `name` replacing the
+ *   generated one (for long-data layout coverage).
  * @returns {{ groupId: string, groupName: string, slug: string }}
  */
 export const setupTemporaryGroup = ({
@@ -120,13 +122,14 @@ export const setupTemporaryGroup = ({
   communityId = TEST_COMMUNITY_IDS.community1,
   groupCategoryId = TEST_GROUP_CATEGORY_IDS.one,
   memberUserId,
+  name,
   regionId = null,
   teamRole,
   teamUserId,
   withArtwork = false,
 } = {}) => {
   const groupId = randomUUID();
-  const groupName = uniqueName("temporary group");
+  const groupName = name ?? uniqueName("temporary group");
   const slug = `e2e-temporary-group-${shortId(groupId)}`;
   const teamInsert = teamRole
     ? `insert into group_team (group_id, user_id, accepted, role, "order")

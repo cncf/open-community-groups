@@ -24,6 +24,18 @@ describe("dashboard user groups list template", () => {
     expect(template).to.include('{{ item.joined_at.format("%b %d, %Y") }}');
   });
 
+  it("spans the empty state across the columns visible at each breakpoint", async () => {
+    // Load the template before checking the per-breakpoint empty cells
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the empty state matches the hidden Member since column below lg
+    for (const colspan of [3, 4]) {
+      expect(template).to.include(
+        `colspan="${colspan}"> {% include "dashboard/placeholders/user_groups_table.html"`,
+      );
+    }
+  });
+
   it("renders leave group as a confirmed delete action for members", async () => {
     // Load the template before checking the destructive action contract
     const template = normalizeWhitespace(await loadTemplate());

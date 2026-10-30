@@ -155,34 +155,24 @@ describe("dashboard group attendees list template", () => {
       "attendee_external_payment_status_badge(attendee, status_instance)",
     );
     expect(template).to.include(
-      'class="group/external-payment-details relative inline-flex shrink-0"',
+      "attendee-external-payment-details-{{ attendee.user.user_id }}-{{ status_instance }}",
     );
     expect(template).to.include(
-      'class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-amber-800"',
+      '{% call dashboard::tooltip_badge_trigger(tooltip_id = external_payment_tooltip_id, title = "External payment", label = "Payment pending", tone = "warning", width_classes = "w-80") -%}',
     );
-    expect(template).to.include('title = "External payment"');
-    expect(template).to.include('width_classes = "w-80"');
     expect(template).to.include(
       'class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ reference }}</span>',
-    );
-    expect(template).to.include("group-hover/external-payment-details:visible");
-    expect(template).to.include(
-      "group-focus-within/external-payment-details:visible",
     );
     expect(template).to.include(">Confirm by</span>");
     expect(template).to.include(">Reference</span>");
     expect(template).to.not.include(">Due {{ deadline.format");
-    expect(template).to.include('content = "External"');
     expect(template).to.include(
-      'extra_styles = Some("border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700")',
+      "attendee-external-payment-paid-{{ attendee.user.user_id }}-{{ detail_instance }}",
     );
     expect(template).to.include(
-      'class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500"',
+      '{% call dashboard::tooltip_badge_trigger(tooltip_id = external_payment_paid_tooltip_id, title = "External payment", label = "External", tone = "neutral", width_classes = "w-80") -%}',
     );
-    expect(template).to.include("group-hover/external-payment-paid:visible");
-    expect(template).to.include(
-      "group-focus-within/external-payment-paid:visible",
-    );
+    expect(template).to.not.include('content = "External"');
     expect(template).to.include("Paid externally");
     expect(template).to.include(
       "{% if let Some(paid_at) = attendee.completed_at -%}",
@@ -654,27 +644,18 @@ describe("dashboard group attendees list template", () => {
     // Verify offer deadlines appear from the status badge on hover and focus.
     expect(template).not.to.include("icon-info");
     expect(template).to.include(
-      "relative inline-flex cursor-help rounded-full",
-    );
-    expect(template).to.include(
       "attendee-offer-deadline-{{ attendee.user.user_id }}-{{ status_instance }}",
     );
     expect(template).to.include(
-      'aria-describedby="{{ attendee_offer_tooltip_id }}"',
+      "{% let offer_tone -%}{% if canceled %}danger{% else %}warning{% endif %}{%- endlet %}",
     );
-    expect(template).to.include("dashboard::tooltip_panel(");
-    expect(template).to.include('title = "Ticket offer"');
     expect(template).to.include(
-      "-end-1 -top-1 size-2.5 rounded-full border-2 border-white",
+      '{% call dashboard::tooltip_badge_trigger(tooltip_id = attendee_offer_tooltip_id, title = "Ticket offer", label = label, tone = offer_tone) -%}',
     );
-    expect(template).to.include("bg-red-800");
-    expect(template).to.include("bg-amber-800");
     expect(template).to.include(
       '<span class="block font-semibold text-stone-500">',
     );
     expect(template).to.include('<span class="mt-0.5 block text-stone-900">');
-    expect(template).to.include("group-hover/offer-deadline:visible");
-    expect(template).to.include("group-focus-within/offer-deadline:visible");
     expect(attendeeCell.indexOf("{% endcall -%}")).to.be.lessThan(
       attendeeCell.indexOf('{{ attendee_status(attendee, event, "mobile") -}}'),
     );
@@ -818,7 +799,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.not.include("dashboard::table_sort_option_button");
     expect(template).to.not.include("dashboard::table_sort_control");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%]"');
-    expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
+    expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-10"');
     expect(template).to.include(
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"',
     );
@@ -837,7 +818,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"',
     );
-    expect(template).to.include('class="ms-[60px] mt-1 min-w-0 lg:hidden"');
+    expect(template).to.include('class="mt-2 min-w-0 lg:hidden"');
     expect(template).to.include(
       '<div class="mt-1 flex flex-wrap items-center gap-1.5"> {{ attendee_status(attendee, event, "mobile") -}} {{ attendee_external_payment_detail(attendee, "mobile") -}} </div>',
     );
@@ -846,7 +827,9 @@ describe("dashboard group attendees list template", () => {
     );
     expect(template).to.include('class="truncate text-xs text-stone-600"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-30"');
-    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
+    expect(template).to.include(
+      'class="dashboard-table-actions py-1.5 w-[72px]"',
+    );
     expect(template).to.include(
       '<span class="whitespace-nowrap">Attendee</span>',
     );
@@ -857,7 +840,7 @@ describe("dashboard group attendees list template", () => {
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"',
     );
     expect(template).to.include(
-      '<td class="px-8 py-12 text-center" colspan="7">',
+      '<td class="px-8 py-12 text-center" colspan="8">',
     );
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position"',

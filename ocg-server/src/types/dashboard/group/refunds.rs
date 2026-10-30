@@ -202,15 +202,6 @@ impl GroupRefundStatus {
             Self::RetryableFailure => "Needs retry",
         }
     }
-
-    /// Returns the badge tone used for this status.
-    pub(crate) fn tone(self) -> &'static str {
-        match self {
-            Self::RecoveryRequired | Self::Rejected | Self::RetryableFailure => "danger",
-            Self::Refunded => "success",
-            _ => "pending",
-        }
-    }
 }
 
 /// Event option available in the refunds filter.

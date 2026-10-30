@@ -16,14 +16,16 @@
 
 {# Groups table -#}
 <div class="relative overflow-visible">
-  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
-    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+  <table class="table-auto w-full dashboard-table">
+    <thead class="dashboard-table-head">
       {# Table header -#}
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Group</th>
-        <th scope="col" class="hidden md:table-cell px-3 xl:px-5 py-3 w-44">Member since</th>
-        <th scope="col" class="hidden md:table-cell px-3 xl:px-5 py-3 w-48">Role</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
+        <th scope="col"
+            class="hidden lg:table-cell px-3 xl:px-5 py-3 w-44 min-w-44">Member since</th>
+        <th scope="col"
+            class="hidden md:table-cell px-3 xl:px-5 py-3 w-48 min-w-48">Role</th>
+        <th scope="col" class="dashboard-table-actions py-3 w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -33,7 +35,10 @@
       {% if groups.is_empty() -%}
         {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-20 text-center" colspan="4">
+          <td class="lg:hidden px-8 py-20 text-center" colspan="3">
+            {% include "dashboard/placeholders/user_groups_table.html" -%}
+          </td>
+          <td class="hidden lg:table-cell px-8 py-20 text-center" colspan="4">
             {% include "dashboard/placeholders/user_groups_table.html" -%}
           </td>
         </tr>
@@ -44,36 +49,36 @@
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Group -#}
             <th scope="row"
-                class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[240px] xl:max-w-auto">
+                class="px-3 xl:px-5 py-4 font-medium text-stone-900 w-full max-w-0">
+              <div class="title-preheader">{{ item.group.community_display_name }}</div>
               <a href="/{{ item.group.community_name }}/group/{{ item.group.public_slug() }}"
                  target="_blank"
                  rel="noopener noreferrer"
-                 class="block max-w-full truncate md:whitespace-normal md:line-clamp-2 xl:line-clamp-1 hover:underline text-left leading-5 font-medium text-stone-900">
+                 class="mt-0.5 block max-w-full truncate md:whitespace-normal md:line-clamp-2 xl:line-clamp-1 hover:underline text-left leading-5 font-medium text-stone-900">
                 {{ item.group.name }}
               </a>
-              <div class="text-xs text-stone-400 truncate">{{ item.group.community_display_name }}</div>
-              <div class="md:hidden mt-1.5 space-y-1.5 text-xs text-stone-500">
-                <div>Member since {{ item.joined_at.format("%b %d, %Y") }}</div>
-                <div class="flex flex-wrap gap-1.5">
-                  {% if item.is_member -%}
-                    {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5")) -}}
-                  {% endif -%}
-                  {% if item.is_team_member -%}
-                    {{ badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5")) -}}
-                  {% endif -%}
-                </div>
+              <div class="mt-1 text-xs font-normal text-stone-500 lg:hidden">
+                Member since {{ item.joined_at.format("%b %d, %Y") }}
+              </div>
+              <div class="md:hidden mt-1.5 flex flex-wrap gap-1.5">
+                {% if item.is_member -%}
+                  {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5")) -}}
+                {% endif -%}
+                {% if item.is_team_member -%}
+                  {{ badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5")) -}}
+                {% endif -%}
               </div>
             </th>
             {# End group -#}
 
             {# Member since -#}
-            <td class="hidden md:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-44">
+            <td class="hidden lg:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-44 min-w-44">
               {{ item.joined_at.format("%b %d, %Y") }}
             </td>
             {# End member since -#}
 
             {# Role -#}
-            <td class="hidden md:table-cell px-3 xl:px-5 py-4 w-48">
+            <td class="hidden md:table-cell px-3 xl:px-5 py-4 w-48 min-w-48">
               <div class="flex flex-wrap gap-1.5">
                 {% if item.is_member -%}
                   {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5")) -}}
@@ -86,7 +91,7 @@
             {# End role -#}
 
             {# Actions -#}
-            <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
+            <td class="dashboard-table-actions py-4 w-[72px] text-right">
               <details data-actions-menu class="group relative inline-flex justify-end">
                 <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
                          aria-label="Open group actions for {{ item.group.name }}"

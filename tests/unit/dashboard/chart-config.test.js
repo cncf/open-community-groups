@@ -5,7 +5,9 @@ import {
   buildStackedMonthlySeries,
   createHorizontalBarChart,
   createPieChart,
+  createStackedAreaChart,
   createStackedDailyBarChart,
+  createStackedMonthlyChart,
   formatDayAxisLabel,
   getAxisTooltipConfig,
   getDailyLineSymbolConfig,
@@ -79,6 +81,10 @@ describe("dashboard chart config helpers", () => {
     expect(getVerticalBarSeriesStyle(12)).to.deep.equal({
       barMaxWidth: 35,
       barMinWidth: 12,
+      barCategoryGap: "30%",
+    });
+    expect(getVerticalBarSeriesStyle(30)).to.deep.equal({
+      barMaxWidth: 35,
       barCategoryGap: "30%",
     });
     expect(getVerticalBarSeriesStyle(48)).to.deep.equal({
@@ -281,6 +287,9 @@ describe("dashboard chart config helpers", () => {
     expect(countOption.tooltip.formatter({ name: "social", value: 15 })).to.equal("social: 15");
     expect(countOption.xAxis.axisLabel.show).to.equal(true);
 
+    // Assert long category names are truncated next to the default margin.
+    expect(countOption.yAxis.axisLabel).to.include({ fontSize: 12, overflow: "truncate", width: 120 });
+
     // Assert the value axis labels can be hidden when bars are labeled.
     const unlabeledAxisOption = createHorizontalBarChart("Views", data, palette, {
       showValueAxisLabels: false,
@@ -335,6 +344,48 @@ describe("dashboard chart config helpers", () => {
     expect(compact.series[0].center).to.deep.equal(["50%", "54%"]);
     expect(compact.series[0].label.show).to.equal(false);
     expect(compact.series[0].labelLine.show).to.equal(false);
+
+    // Assert compact pies hide overlapping labels and show full legend names on hover.
+    expect(compact.series[0].labelLayout).to.deep.equal({ hideOverlap: true });
+    expect(compact.legend.tooltip.show).to.equal(true);
+    expect(explicit.series[0].labelLayout).to.equal(undefined);
+  });
+
+  it("keeps stacked chart legends on one scrolling row", () => {
+    // Build stacked monthly and area charts with only two series.
+    const monthlyOption = createStackedMonthlyChart(
+      "Groups per month",
+      ["2025-01", "2025-02"],
+      [
+        { name: "Cloud", data: [1, 2] },
+        { name: "Data", data: [3, 4] },
+      ],
+      palette,
+    );
+    const areaOption = createStackedAreaChart(
+      "Groups over time",
+      [
+        {
+          name: "Cloud",
+          data: [
+            [1, 1],
+            [2, 2],
+          ],
+        },
+        {
+          name: "Data",
+          data: [
+            [1, 3],
+            [2, 4],
+          ],
+        },
+      ],
+      palette,
+    );
+
+    // Assert both legends scroll instead of wrapping onto extra rows.
+    expect(monthlyOption.legend.type).to.equal("scroll");
+    expect(areaOption.baseOption.legend.type).to.equal("scroll");
   });
 
   it("places day markers on their UTC day with event timezone tooltips", () => {

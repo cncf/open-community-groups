@@ -1,8 +1,8 @@
-- row "Event With Active CFS Platform Ops Meetup E2E ARIA submitted proposal Not reviewed":
-  - cell "Event With Active CFS Platform Ops Meetup":
+- row "Platform Ops Meetup Event With Active CFS E2E ARIA submitted proposal Not reviewed":
+  - cell "Platform Ops Meetup Event With Active CFS":
+    - text: ""
     - link "Event With Active CFS":
       - /url: /e2e-test-community/group/test-group-alpha/event/alpha-cfs-summit
-    - text: ""
   - cell "E2E ARIA submitted proposal"
   - cell "Not reviewed"
   - cell:

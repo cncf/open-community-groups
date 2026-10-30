@@ -147,6 +147,7 @@ async fn test_list_page_renders_filtered_refund_workflows() {
     );
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("Needs review"));
+    assert!(body.contains("custom-badge badge-warning"));
     assert!(body.contains("Financial work needs attention"));
     assert!(body.contains("Application-fee refund"));
     assert!(body.contains("Stripe application-fee refund ID"));

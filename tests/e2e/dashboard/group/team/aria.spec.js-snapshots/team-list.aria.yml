@@ -11,15 +11,16 @@
       - columnheader "Role"
       - columnheader "Actions"
   - rowgroup:
-    - row "ET E2E Member Three Invitation sent e2e-member-3 - Viewer":
-      - cell "ET E2E Member Three Invitation sent e2e-member-3"
+    - row "ET E2E Member Three e2e-member-3 - Viewer Invitation sent":
+      - cell "ET E2E Member Three e2e-member-3"
       - cell "-"
-      - cell "Viewer":
+      - cell "Viewer Invitation sent":
         - combobox "Role":
           - option "Admin"
           - option "Check-In Manager"
           - option "Events Manager"
           - option "Viewer" [selected]
+        - text: ""
       - cell:
         - group
     - row "EO E2E Organizer One e2e-organizer-1 - Admin":

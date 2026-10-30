@@ -142,6 +142,70 @@ describe("dashboard macros template", () => {
     expect(template).to.include('<span class="block space-y-2 px-3 py-3">{{ caller() }}</span>');
   });
 
+  it("renders tooltip badge triggers with tooltip semantics", async () => {
+    // Load and isolate the tooltip badge trigger macro.
+    const template = normalizeWhitespace(await loadTemplate());
+    const macro = template.slice(
+      template.indexOf("{% macro tooltip_badge_trigger("),
+      template.indexOf("{% endmacro tooltip_badge_trigger"),
+    );
+
+    // Verify the signature and that the caller body is captured before the nested panel call.
+    expect(macro).to.include(
+      'macro tooltip_badge_trigger(tooltip_id, title, label, tone = "neutral", dot_tone = "", aria_label = "", currency = false, width_classes = "w-64", alignment_classes = "start-1/2 -translate-x-1/2")',
+    );
+    expect(macro).to.include("{% let body = caller -%}");
+    expect(macro).to.include("{{ body() }}");
+    expect(macro).to.include("{% call tooltip_panel( id = tooltip_id, title = title,");
+    expect(macro).to.include("width_classes = width_classes, alignment_classes = alignment_classes");
+
+    // Verify the trigger describes the panel, keeps an optional name, and only marks currency badges.
+    expect(macro).to.include('aria-describedby="{{ tooltip_id }}"');
+    expect(macro).to.include('{% if !aria_label.is_empty() %}aria-label="{{ aria_label }}"{% endif %}');
+    expect(macro).to.include("{% if currency %}data-localized-currency{% endif %}");
+    expect(macro).not.to.include("aria-expanded");
+    expect(macro).not.to.include("aria-controls");
+
+    // Verify the hover bridge covers the gap between the trigger and the panel.
+    expect(macro).to.include("before:-inset-y-1");
+
+    // Verify the dot defaults to the badge tone and maps every tone to a literal class.
+    expect(macro).to.include(
+      "{% let dot -%}{% if dot_tone.is_empty() %}{{ tone }}{% else %}{{ dot_tone }}{% endif %}{%- endlet -%}",
+    );
+    expect(macro).to.include(
+      '{% if dot == "danger" %}bg-red-800{% else if dot == "success" %}bg-green-800{% else if dot == "warning" %}bg-amber-800{% else if dot == "pending" %}bg-yellow-800{% else %}bg-stone-500{% endif %}',
+    );
+  });
+
+  it("summarizes event labels as one chip or a labels tooltip", async () => {
+    // Load and isolate the labels summary macro.
+    const template = normalizeWhitespace(await loadTemplate());
+    const macro = template.slice(
+      template.indexOf("{% macro labels_summary("),
+      template.indexOf("{% endmacro labels_summary"),
+    );
+
+    // Verify the macro shares the badge macros.
+    expect(template).to.include('{% import "macros/badges.html" as badges -%}');
+    expect(macro).to.include("macro labels_summary(labels, tooltip_id)");
+
+    // Verify several labels render a count trigger with the caller's tooltip id.
+    expect(macro).to.include("{% let count_label -%}{{ labels.len() }} labels{%- endlet -%}");
+    expect(macro).to.include("{% if labels.len() > 1 -%}");
+    expect(macro).to.include(
+      '{% call tooltip_badge_trigger(tooltip_id = tooltip_id, title = "Labels", label = count_label, tone = "neutral") -%}',
+    );
+    expect(macro).to.include(
+      '{{ badges::label_chip(name = &label.name, color = &label.color, extra_styles = Some("max-w-full whitespace-normal text-wrap break-words")) -}}',
+    );
+
+    // Verify a single label renders its chip without a trigger.
+    expect(macro).to.include(
+      "{% else -%} {% for label in labels -%} {{ badges::label_chip(name = &label.name, color = &label.color) -}}",
+    );
+  });
+
   it("renders an optional selectable id beside title descriptions", async () => {
     // Load the dashboard macros template before checking title id slots.
     const template = normalizeWhitespace(await loadTemplate());
