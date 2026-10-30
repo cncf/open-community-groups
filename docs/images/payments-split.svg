@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 410" role="img" aria-labelledby="title desc" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title id="title">How ticket payments are split</title>
+  <desc id="desc">An attendee pays a 100 dollar ticket. Stripe Checkout splits the payment at payment time: the fiscal sponsor Stripe account receives 90 dollars plus any tax collected, and the OCG (Linux Foundation) Stripe account receives only the 10 dollar platform fee. The OCG Stripe account never receives the full ticket price.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#78716c"/>
+    </marker>
+  </defs>
+
+  <rect width="860" height="410" fill="#fff"/>
+
+  <!-- Attendee -->
+  <rect x="20" y="145" width="170" height="120" rx="12" fill="#fff" stroke="#d6d3d1" stroke-width="1.5"/>
+  <text x="105" y="183" text-anchor="middle" font-size="15" font-weight="700" fill="#1c1917">Attendee</text>
+  <text x="105" y="222" text-anchor="middle" font-size="28" font-weight="700" fill="#1c1917">$100</text>
+  <text x="105" y="248" text-anchor="middle" font-size="12" fill="#57534e">ticket price, before tax</text>
+
+  <path d="M190 205 L244 205" stroke="#78716c" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Stripe Checkout -->
+  <rect x="250" y="145" width="200" height="120" rx="12" fill="#fff" stroke="#d6d3d1" stroke-width="1.5"/>
+  <text x="350" y="183" text-anchor="middle" font-size="15" font-weight="700" fill="#1c1917">Stripe Checkout</text>
+  <text x="350" y="208" text-anchor="middle" font-size="13" fill="#57534e">Splits the payment</text>
+  <text x="350" y="226" text-anchor="middle" font-size="13" fill="#57534e">at payment time</text>
+  <rect x="280" y="240" width="126" height="8" rx="2" fill="#005999"/>
+  <rect x="406" y="240" width="14" height="8" rx="2" fill="#a8a29e"/>
+
+  <path d="M450 190 C492 190 488 105 524 105" stroke="#78716c" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M450 220 C492 220 488 280 524 280" stroke="#78716c" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Fiscal sponsor -->
+  <rect x="530" y="30" width="310" height="150" rx="12" fill="#005999"/>
+  <text x="685" y="62" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">Fiscal sponsor Stripe account</text>
+  <text x="685" y="112" text-anchor="middle" font-size="36" font-weight="700" fill="#fff">$90 <tspan font-size="16" font-weight="600" fill="#D6EBFF">(90%)</tspan></text>
+  <text x="685" y="142" text-anchor="middle" font-size="13" fill="#D6EBFF">Ticket price minus platform fee,</text>
+  <text x="685" y="161" text-anchor="middle" font-size="13" fill="#D6EBFF">plus any tax collected</text>
+
+  <!-- OCG platform -->
+  <rect x="530" y="220" width="310" height="120" rx="12" fill="#f5f5f4" stroke="#a8a29e" stroke-width="1.5"/>
+  <text x="685" y="252" text-anchor="middle" font-size="14" font-weight="700" fill="#1c1917">OCG (Linux Foundation) Stripe account</text>
+  <text x="685" y="294" text-anchor="middle" font-size="30" font-weight="700" fill="#1c1917">$10 <tspan font-size="16" font-weight="600" fill="#57534e">(10%)</tspan></text>
+  <text x="685" y="322" text-anchor="middle" font-size="13" fill="#57534e">Platform fee only</text>
+
+  <!-- Key point -->
+  <rect x="20" y="362" width="820" height="34" rx="8" fill="#EBF5FF" stroke="#ADD6FF"/>
+  <text x="430" y="384" text-anchor="middle" font-size="14" font-weight="600" fill="#003778">The OCG Stripe account never receives the full ticket price.</text>
+</svg>

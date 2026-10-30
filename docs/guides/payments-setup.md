@@ -5,6 +5,14 @@
 Use this guide when your group wants to configure ticket prices that may require
 payment in OCG. Events with only free ticket types do not require Stripe.
 
+!> **How ticket payments are split.** Stripe splits every paid ticket at
+payment time between two Stripe accounts. The group's fiscal sponsor Stripe
+account receives the payment minus the platform fee. The OCG (Linux
+Foundation) Stripe account receives only the platform fee, currently 10% of the
+price excluding tax, and never receives the full ticket price.
+
+![How ticket payments are split between the fiscal sponsor and OCG Stripe accounts](../images/payments-split.svg)
+
 In OCG, a group is ready for paid events through Stripe only when both of these
 are true:
 
