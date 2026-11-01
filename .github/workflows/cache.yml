@@ -35,7 +35,7 @@ jobs:
       labels: ubuntu-latest-16-cores
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -58,7 +58,7 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -80,7 +80,7 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: 0
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -104,9 +104,9 @@ jobs:
         browsers: [chromium, firefox, webkit]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -116,7 +116,7 @@ jobs:
         run: npm ci
       - name: Restore Playwright browsers cache
         id: playwright-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ matrix.browsers }}-${{ hashFiles('tests/e2e/package-lock.json') }}

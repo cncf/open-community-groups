@@ -30,7 +30,7 @@ jobs:
     steps:
       - name: Determine changed paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             database:
@@ -89,7 +89,7 @@ jobs:
       labels: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -106,7 +106,7 @@ jobs:
       labels: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Run prettier
         uses: creyD/prettier_action@v4.6
         with:
@@ -121,7 +121,7 @@ jobs:
       labels: ubuntu-latest-16-cores
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -145,9 +145,9 @@ jobs:
       labels: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Run markdownlint
-        uses: DavidAnson/markdownlint-cli2-action@v22
+        uses: DavidAnson/markdownlint-cli2-action@v25
         with:
           globs: 'docs/**/*.md'
 
@@ -158,7 +158,7 @@ jobs:
       labels: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install djlint
         run: pip install djlint==1.45.2 click==8.4.2
       - name: Run djlint
@@ -178,7 +178,7 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -212,7 +212,7 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Run database lint
         run: sh database/scripts/lint.sh
       - name: Apply database migrations
@@ -249,7 +249,7 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       # Mirrors `just db-migration-tests`: for each seed file, migrate a fresh
       # database to the schema before the migration, load the seed, migrate the
       # rest plus the functions, and run the matching pgTAP test.
@@ -306,7 +306,7 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -351,9 +351,9 @@ jobs:
       labels: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
