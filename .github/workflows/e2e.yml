@@ -26,7 +26,7 @@ jobs:
       - name: Determine changed paths
         if: github.event_name == 'pull_request'
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             e2e:
@@ -59,7 +59,7 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: 0
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
@@ -78,7 +78,7 @@ jobs:
         run: cargo build --bin ocg-server
 
       - name: Upload e2e server binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ocg-server-e2e
           # Debug builds do not embed static assets (rust-embed reads dist/static from disk at
@@ -169,10 +169,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -184,7 +184,7 @@ jobs:
 
       - name: Restore Playwright browsers cache
         id: playwright-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           # Keep the key and install flags in sync with cache.yml, which warms this cache on main.
@@ -211,7 +211,7 @@ jobs:
         run: just e2e-db-reset
 
       - name: Download e2e server binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ocg-server-e2e
           # The artifact root is the repository root; restores target/debug/ocg-server and
@@ -224,7 +224,7 @@ jobs:
           ls ocg-server/dist/static/css/*.css >/dev/null
 
       - name: Start server and wait for it to be ready
-        uses: JarvusInnovations/background-action@v1
+        uses: JarvusInnovations/background-action@v2
         with:
           run: just e2e-server-binary &
           wait-on: http://127.0.0.1:9001/health-check
@@ -237,7 +237,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact_name }}
           path: |
