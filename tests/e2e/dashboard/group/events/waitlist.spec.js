@@ -13,6 +13,7 @@ import {
   TEST_WAITLIST_INVITE_EVENT,
 } from "../../../seed.js";
 import {
+  clickTableFilterOption,
   confirmAlert,
   dismissAlert,
   expectCurrentPaginationNavigation,
@@ -311,11 +312,14 @@ test.describe("group dashboard waitlist tab", () => {
     await expect(waitlistRow).toBeVisible();
 
     // Apply the title-present table filter while preserving the sort.
-    await waitlistContent.getByLabel("Position filters").click();
     await waitForActionResponse(
       organizerGroupPage,
       () =>
-        waitlistContent.locator('#waitlist-position-filter button[name="title"][value="present"]').click(),
+        clickTableFilterOption(
+          waitlistContent,
+          "Position filters",
+          waitlistContent.locator('#waitlist-position-filter button[name="title"][value="present"]'),
+        ),
       {
         method: "GET",
         params: { sort: "name-desc", title: "present" },

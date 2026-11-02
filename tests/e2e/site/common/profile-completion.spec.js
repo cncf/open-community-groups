@@ -71,7 +71,9 @@ const expectNoLoginPrompt = async (page, profileComplete) => {
     "data-profile-complete",
     profileComplete,
   );
-  expect(await page.evaluate((key) => sessionStorage.getItem(key), LOGIN_PROMPT_STORAGE_KEY)).toBeNull();
+  await expect
+    .poll(() => page.evaluate((key) => sessionStorage.getItem(key), LOGIN_PROMPT_STORAGE_KEY))
+    .toBeNull();
   await expect(page.locator(".swal2-popup")).toHaveCount(0);
 };
 

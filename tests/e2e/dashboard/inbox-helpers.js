@@ -1,5 +1,5 @@
 import { expect } from "../fixtures.js";
-import { waitForActionResponse } from "../utils.js";
+import { clickTableFilterOption, waitForActionResponse } from "../utils.js";
 
 /**
  * Verifies the inbox status filter of a dashboard inbox already loaded on the page: the menu
@@ -36,7 +36,7 @@ export const expectInboxStatusFilter = async (
   );
 
   // Apply the status and verify the request and the pushed dashboard URL
-  await applyStatus(page, menu, listPath, status);
+  await applyStatus(page, list, listPath, status);
 
   // Verify only rows with the status remain, under the active status chip
   await expect(matchingRow).toBeVisible();
@@ -54,8 +54,7 @@ export const expectInboxStatusFilter = async (
   await expect(otherRow).toBeVisible();
 
   // Apply the status again and remove it with "Reset all"
-  await list.getByLabel("Status filters").click();
-  await applyStatus(page, menu, listPath, status);
+  await applyStatus(page, list, listPath, status);
   await expect(otherRow).toHaveCount(0);
   await resetStatus(page, listPath, () => activeFilters.getByRole("button", { name: "Reset all" }).click());
   await expect(otherRow).toBeVisible();
@@ -64,17 +63,23 @@ export const expectInboxStatusFilter = async (
 // Helpers.
 
 /**
- * Applies one status from the open status menu and verifies the request and the pushed URL.
+ * Applies one status from the status menu, opening it when closed, and verifies the request and
+ * the pushed URL.
  * @param {import("@playwright/test").Page} page - Page showing the inbox list.
- * @param {import("@playwright/test").Locator} menu - Open status menu.
+ * @param {import("@playwright/test").Locator} list - Inbox list that contains the status menu.
  * @param {string} listPath - Inbox list partial path.
  * @param {{ label: string, value: string }} status - Status to apply.
  * @returns {Promise<void>}
  */
-const applyStatus = async (page, menu, listPath, status) => {
+const applyStatus = async (page, list, listPath, status) => {
   await waitForActionResponse(
     page,
-    () => menu.getByRole("button", { name: status.label, exact: true }).click(),
+    () =>
+      clickTableFilterOption(
+        list,
+        "Status filters",
+        list.locator("#inbox-status-filter-options").getByRole("button", { name: status.label, exact: true }),
+      ),
     {
       method: "GET",
       params: { status: status.value },

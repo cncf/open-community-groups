@@ -1,4 +1,4 @@
-import { createPreparedPage, expect, test } from "../../fixtures.js";
+import { expect, test } from "../../fixtures.js";
 import { queryE2eDatabase } from "../../database.js";
 import { TEST_USER_CREDENTIALS } from "../../seed.js";
 import { buildE2eUrl, logInWithSeededUser, navigateToPath } from "../../utils.js";
@@ -59,7 +59,7 @@ test.describe("session expiry", () => {
     }
   });
 
-  test("cached fixture sessions are refreshed after expiry", async ({ browser, emptyUserPage }) => {
+  test("cached fixture sessions are refreshed after expiry", async ({ emptyUserPage, pageAs }) => {
     // Expire the session behind the cached fixture storage state.
     await expireSession(emptyUserPage.context());
 
@@ -69,24 +69,19 @@ test.describe("session expiry", () => {
     expect(probe.status()).toBeLessThan(400);
     expect(probe.headers().location).toContain("/log-in");
 
-    // Open a new page from the same cache entry; the name must match the fixture's cache key.
-    const preparedPage = await createPreparedPage(browser, "emptyUserPage", TEST_USER_CREDENTIALS.empty);
+    // Open a new page from the same fixture's cached session.
+    const refreshedPage = await pageAs("emptyUserPage");
 
-    try {
-      // Verify the stale cached session was replaced by a fresh login.
-      const refreshedProbe = await preparedPage.page.request.get(buildE2eUrl("/dashboard/user"), {
-        maxRedirects: 0,
-      });
-      expect(refreshedProbe.status()).toBe(200);
+    // Verify the stale cached session was replaced by a fresh login.
+    const refreshedProbe = await refreshedPage.request.get(buildE2eUrl("/dashboard/user"), {
+      maxRedirects: 0,
+    });
+    expect(refreshedProbe.status()).toBe(200);
 
-      // Load the dashboard with the refreshed session.
-      await navigateToPath(preparedPage.page, "/dashboard/user");
-      await expect(preparedPage.page).toHaveURL(/\/dashboard\/user/);
-      await expect(preparedPage.page.locator("#dashboard-content")).toBeVisible();
-    } finally {
-      // Close the refreshed page and its context.
-      await preparedPage.close();
-    }
+    // Load the dashboard with the refreshed session.
+    await navigateToPath(refreshedPage, "/dashboard/user");
+    await expect(refreshedPage).toHaveURL(/\/dashboard\/user/);
+    await expect(refreshedPage.locator("#dashboard-content")).toBeVisible();
   });
 });
 

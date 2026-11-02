@@ -9,7 +9,7 @@ import {
   TEST_INBOX_CONVERSATION,
   TEST_USER_IDS,
 } from "../../../seed.js";
-import { navigateToPath, uniqueName, waitForActionResponse } from "../../../utils.js";
+import { clickTableFilterOption, navigateToPath, uniqueName, waitForActionResponse } from "../../../utils.js";
 import { expectInboxStatusFilter } from "../../inbox-helpers.js";
 
 const INBOX_PATH = "/dashboard/user?tab=inbox";
@@ -53,14 +53,14 @@ test.describe("user dashboard inbox view", () => {
 
     // Filter by answered status, which the member has no conversations with
     const list = member1Page.locator("[data-inbox-list]");
-    await list.getByLabel("Status filters").click();
     await waitForActionResponse(
       member1Page,
       () =>
-        list
-          .locator("#inbox-status-filter-options")
-          .getByRole("button", { name: "Answered", exact: true })
-          .click(),
+        clickTableFilterOption(
+          list,
+          "Status filters",
+          list.locator("#inbox-status-filter-options").getByRole("button", { name: "Answered", exact: true }),
+        ),
       { method: "GET", params: { status: "answered" }, pathname: LIST_PATH, status: 200 },
     );
 

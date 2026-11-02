@@ -194,6 +194,12 @@ export const TEST_GROUP_CATEGORY_IDS = {
   unused: "22222222-2222-2222-2222-222222222223",
 };
 
+/** Region ids (10_catalog.sql); apac has no groups. */
+export const TEST_REGION_IDS = {
+  apac: "22222222-2222-2222-2222-222222222302",
+  northAmerica: "22222222-2222-2222-2222-222222222301",
+};
+
 /** Group names (20_groups.sql). */
 export const TEST_GROUP_NAMES = {
   alpha: "Platform Ops Meetup",

@@ -7,6 +7,10 @@ const NAVIGATION_RETRY_ATTEMPTS = 3;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
 const HTMX_SETTLE_TIMEOUT_MS = 10_000;
 const ACTION_RESPONSE_BODY_PREVIEW_CHARS = 2_000;
+// Total time to open a table filter menu and click one of its options.
+const TABLE_FILTER_MENU_TIMEOUT_MS = 10_000;
+// Wait for a table filter option before reopening its menu and trying again.
+const TABLE_FILTER_OPTION_TIMEOUT_MS = 2_000;
 
 /** Builds an absolute E2E URL for a relative path. */
 const buildUrl = (path) => new URL(path, BASE_URL).toString();
@@ -500,6 +504,28 @@ export const dismissAlertIfPresent = async (page, { button, timeout = 1000 }) =>
   await popup.getByRole("button", { name: button, exact: true }).click();
   await expect(popup).toBeHidden();
   return true;
+};
+
+/**
+ * Clicks an option of a dashboard table filter menu, opening the menu first when it is closed.
+ * An HTMX swap can replace the menu with a closed one, or close it, between the summary click and
+ * the option click, so the menu is reopened and the option click retried until it lands. A click
+ * that times out is never dispatched, so retries do not send duplicate requests.
+ * @param {import("@playwright/test").Locator} scope - Region that contains the filter menu.
+ * @param {string} label - Accessible name of the menu summary, such as "Status filters".
+ * @param {import("@playwright/test").Locator} option - Option button inside the menu.
+ * @returns {Promise<void>}
+ */
+export const clickTableFilterOption = async (scope, label, option) => {
+  const summary = scope.getByLabel(label);
+  const menu = summary.locator("xpath=..");
+
+  await expect(async () => {
+    if (!(await menu.evaluate((details) => details.open))) {
+      await summary.click();
+    }
+    await option.click({ timeout: TABLE_FILTER_OPTION_TIMEOUT_MS });
+  }).toPass({ intervals: [0], timeout: TABLE_FILTER_MENU_TIMEOUT_MS });
 };
 
 /** Verifies the ordered, user-facing column names for a table. */

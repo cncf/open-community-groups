@@ -30,6 +30,7 @@ import {
 import { getAttendButton, waitForAttendanceState } from "../../../site/event/helpers.js";
 import {
   buildE2eUrl,
+  clickTableFilterOption,
   confirmAlert,
   expectCurrentPaginationNavigation,
   navigateToEvent,
@@ -159,14 +160,16 @@ test.describe("group dashboard requests tab", () => {
       await expect(requestRow).toBeVisible();
 
       // Filter by pending status and verify the empty state names the filter.
-      await requestsContent.getByLabel("Status filters").click();
       await waitForActionResponse(
         organizerGroupPage,
         () =>
-          requestsContent
-            .locator("#invitation-requests-status-filter")
-            .getByRole("button", { name: "Pending", exact: true })
-            .click(),
+          clickTableFilterOption(
+            requestsContent,
+            "Status filters",
+            requestsContent
+              .locator("#invitation-requests-status-filter")
+              .getByRole("button", { name: "Pending", exact: true }),
+          ),
         {
           method: "GET",
           urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/invitation-requests`,
@@ -190,14 +193,16 @@ test.describe("group dashboard requests tab", () => {
       await expect(requestRow).toContainText("Rejected");
 
       // Filter by accepted status and verify the empty state names that filter.
-      await requestsContent.getByLabel("Status filters").click();
       await waitForActionResponse(
         organizerGroupPage,
         () =>
-          requestsContent
-            .locator("#invitation-requests-status-filter")
-            .getByRole("button", { name: "Accepted", exact: true })
-            .click(),
+          clickTableFilterOption(
+            requestsContent,
+            "Status filters",
+            requestsContent
+              .locator("#invitation-requests-status-filter")
+              .getByRole("button", { name: "Accepted", exact: true }),
+          ),
         {
           method: "GET",
           urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/invitation-requests`,
@@ -420,14 +425,16 @@ test.describe("group dashboard requests tab", () => {
     await expect(requestsContent.locator("tr", { hasText: "E2E Pending Two" })).toBeVisible();
 
     // Filter by rejected status and verify the empty state names that filter.
-    await requestsContent.getByLabel("Status filters").click();
     await waitForActionResponse(
       organizerGroupPage,
       () =>
-        requestsContent
-          .locator("#invitation-requests-status-filter")
-          .getByRole("button", { name: "Rejected", exact: true })
-          .click(),
+        clickTableFilterOption(
+          requestsContent,
+          "Status filters",
+          requestsContent
+            .locator("#invitation-requests-status-filter")
+            .getByRole("button", { name: "Rejected", exact: true }),
+        ),
       {
         method: "GET",
         params: { sort: "name-desc", status: "rejected" },
@@ -630,14 +637,16 @@ test.describe("group dashboard requests tab", () => {
     await expect(acceptedRow).toHaveCount(0);
 
     // Verify the rejected filter no longer lists the superseded rejection.
-    await requestsContent.getByLabel("Status filters").click();
     await waitForActionResponse(
       organizerGroupPage,
       () =>
-        requestsContent
-          .locator("#invitation-requests-status-filter")
-          .getByRole("button", { name: "Rejected", exact: true })
-          .click(),
+        clickTableFilterOption(
+          requestsContent,
+          "Status filters",
+          requestsContent
+            .locator("#invitation-requests-status-filter")
+            .getByRole("button", { name: "Rejected", exact: true }),
+        ),
       {
         method: "GET",
         params: { status: "rejected" },
@@ -1509,14 +1518,16 @@ const saveAttendeeApprovalRequired = async (page, eventId, required) => {
 
 /** Switches the Requests tab to all statuses so reviewed requests are listed. */
 const showAllInvitationRequests = async (page, requestsContent, eventId) => {
-  await requestsContent.getByLabel("Status filters").click();
   await waitForActionResponse(
     page,
     () =>
-      requestsContent
-        .locator("#invitation-requests-status-filter")
-        .getByRole("button", { name: "All", exact: true })
-        .click(),
+      clickTableFilterOption(
+        requestsContent,
+        "Status filters",
+        requestsContent
+          .locator("#invitation-requests-status-filter")
+          .getByRole("button", { name: "All", exact: true }),
+      ),
     {
       method: "GET",
       params: { status: "all" },

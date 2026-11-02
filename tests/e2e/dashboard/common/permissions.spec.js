@@ -34,6 +34,7 @@ import {
   TEST_GROUP_NAMES,
   TEST_INBOX_CONVERSATION,
   TEST_PAYMENT_EVENT_IDS,
+  TEST_REGION_IDS,
   TEST_USER_IDS,
 } from "../../seed.js";
 import {
@@ -50,9 +51,9 @@ const PRIMARY_COMMUNITY_ID = TEST_COMMUNITY_IDS.community1;
 
 const PRIMARY_GROUP_ID = TEST_GROUP_IDS.community1.alpha;
 
-// Seeded primary community region and primary group sponsor (10_catalog.sql, 50_membership_cfs.sql).
-const PRIMARY_REGION_ID = "22222222-2222-2222-2222-222222222301";
+const PRIMARY_REGION_ID = TEST_REGION_IDS.northAmerica;
 
+// Seeded primary group sponsor (50_membership_cfs.sql).
 const PRIMARY_SPONSOR_ID = "66666666-6666-6666-6666-666666666601";
 
 const COMMUNITY_ROLES = {

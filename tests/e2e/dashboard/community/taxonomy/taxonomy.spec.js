@@ -2,7 +2,7 @@ import { expect, test } from "../../../fixtures.js";
 import { queryE2eDatabase, sqlTextArray } from "../../../database.js";
 import { confirmAlert, navigateToPath, uniqueName, waitForActionResponse } from "../../../utils.js";
 import { waitForCommunityDashboardMutation } from "../helpers.js";
-import { TEST_EVENT_CATEGORY_IDS, TEST_GROUP_CATEGORY_IDS } from "../../../seed.js";
+import { TEST_EVENT_CATEGORY_IDS, TEST_GROUP_CATEGORY_IDS, TEST_REGION_IDS } from "../../../seed.js";
 
 const READ_ONLY_TAXONOMY_ROLES = [
   { fixture: "communityViewerPage", label: "community viewer" },
@@ -76,8 +76,8 @@ const taxonomyCases = [
     tableName: "region",
     tableSelector: "#regions-list",
     updateButton: "Update Region",
-    unusedDeleteId: "delete-region-22222222-2222-2222-2222-222222222302",
-    usedDeleteId: "delete-region-22222222-2222-2222-2222-222222222301",
+    unusedDeleteId: `delete-region-${TEST_REGION_IDS.apac}`,
+    usedDeleteId: `delete-region-${TEST_REGION_IDS.northAmerica}`,
   },
 ];
 

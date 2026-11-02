@@ -647,8 +647,9 @@ rewritten.
   the `pageAs` fixture: `await pageAs("organizerGroupPage")` opens that
   authenticated page fixture by name, reusing its cached session, and closes
   it after the test. Only use it for cases that differ by fixture, not by
-  body. A cache miss logs in inside the test, so the login counts against the
-  test timeout.
+  body, or to open a second page of a fixture the test already uses. A
+  cache miss logs in inside the test, so the login counts against the test
+  timeout.
 - The automatic `browserHealth` fixture watches every browser context a test
   uses through fixtures (`context`, `page`, authenticated page fixtures and
   `pageAs`) for uncaught page errors (`weberror`) and same-origin responses

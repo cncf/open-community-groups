@@ -230,7 +230,7 @@ const createBrowserHealthMonitor = () => {
  * Creates an authenticated page, re-logging in when the cached session is no longer valid. Must run
  * inside a test, since its contexts (login included) go through `trackContext`.
  */
-export const createPreparedPage = async (browser, fixtureName, credentials, preparePage) => {
+const createPreparedPage = async (browser, fixtureName, credentials, preparePage) => {
   const testInfo = base.info();
   let storageState = await getStorageState(browser, fixtureName, credentials, testInfo);
   let context = await browser.newContext({ storageState });

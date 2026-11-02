@@ -8,6 +8,7 @@ import {
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
+  TEST_REGION_IDS,
 } from "../../../seed.js";
 import {
   confirmAlert,
@@ -243,7 +244,7 @@ test.describe("community dashboard groups view", () => {
       // Fill required child group details and select its parent.
       await adminCommunityPage.getByLabel("Name").fill(groupName);
       await adminCommunityPage.getByLabel("Category").selectOption(TEST_GROUP_CATEGORY_IDS.one);
-      await adminCommunityPage.getByLabel("Region").selectOption("22222222-2222-2222-2222-222222222301");
+      await adminCommunityPage.getByLabel("Region").selectOption(TEST_REGION_IDS.northAmerica);
       await adminCommunityPage.locator("#parent_group_id").selectOption(TEST_GROUP_IDS.community1.alpha);
       await adminCommunityPage
         .getByLabel("Short Description")
@@ -362,7 +363,7 @@ test.describe("community dashboard groups view", () => {
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
       longitude: "2.1686",
       name: initialGroupName,
-      regionId: "22222222-2222-2222-2222-222222222301",
+      regionId: TEST_REGION_IDS.northAmerica,
       slackUrl: "https://e2e-community-group-initial.slack.com",
       state: "Catalonia",
       tags: ["platform", "observability"],
@@ -395,7 +396,7 @@ test.describe("community dashboard groups view", () => {
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
       longitude: "-3.7038",
       name: updatedGroupName,
-      regionId: "22222222-2222-2222-2222-222222222301",
+      regionId: TEST_REGION_IDS.northAmerica,
       slackUrl: "https://e2e-community-group-updated.slack.com",
       slugPretty: updatedGroupName.toLowerCase().replace(/\s+/g, "-"),
       state: "Community of Madrid",
