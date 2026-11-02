@@ -1,37 +1,7 @@
-import {
-  bindModalDismissListeners,
-  setModalCloseCleanup,
-  toggleModalVisibility,
-  trapModalFocus,
-} from "/static/js/common/modals/modal-lifecycle.js";
+import { bindOpenModalKeyboard, toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { closestElement, getElementById, isElementHidden } from "/static/js/common/dom.js";
 
 const modalToggleSelector = "[data-modal-toggle]";
-
-/**
- * Binds Escape and Tab handling for a modal opened after an HTMX swap. Keys
- * already handled by a nested control, such as Escape closing a dropdown, are
- * left alone. The listeners are removed by the modal close cleanup on every
- * close path.
- * @param {Element} modal Open modal element.
- * @returns {void}
- */
-const bindOpenModalKeyboard = (modal) => {
-  const removeDismissListeners = bindModalDismissListeners({
-    onKeydown: (event) => {
-      if (event.defaultPrevented) {
-        return;
-      }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        toggleModalVisibility(modal);
-        return;
-      }
-      trapModalFocus(event, modal);
-    },
-  });
-  setModalCloseCleanup(modal, removeDismissListeners);
-};
 
 /**
  * Opens the modal named by data-modal-open-on-swap when HTMX swaps content

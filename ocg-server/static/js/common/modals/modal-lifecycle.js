@@ -275,6 +275,30 @@ export const bindModalDismissListeners = ({ onKeydown, onOutsideClick, target = 
 };
 
 /**
+ * Binds Escape and Tab handling for an open modal. Keys already handled by a
+ * nested control, such as Escape closing a dropdown, are left alone. The
+ * listeners are removed by the modal close cleanup on every close path.
+ * @param {Element} modal Open modal element.
+ * @returns {void}
+ */
+export const bindOpenModalKeyboard = (modal) => {
+  const removeDismissListeners = bindModalDismissListeners({
+    onKeydown: (event) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        toggleModalVisibility(modal);
+        return;
+      }
+      trapModalFocus(event, modal);
+    },
+  });
+  setModalCloseCleanup(modal, removeDismissListeners);
+};
+
+/**
  * Binds the same click handler to modal controls that may or may not exist.
  * @param {Array<Element|null|undefined>} controls Modal controls.
  * @param {(event: MouseEvent) => void} handler Click handler.

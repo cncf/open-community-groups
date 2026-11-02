@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import { initializeMapModals } from "/static/js/common/modals/map-modal.js";
+import { resetRestoredModalState } from "/static/js/common/modals/modal-lifecycle.js";
 import {
   waitForAnimationFrames,
   waitForMicrotask,
@@ -32,7 +33,13 @@ describe("map modal", () => {
         data-trigger-id="event-map-trigger"
       ></div>
       <button id="event-map-trigger" type="button"></button>
-      <div id="event-map-modal" class="hidden">
+      <div
+        id="event-map-modal"
+        class="hidden"
+        aria-hidden="true"
+        aria-modal="true"
+        role="dialog"
+      >
         <button id="close-event-map-modal"></button>
         <div id="backdrop-event-map-modal"></div>
         <div id="event-map-modal-map"></div>
@@ -41,6 +48,8 @@ describe("map modal", () => {
   });
 
   afterEach(() => {
+    // Close open modals so their keyboard listeners do not leak into other tests.
+    resetRestoredModalState(document);
     mapLibre.restore();
     swal.restore();
     resetDom();
@@ -138,6 +147,33 @@ describe("map modal", () => {
     expect(swal.calls).to.have.length(2);
   });
 
+  it("traps Tab and closes with Escape, returning focus to the trigger", async () => {
+    // Open the modal from its trigger.
+    initializeMapModals();
+    await waitForMicrotask();
+    const modal = document.getElementById("event-map-modal");
+    const trigger = document.getElementById("event-map-trigger");
+    trigger.focus();
+    trigger.click();
+    expect(document.activeElement?.id).to.equal("close-event-map-modal");
+
+    // Tab from the only focusable control stays inside the modal.
+    const tab = pressKey("Tab");
+    expect(tab.defaultPrevented).to.equal(true);
+    expect(document.activeElement?.id).to.equal("close-event-map-modal");
+
+    // Escape closes the modal and returns focus to the trigger.
+    const escape = pressKey("Escape");
+    expect(escape.defaultPrevented).to.equal(true);
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(modal.getAttribute("aria-hidden")).to.equal("true");
+    expect(document.activeElement).to.equal(trigger);
+
+    // A later Escape no longer reaches the closed modal.
+    pressKey("Escape");
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
   it("skips map modals without a trigger", async () => {
     // Remove the trigger the modal opens from.
     document.getElementById("event-map-trigger").remove();
@@ -151,3 +187,20 @@ describe("map modal", () => {
     );
   });
 });
+
+// Helpers.
+
+/**
+ * Dispatches a keydown event on the document.
+ * @param {string} key Keyboard key.
+ * @returns {KeyboardEvent} Dispatched event.
+ */
+const pressKey = (key) => {
+  const event = new KeyboardEvent("keydown", {
+    bubbles: true,
+    cancelable: true,
+    key,
+  });
+  document.dispatchEvent(event);
+  return event;
+};

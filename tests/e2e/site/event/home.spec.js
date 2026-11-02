@@ -355,9 +355,8 @@ test.describe("event page", () => {
       const closeButton = page.locator("#close-event-map-modal");
       await expect(closeButton).toBeFocused();
 
-      // The map modal does not bind Escape, so close it with the focused
-      // close button and verify focus returns to the map trigger.
-      await closeButton.press("Enter");
+      // Close the modal with Escape and verify focus returns to the map trigger.
+      await page.keyboard.press("Escape");
       await expect(mapModal).toBeHidden();
       await expect(mapButton).toBeFocused();
     });
