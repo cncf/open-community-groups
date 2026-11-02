@@ -979,6 +979,56 @@ describe("event attendance", () => {
     ).to.equal(true);
   });
 
+  it("lets manually invited users attend after the registration window closes", () => {
+    // Render an approval-required fixture after the registration window closed.
+    const { checker, attendButton } = renderAttendanceDom({
+      attendeeApprovalRequired: "true",
+      registrationWindowOpen: "false",
+      registrationWindowUnavailableTitle: "Registration closed May 1, 2099.",
+    });
+
+    // Dispatch an approved invitation created manually by an organizer.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        manually_invited: true,
+        status: "invitation-approved",
+      }),
+    });
+
+    // Verify the attend button stays enabled outside the registration window.
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(false);
+    expect(attendButton.hasAttribute("title")).to.equal(false);
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Attend event");
+  });
+
+  it("disables approved invitation attendance after the registration window closes", () => {
+    // Render an approval-required fixture after the registration window closed.
+    const { checker, attendButton } = renderAttendanceDom({
+      attendeeApprovalRequired: "true",
+      registrationWindowOpen: "false",
+      registrationWindowUnavailableTitle: "Registration closed May 1, 2099.",
+    });
+
+    // Dispatch an approved invitation that came from an attendee request.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        manually_invited: false,
+        status: "invitation-approved",
+      }),
+    });
+
+    // Verify the attend button is disabled with the registration window title.
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal("Registration closed May 1, 2099.");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Attend event");
+  });
+
   it("routes owned ticket offers to the dashboard claim surface", () => {
     // Render a ticketed attendance control for an owned pending offer.
     const { attendButton, checker } = renderAttendanceDom({
