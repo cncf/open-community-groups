@@ -332,28 +332,11 @@
 
               {# Status -#}
               <td class="px-3 xl:px-5 py-4">
-                {# Inline status (xl and up) -#}
-                <div class="hidden xl:block">
-                  {% if let Some(revoked_at) = &award.revoked_at -%}
-                    <span class="text-red-700">Revoked {{ revoked_at.format("%Y-%m-%d") }}</span>
-                    {% if let Some(reason) = &award.revocation_reason -%}
-                      <span class="block text-xs text-stone-500">{{ reason }}</span>
-                    {% endif -%}
-                  {% else -%}
-                    <span class="text-green-700">Active</span>
-                  {% endif -%}
-                </div>
-                {# End inline status -#}
-
-                {# Compact status (below xl) -#}
-                <div class="xl:hidden">
-                  {% if award.revoked_at.is_some() -%}
-                    {{ award_revocation_badge(award) -}}
-                  {% else -%}
-                    {{ badges::tone_badge(label = "Active", tone = "success") -}}
-                  {% endif -%}
-                </div>
-                {# End compact status -#}
+                {% if award.revoked_at.is_some() -%}
+                  {{ award_revocation_badge(award) -}}
+                {% else -%}
+                  {{ badges::tone_badge(label = "Active", tone = "success") -}}
+                {% endif -%}
               </td>
               {# End status -#}
 

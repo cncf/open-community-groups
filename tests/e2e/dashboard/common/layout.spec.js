@@ -32,8 +32,9 @@ const DASHBOARD_CHROME_WIDTHS = [
   { padding: 24, sidebar: 225, width: 1023 },
   { padding: 24, sidebar: 225, width: 1024 },
   { padding: 24, sidebar: 225, width: 1279 },
-  { padding: 48, sidebar: 300, width: 1280 },
-  { padding: 48, sidebar: 300, width: 1373 },
+  { padding: 48, sidebar: 225, width: 1280 },
+  { padding: 48, sidebar: 225, width: 1535 },
+  { padding: 48, sidebar: 300, width: 1536 },
 ];
 
 const GRID_CASES = [

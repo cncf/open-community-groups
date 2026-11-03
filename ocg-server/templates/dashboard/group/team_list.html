@@ -79,7 +79,7 @@
                           hx-disabled-elt="find select">
                       {% if member.accepted && role.to_string() == "admin" && total_admins_accepted == 1 -%}
                         <select name="role"
-                                class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem] opacity-50 cursor-not-allowed"
+                                class="input-primary py-1.5 pe-9 text-xs xl:text-sm min-w-44 opacity-50 cursor-not-allowed"
                                 aria-label="Role"
                                 data-team-role-select
                                 disabled
@@ -93,7 +93,7 @@
                         </select>
                       {% else -%}
                         <select name="role"
-                                class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem]"
+                                class="input-primary py-1.5 pe-9 text-xs xl:text-sm min-w-44"
                                 aria-label="Role"
                                 data-team-role-select>
                           {% for role_option in roles -%}
@@ -110,7 +110,7 @@
                   {% endif -%}
                 {% endif -%}
                 {% if !member.accepted -%}
-                  {{ badges::invitation_badge(label = "Invitation sent", extra_styles = Some("2xl:hidden")) -}}
+                  {{ badges::tone_badge(label = "Invitation sent", tone = "pending", extra_styles = Some("2xl:hidden")) -}}
                 {% endif -%}
               </div>
             </td>

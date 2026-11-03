@@ -74,7 +74,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('<span class="whitespace-nowrap">Requester</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Ticket type</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Requested</span>');
-    expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%] min-[1920px]:w-[22%]!"');
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 min-[1920px]:w-[22%]!"');
     expect(template).to.include(
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 min-[1920px]:w-[16%]"',
     );
@@ -82,7 +82,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-px whitespace-nowrap"');
     expect(template).to.include('class="px-3 xl:px-5 py-4 align-middle w-px whitespace-nowrap"');
-    expect(template).to.include('class="px-3 xl:px-5 py-4 max-w-0 xl:w-[30%] min-[1920px]:w-[22%]!"');
+    expect(template).to.include('class="px-3 xl:px-5 py-4 max-w-0 min-[1920px]:w-[22%]!"');
     expect(template).to.include(
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0 min-[1920px]:w-[16%]"',
     );

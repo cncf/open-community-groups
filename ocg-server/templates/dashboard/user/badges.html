@@ -33,7 +33,9 @@
     </div>
     {# End empty state -#}
   {% else -%}
-    <ol id="user-badges-list" class="space-y-4" data-badge-order-list>
+    <ol id="user-badges-list"
+        class="max-w-5xl space-y-4"
+        data-badge-order-list>
       {% for badge in badges -%}
         {# Badge row -#}
         <li class="flex items-start gap-2 transition-opacity"
@@ -109,22 +111,23 @@
               </div>
 
               {# Badge footer -#}
-              <div class="col-span-3 mt-3 flex flex-wrap items-center justify-between gap-3 lg:col-span-1 lg:col-start-3 lg:block">
-                <p class="text-sm text-stone-500">
+              <div class="col-span-3 mt-3 flex items-center justify-between gap-3 lg:col-span-1 lg:col-start-3 lg:block">
+                <p class="min-w-0 truncate text-xs text-stone-500 lg:whitespace-normal lg:text-sm"
+                   title="Issued by {{ badge.snapshot.issuer.group_name }} ({{ badge.snapshot.issuer.community_name }})">
                   Issued by
                   <span class="font-medium text-stone-700">
                     {{ badge.snapshot.issuer.group_name }} ({{ badge.snapshot.issuer.community_name }})
                   </span>
                 </p>
                 {# Profile listing -#}
-                <label class="flex cursor-pointer items-center justify-end lg:mt-3">
+                <label class="flex shrink-0 cursor-pointer items-center justify-end lg:mt-3">
                   <input type="checkbox"
                          class="sr-only peer"
                          data-badge-listing
                          data-endpoint="/dashboard/user/badges/{{ badge.user_badge_id }}/listing"
                          {% if badge.is_listed %}checked{% endif %}>
                   <div class="toggle-track"></div>
-                  <span class="ms-3 text-sm font-medium text-stone-900">Show on profile</span>
+                  <span class="ms-3 text-sm font-medium text-stone-900"><span aria-hidden="true" class="xl:hidden">On profile</span><span class="max-xl:sr-only">Show on profile</span></span>
                 </label>
                 {# End profile listing -#}
               </div>

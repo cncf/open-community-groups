@@ -27,18 +27,6 @@
 {% endmacro inbox_status_badge -%}
 {# End inbox status badge -#}
 
-{# Invitation badge -#}
-{# Used by dashboard attendee and team invitation states. -#}
-{% macro invitation_badge(label, tone = "pending", with_border = false, extra_styles = None) -%}
-  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
-
-  <span class="custom-badge
-               {% if tone == "success" %}badge-success{% else if tone == "danger" %}badge-danger{% else %}badge-pending{% endif %}
-               {% if !with_border %}border-transparent{% endif %}
-               {{ extra_styles_ }}">{{ label }}</span>
-{% endmacro invitation_badge -%}
-{# End invitation badge -#}
-
 {# Label chip -#}
 {# Used by session lists and submission lists to show event labels. -#}
 {% macro label_chip(name, color, extra_styles = None) -%}

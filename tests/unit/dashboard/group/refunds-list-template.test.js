@@ -277,6 +277,9 @@ describe("dashboard group refunds list template", () => {
     expect(
       financialTable.match(/>\{\{ recovery\.operation \}\}</g) ?? [],
     ).to.have.lengthOf(2);
+    expect(financialTable).to.include(
+      '<td class="hidden whitespace-nowrap px-3 py-4 text-stone-900 2xl:table-cell xl:px-5">{{ recovery.operation }}</td>',
+    );
     expect(template).not.to.include(
       '<th scope="col" class="px-4 py-3 text-right">Actions</th>',
     );

@@ -3,14 +3,17 @@
 {% import "macros/pagination.html" as pagination -%}
 
 {# Purchase status, external and event canceled badges. -#}
-{% macro purchase_status_badges(purchase, container_classes) -%}
+{% macro purchase_status_badges(purchase, container_classes, detail_instance) -%}
   <div class="{{ container_classes }}">
     {{ badges::payment_status_badge(label = purchase.status_label() , tone = crate::templates::dashboard::user::purchases::status_tone(purchase).as_str()) -}}
     {% if purchase.externally_managed -%}
-      {{ badges::common_badge(content = "External", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700")) -}}
+      {% let external_tooltip_id = "purchase-external-{}-{}"|format(purchase.event_purchase_id, detail_instance) -%}
+      {% call dashboard::tooltip_badge_trigger(tooltip_id = external_tooltip_id, title = "External payment", label = "External", tone = "neutral") -%}
+      <span class="block">This purchase was paid and documented outside OCG. Ask the organizer directly for receipts.</span>
+      {% endcall -%}
     {% endif -%}
     {% if purchase.event_canceled -%}
-      {{ badges::common_badge(content = "Event canceled", extra_styles = Some("border-red-200 bg-red-50 px-2.5 py-0.5 text-red-800")) -}}
+      {{ badges::tone_badge(label = "Event canceled", tone = "danger") -}}
     {% endif -%}
   </div>
 {% endmacro purchase_status_badges -%}
@@ -72,7 +75,7 @@
                   {{ purchase.created_at.format("%b %d, %Y at %H:%M UTC") }}
                 {% endif -%}
               </div>
-              {{ purchase_status_badges(purchase, "mt-1 flex flex-wrap gap-1.5 lg:hidden") -}}
+              {{ purchase_status_badges(purchase, "mt-1 flex flex-wrap gap-1.5 lg:hidden", "mobile") -}}
             </th>
             <td class="hidden whitespace-nowrap px-3 py-4 xl:table-cell xl:px-5">
               {% if let Some(completed_at) = purchase.completed_at -%}
@@ -95,7 +98,7 @@
               {% endif -%}
             </td>
             <td class="hidden px-3 py-4 lg:table-cell xl:px-5">
-              {{ purchase_status_badges(purchase, "flex flex-wrap gap-1.5") -}}
+              {{ purchase_status_badges(purchase, "flex flex-wrap gap-1.5", "desktop") -}}
             </td>
             <td class="dashboard-table-actions w-[72px] py-4 text-right">
               <details data-actions-menu class="group relative inline-flex justify-end">

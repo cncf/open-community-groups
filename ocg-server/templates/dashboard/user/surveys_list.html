@@ -20,9 +20,9 @@
   {% if survey.is_closed() -%}
     {{ surveys_macros::state_badge(state = survey.state) -}}
   {% else if survey.answered -%}
-    {{ badges::invitation_badge(label = "Answered", tone = "success", with_border = true) -}}
+    {{ badges::tone_badge(label = "Answered", tone = "success") -}}
   {% else -%}
-    {{ badges::invitation_badge(label = "To answer", with_border = true) -}}
+    {{ badges::tone_badge(label = "To answer", tone = "pending") -}}
   {% endif -%}
 {% endmacro survey_status_badge -%}
 {# End survey status badge. #}

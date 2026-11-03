@@ -154,24 +154,25 @@
     @apply border-red-300 text-red-500;
   }
 
-  /* Badge tones, combined with `custom-badge`; never with `canceled` */
-  .badge-danger {
+  /* Badge tones, combined with `custom-badge`; never with `canceled`. The compound
+     selector beats `.custom-badge` regardless of source order. */
+  .custom-badge.badge-danger {
     @apply border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800;
   }
 
-  .badge-neutral {
+  .custom-badge.badge-neutral {
     @apply border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700;
   }
 
-  .badge-pending {
+  .custom-badge.badge-pending {
     @apply border-yellow-800 bg-yellow-100 px-2.5 py-0.5 text-yellow-800;
   }
 
-  .badge-success {
+  .custom-badge.badge-success {
     @apply border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800;
   }
 
-  .badge-warning {
+  .custom-badge.badge-warning {
     @apply border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800;
   }
 

@@ -32,7 +32,8 @@
           <th scope="col"
               class="hidden max-w-0 px-3 py-3 xl:table-cell xl:w-1/4 xl:px-5">Event</th>
           <th scope="col" class="px-3 py-3 xl:px-5">Amount</th>
-          <th scope="col" class="hidden px-3 py-3 2xl:table-cell xl:px-5">Operation</th>
+          <th scope="col"
+              class="hidden whitespace-nowrap px-3 py-3 2xl:table-cell xl:px-5">Operation</th>
           <th scope="col" class="w-px whitespace-nowrap px-3 py-3 xl:px-5">Status</th>
           <th scope="col" class="w-[72px] dashboard-table-actions py-3 text-right">
             <span class="sr-only">Actions</span>
@@ -58,7 +59,7 @@
                     data-localized-currency>{{ recovery.formatted_amount() }}</span>
               <div class="mt-0.5 truncate text-xs text-stone-600 2xl:hidden">{{ recovery.operation }}</div>
             </td>
-            <td class="hidden px-3 py-4 text-stone-900 2xl:table-cell xl:px-5">{{ recovery.operation }}</td>
+            <td class="hidden whitespace-nowrap px-3 py-4 text-stone-900 2xl:table-cell xl:px-5">{{ recovery.operation }}</td>
             <td class="w-px whitespace-nowrap px-3 py-4 xl:px-5">
               {% let failure_tooltip_id -%}financial-failure-{{ recovery.payment_job_id }}{%- endlet %}
             {# djlint:off #}

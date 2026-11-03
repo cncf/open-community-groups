@@ -70,19 +70,11 @@
                     {% else -%}
                       <div class="truncate" title="{{ event.event_name }}">{{ event.event_name }}</div>
                     {% endif -%}
-                    <div class="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 2xl:hidden">
-                      {{ badges::event_badge(kind = event.event_kind, extra_styles = Some("px-2.5 py-0.5 xl:hidden")) -}}
-                      {% if event.canceled -%}
-                        {{ badges::status_badge(label = "Canceled", canceled = true, published = false, extra_styles = Some("xl:hidden")) -}}
-                      {% else if event.published -%}
-                        {{ badges::status_badge(label = "Published", canceled = false, published = true, extra_styles = Some("xl:hidden")) -}}
-                      {% endif -%}
-                      {% if let Some(starts_at) = &event.starts_at -%}
-                        <span class="min-w-0 truncate text-xs text-stone-500">
-                          {{ starts_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
-                        </span>
-                      {% endif -%}
-                    </div>
+                    {% if let Some(starts_at) = &event.starts_at -%}
+                      <div class="mt-1 truncate text-xs text-stone-500 2xl:hidden">
+                        {{ starts_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+                      </div>
+                    {% endif -%}
                   </div>
                 </div>
               </th>

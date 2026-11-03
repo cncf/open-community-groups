@@ -195,8 +195,8 @@
             {% if compact_name.is_empty() -%}
               {{ name }}
             {% else -%}
-              <span class="xl:hidden">{{ compact_name }}</span>
-              <span class="hidden xl:inline">{{ name }}</span>
+              <span aria-hidden="true" class="2xl:hidden">{{ compact_name }}</span>
+              <span class="max-2xl:sr-only">{{ name }}</span>
             {% endif -%}
           </div>
         </div>
@@ -221,8 +221,8 @@
             {% if compact_name.is_empty() -%}
               {{ name }}
             {% else -%}
-              <span class="xl:hidden">{{ compact_name }}</span>
-              <span class="hidden xl:inline">{{ name }}</span>
+              <span aria-hidden="true" class="2xl:hidden">{{ compact_name }}</span>
+              <span class="max-2xl:sr-only">{{ name }}</span>
             {% endif -%}
           </div>
         </div>
@@ -240,8 +240,8 @@
               {% if compact_name.is_empty() -%}
                 {{ name }}
               {% else -%}
-                <span class="xl:hidden">{{ compact_name }}</span>
-                <span class="hidden xl:inline">{{ name }}</span>
+                <span aria-hidden="true" class="2xl:hidden">{{ compact_name }}</span>
+                <span class="max-2xl:sr-only">{{ name }}</span>
               {% endif -%}
             </div>
           </div>

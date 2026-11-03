@@ -36,7 +36,16 @@ describe("dashboard community groups list template", () => {
       'aria-label="Open group dashboard: {{ group.name }}">{{ group.name }}</button>',
     );
     expect(groupRow).to.include("{% if !group.active -%}");
-    expect(groupRow).to.include('badge-warning inline-block">Inactive</span>');
+    expect(groupRow).to.include('badge-warning shrink-0">Inactive</span>');
+  });
+
+  it("keeps the inactive badge border outside a clipping wrapper", async () => {
+    // Load and isolate the group row header.
+    const groupRow = getGroupRow(normalizeWhitespace(await loadTemplate()));
+
+    // Verify only the name button truncates, so the badge's -mt-px border is not clipped.
+    expect(groupRow).to.include('{# Group name -#} <div class="flex min-w-0 items-center gap-x-2">');
+    expect(groupRow).to.include('class="truncate cursor-pointer text-left bg-transparent border-0 p-0"');
   });
 
   it("keeps the location line inside the row header", async () => {

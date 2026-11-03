@@ -42,23 +42,6 @@ describe("badge macros template", () => {
     expect(toneBadge).to.match(/<span(?! aria-hidden)[^>]*>\{\{ label \}\}<\/span>/);
   });
 
-  it("maps invitation tones to the badge tone classes", async () => {
-    // Load and isolate the invitation badge.
-    const template = normalizeWhitespace(await loadTemplate());
-    const invitationBadge = getMacro(template, "invitation_badge");
-
-    // Verify known tones keep their class and unknown tones fall back to pending.
-    expect(invitationBadge).to.include(
-      'macro invitation_badge(label, tone = "pending", with_border = false, extra_styles = None)',
-    );
-    expect(invitationBadge).to.include(
-      '{% if tone == "success" %}badge-success{% else if tone == "danger" %}badge-danger{% else %}badge-pending{% endif %}',
-    );
-
-    // Verify borderless invitations hide the tone border.
-    expect(invitationBadge).to.include("{% if !with_border %}border-transparent{% endif %}");
-  });
-
   it("renders payment and inbox badges from typed tones instead of label text", async () => {
     // Load and isolate the payment and inbox status badges.
     const template = normalizeWhitespace(await loadTemplate());

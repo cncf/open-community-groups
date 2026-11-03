@@ -187,6 +187,18 @@ describe("co-hosts templates", () => {
     expect(template).not.to.include("bg-primary-50");
   });
 
+  it("keeps only relocated columns in the compact event line", async () => {
+    // Load the group dashboard co-hosts list.
+    const template = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/dashboard/group/cohosts_list.html"),
+    );
+
+    // Verify the compact line shows the start date without event kind or publication badges.
+    expect(template).to.include('<div class="mt-1 truncate text-xs text-stone-500 2xl:hidden">');
+    expect(template).not.to.include("badges::event_badge");
+    expect(template).not.to.include('label = "Published"');
+  });
+
   it("sends confirmed co-hosting actions through HTMX and refreshes in place", async () => {
     // Load the group dashboard co-hosts list.
     const template = normalizeWhitespace(

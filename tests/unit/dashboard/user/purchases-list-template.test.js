@@ -42,7 +42,9 @@ describe("dashboard user purchases list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify statuses share the payment palette and amounts are localized.
-    expect(template).to.include("{% macro purchase_status_badges(purchase, container_classes) -%}");
+    expect(template).to.include(
+      "{% macro purchase_status_badges(purchase, container_classes, detail_instance) -%}",
+    );
     expect(template.match(/badges::payment_status_badge/g)).to.have.length(1);
     expect(template).to.include(
       "tone = crate::templates::dashboard::user::purchases::status_tone(purchase).as_str()",
@@ -52,15 +54,32 @@ describe("dashboard user purchases list template", () => {
     expect(template).to.not.include("badges::status_badge");
   });
 
-  it("marks externally managed purchases with a shared badge", async () => {
+  it("marks purchases for canceled events with the danger tone badge", async () => {
+    // Load the purchases list before checking the canceled event badge.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the badge uses the shared tone instead of hand-written colors.
+    expect(template).to.include(
+      '{% if purchase.event_canceled -%} {{ badges::tone_badge(label = "Event canceled", tone = "danger") -}}',
+    );
+    expect(template).to.not.include("border-red-200");
+  });
+
+  it("explains externally managed purchases in a badge tooltip", async () => {
     // Load the purchases list before checking external-payment presentation.
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include("{% if purchase.externally_managed -%}");
     expect(template).to.include(
-      'badges::common_badge(content = "External", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700"))',
+      '"purchase-external-{}-{}"|format(purchase.event_purchase_id, detail_instance)',
     );
-    expect(template.match(/content = "External"/g)).to.have.lengthOf(1);
+    expect(template).to.include(
+      'dashboard::tooltip_badge_trigger(tooltip_id = external_tooltip_id, title = "External payment", label = "External", tone = "neutral")',
+    );
+    expect(template).to.include("This purchase was paid and documented outside OCG.");
+    expect(template).to.include('"mobile") -}}');
+    expect(template).to.include('"desktop") -}}');
+    expect(template.match(/label = "External"/g)).to.have.lengthOf(1);
     expect(template).to.not.include("Externally managed");
     expect(template).to.include("<span>Managed outside OCG</span>");
   });

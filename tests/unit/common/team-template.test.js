@@ -36,7 +36,7 @@ describe("team templates", () => {
 
     // Verify pending members still get the invitation badge next to the name.
     expect(template).to.include(
-      '{% if !accepted -%} {{ badges::invitation_badge(label = "Invitation sent", extra_styles = Some(',
+      '{% if !accepted -%} {{ badges::tone_badge(label = "Invitation sent", tone = "pending", extra_styles = Some(',
     );
   });
 
@@ -64,7 +64,7 @@ describe("team templates", () => {
 
       // Verify pending members also get the invitation badge under the role.
       expect(roleCell).to.include(
-        '{% if !member.accepted -%} {{ badges::invitation_badge(label = "Invitation sent"',
+        '{% if !member.accepted -%} {{ badges::tone_badge(label = "Invitation sent", tone = "pending"',
       );
       expect(roleCell).to.include("data-team-role-select");
     });

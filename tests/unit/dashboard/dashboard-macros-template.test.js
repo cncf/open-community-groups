@@ -27,6 +27,21 @@ describe("dashboard macros template", () => {
     expect(template).to.include("{{ caller() }}");
   });
 
+  it("keeps compact menu names until the wide sidebar and the full name accessible", async () => {
+    // Load the dashboard macros template before checking menu item labels.
+    const template = await loadTemplate();
+    const menuItem = template.slice(
+      template.indexOf("{% macro menu_item("),
+      template.indexOf("{% endmacro menu_item"),
+    );
+
+    // Verify every menu item state swaps names at 2xl and exposes only the full name.
+    const compactName = '<span aria-hidden="true" class="2xl:hidden">{{ compact_name }}</span>';
+    const fullName = '<span class="max-2xl:sr-only">{{ name }}</span>';
+    expect(menuItem.split(compactName)).to.have.length(4);
+    expect(menuItem.split(fullName)).to.have.length(4);
+  });
+
   it("renders the shared custom notification fields", async () => {
     // Load the dashboard macros template before checking the email form fields.
     const template = normalizeWhitespace(await loadTemplate());

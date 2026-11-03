@@ -778,8 +778,7 @@ const FIT_CASES = [
           }),
           ({ eventId }) => cleanupCohostEvents([eventId]),
         );
-      // The published event shows the status badges; only an unpublished pending invitation can be
-      // answered, so the other one shows the actions menu.
+      // Only an unpublished pending invitation can be answered, so only that one shows the actions menu.
       const event = trackCohostEvent(true);
       const respondableEvent = trackCohostEvent(false);
 
@@ -1543,13 +1542,14 @@ test.describe("dashboard responsive fit", () => {
 
 /**
  * Init script that gives every page of the context the classic scrollbar: the stylesheet makes the
- * root always scroll vertically, so the ≈15px scrollbar takes room from the page at every width.
+ * root always scroll vertically, so the 15px scrollbar takes room from the page at every width.
+ * The styled width keeps that room on macOS too, where native scrollbars may overlay the page.
  * Runs in the page, so it must stay self-contained.
  */
 const addClassicScrollbar = () => {
   document.addEventListener("DOMContentLoaded", () => {
     const style = document.createElement("style");
-    style.textContent = "html{overflow-y:scroll}";
+    style.textContent = "html{overflow-y:scroll}html::-webkit-scrollbar{width:15px}";
     document.head.append(style);
   });
 };

@@ -116,7 +116,7 @@
           {# Group row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             <th scope="row"
-                class="w-full min-w-[160px] max-w-0 px-3 xl:px-5 py-4 font-medium text-stone-900">
+                class="w-full min-w-[160px] max-w-0 px-3 xl:px-5 2xl:w-2/5 py-4 font-medium text-stone-900">
               <div class="flex items-center">
                 <div class="min-w-0">
                   {# Group category -#}
@@ -124,13 +124,13 @@
                   {# End group category -#}
 
                   {# Group name -#}
-                  <div class="max-w-full truncate flex items-center gap-x-2">
+                  <div class="flex min-w-0 items-center gap-x-2">
                     <button type="button"
                             data-select-group-id="{{ group.group_id }}"
                             class="truncate cursor-pointer text-left bg-transparent border-0 p-0"
                             aria-label="Open group dashboard: {{ group.name }}">{{ group.name }}</button>
                     {% if !group.active -%}
-                      <span class="custom-badge badge-warning inline-block">Inactive</span>
+                      <span class="custom-badge badge-warning shrink-0">Inactive</span>
                     {% endif -%}
                   </div>
                   {# End group name -#}
@@ -145,7 +145,7 @@
             </th>
 
             {# Location -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px] 2xl:max-w-none">
               {% if let Some(location) = &group.location(50) -%}
                 <div class="max-w-full truncate">{{ location }}</div>
               {% else -%}
@@ -161,7 +161,7 @@
             {# End created date -#}
 
             {# Category -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px] 2xl:max-w-[250px]">
               <div class="max-w-full truncate">{{ group.category.name }}</div>
             </td>
             {# End category -#}

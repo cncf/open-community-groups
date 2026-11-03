@@ -42,6 +42,15 @@ describe("dashboard user surveys list template", () => {
     expect(contextIndex).to.be.lessThan(titleIndex);
   });
 
+  it("renders open survey statuses with the shared tone badges", async () => {
+    // Load the surveys list template before checking the status badges.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify answered and pending surveys use bordered tone badges.
+    expect(template).to.include('{{ badges::tone_badge(label = "Answered", tone = "success") -}}');
+    expect(template).to.include('{{ badges::tone_badge(label = "To answer", tone = "pending") -}}');
+  });
+
   it("spans the empty state across the columns visible at each breakpoint", async () => {
     // Load the surveys list template before checking the per-breakpoint empty cells.
     const template = normalizeWhitespace(await loadTemplate());

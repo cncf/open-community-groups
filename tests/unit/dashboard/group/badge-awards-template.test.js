@@ -49,7 +49,10 @@ describe("dashboard group badge awards template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify the revocation tooltip id and trigger call contract.
-    expect(template).to.include("{{ award_revocation_badge(award) -}}");
+    expect(template).to.include(
+      '{% if award.revoked_at.is_some() -%} {{ award_revocation_badge(award) -}} {% else -%} {{ badges::tone_badge(label = "Active", tone = "success") -}} {% endif -%} </td>',
+    );
+    expect(template).not.to.include("Inline status");
     expect(template).to.include(
       "{% let revocation_tooltip_id -%}award-revocation-{{ award.user_badge_id }}{%- endlet %}",
     );

@@ -170,7 +170,7 @@ test.describe("group badge award history", () => {
     }
   });
 
-  test("revocation details show inline at xl and in a tooltip below xl", async ({ organizerGroupPage }) => {
+  test("revocation details show in a tooltip at every width", async ({ organizerGroupPage }) => {
     const credential = setupRevocableCredential({
       eventId: TEST_EVENT_IDS.alpha.one,
       groupId: TEST_GROUP_IDS.community1.alpha,
@@ -216,26 +216,26 @@ test.describe("group badge award history", () => {
         },
       );
 
-      // Verify the reason shows inline at xl without the compact trigger.
+      // Verify the trigger describes the revocation at xl and below it.
       const revokedTrigger = credentialRow.getByRole("button", { name: "Revoked", exact: true });
-      await expect(
-        credentialRow.getByText(revocationReason, { exact: true }).filter({ visible: true }),
-      ).toBeVisible();
-      await expect(revokedTrigger).toBeHidden();
-
-      // Verify the compact trigger describes the revocation below xl.
-      await organizerGroupPage.setViewportSize({ width: 1024, height: 900 });
       const revocationTooltip = organizerGroupPage.locator(`#award-revocation-${credential.userBadgeId}`);
-      await expect(revokedTrigger).toBeVisible();
-      await expect(revokedTrigger).toHaveAttribute(
-        "aria-describedby",
-        `award-revocation-${credential.userBadgeId}`,
-      );
-      await revokedTrigger.focus();
-      await expect(revocationTooltip).toBeVisible();
-      await expect(revocationTooltip).toHaveAttribute("role", "tooltip");
-      await expect(revocationTooltip).toContainText("Revoked on");
-      await expect(revocationTooltip).toContainText(revocationReason);
+      for (const width of [1280, 1024]) {
+        await test.step(`${width}px`, async () => {
+          await organizerGroupPage.setViewportSize({ width, height: 900 });
+          await expect(revokedTrigger).toBeVisible();
+          await expect(revokedTrigger).toHaveAttribute(
+            "aria-describedby",
+            `award-revocation-${credential.userBadgeId}`,
+          );
+          await expect(revocationTooltip).toBeHidden();
+          await revokedTrigger.focus();
+          await expect(revocationTooltip).toBeVisible();
+          await expect(revocationTooltip).toHaveAttribute("role", "tooltip");
+          await expect(revocationTooltip).toContainText("Revoked on");
+          await expect(revocationTooltip).toContainText(revocationReason);
+          await revokedTrigger.blur();
+        });
+      }
     } finally {
       // Remove temporary credential data.
       cleanupCredential(credential);

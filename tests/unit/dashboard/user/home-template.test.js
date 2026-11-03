@@ -46,7 +46,7 @@ describe("dashboard user home template", () => {
     expect(template).to.include('class="leading-10 grid gap-y-0.5 max-md:hidden"');
   });
 
-  it("uses a compact purchases label through the large breakpoint", async () => {
+  it("uses a compact purchases label until the wide sidebar", async () => {
     // Load the user dashboard shell before checking responsive navigation copy.
     const template = await loadTemplate();
 

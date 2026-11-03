@@ -11,7 +11,7 @@
         <div class="flex items-center gap-x-3 mb-1 min-w-0">
           <div class="font-medium text-stone-900 truncate min-w-0">{{ name.as_deref()|assigned_or(username) }}</div>
           {% if !accepted -%}
-            {{ badges::invitation_badge(label = "Invitation sent", extra_styles = Some("hidden 2xl:inline-block")) -}}
+            {{ badges::tone_badge(label = "Invitation sent", tone = "pending", extra_styles = Some("hidden 2xl:inline-block")) -}}
           {% endif -%}
         </div>
         {% if name.is_some() -%}
