@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
-use axum::http::{HeaderValue, StatusCode};
+use axum::http::StatusCode;
 use chrono::{TimeZone, Utc};
 use serde_json::{Value, from_slice};
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB,
+    db::mock::{MockDB, expect_site_settings},
     handlers::{error::HandlerError, tests::*},
     test_util::normalize_whitespace,
     types::dashboard::user::notifications::{
@@ -159,7 +159,7 @@ async fn test_page_renders_community_team_section() {
 
     // Setup database mock for a community team member
     let mut db = MockDB::new();
-    expect_session_with_teams(
+    expect_dashboard_page_with_teams(
         &mut db,
         &ids,
         TeamMembership {
@@ -171,17 +171,11 @@ async fn test_page_renders_community_team_section() {
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db).build().await;
-    let request = get_request("/dashboard/user/notifications", ids.session_id);
+    let request = get_request("/dashboard/user?tab=notifications", ids.session_id);
     let (parts, bytes) = send(router, request).await;
 
-    // Check the page partial pushes the full dashboard URL
+    // Check the dashboard page renders
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get("hx-push-url"),
-        Some(&HeaderValue::from_static(
-            "/dashboard/user?tab=notifications"
-        ))
-    );
     let body = std::str::from_utf8(&bytes).unwrap();
 
     // Check every section is rendered
@@ -198,7 +192,7 @@ async fn test_page_renders_group_team_section() {
 
     // Setup database mock for a group team member
     let mut db = MockDB::new();
-    expect_session_with_teams(
+    expect_dashboard_page_with_teams(
         &mut db,
         &ids,
         TeamMembership {
@@ -210,17 +204,11 @@ async fn test_page_renders_group_team_section() {
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db).build().await;
-    let request = get_request("/dashboard/user/notifications", ids.session_id);
+    let request = get_request("/dashboard/user?tab=notifications", ids.session_id);
     let (parts, bytes) = send(router, request).await;
 
-    // Check the page partial pushes the full dashboard URL
+    // Check the dashboard page renders
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get("hx-push-url"),
-        Some(&HeaderValue::from_static(
-            "/dashboard/user?tab=notifications"
-        ))
-    );
     let body = std::str::from_utf8(&bytes).unwrap();
 
     // Check the group organizing section is rendered without the community one
@@ -245,22 +233,16 @@ async fn test_page_renders_many_muted_groups() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_session_with_teams(&mut db, &ids, TeamMembership::default());
+    expect_dashboard_page_with_teams(&mut db, &ids, TeamMembership::default());
     expect_preferences(&mut db, &ids, preferences);
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db).build().await;
-    let request = get_request("/dashboard/user/notifications", ids.session_id);
+    let request = get_request("/dashboard/user?tab=notifications", ids.session_id);
     let (parts, bytes) = send(router, request).await;
 
-    // Check the page partial pushes the full dashboard URL
+    // Check the dashboard page renders
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get("hx-push-url"),
-        Some(&HeaderValue::from_static(
-            "/dashboard/user?tab=notifications"
-        ))
-    );
     let body = std::str::from_utf8(&bytes).unwrap();
 
     // Check every muted group is listed
@@ -274,22 +256,16 @@ async fn test_page_renders_member_sections_only() {
 
     // Setup database mock for a member without team roles
     let mut db = MockDB::new();
-    expect_session_with_teams(&mut db, &ids, TeamMembership::default());
+    expect_dashboard_page_with_teams(&mut db, &ids, TeamMembership::default());
     expect_preferences(&mut db, &ids, NotificationPreferences::default());
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db).build().await;
-    let request = get_request("/dashboard/user/notifications", ids.session_id);
+    let request = get_request("/dashboard/user?tab=notifications", ids.session_id);
     let (parts, bytes) = send(router, request).await;
 
-    // Check the page partial pushes the full dashboard URL
+    // Check the dashboard page renders
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get("hx-push-url"),
-        Some(&HeaderValue::from_static(
-            "/dashboard/user?tab=notifications"
-        ))
-    );
     let body = std::str::from_utf8(&bytes).unwrap();
 
     // Check only the member section, always sent list and muted groups render
@@ -317,22 +293,16 @@ async fn test_page_renders_toggle_states() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_session_with_teams(&mut db, &ids, TeamMembership::default());
+    expect_dashboard_page_with_teams(&mut db, &ids, TeamMembership::default());
     expect_preferences(&mut db, &ids, preferences);
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db).build().await;
-    let request = get_request("/dashboard/user/notifications", ids.session_id);
+    let request = get_request("/dashboard/user?tab=notifications", ids.session_id);
     let (parts, bytes) = send(router, request).await;
 
-    // Check the page partial pushes the full dashboard URL
+    // Check the dashboard page renders
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get("hx-push-url"),
-        Some(&HeaderValue::from_static(
-            "/dashboard/user?tab=notifications"
-        ))
-    );
     let body = std::str::from_utf8(&bytes).unwrap();
 
     // Check opted-out and enabled categories render their state
@@ -485,14 +455,20 @@ fn expect_preferences(db: &mut MockDB, ids: &DashboardIds, preferences: Notifica
         .returning(move |_| Ok(preferences.clone()));
 }
 
-/// Expects an authenticated session for a user with the given team memberships.
-fn expect_session_with_teams(db: &mut MockDB, ids: &DashboardIds, teams: TeamMembership) {
+/// Expects the dashboard page reads for a user with the given team memberships.
+fn expect_dashboard_page_with_teams(db: &mut MockDB, ids: &DashboardIds, teams: TeamMembership) {
     let user = crate::auth::User {
         belongs_to_any_group_team: Some(teams.group),
         belongs_to_community_team: Some(teams.community),
         ..sample_auth_user(ids.user_id, "hash")
     };
     expect_session_with_user(db, ids, user);
+    expect_site_settings(db);
+    let user_id = ids.user_id;
+    db.expect_count_user_unanswered_event_surveys()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(|_| Ok(0));
 }
 
 /// Returns a muted group with the given availability.

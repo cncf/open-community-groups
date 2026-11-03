@@ -1,0 +1,24 @@
+- text: Group Categories
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=group-categories-group-taxonomy
+- text: 2 categories
+- button "Add Group Category"
+- table:
+  - rowgroup:
+    - row "Name Groups Actions":
+      - columnheader "Name"
+      - columnheader "Groups"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row "E2E ARIA group category one 1 Edit group category: E2E ARIA group category one Delete group category: E2E ARIA group category one"':
+      - cell "E2E ARIA group category one"
+      - cell "1"
+      - 'cell "Edit group category: E2E ARIA group category one Delete group category: E2E ARIA group category one"':
+        - 'button "Edit group category: E2E ARIA group category one"'
+        - 'button "Delete group category: E2E ARIA group category one" [disabled]'
+    - 'row "E2E ARIA group category two 0 Edit group category: E2E ARIA group category two Delete group category: E2E ARIA group category two"':
+      - cell "E2E ARIA group category two"
+      - cell "0"
+      - 'cell "Edit group category: E2E ARIA group category two Delete group category: E2E ARIA group category two"':
+        - 'button "Edit group category: E2E ARIA group category two"'
+        - 'button "Delete group category: E2E ARIA group category two"'

@@ -1,0 +1,15 @@
+- table "Badges list":
+  - rowgroup:
+    - row "Badge Description Actions":
+      - columnheader "Badge"
+      - columnheader "Description"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row "E2E ARIA badge badge artwork E2E ARIA badge Recognizes E2E ARIA contributors. Edit badge: E2E ARIA badge Delete badge: E2E ARIA badge"':
+      - cell "E2E ARIA badge badge artwork E2E ARIA badge":
+        - img "E2E ARIA badge badge artwork"
+        - text: ""
+      - cell "Recognizes E2E ARIA contributors."
+      - 'cell "Edit badge: E2E ARIA badge Delete badge: E2E ARIA badge"':
+        - 'button "Edit badge: E2E ARIA badge"'
+        - 'button "Delete badge: E2E ARIA badge"'

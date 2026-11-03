@@ -3,10 +3,12 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "../../../fixtures.js";
 import { queryE2eDatabase, queryE2eDatabaseRows } from "../../../database.js";
 import { TEST_GROUP_IDS } from "../../../seed.js";
-import { navigateToPath, waitForActionResponse } from "../../../utils.js";
-import { TEST_UPLOAD_ASSET_PATHS, uploadImageField } from "../../form-helpers.js";
+import { dismissAlert, navigateToPath, waitForActionResponse } from "../../../utils.js";
+import { TEST_UPLOAD_ASSET_PATHS, uploadImageField, waitForImageUpload } from "../../form-helpers.js";
 
 const ARTWORK_PATH = "/dashboard/group?tab=artwork";
+
+const ARTWORK_REMOVAL_PATHNAME = /^\/dashboard\/group\/badges\/artwork\/[^/]+$/u;
 
 const REMOVABLE_ARTWORK_FILE_NAME = "e2e-removable-badge.png";
 
@@ -37,15 +39,11 @@ test.describe("group badge artwork", () => {
     await artworkItem.getByRole("button", { name: /Remove artwork/u }).click();
 
     // Confirm the server protects referenced artwork.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response.url().includes("/dashboard/group/badges/artwork/") &&
-          !response.ok(),
-      ),
-      organizerGroupPage.getByRole("button", { name: "Remove", exact: true }).click(),
-    ]);
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.getByRole("button", { name: "Remove", exact: true }).click(),
+      { method: "DELETE", pathname: ARTWORK_REMOVAL_PATHNAME, status: 422 },
+    );
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "The artwork could not be removed.",
     );
@@ -66,11 +64,7 @@ test.describe("group badge artwork", () => {
       await waitForActionResponse(
         organizerGroupPage,
         () => organizerGroupPage.getByRole("button", { name: "Remove", exact: true }).click(),
-        {
-          method: "DELETE",
-          urlIncludes: "/dashboard/group/badges/artwork/",
-          status: 204,
-        },
+        { method: "DELETE", pathname: ARTWORK_REMOVAL_PATHNAME, status: 204 },
       );
 
       // Verify the HTMX refresh removed the item and updated the gallery count.
@@ -113,7 +107,8 @@ test.describe("group badge artwork", () => {
       await expect(saveButton).toBeEnabled();
       await waitForActionResponse(organizerExternalGroupPage, () => saveButton.click(), {
         method: "POST",
-        urlIncludes: "/dashboard/group/badges/artwork",
+        pathname: "/dashboard/group/badges/artwork",
+        status: 201,
       });
 
       // Dismiss the success feedback before checking the refreshed gallery.
@@ -137,11 +132,7 @@ test.describe("group badge artwork", () => {
       await waitForActionResponse(
         organizerExternalGroupPage,
         () => organizerExternalGroupPage.getByRole("button", { name: "Remove", exact: true }).click(),
-        {
-          method: "DELETE",
-          urlIncludes: "/dashboard/group/badges/artwork/",
-          status: 204,
-        },
+        { method: "DELETE", pathname: ARTWORK_REMOVAL_PATHNAME, status: 204 },
       );
       await expect(newArtworkItem).toHaveCount(0);
       await expect(galleryItems).toHaveCount(0);
@@ -190,8 +181,7 @@ test.describe("group badge artwork", () => {
         name: "Retry upload for Upload artwork",
       }),
     ).toBeVisible();
-    await formatAlert.locator(".swal2-confirm").click();
-    await expect(formatAlert).toBeHidden();
+    await dismissAlert(organizerGroupPage, { message: "Supported formats: PNG, JPEG and WEBP." });
     expect(uploadRequests).toHaveLength(1);
 
     // Upload a nominal PNG whose bytes cannot be decoded; the cropper rejects
@@ -203,9 +193,7 @@ test.describe("group badge artwork", () => {
     });
     const unreadableAlert = organizerGroupPage.locator(".swal2-popup");
     await expect(unreadableAlert).toContainText("This image couldn't be opened.");
-    await expect(unreadableAlert).toContainText("Choose a different image in a supported format.");
-    await unreadableAlert.locator(".swal2-confirm").click();
-    await expect(unreadableAlert).toBeHidden();
+    await dismissAlert(organizerGroupPage, { message: "Choose a different image in a supported format." });
 
     // Verify the editor stayed closed and nothing was uploaded or enabled.
     await expect(cropper.getByRole("dialog")).toBeHidden();
@@ -239,12 +227,7 @@ test.describe("group badge artwork", () => {
     });
 
     // A 1024 × 512 WEBP source does not match the square badge, so the editor opens.
-    const uploadPromise = organizerEmptyGroupPage.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        new URL(response.url()).pathname === "/images" &&
-        response.status() === 201,
-    );
+    const uploadPromise = waitForImageUpload(organizerEmptyGroupPage);
     await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.badgeArtworkSource);
     const dialog = cropper.getByRole("dialog", { name: "Crop Upload artwork" });
     await expect(dialog).toBeVisible();
@@ -283,9 +266,7 @@ test.describe("group badge artwork", () => {
     ]) {
       await fileInput.setInputFiles(assetPath);
       await expect(alert).toContainText(`${formatLabel} images are not supported for this field.`);
-      await expect(alert).toContainText("Choose a PNG, JPEG or WEBP image.");
-      await alert.locator(".swal2-confirm").click();
-      await expect(alert).toBeHidden();
+      await dismissAlert(organizerGroupPage, { message: "Choose a PNG, JPEG or WEBP image." });
       await expect(fileInput).toHaveValue("");
     }
 

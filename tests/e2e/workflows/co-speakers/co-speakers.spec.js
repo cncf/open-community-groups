@@ -4,38 +4,64 @@ import {
   openUserDashboardPath,
   restoreCoSpeakerInvitation,
 } from "../../dashboard/user/helpers.js";
-import { queryE2eDatabase } from "../../database.js";
-import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
-import { TEST_USER_IDS } from "../../seed.js";
+import { readSessionProposalId } from "../../data-graphs/cfs.js";
+import { TEST_USER_CREDENTIALS, TEST_USER_IDS } from "../../seed.js";
 import { uniqueName, waitForActionResponse } from "../../utils.js";
 
 test.describe("co-speaker invitation workflow", () => {
-  test("owner can invite a co-speaker to a reusable proposal", async ({ member2Page, pending1Page }) => {
+  test("owner can invite a co-speaker to a reusable proposal", async ({
+    member2Page,
+    notifications,
+    owned,
+    pending1Page,
+  }) => {
     // Create a reusable proposal owned by Pending One.
     const proposalTitle = uniqueName("co-speaker invitation proposal");
-    let notificationIds = [];
+    owned.deferProposalByTitle(TEST_USER_IDS.pending1, proposalTitle);
 
-    try {
-      // Create the proposal and resolve its identifier.
-      await createSessionProposal(pending1Page, proposalTitle);
-      const proposalId = readSessionProposalId(TEST_USER_IDS.pending1, proposalTitle);
+    // Create the proposal and resolve its identifier.
+    await createSessionProposal(pending1Page, proposalTitle);
+    const proposalId = readSessionProposalId(TEST_USER_IDS.pending1, proposalTitle);
 
-      // Add Member Two as co-speaker and assert the invitation notification.
-      const snapshot = snapshotNotifications();
-      const inviteResponse = await pending1Page.request.put(
-        `/dashboard/user/session-proposals/${proposalId}`,
-        {
-          form: {
-            co_speaker_user_id: TEST_USER_IDS.member2,
-            description: "A reusable proposal created from the e2e suite.",
-            duration_minutes: "45",
-            session_proposal_level_id: "intermediate",
-            title: proposalTitle,
-          },
-        },
-      );
-      expect(inviteResponse.ok()).toBeTruthy();
-      notificationIds = expectNewNotifications(snapshot, [
+    // Dismiss the creation feedback before opening the proposal editor.
+    const creationAlert = pending1Page.locator(".swal2-popup");
+    await expect(creationAlert).toContainText("Session proposal added.");
+    await creationAlert.getByRole("button", { name: "OK" }).click();
+
+    // Open the proposal editor.
+    const proposalRow = pending1Page.locator("#dashboard-content").locator("tr", { hasText: proposalTitle });
+    await proposalRow.getByTitle("Edit proposal").click();
+    const editModal = pending1Page.getByRole("dialog", { name: "Edit session proposal" });
+    await expect(editModal.getByLabel("Title")).toHaveValue(proposalTitle);
+
+    // Search Member Two once the debounced search responds and pick the suggestion.
+    const coSpeakerSearch = editModal.locator("#session-proposal-co-speaker-search");
+    await waitForActionResponse(
+      pending1Page,
+      () => coSpeakerSearch.getByRole("textbox").fill(TEST_USER_CREDENTIALS.member2.username),
+      {
+        method: "GET",
+        urlIncludes: `/dashboard/user/users/search?q=${TEST_USER_CREDENTIALS.member2.username}`,
+      },
+    );
+    await coSpeakerSearch.getByText("E2E Member Two", { exact: true }).click();
+    await expect(editModal.locator("#session-proposal-co-speaker-preview")).toContainText("E2E Member Two");
+    await expect(editModal.locator("#session-proposal-co-speaker")).toHaveValue(TEST_USER_IDS.member2);
+
+    // Save the proposal and assert the invitation notification.
+    const checkpoint = notifications.checkpoint();
+    await waitForActionResponse(
+      pending1Page,
+      () => editModal.getByRole("button", { name: "Update" }).click(),
+      {
+        method: "PUT",
+        urlIncludes: `/dashboard/user/session-proposals/${proposalId}`,
+      },
+    );
+    await expect(editModal).toBeHidden();
+    await expect(proposalRow).toContainText("E2E Member Two");
+    notifications.expectNew(
+      [
         {
           kind: "session-proposal-co-speaker-invitation",
           templateDataContains: {
@@ -44,19 +70,14 @@ test.describe("co-speaker invitation workflow", () => {
           },
           userIds: [TEST_USER_IDS.member2],
         },
-      ]);
+      ],
+      { since: checkpoint },
+    );
 
-      // Verify the invited user sees the new co-speaker invitation.
-      await openUserDashboardPath("/dashboard/user?tab=session-proposals", member2Page);
-      const member2Dashboard = member2Page.locator("#dashboard-content");
-      await expect(member2Dashboard.locator("tr", { hasText: proposalTitle })).toContainText(
-        "E2E Pending One",
-      );
-    } finally {
-      // Remove generated notifications and proposal rows.
-      deleteNotifications(notificationIds);
-      deleteSessionProposalsByTitle(TEST_USER_IDS.pending1, [proposalTitle]);
-    }
+    // Verify the invited user sees the new co-speaker invitation.
+    await openUserDashboardPath("/dashboard/user?tab=session-proposals", member2Page);
+    const member2Dashboard = member2Page.locator("#dashboard-content");
+    await expect(member2Dashboard.locator("tr", { hasText: proposalTitle })).toContainText("E2E Pending One");
   });
 
   test("accepting a co-speaker invitation updates both users' proposal views", async ({
@@ -190,30 +211,3 @@ test.describe("co-speaker invitation workflow", () => {
     }
   });
 });
-
-/** Deletes matching session_proposal rows for the supplied user. */
-const deleteSessionProposalsByTitle = (userId, proposalTitles) => {
-  if (proposalTitles.length === 0) {
-    return;
-  }
-
-  const titleList = proposalTitles.map((title) => `'${title.replace(/'/g, "''")}'`).join(", ");
-
-  queryE2eDatabase(`
-    delete from session_proposal
-    where user_id = '${userId}'
-    and title in (${titleList});
-  `);
-};
-
-/** Returns a session_proposal identifier for the supplied user and title. */
-const readSessionProposalId = (userId, proposalTitle) => {
-  const escapedTitle = proposalTitle.replace(/'/g, "''");
-
-  return queryE2eDatabase(`
-    select session_proposal_id
-    from session_proposal
-    where user_id = '${userId}'
-    and title = '${escapedTitle}'
-  `);
-};

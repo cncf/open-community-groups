@@ -57,8 +57,12 @@ test.describe("public badge verification page", () => {
     );
     const png = await exportResponse.body();
 
-    // Verify the export request succeeds before uploading its bytes.
+    // Verify the download contract before uploading its bytes.
     expect(exportResponse.ok()).toBeTruthy();
+    expect(exportResponse.headers()["content-type"]).toBe("image/png");
+    expect(exportResponse.headers()["content-disposition"]).toContain(
+      `badge-${MEMBER_HOST_CREDENTIAL_ID}.png`,
+    );
 
     // Upload the exported bytes through the public verification form.
     await navigateToPath(member1Page, "/badges/verify");
@@ -137,12 +141,13 @@ test.describe("public badge verification page", () => {
           return { error: String(error), status: null };
         }
       },
-      12 * 1024 * 1024 + 1,
+      2 * 1024 * 1024 + 1,
     );
 
-    // Verify the server returns an error or closes the browser upload stream.
+    // Verify the server rejects the body over the request limit as too large.
+    // The server may reset the connection before the browser finishes uploading.
     if (oversizedUploadResult.status !== null) {
-      expect(oversizedUploadResult.status).toBeGreaterThanOrEqual(400);
+      expect(oversizedUploadResult.status).toBe(413);
     } else {
       expect(oversizedUploadResult.error).toBeTruthy();
     }

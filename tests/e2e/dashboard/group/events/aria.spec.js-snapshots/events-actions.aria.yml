@@ -1,0 +1,7 @@
+- list:
+  - listitem:
+    - button "Unpublish"
+  - listitem:
+    - button "Cancel"
+  - listitem:
+    - button "Delete" [disabled]

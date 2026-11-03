@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 
-// Evaluated while building the exported constants, so these helpers come first.
+// Evaluated while building the exported constants, so this helper comes first.
 /** Returns a required environment variable, failing with a webhook-specific message. */
 const requireEnv = (name) => {
   const value = process.env[name];
@@ -11,9 +11,6 @@ const requireEnv = (name) => {
 
   return value;
 };
-
-/** Returns the current Unix timestamp in seconds. */
-const nowInSeconds = () => Math.floor(Date.now() / 1000);
 
 /** Relative paths of the provider webhook endpoints exposed by the server. */
 export const WEBHOOK_ENDPOINTS = {
@@ -28,6 +25,9 @@ export const WEBHOOK_SECRETS = {
   stripePlatform: requireEnv("OCG_E2E_STRIPE_WEBHOOK_SECRET"),
   zoom: requireEnv("OCG_E2E_ZOOM_WEBHOOK_SECRET"),
 };
+
+/** Returns the current Unix timestamp in seconds, as provider webhook signatures expect. */
+export const nowInSeconds = () => Math.floor(Date.now() / 1000);
 
 /**
  * Builds a Stripe `Stripe-Signature` header (`t=<unix>,v1=<hmac>`) over the exact body bytes.

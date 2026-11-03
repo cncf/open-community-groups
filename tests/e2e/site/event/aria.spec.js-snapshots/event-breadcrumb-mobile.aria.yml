@@ -1,0 +1,8 @@
+- /children: deep-equal
+- navigation "Breadcrumb":
+  - button "Upcoming In-Person Event"
+  - listbox:
+    - option "Home"
+    - option "Platform Engineering Community"
+    - option "Platform Ops Meetup"
+    - option "Upcoming In-Person Event" [selected]

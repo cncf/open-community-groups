@@ -1,5 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
-import { TEST_MEETING_EVENTS, TEST_MEETINGS } from "../../../seed.js";
+import { queryE2eDatabase, restoreRow, snapshotRow } from "../../../database.js";
+import { cleanupEventsByIds } from "../../../data-graphs/events.js";
+import { TEST_EVENT_CATEGORY_IDS, TEST_MEETING_EVENTS, TEST_MEETINGS } from "../../../seed.js";
 import {
   futureDate,
   navigateToPath,
@@ -9,7 +11,7 @@ import {
 } from "../../../utils.js";
 import { fillMarkdownEditor } from "../../form-helpers.js";
 import { setAutomaticMeetingCapacity } from "./event-form-helpers.js";
-import { deleteEventFromList, openEventUpdateFormByName, waitForEventEditorAfterSave } from "./helpers.js";
+import { openEventUpdateFormByName, waitForEventEditorAfterSave } from "./helpers.js";
 
 const MEETING_STATE_CASES = [
   {
@@ -21,6 +23,7 @@ const MEETING_STATE_CASES = [
   {
     event: TEST_MEETING_EVENTS.pending,
     expectedText: "We've requested a meeting for this event.",
+    freshClaim: true,
     name: "in-flight",
     statusText: "Meeting not synced yet",
   },
@@ -61,7 +64,7 @@ test.describe("group dashboard event meetings", () => {
       // Fill the core event details for the automatic meeting flow.
       await organizerGroupPage.locator("#name").fill(eventName);
       await organizerGroupPage.locator("#kind_id").selectOption("virtual");
-      await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
+      await organizerGroupPage.locator("#category_id").selectOption(TEST_EVENT_CATEGORY_IDS.general);
       await organizerGroupPage.locator("#description_short").fill("Automatic recording override coverage.");
       await fillMarkdownEditor(
         organizerGroupPage,
@@ -223,7 +226,7 @@ test.describe("group dashboard event meetings", () => {
     } finally {
       // Delete the temporary meeting event if it was created.
       if (eventId) {
-        await deleteEventFromList(organizerGroupPage, eventId);
+        cleanupEventsByIds([eventId]);
       }
     }
   });
@@ -276,7 +279,16 @@ test.describe("group dashboard event meetings", () => {
   });
 
   for (const meetingState of MEETING_STATE_CASES) {
-    test(`organizer sees ${meetingState.name} automatic meeting state`, async ({ organizerGroupPage }) => {
+    test(`organizer sees ${meetingState.name} automatic meeting state`, async ({
+      organizerGroupPage,
+      owned,
+    }) => {
+      // The meetings worker marks claims older than 15 minutes as unknown, so restart the claim.
+      if (meetingState.freshClaim) {
+        owned.track(snapshotRow({ key: { event_id: meetingState.event.id }, table: "event" }), restoreRow);
+        restartMeetingSyncClaim(meetingState.event.id);
+      }
+
       // Open the seeded event editor on the section that owns online meeting state.
       const onlineEventDetails = await openMeetingEventEditor(organizerGroupPage, meetingState.event);
 
@@ -321,4 +333,20 @@ const openMeetingEventEditor = async (page, event) => {
   await expect(onlineEventDetails).toBeVisible();
   await expect(onlineEventDetails.locator('input[type="radio"][value="automatic"]')).toBeChecked();
   return onlineEventDetails;
+};
+
+/**
+ * Puts a seeded automatic meeting event back into a just-claimed, in-flight sync state.
+ * @param {string} eventId - Seeded event with an automatic meeting.
+ */
+const restartMeetingSyncClaim = (eventId) => {
+  queryE2eDatabase(`
+    update event
+    set
+      meeting_error = null,
+      meeting_in_sync = false,
+      meeting_provider_host_user = null,
+      meeting_sync_claimed_at = current_timestamp
+    where event_id = '${eventId}';
+  `);
 };

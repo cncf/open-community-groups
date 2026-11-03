@@ -37,14 +37,13 @@ use crate::{
         EmailVerification, EventAdmissionOfferCanceled, EventAdmissionOfferCreated,
         EventAdmissionOfferDeclined, EventAttendanceCanceled, EventCanceled, EventCohostInvitation,
         EventCohostRemoved, EventCohostResponded, EventCustom, EventExternalPaymentExpired,
-        EventExternalPaymentPending, EventExternalPaymentReminder, EventInvitation,
-        EventPaidConfigured, EventPublished, EventRefundApproved, EventRefundRejected,
-        EventRefundRequested, EventReminder, EventRescheduled, EventSeriesCanceled,
-        EventSeriesPublished, EventSurveyOpened, EventTicketRequestApproved,
-        EventTicketWaitlistOffer, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted,
-        EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome, InboxMessageReceived,
-        InboxReplyReceived, NotificationTemplate, SessionProposalCoSpeakerInvitation,
-        SpeakerSeriesWelcome, SpeakerWelcome,
+        EventExternalPaymentPending, EventExternalPaymentReminder, EventPaidConfigured,
+        EventPublished, EventRefundApproved, EventRefundRejected, EventRefundRequested,
+        EventReminder, EventRescheduled, EventSeriesCanceled, EventSeriesPublished,
+        EventSurveyOpened, EventTicketRequestApproved, EventTicketWaitlistOffer,
+        EventWaitlistJoined, EventWaitlistLeft, EventWelcome, GroupCustom, GroupTeamInvitation,
+        GroupWelcome, InboxMessageReceived, InboxReplyReceived, NotificationTemplate,
+        SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
     },
     types::{
         event::EventSummary,
@@ -426,9 +425,6 @@ impl DeliveryWorker {
             NotificationKind::EventExternalPaymentReminder => {
                 Self::render_template::<EventExternalPaymentReminder>(template_data, base_url)
             }
-            NotificationKind::EventInvitation => {
-                Self::render_template::<EventInvitation>(template_data, base_url)
-            }
             NotificationKind::EventPaidConfigured => {
                 Self::render_template::<EventPaidConfigured>(template_data, base_url)
             }
@@ -470,9 +466,6 @@ impl DeliveryWorker {
             }
             NotificationKind::EventWaitlistLeft => {
                 Self::render_template::<EventWaitlistLeft>(template_data, base_url)
-            }
-            NotificationKind::EventWaitlistPromoted => {
-                Self::render_template::<EventWaitlistPromoted>(template_data, base_url)
             }
             NotificationKind::EventWelcome => {
                 Self::render_template::<EventWelcome>(template_data, base_url)

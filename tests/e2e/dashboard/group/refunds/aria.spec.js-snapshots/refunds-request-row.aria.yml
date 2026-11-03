@@ -1,0 +1,9 @@
+- row /ET E2E Member Three e2e-member-3@example\.com E2E ARIA event \$\d+\.\d+ External Needs review/:
+  - cell "ET E2E Member Three e2e-member-3@example.com"
+  - cell "E2E ARIA event"
+  - cell /\$\d+\.\d+ External/:
+    - button /\$\d+\.\d+/
+    - text: ""
+  - cell "Needs review"
+  - cell:
+    - group

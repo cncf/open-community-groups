@@ -1,0 +1,55 @@
+- paragraph: People without a full name in their profile aren't listed on the public event page.
+- text: Speakers
+- button "Award badge" [disabled]
+- button "Add speaker"
+- paragraph: Add speakers or presenters for this event.
+- table "Event speakers":
+  - rowgroup:
+    - row "Name Featured Actions":
+      - columnheader "Name"
+      - columnheader "Featured"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No event speakers added yet.":
+      - cell "No event speakers added yet."
+- heading "Session-level speakers" [level=3]
+- paragraph: Speakers added to individual sessions are listed here. Manage their session assignments from the Sessions tab.
+- table "Session-level speakers":
+  - rowgroup:
+    - row "Name Featured Sessions Actions":
+      - columnheader "Name"
+      - columnheader "Featured"
+      - columnheader "Sessions"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No session-level speakers added yet.":
+      - cell "No session-level speakers added yet."
+- text: Event Hosts
+- button "Award badge" [disabled]
+- textbox "Search host by username"
+- paragraph: Search for event hosts by their username
+- table "Event hosts":
+  - rowgroup:
+    - row "Host Actions":
+      - columnheader "Host"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No hosts added yet.":
+      - cell "No hosts added yet."
+- text: Event Organizers
+- button "Award badge"
+- paragraph: Organizers are listed on the public event page. Only accepted group team members can be added, and new events start with the whole team. People who leave the team stay listed until removed. Contact messages still go to the group team.
+- textbox "Search organizer by name or username"
+- paragraph: Search group team members by name or username
+- table "Event organizers":
+  - rowgroup:
+    - row "Organizer Actions":
+      - columnheader "Organizer"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "EO E2E Organizer One @e2e-organizer-1":
+      - cell "EO E2E Organizer One @e2e-organizer-1"
+      - cell:
+        - group
+- text: Event Sponsors Select sponsors for your event from the group's sponsors list.
+- textbox "Search sponsors"

@@ -1,0 +1,24 @@
+- dialog "E2E ARIA open survey":
+  - heading "E2E ARIA open survey" [level=3]
+  - paragraph: /E2E survey event [0-9a-f]{8} · Platform Ops Meetup/
+  - button "Close modal"
+  - paragraph: This survey is not anonymous
+  - paragraph: The organizers can see your name, company and title next to your answers.
+  - group "1 How would you rate the sessions? *":
+    - text: ""
+    - radio "Excellent"
+    - text: Excellent
+    - radio "Good"
+    - text: Good
+  - group "2 Which topics should we cover next?":
+    - text: ""
+    - checkbox "Kubernetes"
+    - text: Kubernetes
+    - checkbox "Security"
+    - text: Security
+  - group "3 What should we improve?":
+    - text: ""
+    - textbox "3 What should we improve?"
+  - paragraph: "* Questions marked with an asterisk are required."
+  - button "Cancel"
+  - button "Submit answers"

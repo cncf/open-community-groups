@@ -834,7 +834,11 @@ fn resource_type_label(resource_type: &str) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use std::{
+        collections::BTreeSet,
+        fs,
+        path::{Path, PathBuf},
+    };
 
     use serde_json::json;
 
@@ -844,10 +848,36 @@ mod tests {
     const COMMUNITY_AUDIT_LOGS_SQL: &str = include_str!(
         "../../../../database/migrations/functions/dashboard-community/list_community_audit_logs.sql"
     );
+    /// Audit action expressions built from a parameter, with every value they take.
+    const DYNAMIC_ACTIONS: &[(&str, &[&str])] = &[
+        // The event cohost transition only accepts these statuses
+        (
+            "'event_cohost_' || p_status",
+            &[
+                "event_cohost_approved",
+                "event_cohost_canceled",
+                "event_cohost_rejected",
+            ],
+        ),
+    ];
     /// Group audit log function source holding its action allow-list.
     const GROUP_AUDIT_LOGS_SQL: &str = include_str!(
         "../../../../database/migrations/functions/dashboard-group/list_group_audit_logs.sql"
     );
+    /// Emitted audit actions intentionally absent from every audit log page.
+    const HIDDEN_ACTIONS: &[&str] = &[
+        // Attendee answer history, not an organizer or account change
+        "event_registration_questions_answered",
+        // Operator database action without a dashboard actor
+        "notification_manually_requeued",
+        // Operator database action without a dashboard actor
+        "user_notifications_suppressed",
+    ];
+    /// Listed audit actions no longer emitted but kept for historical rows.
+    const LEGACY_ACTIONS: &[&str] = &[
+        // Historical rows remain listed after the action stopped being emitted
+        "event_attendee_invitation_accepted",
+    ];
     /// User audit log function source holding its action allow-list.
     const USER_AUDIT_LOGS_SQL: &str = include_str!(
         "../../../../database/migrations/functions/dashboard-user/list_user_audit_logs.sql"
@@ -937,6 +967,55 @@ mod tests {
                     "{action} in {scope:?}"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn test_emitted_audit_actions_are_listed_or_hidden() {
+        // Collect the emitted actions and the actions listed by every audit page
+        let emitted = emitted_audit_actions();
+        let listed: BTreeSet<String> = [
+            COMMUNITY_AUDIT_LOGS_SQL,
+            GROUP_AUDIT_LOGS_SQL,
+            USER_AUDIT_LOGS_SQL,
+        ]
+        .into_iter()
+        .flat_map(sql_allow_list)
+        .collect();
+        assert!(!emitted.is_empty(), "no emitted audit actions found");
+
+        // Check every emitted action is listed by an audit page or hidden
+        for action in &emitted {
+            assert!(
+                listed.contains(action) || HIDDEN_ACTIONS.contains(&action.as_str()),
+                "audit action {action} is emitted but not listed: add it to a \
+                 list_*_audit_logs.sql allow-list plus AUDIT_ACTION_DEFINITIONS, or to \
+                 HIDDEN_ACTIONS"
+            );
+        }
+
+        // Check hidden actions are emitted, unlisted and keep the fallback label
+        for action in HIDDEN_ACTIONS {
+            assert!(
+                emitted.contains(*action),
+                "hidden action {action} is not emitted"
+            );
+            assert!(
+                !listed.contains(*action),
+                "hidden action {action} is listed"
+            );
+            assert!(
+                action_definition(action).is_none(),
+                "hidden action {action} has a definition"
+            );
+        }
+
+        // Check every listed action is still emitted or kept for legacy rows
+        for action in &listed {
+            assert!(
+                emitted.contains(action) || LEGACY_ACTIONS.contains(&action.as_str()),
+                "audit action {action} is listed but never emitted"
+            );
         }
     }
 
@@ -1055,6 +1134,217 @@ mod tests {
 
     // Helpers.
 
+    /// Returns the first value expression of each `insert into audit_log` statement.
+    fn audit_log_insert_actions(file: &str, source: &str) -> Vec<String> {
+        word_positions(source, "audit_log")
+            .filter(|position| {
+                // Keep table references that follow insert into, schema-qualified or not
+                let before = strip_schema_qualifier(&source[..*position]);
+                strip_keyword_suffix(before, "into")
+                    .and_then(|before| strip_keyword_suffix(before, "insert"))
+                    .is_some()
+            })
+            .map(|position| {
+                // Check the column list starts with the action column
+                let rest = source[position + "audit_log".len()..].trim_start();
+                let rest = rest
+                    .strip_prefix('(')
+                    .unwrap_or_else(|| panic!("audit_log insert without a column list in {file}"));
+                let columns_end = rest
+                    .find(')')
+                    .unwrap_or_else(|| panic!("audit_log column list end in {file}"));
+                assert_eq!(
+                    rest[..columns_end].split(',').next().map(str::trim),
+                    Some("action"),
+                    "audit_log insert does not start with the action column in {file}"
+                );
+
+                // Read the first value of a values list or a select
+                let values = &rest[columns_end + 1..];
+                let values = strip_keyword_prefix(values, "values")
+                    .and_then(|values| values.trim_start().strip_prefix('('))
+                    .or_else(|| strip_keyword_prefix(values, "select"))
+                    .unwrap_or_else(|| {
+                        panic!("audit_log insert without values or select in {file}")
+                    });
+                first_argument(values).to_string()
+            })
+            .collect()
+    }
+
+    /// Returns the first argument of every call to `function`, skipping its definition.
+    fn call_first_arguments(file: &str, source: &str, function: &str) -> Vec<String> {
+        word_positions(source, function)
+            .filter(|position| {
+                // Skip the function definition, schema-qualified or not
+                let before = strip_schema_qualifier(&source[..*position]);
+                strip_keyword_suffix(before, "function").is_none()
+            })
+            .map(|position| {
+                // Fail on references that are not calls
+                let arguments = source[position + function.len()..].trim_start();
+                let arguments = arguments
+                    .strip_prefix('(')
+                    .unwrap_or_else(|| panic!("unrecognized reference to {function} in {file}"));
+
+                // Read the first argument, removing a named action parameter
+                let argument = first_argument(arguments);
+                argument
+                    .strip_prefix("p_action")
+                    .map(str::trim_start)
+                    .and_then(|rest| rest.strip_prefix("=>").or_else(|| rest.strip_prefix(":=")))
+                    .unwrap_or(argument)
+                    .trim()
+                    .to_string()
+            })
+            .collect()
+    }
+
+    /// Returns the unqualified name of the function defined in a SQL source.
+    fn defined_function_name(source: &str) -> Option<&str> {
+        let start =
+            source.find("create or replace function ")? + "create or replace function ".len();
+        let end = start + source[start..].find('(')?;
+        let name = source[start..end].trim();
+        Some(name.rsplit('.').next().unwrap_or(name))
+    }
+
+    /// Collects every audit action emitted by the database function sources.
+    fn emitted_audit_actions() -> BTreeSet<String> {
+        // Load the function sources without comments or template directives
+        let functions_dir =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../database/migrations/functions");
+        let mut paths = Vec::new();
+        walk_sql_files(&functions_dir, &mut paths);
+        let sources: Vec<(String, String)> = paths
+            .iter()
+            .map(|path| {
+                let file = path
+                    .strip_prefix(&functions_dir)
+                    .unwrap_or(path)
+                    .display()
+                    .to_string();
+                let source = fs::read_to_string(path).expect("read SQL function source");
+                let source = strip_sql_comments(&source)
+                    .lines()
+                    .filter(|line| !line.trim_start().starts_with("{{"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                (file, source)
+            })
+            .collect();
+
+        // Find the audit helpers that forward an action parameter to an emitter or
+        // audit_log, starting from the base helper's raw insert (the base helper is
+        // discovered, not named, so Rust never references internal SQL functions)
+        let mut emitters = BTreeSet::<String>::new();
+        loop {
+            let mut helpers = BTreeSet::new();
+            for (file, source) in &sources {
+                let mut expressions = audit_log_insert_actions(file, source);
+                for emitter in &emitters {
+                    expressions.extend(call_first_arguments(file, source, emitter));
+                }
+                if expressions.iter().any(|expression| is_parameter(expression)) {
+                    let name = defined_function_name(source).unwrap_or_else(|| {
+                        panic!("audit action parameter outside a function in {file}")
+                    });
+                    helpers.insert(name.to_string());
+                }
+            }
+            if helpers.is_subset(&emitters) {
+                break;
+            }
+            emitters.extend(helpers);
+        }
+
+        // Resolve the action expressions passed to every emitter and audit_log insert
+        let mut actions = BTreeSet::new();
+        for (file, source) in &sources {
+            let mut expressions = audit_log_insert_actions(file, source);
+            for emitter in &emitters {
+                expressions.extend(call_first_arguments(file, source, emitter));
+            }
+            for expression in expressions.iter().filter(|expression| !is_parameter(expression)) {
+                let resolved = resolve_action_expression(expression, source).unwrap_or_else(|| {
+                    panic!("unresolved audit action expression in {file}: {expression}")
+                });
+                actions.extend(resolved);
+            }
+        }
+        actions
+    }
+
+    /// Returns the first top-level argument of an argument list, trimmed.
+    fn first_argument(arguments: &str) -> &str {
+        let mut depth = 0_usize;
+        let mut in_literal = false;
+        for (position, c) in arguments.char_indices() {
+            match c {
+                '\'' => in_literal = !in_literal,
+                '(' if !in_literal => depth += 1,
+                ')' | ',' if !in_literal && depth == 0 => {
+                    return arguments[..position].trim();
+                }
+                ')' if !in_literal => depth -= 1,
+                _ => {}
+            }
+        }
+        arguments.trim()
+    }
+
+    /// Reports whether a character can be part of a SQL identifier.
+    fn is_identifier_char(c: char) -> bool {
+        c.is_ascii_alphanumeric() || c == '_'
+    }
+
+    /// Reports whether an expression is a bare function parameter.
+    fn is_parameter(expression: &str) -> bool {
+        expression.starts_with("p_")
+            && expression.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+    }
+
+    /// Resolves an audit action expression to the literal actions it can produce.
+    fn resolve_action_expression(expression: &str, source: &str) -> Option<Vec<String>> {
+        // Map parameter-built expressions to their known values
+        let normalized = expression.split_whitespace().collect::<Vec<_>>().join(" ");
+        if let Some((_, values)) =
+            DYNAMIC_ACTIONS.iter().find(|(dynamic, _)| *dynamic == normalized)
+        {
+            return Some(values.iter().map(ToString::to_string).collect());
+        }
+
+        // Accept a single literal
+        if let Some(action) = sql_literal(expression) {
+            return Some(vec![action]);
+        }
+
+        // Collect the then and else literals of a case expression
+        let tokens = sql_tokens(expression);
+        if tokens.first() == Some(&"case") && tokens.last() == Some(&"end") {
+            return tokens
+                .windows(2)
+                .filter(|pair| pair[0] == "then" || pair[0] == "else")
+                .map(|pair| sql_literal(pair[1]))
+                .collect();
+        }
+
+        // Collect the literals assigned to a local variable in the same source
+        if expression.starts_with("v_") {
+            let assignment = format!("{expression} :=");
+            let actions: Option<Vec<String>> = source
+                .match_indices(&assignment)
+                .map(|(position, _)| {
+                    sql_tokens(&source[position + assignment.len()..])
+                        .first()
+                        .and_then(|token| sql_literal(token))
+                })
+                .collect();
+            return actions.filter(|actions| !actions.is_empty());
+        }
+        None
+    }
+
     /// Returns the action values listed by an audit scope.
     fn scope_action_values(scope: AuditScope) -> BTreeSet<String> {
         scope
@@ -1077,5 +1367,100 @@ mod tests {
             .step_by(2)
             .map(ToString::to_string)
             .collect()
+    }
+
+    /// Returns the value of an expression made of one quoted SQL literal.
+    fn sql_literal(expression: &str) -> Option<String> {
+        let value = expression.strip_prefix('\'')?.strip_suffix('\'')?;
+        (!value.contains('\'')).then(|| value.to_string())
+    }
+
+    /// Splits a SQL expression into whitespace-separated words and quoted literals.
+    fn sql_tokens(expression: &str) -> Vec<&str> {
+        let mut tokens = Vec::new();
+        let mut rest = expression.trim_start();
+        while !rest.is_empty() {
+            let len = if let Some(literal) = rest.strip_prefix('\'') {
+                literal.find('\'').map_or(rest.len(), |end| end + 2)
+            } else {
+                rest.find(|c: char| c.is_whitespace() || c == '\'')
+                    .unwrap_or(rest.len())
+            };
+            tokens.push(&rest[..len]);
+            rest = rest[len..].trim_start();
+        }
+        tokens
+    }
+
+    /// Returns the text after a leading whole-word keyword, ignoring case and whitespace.
+    fn strip_keyword_prefix<'a>(text: &'a str, keyword: &str) -> Option<&'a str> {
+        let text = text.trim_start();
+        let rest = text.get(keyword.len()..)?;
+        let matches = text[..keyword.len()].eq_ignore_ascii_case(keyword)
+            && !rest.chars().next().is_some_and(is_identifier_char);
+        matches.then_some(rest)
+    }
+
+    /// Returns the text before a trailing whole-word keyword, ignoring case and whitespace.
+    fn strip_keyword_suffix<'a>(text: &'a str, keyword: &str) -> Option<&'a str> {
+        let text = text.trim_end();
+        let start = text.len().checked_sub(keyword.len())?;
+        let before = text.get(..start)?;
+        let matches = text[start..].eq_ignore_ascii_case(keyword)
+            && !before.chars().next_back().is_some_and(is_identifier_char);
+        matches.then_some(before)
+    }
+
+    /// Removes a trailing `schema.` qualifier from the text before an identifier.
+    fn strip_schema_qualifier(before: &str) -> &str {
+        match before.strip_suffix('.') {
+            Some(qualified) => qualified.trim_end_matches(is_identifier_char),
+            None => before,
+        }
+    }
+
+    /// Removes `--` line comments outside SQL literals.
+    fn strip_sql_comments(source: &str) -> String {
+        source
+            .lines()
+            .map(|line| {
+                let mut in_literal = false;
+                let mut previous = ' ';
+                for (position, c) in line.char_indices() {
+                    if c == '\'' {
+                        in_literal = !in_literal;
+                    } else if c == '-' && previous == '-' && !in_literal {
+                        return &line[..position - 1];
+                    }
+                    previous = c;
+                }
+                line
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Recursively collects `.sql` files under `dir`.
+    fn walk_sql_files(dir: &Path, files: &mut Vec<PathBuf>) {
+        let entries = fs::read_dir(dir).expect("read SQL functions directory");
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk_sql_files(&path, files);
+            } else if path.extension().is_some_and(|ext| ext == "sql") {
+                files.push(path);
+            }
+        }
+    }
+
+    /// Returns the positions of `word` not adjacent to other identifier characters.
+    fn word_positions<'a>(source: &'a str, word: &'a str) -> impl Iterator<Item = usize> + 'a {
+        source.match_indices(word).filter_map(move |(position, _)| {
+            let before = source[..position].chars().next_back();
+            let after = source[position + word.len()..].chars().next();
+            let whole_word =
+                !before.is_some_and(is_identifier_char) && !after.is_some_and(is_identifier_char);
+            whole_word.then_some(position)
+        })
     }
 }

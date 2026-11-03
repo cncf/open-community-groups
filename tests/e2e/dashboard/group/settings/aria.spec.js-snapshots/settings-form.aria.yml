@@ -1,0 +1,224 @@
+- text: Group Details
+- link "Open documentation":
+  - /url: /docs#/guides/group-dashboard?id=settings-group-identity
+- paragraph: Information about the group.
+- paragraph: '/\(ID: [0-9a-fA-F-]+\)/'
+- text: Name *
+- textbox "Name *": /E2E temporary group [0-9a-f]{8}/
+- paragraph: /Display name of the group \(e\.g\. Kubernetes Amsterdam\)\. Max \d+ characters\./
+- text: Pretty URL slug
+- textbox "Pretty URL slug"
+- paragraph: /Optional public URL slug for nicer group links\. Use lowercase ASCII letters, numbers, and single hyphens only\. Start and end with a letter or number\. Maximum \d+ characters\. Must be unique within the community and different from the generated slug\. Existing generated slug URLs will still work\./
+- text: Category *
+- combobox "Category *":
+  - option "Select a category"
+  - option "E2E Category One" [selected]
+  - option "E2E Category Unused"
+- paragraph: Group's category.
+- text: Region
+- combobox "Region":
+  - option "Select a region (optional)" [selected]
+  - option "North America"
+  - option "APAC"
+- paragraph: Geographic region where the group is primarily based.
+- text: Logo
+- button "Logo Click or drop image":
+  - paragraph: Click or drop image
+- paragraph: '/Images must be \d+ x \d+ px \(square\)\. Maximum size: [\d,.]+[bkmBKM]+\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\./'
+- button "Upload image for Logo"
+- button "Remove image" [disabled]
+- paragraph: If this logo isn't provided, we'll fall back to the community logo.
+- text: Banner
+- button "Banner Click to upload or drag and drop":
+  - paragraph: Click to upload or drag and drop
+- paragraph: '/Size required \d+ x \d+ px\. Maximum size: [\d,.]+[bkmBKM]+\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\./'
+- button "Upload image for Banner"
+- button "Remove image" [disabled]
+- paragraph: If this banner isn't provided, we'll fall back to the community banner.
+- text: Banner Mobile
+- button "Banner Mobile Click to upload or drag and drop":
+  - paragraph: Click to upload or drag and drop
+- paragraph: '/Size required \d+ x \d+ px\. Maximum size: [\d,.]+[bkmBKM]+\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\./'
+- button "Upload image for Banner Mobile"
+- button "Remove image" [disabled]
+- paragraph: If this banner isn't provided, we'll fall back to the community banner.
+- text: Open Graph Image
+- button "Open Graph Image Click to upload or drag and drop":
+  - paragraph: Click to upload or drag and drop
+- paragraph: '/Size required \d+ x \d+ px\. Format must be PNG, JPEG, or WebP\. Maximum size: [\d,.]+[bkmBKM]+\./'
+- button "Upload image for Open Graph Image"
+- button "Remove image" [disabled]
+- paragraph: Used for group and event link previews. If this image isn't provided, we'll fall back to the community Open Graph image if set.
+- text: Short Description
+- textbox "Short Description"
+- paragraph: /Brief description for group listings and previews\. Max \d+ characters\./
+- text: Description *
+- application:
+  - toolbar:
+    - button "Bold": 
+    - button "Italic": 
+    - button "Heading": 
+    - text: '|'
+    - button "Quote": 
+    - button "Generic List": 
+    - button "Numbered List": 
+    - button "Check List": 
+    - text: '|'
+    - button "Create Link": 
+    - button "Insert Table": 
+    - button "Insert Horizontal Line": 
+    - text: '|'
+    - button "Toggle Preview": 
+    - text: '|'
+    - button "Undo": 
+    - button "Redo": 
+  - text: Temporary group owned by E2E coverage.
+- paragraph: /Brief description of the group and its purpose\. Max \d+ characters\./
+- text: Location
+- paragraph: Optional location information for the group.
+- button "Clear location details"
+- textbox "Search for a location":
+  - /placeholder: Search for a city, state, country...
+- button "Search" [disabled]
+- paragraph: If any fields remain empty or incomplete after the search, fill in the missing details manually.
+- text: City
+- textbox "City"
+- paragraph: Primary city where the group is located.
+- text: State/Province
+- textbox "State/Province"
+- paragraph: State, province, or region.
+- text: Country
+- textbox "Country"
+- paragraph: Country where the group is located.
+- text: Country Code
+- textbox "Country Code"
+- paragraph: Two-letter country code used for regional features.
+- text: Latitude
+- spinbutton "Latitude"
+- text: Longitude
+- spinbutton "Longitude"
+- text: Fiscal Sponsor
+- paragraph: Configure the legal seller for this group's paid events.
+- paragraph: The fiscal sponsor owns Tax Rate definitions in Stripe. Event organizers select the applicable active rates in each event's Tickets tab.
+- text: Fiscal Sponsor Legal Name
+- textbox "Fiscal Sponsor Legal Name":
+  - /placeholder: Example Fiscal Sponsor, Inc.
+- paragraph: Legal seller name shown to attendees in purchase and refund records.
+- text: Fiscal Sponsor Stripe Account
+- textbox "Fiscal Sponsor Stripe Account":
+  - /placeholder: acct_...
+- paragraph: Enter the Standard-like Stripe connected account owned by the named fiscal sponsor that sells tickets and handles tax, invoices, refunds, disputes, and negative balances. Leave both fiscal sponsor fields blank to keep the group on free events only.
+- text: External payments
+- paragraph: Collect ticket payments outside this platform when Stripe Connect is not available.
+- text: Legal Name
+- textbox "Legal Name" [disabled]:
+  - /placeholder: Example Organization, Inc.
+- paragraph: Legal name of the organization collecting ticket payments outside this platform. Required while external payments are enabled and shown to attendees on the event page.
+- checkbox "Collect ticket payments outside this platform" [disabled]
+- text: Collect ticket payments outside this platform
+- note: External payments are offered in a limited set of countries. Set the group's location above and save the settings to determine eligibility.
+- text: Social links
+- paragraph: Optional social media profiles and website links.
+- text: Website
+- textbox "Website":
+  - /placeholder: https://example.com
+- text: Bluesky
+- textbox "Bluesky":
+  - /placeholder: https://bsky.app/profile/username
+- text: Facebook
+- textbox "Facebook":
+  - /placeholder: https://facebook.com/page
+- text: Flickr
+- textbox "Flickr":
+  - /placeholder: https://flickr.com/photos/account
+- text: GitHub
+- textbox "GitHub":
+  - /placeholder: https://github.com/organization
+- text: Instagram
+- textbox "Instagram":
+  - /placeholder: https://instagram.com/username
+- text: LinkedIn
+- textbox "LinkedIn":
+  - /placeholder: https://linkedin.com/company/name
+- text: Slack
+- textbox "Slack":
+  - /placeholder: https://workspace.slack.com
+- text: X (formerly Twitter)
+- textbox "X (formerly Twitter)":
+  - /placeholder: https://x.com/username
+- text: WeChat
+- textbox "WeChat":
+  - /placeholder: https://wechat.com/account
+- text: YouTube
+- textbox "YouTube":
+  - /placeholder: https://youtube.com/channel/id
+- text: Additional Content
+- paragraph: Optional tags, photos, and custom links.
+- textbox "Tag 1":
+  - /placeholder: ''
+- button "Remove item" [disabled]
+- paragraph: /Optional tags for the group\. Max \d+ characters per tag\./
+- button "Add Tag"
+- text: Photos
+- paragraph: '/Upload as many images as you need\. Maximum size: [\d,.]+[bkmBKM]+ each\. Drag and drop thumbnails to change their order before submitting\./'
+- button "Add images to gallery":
+  - text: ''
+  - status "Uploading..."
+- paragraph: Photos that will be displayed in the group gallery.
+- text: Extra Links
+- textbox "Link Name"
+- textbox "URL"
+- button "Remove item"
+- button "Add Link"
+- paragraph: Additional custom links displayed in the group page.
+- text: Parent group
+- paragraph: Optional single-level relationship to another group.
+- text: Parent group
+- combobox "Parent group":
+  - option "No parent group" [selected]
+  - option "External Payments Lab"
+  - option "Platform Ops Meetup"
+- paragraph: Choose an active same-community parent group that you can manage. Parents cannot be deleted, inactive, or subgroups. Keeping the current parent is allowed even if it is no longer active; clearing the parent only requires permission on this group.
+- text: UTM tracking
+- paragraph: Optional attribution of event page views to the UTM parameters of the links that bring visitors.
+- paragraph:
+  - text: UTM tracking is opt-in. Event page views are only attributed when the link's
+  - code: utm_source
+  - text: is one of the sources or its
+  - code: utm_campaign
+  - text: is one of the campaigns defined below, so define at least one source or campaign to start tracking.
+- paragraph: 'Every UTM parameter in the link must be accepted: views whose source, campaign, or medium is not listed here are still counted, but without attribution. Links may omit the medium.'
+- group "Sources":
+  - text: ''
+  - textbox "Source 1":
+    - /placeholder: newsletter
+  - button "Remove item" [disabled]
+  - paragraph: /Values accepted for utm_source, such as newsletter or mastodon\. Up to \d+ values of up to \d+ lowercase letters, numbers, dots, hyphens, or underscores\./
+  - button "Add Source"
+- group "Campaigns":
+  - text: ''
+  - textbox "Campaign 1":
+    - /placeholder: spring-launch
+  - button "Remove item" [disabled]
+  - paragraph: /Values accepted for utm_campaign\. Up to \d+ values of up to \d+ lowercase letters, numbers, dots, hyphens, or underscores\./
+  - button "Add Campaign"
+- group "Additional mediums":
+  - text: ''
+  - paragraph: 'Mediums accepted by default:'
+  - list "Mediums accepted by default:":
+    - listitem: affiliate
+    - listitem: cpc
+    - listitem: display
+    - listitem: email
+    - listitem: organic
+    - listitem: qr
+    - listitem: referral
+    - listitem: sms
+    - listitem: social
+    - listitem: video
+  - textbox "Medium 1":
+    - /placeholder: podcast
+  - button "Remove item" [disabled]
+  - paragraph: /Values accepted for utm_medium in addition to the default ones\. Up to \d+ values of up to \d+ lowercase letters, numbers, dots, hyphens, or underscores\./
+  - button "Add Medium"
+- button "Update Group"

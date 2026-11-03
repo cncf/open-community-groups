@@ -1,0 +1,145 @@
+- text: General Settings
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=settings-community-identity
+- paragraph: Configure core community information and basic settings.
+- text: Display Name *
+- textbox "Display Name *": /E2E aria community [0-9a-f]{8}/
+- paragraph: /Public name displayed throughout the community platform\. Max \d+ characters\./
+- text: Description *
+- application:
+  - toolbar:
+    - button "Bold": 
+    - button "Italic": 
+    - button "Heading": 
+    - text: "|"
+    - button "Quote": 
+    - button "Generic List": 
+    - button "Numbered List": 
+    - button "Check List": 
+    - text: "|"
+    - button "Create Link": 
+    - button "Insert Table": 
+    - button "Insert Horizontal Line": 
+    - text: "|"
+    - button "Toggle Preview": 
+    - text: "|"
+    - button "Undo": 
+    - button "Redo": 
+  - text: Temporary community owned by E2E coverage.
+- paragraph: /Brief description of the community's purpose or focus\. This information will be featured in the community site home page\. Max \d+ characters\./
+- checkbox "Restrict group team management to community admins and groups managers"
+- text: Restrict group team management to community admins and groups managers
+- paragraph: When enabled, group team members cannot add, update, or remove group team members unless they also have a qualifying community role.
+- text: Branding
+- paragraph: Configure visual identity and copyright information.
+- text: Logo *
+- button "Logo * Change image":
+  - img "Image preview"
+  - text: ""
+- paragraph: "/Images must be \\d+ x \\d+ px \\(square\\)\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Logo"
+- button "Remove image"
+- text: Banner *
+- button "Banner * Change image":
+  - img "Image preview"
+  - text: ""
+- paragraph: "/Size required \\d+ x \\d+ px\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Banner"
+- button "Remove image"
+- text: Banner Mobile *
+- button "Banner Mobile * Change image":
+  - img "Image preview"
+  - text: ""
+- paragraph: "/Size required \\d+ x \\d+ px\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Banner Mobile"
+- button "Remove image"
+- text: Open Graph Image
+- button "Open Graph Image Click to upload or drag and drop":
+  - paragraph: Click to upload or drag and drop
+- paragraph: "/Size required \\d+ x \\d+ px\\. Format must be PNG, JPEG, or WebP\\. Maximum size: [\\d,.]+[bkmBKM]+\\./"
+- button "Upload image for Open Graph Image"
+- button "Remove image" [disabled]
+- paragraph: Used for community, group, and event link previews when a more specific image isn't provided.
+- text: Social Links
+- paragraph: Configure social media profiles and website links.
+- text: Website
+- textbox "Website":
+  - /placeholder: https://example.com
+- text: Bluesky
+- textbox "Bluesky":
+  - /placeholder: https://bsky.app/profile/username
+- text: Facebook
+- textbox "Facebook":
+  - /placeholder: https://facebook.com/page
+- text: Flickr
+- textbox "Flickr":
+  - /placeholder: https://flickr.com/photos/account
+- text: GitHub
+- textbox "GitHub":
+  - /placeholder: https://github.com/organization
+- text: Instagram
+- textbox "Instagram":
+  - /placeholder: https://instagram.com/username
+- text: LinkedIn
+- textbox "LinkedIn":
+  - /placeholder: https://linkedin.com/company/name
+- text: Slack
+- textbox "Slack":
+  - /placeholder: https://workspace.slack.com
+- text: X (formerly Twitter)
+- textbox "X (formerly Twitter)":
+  - /placeholder: https://x.com/username
+- text: WeChat
+- textbox "WeChat":
+  - /placeholder: https://wechat.com/account
+- text: YouTube
+- textbox "YouTube":
+  - /placeholder: https://youtube.com/channel/id
+- text: Advertisement
+- paragraph: Optional advertisement banner configuration.
+- text: Banner Image
+- button "Banner Image Click to upload or drag and drop":
+  - paragraph: Click to upload or drag and drop
+- paragraph: "/Size required \\d+ x \\d+ px\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Banner Image"
+- button "Remove image" [disabled]
+- text: Banner Link URL
+- textbox "Banner Link URL":
+  - /placeholder: https://example.com/landing-page
+- paragraph: Target URL when users click on the advertisement banner.
+- text: Additional Content
+- paragraph: Extra community features and custom content.
+- text: New Group Details
+- application:
+  - toolbar:
+    - button "Bold": 
+    - button "Italic": 
+    - button "Heading": 
+    - text: "|"
+    - button "Quote": 
+    - button "Generic List": 
+    - button "Numbered List": 
+    - button "Check List": 
+    - text: "|"
+    - button "Create Link": 
+    - button "Insert Table": 
+    - button "Insert Horizontal Line": 
+    - text: "|"
+    - button "Toggle Preview": 
+    - text: "|"
+    - button "Undo": 
+    - button "Redo": 
+- paragraph: Instructions for creating new groups.
+- text: Photos
+- paragraph: "/Upload as many images as you need\\. Maximum size: [\\d,.]+[bkmBKM]+ each\\. Drag and drop thumbnails to change their order before submitting\\./"
+- button "Add images to gallery":
+  - text: ""
+  - status "Uploading..."
+- paragraph: Photos that will be displayed in the community gallery.
+- text: Extra Links
+- textbox "Link Name"
+- textbox "URL"
+- button "Remove item"
+- button "Add Link"
+- paragraph: Additional custom links displayed in the footer.
+- button "Update Settings"

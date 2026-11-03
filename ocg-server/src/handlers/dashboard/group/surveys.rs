@@ -78,8 +78,9 @@ pub(crate) async fn add_page(
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary_dashboard(community_id, group_id, event_id),
+        db.find_event_summary_dashboard(community_id, group_id, event_id),
     )?;
+    let event = event.ok_or(HandlerError::NotFound)?;
 
     // Prepare template
     let template = surveys::FormPage {
@@ -109,9 +110,10 @@ pub(crate) async fn list_page(
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary_dashboard(community_id, group_id, event_id),
+        db.find_event_summary_dashboard(community_id, group_id, event_id),
         db.list_event_surveys(group_id, event_id),
     )?;
+    let event = event.ok_or(HandlerError::NotFound)?;
 
     // Prepare template
     let template = surveys::ListPage {
@@ -136,9 +138,10 @@ pub(crate) async fn response_modal(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load the event and the survey concurrently
     let (event, survey) = tokio::try_join!(
-        db.get_event_summary_dashboard(community_id, group_id, event_id),
+        db.find_event_summary_dashboard(community_id, group_id, event_id),
         db.get_event_survey(group_id, event_id, event_survey_id),
     )?;
+    let event = event.ok_or(HandlerError::NotFound)?;
     let survey = survey.ok_or(HandlerError::NotFound)?;
 
     // Keep respondent identities of anonymous surveys hidden
@@ -172,9 +175,10 @@ pub(crate) async fn responses_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load the event and the survey concurrently
     let (event, survey) = tokio::try_join!(
-        db.get_event_summary_dashboard(community_id, group_id, event_id),
+        db.find_event_summary_dashboard(community_id, group_id, event_id),
         db.get_event_survey(group_id, event_id, event_survey_id),
     )?;
+    let event = event.ok_or(HandlerError::NotFound)?;
     let survey = survey.ok_or(HandlerError::NotFound)?;
 
     // Keep respondent identities of anonymous surveys hidden
@@ -213,9 +217,10 @@ pub(crate) async fn results_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load the event and the survey results concurrently
     let (event, results) = tokio::try_join!(
-        db.get_event_summary_dashboard(community_id, group_id, event_id),
+        db.find_event_summary_dashboard(community_id, group_id, event_id),
         db.get_event_survey_results(group_id, event_id, event_survey_id),
     )?;
+    let event = event.ok_or(HandlerError::NotFound)?;
     let results = results.ok_or(HandlerError::NotFound)?;
 
     // Prepare template
@@ -276,9 +281,10 @@ pub(crate) async fn update_page(
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary_dashboard(community_id, group_id, event_id),
+        db.find_event_summary_dashboard(community_id, group_id, event_id),
         db.get_event_survey(group_id, event_id, event_survey_id),
     )?;
+    let event = event.ok_or(HandlerError::NotFound)?;
     let survey = survey.ok_or(HandlerError::NotFound)?;
 
     // Prepare template
@@ -394,7 +400,7 @@ pub(crate) async fn download_csv(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load the event and the responses within the export bounds
     let (event, export) = tokio::try_join!(
-        db.get_event_summary_dashboard(community_id, group_id, event_id),
+        db.find_event_summary_dashboard(community_id, group_id, event_id),
         db.get_event_survey_export(
             group_id,
             event_id,
@@ -403,6 +409,7 @@ pub(crate) async fn download_csv(
             MAX_EVENT_SURVEY_EXPORT_ANSWER_BYTES,
         ),
     )?;
+    let event = event.ok_or(HandlerError::NotFound)?;
     let export = export.ok_or(HandlerError::NotFound)?;
 
     // Build the CSV payload

@@ -1,74 +1,38 @@
 import { expect, test } from "../../../fixtures.js";
 import { readFile } from "node:fs/promises";
 import { queryE2eDatabase } from "../../../database.js";
-import {
-  deleteNotifications,
-  expectNewNotifications,
-  snapshotNotifications,
-} from "../../../notifications.js";
-import { cleanupOwnedAttendee, setupOwnedAttendee } from "../../../data-graphs/attendance.js";
+import { setupOwnedTicketedAttendee } from "../../../data-graphs/attendance.js";
+import { cleanupEventsByIds, setupApprovalRequiredEvent } from "../../../data-graphs/events.js";
 import {
   TEST_EVENT_CANCELLATION,
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
+  TEST_GROUP_IDS,
   TEST_INVITATION_CANCELLATION,
+  TEST_USER_IDS,
 } from "../../../seed.js";
 import {
+  confirmAlert,
+  dismissAlert,
   expectCurrentPaginationNavigation,
   navigateToPath,
   uniqueName,
   waitForActionResponse,
 } from "../../../utils.js";
+import { installFakeQrScanner } from "../check-in/helpers.js";
 import { getVisibleStatusBadge, openAttendeesTab } from "./attendees-helpers.js";
-import {
-  createApprovalRequiredEvent,
-  deleteEventFromList,
-  openCurrentEventEditorSection,
-} from "./helpers.js";
 import { expectUserColumnHasRoom } from "./user-profile-modal-helpers.js";
 
-const EVENT_CANCELLATION_CONFIRMED_USER_ID = "77777777-7777-7777-7777-777777777701";
+const EVENT_CANCELLATION_CONFIRMED_USER_ID = TEST_USER_IDS.admin1;
 
-const FRESH_CANCELLATION_USER_ID = "77777777-7777-7777-7777-777777777713";
-
-const ORGANIZER_USER_ID = "77777777-7777-7777-7777-777777777703";
+const FRESH_CANCELLATION_USER_ID = TEST_USER_IDS.empty;
 
 test.describe("group dashboard attendees tab", () => {
   test("organizer scans and refreshes attendees from a published current event", async ({
     organizerGroupPage,
   }) => {
     // Replace the browser scanner with a deterministic camera implementation.
-    await organizerGroupPage.addInitScript(() => {
-      class FakeQrScanner {
-        static last;
-
-        static async hasCamera() {
-          return true;
-        }
-
-        static async listCameras() {
-          return [{ id: "test-camera", label: "Test camera" }];
-        }
-
-        constructor(_video, onDecode) {
-          this.onDecode = onDecode;
-          FakeQrScanner.last = this;
-        }
-
-        destroy() {}
-        async hasFlash() {
-          return false;
-        }
-        isFlashOn() {
-          return false;
-        }
-        async setCamera() {}
-        async start() {}
-        async toggleFlash() {}
-      }
-
-      window.__OCG_E2E_QR_SCANNER__ = FakeQrScanner;
-    });
+    await installFakeQrScanner(organizerGroupPage);
 
     // Return a deterministic successful scan without mutating seeded attendee state.
     await organizerGroupPage.route(
@@ -104,29 +68,34 @@ test.describe("group dashboard attendees tab", () => {
     await expect(scannerModal.getByText("Hold an attendee QR code inside the frame.")).toBeVisible();
 
     // Submit a successful credential through the simulated camera.
-    const scanResponsePromise = organizerGroupPage.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes(`/events/${TEST_EVENT_IDS.alpha.one}/check-ins/scan`),
+    await waitForActionResponse(
+      organizerGroupPage,
+      () =>
+        organizerGroupPage.evaluate(
+          (eventId) =>
+            window.__OCG_E2E_QR_SCANNER__.last.onDecode({
+              data: `ocg-check-in:v1:${eventId}:e2e-scanner-credential`,
+            }),
+          TEST_EVENT_IDS.alpha.one,
+        ),
+      {
+        method: "POST",
+        pathname: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/check-ins/scan`,
+        status: 200,
+      },
     );
-    await organizerGroupPage.evaluate(
-      (eventId) =>
-        window.__OCG_E2E_QR_SCANNER__.last.onDecode({
-          data: `ocg-check-in:v1:${eventId}:e2e-scanner-credential`,
-        }),
-      TEST_EVENT_IDS.alpha.one,
-    );
-    expect((await scanResponsePromise).ok()).toBe(true);
     await expect(scannerModal.getByText("Checked in", { exact: true })).toBeVisible();
 
     // Closing the scanner refreshes the attendees region once.
-    const refreshResponsePromise = organizerGroupPage.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response.url().includes(`/events/${TEST_EVENT_IDS.alpha.one}/attendees`),
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => scannerModal.getByRole("button", { name: "Close", exact: true }).click(),
+      {
+        method: "GET",
+        pathname: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`,
+        status: 200,
+      },
     );
-    await scannerModal.getByRole("button", { name: "Close", exact: true }).click();
-    expect((await refreshResponsePromise).ok()).toBe(true);
     await expect(scannerModal).toBeHidden();
     await expect(attendeesContent.getByRole("button", { name: "Scan Attendee Codes" })).toBeEnabled();
   });
@@ -202,78 +171,68 @@ test.describe("group dashboard attendees tab", () => {
     }
   });
 
-  test("organizer cancels a fresh owned attendee and retains history", async ({ organizerGroupPage }) => {
+  test("organizer cancels a fresh owned attendee and retains history", async ({
+    notifications,
+    organizerGroupPage,
+    owned,
+  }) => {
     // Create an owned attendee row that is independent of shared seed enrollments.
-    const attendee = setupOwnedAttendee({
+    owned.attendee({
       checkedIn: true,
       eventId: TEST_EVENT_IDS.alpha.one,
       userId: FRESH_CANCELLATION_USER_ID,
     });
-    let notificationIds = [];
 
-    try {
-      // Open the active attendee row before canceling it through the organizer action.
-      const attendeesContent = await openAttendeesTab(
-        organizerGroupPage,
-        TEST_EVENT_NAMES.alpha[0],
-        TEST_EVENT_IDS.alpha.one,
-      );
-      const attendeeRow = attendeesContent.locator("tr", {
-        hasText: "E2E Empty User",
-      });
-      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
-      await expect(attendeeRow).toBeVisible();
-      await expect(attendeeRow.locator(".check-in-toggle")).toBeChecked();
-      await rowActionsMenu.locator("summary").click();
-      await rowActionsMenu.getByRole("menuitem", { name: "Cancel attendance" }).click();
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-        "Are you sure you want to cancel this attendance?",
-      );
+    // Open the active attendee row before canceling it through the organizer action.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      TEST_EVENT_NAMES.alpha[0],
+      TEST_EVENT_IDS.alpha.one,
+    );
+    const attendeeRow = attendeesContent.locator("tr", {
+      hasText: "E2E Empty User",
+    });
+    const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
+    await expect(attendeeRow).toBeVisible();
+    await expect(attendeeRow.locator(".check-in-toggle")).toBeChecked();
+    await rowActionsMenu.locator("summary").click();
+    await rowActionsMenu.getByRole("menuitem", { name: "Cancel attendance" }).click();
 
-      // Confirm cancellation and require the exact success status.
-      const snapshot = snapshotNotifications();
-      await waitForActionResponse(
-        organizerGroupPage,
-        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
-        {
-          method: "DELETE",
-          status: 204,
-          urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees/${FRESH_CANCELLATION_USER_ID}`,
-          urlEndsWith: "/attendance",
-        },
-      );
-      notificationIds = expectNewNotifications(snapshot, [
-        { kind: "event-attendance-canceled", userIds: [FRESH_CANCELLATION_USER_ID] },
-      ]);
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Attendance canceled.");
-      await organizerGroupPage.locator(".swal2-confirm").click();
+    // Confirm cancellation and require the exact success status.
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => confirmAlert(organizerGroupPage, { message: "Are you sure you want to cancel this attendance?" }),
+      {
+        method: "DELETE",
+        status: 204,
+        urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees/${FRESH_CANCELLATION_USER_ID}`,
+        urlEndsWith: "/attendance",
+      },
+    );
+    notifications.expectNew([{ kind: "event-attendance-canceled", userIds: [FRESH_CANCELLATION_USER_ID] }]);
+    await dismissAlert(organizerGroupPage, { message: "Attendance canceled." });
 
-      // Verify the canceled attendee remains in history with check-in cleared.
-      const historyContent = await openAttendeesTab(
-        organizerGroupPage,
-        TEST_EVENT_NAMES.alpha[0],
-        TEST_EVENT_IDS.alpha.one,
-        "?status=history",
-      );
-      const historyRow = historyContent.locator("tr", {
-        hasText: "E2E Empty User",
-      });
-      await expect(getVisibleStatusBadge(historyRow, "Attendance canceled")).toBeVisible();
-      await expect(historyRow.locator(".check-in-toggle")).not.toBeChecked();
-      await expect(historyRow.locator(".check-in-toggle")).toBeDisabled();
-      expect(
-        queryE2eDatabase(`
-          select status || '|' || checked_in::text
-          from event_attendee
-          where event_id = '${TEST_EVENT_IDS.alpha.one}'
-          and user_id = '${FRESH_CANCELLATION_USER_ID}';
-        `),
-      ).toBe("attendance-canceled|false");
-    } finally {
-      // Remove cancellation notifications and the owned attendee fixture.
-      deleteNotifications(notificationIds);
-      cleanupOwnedAttendee(attendee);
-    }
+    // Verify the canceled attendee remains in history with check-in cleared.
+    const historyContent = await openAttendeesTab(
+      organizerGroupPage,
+      TEST_EVENT_NAMES.alpha[0],
+      TEST_EVENT_IDS.alpha.one,
+      "?status=history",
+    );
+    const historyRow = historyContent.locator("tr", {
+      hasText: "E2E Empty User",
+    });
+    await expect(getVisibleStatusBadge(historyRow, "Attendance canceled")).toBeVisible();
+    await expect(historyRow.locator(".check-in-toggle")).not.toBeChecked();
+    await expect(historyRow.locator(".check-in-toggle")).toBeDisabled();
+    expect(
+      queryE2eDatabase(`
+        select status || '|' || checked_in::text
+        from event_attendee
+        where event_id = '${TEST_EVENT_IDS.alpha.one}'
+        and user_id = '${FRESH_CANCELLATION_USER_ID}';
+      `),
+    ).toBe("attendance-canceled|false");
   });
 
   test("canceled invitations remain visible in attendee history", async ({ organizerGroupPage }) => {
@@ -341,36 +300,28 @@ test.describe("group dashboard attendees tab", () => {
 
   test("organizer sees the empty state on the attendees tab for an event without RSVPs", async ({
     organizerGroupPage,
+    owned,
   }) => {
-    // Give temporary event setup and cleanup enough time on slower deep runs.
-    test.setTimeout(60_000);
-
     // Create a temporary event without attendees.
-    const eventName = uniqueName("Empty Attendees");
-    const { eventId } = await createApprovalRequiredEvent(organizerGroupPage, eventName);
+    const { eventId, name: eventName } = owned.track(
+      setupApprovalRequiredEvent({
+        groupId: TEST_GROUP_IDS.community1.alpha,
+        name: uniqueName("Empty Attendees"),
+      }),
+      (event) => cleanupEventsByIds([event.eventId]),
+    );
 
-    try {
-      // Load the attendees tab for the temporary event.
-      const attendeesContent = await openCurrentEventEditorSection(
-        organizerGroupPage,
-        eventId,
-        "attendees",
-        "#attendees-content",
-        { tableName: "Attendees list" },
-      );
+    // Load the attendees tab for the temporary event.
+    const attendeesContent = await openAttendeesTab(organizerGroupPage, eventName, eventId);
 
-      // Assert that Attendees list is visible.
-      await expect(attendeesContent.getByRole("table", { name: "Attendees list" })).toBeVisible();
-      await expect(attendeesContent).toContainText("No attendees found for this event.");
-      await expect(attendeesContent.getByRole("button", { name: "Send email" })).toBeDisabled();
-      await expect(attendeesContent.getByRole("button", { name: "Send email" })).toHaveAttribute(
-        "title",
-        "No attendees with verified email addresses who accept messages from event organizers.",
-      );
-    } finally {
-      // Delete the temporary event without attendees.
-      await deleteEventFromList(organizerGroupPage, eventId);
-    }
+    // Assert that Attendees list is visible.
+    await expect(attendeesContent.getByRole("table", { name: "Attendees list" })).toBeVisible();
+    await expect(attendeesContent).toContainText("No attendees found for this event.");
+    await expect(attendeesContent.getByRole("button", { name: "Send email" })).toBeDisabled();
+    await expect(attendeesContent.getByRole("button", { name: "Send email" })).toHaveAttribute(
+      "title",
+      "No attendees with verified email addresses who accept messages from event organizers.",
+    );
   });
 
   test("organizer can search attendees and clear the filter", async ({ organizerGroupPage }) => {
@@ -385,16 +336,16 @@ test.describe("group dashboard attendees tab", () => {
     const searchInput = attendeesContent.getByRole("textbox", {
       name: "Search attendees",
     });
-    const searchForm = attendeesContent.locator("#attendees-search-form");
 
     // Enter a query expected to match a seeded attendee.
     await searchInput.fill("member");
 
     // Submit the matching search and wait for filtered results.
-    await searchForm.evaluate((form) => {
-      if (form instanceof HTMLFormElement) {
-        form.requestSubmit();
-      }
+    await waitForActionResponse(organizerGroupPage, () => searchInput.press("Enter"), {
+      method: "GET",
+      params: { ts_query: "member" },
+      pathname: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`,
+      status: 200,
     });
 
     // Verify the matching result is shown and non-matching attendees are hidden.
@@ -407,10 +358,11 @@ test.describe("group dashboard attendees tab", () => {
     await searchInput.fill("zzzzzzzzzzzz");
 
     // Submit the empty-result search and wait for the empty state.
-    await searchForm.evaluate((form) => {
-      if (form instanceof HTMLFormElement) {
-        form.requestSubmit();
-      }
+    await waitForActionResponse(organizerGroupPage, () => searchInput.press("Enter"), {
+      method: "GET",
+      params: { ts_query: "zzzzzzzzzzzz" },
+      pathname: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`,
+      status: 200,
     });
 
     const noResultsMessage = attendeesContent
@@ -430,16 +382,16 @@ test.describe("group dashboard attendees tab", () => {
     await expect(searchInput).toHaveValue("");
 
     // Sort attendees by name.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
-          response.url().includes("sort=name-desc") &&
-          response.ok(),
-      ),
-      attendeesContent.getByLabel("Sort by").selectOption("name-desc"),
-    ]);
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => attendeesContent.getByLabel("Sort by").selectOption("name-desc"),
+      {
+        method: "GET",
+        params: { sort: "name-desc" },
+        pathname: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`,
+        status: 200,
+      },
+    );
 
     // Verify the sorted table keeps both seeded attendees visible.
     await expect(attendeesContent.locator("tr", { hasText: "E2E Member One" })).toBeVisible();
@@ -459,32 +411,160 @@ test.describe("group dashboard attendees tab", () => {
 
     // Select enrollment history and verify the replacement control keeps focus.
     await statusFilter.focus();
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
-          response.url().includes("status=history") &&
-          response.ok(),
-      ),
-      statusFilter.selectOption("history"),
-    ]);
+    await waitForActionResponse(organizerGroupPage, () => statusFilter.selectOption("history"), {
+      method: "GET",
+      params: { status: "history" },
+      pathname: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`,
+      status: 200,
+    });
     await expect(statusFilter).toBeFocused();
     await expect(statusFilter).toHaveValue("history");
 
     // Return to current enrollments and preserve the same focus contract.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
-          response.url().includes("status=current") &&
-          response.ok(),
-      ),
-      statusFilter.selectOption("current"),
-    ]);
+    await waitForActionResponse(organizerGroupPage, () => statusFilter.selectOption("current"), {
+      method: "GET",
+      params: { status: "current" },
+      pathname: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`,
+      status: 200,
+    });
     await expect(statusFilter).toBeFocused();
     await expect(statusFilter).toHaveValue("current");
+  });
+
+  test("organizer combines ticket type and check-in filters through the browser form", async ({
+    organizerGroupPage,
+    owned,
+  }) => {
+    // Create a two-tier event with VIP and general ticket holders in both check-in states.
+    const event = owned.event({
+      groupId: TEST_GROUP_IDS.community1.alpha,
+      tiers: [
+        { key: "general", seats: 10, title: "General admission" },
+        { key: "vip", seats: 10, title: "VIP" },
+      ],
+    });
+    const attendeesPath = `/dashboard/group/events/${event.eventId}/attendees`;
+    const vipTicketTypeId = event.ticketTypeIds.vip;
+    setupOwnedTicketedAttendee({
+      checkedIn: true,
+      eventId: event.eventId,
+      ticketTypeId: vipTicketTypeId,
+      userId: TEST_USER_IDS.member1,
+    });
+    setupOwnedTicketedAttendee({
+      eventId: event.eventId,
+      ticketTypeId: vipTicketTypeId,
+      userId: TEST_USER_IDS.member2,
+    });
+    setupOwnedTicketedAttendee({
+      checkedIn: true,
+      eventId: event.eventId,
+      ticketTypeId: event.ticketTypeIds.general,
+      userId: TEST_USER_IDS.member3,
+    });
+
+    // Load the attendees tab with every ticket holder listed.
+    const attendeesContent = await openAttendeesTab(organizerGroupPage, event.name, event.eventId);
+    const vipCheckedInRow = attendeesContent.locator("tr", { hasText: "E2E Member One" });
+    const vipPendingRow = attendeesContent.locator("tr", { hasText: "E2E Member Two" });
+    const generalCheckedInRow = attendeesContent.locator("tr", { hasText: "E2E Member Three" });
+    const activeFilters = attendeesContent.getByText("Active filters", { exact: true }).locator("xpath=..");
+    // The closed filter menu hides its checkboxes from the accessibility tree.
+    const vipFilterCheckbox = attendeesContent.locator(
+      `#attendees-ticket-filter input[name="event_ticket_type_ids[]"][value="${vipTicketTypeId}"]`,
+    );
+    await expect(vipCheckedInRow).toContainText("VIP");
+    await expect(vipPendingRow).toContainText("VIP");
+    await expect(generalCheckedInRow).toContainText("General admission");
+    await expect(activeFilters).toHaveCount(0);
+
+    // Select the VIP tier in the ticket type filter menu. Click instead of check: the change swaps
+    // the table and closes the menu, so check() could not find the checkbox to verify its state.
+    await attendeesContent.getByLabel("Ticket type filters", { exact: true }).click();
+    await waitForActionResponse(
+      organizerGroupPage,
+      () =>
+        attendeesContent
+          .locator("#attendees-ticket-filter")
+          .getByRole("checkbox", { exact: true, name: "VIP" })
+          .click(),
+      {
+        method: "GET",
+        params: { "event_ticket_type_ids[]": vipTicketTypeId },
+        pathname: attendeesPath,
+        status: 200,
+      },
+    );
+
+    // Verify only VIP holders remain and the ticket type chip is shown.
+    await expect(vipCheckedInRow).toBeVisible();
+    await expect(vipPendingRow).toBeVisible();
+    await expect(generalCheckedInRow).toHaveCount(0);
+    await expect(vipFilterCheckbox).toBeChecked();
+    await expect(activeFilters.locator(".custom-badge")).toHaveText(["Ticket type: Selected"]);
+
+    // Add the checked-in filter while keeping the selected tier.
+    await attendeesContent.getByLabel("Checked In filters", { exact: true }).click();
+    await waitForActionResponse(
+      organizerGroupPage,
+      () =>
+        attendeesContent
+          .locator("#attendees-check-in-filter")
+          .getByRole("button", { name: "Checked in", exact: true })
+          .click(),
+      {
+        method: "GET",
+        params: { checked_in: "true", "event_ticket_type_ids[]": vipTicketTypeId },
+        pathname: attendeesPath,
+        status: 200,
+      },
+    );
+
+    // Verify both chips and the checked-in VIP holder.
+    await expect(vipCheckedInRow).toBeVisible();
+    await expect(vipPendingRow).toHaveCount(0);
+    await expect(generalCheckedInRow).toHaveCount(0);
+    await expect(activeFilters.locator(".custom-badge")).toHaveText([
+      "Checked In: Yes",
+      "Ticket type: Selected",
+    ]);
+
+    // Remove the ticket type chip and keep the check-in filter.
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => activeFilters.getByRole("button", { name: "Remove ticket type filter" }).click(),
+      {
+        method: "GET",
+        params: { checked_in: "true", "event_ticket_type_ids[]": null },
+        pathname: attendeesPath,
+        status: 200,
+      },
+    );
+
+    // Verify checked-in holders of every tier are listed under the remaining chip.
+    await expect(vipCheckedInRow).toBeVisible();
+    await expect(generalCheckedInRow).toBeVisible();
+    await expect(vipPendingRow).toHaveCount(0);
+    await expect(vipFilterCheckbox).not.toBeChecked();
+    await expect(activeFilters.locator(".custom-badge")).toHaveText(["Checked In: Yes"]);
+
+    // Reset all filters.
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => activeFilters.getByRole("button", { name: "Reset all" }).click(),
+      {
+        method: "GET",
+        params: { checked_in: null, "event_ticket_type_ids[]": null },
+        pathname: attendeesPath,
+        status: 200,
+      },
+    );
+
+    // Verify every ticket holder is listed again without active filters.
+    await expect(vipCheckedInRow).toBeVisible();
+    await expect(vipPendingRow).toBeVisible();
+    await expect(generalCheckedInRow).toBeVisible();
+    await expect(activeFilters).toHaveCount(0);
   });
 
   test("organizer can download attendees as CSV from the attendees tab", async ({ organizerGroupPage }) => {
@@ -546,7 +626,7 @@ const prepareCanceledEventHistoryFixture = () => {
     update event_attendee
     set
       attendance_canceled_at = current_timestamp,
-      attendance_canceled_by_user_id = '${ORGANIZER_USER_ID}',
+      attendance_canceled_by_user_id = '${TEST_USER_IDS.organizer1}',
       checked_in = false,
       checked_in_at = null,
       status = 'attendance-canceled'
@@ -580,8 +660,8 @@ const restoreCanceledEventHistoryFixture = () => {
     delete from admission_offer
     where event_id = '${TEST_EVENT_CANCELLATION.id}'
     and user_id in (
-      '77777777-7777-7777-7777-777777777702',
-      '77777777-7777-7777-7777-777777777704'
+      '${TEST_USER_IDS.admin2}',
+      '${TEST_USER_IDS.organizer2}'
     );
 
     insert into admission_offer (
@@ -597,14 +677,14 @@ const restoreCanceledEventHistoryFixture = () => {
       '2099-12-31 00:00:00+00',
       'organizer_invitation',
       'pending',
-      '77777777-7777-7777-7777-777777777702'
+      '${TEST_USER_IDS.admin2}'
     ), (
       '${TEST_EVENT_CANCELLATION.id}',
       (select event_ticket_type_id from event_ticket_type where event_id = '${TEST_EVENT_CANCELLATION.id}' order by "order" limit 1),
       '2099-12-31 00:00:00+00',
       'waitlist',
       'pending',
-      '77777777-7777-7777-7777-777777777704'
+      '${TEST_USER_IDS.organizer2}'
     );
   `);
 };

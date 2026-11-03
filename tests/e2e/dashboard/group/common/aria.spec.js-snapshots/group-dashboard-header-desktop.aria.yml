@@ -1,0 +1,13 @@
+- banner:
+  - navigation "Main navigation":
+    - link "Go to homepage":
+      - /url: /
+    - link "Home":
+      - /url: /
+    - link "Explore":
+      - /url: /explore?community[0]=cncf&entity=events
+    - link "Stats":
+      - /url: /stats
+    - link "Docs":
+      - /url: /docs
+    - button "EO"

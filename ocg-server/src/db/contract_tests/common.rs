@@ -16,6 +16,26 @@ use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_find_event_summary_returns_none_for_event_of_another_group() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load the event summary through a group the event does not belong to
+    let event = db
+        .find_event_summary(community_id(), subgroup_id(), event_id())
+        .await?;
+
+    // Check the foreign pairing has no summary
+    assert!(
+        event.is_none(),
+        "foreign event should have no summary, got {event:?}"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_community_full_deserializes() -> Result<()> {
     // Setup the contract database and community fixture
     let db = contract_tests_db()?;
@@ -140,6 +160,18 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
         Some("https://github.com/contract-organizer")
     );
 
+    // Check the own logo stays apart from the effective logo fallback
+    assert_eq!(
+        event.custom_logo_url.as_deref(),
+        Some("https://example.com/future-event-logo.png")
+    );
+    assert_eq!(event.logo_url, "https://example.com/future-event-logo.png");
+    assert_eq!(external_event.custom_logo_url, None);
+    assert_eq!(
+        external_event.logo_url,
+        "https://example.com/group-logo.png"
+    );
+
     // Check external-payment event fields deserialize completely
     assert_eq!(external_event.event_id, external_event_id());
     assert_eq!(
@@ -207,6 +239,11 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
 
     // Check the parent group and nested collections
     assert_eq!(
+        group.custom_logo_url.as_deref(),
+        Some("https://example.com/group-logo.png")
+    );
+    assert_eq!(group.logo_url, "https://example.com/group-logo.png");
+    assert_eq!(
         group.community.ad_banner_link_url.as_deref(),
         Some("https://example.com/community-ad")
     );
@@ -232,6 +269,10 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
 
     // Load the subgroup through the same contract
     let subgroup = db.get_group_full(community_id(), subgroup_id()).await?;
+
+    // Check the subgroup falls back to the community logo without an own logo
+    assert_eq!(subgroup.custom_logo_url, None);
+    assert_eq!(subgroup.logo_url, "https://example.com/community-logo.png");
 
     // Check the subgroup parent relationship
     assert_eq!(

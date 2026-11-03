@@ -61,6 +61,7 @@ begin
         raise exception 'recoverable payment job not found' using errcode = 'OCG01';
     end if;
 
+    -- Keep the resolved job to dispatch on its kind
     v_job := v_locked.pj;
 
     -- Lock the typed domain row before its job, in the order the worker outcome paths use
@@ -87,7 +88,7 @@ begin
 
         -- Refund recovery drives enrollment state and has its own entry point
         else
-            raise exception 'payment job kind does not support provider object recovery';
+            raise exception 'payment job kind does not support provider object recovery' using errcode = 'OCG01';
     end case;
 
     -- Lock the job and reload the lifecycle state the recovery decides on

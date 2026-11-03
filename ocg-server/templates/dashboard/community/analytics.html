@@ -7,8 +7,14 @@
 {# End page title #}
 
 {# Summary stat cards #}
-<div class="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4 mt-10">
+<div class="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4 mt-10"
+     role="tablist"
+     aria-label="Analytics summary"
+     data-analytics-summary>
   <button type="button"
+          role="tab"
+          aria-selected="true"
+          aria-controls="analytics-panel-groups"
           data-analytics-tab="groups"
           data-active="true"
           class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
@@ -20,6 +26,9 @@
     <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
   <button type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="analytics-panel-members"
           data-analytics-tab="members"
           data-active="false"
           class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
@@ -31,6 +40,9 @@
     <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
   <button type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="analytics-panel-events"
           data-analytics-tab="events"
           data-active="false"
           class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
@@ -42,6 +54,9 @@
     <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
   <button type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="analytics-panel-attendees"
           data-analytics-tab="attendees"
           data-active="false"
           class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
@@ -53,6 +68,9 @@
     <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
   <button type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="analytics-panel-page-views"
           data-analytics-tab="page-views"
           data-active="false"
           class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none transition-all xl:cursor-pointer xl:pointer-events-auto xl:hover:border-primary-300 xl:hover:shadow-sm xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
@@ -72,6 +90,9 @@
       aria-label="Analytics tabs">
     <li>
       <button type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="analytics-panel-groups"
               data-analytics-tab="groups"
               data-active="true"
               class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
@@ -80,6 +101,9 @@
     </li>
     <li>
       <button type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="analytics-panel-members"
               data-analytics-tab="members"
               data-active="false"
               class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
@@ -88,6 +112,9 @@
     </li>
     <li>
       <button type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="analytics-panel-events"
               data-analytics-tab="events"
               data-active="false"
               class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
@@ -96,6 +123,9 @@
     </li>
     <li>
       <button type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="analytics-panel-attendees"
               data-analytics-tab="attendees"
               data-active="false"
               class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
@@ -104,6 +134,9 @@
     </li>
     <li>
       <button type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="analytics-panel-page-views"
               data-analytics-tab="page-views"
               data-active="false"
               class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
@@ -118,7 +151,10 @@
 {# Charts sections #}
 <div class="space-y-14 mt-10">
   {# Groups section #}
-  <div data-analytics-content="groups">
+  <div id="analytics-panel-groups"
+       role="tabpanel"
+       aria-label="Groups"
+       data-analytics-content="groups">
     {{ dashboard::form_title(title = "Groups") }}
     <div class="mt-8 space-y-8">
       <div>
@@ -150,7 +186,11 @@
   {# End groups section #}
 
   {# Members section #}
-  <div class="hidden" data-analytics-content="members">
+  <div class="hidden"
+       id="analytics-panel-members"
+       role="tabpanel"
+       aria-label="Members"
+       data-analytics-content="members">
     {{ dashboard::form_title(title = "Members") }}
     <div class="mt-8 space-y-8">
       <div>
@@ -183,7 +223,11 @@
   {# End members section #}
 
   {# Events section #}
-  <div class="hidden" data-analytics-content="events">
+  <div class="hidden"
+       id="analytics-panel-events"
+       role="tabpanel"
+       aria-label="Events"
+       data-analytics-content="events">
     {{ dashboard::form_title(title = "Events") }}
     <div class="mt-8 space-y-8">
       <div>
@@ -218,7 +262,11 @@
   {# End events section #}
 
   {# Attendees section #}
-  <div class="hidden" data-analytics-content="attendees">
+  <div class="hidden"
+       id="analytics-panel-attendees"
+       role="tabpanel"
+       aria-label="Attendees"
+       data-analytics-content="attendees">
     {{ dashboard::form_title(title = "Attendees") }}
     <div class="mt-8 space-y-8">
       <div>
@@ -252,7 +300,11 @@
   </div>
   {# End attendees section #}
 
-  <div class="hidden" data-analytics-content="page-views">
+  <div class="hidden"
+       id="analytics-panel-page-views"
+       role="tabpanel"
+       aria-label="Page views"
+       data-analytics-content="page-views">
     {{ dashboard::form_title(title = "Page views") }}
     <div class="mt-8 space-y-8">
       <div>

@@ -1,0 +1,19 @@
+- region "Inbox":
+  - text: This conversation isn't in the selected group. Inbox
+  - link "Open documentation":
+    - /url: /docs#/guides/group-dashboard?id=inbox-questions-from-users
+  - paragraph: Questions users sent to this group from its event pages.
+  - text: 0 conversations
+  - table "Inbox conversations":
+    - rowgroup:
+      - row "Event User Last message":
+        - columnheader "Event"
+        - columnheader "User"
+        - columnheader "Last message"
+        - columnheader:
+          - group: Status
+    - rowgroup:
+      - row "No conversations yet Questions users send from this group's event pages will appear here.":
+        - cell "No conversations yet Questions users send from this group's event pages will appear here.":
+          - text: ""
+          - paragraph: Questions users send from this group's event pages will appear here.

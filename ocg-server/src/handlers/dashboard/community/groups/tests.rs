@@ -120,7 +120,9 @@ async fn test_update_page_success() {
     // Setup identifiers and data structures
     let ids = DashboardIds::new();
     let group_full = GroupFull {
+        custom_logo_url: Some("https://example.test/group-logo.png".to_string()),
         description_short: Some("Short group description".to_string()),
+        logo_url: "https://example.test/group-logo.png".to_string(),
         ..sample_group_full(ids.community_id, ids.group_id)
     };
 
@@ -139,7 +141,36 @@ async fn test_update_page_success() {
 
     // Check the group details are rendered in the form
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_image_field_value(&html, "logo_url", "https://example.test/group-logo.png");
     assert!(html.contains(r#"value="Short group description""#));
+}
+
+#[tokio::test]
+async fn test_update_page_leaves_logo_field_empty_without_own_logo() {
+    // Setup identifiers and data structures
+    let ids = DashboardIds::new();
+    let group_full = GroupFull {
+        custom_logo_url: None,
+        logo_url: "https://example.test/community-logo.png".to_string(),
+        ..sample_group_full(ids.community_id, ids.group_id)
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_update_page_reads(&mut db, &ids, group_full, vec![]);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/community/groups/{}/update", ids.group_id),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+    let html = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the community fallback logo is not prefilled
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_image_field_value(&html, "logo_url", "");
 }
 
 #[tokio::test]

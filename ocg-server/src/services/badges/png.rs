@@ -25,8 +25,9 @@ pub(super) const MAX_CREDENTIAL_SIZE: usize = 256 * 1024;
 /// Maximum number of chunks parsed from one badge PNG.
 const MAX_PNG_CHUNKS: usize = 4_096;
 
-/// Maximum artwork PNG size accepted by the badges manager.
-const MAX_PNG_SIZE: usize = 12 * 1024 * 1024;
+/// Maximum artwork PNG size accepted by the badges manager, matching the 2 MiB
+/// default request body limit that bounds badge verification uploads.
+const MAX_PNG_SIZE: usize = 2 * 1024 * 1024;
 
 /// PNG file signature bytes.
 const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";

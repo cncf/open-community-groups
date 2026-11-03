@@ -1,30 +1,22 @@
 import { expect, test } from "../../fixtures.js";
 
-import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
+import { resetWaitlistLab } from "../../data-graphs/waitlist.js";
 import { TEST_COMMUNITY_NAME, TEST_EVENT_IDS, TEST_GROUP_SLUGS, TEST_USER_IDS } from "../../seed.js";
-import {
-  getAttendButton,
-  getLeaveButton,
-  restoreSeededWaitlistEvent,
-  waitForAttendanceState,
-} from "./helpers.js";
-import { navigateToEvent, waitForActionResponse } from "../../utils.js";
+import { getAttendButton, getLeaveButton, waitForAttendanceState } from "./helpers.js";
+import { confirmAlert, navigateToEvent, waitForActionResponse } from "../../utils.js";
 
 const WAITLIST_EVENT_NAME = "Full Event With Waitlist";
 const WAITLIST_EVENT_SLUG = "alpha-waitlist-lab";
 
 test.describe("event waitlist", () => {
-  test.beforeEach(async ({ member2Page, organizerGroupPage }) => {
-    await restoreSeededWaitlistEvent(member2Page, organizerGroupPage);
+  test.afterEach(() => {
+    resetWaitlistLab();
   });
 
-  test.afterEach(async ({ member2Page, organizerGroupPage }) => {
-    await restoreSeededWaitlistEvent(member2Page, organizerGroupPage);
-  });
-
-  test("member can join and leave the waitlist from the public event page", async ({ member2Page }) => {
-    let notificationIds = [];
-
+  test("member can join and leave the waitlist from the public event page", async ({
+    member2Page,
+    notifications,
+  }) => {
     // Load the full event where members can join the waitlist.
     await navigateToEvent(
       member2Page,
@@ -40,22 +32,12 @@ test.describe("event waitlist", () => {
     await waitForAttendanceState(member2Page);
     await expect(getAttendButton(member2Page)).toContainText("Join waiting list");
 
-    // Join the waitlist and wait for the attendance record to be created.
-    const joinedSnapshot = snapshotNotifications();
-    try {
-      // Submit the waitlist join and record its notification.
-      await waitForActionResponse(member2Page, () => getAttendButton(member2Page).click(), {
-        method: "POST",
-        urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`,
-      });
-      notificationIds = expectNewNotifications(joinedSnapshot, [
-        { kind: "event-waitlist-joined", userIds: [TEST_USER_IDS.member2] },
-      ]);
-    } finally {
-      // Remove notifications created while joining the waitlist.
-      deleteNotifications(notificationIds);
-    }
-    notificationIds = [];
+    // Join the waitlist and verify its notification.
+    await waitForActionResponse(member2Page, () => getAttendButton(member2Page).click(), {
+      method: "POST",
+      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`,
+    });
+    notifications.expectNew([{ kind: "event-waitlist-joined", userIds: [TEST_USER_IDS.member2] }]);
 
     // Verify the member is now waitlisted.
     await expect(getLeaveButton(member2Page)).toContainText("Leave waiting list");
@@ -64,25 +46,19 @@ test.describe("event waitlist", () => {
     await getLeaveButton(member2Page).click();
     await expect(member2Page.getByRole("button", { name: "Yes" })).toBeVisible();
 
-    // Confirm waitlist removal and wait for the leave response.
-    const leftSnapshot = snapshotNotifications();
-    try {
-      // Confirm waitlist removal and record its notification.
-      await waitForActionResponse(
-        member2Page,
-        () => member2Page.getByRole("button", { name: "Yes" }).click(),
-        {
-          method: "DELETE",
-          urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
-        },
-      );
-      notificationIds = expectNewNotifications(leftSnapshot, [
-        { kind: "event-waitlist-left", userIds: [TEST_USER_IDS.member2] },
-      ]);
-    } finally {
-      // Remove notifications created while leaving the waitlist.
-      deleteNotifications(notificationIds);
-    }
+    // Confirm waitlist removal and verify its notification.
+    const leftCheckpoint = notifications.checkpoint();
+    await waitForActionResponse(
+      member2Page,
+      () => confirmAlert(member2Page, { message: "Are you sure you want to leave the waiting list?" }),
+      {
+        method: "DELETE",
+        urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
+      },
+    );
+    notifications.expectNew([{ kind: "event-waitlist-left", userIds: [TEST_USER_IDS.member2] }], {
+      since: leftCheckpoint,
+    });
 
     // Assert the expected text is rendered.
     await expect(getAttendButton(member2Page)).toContainText("Join waiting list");

@@ -1,0 +1,15 @@
+- tabpanel:
+  - text: "- out of 5 Summary rating"
+  - img /\d+\.\d+ out of 5 stars/
+  - text: (0 ratings) Your rating
+  - button "1 star"
+  - button "2 stars"
+  - button "3 stars"
+  - button "4 stars"
+  - button "5 stars"
+  - button "Clear" [disabled]
+  - textbox "Your rating notes" [disabled]:
+    - /placeholder: Select a star rating to add notes.
+  - paragraph: Ratings are internal only. Speakers never see ratings or rating notes.
+  - text: Other team ratings
+  - paragraph: No ratings yet from other team members.

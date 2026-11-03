@@ -1,7 +1,17 @@
 import { expect, test } from "../../../fixtures.js";
+import { withRowRestore } from "../../../database.js";
 
-import { TEST_UPLOAD_ASSET_PATHS, fillMarkdownEditor, setImageFieldValue } from "../../form-helpers.js";
+import {
+  TEST_UPLOAD_ASSET_PATHS,
+  fillMarkdownEditor,
+  setImageFieldValue,
+  waitForImageUpload,
+} from "../../form-helpers.js";
+import { TEST_COMMUNITY_IDS } from "../../../seed.js";
 import { navigateToPath, uniqueName, waitForActionResponse } from "../../../utils.js";
+
+// Seeded community row changed by the settings round-trip tests.
+const COMMUNITY_ROW = { key: { community_id: TEST_COMMUNITY_IDS.community1 }, table: "community" };
 
 test.describe("community dashboard settings view", () => {
   test("settings form exposes every community configuration area", async ({ adminCommunityPage }) => {
@@ -73,35 +83,15 @@ test.describe("community dashboard settings view", () => {
     await expect(adminCommunityPage.locator('key-value-inputs[field-name="extra_links"]')).toBeVisible();
   });
 
-  test("admin can reject undersized and crop oversized advertisement banners", async ({
-    adminCommunityPage,
-  }) => {
-    // Load the advertisement banner field.
+  test("admin can crop an oversized advertisement banner to WEBP", async ({ adminCommunityPage }) => {
+    // Load the advertisement banner field and capture the files sent to the image endpoint.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
-
-    // Prepare advertisement banner controls and capture upload requests.
     const advertisementBannerField = adminCommunityPage.locator('image-field[name="ad_banner_url"]');
     const cropper = advertisementBannerField.locator("image-cropper");
     const fileInput = advertisementBannerField.locator('input[type="file"]');
-    const uploadButton = advertisementBannerField.getByRole("button", {
-      name: "Upload image for Banner Image",
-    });
+    const preview = advertisementBannerField.getByRole("img", { name: "Image preview" });
     const valueInput = advertisementBannerField.locator('input[name="ad_banner_url"]');
-    const initialValue = await valueInput.inputValue();
-    const uploadRequests = [];
-    adminCommunityPage.on("request", (request) => {
-      if (request.method() === "POST" && new URL(request.url()).pathname === "/images") {
-        uploadRequests.push(request);
-      }
-    });
-
-    // Reject an undersized source without opening the crop editor.
-    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.alternateBanner);
-    await expect(adminCommunityPage.getByText("Please choose a larger image.")).toBeVisible();
-    await adminCommunityPage.getByRole("button", { name: "OK" }).click();
-    await expect(fileInput).toHaveValue("");
-    await expect(uploadButton).toBeFocused();
-    expect(uploadRequests).toHaveLength(0);
+    const readUploadMetadata = await trackImageUploadMetadata(adminCommunityPage);
 
     // Open the crop editor and verify its required size and controls.
     await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.advertisementBanner);
@@ -119,61 +109,19 @@ test.describe("community dashboard settings view", () => {
     await cropper.getByRole("button", { name: "Reset position" }).click();
     await expect(cropper.getByText("Fit", { exact: true })).toBeVisible();
 
-    // Cancel without uploading or changing the saved form value.
-    await cropper.getByRole("button", { name: "Cancel" }).click();
-    await expect(dialog).toBeHidden();
-    await expect(fileInput).toHaveValue("");
-    await expect(valueInput).toHaveValue(initialValue);
-    await expect(uploadButton).toBeFocused();
-    expect(uploadRequests).toHaveLength(0);
-
-    // Reopen the editor and upload the mandatory crop.
-    await adminCommunityPage.evaluate(() => {
-      const nativeFetch = window.fetch;
-      window.fetch = (input, init) => {
-        if (input === "/images" && init?.body instanceof FormData) {
-          const uploadFile = init.body.get("file");
-          if (uploadFile instanceof File) {
-            window.imageUploadMetadata = {
-              name: uploadFile.name,
-              target: init.body.get("target"),
-              type: uploadFile.type,
-            };
-          }
-        }
-
-        return nativeFetch(input, init);
-      };
-    });
-    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.advertisementBanner);
-    await expect(cropper.getByRole("button", { name: "Apply crop" })).toBeEnabled();
-    const uploadResponsePromise = adminCommunityPage.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        new URL(response.url()).pathname === "/images" &&
-        response.status() === 201,
-    );
+    // Upload the mandatory crop.
+    const uploadPromise = waitForImageUpload(adminCommunityPage);
     await cropper.getByRole("button", { name: "Apply crop" }).click();
-    await uploadResponsePromise;
+    await uploadPromise;
 
     // Verify the generated file, its validated target, and the uploaded preview dimensions.
-    const uploadMetadata = await adminCommunityPage.evaluate(() => window.imageUploadMetadata);
-    expect(uploadMetadata).toEqual({
-      name: "community-secondary-ad-banner-cropped.webp",
-      target: "ad_banner",
-      type: "image/webp",
-    });
     await expect(dialog).toBeHidden();
     await expect(valueInput).toHaveValue(/\/images\//);
-    await expect(advertisementBannerField.getByRole("img", { name: "Image preview" })).toHaveJSProperty(
-      "naturalWidth",
-      2400,
-    );
-    await expect(advertisementBannerField.getByRole("img", { name: "Image preview" })).toHaveJSProperty(
-      "naturalHeight",
-      300,
-    );
-    expect(uploadRequests).toHaveLength(1);
+    await expect(preview).toHaveJSProperty("naturalWidth", 2400);
+    await expect(preview).toHaveJSProperty("naturalHeight", 300);
+    expect(await readUploadMetadata()).toEqual([
+      { name: "community-secondary-ad-banner-cropped.webp", target: "ad_banner", type: "image/webp" },
+    ]);
   });
 
   test("admin can crop a WEBP logo and upload a same-ratio SVG logo as-is", async ({
@@ -186,28 +134,10 @@ test.describe("community dashboard settings view", () => {
     const fileInput = logoField.locator('input[type="file"]');
     const valueInput = logoField.locator('input[name="logo_url"]');
     const preview = logoField.getByRole("img", { name: "Image preview" });
-    await adminCommunityPage.evaluate(() => {
-      const nativeFetch = window.fetch;
-      window.imageUploadMetadata = [];
-      window.fetch = (input, init) => {
-        if (input === "/images" && init?.body instanceof FormData) {
-          const uploadFile = init.body.get("file");
-          if (uploadFile instanceof File) {
-            window.imageUploadMetadata.push({ name: uploadFile.name, type: uploadFile.type });
-          }
-        }
-
-        return nativeFetch(input, init);
-      };
-    });
+    const readUploadMetadata = await trackImageUploadMetadata(adminCommunityPage);
 
     // Crop a real WEBP source whose aspect ratio does not match the square logo.
-    const webpUploadPromise = adminCommunityPage.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        new URL(response.url()).pathname === "/images" &&
-        response.status() === 201,
-    );
+    const webpUploadPromise = waitForImageUpload(adminCommunityPage);
     await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.webpLogoSource);
     await expect(cropper.getByRole("dialog", { name: "Crop Logo" })).toBeVisible();
     await expect(cropper.getByRole("button", { name: "Apply crop" })).toBeEnabled();
@@ -221,12 +151,7 @@ test.describe("community dashboard settings view", () => {
     const webpValue = await valueInput.inputValue();
 
     // Upload a square SVG, which is scalable and skips the crop editor entirely.
-    const svgUploadPromise = adminCommunityPage.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        new URL(response.url()).pathname === "/images" &&
-        response.status() === 201,
-    );
+    const svgUploadPromise = waitForImageUpload(adminCommunityPage);
     await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.alternateLogo);
     await svgUploadPromise;
     await expect(cropper.getByRole("dialog")).toBeHidden();
@@ -234,14 +159,13 @@ test.describe("community dashboard settings view", () => {
     await expect(valueInput).toHaveValue(/\/images\/.*\.svg$/);
 
     // Both uploads sent the expected file names and types.
-    const uploadMetadata = await adminCommunityPage.evaluate(() => window.imageUploadMetadata);
-    expect(uploadMetadata).toEqual([
-      { name: "community-secondary-logo-source-cropped.webp", type: "image/webp" },
-      { name: "community-secondary-logo.svg", type: "image/svg+xml" },
+    expect(await readUploadMetadata()).toEqual([
+      { name: "community-secondary-logo-source-cropped.webp", target: "logo", type: "image/webp" },
+      { name: "community-secondary-logo.svg", target: "logo", type: "image/svg+xml" },
     ]);
   });
 
-  test("admin can upload static GIF logos but not animated ones", async ({ adminCommunityPage }) => {
+  test("admin can upload a static GIF logo as-is or cropped to PNG", async ({ adminCommunityPage }) => {
     // Load the logo field and capture the files sent to the image endpoint.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
     const logoField = adminCommunityPage.locator('image-field[name="logo_url"]');
@@ -249,47 +173,10 @@ test.describe("community dashboard settings view", () => {
     const fileInput = logoField.locator('input[type="file"]');
     const valueInput = logoField.locator('input[name="logo_url"]');
     const preview = logoField.getByRole("img", { name: "Image preview" });
-    const initialValue = await valueInput.inputValue();
-    await adminCommunityPage.evaluate(() => {
-      const nativeFetch = window.fetch;
-      window.imageUploadMetadata = [];
-      window.fetch = (input, init) => {
-        if (input === "/images" && init?.body instanceof FormData) {
-          const uploadFile = init.body.get("file");
-          if (uploadFile instanceof File) {
-            window.imageUploadMetadata.push({ name: uploadFile.name, type: uploadFile.type });
-          }
-        }
-
-        return nativeFetch(input, init);
-      };
-    });
-    const waitForUpload = () =>
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          new URL(response.url()).pathname === "/images" &&
-          response.status() === 201,
-      );
-
-    // Animated GIFs are refused before anything is uploaded, whether they need cropping or not.
-    await expect(fileInput).toHaveAttribute("accept", ".svg,.png,.jpg,.jpeg,.gif,.webp");
-    const alert = adminCommunityPage.locator(".swal2-popup");
-    for (const animatedPath of [
-      TEST_UPLOAD_ASSET_PATHS.animatedGifLogoSource,
-      TEST_UPLOAD_ASSET_PATHS.animatedGifLogo,
-    ]) {
-      await fileInput.setInputFiles(animatedPath);
-      await expect(alert).toContainText("Animated GIF images are not supported. Choose a static image.");
-      await alert.locator(".swal2-confirm").click();
-      await expect(alert).toBeHidden();
-      await expect(cropper.getByRole("dialog")).toBeHidden();
-      await expect(fileInput).toHaveValue("");
-      await expect(valueInput).toHaveValue(initialValue);
-    }
+    const readUploadMetadata = await trackImageUploadMetadata(adminCommunityPage);
 
     // A static GIF that already has the logo size is uploaded byte-for-byte.
-    const staticExactUploadPromise = waitForUpload();
+    const staticExactUploadPromise = waitForImageUpload(adminCommunityPage);
     await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.staticGifLogo);
     await staticExactUploadPromise;
     await expect(cropper.getByRole("dialog")).toBeHidden();
@@ -299,7 +186,7 @@ test.describe("community dashboard settings view", () => {
     const staticExactValue = await valueInput.inputValue();
 
     // A static GIF with a different aspect ratio opens the editor and is saved as PNG.
-    const staticUploadPromise = waitForUpload();
+    const staticUploadPromise = waitForImageUpload(adminCommunityPage);
     await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.staticGifLogoSource);
     await expect(cropper.getByRole("dialog", { name: "Crop Logo" })).toBeVisible();
     await expect(cropper.getByRole("button", { name: "Apply crop" })).toBeEnabled();
@@ -310,44 +197,14 @@ test.describe("community dashboard settings view", () => {
     await expect(preview).toHaveJSProperty("naturalWidth", 360);
     await expect(preview).toHaveJSProperty("naturalHeight", 360);
 
-    // Only the two accepted files reached the server, with the expected names and types.
-    const uploadMetadata = await adminCommunityPage.evaluate(() => window.imageUploadMetadata);
-    expect(uploadMetadata).toEqual([
-      { name: "community-logo-static.gif", type: "image/gif" },
-      { name: "community-logo-static-source-cropped.png", type: "image/png" },
+    // Both uploads sent the expected file names and types.
+    expect(await readUploadMetadata()).toEqual([
+      { name: "community-logo-static.gif", target: "logo", type: "image/gif" },
+      { name: "community-logo-static-source-cropped.png", target: "logo", type: "image/png" },
     ]);
   });
 
-  test("admin cannot upload an SVG as the Open Graph image", async ({ adminCommunityPage }) => {
-    // Load the Open Graph field and track upload requests.
-    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
-    const openGraphField = adminCommunityPage.locator('image-field[name="og_image_url"]');
-    const fileInput = openGraphField.locator('input[type="file"]');
-    const valueInput = openGraphField.locator('input[name="og_image_url"]');
-    const initialValue = await valueInput.inputValue();
-    const uploadRequests = [];
-    adminCommunityPage.on("request", (request) => {
-      if (request.method() === "POST" && new URL(request.url()).pathname === "/images") {
-        uploadRequests.push(request);
-      }
-    });
-
-    // Link previews need raster images, so SVG sources are refused client-side.
-    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.banner);
-    const alert = adminCommunityPage.locator(".swal2-popup");
-    await expect(alert).toContainText("SVG images are not supported for this field.");
-    await expect(alert).toContainText("Choose a PNG, JPEG or WEBP image.");
-    await alert.locator(".swal2-confirm").click();
-    await expect(alert).toBeHidden();
-
-    // Verify the selection was cleared and the saved value was kept.
-    await expect(openGraphField.locator("image-cropper").getByRole("dialog")).toBeHidden();
-    await expect(fileInput).toHaveValue("");
-    await expect(valueInput).toHaveValue(initialValue);
-    expect(uploadRequests).toHaveLength(0);
-  });
-
-  test("admin can update and restore community settings", async ({ adminCommunityPage }) => {
+  test("admin can update community settings", async ({ adminCommunityPage }) => {
     // Define the settings URL used by the read and submit helpers.
     const settingsPath = "/dashboard/community?tab=settings";
 
@@ -408,10 +265,7 @@ test.describe("community dashboard settings view", () => {
       await waitForActionResponse(
         adminCommunityPage,
         () => adminCommunityPage.getByRole("button", { name: "Update Settings" }).click(),
-        {
-          method: "PUT",
-          urlIncludes: "/dashboard/community/settings/update",
-        },
+        { method: "PUT", pathname: "/dashboard/community/settings/update", status: 204 },
       );
 
       // Assert the field value was updated.
@@ -443,101 +297,100 @@ test.describe("community dashboard settings view", () => {
       logoUrl: "/static/images/e2e/community-secondary-logo.svg",
     };
 
-    // Save the updated settings.
-    await submitSettings(updatedValues);
-    await submitSettings(originalValues);
+    // Save the updated settings, restoring the seeded community row afterwards.
+    await withRowRestore(COMMUNITY_ROW, () => submitSettings(updatedValues));
   });
 
   test("admin can update and restore extended community settings", async ({ adminCommunityPage }) => {
-    // Define the settings URL and the extended settings locators.
-    const settingsPath = "/dashboard/community?tab=settings";
-    const ogImageInput = adminCommunityPage.locator(
-      'image-field[name="og_image_url"] input[name="og_image_url"]',
-    );
-    const adBannerInput = adminCommunityPage.locator(
-      'image-field[name="ad_banner_url"] input[name="ad_banner_url"]',
-    );
-    const bannerLinkInput = adminCommunityPage.getByLabel("Banner Link URL");
-    const newGroupDetailsEditor = adminCommunityPage.locator("markdown-editor#new_group_details");
-    const restrictionToggle = adminCommunityPage.locator("#toggle_group_team_management_restricted");
-    const restrictionHiddenInput = adminCommunityPage.locator("#group_team_management_restricted");
-    const extraLinksField = adminCommunityPage.locator('key-value-inputs[field-name="extra_links"]');
-    const extraLinkHiddenInput = adminCommunityPage.locator('input[name="extra_links[E2E Extra Docs]"]');
-
-    // Submit the settings form and wait for the update to complete.
-    const saveSettings = async () => {
-      await waitForActionResponse(
-        adminCommunityPage,
-        () => adminCommunityPage.getByRole("button", { name: "Update Settings" }).click(),
-        {
-          method: "PUT",
-          urlIncludes: "/dashboard/community/settings/update",
-        },
+    // Restore the seeded community row even when the UI restore below fails.
+    await withRowRestore(COMMUNITY_ROW, async () => {
+      // Define the settings URL and the extended settings locators.
+      const settingsPath = "/dashboard/community?tab=settings";
+      const ogImageInput = adminCommunityPage.locator(
+        'image-field[name="og_image_url"] input[name="og_image_url"]',
       );
-    };
+      const adBannerInput = adminCommunityPage.locator(
+        'image-field[name="ad_banner_url"] input[name="ad_banner_url"]',
+      );
+      const bannerLinkInput = adminCommunityPage.getByLabel("Banner Link URL");
+      const newGroupDetailsEditor = adminCommunityPage.locator("markdown-editor#new_group_details");
+      const restrictionToggle = adminCommunityPage.locator("#toggle_group_team_management_restricted");
+      const restrictionHiddenInput = adminCommunityPage.locator("#group_team_management_restricted");
+      const extraLinksField = adminCommunityPage.locator('key-value-inputs[field-name="extra_links"]');
+      const extraLinkHiddenInput = adminCommunityPage.locator('input[name="extra_links[E2E Extra Docs]"]');
 
-    // Read the current extended settings values before updating them.
-    await navigateToPath(adminCommunityPage, settingsPath);
-    const originalValues = {
-      adBannerLinkUrl: await bannerLinkInput.inputValue(),
-      adBannerUrl: await adBannerInput.inputValue(),
-      newGroupDetails: (await newGroupDetailsEditor.getAttribute("content")) ?? "",
-      ogImageUrl: await ogImageInput.inputValue(),
-      restricted: await restrictionToggle.isChecked(),
-    };
+      // Submit the settings form and wait for the update to complete.
+      const saveSettings = async () => {
+        await waitForActionResponse(
+          adminCommunityPage,
+          () => adminCommunityPage.getByRole("button", { name: "Update Settings" }).click(),
+          { method: "PUT", pathname: "/dashboard/community/settings/update", status: 204 },
+        );
+      };
 
-    // Update the extended settings fields, including a new extra link.
-    await setImageFieldValue(adminCommunityPage, "og_image_url", "/static/images/e2e/event-banner.svg");
-    await setImageFieldValue(adminCommunityPage, "ad_banner_url", "/static/images/e2e/event-banner.svg");
-    await bannerLinkInput.fill("https://example.com/e2e-extended-banner");
-    await fillMarkdownEditor(
-      adminCommunityPage,
-      "new_group_details",
-      "Extended details shown to organizers creating new groups.",
-    );
-    await restrictionToggle.setChecked(!originalValues.restricted, {
-      force: true,
+      // Read the current extended settings values before updating them.
+      await navigateToPath(adminCommunityPage, settingsPath);
+      const originalValues = {
+        adBannerLinkUrl: await bannerLinkInput.inputValue(),
+        adBannerUrl: await adBannerInput.inputValue(),
+        newGroupDetails: (await newGroupDetailsEditor.getAttribute("content")) ?? "",
+        ogImageUrl: await ogImageInput.inputValue(),
+        restricted: await restrictionToggle.isChecked(),
+      };
+
+      // Update the extended settings fields, including a new extra link.
+      await setImageFieldValue(adminCommunityPage, "og_image_url", "/static/images/e2e/event-banner.svg");
+      await setImageFieldValue(adminCommunityPage, "ad_banner_url", "/static/images/e2e/event-banner.svg");
+      await bannerLinkInput.fill("https://example.com/e2e-extended-banner");
+      await fillMarkdownEditor(
+        adminCommunityPage,
+        "new_group_details",
+        "Extended details shown to organizers creating new groups.",
+      );
+      await restrictionToggle.setChecked(!originalValues.restricted, {
+        force: true,
+      });
+      await expect(restrictionHiddenInput).toHaveValue(String(!originalValues.restricted));
+      await extraLinksField.getByPlaceholder("Link Name").last().fill("E2E Extra Docs");
+      await extraLinksField.getByPlaceholder("URL").last().fill("https://example.com/e2e-extra-docs");
+      await expect(extraLinkHiddenInput).toHaveValue("https://example.com/e2e-extra-docs");
+      await saveSettings();
+
+      // Reload the settings tab and verify the extended values persisted.
+      await navigateToPath(adminCommunityPage, settingsPath);
+      await expect(ogImageInput).toHaveValue("/static/images/e2e/event-banner.svg");
+      await expect(adBannerInput).toHaveValue("/static/images/e2e/event-banner.svg");
+      await expect(bannerLinkInput).toHaveValue("https://example.com/e2e-extended-banner");
+      await expect(newGroupDetailsEditor).toHaveAttribute(
+        "content",
+        "Extended details shown to organizers creating new groups.",
+      );
+      await expect(restrictionToggle).toBeChecked({
+        checked: !originalValues.restricted,
+      });
+      await expect(extraLinkHiddenInput).toHaveValue("https://example.com/e2e-extra-docs");
+
+      // Restore the original extended settings values.
+      await setImageFieldValue(adminCommunityPage, "og_image_url", originalValues.ogImageUrl);
+      await setImageFieldValue(adminCommunityPage, "ad_banner_url", originalValues.adBannerUrl);
+      await bannerLinkInput.fill(originalValues.adBannerLinkUrl);
+      await fillMarkdownEditor(adminCommunityPage, "new_group_details", originalValues.newGroupDetails);
+      await restrictionToggle.setChecked(originalValues.restricted, {
+        force: true,
+      });
+      await extraLinksField.locator('button[title="Remove item"]').first().click();
+      await expect(extraLinkHiddenInput).toHaveCount(0);
+      await saveSettings();
+
+      // Reload once more and verify the original values are back.
+      await navigateToPath(adminCommunityPage, settingsPath);
+      await expect(ogImageInput).toHaveValue(originalValues.ogImageUrl);
+      await expect(bannerLinkInput).toHaveValue(originalValues.adBannerLinkUrl);
+      await expect(restrictionToggle).toBeChecked({
+        checked: originalValues.restricted,
+      });
+      await expect(extraLinkHiddenInput).toHaveCount(0);
     });
-    await expect(restrictionHiddenInput).toHaveValue(String(!originalValues.restricted));
-    await extraLinksField.getByPlaceholder("Link Name").last().fill("E2E Extra Docs");
-    await extraLinksField.getByPlaceholder("URL").last().fill("https://example.com/e2e-extra-docs");
-    await expect(extraLinkHiddenInput).toHaveValue("https://example.com/e2e-extra-docs");
-    await saveSettings();
-
-    // Reload the settings tab and verify the extended values persisted.
-    await navigateToPath(adminCommunityPage, settingsPath);
-    await expect(ogImageInput).toHaveValue("/static/images/e2e/event-banner.svg");
-    await expect(adBannerInput).toHaveValue("/static/images/e2e/event-banner.svg");
-    await expect(bannerLinkInput).toHaveValue("https://example.com/e2e-extended-banner");
-    await expect(newGroupDetailsEditor).toHaveAttribute(
-      "content",
-      "Extended details shown to organizers creating new groups.",
-    );
-    await expect(restrictionToggle).toBeChecked({
-      checked: !originalValues.restricted,
-    });
-    await expect(extraLinkHiddenInput).toHaveValue("https://example.com/e2e-extra-docs");
-
-    // Restore the original extended settings values.
-    await setImageFieldValue(adminCommunityPage, "og_image_url", originalValues.ogImageUrl);
-    await setImageFieldValue(adminCommunityPage, "ad_banner_url", originalValues.adBannerUrl);
-    await bannerLinkInput.fill(originalValues.adBannerLinkUrl);
-    await fillMarkdownEditor(adminCommunityPage, "new_group_details", originalValues.newGroupDetails);
-    await restrictionToggle.setChecked(originalValues.restricted, {
-      force: true,
-    });
-    await extraLinksField.locator('button[title="Remove item"]').first().click();
-    await expect(extraLinkHiddenInput).toHaveCount(0);
-    await saveSettings();
-
-    // Reload once more and verify the original values are back.
-    await navigateToPath(adminCommunityPage, settingsPath);
-    await expect(ogImageInput).toHaveValue(originalValues.ogImageUrl);
-    await expect(bannerLinkInput).toHaveValue(originalValues.adBannerLinkUrl);
-    await expect(restrictionToggle).toBeChecked({
-      checked: originalValues.restricted,
-    });
-    await expect(extraLinkHiddenInput).toHaveCount(0);
   });
 
   test("viewer sees read-only controls on community settings", async ({ communityViewerPage }) => {
@@ -562,3 +415,32 @@ test.describe("community dashboard settings view", () => {
     );
   });
 });
+
+/**
+ * Wraps the page's fetch to record the file name, target and type of every image upload.
+ * @param {import("@playwright/test").Page} page - Page with an image field.
+ * @returns {Promise<() => Promise<{ name: string, target: string, type: string }[]>>} Reader
+ *   for the recorded uploads, in request order.
+ */
+const trackImageUploadMetadata = async (page) => {
+  await page.evaluate(() => {
+    const nativeFetch = window.fetch;
+    window.imageUploadMetadata = [];
+    window.fetch = (input, init) => {
+      if (input === "/images" && init?.body instanceof FormData) {
+        const uploadFile = init.body.get("file");
+        if (uploadFile instanceof File) {
+          window.imageUploadMetadata.push({
+            name: uploadFile.name,
+            target: init.body.get("target"),
+            type: uploadFile.type,
+          });
+        }
+      }
+
+      return nativeFetch(input, init);
+    };
+  });
+
+  return () => page.evaluate(() => window.imageUploadMetadata);
+};

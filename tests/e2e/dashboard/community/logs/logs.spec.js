@@ -6,8 +6,6 @@ const COMMUNITY_LOGS_PATH = "/dashboard/community?tab=logs";
 const FILTERED_COMMUNITY_LOGS_PATH =
   "/dashboard/community?tab=logs&action=community_updated&actor=e2e-admin-1";
 
-const COMMUNITY_DETAILS_LOGS_PATH = "/dashboard/community?tab=logs&action=group_added&actor=e2e-admin-1";
-
 test.describe("community dashboard logs view", () => {
   test("empty state explains when a community has no audit history", async ({ adminEmptyCommunityPage }) => {
     // Load logs for the dedicated community without audit records.
@@ -29,20 +27,23 @@ test.describe("community dashboard logs view", () => {
   });
 
   test("admin can view the seeded community logs list and active filters", async ({ adminCommunityPage }) => {
-    // Load the unfiltered community logs URL before applying active filters.
-    await navigateToPath(adminCommunityPage, COMMUNITY_LOGS_PATH);
+    // Load the unfiltered community logs oldest first so rows added by other tests come after the seeded ones.
+    await navigateToPath(adminCommunityPage, `${COMMUNITY_LOGS_PATH}&sort=created-asc`);
     let dashboardContent = adminCommunityPage.locator("#dashboard-content");
 
     // Verify the seeded community and group log content is present.
     await expect(dashboardContent.locator("tr.audit-log-row").first()).toBeVisible();
     await expect(dashboardContent).toContainText("Platform Engineering Community");
-    await expect(
-      dashboardContent
-        .locator("tr.audit-log-row", {
-          hasText: "Observability Guild",
-        })
-        .first(),
-    ).toBeVisible();
+    const groupAddedRow = dashboardContent
+      .locator("tr.audit-log-row", { hasText: "Group added" })
+      .filter({ hasText: "Observability Guild" })
+      .first();
+    await expect(groupAddedRow).toBeVisible();
+
+    // Verify the seeded group added row renders its detail fields.
+    const detailsCard = groupAddedRow.locator("[data-audit-log-details-card]");
+    await expect(detailsCard).toContainText("North America");
+    await expect(detailsCard).toContainText("Active");
 
     // Load the filtered community logs URL.
     await navigateToPath(adminCommunityPage, FILTERED_COMMUNITY_LOGS_PATH);
@@ -68,39 +69,6 @@ test.describe("community dashboard logs view", () => {
     await expect(filtersModal).toBeVisible();
     await expect(filtersModal.locator("#audit-action")).toHaveValue("community_updated");
     await expect(filtersModal.locator("#audit-actor")).toHaveValue("e2e-admin-1");
-  });
-
-  test("admin can open seeded community log details", async ({ adminCommunityPage }) => {
-    // Load the community logs URL filtered to a seeded detail row.
-    await navigateToPath(adminCommunityPage, COMMUNITY_DETAILS_LOGS_PATH);
-
-    // Target the seeded log row and open its details.
-    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    const auditLogRow = dashboardContent.locator("tr.audit-log-row", {
-      hasText: "Observability Guild",
-    });
-
-    // Assert the expected text is rendered.
-    await expect(auditLogRow).toContainText("Group added");
-    await expect(auditLogRow).toContainText("Observability Guild");
-
-    // Find the View log details control.
-    const detailsButton = auditLogRow.getByRole("button", {
-      name: "View log details",
-    });
-    await expect(detailsButton).toBeVisible();
-    await detailsButton.click();
-    await expect(detailsButton).toHaveAttribute("aria-expanded", "true");
-
-    // Set up details popover id.
-    const detailsPopoverId = await detailsButton.getAttribute("aria-controls");
-    expect(detailsPopoverId).not.toBeNull();
-
-    // Verify the details popover contains the changed fields.
-    const detailsPopover = dashboardContent.locator(`#${detailsPopoverId}`);
-    await expect(detailsPopover).toBeVisible();
-    await expect(detailsPopover).toContainText("North America");
-    await expect(detailsPopover).toContainText("Active");
   });
 
   test("admin can filter community logs by action and actor and reset them", async ({

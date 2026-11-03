@@ -1,0 +1,6 @@
+- /children: deep-equal
+- banner:
+  - navigation "Badge navigation":
+    - link "Go to E2E Test Site homepage":
+      - /url: /
+      - text: ""

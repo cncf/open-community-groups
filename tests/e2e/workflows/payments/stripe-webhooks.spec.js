@@ -1,6 +1,7 @@
 import { expect, test } from "../../fixtures.js";
-import { queryE2eDatabase, queryE2eDatabaseRows } from "../../database.js";
-import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
+import { getRefundRow, openRefundsDashboard } from "../../dashboard/group/refunds/helpers.js";
+import { getPurchaseRow, openPurchasesDashboard } from "../../dashboard/user/helpers.js";
+import { queryE2eDatabase } from "../../database.js";
 import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS, TEST_USER_IDS, TEST_WEBHOOK_EVENTS } from "../../seed.js";
 import { getAttendButton, waitForAttendanceState } from "../../site/event/helpers.js";
 import { navigateToEvent, navigateToPath } from "../../utils.js";
@@ -17,248 +18,334 @@ const EVENT_CREATED_AT = 1_700_000_000;
 
 const MISMATCHED_CONNECTED_ACCOUNT = "acct_e2e_mismatch";
 
+const PLATFORM_CUSTOMER_ID = "cus_e2e_platform";
+
+const PLATFORM_WEBHOOK = {
+  endpoint: WEBHOOK_ENDPOINTS.stripePlatform,
+  secret: WEBHOOK_SECRETS.stripePlatform,
+};
+
 const REFUND_ATTENDEE_NAME = "E2E Member Two";
 
 const STALE_STRIPE_TIMESTAMP = 1;
 
 test.describe("Stripe payment webhooks", () => {
-  test.describe.configure({ mode: "serial" });
-
   test.beforeEach(() => {
     restoreStripeWebhookFixtures();
   });
 
+  test.afterEach(() => {
+    restoreStripeWebhookFixtures();
+  });
+
   test("expires a checkout hold and releases public ticket capacity", async ({ pending1Page, request }) => {
-    try {
-      // Verify the fixture starts full because one completed purchase and one active hold occupy it.
-      const availability = await getAvailability(request, TEST_WEBHOOK_EVENTS.expire);
-      const ticketAvailability = getTicketTypeAvailability(availability, TEST_WEBHOOK_EVENTS.expire);
-      expect(ticketAvailability).toBeTruthy();
-      expect(availability.remaining_capacity).toBe(0);
-      expect(ticketAvailability.remaining_seats).toBe(0);
+    // Verify the fixture starts full because one completed purchase and one active hold occupy it.
+    const availability = await getAvailability(request, TEST_WEBHOOK_EVENTS.expire);
+    const ticketAvailability = getTicketTypeAvailability(availability, TEST_WEBHOOK_EVENTS.expire);
+    expect(ticketAvailability).toBeTruthy();
+    expect(availability.remaining_capacity).toBe(0);
+    expect(ticketAvailability.remaining_seats).toBe(0);
 
-      // Verify the attendee dashboard exposes the active pending-payment entry.
-      const dashboardContent = await openMyEventsDashboard(pending1Page);
-      const pendingRow = getUserEventRow(dashboardContent, TEST_WEBHOOK_EVENTS.expire.name);
-      await expect(pendingRow).toContainText("Payment pending");
-      await pendingRow.getByLabel("Open event actions").click();
-      await expect(pendingRow.getByRole("menuitem", { name: "Continue to checkout" })).toHaveAttribute(
-        "href",
-        "https://checkout.stripe.test/cs_e2e_webhook_expire",
-      );
+    // Verify the attendee dashboard exposes the active pending-payment entry.
+    const dashboardContent = await openMyEventsDashboard(pending1Page);
+    const pendingRow = getUserEventRow(dashboardContent, TEST_WEBHOOK_EVENTS.expire.name);
+    await expect(pendingRow).toContainText("Payment pending");
+    await pendingRow.getByLabel("Open event actions").click();
+    await expect(pendingRow.getByRole("menuitem", { name: "Continue to checkout" })).toHaveAttribute(
+      "href",
+      "https://checkout.stripe.test/cs_e2e_webhook_expire",
+    );
 
-      // Deliver the connected-account checkout expiration webhook.
-      const response = await postStripe(request, {
-        ...CONNECTED_WEBHOOK,
-        body: checkoutExpiredBody(),
-      });
-      expect(response.status()).toBe(200);
-      expect(getPurchaseStatus(TEST_WEBHOOK_EVENTS.expire.pendingPurchaseId)).toBe("expired");
+    // Deliver the connected-account checkout expiration webhook.
+    const response = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: checkoutExpiredBody(),
+    });
+    expect(response.status()).toBe(200);
+    expect(getPurchaseStatus(TEST_WEBHOOK_EVENTS.expire.pendingPurchaseId)).toBe("expired");
 
-      // Verify the expired hold disappears from My Events and capacity is available again.
-      const refreshedDashboard = await openMyEventsDashboard(pending1Page);
-      await expect(getUserEventRow(refreshedDashboard, TEST_WEBHOOK_EVENTS.expire.name)).toHaveCount(0);
-      const updatedAvailability = await getAvailability(request, TEST_WEBHOOK_EVENTS.expire);
-      const updatedTicketAvailability = getTicketTypeAvailability(
-        updatedAvailability,
-        TEST_WEBHOOK_EVENTS.expire,
-      );
-      expect(updatedTicketAvailability).toBeTruthy();
-      expect(updatedAvailability.remaining_capacity).toBe(1);
-      expect(updatedTicketAvailability.remaining_seats).toBe(1);
+    // Verify the expired hold disappears from My Events and capacity is available again.
+    const refreshedDashboard = await openMyEventsDashboard(pending1Page);
+    await expect(getUserEventRow(refreshedDashboard, TEST_WEBHOOK_EVENTS.expire.name)).toHaveCount(0);
+    const updatedAvailability = await getAvailability(request, TEST_WEBHOOK_EVENTS.expire);
+    const updatedTicketAvailability = getTicketTypeAvailability(
+      updatedAvailability,
+      TEST_WEBHOOK_EVENTS.expire,
+    );
+    expect(updatedTicketAvailability).toBeTruthy();
+    expect(updatedAvailability.remaining_capacity).toBe(1);
+    expect(updatedTicketAvailability.remaining_seats).toBe(1);
 
-      // Verify the public event page now exposes a fresh ticket action to the same user.
-      await navigateToEvent(
-        pending1Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
-        TEST_WEBHOOK_EVENTS.expire.slug,
-      );
-      await waitForAttendanceState(pending1Page);
-      await expect(getAttendButton(pending1Page)).toContainText("Get ticket");
-    } finally {
-      // Restore the seeded Stripe expiration fixture.
-      restoreStripeWebhookFixtures();
-    }
+    // Verify the public event page now exposes a fresh ticket action to the same user.
+    await navigateToEvent(
+      pending1Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_WEBHOOK_EVENTS.expire.slug,
+    );
+    await waitForAttendanceState(pending1Page);
+    await expect(getAttendButton(pending1Page)).toContainText("Get ticket");
   });
 
   test("attaches an invoice document from a connected-account invoice webhook", async ({
     pending2Page,
     request,
   }) => {
-    try {
-      // Deliver the invoice webhook for a completed purchase that starts without invoice fields.
-      const response = await postStripe(request, {
-        ...CONNECTED_WEBHOOK,
-        body: invoicePaidBody(),
-      });
-      expect(response.status()).toBe(200);
-      expect(getInvoiceState().providerInvoiceId).toBe(TEST_WEBHOOK_EVENTS.invoice.providerInvoiceId);
+    // Deliver the invoice webhook for a completed purchase that starts without invoice fields.
+    const response = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: invoicePaidBody(),
+    });
+    expect(response.status()).toBe(200);
+    expect(getInvoiceState().providerInvoiceId).toBe(TEST_WEBHOOK_EVENTS.invoice.providerInvoiceId);
 
-      // Verify the attendee purchases dashboard exposes the new invoice action.
-      const dashboardContent = await openPurchasesDashboard(pending2Page);
-      const purchaseRow = getPurchaseRow(dashboardContent, TEST_WEBHOOK_EVENTS.invoice.name);
-      await expect(purchaseRow).toContainText("Paid");
-      await purchaseRow.getByLabel(`Open document actions for ${TEST_WEBHOOK_EVENTS.invoice.name}`).click();
-      await expect(purchaseRow.getByRole("menuitem", { name: "View invoice" })).toHaveAttribute(
-        "href",
-        `/dashboard/user/purchases/${TEST_WEBHOOK_EVENTS.invoice.purchaseId}/invoice`,
-      );
-    } finally {
-      // Restore the seeded Stripe invoice fixture.
-      restoreStripeWebhookFixtures();
-    }
+    // Verify the attendee purchases dashboard exposes the new invoice action.
+    const dashboardContent = await openPurchasesDashboard(pending2Page);
+    const purchaseRow = getPurchaseRow(dashboardContent, TEST_WEBHOOK_EVENTS.invoice.name);
+    await expect(purchaseRow).toContainText("Paid");
+    await purchaseRow.getByLabel(`Open document actions for ${TEST_WEBHOOK_EVENTS.invoice.name}`).click();
+    await expect(purchaseRow.getByRole("menuitem", { name: "View invoice" })).toHaveAttribute(
+      "href",
+      `/dashboard/user/purchases/${TEST_WEBHOOK_EVENTS.invoice.purchaseId}/invoice`,
+    );
   });
 
   test("records a Stripe refund success and lets the worker finalize attendance", async ({
     member2Page,
+    notifications,
     organizerGroupPage,
     request,
   }) => {
-    const snapshot = snapshotNotifications();
-    let notificationIds = [];
+    // The payment job poll below allows up to 45s for the worker, beyond the default test budget.
+    test.setTimeout(60_000);
 
-    try {
-      // Deliver the provider success while the refund job is intentionally not yet claimable.
-      const response = await postStripe(request, {
-        ...CONNECTED_WEBHOOK,
-        body: refundUpdatedBody(),
-      });
-      expect(response.status()).toBe(200);
-      expect(getRefundProviderConfirmation()).toMatchObject({
-        providerRefundId: TEST_WEBHOOK_EVENTS.refund.providerRefundId,
-        providerRefundedAtSet: true,
-      });
+    // Deliver the provider success while the refund job is intentionally not yet claimable.
+    const response = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: refundUpdatedBody(),
+    });
+    expect(response.status()).toBe(200);
+    expect(getRefundProviderConfirmation()).toMatchObject({
+      providerRefundId: TEST_WEBHOOK_EVENTS.refund.providerRefundId,
+      providerRefundedAtSet: true,
+    });
 
-      // Wait for the payment worker to claim the now-due job and finalize local state.
-      await expect
-        .poll(getRefundWorkflowState, {
-          intervals: [1_000],
-          message: "refund worker finalization; received value includes payment_job diagnostics",
-          timeout: 45_000,
-        })
-        .toMatchObject({
-          attendeeStatus: "attendance-canceled",
-          jobStatus: "completed",
-          purchaseStatus: "refunded",
-          refundStatus: "finalized",
-          remainingSeats: 1,
-          requestStatus: "approved",
-        });
-
-      // Verify the worker enqueued the attendee refund notification exactly once.
-      notificationIds = expectNewNotifications(snapshot, [
-        {
-          kind: "event-refund-approved",
-          templateDataContains: {
-            event: { name: TEST_WEBHOOK_EVENTS.refund.name },
-            external_payment: false,
-          },
-          userIds: [TEST_USER_IDS.member2],
-        },
-      ]);
-
-      // Verify attendee-facing and organizer-facing state after local finalization.
-      const availability = await getAvailability(request, TEST_WEBHOOK_EVENTS.refund);
-      expect(availability.remaining_capacity).toBe(1);
-      const refundsDashboard = await openRefundsDashboard(
-        organizerGroupPage,
-        `/dashboard/group?tab=refunds&view=completed&event_id=${TEST_WEBHOOK_EVENTS.refund.id}`,
-      );
-      await expect(getRefundRow(refundsDashboard, REFUND_ATTENDEE_NAME)).toContainText("Refunded");
-      const myEventsDashboard = await openMyEventsDashboard(member2Page);
-      await expect(getUserEventRow(myEventsDashboard, TEST_WEBHOOK_EVENTS.refund.name)).toHaveCount(0);
-
-      // Replay the same provider event and verify idempotency leaves no duplicate rows or notices.
-      const replaySnapshot = snapshotNotifications();
-      const replayResponse = await postStripe(request, {
-        ...CONNECTED_WEBHOOK,
-        body: refundUpdatedBody(),
-      });
-      expect(replayResponse.status()).toBe(200);
-      expect(getRefundGraphCounts()).toMatchObject({
-        jobs: 1,
-        refunds: 1,
-        requests: 1,
-      });
-      expectNewNotifications(replaySnapshot, []);
-
-      // The replay leaves the finalized refund and its completed job untouched instead of reopening them.
-      expect(getRefundWorkflowState()).toMatchObject({
+    // Wait for the payment worker to claim the now-due job and finalize local state.
+    await expect
+      .poll(getRefundWorkflowState, {
+        intervals: [1_000],
+        message: "refund worker finalization; received value includes payment_job diagnostics",
+        timeout: 45_000,
+      })
+      .toMatchObject({
+        attendeeStatus: "attendance-canceled",
         jobStatus: "completed",
         purchaseStatus: "refunded",
         refundStatus: "finalized",
+        remainingSeats: 1,
+        requestStatus: "approved",
       });
-    } finally {
-      // Remove refund notifications and restore the seeded Stripe refund fixture.
-      deleteNotifications(notificationIds);
-      restoreStripeWebhookFixtures();
-    }
+
+    // Verify the worker enqueued the attendee refund notification exactly once.
+    notifications.expectNew([
+      {
+        kind: "event-refund-approved",
+        templateDataContains: {
+          event: { name: TEST_WEBHOOK_EVENTS.refund.name },
+          external_payment: false,
+        },
+        userIds: [TEST_USER_IDS.member2],
+      },
+    ]);
+
+    // Verify attendee-facing and organizer-facing state after local finalization.
+    const availability = await getAvailability(request, TEST_WEBHOOK_EVENTS.refund);
+    expect(availability.remaining_capacity).toBe(1);
+    const refundsDashboard = await openRefundsDashboard(
+      organizerGroupPage,
+      `/dashboard/group?tab=refunds&view=completed&event_id=${TEST_WEBHOOK_EVENTS.refund.id}`,
+    );
+    await expect(getRefundRow(refundsDashboard, REFUND_ATTENDEE_NAME)).toContainText("Refunded");
+    const myEventsDashboard = await openMyEventsDashboard(member2Page);
+    await expect(getUserEventRow(myEventsDashboard, TEST_WEBHOOK_EVENTS.refund.name)).toHaveCount(0);
+
+    // Replay the same provider event and verify idempotency leaves no duplicate rows or notices.
+    const replayCheckpoint = notifications.checkpoint();
+    const replayResponse = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: refundUpdatedBody(),
+    });
+    expect(replayResponse.status()).toBe(200);
+    expect(getRefundGraphCounts()).toMatchObject({
+      jobs: 1,
+      refunds: 1,
+      requests: 1,
+    });
+    notifications.expectNew([], { since: replayCheckpoint });
+
+    // The replay leaves the finalized refund and its completed job untouched instead of reopening them.
+    expect(getRefundWorkflowState()).toMatchObject({
+      jobStatus: "completed",
+      purchaseStatus: "refunded",
+      refundStatus: "finalized",
+    });
+  });
+
+  test("records a failed Stripe refund for manual recovery without canceling attendance", async ({
+    notifications,
+    organizerGroupPage,
+    request,
+  }) => {
+    // Deliver the provider failure for the in-flight refund attempt.
+    const response = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: refundUpdatedBody({ status: "failed" }),
+    });
+    expect(response.status()).toBe(200);
+
+    // Verify the attempt is pinned for manual recovery and attendance stays active.
+    expect(getRefundWorkflowState()).toMatchObject({
+      attendeeStatus: "confirmed",
+      jobDue: false,
+      jobFailureMessage: `provider refund failed: ${TEST_WEBHOOK_EVENTS.refund.providerRefundId}`,
+      jobStatus: "failed",
+      purchaseStatus: "refund-pending",
+      refundStatus: "provider-failed",
+      refundTerminalFailure: true,
+      requestStatus: "approving",
+    });
+    expect(getRefundProviderConfirmation()).toMatchObject({
+      providerRefundId: TEST_WEBHOOK_EVENTS.refund.providerRefundId,
+      providerRefundedAtSet: false,
+    });
+
+    // Verify organizers see the refund in the attention view as needing recovery.
+    const refundsDashboard = await openRefundsDashboard(
+      organizerGroupPage,
+      `/dashboard/group?tab=refunds&view=attention&event_id=${TEST_WEBHOOK_EVENTS.refund.id}`,
+    );
+    await expect(getRefundRow(refundsDashboard, REFUND_ATTENDEE_NAME)).toContainText("Recovery required");
+
+    // Verify the provider failure did not notify the attendee.
+    notifications.expectNew([]);
+  });
+
+  test("pending refund update leaves the refund in flight", async ({ notifications, request }) => {
+    // Deliver a non-terminal provider update for the in-flight refund attempt.
+    const response = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: refundUpdatedBody({ status: "pending" }),
+    });
+    expect(response.status()).toBe(200);
+
+    // Verify the refund keeps waiting on the provider with a future retry and active attendance.
+    expect(getRefundWorkflowState()).toMatchObject({
+      attendeeStatus: "confirmed",
+      jobDue: false,
+      jobFailureMessage: null,
+      jobStatus: "pending",
+      purchaseStatus: "refund-pending",
+      refundStatus: "provider-pending",
+      refundTerminalFailure: false,
+      requestStatus: "approving",
+    });
+    expect(getRefundProviderConfirmation()).toMatchObject({
+      providerRefundId: TEST_WEBHOOK_EVENTS.refund.providerRefundId,
+      providerRefundedAtSet: false,
+    });
+
+    // Verify the pending update did not notify the attendee.
+    notifications.expectNew([]);
   });
 
   test("rejects invalid connected-account Stripe webhook deliveries", async ({ request }) => {
-    try {
-      // Verify signature and mode failures are rejected before local reconciliation.
-      const validBody = checkoutExpiredBody();
-      const validPayload = JSON.stringify(validBody);
-      const badSignature = corruptStripeSignature(signStripe(validPayload, WEBHOOK_SECRETS.stripeConnected));
-      const badSignatureResponse = await postStripe(request, {
-        body: validPayload,
-        endpoint: WEBHOOK_ENDPOINTS.stripeConnected,
-        secret: WEBHOOK_SECRETS.stripeConnected,
-        signature: badSignature,
-      });
-      expect(badSignatureResponse.status()).toBe(401);
+    // Verify signature and mode failures are rejected before local reconciliation.
+    const validBody = checkoutExpiredBody();
+    const validPayload = JSON.stringify(validBody);
+    const badSignature = corruptStripeSignature(signStripe(validPayload, WEBHOOK_SECRETS.stripeConnected));
+    const badSignatureResponse = await postStripe(request, {
+      body: validPayload,
+      endpoint: WEBHOOK_ENDPOINTS.stripeConnected,
+      secret: WEBHOOK_SECRETS.stripeConnected,
+      signature: badSignature,
+    });
+    expect(badSignatureResponse.status()).toBe(401);
 
-      // Verify stale timestamps are rejected.
-      const staleResponse = await postStripe(request, {
-        ...CONNECTED_WEBHOOK,
-        body: checkoutExpiredBody(),
-        timestamp: STALE_STRIPE_TIMESTAMP,
-      });
-      expect(staleResponse.status()).toBe(401);
+    // Verify stale timestamps are rejected.
+    const staleResponse = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: checkoutExpiredBody(),
+      timestamp: STALE_STRIPE_TIMESTAMP,
+    });
+    expect(staleResponse.status()).toBe(401);
 
-      // Verify platform secrets cannot authenticate connected-account webhooks.
-      const wrongSecretResponse = await postStripe(request, {
-        body: checkoutExpiredBody(),
-        endpoint: WEBHOOK_ENDPOINTS.stripeConnected,
-        secret: WEBHOOK_SECRETS.stripePlatform,
-      });
-      expect(wrongSecretResponse.status()).toBe(401);
+    // Verify platform secrets cannot authenticate connected-account webhooks.
+    const wrongSecretResponse = await postStripe(request, {
+      body: checkoutExpiredBody(),
+      endpoint: WEBHOOK_ENDPOINTS.stripeConnected,
+      secret: WEBHOOK_SECRETS.stripePlatform,
+    });
+    expect(wrongSecretResponse.status()).toBe(401);
 
-      // Verify live-mode deliveries are rejected in test fixtures.
-      const liveModeResponse = await postStripe(request, {
-        ...CONNECTED_WEBHOOK,
-        body: checkoutExpiredBody({ livemode: true }),
-      });
-      expect(liveModeResponse.status()).toBe(401);
+    // Verify live-mode deliveries are rejected in test fixtures.
+    const liveModeResponse = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: checkoutExpiredBody({ livemode: true }),
+    });
+    expect(liveModeResponse.status()).toBe(401);
 
-      // Verify malformed webhook payloads are rejected.
-      const malformedResponse = await postStripe(request, {
-        ...CONNECTED_WEBHOOK,
-        body: '{"id":',
-      });
-      expect(malformedResponse.status()).toBe(401);
+    // Verify malformed webhook payloads are rejected.
+    const malformedResponse = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: '{"id":',
+    });
+    expect(malformedResponse.status()).toBe(401);
 
-      // Verify account mismatches use the handler's real no-op/error contracts.
-      const mismatchedExpireResponse = await postStripe(request, {
-        ...CONNECTED_WEBHOOK,
-        body: checkoutExpiredBody({ account: MISMATCHED_CONNECTED_ACCOUNT }),
-      });
-      expect(mismatchedExpireResponse.status()).toBe(200);
-      expect(getPurchaseStatus(TEST_WEBHOOK_EVENTS.expire.pendingPurchaseId)).toBe("pending");
+    // Verify account mismatches use the handler's real no-op/error contracts.
+    const mismatchedExpireResponse = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: checkoutExpiredBody({ account: MISMATCHED_CONNECTED_ACCOUNT }),
+    });
+    expect(mismatchedExpireResponse.status()).toBe(200);
+    expect(getPurchaseStatus(TEST_WEBHOOK_EVENTS.expire.pendingPurchaseId)).toBe("pending");
 
-      // Verify account mismatches fail invoice reconciliation without mutating invoice state.
-      const mismatchedInvoiceResponse = await postStripe(request, {
-        ...CONNECTED_WEBHOOK,
-        body: invoicePaidBody({ account: MISMATCHED_CONNECTED_ACCOUNT }),
-      });
-      expect(mismatchedInvoiceResponse.status()).toBe(500);
-      expect(getInvoiceState().providerInvoiceId).toBeNull();
-    } finally {
-      // Restore all seeded Stripe webhook fixtures.
-      restoreStripeWebhookFixtures();
-    }
+    // Verify account mismatches fail invoice reconciliation without mutating invoice state.
+    const mismatchedInvoiceResponse = await postStripe(request, {
+      ...CONNECTED_WEBHOOK,
+      body: invoicePaidBody({ account: MISMATCHED_CONNECTED_ACCOUNT }),
+    });
+    expect(mismatchedInvoiceResponse.status()).toBe(500);
+    expect(getInvoiceState().providerInvoiceId).toBeNull();
+  });
+
+  test("accepts platform Stripe webhooks only with the platform secret and no connected account", async ({
+    notifications,
+    request,
+  }) => {
+    // Verify a platform-account event signed with the platform secret is acknowledged.
+    const platformResponse = await postStripe(request, {
+      ...PLATFORM_WEBHOOK,
+      body: customerCreatedBody(),
+    });
+    expect(platformResponse.status()).toBe(200);
+
+    // Verify connected-account secrets cannot authenticate platform webhooks.
+    const connectedSecretResponse = await postStripe(request, {
+      body: customerCreatedBody(),
+      endpoint: WEBHOOK_ENDPOINTS.stripePlatform,
+      secret: WEBHOOK_SECRETS.stripeConnected,
+    });
+    expect(connectedSecretResponse.status()).toBe(401);
+
+    // Verify platform deliveries that carry a connected account are rejected.
+    const connectedAccountResponse = await postStripe(request, {
+      ...PLATFORM_WEBHOOK,
+      body: customerCreatedBody({ account: TEST_WEBHOOK_EVENTS.expire.connectedAccount }),
+    });
+    expect(connectedAccountResponse.status()).toBe(401);
+
+    // Verify none of the platform deliveries enqueued notifications.
+    notifications.expectNew([]);
   });
 });
 
@@ -276,6 +363,17 @@ const checkoutExpiredBody = ({
     },
   });
 
+/** Builds a platform-account customer.created webhook body, optionally scoped to an account. */
+const customerCreatedBody = ({ account } = {}) =>
+  stripeEventBody("customer.created", {
+    account,
+    livemode: false,
+    object: {
+      id: PLATFORM_CUSTOMER_ID,
+      object: "customer",
+    },
+  });
+
 /** Returns a Stripe signature with a mismatched HMAC digest. */
 const corruptStripeSignature = (signature) =>
   signature.replace(/v1=([0-9a-f])/u, (_match, digit) => {
@@ -283,20 +381,6 @@ const corruptStripeSignature = (signature) =>
 
     return `v1=${replacement}`;
   });
-
-/** Deletes Stripe refund notification rows from the notification table. */
-const deleteStripeWebhookNotifications = () => {
-  const notificationIds = queryE2eDatabaseRows(`
-    select n.notification_id
-    from notification n
-    left join notification_template_data ntd using (notification_template_data_id)
-    where n.kind = 'event-refund-approved'
-    and n.user_id = '${TEST_USER_IDS.member2}'
-    and ntd.data::text like '%${TEST_WEBHOOK_EVENTS.refund.id}%'
-  `).map(([notificationId]) => notificationId);
-
-  deleteNotifications(notificationIds);
-};
 
 /** Returns the public event availability API payload for a fixture. */
 const getAvailability = async (request, event) => {
@@ -320,10 +404,6 @@ const getInvoiceState = () =>
     from event_purchase
     where event_purchase_id = '${TEST_WEBHOOK_EVENTS.invoice.purchaseId}'
   `);
-
-/** Returns the purchases dashboard row for the event name. */
-const getPurchaseRow = (dashboardContent, eventName) =>
-  dashboardContent.locator("tbody tr", { hasText: eventName });
 
 /** Returns the purchase status from event_purchase. */
 const getPurchaseStatus = (purchaseId) =>
@@ -366,23 +446,19 @@ const getRefundProviderConfirmation = () =>
     where event_purchase_refund_id = '${TEST_WEBHOOK_EVENTS.refund.refundId}'
   `);
 
-/** Returns the refunds dashboard row for the attendee name. */
-const getRefundRow = (dashboardContent, attendeeName) =>
-  dashboardContent
-    .getByRole("table", { name: "Refunds list" })
-    .locator("tbody tr", { hasText: attendeeName });
-
 /** Returns refund workflow state from purchase, refund, request, job, and attendee tables. */
 const getRefundWorkflowState = () =>
   readJson(`
     select jsonb_build_object(
       'attendeeStatus', ea.status,
       'jobAttemptCount', pj.attempt_count,
+      'jobDue', pj.next_attempt_at <= current_timestamp,
       'jobFailureMessage', pj.failure_message,
       'jobNextAttemptAt', pj.next_attempt_at::text,
       'jobStatus', pj.status,
       'purchaseStatus', ep.status,
       'refundStatus', epr.status,
+      'refundTerminalFailure', epr.terminal_failure,
       'remainingSeats', greatest(
         ett.seats_total - get_event_ticket_type_allocated_seat_count(ep.event_id, ep.event_ticket_type_id),
         0
@@ -432,33 +508,14 @@ const openMyEventsDashboard = async (page) => {
   return dashboardContent;
 };
 
-/** Opens the purchases dashboard and returns its content region. */
-const openPurchasesDashboard = async (page) => {
-  await navigateToPath(page, "/dashboard/user?tab=purchases");
-
-  const dashboardContent = page.locator("#dashboard-content");
-  await expect(dashboardContent.getByText("Purchases & documents", { exact: true })).toBeVisible();
-
-  return dashboardContent;
-};
-
-/** Opens the refunds dashboard path and returns its content region. */
-const openRefundsDashboard = async (page, path) => {
-  await navigateToPath(page, path);
-
-  const dashboardContent = page.locator("#dashboard-content");
-  await expect(dashboardContent.getByRole("table", { name: "Refunds list" })).toBeVisible();
-
-  return dashboardContent;
-};
-
 /** Returns parsed JSON from an E2E database query. */
 const readJson = (sql) => JSON.parse(queryE2eDatabase(sql));
 
-/** Builds a refund.updated webhook body for the seeded refund. */
+/** Builds a refund.updated webhook body for the seeded refund with the given Stripe status. */
 const refundUpdatedBody = ({
   account = TEST_WEBHOOK_EVENTS.refund.connectedAccount,
   livemode = false,
+  status = "succeeded",
 } = {}) =>
   stripeEventBody("refund.updated", {
     account,
@@ -472,14 +529,12 @@ const refundUpdatedBody = ({
       },
       object: "refund",
       payment_intent: TEST_WEBHOOK_EVENTS.refund.providerPaymentReference,
-      status: "succeeded",
+      status,
     },
   });
 
 /** Restores Stripe webhook fixture rows across event_purchase and refund tables. */
 const restoreStripeWebhookFixtures = () => {
-  deleteStripeWebhookNotifications();
-
   queryE2eDatabase(`
     update event_purchase
     set

@@ -160,6 +160,8 @@ pub struct GroupFull {
     pub country_code: Option<String>,
     /// Full country name of the group.
     pub country_name: Option<String>,
+    /// URL to the group's own logo, without the community fallback.
+    pub custom_logo_url: Option<String>,
     /// Group description text.
     pub description: Option<String>,
     /// Short group description text.

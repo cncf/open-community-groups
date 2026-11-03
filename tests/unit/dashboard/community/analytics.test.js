@@ -52,21 +52,15 @@ describe("dashboard community analytics", () => {
         };
       },
     };
-    document.documentElement.style.setProperty(
-      "--color-primary-500",
-      "#0f766e",
-    );
-    document.documentElement.style.setProperty(
-      "--color-primary-700",
-      "#115e59",
-    );
+    document.documentElement.style.setProperty("--color-primary-500", "#0f766e");
+    document.documentElement.style.setProperty("--color-primary-700", "#115e59");
 
     // Build the DOM fixture.
     document.body.innerHTML = `
-      <button data-analytics-tab="groups"></button>
-      <button data-analytics-tab="events"></button>
-      <button data-analytics-tab="attendees"></button>
-      <button data-analytics-tab="page-views"></button>
+      <button role="tab" data-analytics-tab="groups"></button>
+      <button role="tab" data-analytics-tab="events"></button>
+      <button role="tab" data-analytics-tab="attendees"></button>
+      <button role="tab" data-analytics-tab="page-views"></button>
       <div data-analytics-content="groups"></div>
       <div data-analytics-content="events"></div>
       <div data-analytics-content="attendees"></div>
@@ -103,16 +97,79 @@ describe("dashboard community analytics", () => {
 
     // Verify initializes the default groups analytics tab.
     expect(setOptionCalls).to.have.length(8);
-    expect(setOptionCalls.map((call) => call.id)).to.include(
-      "groups-region-chart",
-    );
+    expect(setOptionCalls.map((call) => call.id)).to.include("groups-region-chart");
     expect(
-      setOptionCalls.find((call) => call.id === "groups-running-chart").option
-        .baseOption.title.subtext,
+      setOptionCalls.find((call) => call.id === "groups-running-chart").option.baseOption.title.subtext,
     ).to.equal("Cumulative active groups over time");
-    expect(
-      document.querySelector('[data-analytics-tab="groups"]').dataset.active,
-    ).to.equal("true");
+    expect(document.querySelector('[data-analytics-tab="groups"]').dataset.active).to.equal("true");
+    expect(document.querySelector('[data-analytics-tab="groups"]').getAttribute("aria-selected")).to.equal(
+      "true",
+    );
+    expect(document.querySelector('[data-analytics-tab="events"]').getAttribute("aria-selected")).to.equal(
+      "false",
+    );
+  });
+
+  it("exposes the summary cards as tabs only at the xl breakpoint", async () => {
+    // Stub the xl media query so the test controls the viewport changes.
+    const originalMatchMedia = window.matchMedia;
+    const query = {
+      listeners: new Set(),
+      matches: false,
+      addEventListener(_type, listener) {
+        this.listeners.add(listener);
+      },
+      removeEventListener(_type, listener) {
+        this.listeners.delete(listener);
+      },
+    };
+    window.matchMedia = () => query;
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      `<div role="tablist" aria-label="Analytics summary" data-analytics-summary>
+        <button role="tab" aria-selected="true" aria-controls="analytics-panel-groups"
+                data-analytics-tab="groups" data-active="true"></button>
+        <button role="tab" aria-selected="false" aria-controls="analytics-panel-events"
+                data-analytics-tab="events" data-active="false"></button>
+      </div>`,
+    );
+    const summary = document.querySelector("[data-analytics-summary]");
+    const [groupsCard, eventsCard] = summary.querySelectorAll("[data-analytics-tab]");
+    const changeViewport = (matches) => {
+      query.matches = matches;
+      query.listeners.forEach((listener) => listener());
+    };
+
+    try {
+      // Below xl the cards are plain stat cards outside the tab order.
+      await initAnalyticsCharts(getCommunityAnalyticsPayload());
+      expect(summary.getAttribute("role")).to.equal("group");
+      expect(groupsCard.hasAttribute("role")).to.equal(false);
+      expect(groupsCard.hasAttribute("aria-selected")).to.equal(false);
+      expect(groupsCard.hasAttribute("aria-controls")).to.equal(false);
+      expect(groupsCard.getAttribute("tabindex")).to.equal("-1");
+
+      // Switching tabs below xl keeps the visual state without exposing a tab.
+      eventsCard.click();
+      expect(eventsCard.dataset.active).to.equal("true");
+      expect(eventsCard.hasAttribute("aria-selected")).to.equal(false);
+
+      // At xl the cards become tabs that reflect the active section.
+      changeViewport(true);
+      expect(summary.getAttribute("role")).to.equal("tablist");
+      expect(eventsCard.getAttribute("role")).to.equal("tab");
+      expect(eventsCard.getAttribute("aria-selected")).to.equal("true");
+      expect(eventsCard.getAttribute("aria-controls")).to.equal("analytics-panel-events");
+      expect(eventsCard.hasAttribute("tabindex")).to.equal(false);
+      expect(groupsCard.getAttribute("aria-selected")).to.equal("false");
+
+      // Removed analytics content stops following the viewport.
+      summary.remove();
+      changeViewport(false);
+      expect(query.listeners.size).to.equal(0);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 
   it("initializes charts from the page payload only once", async () => {
@@ -129,9 +186,7 @@ describe("dashboard community analytics", () => {
 
     // Verify the page payload renders the default groups charts once.
     expect(setOptionCalls).to.have.length(8);
-    expect(
-      document.querySelector('[data-analytics-tab="groups"]').dataset.active,
-    ).to.equal("true");
+    expect(document.querySelector('[data-analytics-tab="groups"]').dataset.active).to.equal("true");
   });
 
   it("initializes charts when analytics content is swapped by htmx", async () => {
@@ -189,14 +244,12 @@ describe("dashboard community analytics", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify uses clearer event, attendee, and total page-view chart titles.
-    expect(
-      setOptionCalls.find((call) => call.id === "events-monthly-chart").option
-        .title.text,
-    ).to.equal("Events per Month");
-    expect(
-      setOptionCalls.find((call) => call.id === "events-monthly-chart").option
-        .title.subtext,
-    ).to.equal("Published events by scheduled month");
+    expect(setOptionCalls.find((call) => call.id === "events-monthly-chart").option.title.text).to.equal(
+      "Events per Month",
+    );
+    expect(setOptionCalls.find((call) => call.id === "events-monthly-chart").option.title.subtext).to.equal(
+      "Published events by scheduled month",
+    );
 
     // Verify uses clearer event, attendee, and total page-view.
     setOptionCalls = [];
@@ -204,13 +257,11 @@ describe("dashboard community analytics", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify uses clearer event, attendee, and total page-view chart titles.
+    expect(setOptionCalls.find((call) => call.id === "attendees-monthly-chart").option.title.text).to.equal(
+      "Attendees per Month",
+    );
     expect(
-      setOptionCalls.find((call) => call.id === "attendees-monthly-chart")
-        .option.title.text,
-    ).to.equal("Attendees per Month");
-    expect(
-      setOptionCalls.find((call) => call.id === "attendees-monthly-chart")
-        .option.title.subtext,
+      setOptionCalls.find((call) => call.id === "attendees-monthly-chart").option.title.subtext,
     ).to.equal("Event RSVPs created each month");
 
     // Verify uses clearer event, attendee, and total page-view.
@@ -219,13 +270,11 @@ describe("dashboard community analytics", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify uses clearer event, attendee, and total page-view chart titles.
+    expect(setOptionCalls.find((call) => call.id === "total-views-monthly-chart").option.title.text).to.equal(
+      "Monthly total page views",
+    );
     expect(
-      setOptionCalls.find((call) => call.id === "total-views-monthly-chart")
-        .option.title.text,
-    ).to.equal("Monthly total page views");
-    expect(
-      setOptionCalls.find((call) => call.id === "total-views-monthly-chart")
-        .option.title.subtext,
+      setOptionCalls.find((call) => call.id === "total-views-monthly-chart").option.title.subtext,
     ).to.equal("All tracked views grouped by month");
   });
 });

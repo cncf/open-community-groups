@@ -1,0 +1,18 @@
+- dialog "Complete outside OCG":
+  - heading "Complete outside OCG" [level=3]
+  - button "Close modal"
+  - paragraph: Record the provider operation completed outside OCG and the evidence you reviewed.
+  - term: Operation
+  - definition: Credit note
+  - term: Attendee
+  - definition: E2E Pending Two
+  - term: Event
+  - definition: E2E ARIA event
+  - text: Stripe credit note ID *
+  - textbox "Stripe credit note ID *"
+  - text: External recovery reference *
+  - textbox "External recovery reference *"
+  - text: Evidence reviewed *
+  - textbox "Evidence reviewed *"
+  - button "Cancel"
+  - button "Complete recovery"

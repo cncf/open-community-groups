@@ -1,0 +1,18 @@
+- table "Sponsors list":
+  - rowgroup:
+    - row "Sponsor Website Featured Actions":
+      - columnheader "Sponsor"
+      - columnheader "Website"
+      - columnheader "Featured"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row /E2E sponsor [0-9a-f]{8} logo E2E sponsor [0-9a-f]{8} - Visible on group page for E2E sponsor [0-9a-f]{8} Edit sponsor: E2E sponsor [0-9a-f]{8} Delete sponsor: E2E sponsor [0-9a-f]{8}/':
+      - cell /E2E sponsor [0-9a-f]{8} logo E2E sponsor [0-9a-f]{8}/:
+        - img /E2E sponsor [0-9a-f]{8} logo/
+        - text: ""
+      - cell "-"
+      - cell /Visible on group page for E2E sponsor [0-9a-f]{8}/:
+        - checkbox /Visible on group page for E2E sponsor [0-9a-f]{8}/ [checked]
+      - 'cell /Edit sponsor: E2E sponsor [0-9a-f]{8} Delete sponsor: E2E sponsor [0-9a-f]{8}/':
+        - 'button /Edit sponsor: E2E sponsor [0-9a-f]{8}/'
+        - 'button /Delete sponsor: E2E sponsor [0-9a-f]{8}/'

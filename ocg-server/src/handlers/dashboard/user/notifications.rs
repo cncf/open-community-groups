@@ -4,7 +4,7 @@ use askama::Template;
 use axum::{
     Json,
     extract::{Path, State},
-    http::{HeaderName, StatusCode},
+    http::StatusCode,
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
@@ -24,9 +24,6 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
-
-/// URL used by the full dashboard page.
-const DASHBOARD_URL: &str = "/dashboard/user?tab=notifications";
 
 // Pages handlers.
 
@@ -55,21 +52,6 @@ pub(crate) async fn muted_groups(
     };
 
     Ok(Html(template.render()?))
-}
-
-/// Returns the notifications page for the user dashboard.
-#[instrument(skip_all)]
-pub(crate) async fn page(
-    CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare page content
-    let template = prepare_page(&db, &user).await?;
-
-    // Prepare response headers
-    let headers = [(HeaderName::from_static("hx-push-url"), DASHBOARD_URL)];
-
-    Ok((headers, Html(template.render()?)))
 }
 
 // Actions handlers.

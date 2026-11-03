@@ -5,7 +5,8 @@ import {
   TEST_PAYMENT_EVENT_NAMES,
   TEST_PURCHASE_DOCUMENT_IDS,
 } from "../../../seed.js";
-import { buildE2eUrl, expectPaginationNavigation, navigateToPath } from "../../../utils.js";
+import { buildE2eUrl, expectPaginationNavigation } from "../../../utils.js";
+import { getPurchaseRow, openPurchasesDashboard } from "../helpers.js";
 
 test.describe("user dashboard purchases", () => {
   test("empty state explains when no paid-ticket documents exist", async ({ emptyUserPage }) => {
@@ -146,17 +147,3 @@ test.describe("user dashboard purchases", () => {
     );
   });
 });
-
-/** Returns the purchase table row matching the event name. */
-const getPurchaseRow = (dashboardContent, eventName) =>
-  dashboardContent.locator("tbody tr", { hasText: eventName });
-
-/** Opens the purchases dashboard and returns the loaded content region. */
-const openPurchasesDashboard = async (page) => {
-  await navigateToPath(page, "/dashboard/user?tab=purchases");
-
-  const dashboardContent = page.locator("#dashboard-content");
-  await expect(dashboardContent.getByText("Purchases & documents", { exact: true })).toBeVisible();
-
-  return dashboardContent;
-};

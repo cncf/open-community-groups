@@ -1,0 +1,8 @@
+- link "Back to events":
+  - /url: /dashboard/group?tab=events
+- heading "E2E ARIA event" [level=1]
+- button "Publish" [disabled]
+- text: June 15, 2035 6:00 PM - 8:00 PM UTC
+- button "Preview"
+- link "Public page":
+  - /url: /\/e2e-test-community\/group\/e2e-temporary-group-[0-9a-f]{12}\/event\/e2e-aria-event/

@@ -1,0 +1,31 @@
+- text: Requests
+- paragraph: Review and manage attendee approval requests.
+- text: Search invitation requests
+- textbox "Search invitation requests":
+  - /placeholder: Search requests
+- text: Sort by
+- combobox "Sort by":
+  - option "Requester ↑" [selected]
+  - option "Requester ↓"
+  - option "Requested ↑"
+  - option "Requested ↓"
+- text: "Active filters Status: Pending"
+- button "Reset status filter"
+- button "Reset all"
+- text: 1 - 1 of 1 invitation request
+- table "Invitation requests":
+  - rowgroup:
+    - row "Requester Ticket type Actions":
+      - columnheader "Requester"
+      - columnheader:
+        - group: Status
+      - columnheader "Ticket type"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "View profile for E2E Member Three Pending General admission Open actions for E2E Member Three":
+      - cell "View profile for E2E Member Three":
+        - button "View profile for E2E Member Three": ET E2E Member Three e2e-member-3
+      - cell "Pending"
+      - cell "General admission"
+      - cell "Open actions for E2E Member Three":
+        - button "Open actions for E2E Member Three"

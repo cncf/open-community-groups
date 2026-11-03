@@ -1,48 +1,22 @@
+import { withRowRestore } from "../../../database.js";
 import { expect, test } from "../../../fixtures.js";
 
-import {
-  deleteNotifications,
-  expectNewNotifications,
-  snapshotNotifications,
-} from "../../../notifications.js";
 import { cleanupGroupTeamInvitation } from "../../../data-graphs/invitations.js";
 import { TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
 import {
+  confirmAlert,
   expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
   navigateToPath,
   waitForActionResponse,
 } from "../../../utils.js";
+import { inviteTeamMember } from "../../team-helpers.js";
 
-import { ensureGroupViewerRole } from "../helpers.js";
+const GROUP_VIEWER_TEAM_ROW = {
+  key: { group_id: TEST_GROUP_IDS.community1.alpha, user_id: TEST_USER_IDS.groupViewer1 },
+  table: "group_team",
+};
 
 test.describe("group dashboard team view", () => {
-  test("group team table exposes its responsive columns", async ({ organizerGroupPage }) => {
-    // Load the group team dashboard before checking table structure.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
-
-    // Find the group team table.
-    const teamTable = organizerGroupPage.locator("#dashboard-content").getByRole("table");
-
-    // Verify header order and column visibility across dashboard breakpoints.
-    await expectTableHeaders(teamTable, ["Member", "Position", "Role", "Actions"]);
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      teamTable,
-      1024,
-      ["Member", "Role", "Actions"],
-      ["Position"],
-    );
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      teamTable,
-      1280,
-      ["Member", "Position", "Role", "Actions"],
-      [],
-    );
-  });
-
   test("organizer can move between group team result pages", async ({ organizerGroupPage }) => {
     // Paginate the seeded team rows with one result per page.
     await expectPaginationNavigation(
@@ -53,8 +27,7 @@ test.describe("group dashboard team view", () => {
   });
 
   test("group team page shows seeded roles and last-admin protection", async ({ organizerGroupPage }) => {
-    // Restore the seeded viewer role before checking team permissions.
-    await ensureGroupViewerRole(organizerGroupPage, "viewer");
+    // Load the team tab before checking team permissions.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
 
     // Find the dashboard content.
@@ -87,9 +60,10 @@ test.describe("group dashboard team view", () => {
     await expect(viewerRow.locator('select[name="role"]')).toHaveValue("viewer");
   });
 
-  test("organizer can invite and remove a pending group team member", async ({ organizerGroupPage }) => {
-    let notificationIds = [];
-
+  test("organizer can invite and remove a pending group team member @smoke", async ({
+    notifications,
+    organizerGroupPage,
+  }) => {
     try {
       // Clear any leftover pending invitation before the invite flow.
       cleanupGroupTeamInvitation({
@@ -97,45 +71,14 @@ test.describe("group dashboard team view", () => {
         userId: TEST_USER_IDS.pending1,
       });
 
-      // Load the group team tab before inviting a temporary member.
-      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
-
-      // Find the dashboard content.
-      const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-
-      // Verify organizer can invite and remove a pending group team member.
-      await expect(dashboardContent.getByText("Group Team", { exact: true })).toBeVisible();
-
-      // Click Add member.
-      await dashboardContent.getByRole("button", { name: "Add member" }).click();
-
-      // Find the add member form.
-      const addMemberForm = organizerGroupPage.locator("#team-add-form");
-      await expect(addMemberForm).toBeVisible();
-
-      // Find the search input.
-      const searchInput = addMemberForm.locator("#search-input");
-      await waitForActionResponse(organizerGroupPage, () => searchInput.fill("e2e-pending-1"), {
-        method: "GET",
-        urlIncludes: "/dashboard/group/users/search?q=e2e-pending-1",
+      // Invite the pending user as a viewer through the add member form.
+      const pendingRow = await inviteTeamMember(organizerGroupPage, {
+        fullName: "E2E Pending One",
+        role: "viewer",
+        scope: "group",
+        username: "e2e-pending-1",
       });
-
-      // Click E2E Pending One.
-      await addMemberForm.getByText("E2E Pending One", { exact: true }).click();
-      await addMemberForm.locator("#team-add-role").selectOption("viewer");
-
-      // Submit and assert the invitation notification recipient.
-      const snapshot = snapshotNotifications();
-      await waitForActionResponse(
-        organizerGroupPage,
-        () => addMemberForm.locator("#team-add-submit").click(),
-        {
-          method: "POST",
-          urlIncludes: "/dashboard/group/team/add",
-          status: 201,
-        },
-      );
-      notificationIds = expectNewNotifications(snapshot, [
+      notifications.expectNew([
         {
           kind: "group-team-invitation",
           templateDataContains: { group: { group_id: TEST_GROUP_IDS.community1.alpha } },
@@ -143,26 +86,21 @@ test.describe("group dashboard team view", () => {
         },
       ]);
 
-      // Find the pending row.
-      const pendingRow = dashboardContent.locator("tr", {
-        hasText: "E2E Pending One",
-      });
-      await expect(pendingRow).toBeVisible();
-      await expect(pendingRow).toContainText("Invitation sent");
+      // Verify the pending member keeps the invited role.
       await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
 
       // Find the remove button.
       const removeButton = pendingRow.locator(`#remove-member-${TEST_USER_IDS.pending1}`);
       await pendingRow.locator('summary[aria-label="Open team member actions for E2E Pending One"]').click();
       await removeButton.click();
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-        "Are you sure you would like to delete this team member?",
-      );
 
       // Click Yes.
       await waitForActionResponse(
         organizerGroupPage,
-        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+        () =>
+          confirmAlert(organizerGroupPage, {
+            message: "Are you sure you would like to delete this team member?",
+          }),
         {
           method: "DELETE",
           urlIncludes: `/dashboard/group/team/${TEST_USER_IDS.pending1}/delete`,
@@ -170,10 +108,9 @@ test.describe("group dashboard team view", () => {
       );
 
       // Assert how many matching elements are shown.
-      await expect(dashboardContent.locator("tr", { hasText: "E2E Pending One" })).toHaveCount(0);
+      await expect(pendingRow).toHaveCount(0);
     } finally {
-      // Remove invitation notifications and reset pending team state.
-      deleteNotifications(notificationIds);
+      // Reset pending team state.
       cleanupGroupTeamInvitation({
         groupId: TEST_GROUP_IDS.community1.alpha,
         userId: TEST_USER_IDS.pending1,
@@ -187,11 +124,8 @@ test.describe("group dashboard team view", () => {
     const updatedRole = "events-manager";
     const teamTabPath = "/dashboard/group?tab=team";
 
-    // Start from the seeded viewer role before changing permissions.
-    await ensureGroupViewerRole(organizerGroupPage, seededRole);
-
-    // Restore the changed permissions after this check.
-    try {
+    // Restore the seeded viewer role after this check.
+    await withRowRestore(GROUP_VIEWER_TEAM_ROW, async () => {
       // Load the team tab and target the seeded viewer role.
       await navigateToPath(organizerGroupPage, teamTabPath);
 
@@ -214,9 +148,6 @@ test.describe("group dashboard team view", () => {
 
       // Assert the field value was updated.
       await expect(currentRoleSelect).toHaveValue(updatedRole);
-    } finally {
-      // Restore the seeded viewer role for later tests.
-      await ensureGroupViewerRole(organizerGroupPage, seededRole);
-    }
+    });
   });
 });

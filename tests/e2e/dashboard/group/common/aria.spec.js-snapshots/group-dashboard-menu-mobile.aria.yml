@@ -1,0 +1,8 @@
+- navigation "Dashboard navigation":
+  - button "Close menu"
+  - text: Group Dashboard Community and group
+  - button "Platform Engineering Community"
+  - button /E2E temporary group [0-9a-f]{8}/
+  - text: Events
+  - link "Check-In":
+    - /url: /dashboard/group?tab=check-in

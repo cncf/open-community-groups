@@ -1,13 +1,6 @@
 import { expect } from "../../fixtures.js";
-import { TEST_COMMUNITY_IDS, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS } from "../../seed.js";
-import {
-  buildE2eUrl,
-  navigateToEvent,
-  navigateToPath,
-  selectCommunityContext,
-  selectGroupContext,
-  waitForActionResponse,
-} from "../../utils.js";
+import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS } from "../../seed.js";
+import { buildE2eUrl, navigateToEvent, navigateToPath, waitForActionResponse } from "../../utils.js";
 import { fillMarkdownEditor } from "../form-helpers.js";
 
 /** Opens a user dashboard path. */
@@ -60,75 +53,9 @@ export const restoreCoSpeakerInvitation = async (page, proposalTitle, coSpeakerU
   expect(restoreInvitationResponse.ok()).toBeTruthy();
 };
 
-/** Resets a community team invitation through dashboard requests. */
-export const resetCommunityInvitation = async (page, userId, role) => {
-  await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
-
-  await page.request.delete(buildE2eUrl(`/dashboard/community/team/${userId}/delete`));
-
-  const addResponse = await page.request.post(buildE2eUrl("/dashboard/community/team/add"), {
-    form: {
-      role,
-      user_id: userId,
-    },
-  });
-  expect(addResponse.ok()).toBeTruthy();
-};
-
-/** Deletes a community team invitation through dashboard requests. */
-export const clearCommunityInvitation = async (page, userId) => {
-  await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
-
-  await page.request.delete(buildE2eUrl(`/dashboard/community/team/${userId}/delete`));
-};
-
-/** Resets a group team invitation through dashboard requests. */
-export const resetGroupInvitation = async (page, groupId, userId, role) => {
-  await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
-
-  await page.request.delete(buildE2eUrl(`/dashboard/group/team/${userId}/delete`));
-
-  const addResponse = await page.request.post(buildE2eUrl("/dashboard/group/team/add"), {
-    form: {
-      role,
-      user_id: userId,
-    },
-  });
-  expect(addResponse.ok()).toBeTruthy();
-};
-
-/** Creates a group team invitation if the request is accepted. */
-export const ensureGroupInvitation = async (page, groupId, userId, role) => {
-  await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
-
-  const addResponse = await page.request.post(buildE2eUrl("/dashboard/group/team/add"), {
-    form: {
-      role,
-      user_id: userId,
-    },
-  });
-  expect(addResponse.status()).toBeLessThan(500);
-};
-
 /** Deletes event attendee state through the dashboard request API. */
 export const clearEventAttendeeState = async (page, eventId, userId) => {
   await page.request.delete(buildE2eUrl(`/dashboard/group/events/${eventId}/attendees/${userId}/attendance`));
-};
-
-/** Creates an event invitation after clearing attendee state. */
-export const ensureEventInvitation = async (page, groupId, eventId, userId) => {
-  await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
-  await clearEventAttendeeState(page, eventId, userId);
-
-  const inviteResponse = await page.request.post(
-    buildE2eUrl(`/dashboard/group/events/${eventId}/attendees/invite`),
-    {
-      form: {
-        user_id: userId,
-      },
-    },
-  );
-  expect(inviteResponse.ok()).toBeTruthy();
 };
 
 /** Creates a reusable session proposal and returns the dashboard content. */
@@ -159,6 +86,20 @@ export const createSessionProposal = async (page, title) => {
   });
 
   await expect(modal).toBeHidden();
+  return dashboardContent;
+};
+
+/** Returns the purchases dashboard row matching the event name. */
+export const getPurchaseRow = (dashboardContent, eventName) =>
+  dashboardContent.locator("tbody tr", { hasText: eventName });
+
+/** Opens the user purchases dashboard and returns the loaded content region. */
+export const openPurchasesDashboard = async (page) => {
+  await openUserDashboardPath("/dashboard/user?tab=purchases", page);
+
+  const dashboardContent = page.locator("#dashboard-content");
+  await expect(dashboardContent.getByText("Purchases & documents", { exact: true })).toBeVisible();
+
   return dashboardContent;
 };
 

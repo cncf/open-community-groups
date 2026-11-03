@@ -119,11 +119,14 @@ export class TimezoneSelector extends LitWrapper {
     const isDisabled = this.timezones.length === 0 || this.disabled;
     const displayValue = this.value || "Select a timezone";
 
+    // The text input only carries the form value and validation; the button is the visible control.
     return html`
       <div class="relative">
         <input
           type="text"
           class="absolute top-0 left-0 opacity-0 p-0"
+          aria-hidden="true"
+          tabindex="-1"
           name=${this.name}
           .value=${this.value || ""}
           ?required=${this.required}

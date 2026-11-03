@@ -1,16 +1,25 @@
 import { expect, test } from "../../fixtures.js";
 import { queryE2eDatabase } from "../../database.js";
-import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
 import { TEST_COMMUNITY_NAME, TEST_EXTERNAL_PAYMENT_EVENTS, TEST_USER_IDS } from "../../seed.js";
-import { getAttendanceContainer, getAttendButton, getLeaveButton } from "../../site/event/helpers.js";
-import { navigateToPath, waitForActionResponse } from "../../utils.js";
 import {
-  EXTERNAL_GROUP_SLUG,
-  dismissAlert,
+  getAttendanceContainer,
+  getAttendButton,
   getCheckoutButton,
+  getLeaveButton,
   getRefundButton,
   getTicketModal,
-  openAttendeesTab,
+} from "../../site/event/helpers.js";
+import {
+  confirmAlert,
+  dismissAlert,
+  navigateToPath,
+  waitForActionResponse,
+  waitForActionResponses,
+  waitForResponseMatching,
+} from "../../utils.js";
+import {
+  EXTERNAL_GROUP_SLUG,
+  openExternalAttendeesTab,
   openExternalEvent,
   openMarkPaidDialog,
   resetExternalPaymentFixtures,
@@ -20,34 +29,31 @@ import {
 const INVITATION_OFFER_ID = "59555555-5555-5555-5555-555555555926";
 
 test.describe("external payment journeys", () => {
-  test.describe.configure({ mode: "serial" });
-
   test.beforeEach(() => {
+    resetExternalPaymentFixtures();
+  });
+
+  test.afterEach(() => {
     resetExternalPaymentFixtures();
   });
 
   test("registers externally and recovers a failed mark-paid request", async ({
     member1Page,
+    notifications,
     organizerExternalGroupPage,
   }) => {
     const event = TEST_EXTERNAL_PAYMENT_EVENTS.lifecycle;
     const eventUrlPath = `/${TEST_COMMUNITY_NAME}/group/${EXTERNAL_GROUP_SLUG}/event/${event.slug}`;
-    let notificationIds = [];
 
-    // Reserve the external ticket without leaving the event page.
-    const pendingPaymentSnapshot = snapshotNotifications();
-    try {
-      // Start checkout and assert the pending payment notification.
-      await startExternalCheckout(member1Page, event);
-      const hostBox = member1Page.locator("[data-event-host]");
-      await expect(hostBox).toContainText("This event is hosted by E2E External Payee Co");
-      notificationIds = expectNewNotifications(pendingPaymentSnapshot, [
-        { kind: "event-external-payment-pending", userIds: [TEST_USER_IDS.member1] },
-      ]);
-    } finally {
-      // Remove pending payment notifications from the reservation.
-      deleteNotifications(notificationIds);
-    }
+    // Reserve the external ticket without leaving the event page, and assert the pending payment
+    // notification.
+    const pendingPaymentCheckpoint = notifications.checkpoint();
+    await startExternalCheckout(member1Page, event);
+    const hostBox = member1Page.locator("[data-event-host]");
+    await expect(hostBox).toContainText("This event is hosted by E2E External Payee Co");
+    notifications.expectNew([{ kind: "event-external-payment-pending", userIds: [TEST_USER_IDS.member1] }], {
+      since: pendingPaymentCheckpoint,
+    });
     expect(new URL(member1Page.url()).pathname).toBe(eventUrlPath);
     await expect(getAttendButton(member1Page)).toContainText("Open payment page");
 
@@ -81,7 +87,7 @@ test.describe("external payment journeys", () => {
     expect(chargeModel).toBe("external");
 
     // Open the organizer action and verify it retains the external reference.
-    const attendeesContent = await openAttendeesTab(organizerExternalGroupPage, event);
+    const attendeesContent = await openExternalAttendeesTab(organizerExternalGroupPage, event);
     const { attendeeRow, dialog } = await openMarkPaidDialog(
       organizerExternalGroupPage,
       attendeesContent,
@@ -116,11 +122,12 @@ test.describe("external payment journeys", () => {
     );
 
     // Submit the delayed failure and verify duplicate clicks are ignored.
-    const failedResponse = organizerExternalGroupPage.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().endsWith(`/purchases/${purchaseId}/external-payment`),
-    );
+    const markPaidPathname = `/dashboard/group/events/${event.id}/purchases/${purchaseId}/external-payment`;
+    const failedResponse = waitForResponseMatching(organizerExternalGroupPage, {
+      method: "POST",
+      pathname: markPaidPathname,
+      status: 409,
+    });
     await submitButton.click();
     await expect(submitButton).toBeDisabled();
     await submitButton.evaluate((button) => button.click());
@@ -129,10 +136,9 @@ test.describe("external payment journeys", () => {
     await failedResponse;
 
     // Keep the dialog and organizer note available after visible error feedback.
-    await expect(organizerExternalGroupPage.locator(".swal2-popup")).toContainText(
-      "Payment could not be marked as received. Check its status and try again.",
-    );
-    await dismissAlert(organizerExternalGroupPage);
+    await dismissAlert(organizerExternalGroupPage, {
+      message: "Payment could not be marked as received. Check its status and try again.",
+    });
     await expect(dialog).toBeVisible();
     await expect(detailsInput).toHaveValue(paymentNote);
     await expect(submitButton).toBeEnabled();
@@ -141,23 +147,10 @@ test.describe("external payment journeys", () => {
     );
 
     // Retry against the real endpoint and wait for the attendee table refresh.
-    const welcomeSnapshot = snapshotNotifications();
-    await Promise.all([
-      organizerExternalGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().endsWith(`/purchases/${purchaseId}/external-payment`) &&
-          response.ok(),
-      ),
-      organizerExternalGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes(`/events/${event.id}/attendees`) &&
-          response.ok(),
-      ),
-      submitButton.click(),
+    await waitForActionResponses(organizerExternalGroupPage, () => submitButton.click(), [
+      { method: "POST", pathname: markPaidPathname, status: 204 },
+      { method: "GET", pathname: `/dashboard/group/events/${event.id}/attendees`, status: 200 },
     ]);
-    deleteNotificationsSince(welcomeSnapshot, "event-welcome", [TEST_USER_IDS.member1]);
     await expect(dialog).toBeHidden();
     await expect(attendeesContent).toContainText("Active");
 
@@ -184,7 +177,7 @@ test.describe("external payment journeys", () => {
     // Create one pending purchase and open its organizer action.
     await startExternalCheckout(member1Page, event);
     const purchaseId = getExternalPurchaseId(event.id, TEST_USER_IDS.member1);
-    const attendeesContent = await openAttendeesTab(organizerExternalGroupPage, event);
+    const attendeesContent = await openExternalAttendeesTab(organizerExternalGroupPage, event);
     const { dialog } = await openMarkPaidDialog(
       organizerExternalGroupPage,
       attendeesContent,
@@ -235,10 +228,7 @@ test.describe("external payment journeys", () => {
         status: failureCase.status,
         urlIncludes: `/purchases/${purchaseId}/external-payment`,
       });
-      await expect(organizerExternalGroupPage.locator(".swal2-popup")).toContainText(
-        failureCase.expectedMessage,
-      );
-      await dismissAlert(organizerExternalGroupPage);
+      await dismissAlert(organizerExternalGroupPage, { message: failureCase.expectedMessage });
       await expect(dialog).toBeVisible();
       await expect(detailsInput).toHaveValue(paymentNote);
       await expect(submitButton).toBeEnabled();
@@ -258,7 +248,7 @@ test.describe("external payment journeys", () => {
     await startExternalCheckout(member2Page, event);
     const firstPurchaseId = getExternalPurchaseId(event.id, TEST_USER_IDS.member1);
     const secondPurchaseId = getExternalPurchaseId(event.id, TEST_USER_IDS.member2);
-    const attendeesContent = await openAttendeesTab(organizerExternalGroupPage, event);
+    const attendeesContent = await openExternalAttendeesTab(organizerExternalGroupPage, event);
     const { dialog: firstDialog } = await openMarkPaidDialog(
       organizerExternalGroupPage,
       attendeesContent,
@@ -316,10 +306,7 @@ test.describe("external payment journeys", () => {
 
     // Redeem a full discount and complete the ticket without external payment.
     await startExternalCheckout(member2Page, event, event.discountCode);
-    await expect(member2Page.locator(".swal2-popup")).toContainText(
-      "You have successfully registered for this event.",
-    );
-    await dismissAlert(member2Page);
+    await dismissAlert(member2Page, { message: "You have successfully registered for this event." });
     await expect(getLeaveButton(member2Page)).toContainText("Cancel attendance");
     await expect(getRefundButton(member2Page)).toBeHidden();
     await expect(getAttendButton(member2Page)).toBeHidden();
@@ -378,10 +365,9 @@ test.describe("external payment journeys", () => {
       conflict: "ticket-type-sold-out",
     });
     await expect(staleTicketModal).toBeHidden();
-    await expect(member2Page.locator(".swal2-popup")).toContainText(
-      "This ticket has just sold out. Event availability has been updated.",
-    );
-    await dismissAlert(member2Page);
+    await dismissAlert(member2Page, {
+      message: "This ticket has just sold out. Event availability has been updated.",
+    });
     await expect(getAttendButton(member2Page)).toBeVisible();
     await expect(getAttendButton(member2Page)).toBeDisabled();
     await expect(getAttendButton(member2Page)).toHaveAccessibleName("Tickets unavailable");
@@ -395,14 +381,17 @@ test.describe("external payment journeys", () => {
       .locator('[data-attendance-role="actions-menu"] summary')
       .click();
     await cancelCheckoutButton.click();
-    const confirmCancellation = member1Page.getByRole("button", {
-      name: "Yes",
+    await waitForActionResponse(
+      member1Page,
+      () => confirmAlert(member1Page, { message: "Are you sure you want to cancel this checkout?" }),
+      {
+        method: "DELETE",
+        urlIncludes: `/event/${event.id}/checkout`,
+      },
+    );
+    await dismissAlert(member1Page, {
+      message: "Your checkout has been canceled. You can choose a different ticket.",
     });
-    await waitForActionResponse(member1Page, () => confirmCancellation.click(), {
-      method: "DELETE",
-      urlIncludes: `/event/${event.id}/checkout`,
-    });
-    await dismissAlert(member1Page);
     await openExternalEvent(member2Page, event);
     await expect(getAttendButton(member2Page)).toContainText("Get ticket");
 
@@ -455,10 +444,10 @@ test.describe("external payment journeys", () => {
       urlIncludes: `/event/${event.id}/checkout`,
     });
     await expect(ticketModal).toBeHidden();
-    await expect(member1Page.locator(".swal2-popup")).toContainText(
-      "Payment is temporarily unavailable for this ticket. Try again later or contact the organizer.",
-    );
-    await dismissAlert(member1Page);
+    await dismissAlert(member1Page, {
+      message:
+        "Payment is temporarily unavailable for this ticket. Try again later or contact the organizer.",
+    });
     await expect(getAttendButton(member1Page)).toContainText("Get ticket");
     await expect(getAttendButton(member1Page)).toBeEnabled();
     await member1Page.unroute(checkoutUrl);
@@ -513,10 +502,7 @@ test.describe("external payment journeys", () => {
         urlIncludes: `/event/${event.id}/checkout`,
       },
     );
-    await expect(pending1Page.locator(".swal2-popup")).toContainText(
-      "Your reservation is awaiting organizer confirmation.",
-    );
-    await dismissAlert(pending1Page);
+    await dismissAlert(pending1Page, { message: "Your reservation is awaiting organizer confirmation." });
 
     // Verify payment details and the external link remain on the invitation row.
     await expect(offerRow).toContainText("Confirm by");
@@ -549,7 +535,7 @@ test.describe("external payment journeys", () => {
     await startExternalCheckout(member1Page, event);
 
     // Open the organizer dialog and verify focus stays contained.
-    const attendeesContent = await openAttendeesTab(organizerExternalGroupPage, event);
+    const attendeesContent = await openExternalAttendeesTab(organizerExternalGroupPage, event);
     const { attendeeRow, dialog } = await openMarkPaidDialog(
       organizerExternalGroupPage,
       attendeesContent,
@@ -615,16 +601,6 @@ Use this unbroken bank code: ${longInstructionToken}$$
     );
   });
 });
-
-/** Deletes matching notification table rows created after the snapshot. */
-const deleteNotificationsSince = (snapshot, kind, userIds) => {
-  queryE2eDatabase(`
-    delete from notification
-    where created_at >= '${snapshot.createdAfter}'::timestamptz
-    and kind = '${kind}'
-    and user_id in (${userIds.map((userId) => `'${userId}'::uuid`).join(", ")});
-  `);
-};
 
 /** Reads the purchase identifier created for one attendee and event. */
 const getExternalPurchaseId = (eventId, userId) =>

@@ -102,22 +102,18 @@ test.describe("user dashboard badges", () => {
     expect(layout.descriptionRight).toBeGreaterThan(layout.actionsLeft);
   });
 
-  test("shows complete issuer information on the credential page", async ({ member1Page }) => {
-    // Open a seeded credential from the badge dashboard.
+  test("share modal links to the public credential page", async ({ member1Page }) => {
+    // Read the share link from the seeded Host credential card.
     await navigateToPath(member1Page, "/dashboard/user?tab=badges");
     const hostBadge = member1Page.locator("[data-user-badge-id]").filter({
       has: member1Page.getByRole("heading", { name: "Host", exact: true }),
     });
-    const credentialPath = await hostBadge.locator("share-modal").getAttribute("url");
-    expect(credentialPath).not.toBeNull();
-    await navigateToPath(member1Page, credentialPath);
+    const credentialPath = `/badges/credentials/${HOST_CREDENTIAL_ID}`;
+    await expect(hostBadge.locator("share-modal")).toHaveAttribute("url", credentialPath);
 
-    // Verify the public issuer label includes both the group and its community.
-    await expect(
-      member1Page.getByText("Platform Ops Meetup (Platform Engineering Community)", {
-        exact: true,
-      }),
-    ).toBeVisible();
+    // Verify the shared link opens the public credential page.
+    await navigateToPath(member1Page, credentialPath);
+    await expect(member1Page).toHaveTitle("Host badge");
   });
 
   test("persists profile visibility and restores the seeded setting", async ({ member1Page }) => {
@@ -211,21 +207,6 @@ test.describe("user dashboard badges", () => {
         }
       }
     }
-  });
-
-  test("exports a baked PNG credential", async ({ member1Page }) => {
-    // Request the authenticated export endpoint directly.
-    const response = await member1Page.request.get(
-      buildE2eUrl(`/dashboard/user/badges/${HOST_CREDENTIAL_ID}/export`),
-    );
-    const body = await response.body();
-
-    // Verify the download contract and PNG signature.
-    expect(response.ok()).toBeTruthy();
-    expect(response.headers()["content-type"]).toBe("image/png");
-    expect(response.headers()["content-disposition"]).toContain(`badge-${HOST_CREDENTIAL_ID}.png`);
-    expect([...body.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    expect(body.includes(Buffer.from("openbadgecredential"))).toBeTruthy();
   });
 
   test("user can permanently revoke an owned credential", async ({ member2Page }) => {

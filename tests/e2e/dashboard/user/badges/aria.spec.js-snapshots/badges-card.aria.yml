@@ -1,0 +1,12 @@
+- listitem:
+  - button "Reorder Host"
+  - heading "Host" [level=2]
+  - group "Host badge actions":
+    - button "Share Host badge credential"
+    - link "Download Host badge as PNG":
+      - /url: /dashboard/user/badges/dadadada-dada-dada-dada-dadadadada06/export
+    - button "Revoke Host badge"
+  - paragraph: Recognizes contributors who host Platform Ops Meetup events.
+  - paragraph: Issued by Platform Ops Meetup (Platform Engineering Community)
+  - checkbox "Show on profile" [checked]
+  - text: Show on profile

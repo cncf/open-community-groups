@@ -1,0 +1,9 @@
+- text: Event Category Details
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=event-categories-event-taxonomy
+- paragraph: Update the event category for this community.
+- text: Name *
+- textbox "Name *": E2E ARIA event category one
+- paragraph: /Category display name\. Max \d+ characters\./
+- button "Cancel"
+- button "Update Event Category"

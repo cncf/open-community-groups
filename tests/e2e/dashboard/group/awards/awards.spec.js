@@ -1,11 +1,11 @@
 import { expect, test } from "../../../fixtures.js";
-import { queryE2eDatabaseRows } from "../../../database.js";
-import { deleteNotifications, snapshotNotifications } from "../../../notifications.js";
 import { cleanupCredential, setupRevocableCredential } from "../../../data-graphs/badges.js";
 import { TEST_EVENT_IDS, TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
 import { expectPaginationNavigation, navigateToPath, waitForActionResponse } from "../../../utils.js";
 
 const AWARDS_PATH = "/dashboard/group?tab=awards";
+
+const AWARDS_REFRESH_RESPONSE = { method: "GET", pathname: "/dashboard/group/awards", status: 200 };
 
 test.describe("group badge award history", () => {
   test("empty state explains where award history will appear", async ({ organizerEmptyGroupPage }) => {
@@ -41,30 +41,40 @@ test.describe("group badge award history", () => {
       name: "Search awards",
     });
     await searchInput.fill("E2E Member Two");
-    await waitForAwardsRefresh(organizerGroupPage, () => searchInput.press("Enter"));
+    await waitForActionResponse(organizerGroupPage, () => searchInput.press("Enter"), {
+      ...AWARDS_REFRESH_RESPONSE,
+      params: { awards_query: "E2E Member Two" },
+    });
     await expect(awardsTable.getByText("E2E Member Two", { exact: true }).first()).toBeVisible();
     await expect(awardsTable.getByText("E2E Organizer One", { exact: true })).toHaveCount(0);
 
     // Combine status, badge, source, and date filters in one form submission.
+    // requestSubmit: the form has several fields and no submit button, so Enter cannot submit it.
     const filtersForm = dashboardContent.locator("#awards-filters");
-    await waitForAwardsRefresh(organizerGroupPage, () =>
-      filtersForm.evaluate((form) => {
-        const selectOptionByLabel = (select, label) => {
-          const option = [...select.options].find((candidate) => candidate.textContent.trim() === label);
+    await waitForActionResponse(
+      organizerGroupPage,
+      () =>
+        filtersForm.evaluate((form) => {
+          const selectOptionByLabel = (select, label) => {
+            const option = [...select.options].find((candidate) => candidate.textContent.trim() === label);
 
-          if (!option) {
-            throw new Error(`Missing filter option: ${label}`);
-          }
-          select.value = option.value;
-        };
+            if (!option) {
+              throw new Error(`Missing filter option: ${label}`);
+            }
+            select.value = option.value;
+          };
 
-        selectOptionByLabel(form.elements.namedItem("status"), "Revoked");
-        selectOptionByLabel(form.elements.namedItem("badge_id"), "Speaker");
-        selectOptionByLabel(form.elements.namedItem("source"), "Upcoming In-Person Event");
-        form.elements.namedItem("from").value = "2000-01-01";
-        form.elements.namedItem("to").value = "2100-01-01";
-        form.requestSubmit();
-      }),
+          selectOptionByLabel(form.elements.namedItem("status"), "Revoked");
+          selectOptionByLabel(form.elements.namedItem("badge_id"), "Speaker");
+          selectOptionByLabel(form.elements.namedItem("source"), "Upcoming In-Person Event");
+          form.elements.namedItem("from").value = "2000-01-01";
+          form.elements.namedItem("to").value = "2100-01-01";
+          form.requestSubmit();
+        }),
+      {
+        ...AWARDS_REFRESH_RESPONSE,
+        params: { from: "2000-01-01", status: "revoked", to: "2100-01-01" },
+      },
     );
 
     // Verify the active filter chips describe the submitted filters.
@@ -100,7 +110,6 @@ test.describe("group badge award history", () => {
       userId: TEST_USER_IDS.member2,
     });
     const revocationReason = "Credential revoked by the manager E2E scenario.";
-    const notificationsSnapshot = snapshotNotifications();
 
     try {
       // Find the owned active credential.
@@ -110,7 +119,10 @@ test.describe("group badge award history", () => {
         name: "Search awards",
       });
       await searchInput.fill(credential.badgeName);
-      await waitForAwardsRefresh(organizerGroupPage, () => searchInput.press("Enter"));
+      await waitForActionResponse(organizerGroupPage, () => searchInput.press("Enter"), {
+        ...AWARDS_REFRESH_RESPONSE,
+        params: { awards_query: credential.badgeName },
+      });
       const credentialLink = dashboardContent.locator(
         `a[href="/badges/credentials/${credential.userBadgeId}"]`,
       );
@@ -153,59 +165,8 @@ test.describe("group badge award history", () => {
         }),
       ).toBeDisabled();
     } finally {
-      // Remove revocation notifications and temporary credential data.
-      deleteNotifications(listRevocationNotificationIds(notificationsSnapshot, TEST_USER_IDS.member2));
+      // Remove temporary credential data.
       cleanupCredential(credential);
     }
   });
 });
-
-/** Returns badge-revoked notification IDs from the notification table. */
-const listRevocationNotificationIds = ({ createdAfter }, userId) =>
-  queryE2eDatabaseRows(`
-    select notification_id
-    from notification
-    where created_at >= '${createdAfter}'::timestamptz
-    and kind = 'badge-revoked'
-    and user_id = '${userId}'::uuid
-  `).map(([notificationId]) => notificationId);
-
-/** Runs an awards filter action and waits for its HTMX refresh to settle. */
-const waitForAwardsRefresh = async (page, action) => {
-  await page.evaluate(() => {
-    window.__e2eAwardsRefreshSettled = new Promise((resolve) => {
-      const handleAwardsRefreshSettled = (event) => {
-        const responseUrl = new URL(event.detail.xhr.responseURL);
-
-        if (responseUrl.pathname !== "/dashboard/group/awards") {
-          return;
-        }
-
-        document.body.removeEventListener("htmx:afterSettle", handleAwardsRefreshSettled);
-        resolve();
-      };
-
-      document.body.addEventListener("htmx:afterSettle", handleAwardsRefreshSettled);
-    });
-  });
-
-  const [response] = await Promise.all([
-    page.waitForResponse((response) => {
-      const responseUrl = new URL(response.url());
-
-      return (
-        response.request().method() === "GET" &&
-        responseUrl.pathname === "/dashboard/group/awards" &&
-        response.ok()
-      );
-    }),
-    action(),
-  ]);
-
-  await page.evaluate(() => window.__e2eAwardsRefreshSettled);
-  await page.evaluate(() => {
-    delete window.__e2eAwardsRefreshSettled;
-  });
-
-  return response;
-};

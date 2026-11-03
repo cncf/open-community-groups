@@ -1,0 +1,16 @@
+- dialog "E2E Member Three":
+  - heading "E2E Member Three" [level=3]
+  - paragraph: /No ticket Submitted [A-Z][a-z]+ \d+, \d+ \d+:\d+ [AP]M UTC/
+  - button "Close modal"
+  - paragraph: Answered 2 of 2 questions
+  - list:
+    - listitem:
+      - heading "1 Would you come again?" [level=4]
+      - text: "Yes"
+    - listitem:
+      - heading "2 Any feedback?" [level=4]
+      - text: Great talks.
+  - paragraph: Respondent 1 of 1
+  - button "Prev" [disabled]
+  - button "Next" [disabled]
+  - button "Close"

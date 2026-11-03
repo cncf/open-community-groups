@@ -4,7 +4,10 @@ use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     extract::Query,
-    http::{HeaderValue, StatusCode, header::LOCATION},
+    http::{
+        HeaderValue, StatusCode,
+        header::{LOCATION, SET_COOKIE},
+    },
     response::IntoResponse,
 };
 use axum_login::tower_sessions::session;
@@ -332,6 +335,11 @@ async fn test_log_out_success_with_invalid_session() {
         parts.headers.get(LOCATION),
         Some(&HeaderValue::from_static(LOG_IN_URL)),
     );
+
+    // Check the private response removes the stale session cookie
+    let set_cookie = parts.headers.get(SET_COOKIE).unwrap().to_str().unwrap();
+    assert!(set_cookie.starts_with("id=;"), "{set_cookie}");
+    assert!(set_cookie.contains("Max-Age=0"), "{set_cookie}");
 }
 
 // OAuth2 callbacks and redirects.
@@ -1551,6 +1559,7 @@ fn test_get_log_in_url_appends_sanitized_next_url() {
             Some("https://evil.example"),
             LOG_IN_URL,
         ),
+        ("backslash next url", Some("/\\evil.example"), LOG_IN_URL),
     ];
 
     for (case, next_url, expected) in cases {
@@ -1602,6 +1611,16 @@ fn test_sanitize_next_url() {
         ("protocol-relative url", "//evil.example", None),
         ("javascript url", "javascript:alert(1)", None),
         ("relative path", "relative/path", None),
+        ("leading backslash", "/\\evil.example", None),
+        ("tab", "/\t/evil.example", None),
+        ("newline", "/\n/evil.example", None),
+        ("carriage return and newline", "/\r\n/evil.example", None),
+        ("backslash traversal", "/dashboard\\..\\evil", None),
+        (
+            "encoded backslash",
+            "/%5Cevil.example",
+            Some("/%5Cevil.example"),
+        ),
     ];
 
     for (case, next_url, expected) in cases {

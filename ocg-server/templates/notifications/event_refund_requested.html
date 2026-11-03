@@ -18,7 +18,7 @@
     <br />
     {% if let Some(starts_at) = &event.starts_at -%}
       Date &amp; time:
-      {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+      {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %Y · %I:%M %p %Z") }}
       <br />
     {% endif -%}
     {% if let Some(location) = &self.event.location(90) -%}

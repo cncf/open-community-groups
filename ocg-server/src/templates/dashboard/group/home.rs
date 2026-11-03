@@ -216,7 +216,7 @@ impl Content {
             Content::Logs(_) => "logs",
             Content::Members(_) => "members",
             Content::Refunds(_) => "refunds",
-            Content::Settings(_) => "settings",
+            Content::Settings(_) => "settings/update",
             Content::Sponsors(_) => "sponsors",
             Content::Team(_) => "team",
         }

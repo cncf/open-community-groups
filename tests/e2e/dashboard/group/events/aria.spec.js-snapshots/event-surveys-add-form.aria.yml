@@ -1,0 +1,34 @@
+- button "Back to surveys"
+- text: Add survey
+- paragraph: New surveys start as drafts. Drafts never email anyone, so you can prepare them before the event.
+- group:
+  - text: Title *
+  - textbox "Title *"
+  - paragraph: Shown to attendees in the email and in their dashboard.
+  - text: Introduction
+  - textbox "Introduction"
+  - paragraph: /Plain text shown above the questions\. Max \d+ characters\./
+  - checkbox "Anonymous responses" [checked]
+  - text: Anonymous responses
+  - paragraph: Organizers only see aggregated results of anonymous surveys. Answers are linked to accounts so attendees can edit them, but identities are never shown. Identified surveys show names in the results and the CSV.
+  - group "Audience":
+    - text: ""
+    - radio "Confirmed attendees" [checked]
+    - text: Confirmed attendees
+    - radio "Checked-in attendees only"
+    - text: Checked-in attendees only
+    - paragraph: Attendees who can answer the survey and receive its opening email.
+  - text: Opens at
+  - textbox "Opens at"
+  - paragraph: Leave empty to open when the event ends. Surveys never open before the event ends. Times use the event timezone (UTC).
+  - text: Closes at
+  - textbox "Closes at"
+  - paragraph: Leave empty to keep the survey open until you close it. Times use the event timezone (UTC).
+  - group "Questions":
+    - text: ""
+    - paragraph: /Up to \d+ questions\. Ready surveys need at least one question\./
+    - text: 0 questions • 0 required
+    - button "Add question"
+    - text: No questions yet. Click "Add question" to create one.
+- button "Cancel"
+- button "Add survey"

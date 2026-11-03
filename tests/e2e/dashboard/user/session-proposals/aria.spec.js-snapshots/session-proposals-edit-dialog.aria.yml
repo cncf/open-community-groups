@@ -1,0 +1,40 @@
+- dialog "Edit session proposal":
+  - heading "Edit session proposal" [level=3]
+  - button "Close modal"
+  - text: Title *
+  - textbox "Title *": E2E ARIA session proposal
+  - text: Level *
+  - combobox "Level *":
+    - option "Select level"
+    - option "Advanced"
+    - option "Beginner"
+    - option "Intermediate" [selected]
+  - text: Duration (minutes) *
+  - spinbutton "Duration (minutes) *": /\d+/
+  - paragraph: /Enter the session length in minutes \(e\.g\. \d+\)\./
+  - text: Co-speaker
+  - textbox "Search co-speaker by username"
+  - paragraph: Search by username to add an optional co-speaker.
+  - text: Description *
+  - application:
+    - toolbar:
+      - button "Bold": 
+      - button "Italic": 
+      - button "Heading": 
+      - text: "|"
+      - button "Quote": 
+      - button "Generic List": 
+      - button "Numbered List": 
+      - button "Check List": 
+      - text: "|"
+      - button "Create Link": 
+      - button "Insert Table": 
+      - button "Insert Horizontal Line": 
+      - text: "|"
+      - button "Toggle Preview": 
+      - text: "|"
+      - button "Undo": 
+      - button "Redo": 
+    - text: A reusable proposal created from the e2e suite.
+  - button "Cancel"
+  - button "Update"

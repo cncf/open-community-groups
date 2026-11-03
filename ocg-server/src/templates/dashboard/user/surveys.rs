@@ -49,6 +49,17 @@ pub(crate) struct SurveyModal {
 
 // Helpers.
 
+/// Returns the label of the action that opens a listed survey.
+pub(crate) fn survey_action_label(survey: &UserEventSurveyItem) -> &'static str {
+    if survey.is_closed() {
+        "View answers"
+    } else if survey.answered {
+        "Edit answers"
+    } else {
+        "Answer"
+    }
+}
+
 /// Returns the answers the user already submitted to a survey, if any.
 pub(crate) fn survey_answers(survey: &UserEventSurvey) -> Option<&QuestionnaireAnswers> {
     survey.response.as_ref().map(|response| &response.answers)

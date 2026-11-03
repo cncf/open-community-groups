@@ -1,0 +1,20 @@
+- table:
+  - rowgroup:
+    - row "Survey Status Closing Actions":
+      - columnheader "Survey"
+      - columnheader "Status"
+      - columnheader "Closing"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row /E2E ARIA open survey E2E survey event [0-9a-f]{8} · Platform Ops Meetup To answer No closing date Answer: E2E ARIA open survey/':
+      - rowheader /E2E ARIA open survey E2E survey event [0-9a-f]{8} · Platform Ops Meetup/
+      - cell "To answer"
+      - cell "No closing date"
+      - 'cell "Answer: E2E ARIA open survey"':
+        - 'button "Answer: E2E ARIA open survey"'
+    - 'row /E2E ARIA answered survey E2E survey event [0-9a-f]{8} · Platform Ops Meetup Answered No closing date Edit answers: E2E ARIA answered survey/':
+      - rowheader /E2E ARIA answered survey E2E survey event [0-9a-f]{8} · Platform Ops Meetup/
+      - cell "Answered"
+      - cell "No closing date"
+      - 'cell "Edit answers: E2E ARIA answered survey"':
+        - 'button "Edit answers: E2E ARIA answered survey"'

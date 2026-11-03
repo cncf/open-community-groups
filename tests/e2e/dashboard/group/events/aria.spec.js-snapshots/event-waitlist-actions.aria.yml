@@ -1,0 +1,8 @@
+- list:
+  - listitem:
+    - text: Ticket type *
+    - combobox "Ticket type *" [disabled]:
+      - option "Select ticket type" [selected]
+    - paragraph: The admission tier is reserved when the invitation is sent.
+    - status: No ticket types can be assigned. Add seats or activate a ticket type with a current price before sending an invitation.
+    - button "Invite" [disabled]

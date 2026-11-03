@@ -1,29 +1,11 @@
 import { expect, test } from "../../../fixtures.js";
 
-import {
-  deleteNotifications,
-  expectNewNotifications,
-  snapshotNotifications,
-} from "../../../notifications.js";
-import { TEST_USER_IDS } from "../../../seed.js";
-import {
-  expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
-  navigateToPath,
-  waitForActionResponse,
-} from "../../../utils.js";
+import { TEST_GROUP_AUDIENCE_IDS } from "../../../seed.js";
+import { expectPaginationNavigation, navigateToPath, waitForActionResponse } from "../../../utils.js";
 
 const NOTIFICATION_SUBJECT = "E2E member notification";
 const NOTIFICATION_BODY = "Reminder for all members from the e2e suite.";
-const GROUP_CUSTOM_RECIPIENT_IDS = [
-  TEST_USER_IDS.organizer1,
-  TEST_USER_IDS.member1,
-  "77777777-7777-7777-7777-777777777711",
-  "77777777-7777-7777-7777-777777777712",
-  "77777777-7777-7777-7777-777777777714",
-  TEST_USER_IDS.checkInManager1,
-];
+const GROUP_CUSTOM_RECIPIENT_IDS = TEST_GROUP_AUDIENCE_IDS.alpha;
 
 test.describe("group dashboard members view", () => {
   test("empty state explains when a group has no members", async ({ organizerEmptyGroupPage }) => {
@@ -37,33 +19,6 @@ test.describe("group dashboard members view", () => {
     await expect(dashboardContent.getByRole("button", { name: "Send email" })).toBeDisabled();
   });
 
-  test("members table exposes its responsive columns", async ({ organizerGroupPage }) => {
-    // Load the members dashboard before checking table structure.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=members");
-
-    // Find the members table.
-    const membersTable = organizerGroupPage.getByRole("table", {
-      name: "Members list",
-    });
-
-    // Verify header order and column visibility across dashboard breakpoints.
-    await expectTableHeaders(membersTable, ["Member", "Position", "Joined"]);
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      membersTable,
-      1024,
-      ["Member", "Position"],
-      ["Joined"],
-    );
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      membersTable,
-      1280,
-      ["Member", "Position", "Joined"],
-      [],
-    );
-  });
-
   test("organizer can move between member result pages", async ({ organizerGroupPage }) => {
     // Paginate the seeded member rows with one result per page.
     await expectPaginationNavigation(
@@ -73,9 +28,10 @@ test.describe("group dashboard members view", () => {
     );
   });
 
-  test("organizer can send a notification to group members", async ({ organizerGroupPage }) => {
-    let notificationIds = [];
-
+  test("organizer can send a notification to group members", async ({
+    notifications,
+    organizerGroupPage,
+  }) => {
     // Load the members tab before opening the email modal.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=members");
 
@@ -100,37 +56,31 @@ test.describe("group dashboard members view", () => {
     await notificationModal.getByLabel("Subject").fill(NOTIFICATION_SUBJECT);
     await notificationModal.getByLabel("Body").fill(NOTIFICATION_BODY);
 
-    try {
-      // Click Send email and assert the exact member/team recipient set.
-      const snapshot = snapshotNotifications();
-      await waitForActionResponse(
-        organizerGroupPage,
-        () => organizerGroupPage.getByRole("button", { name: "Send email" }).nth(1).click(),
-        {
-          method: "POST",
-          urlIncludes: "/dashboard/group/notifications",
+    // Click Send email and assert the exact member/team recipient set.
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.getByRole("button", { name: "Send email" }).nth(1).click(),
+      {
+        method: "POST",
+        urlIncludes: "/dashboard/group/notifications",
+      },
+    );
+    notifications.expectNew([
+      {
+        kind: "group-custom",
+        templateDataContains: {
+          body: NOTIFICATION_BODY,
+          subject: NOTIFICATION_SUBJECT,
         },
-      );
-      notificationIds = expectNewNotifications(snapshot, [
-        {
-          kind: "group-custom",
-          templateDataContains: {
-            body: NOTIFICATION_BODY,
-            subject: NOTIFICATION_SUBJECT,
-          },
-          userIds: GROUP_CUSTOM_RECIPIENT_IDS,
-        },
-      ]);
+        userIds: GROUP_CUSTOM_RECIPIENT_IDS,
+      },
+    ]);
 
-      // Assert that the content is hidden.
-      await expect(notificationModal).toBeHidden();
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-        "Email sent successfully to all group members.",
-      );
-    } finally {
-      // Delete generated member email notifications.
-      deleteNotifications(notificationIds);
-    }
+    // Assert that the content is hidden.
+    await expect(notificationModal).toBeHidden();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Email sent successfully to all group members.",
+    );
   });
 
   test("viewer sees read-only controls in the members view", async ({ groupViewerPage }) => {

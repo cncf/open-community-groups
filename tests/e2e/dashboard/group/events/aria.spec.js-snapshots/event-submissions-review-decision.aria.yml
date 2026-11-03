@@ -1,0 +1,12 @@
+- tabpanel:
+  - status: This is the group's final decision on this submission, not an individual assessment. Once saved, it is final. The speaker will receive this update and can review it in their Submissions tab.
+  - text: Decision
+  - checkbox "Approved"
+  - text: Approved
+  - checkbox "Information requested"
+  - text: Information requested
+  - checkbox "Rejected"
+  - text: Rejected Message for speaker
+  - textbox "Message for speaker":
+    - /placeholder: Add a note for the speaker...
+  - paragraph: Required when requesting changes. Explain what information or changes are needed.

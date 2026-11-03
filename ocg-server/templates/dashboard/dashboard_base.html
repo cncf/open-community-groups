@@ -14,16 +14,18 @@
   {# Header -#}
   <div id="dashboard-header"
        class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-16 md:h-20 drop-shadow-sm flex items-center justify-between gap-3 px-3 lg:px-5">
-    {# Open menu button (mobile only) -#}
-    <button id="open-dashboard-menu"
-            type="button"
-            aria-controls="dashboard-menu-drawer"
-            aria-expanded="false"
-            class="group h-10 w-10 shrink-0 inline-flex justify-center items-center bg-stone-100 rounded-full p-2 hover:bg-stone-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 md:hidden">
-      <div class="svg-icon h-4 w-4 bg-stone-700 group-hover:bg-stone-900 transition-colors icon-lines"></div>
-      <span class="sr-only">Open dashboard menu</span>
-    </button>
-    {# End open menu button (mobile only) -#}
+    {% block mobile_menu_button -%}
+      {# Open menu button (mobile only) -#}
+      <button id="open-dashboard-menu"
+              type="button"
+              aria-controls="dashboard-menu-drawer"
+              aria-expanded="false"
+              class="group h-10 w-10 shrink-0 inline-flex justify-center items-center bg-stone-100 rounded-full p-2 hover:bg-stone-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 md:hidden">
+        <div class="svg-icon h-4 w-4 bg-stone-700 group-hover:bg-stone-900 transition-colors icon-lines"></div>
+        <span class="sr-only">Open dashboard menu</span>
+      </button>
+      {# End open menu button (mobile only) -#}
+    {% endblock mobile_menu_button -%}
     {% include "common/header.html" -%}
   </div>
   {# End Header -#}

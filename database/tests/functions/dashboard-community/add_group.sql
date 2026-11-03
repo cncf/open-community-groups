@@ -213,6 +213,7 @@ select is(
             "normalized_name": "north-america"
         },
         "logo_url": "https://example.com/logo.png",
+        "custom_logo_url": "https://example.com/logo.png",
         "website_url": "https://example.com",
         "bluesky_url": "https://bsky.app/profile/testgroup",
         "facebook_url": "https://facebook.com/testgroup",

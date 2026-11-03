@@ -1,0 +1,25 @@
+- region "Upcoming In-Person Event":
+  - link "Back to inbox":
+    - /url: /dashboard/user?tab=inbox
+  - text: Platform Ops Meetup · Platform Engineering Community
+  - heading "Upcoming In-Person Event" [level=1]:
+    - link "Upcoming In-Person Event":
+      - /url: /e2e-test-community/group/test-group-alpha/event/alpha-event-1
+  - text: Answered Started
+  - time: /[A-Z][a-z]{2} \d{1,2}, \d{4}/
+  - text: Last message
+  - time: /[A-Z][a-z]{2} \d{1,2}, \d{4} · \d{1,2}:\d{2} [AP]M UTC/
+  - text: 2 messages
+  - list "Messages":
+    - listitem:
+      - text: E2E Member Two
+      - time: /[A-Z][a-z]{2} \d{1,2}, \d{4} · \d{1,2}:\d{2} [AP]M UTC/
+      - paragraph: Is the venue step-free?
+    - listitem:
+      - text: E2E Organizer One Organizer
+      - time: /[A-Z][a-z]{2} \d{1,2}, \d{4} · \d{1,2}:\d{2} [AP]M UTC/
+      - paragraph: Yes, there is a lift at the main entrance.
+  - text: New message
+  - textbox "New message"
+  - paragraph: /The organizers receive your message by email and in their dashboard\. Plain text, up to \d+ characters; you can send up to \d+ follow-ups per day\./
+  - button "Send"

@@ -1,0 +1,36 @@
+- text: Call for Speakers
+- paragraph: Collect session proposals ahead of the event.
+- checkbox "Enable Call for Speakers"
+- text: Enable Call for Speakers
+- paragraph: Allow speakers to submit session proposals.
+- text: Opens at *
+- superscript: (required when CFS is enabled)
+- textbox "Opens at * (required when CFS is enabled)" [disabled]
+- paragraph: When submissions open.
+- text: Closes at *
+- superscript: (required when CFS is enabled)
+- textbox "Closes at * (required when CFS is enabled)" [disabled]
+- paragraph: When submissions close.
+- text: CFS description *
+- superscript: (required when CFS is enabled)
+- application:
+  - toolbar:
+    - button "Bold": 
+    - button "Italic": 
+    - button "Heading": 
+    - text: "|"
+    - button "Quote": 
+    - button "Generic List": 
+    - button "Numbered List": 
+    - button "Check List": 
+    - text: "|"
+    - button "Create Link": 
+    - button "Insert Table": 
+    - button "Insert Horizontal Line": 
+    - text: "|"
+    - button "Toggle Preview": 
+    - text: "|"
+    - button "Undo": 
+    - button "Redo": 
+- paragraph: Shown on the event page to invite speakers.
+- text: Submitters can pick from the event labels when submitting their proposals. Manage them from the Labels tab.

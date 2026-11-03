@@ -1,0 +1,7 @@
+- /children: deep-equal
+- link:
+  - /url: /e2e-second-community/group/second-group-epsilon/event/epsilon-cohosted-summit
+  - article:
+    - text: E2E Second Group Epsilon Cross Community Co-hosted Summit Co-hosted with E2E Second Group Delta, E2E Second Group Zeta, Observability Guild
+    - paragraph: Co-hosted summit used by public co-host credit coverage.
+    - text: /[A-Z][a-z]+ \d+ Virtual [A-Z][a-z]+ \d+, \d{4} · 10:00 AM UTC/

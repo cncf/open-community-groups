@@ -219,6 +219,7 @@ select is(
         "twitter_url": "https://twitter.com/updated",
         "tags": ["updated", "test"],
         "logo_url": "https://example.com/updated-logo.png",
+        "custom_logo_url": "https://example.com/updated-logo.png",
         "og_image_url": "https://example.com/updated-og.png",
         "external_payments_enabled": false,
         "organizers": [],

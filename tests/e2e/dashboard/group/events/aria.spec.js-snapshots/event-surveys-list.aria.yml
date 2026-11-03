@@ -1,0 +1,24 @@
+- text: Surveys
+- link "Open documentation":
+  - /url: /docs#/guides/event-operations?id=surveys
+- paragraph: Ready surveys open when the event ends, or later at a custom time, and eligible attendees get one email when they open.
+- paragraph: /1 of \d+ surveys/
+- button "Add survey"
+- table "Event surveys list":
+  - rowgroup:
+    - row "Survey Status Responses Actions":
+      - columnheader "Survey"
+      - columnheader "Status"
+      - columnheader "Responses"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row /Open survey: E2E ARIA survey Confirmed attendees · Identified Open 1 \/ 1 \(\d+%\) View results: E2E ARIA survey Edit survey: E2E ARIA survey/':
+      - 'cell "Open survey: E2E ARIA survey Confirmed attendees · Identified"':
+        - 'button "Open survey: E2E ARIA survey"'
+        - text: ""
+      - cell "Open"
+      - cell /1 \/ 1 \(\d+%\)/
+      - 'cell "View results: E2E ARIA survey Edit survey: E2E ARIA survey"':
+        - 'button "View results: E2E ARIA survey"'
+        - 'button "Edit survey: E2E ARIA survey"'
+        - group

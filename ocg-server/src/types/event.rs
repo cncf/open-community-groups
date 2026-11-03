@@ -424,6 +424,8 @@ pub struct EventFull {
     /// Call for speakers start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub cfs_starts_at: Option<DateTime<Utc>>,
+    /// URL to the event's own logo, without the group or community fallback.
+    pub custom_logo_url: Option<String>,
     /// Brief event description.
     pub description_short: Option<String>,
     /// Discount codes configured for the event.

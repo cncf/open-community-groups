@@ -1,0 +1,6 @@
+- /children: deep-equal
+- navigation "Breadcrumb":
+  - button "Platform Engineering Community"
+  - listbox:
+    - option "Home"
+    - option "Platform Engineering Community"

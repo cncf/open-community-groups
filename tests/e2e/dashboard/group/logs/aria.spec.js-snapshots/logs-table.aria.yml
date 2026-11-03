@@ -1,0 +1,17 @@
+- table "Audit logs table":
+  - rowgroup:
+    - row "Action Actor Target Date Details":
+      - columnheader "Action"
+      - columnheader "Actor"
+      - columnheader "Target"
+      - columnheader "Date"
+      - columnheader "Details"
+  - rowgroup:
+    - row /Group sponsor added e2e-organizer-1 E2E sponsor [0-9a-f]{8} Group sponsor Mar 14, 2025 06:30 PM UTC View log details Log details Tier gold Website https:\/\/sponsor\.example\.com/:
+      - cell "Group sponsor added"
+      - cell "e2e-organizer-1"
+      - cell /E2E sponsor [0-9a-f]{8} Group sponsor/
+      - cell "Mar 14, 2025 06:30 PM UTC"
+      - cell "View log details Log details Tier gold Website https://sponsor.example.com":
+        - button "View log details" [expanded]
+        - text: ""

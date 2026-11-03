@@ -87,7 +87,8 @@ fn test_list_page_renders_surveys_by_state() {
     let answered_row = survey_row(&html, Uuid::from_u128(2));
     assert!(answered_row.contains("Answered"));
     assert!(answered_row.contains("No closing date"));
-    assert!(answered_row.contains("Edit answers"));
+    assert!(answered_row.contains(r#"aria-label="Edit answers: "#));
+    assert!(answered_row.contains(">Edit answers</button>"));
 
     // Check the status, date and action of the closed survey
     let closed_row = survey_row(&html, Uuid::from_u128(3));

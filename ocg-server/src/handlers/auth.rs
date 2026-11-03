@@ -703,10 +703,20 @@ fn oidc_authorization_error_message(err: &str) -> String {
 
 /// Sanitize a `next_url` value ensuring it points to an in-site path.
 fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
+    // Ignore missing or blank values
     let value = next_url?.trim();
     if value.is_empty() {
         return None;
     }
+
+    // Reject backslashes and control characters: browsers treat `\` as `/`
+    // and strip tabs and newlines, so either can turn the path into an
+    // off-site URL; rejecting only falls back to `/`
+    if value.chars().any(|c| c == '\\' || c.is_control()) {
+        return None;
+    }
+
+    // Accept only absolute paths on this site
     if !value.starts_with('/') || value.starts_with("//") {
         return None;
     }

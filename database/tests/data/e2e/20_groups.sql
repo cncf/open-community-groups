@@ -138,3 +138,8 @@ update "group"
 set city = 'Seattle',
     location = ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326)
 where group_id = '44444444-4444-4444-4444-444444444443';
+
+-- Legacy URL for the alpha group so list_redirects (redirector) returns it.
+update "group"
+set legacy_url = 'https://legacy.example.com/groups/platform-ops-meetup/'
+where group_id = '44444444-4444-4444-4444-444444444441';

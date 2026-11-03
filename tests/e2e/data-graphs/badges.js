@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { queryE2eDatabase, queryE2eDatabaseRows } from "../database.js";
+import { queryE2eDatabase, queryE2eDatabaseRows, sqlString } from "../database.js";
 
 const DEFAULT_BADGE_ARTWORK_FILE_NAME = "e2e-disposable-badge.png";
 
@@ -291,9 +291,6 @@ const getBadgeDefinition = ({ badgeId, groupId }) => {
     imageFileName,
   };
 };
-
-/** Escapes a value for embedding in E2E SQL. */
-const sqlString = (value) => `'${String(value).replaceAll("'", "''")}'`;
 
 /** Builds a unique badge name for badge scenario fixtures. */
 const uniqueBadgeName = (label) => `E2E ${label} ${randomUUID().replace(/-/g, "").slice(0, 8)}`;

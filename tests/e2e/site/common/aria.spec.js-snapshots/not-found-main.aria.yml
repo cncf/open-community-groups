@@ -1,0 +1,7 @@
+- /children: deep-equal
+- main:
+  - paragraph: Page not found
+  - heading "We could not find that page" [level=1]
+  - paragraph: The page you requested may have moved, been deleted, or the link may be incorrect.
+  - link "Go to home page":
+    - /url: /

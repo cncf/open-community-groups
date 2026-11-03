@@ -222,6 +222,36 @@ async fn test_list_page_rejects_pagination_limit_above_maximum() {
 }
 
 #[tokio::test]
+async fn test_list_page_returns_not_found_for_event_of_another_group() {
+    // Setup identifiers
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock without an event summary for the selected group
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    db.expect_find_event_summary_dashboard()
+        .times(1)
+        .withf(move |cid, gid, eid| {
+            *cid == ids.community_id && *gid == ids.group_id && *eid == event_id
+        })
+        .returning(|_, _, _| Ok(None));
+    db.expect_get_event_registration_questions().never();
+    db.expect_search_event_invitation_requests().never();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/invitation-requests"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the page is not found before loading invitation requests
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn test_list_page_shows_status_reset_when_status_filtered_list_is_empty() {
     // Setup identifiers and data structures
     let ids = DashboardIds::new();
@@ -438,12 +468,12 @@ fn expect_list_context(
 
     expect_group_access(db, &ids, GroupPermission::Read);
     expect_group_permission_result(db, &ids, GroupPermission::EventsWrite, true);
-    db.expect_get_event_summary_dashboard()
+    db.expect_find_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == ids.community_id && *gid == ids.group_id && *eid == event_id
         })
-        .returning(move |_, _, _| Ok(event.clone()));
+        .returning(move |_, _, _| Ok(Some(event.clone())));
     db.expect_get_event_registration_questions()
         .times(1)
         .withf(move |cid, eid| *cid == ids.community_id && *eid == event_id)

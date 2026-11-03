@@ -1,0 +1,16 @@
+- region "Badges Artwork":
+  - heading "Badges Artwork" [level=1]
+  - paragraph: Upload artwork once and reuse it across badges.
+  - text: Upload artwork
+  - button "Upload artwork Click or drop image":
+    - paragraph: Click or drop image
+  - paragraph: "/Images must be \\d+ x \\d+ px \\(square\\)\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: PNG, JPEG and WEBP\\./"
+  - button "Upload image for Upload artwork"
+  - button "Save to library" [disabled]
+  - heading "Saved artwork" [level=2]
+  - paragraph: Choose these images when creating or editing a badge.
+  - text: 1 item
+  - list:
+    - listitem:
+      - img "Reusable badge artwork 1"
+      - button "Remove artwork 1"

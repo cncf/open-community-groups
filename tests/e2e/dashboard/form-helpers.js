@@ -1,26 +1,21 @@
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
-import { waitForActionResponse } from "../utils.js";
+import { waitForActionResponse, waitForResponseMatching } from "../utils.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Response matcher for a stored image upload.
+const IMAGE_UPLOAD_RESPONSE = { method: "POST", pathname: "/images", status: 201 };
 
 export const TEST_UPLOAD_ASSET_PATHS = {
   animatedGifLogo: path.resolve(
     __dirname,
     "../../../ocg-server/static/images/e2e/community-logo-animated.gif",
   ),
-  animatedGifLogoSource: path.resolve(
-    __dirname,
-    "../../../ocg-server/static/images/e2e/community-logo-animated-source.gif",
-  ),
   advertisementBanner: path.resolve(
     __dirname,
     "../../../ocg-server/static/images/e2e/community-secondary-ad-banner.svg",
-  ),
-  alternateBanner: path.resolve(
-    __dirname,
-    "../../../ocg-server/static/images/e2e/community-secondary-banner.svg",
   ),
   alternateBannerMobile: path.resolve(
     __dirname,
@@ -72,12 +67,7 @@ export const uploadImageField = async (page, fieldName, filePath) => {
   const cropper = imageField.locator("image-cropper");
   if ((await cropper.count()) > 0) {
     const dialog = cropper.getByRole("dialog");
-    const uploadResponsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/images") &&
-        response.status() === 201,
-    );
+    const uploadResponsePromise = waitForImageUpload(page);
     await imageField.locator('input[type="file"]').setInputFiles(filePath);
     const preparationResult = await Promise.race([
       dialog.waitFor({ state: "visible" }).then(() => "crop"),
@@ -91,11 +81,7 @@ export const uploadImageField = async (page, fieldName, filePath) => {
     await waitForActionResponse(
       page,
       () => imageField.locator('input[type="file"]').setInputFiles(filePath),
-      {
-        method: "POST",
-        urlIncludes: "/images",
-        status: 201,
-      },
+      IMAGE_UPLOAD_RESPONSE,
     );
   }
 
@@ -142,11 +128,7 @@ export const uploadGalleryImages = async (page, fieldName, filePaths) => {
   const initialImageCount = await galleryField.locator(`input[name="${fieldName}[]"]`).count();
 
   for (const filePath of filePaths) {
-    await waitForActionResponse(page, () => fileInput.setInputFiles(filePath), {
-      method: "POST",
-      urlIncludes: "/images",
-      status: 201,
-    });
+    await waitForActionResponse(page, () => fileInput.setInputFiles(filePath), IMAGE_UPLOAD_RESPONSE);
   }
 
   await expect(galleryField.locator(`input[name="${fieldName}[]"]`)).toHaveCount(
@@ -211,3 +193,10 @@ export const fillEventVenue = async (page, values) => {
   await page.locator("#location-search-latitude").fill(values.latitude);
   await page.locator("#location-search-longitude").fill(values.longitude);
 };
+
+/**
+ * Arms a wait for the next stored image upload.
+ * @param {import("@playwright/test").Page} page - Page with an image field.
+ * @returns {Promise<import("@playwright/test").Response>} Upload response.
+ */
+export const waitForImageUpload = (page) => waitForResponseMatching(page, IMAGE_UPLOAD_RESPONSE);

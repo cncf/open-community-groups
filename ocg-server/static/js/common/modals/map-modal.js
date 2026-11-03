@@ -6,13 +6,11 @@ import {
   markDatasetReady,
 } from "/static/js/common/dom.js";
 import { loadMap } from "/static/js/common/location/maplibre.js";
-import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
+import { bindOpenModalKeyboard, toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 
-const ENTER_KEY = "Enter";
 const MAP_ERROR_MESSAGE = "Unable to load the map. Reload the page to try again.";
 const MAP_MODAL_READY_KEY = "mapModalReady";
 const MAP_MODAL_SELECTOR = "[data-map-modal]";
-const SPACE_KEY = " ";
 
 /**
  * Reads a numeric coordinate from a map modal data attribute.
@@ -50,9 +48,10 @@ const initializeMapModal = (mapContainer) => {
 
   const lat = readCoordinate(mapContainer, "lat");
   const lng = readCoordinate(mapContainer, "lng");
-  const modalId = mapContainer.dataset.modalId;
+  const modal = getElementById(document, mapContainer.dataset.modalId || "");
   const modalMapId = mapContainer.dataset.modalMapId;
-  if (lat === null || lng === null || !modalId || !modalMapId) {
+  const trigger = getElementById(document, mapContainer.dataset.triggerId || "");
+  if (lat === null || lng === null || !modal || !modalMapId || !trigger) {
     return;
   }
 
@@ -77,7 +76,8 @@ const initializeMapModal = (mapContainer) => {
   };
 
   const openModal = () => {
-    toggleModalVisibility(modalId);
+    toggleModalVisibility(modal, trigger);
+    bindOpenModalKeyboard(modal);
     ensureModalMap();
   };
 
@@ -85,22 +85,13 @@ const initializeMapModal = (mapContainer) => {
     if (mapContainer.isConnected) showErrorAlert(MAP_ERROR_MESSAGE);
   });
 
-  mapContainer.addEventListener("click", (event) => {
-    if (!event.target.closest(".maplibregl-ctrl")) openModal();
-  });
-  mapContainer.addEventListener("keydown", (event) => {
-    if (event.target !== mapContainer) return;
-    if (event.key === ENTER_KEY || event.key === SPACE_KEY) {
-      event.preventDefault();
-      openModal();
-    }
-  });
+  trigger.addEventListener("click", openModal);
 
   const closeButton = getElementById(document, mapContainer.dataset.closeButtonId || "");
-  closeButton?.addEventListener("click", () => toggleModalVisibility(modalId));
+  closeButton?.addEventListener("click", () => toggleModalVisibility(modal));
 
   const backdrop = getElementById(document, mapContainer.dataset.backdropId || "");
-  backdrop?.addEventListener("click", () => toggleModalVisibility(modalId));
+  backdrop?.addEventListener("click", () => toggleModalVisibility(modal));
 };
 
 /**

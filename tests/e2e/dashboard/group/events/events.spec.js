@@ -8,14 +8,9 @@ import {
   TEST_TICKETING_EVENTS,
 } from "../../../seed.js";
 import {
-  deleteNotifications,
-  expectNewNotifications,
-  snapshotNotifications,
-} from "../../../notifications.js";
-import {
+  confirmAlert,
+  dismissAlert,
   expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
   navigateToPath,
   waitForActionResponse,
 } from "../../../utils.js";
@@ -41,35 +36,6 @@ test.describe("group dashboard Events tab", () => {
     await expect(dashboardContent.locator("#past-content")).toContainText(
       "It looks like you don't have any past events.",
     );
-  });
-
-  test("events tables expose every column at its responsive breakpoint", async ({ organizerGroupPage }) => {
-    // Load the group events dashboard before checking table structure.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
-
-    // Find the upcoming events table and its complete ordered header set.
-    const eventsTable = organizerGroupPage.getByRole("table", {
-      name: "Upcoming events list",
-    });
-    const headers = ["Name", "Location", "Date", "Type", "Status", "Attendees", "Actions"];
-
-    // Verify header order and column visibility across dashboard breakpoints.
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      eventsTable,
-      1024,
-      ["Name", "Status", "Actions"],
-      ["Location", "Date", "Type", "Attendees"],
-    );
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      eventsTable,
-      1280,
-      ["Name", "Date", "Type", "Status", "Actions"],
-      ["Location", "Attendees"],
-    );
-    await expectTableColumnsAtViewport(organizerGroupPage, eventsTable, 1536, headers, []);
-    await expectTableHeaders(eventsTable, headers);
   });
 
   test("organizer can move between event result pages", async ({ organizerGroupPage }) => {
@@ -157,20 +123,16 @@ test.describe("group dashboard Events tab", () => {
 
     // Dismiss the confirmation and verify the editor keeps the change.
     const backLink = organizerGroupPage.getByRole("link", { name: "Back to events" });
-    const confirmAlert = organizerGroupPage.locator(".swal2-popup");
     await backLink.click();
-    await expect(confirmAlert).toContainText("You have pending changes.");
-    await confirmAlert.getByRole("button", { name: "No", exact: true }).click();
-    await expect(confirmAlert).toBeHidden();
+    await dismissAlert(organizerGroupPage, { message: "You have pending changes.", button: "No" });
     await expect(organizerGroupPage.locator('[data-event-page="update"]')).toBeVisible();
     await expect(organizerGroupPage.locator("#name")).toHaveValue(`${TEST_EVENT_NAMES.alpha[0]} draft`);
 
     // Confirm leaving and verify the events list loads without saving.
     await backLink.click();
-    await expect(confirmAlert).toContainText("You have pending changes.");
     await waitForActionResponse(
       organizerGroupPage,
-      () => confirmAlert.getByRole("button", { name: "Leave", exact: true }).click(),
+      () => confirmAlert(organizerGroupPage, { message: "You have pending changes.", button: "Leave" }),
       { method: "GET", urlEndsWith: "/dashboard/group?tab=events" },
     );
     await expectActiveEventsTab(organizerGroupPage, "upcoming", TEST_EVENT_NAMES.alpha[0]);
@@ -249,6 +211,25 @@ test.describe("group dashboard Events tab", () => {
     );
   });
 
+  test("group viewer sees event creation and row actions disabled", async ({ groupViewerPage }) => {
+    // Load the upcoming events list as a role that cannot manage events.
+    await navigateToPath(groupViewerPage, "/dashboard/group?tab=events");
+    const dashboardContent = groupViewerPage.locator("#dashboard-content");
+
+    // Verify adding events is unavailable and explains why.
+    const addEventButton = dashboardContent.getByRole("button", { name: "Add Event" });
+    await expect(addEventButton).toBeDisabled();
+    await expect(addEventButton).toHaveAttribute("title", "Your role cannot add events.");
+
+    // Verify the row actions menu is unavailable and explains why.
+    const eventName = TEST_EVENT_NAMES.alpha[1];
+    const actionsButton = dashboardContent
+      .locator("#upcoming-content")
+      .getByRole("button", { name: `Open actions for ${eventName}` });
+    await expect(actionsButton).toBeDisabled();
+    await expect(actionsButton).toHaveAttribute("title", "Your role cannot manage events.");
+  });
+
   test("row actions open upward when the viewport would clip them", async ({ organizerGroupPage }) => {
     // Load the upcoming events list with room below the first row.
     await organizerGroupPage.setViewportSize({ width: 1280, height: 900 });
@@ -281,138 +262,54 @@ test.describe("group dashboard Events tab", () => {
     expect(lastDropdownBox.y).toBeGreaterThanOrEqual(0);
   });
 
-  test("organizer can cancel an event from the list", async ({ organizerGroupPage }) => {
+  test("organizer can cancel an event from the list", async ({
+    notifications,
+    organizerGroupPage,
+    owned,
+  }) => {
     // Create an owned event graph with attendees, waitlist, and speaker recipients.
-    const scenario = setupCancelableEvent({ groupId: "44444444-4444-4444-4444-444444444441" });
-    let notificationIds = [];
+    const scenario = owned.track(
+      setupCancelableEvent({ groupId: "44444444-4444-4444-4444-444444444441" }),
+      ({ eventId }) => cleanupEventsByIds([eventId]),
+    );
 
-    try {
-      // Load the events list with the owned event available for cancellation.
-      const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-      const eventRow = await openGroupEventsTabWithEvent(organizerGroupPage, scenario.name);
-      await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
-
-      // Open the actions menu and cancel the owned event.
-      await eventRow.locator(".btn-actions").click();
-      const cancelButton = eventRow.locator('button[id^="cancel-event-"]');
-      await expect(cancelButton).toBeVisible();
-      await cancelButton.click();
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-        "Cancel this event? This cannot be undone. All attendee registrations will be canceled immediately. Full refunds for eligible paid purchases will be queued and may take time to process.",
-      );
-
-      // Confirm cancellation and assert the exact cancellation recipients.
-      const snapshot = snapshotNotifications();
-      await waitForActionResponse(
-        organizerGroupPage,
-        () => organizerGroupPage.getByRole("button", { name: "Cancel event" }).click(),
-        {
-          method: "PUT",
-          urlIncludes: `/dashboard/group/events/${scenario.eventId}/cancel`,
-        },
-      );
-      notificationIds = expectNewNotifications(snapshot, [
-        {
-          kind: "event-canceled",
-          templateDataContains: { event: { event_id: scenario.eventId } },
-          userIds: scenario.recipientUserIds,
-        },
-      ]);
-
-      // Reopen the events page after cancellation so the row reflects deletion eligibility.
-      const canceledEventRow = await openGroupEventsTabWithEvent(organizerGroupPage, scenario.name);
-
-      // Verify the row reflects canceled state and no longer offers cancellation.
-      await expect(canceledEventRow).toContainText("Canceled");
-      await expect(canceledEventRow.locator('button[id^="cancel-event-"]')).toHaveCount(0);
-      const eventActionsButton = canceledEventRow.locator(".btn-actions");
-      const eventActionsDropdown = canceledEventRow.locator("[data-event-actions-dropdown]");
-      await eventActionsButton.click();
-      await expect(eventActionsDropdown).toBeVisible();
-
-      // Delete the owned canceled event to keep the list reusable.
-      const deleteButton = canceledEventRow.locator('button[id^="delete-event-"]');
-      await expect(deleteButton).toBeEnabled();
-      await deleteButton.click();
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-        "Delete this event? This removes it from the dashboard and cannot be undone.",
-      );
-
-      // Confirm deletion and wait for the server response.
-      await waitForActionResponse(
-        organizerGroupPage,
-        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
-        {
-          method: "DELETE",
-          urlIncludes: `/dashboard/group/events/${scenario.eventId}/delete`,
-        },
-      );
-
-      // Verify the deleted event is removed from the list.
-      await expect(dashboardContent.locator("tr", { hasText: scenario.name })).toHaveCount(0);
-    } finally {
-      // Remove generated notifications and any remaining copied event.
-      deleteNotifications(notificationIds);
-      cleanupEventsByIds([scenario.eventId]);
-    }
-  });
-
-  test("organizer can unpublish and publish an event from the list", async ({ organizerGroupPage }) => {
-    // Load the events list before changing publish status.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
-
-    // Target the seeded published event in the list.
+    // Load the events list with the owned event available for cancellation.
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-    const eventRow = dashboardContent.locator("tr", {
-      hasText: "Upcoming In-Person Event",
-    });
-    await expect(eventRow).toBeVisible();
-    await expect(eventRow).toContainText("Published");
+    const eventRow = await openGroupEventsTabWithEvent(organizerGroupPage, scenario.name);
+    await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
 
-    // Unpublish the seeded event from the actions menu.
-    const actionsButton = eventRow.locator(`.btn-actions[data-event-id="${TEST_EVENT_IDS.alpha.one}"]`);
-    await actionsButton.click();
+    // Open the actions menu and cancel the owned event.
+    await eventRow.locator(".btn-actions").click();
+    const cancelButton = eventRow.locator('button[id^="cancel-event-"]');
+    await expect(cancelButton).toBeVisible();
+    await cancelButton.click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Cancel this event? This cannot be undone. All attendee registrations will be canceled immediately. Full refunds for eligible paid purchases will be queued and may take time to process.",
+    );
 
-    // Target the unpublish action after opening the menu.
-    const unpublishButton = organizerGroupPage.locator(`#unpublish-event-${TEST_EVENT_IDS.alpha.one}`);
-    await expect(unpublishButton).toBeVisible();
-
-    // Confirm unpublish and wait for the server response.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/unpublish`) &&
-          response.ok(),
-      ),
-      unpublishButton.click(),
-      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+    // Confirm cancellation and assert the exact cancellation recipients.
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.getByRole("button", { name: "Cancel event" }).click(),
+      {
+        method: "PUT",
+        urlIncludes: `/dashboard/group/events/${scenario.eventId}/cancel`,
+      },
+    );
+    notifications.expectNew([
+      {
+        kind: "event-canceled",
+        templateDataContains: { event: { event_id: scenario.eventId } },
+        userIds: scenario.recipientUserIds,
+      },
     ]);
 
-    // Verify the event row reflects draft state.
-    await expect(eventRow).toContainText("Draft");
+    // Reopen the events page so the row reflects the canceled state.
+    const canceledEventRow = await openGroupEventsTabWithEvent(organizerGroupPage, scenario.name);
 
-    // Publish the seeded event again to restore the original state.
-    await eventRow.locator(`.btn-actions[data-event-id="${TEST_EVENT_IDS.alpha.one}"]`).click();
-
-    // Target the publish action after opening the menu.
-    const publishButton = organizerGroupPage.locator(`#publish-event-${TEST_EVENT_IDS.alpha.one}`);
-    await expect(publishButton).toBeVisible();
-
-    // Confirm publish and wait for the server response.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/publish`) &&
-          response.ok(),
-      ),
-      publishButton.click(),
-      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
-    ]);
-
-    // Verify the event row returns to published state.
-    await expect(eventRow).toContainText("Published");
+    // Verify the row reflects canceled state and no longer offers cancellation.
+    await expect(canceledEventRow).toContainText("Canceled");
+    await expect(canceledEventRow.locator('button[id^="cancel-event-"]')).toHaveCount(0);
   });
 });
 

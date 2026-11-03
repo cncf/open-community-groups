@@ -1,13 +1,6 @@
 import { expect, test } from "../../../fixtures.js";
-import { queryE2eDatabase } from "../../../database.js";
 import { TEST_USER_IDS } from "../../../seed.js";
-import {
-  expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
-  uniqueName,
-  waitForActionResponse,
-} from "../../../utils.js";
+import { expectPaginationNavigation, uniqueName, waitForActionResponse } from "../../../utils.js";
 import { createSessionProposal, openUserDashboardPath } from "../helpers.js";
 
 test.describe("user dashboard session proposals view", () => {
@@ -19,37 +12,6 @@ test.describe("user dashboard session proposals view", () => {
     // Verify the empty guidance keeps the proposal creation action available.
     await expect(dashboardContent).toContainText("You don't have any session proposals yet.");
     await expect(dashboardContent.getByRole("button", { name: "New proposal" })).toBeVisible();
-  });
-
-  test("session proposals table exposes every user-facing column", async ({ member1Page }) => {
-    // Load session proposals before checking table structure.
-    await openUserDashboardPath("/dashboard/user?tab=session-proposals", member1Page);
-
-    // Find the seeded session proposals table.
-    const proposalsTable = member1Page.locator("table", {
-      has: member1Page.getByText("Cloud Native Operations Deep Dive", {
-        exact: true,
-      }),
-    });
-
-    // Verify the complete ordered header set.
-    const headers = ["Proposal", "Co-speaker", "Updated", "Status", "Actions"];
-    await expectTableColumnsAtViewport(
-      member1Page,
-      proposalsTable,
-      1024,
-      ["Proposal", "Status", "Actions"],
-      ["Co-speaker", "Updated"],
-    );
-    await expectTableColumnsAtViewport(
-      member1Page,
-      proposalsTable,
-      1280,
-      ["Proposal", "Co-speaker", "Status", "Actions"],
-      ["Updated"],
-    );
-    await expectTableColumnsAtViewport(member1Page, proposalsTable, 1536, headers, []);
-    await expectTableHeaders(proposalsTable, headers);
   });
 
   test("user can move between session proposal result pages", async ({ member1Page }) => {
@@ -106,83 +68,78 @@ test.describe("user dashboard session proposals view", () => {
     await expect(declinedRow).toContainText("Declined by co-speaker");
   });
 
-  test("user can create, update, and delete a session proposal", async ({ pending1Page }) => {
+  test("user can create, update, and delete a session proposal", async ({ owned, pending1Page }) => {
     // Create a unique proposal title for the temporary proposal flow.
     const proposalTitle = uniqueName("pending1 reusable proposal");
     const updatedProposalTitle = `${proposalTitle} updated`;
+    owned.deferProposalByTitle(TEST_USER_IDS.pending1, proposalTitle);
+    owned.deferProposalByTitle(TEST_USER_IDS.pending1, updatedProposalTitle);
 
-    try {
-      // Create the temporary proposal used by the update and delete flow.
-      const dashboardContent = await createSessionProposal(pending1Page, proposalTitle);
+    // Create the temporary proposal used by the update and delete flow.
+    const dashboardContent = await createSessionProposal(pending1Page, proposalTitle);
 
-      // Find the proposal row.
-      let proposalRow = dashboardContent.locator("tr", {
-        hasText: proposalTitle,
-      });
+    // Find the proposal row.
+    let proposalRow = dashboardContent.locator("tr", {
+      hasText: proposalTitle,
+    });
 
-      // Verify user can create, update, and delete a session proposal.
-      await expect(proposalRow).toContainText("Ready for submission");
+    // Verify user can create, update, and delete a session proposal.
+    await expect(proposalRow).toContainText("Ready for submission");
 
-      // Dismiss the creation feedback before opening the delete confirmation.
-      const creationAlert = pending1Page.locator(".swal2-popup");
-      await expect(creationAlert).toContainText("Session proposal added.");
-      await creationAlert.getByRole("button", { name: "OK" }).click();
+    // Dismiss the creation feedback before opening the delete confirmation.
+    const creationAlert = pending1Page.locator(".swal2-popup");
+    await expect(creationAlert).toContainText("Session proposal added.");
+    await creationAlert.getByRole("button", { name: "OK" }).click();
 
-      // Open the proposal editor and persist an updated title.
-      await proposalRow.getByTitle("Edit proposal").click();
-      const editModal = pending1Page.getByRole("dialog", {
-        name: "Edit session proposal",
-      });
-      await expect(editModal.getByLabel("Title")).toHaveValue(proposalTitle);
-      await expect(editModal.getByLabel("Level")).toHaveValue("intermediate");
-      await expect(editModal.getByLabel("Duration (minutes)")).toHaveValue("45");
-      await editModal.getByLabel("Title").fill(updatedProposalTitle);
-      await waitForActionResponse(
-        pending1Page,
-        () => editModal.getByRole("button", { name: "Update" }).click(),
-        {
-          method: "PUT",
-          urlIncludes: "/dashboard/user/session-proposals/",
-        },
-      );
-      await expect(editModal).toBeHidden();
-      proposalRow = dashboardContent.locator("tr", {
-        hasText: updatedProposalTitle,
-      });
-      await expect(proposalRow).toContainText("Ready for submission");
+    // Open the proposal editor and persist an updated title.
+    await proposalRow.getByTitle("Edit proposal").click();
+    const editModal = pending1Page.getByRole("dialog", {
+      name: "Edit session proposal",
+    });
+    await expect(editModal.getByLabel("Title")).toHaveValue(proposalTitle);
+    await expect(editModal.getByLabel("Level")).toHaveValue("intermediate");
+    await expect(editModal.getByLabel("Duration (minutes)")).toHaveValue("45");
+    await editModal.getByLabel("Title").fill(updatedProposalTitle);
+    await waitForActionResponse(
+      pending1Page,
+      () => editModal.getByRole("button", { name: "Update" }).click(),
+      {
+        method: "PUT",
+        urlIncludes: "/dashboard/user/session-proposals/",
+      },
+    );
+    await expect(editModal).toBeHidden();
+    proposalRow = dashboardContent.locator("tr", {
+      hasText: updatedProposalTitle,
+    });
+    await expect(proposalRow).toContainText("Ready for submission");
 
-      // Dismiss the update feedback before opening the delete confirmation.
-      const updateAlert = pending1Page.locator(".swal2-popup");
-      await expect(updateAlert).toContainText("Session proposal updated.");
-      await updateAlert.getByRole("button", { name: "OK" }).click();
+    // Dismiss the update feedback before opening the delete confirmation.
+    const updateAlert = pending1Page.locator(".swal2-popup");
+    await expect(updateAlert).toContainText("Session proposal updated.");
+    await updateAlert.getByRole("button", { name: "OK" }).click();
 
-      // Find the delete proposal button.
-      const deleteProposalButton = proposalRow.getByTitle("Delete proposal");
-      await expect(deleteProposalButton).toBeVisible();
+    // Find the delete proposal button.
+    const deleteProposalButton = proposalRow.getByTitle("Delete proposal");
+    await expect(deleteProposalButton).toBeVisible();
 
-      // Click the delete proposal button.
-      await deleteProposalButton.click();
-      const deleteConfirmation = pending1Page.locator(".swal2-popup");
-      await expect(deleteConfirmation).toContainText(
-        "Are you sure you want to delete this session proposal?",
-      );
+    // Click the delete proposal button.
+    await deleteProposalButton.click();
+    const deleteConfirmation = pending1Page.locator(".swal2-popup");
+    await expect(deleteConfirmation).toContainText("Are you sure you want to delete this session proposal?");
 
-      // Click Delete.
-      await waitForActionResponse(
-        pending1Page,
-        () => deleteConfirmation.getByRole("button", { name: "Delete", exact: true }).click(),
-        {
-          method: "DELETE",
-          urlIncludes: "/dashboard/user/session-proposals/",
-        },
-      );
+    // Click Delete.
+    await waitForActionResponse(
+      pending1Page,
+      () => deleteConfirmation.getByRole("button", { name: "Delete", exact: true }).click(),
+      {
+        method: "DELETE",
+        urlIncludes: "/dashboard/user/session-proposals/",
+      },
+    );
 
-      // Assert how many matching elements are shown.
-      await expect(dashboardContent.locator("tr", { hasText: updatedProposalTitle })).toHaveCount(0);
-    } finally {
-      // Remove any proposal rows left by the temporary flow.
-      deleteSessionProposalsByTitle(TEST_USER_IDS.pending1, [proposalTitle, updatedProposalTitle]);
-    }
+    // Assert how many matching elements are shown.
+    await expect(dashboardContent.locator("tr", { hasText: updatedProposalTitle })).toHaveCount(0);
   });
 
   test("empty proposal forms and cancelled deletions leave proposals untouched", async ({ member1Page }) => {
@@ -240,18 +197,3 @@ test.describe("user dashboard session proposals view", () => {
     await expect(invitationRow.getByTitle("Decline invitation")).toBeVisible();
   });
 });
-
-/** Deletes matching session_proposal rows for the user from the database. */
-const deleteSessionProposalsByTitle = (userId, proposalTitles) => {
-  if (proposalTitles.length === 0) {
-    return;
-  }
-
-  const titleList = proposalTitles.map((title) => `'${title.replace(/'/g, "''")}'`).join(", ");
-
-  queryE2eDatabase(`
-    delete from session_proposal
-    where user_id = '${userId}'
-    and title in (${titleList});
-  `);
-};

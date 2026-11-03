@@ -7,7 +7,6 @@ import {
   setupBadgeStatusList,
 } from "../../data-graphs/badges.js";
 import { cleanupGroupMute, setupGroupMute } from "../../data-graphs/notification-preferences.js";
-import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
 import { TEST_EVENT_IDS, TEST_GROUP_IDS, TEST_USER_IDS } from "../../seed.js";
 import { buildE2eUrl, navigateToPath, waitForActionResponse } from "../../utils.js";
 import { submitBadgeAward } from "./helpers.js";
@@ -23,175 +22,165 @@ const GROUP_AWARDS_PATH = "/dashboard/group?tab=awards";
 const MEMBER_ONE_NAME = "E2E Member One";
 
 test.describe("badge issuance workflow", () => {
+  // Each test polls the badges worker for up to 45s, beyond the default test budget.
+  test.describe.configure({ timeout: 90_000 });
+
   test("organizer awards, recipient exports, verifies, and revokes a badge", async ({
     member1Page,
+    notifications,
     organizerGroupPage,
+    owned,
   }) => {
-    const badge = setupBadgeDefinition({ groupId: TEST_GROUP_IDS.community1.alpha });
-    const statusList = setupBadgeStatusList({ groupId: TEST_GROUP_IDS.community1.alpha });
-    let credentialId;
-    let notificationIds = [];
+    const badge = setupOwnedBadge(owned);
 
-    try {
-      // Snapshot badge notifications before awarding the credential.
-      const awardedNotifications = snapshotNotifications();
+    // Checkpoint badge notifications before awarding the credential.
+    const awardedCheckpoint = notifications.checkpoint();
 
-      // Award the badge and assert the recipient notification.
-      await awardBadgeToMemberOne(organizerGroupPage, badge.badgeId);
-      credentialId = await waitForIssuedCredential({
-        badgeId: badge.badgeId,
-        userId: TEST_USER_IDS.member1,
-      });
-      notificationIds = notificationIds.concat(
-        expectNewNotifications(awardedNotifications, [
-          {
-            kind: "badge-awarded",
-            templateDataContains: {
-              badge: {
-                name: badge.badgeName,
-              },
-              dashboard_url: "/dashboard/user?tab=badges",
+    // Award the badge and assert the recipient notification.
+    await awardBadgeToMemberOne(organizerGroupPage, badge.badgeId);
+    const credentialId = await waitForIssuedCredential({
+      badgeId: badge.badgeId,
+      userId: TEST_USER_IDS.member1,
+    });
+    notifications.expectNew(
+      [
+        {
+          kind: "badge-awarded",
+          templateDataContains: {
+            badge: {
+              name: badge.badgeName,
             },
-            userIds: [TEST_USER_IDS.member1],
+            dashboard_url: "/dashboard/user?tab=badges",
           },
-        ]),
-      );
+          userIds: [TEST_USER_IDS.member1],
+        },
+      ],
+      { since: awardedCheckpoint },
+    );
 
-      // Open the recipient badge dashboard and verify the issued badge appears.
-      await navigateToPath(member1Page, "/dashboard/user?tab=badges");
-      const recipientBadge = member1Page.locator(`[data-user-badge-id="${credentialId}"]`);
-      await expect(recipientBadge).toContainText(badge.badgeName);
+    // Open the recipient badge dashboard and verify the issued badge appears.
+    await navigateToPath(member1Page, "/dashboard/user?tab=badges");
+    const recipientBadge = member1Page.locator(`[data-user-badge-id="${credentialId}"]`);
+    await expect(recipientBadge).toContainText(badge.badgeName);
 
-      // Export the credential PNG and verify its file signature.
-      const exportResponse = await member1Page.request.get(
-        buildE2eUrl(`/dashboard/user/badges/${credentialId}/export`),
-      );
-      const png = await exportResponse.body();
-      expect(exportResponse.ok()).toBeTruthy();
-      expect([...png.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    // Export the credential PNG and verify its file signature.
+    const exportResponse = await member1Page.request.get(
+      buildE2eUrl(`/dashboard/user/badges/${credentialId}/export`),
+    );
+    const png = await exportResponse.body();
+    expect(exportResponse.ok()).toBeTruthy();
+    expect([...png.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-      // Verify the exported badge is valid before revocation.
-      await verifyExportedBadge(member1Page, png, badge.badgeName, "Valid and active");
+    // Verify the exported badge is valid before revocation.
+    await verifyExportedBadge(member1Page, png, badge.badgeName, "Valid and active");
 
-      // Revoke the credential and assert the recipient notification.
-      const revokedNotifications = snapshotNotifications();
-      await revokeCredentialFromAwards(organizerGroupPage, {
-        badgeName: badge.badgeName,
-        reason: "Credential revoked by the badge issuance E2E scenario.",
-        userBadgeId: credentialId,
-      });
-      notificationIds = notificationIds.concat(
-        expectNewNotifications(revokedNotifications, [
-          {
-            kind: "badge-revoked",
-            templateDataContains: {
-              badge_name: badge.badgeName,
-              group_name: "Platform Ops Meetup",
-            },
-            userIds: [TEST_USER_IDS.member1],
+    // Revoke the credential and assert the recipient notification.
+    const revokedCheckpoint = notifications.checkpoint();
+    await revokeCredentialFromAwards(organizerGroupPage, {
+      badgeName: badge.badgeName,
+      reason: "Credential revoked by the badge issuance E2E scenario.",
+      userBadgeId: credentialId,
+    });
+    notifications.expectNew(
+      [
+        {
+          kind: "badge-revoked",
+          templateDataContains: {
+            badge_name: badge.badgeName,
+            group_name: "Platform Ops Meetup",
           },
-        ]),
-      );
+          userIds: [TEST_USER_IDS.member1],
+        },
+      ],
+      { since: revokedCheckpoint },
+    );
 
-      // Verify the public credential page reports the revocation.
-      await expectCredentialVerification(member1Page, credentialId, badge.badgeName, "Credential revoked");
-    } finally {
-      // Remove generated notifications, jobs, and credential rows.
-      deleteNotifications(notificationIds);
-      cleanupBadgeAwardJobs({ badgeId: badge.badgeId });
-      cleanupCredential({
-        badgeCreated: badge.badgeCreated,
-        badgeId: badge.badgeId,
-        badgeStatusListId: statusList.badgeStatusListId,
-        userBadgeId: credentialId,
-      });
-    }
+    // Verify the public credential page reports the revocation.
+    await expectCredentialVerification(member1Page, credentialId, badge.badgeName, "Credential revoked");
   });
 
   test("award skips the badge email when the recipient muted the issuing group", async ({
+    notifications,
     organizerGroupPage,
+    owned,
   }) => {
-    const badge = setupBadgeDefinition({ groupId: TEST_GROUP_IDS.community1.alpha });
-    const statusList = setupBadgeStatusList({ groupId: TEST_GROUP_IDS.community1.alpha });
-    let credentialId;
-    let notificationIds = [];
+    const badge = setupOwnedBadge(owned);
 
-    try {
-      // Mute the issuing group for the recipient.
-      cleanupGroupMute({ groupId: TEST_GROUP_IDS.community1.alpha, userId: TEST_USER_IDS.member1 });
-      setupGroupMute({ groupId: TEST_GROUP_IDS.community1.alpha, userId: TEST_USER_IDS.member1 });
+    // Mute the issuing group for the recipient.
+    const mute = owned.track(
+      { groupId: TEST_GROUP_IDS.community1.alpha, userId: TEST_USER_IDS.member1 },
+      cleanupGroupMute,
+    );
+    setupGroupMute(mute);
 
-      // Award the badge and wait for the credential to be issued.
-      const awardedNotifications = snapshotNotifications();
-      await awardBadgeToMemberOne(organizerGroupPage, badge.badgeId);
-      credentialId = await waitForIssuedCredential({
-        badgeId: badge.badgeId,
-        userId: TEST_USER_IDS.member1,
-      });
+    // Award the badge and wait for the credential to be issued.
+    const awardedCheckpoint = notifications.checkpoint();
+    await awardBadgeToMemberOne(organizerGroupPage, badge.badgeId);
+    await waitForIssuedCredential({
+      badgeId: badge.badgeId,
+      userId: TEST_USER_IDS.member1,
+    });
 
-      // Verify the credential exists but no badge email was enqueued.
-      expect(countActiveCredentials(badge.badgeId, TEST_USER_IDS.member1)).toBe(1);
-      notificationIds = notificationIds.concat(expectNewNotifications(awardedNotifications, []));
-    } finally {
-      // Remove generated notifications, mute, jobs, and credential rows.
-      deleteNotifications(notificationIds);
-      cleanupGroupMute({ groupId: TEST_GROUP_IDS.community1.alpha, userId: TEST_USER_IDS.member1 });
-      cleanupBadgeAwardJobs({ badgeId: badge.badgeId });
-      cleanupCredential({
-        badgeCreated: badge.badgeCreated,
-        badgeId: badge.badgeId,
-        badgeStatusListId: statusList.badgeStatusListId,
-        userBadgeId: credentialId,
-      });
-    }
+    // Verify the credential exists but no badge email was enqueued.
+    expect(countActiveCredentials(badge.badgeId, TEST_USER_IDS.member1)).toBe(1);
+    notifications.expectNew([], { since: awardedCheckpoint });
   });
 
-  test("duplicate award submission creates one active credential", async ({ organizerGroupPage }) => {
-    const badge = setupBadgeDefinition({ groupId: TEST_GROUP_IDS.community1.alpha });
-    const statusList = setupBadgeStatusList({ groupId: TEST_GROUP_IDS.community1.alpha });
-    let credentialId;
-    let notificationIds = [];
+  test("duplicate award submission creates one active credential", async ({
+    notifications,
+    organizerGroupPage,
+    owned,
+  }) => {
+    const badge = setupOwnedBadge(owned);
 
-    try {
-      // Snapshot badge notifications before submitting duplicate awards.
-      const awardedNotifications = snapshotNotifications();
+    // Checkpoint badge notifications before submitting duplicate awards.
+    const awardedCheckpoint = notifications.checkpoint();
 
-      // Submit duplicate awards and resolve the issued credential.
-      await awardBadgeToMemberOne(organizerGroupPage, badge.badgeId);
-      await awardBadgeToMemberOne(organizerGroupPage, badge.badgeId);
-      credentialId = await waitForIssuedCredential({
-        badgeId: badge.badgeId,
-        userId: TEST_USER_IDS.member1,
-      });
+    // Submit duplicate awards and resolve the issued credential.
+    await awardBadgeToMemberOne(organizerGroupPage, badge.badgeId);
+    await awardBadgeToMemberOne(organizerGroupPage, badge.badgeId);
+    await waitForIssuedCredential({
+      badgeId: badge.badgeId,
+      userId: TEST_USER_IDS.member1,
+    });
 
-      // Verify duplicate submissions produce one credential and one notification.
-      expect(countActiveCredentials(badge.badgeId, TEST_USER_IDS.member1)).toBe(1);
-      notificationIds = notificationIds.concat(
-        expectNewNotifications(awardedNotifications, [
-          {
-            kind: "badge-awarded",
-            templateDataContains: {
-              badge: {
-                name: badge.badgeName,
-              },
+    // Verify duplicate submissions produce one credential and one notification.
+    expect(countActiveCredentials(badge.badgeId, TEST_USER_IDS.member1)).toBe(1);
+    notifications.expectNew(
+      [
+        {
+          kind: "badge-awarded",
+          templateDataContains: {
+            badge: {
+              name: badge.badgeName,
             },
-            userIds: [TEST_USER_IDS.member1],
           },
-        ]),
-      );
-    } finally {
-      // Remove generated notifications, jobs, and credential rows.
-      deleteNotifications(notificationIds);
-      cleanupBadgeAwardJobs({ badgeId: badge.badgeId });
-      cleanupCredential({
-        badgeCreated: badge.badgeCreated,
-        badgeId: badge.badgeId,
-        badgeStatusListId: statusList.badgeStatusListId,
-        userBadgeId: credentialId,
-      });
-    }
+          userIds: [TEST_USER_IDS.member1],
+        },
+      ],
+      { since: awardedCheckpoint },
+    );
   });
 });
+
+/**
+ * Creates a disposable badge definition and preferred status list for the alpha group, and defers
+ * the cleanup of its award jobs, credentials, definition and status list.
+ */
+const setupOwnedBadge = (owned) => {
+  const badge = setupBadgeDefinition({ groupId: TEST_GROUP_IDS.community1.alpha });
+  const statusList = setupBadgeStatusList({ groupId: TEST_GROUP_IDS.community1.alpha });
+  owned.defer(() => {
+    cleanupBadgeAwardJobs({ badgeId: badge.badgeId });
+    cleanupCredential({
+      badgeCreated: badge.badgeCreated,
+      badgeId: badge.badgeId,
+      badgeStatusListId: statusList.badgeStatusListId,
+    });
+  });
+
+  return badge;
+};
 
 /** Awards a selected badge to member one through the attendee picker. */
 const awardBadgeToMemberOne = async (page, badgeId) => {
@@ -309,7 +298,12 @@ const revokeCredentialFromAwards = async (page, { badgeName, reason, userBadgeId
     name: "Search awards",
   });
   await searchInput.fill(badgeName);
-  await waitForAwardsRefresh(page, () => searchInput.press("Enter"));
+  await waitForActionResponse(page, () => searchInput.press("Enter"), {
+    method: "GET",
+    params: { awards_query: badgeName },
+    pathname: "/dashboard/group/awards",
+    status: 200,
+  });
   const credentialLink = dashboardContent.locator(`a[href="/badges/credentials/${userBadgeId}"]`);
   const credentialRow = credentialLink.locator("xpath=ancestor::tr");
 
@@ -346,44 +340,6 @@ const verifyExportedBadge = async (page, png, badgeName, statusText) => {
 
   await expect(page.getByText(statusText, { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: badgeName })).toBeVisible();
-};
-
-/** Waits for the awards dashboard HTMX refresh triggered by an action. */
-const waitForAwardsRefresh = async (page, action) => {
-  await page.evaluate(() => {
-    window.__e2eAwardsRefreshSettled = new Promise((resolve) => {
-      const handleAwardsRefreshSettled = (event) => {
-        const responseUrl = new URL(event.detail.xhr.responseURL);
-
-        if (responseUrl.pathname !== "/dashboard/group/awards") {
-          return;
-        }
-
-        document.body.removeEventListener("htmx:afterSettle", handleAwardsRefreshSettled);
-        resolve();
-      };
-
-      document.body.addEventListener("htmx:afterSettle", handleAwardsRefreshSettled);
-    });
-  });
-
-  await Promise.all([
-    page.waitForResponse((response) => {
-      const responseUrl = new URL(response.url());
-
-      return (
-        response.request().method() === "GET" &&
-        responseUrl.pathname === "/dashboard/group/awards" &&
-        response.ok()
-      );
-    }),
-    action(),
-  ]);
-
-  await page.evaluate(() => window.__e2eAwardsRefreshSettled);
-  await page.evaluate(() => {
-    delete window.__e2eAwardsRefreshSettled;
-  });
 };
 
 /** Waits for issuance diagnostics to expose the active credential. */

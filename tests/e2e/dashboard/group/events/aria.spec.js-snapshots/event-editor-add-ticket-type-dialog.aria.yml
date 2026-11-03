@@ -1,0 +1,32 @@
+- dialog "Add ticket type":
+  - heading "Add ticket type" [level=3]
+  - button "Close modal"
+  - text: Ticket name *
+  - textbox "Ticket name *":
+    - /placeholder: General admission
+  - text: Seats available *
+  - spinbutton "Seats available *"
+  - text: Description
+  - textbox "Description":
+    - /placeholder: Who this ticket is for, what it includes, or when it should be used.
+  - text: Availability
+  - combobox "Availability":
+    - option "Public" [selected]
+    - option "Invitation only"
+  - paragraph: Public tickets appear during enrollment. Invitation-only tickets are assigned through requests or organizer invitations.
+  - checkbox "Active" [checked]
+  - text: Active Price windows
+  - paragraph: Add one window for a single flat price, or several windows for early-bird and late pricing.
+  - button "Add price window"
+  - text: Price window
+  - paragraph: Leave the dates blank to keep this price available for the whole event lifecycle.
+  - button "Remove price window" [disabled]
+  - text: Price (free only) *
+  - spinbutton "Price (free only) *": "0"
+  - paragraph: Payments are not required for this zero-price ticket.
+  - text: Starts at
+  - textbox "Starts at"
+  - text: Ends at
+  - textbox "Ends at"
+  - button "Cancel"
+  - button "Add ticket type"

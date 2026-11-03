@@ -146,6 +146,12 @@ mock! {
 
     #[async_trait]
     impl crate::db::common::DBCommon for DB {
+        async fn find_event_summary(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Option<crate::types::event::EventSummary>>;
         async fn get_badge_status_list(
             &self,
             badge_status_list_id: Uuid,
@@ -575,6 +581,12 @@ mock! {
             event_id: Uuid,
             event: &serde_json::Value,
         ) -> Result<bool>;
+        async fn find_event_summary_dashboard(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Option<crate::types::event::EventSummary>>;
         async fn get_cfs_submission_notification_data(
             &self,
             group_id: Uuid,
@@ -590,12 +602,6 @@ mock! {
             &self,
             items: &[crate::db::dashboard::group::EventCohostRef],
         ) -> Result<Vec<crate::db::dashboard::group::EventCohostNotificationData>>;
-        async fn get_event_summary_dashboard(
-            &self,
-            community_id: Uuid,
-            group_id: Uuid,
-            event_id: Uuid,
-        ) -> Result<crate::types::event::EventSummary>;
         async fn get_event_survey(
             &self,
             group_id: Uuid,

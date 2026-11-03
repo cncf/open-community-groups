@@ -1,0 +1,12 @@
+- /children: deep-equal
+- textbox "Search groups"
+- button "Search"
+- button "Search tips"
+- text: /\d+ - \d+ of \d+ results/
+- list:
+  - listitem: List
+  - listitem: Map
+- text: Sort by
+- combobox "Sort by":
+  - option "Date"
+  - option "Name" [selected]

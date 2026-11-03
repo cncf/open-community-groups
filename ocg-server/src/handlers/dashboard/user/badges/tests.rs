@@ -22,8 +22,6 @@ use crate::{
     util::compute_hash,
 };
 
-use super::USER_PROFILE_BADGES_LIMIT;
-
 #[tokio::test]
 async fn test_export_missing_artwork_returns_not_found() {
     // Setup an authenticated owner whose active award references missing artwork
@@ -195,30 +193,6 @@ async fn test_export_unknown_badge_returns_not_found() {
 
     // Check ownership failures remain indistinguishable from missing awards
     assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
-}
-
-#[tokio::test]
-async fn test_list_page_success() {
-    // Setup an authenticated user with no active badges
-    let ids = DashboardIds::new();
-    let mut db = MockDB::new();
-    expect_session(&mut db, &ids);
-    db.expect_list_user_badges()
-        .times(1)
-        .withf(move |id| *id == ids.user_id)
-        .return_once(|_| Ok(vec![]));
-    let router = TestRouterBuilder::new(db).build().await;
-
-    // Request the badge dashboard fragment
-    let request = get_request("/dashboard/user/badges", ids.session_id);
-    let (parts, bytes) = send(router, request).await;
-
-    // Check the empty dashboard state renders the public profile limit
-    assert_html_response(&parts, &bytes, StatusCode::OK);
-    let body = std::str::from_utf8(&bytes).unwrap();
-    assert!(body.contains(&format!(
-        "Your profile modal displays the first {USER_PROFILE_BADGES_LIMIT} visible badges in the order shown here."
-    )));
 }
 
 #[tokio::test]

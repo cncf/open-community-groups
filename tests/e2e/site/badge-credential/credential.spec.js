@@ -1,11 +1,11 @@
 import { expect, test } from "../../fixtures.js";
 
-import { TEST_GROUP_IDS } from "../../seed.js";
 import { buildE2eUrl, navigateToPath } from "../../utils.js";
 
 const ACTIVE_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada02";
-const BADGE_STATUS_LIST_ID = "cacacaca-caca-caca-caca-cacacacaca01";
-const MEMBER_HOST_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada06";
+const ACTIVE_CREDENTIAL_IMAGE_FILE_NAME =
+  "7744970faed216a0b2d3be30ffef5aeb1bd6b65c5407ccc4f3dd824d132f1656.png";
+const ACTIVE_CREDENTIAL_SHARE_DESCRIPTION = "Platform Ops Meetup (Platform Engineering Community)";
 const REVOKED_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada04";
 
 test.describe("public badge credential page", () => {
@@ -50,5 +50,46 @@ test.describe("public badge credential page", () => {
     await navigateToPath(page, `/badges/credentials/${REVOKED_CREDENTIAL_ID}`);
     await expect(page.getByRole("heading", { name: "Speaker" })).toBeVisible();
     await expect(page.getByText("Permanently revoked", { exact: true })).toBeVisible();
+  });
+
+  test("credential page publishes share metadata with a cross-origin badge image", async ({
+    page,
+    request,
+  }) => {
+    const credentialUrl = buildE2eUrl(`/badges/credentials/${ACTIVE_CREDENTIAL_ID}`);
+    const imageUrl = buildE2eUrl(`/images/badges/${ACTIVE_CREDENTIAL_IMAGE_FILE_NAME}`);
+
+    // Load an active public badge credential.
+    await navigateToPath(page, `/badges/credentials/${ACTIVE_CREDENTIAL_ID}`);
+
+    // Verify titles and descriptions name the badge and its issuer.
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Host");
+    await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute("content", "Host");
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      "content",
+      ACTIVE_CREDENTIAL_SHARE_DESCRIPTION,
+    );
+    await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
+      "content",
+      ACTIVE_CREDENTIAL_SHARE_DESCRIPTION,
+    );
+    await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute(
+      "content",
+      ACTIVE_CREDENTIAL_SHARE_DESCRIPTION,
+    );
+
+    // Verify share URLs are absolute so previews resolve off-site.
+    await expect(page.locator('meta[property="og:url"]')).toHaveAttribute("content", credentialUrl);
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", imageUrl);
+    await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute("content", "Host");
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
+    await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute("content", imageUrl);
+
+    // Fetch the artwork as a link-preview crawler would, without a Referer.
+    const imageResponse = await request.get(imageUrl);
+    const imageHeaders = imageResponse.headers();
+    expect(imageResponse.status()).toBe(200);
+    expect(imageHeaders["content-type"]).toBe("image/png");
+    expect(imageHeaders["cross-origin-resource-policy"]).toBe("cross-origin");
   });
 });

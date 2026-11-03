@@ -74,8 +74,8 @@
 {% block dashboard_main -%}
   {# djlint:off #}
   <div id="dashboard-content"
-       {% if !content.is_account() -%}
-         hx-get="/dashboard/user/{{ content.refresh_path() }}"
+       {% if let Some(refresh_path) = content.refresh_path() -%}
+         hx-get="/dashboard/user/{{ refresh_path }}"
        {% endif -%}
        hx-trigger="refresh-user-dashboard-content"
        hx-swap="innerHTML show:window:top"

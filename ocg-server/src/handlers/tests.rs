@@ -185,6 +185,26 @@ pub(crate) fn assert_html_response(parts: &Parts, bytes: &[u8], status: StatusCo
     assert!(!bytes.is_empty(), "response body should not be empty");
 }
 
+/// Assert the image field with the given name renders the expected value.
+pub(crate) fn assert_image_field_value(html: &str, name: &str, expected: &str) {
+    // Find the opening tag of the named image field
+    let name_attr = format!(r#"name="{name}""#);
+    let tag = html
+        .split("<image-field")
+        .skip(1)
+        .filter_map(|rest| rest.split('>').next())
+        .find(|tag| tag.contains(&name_attr))
+        .unwrap_or_else(|| panic!("image field {name} should render"));
+
+    // Compare its value attribute
+    let value = tag
+        .split(r#" value=""#)
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .unwrap_or_else(|| panic!("image field {name} should render a value attribute"));
+    assert_eq!(value, expected, "image field {name} value");
+}
+
 /// Assert a non-empty response with the expected status.
 pub(crate) fn assert_non_empty_response(parts: &Parts, bytes: &[u8], status: StatusCode) {
     assert_eq!(parts.status, status);
@@ -345,6 +365,9 @@ fn expect_session_user_lookup(db: &mut MockDB, session_record: session::Record, 
 }
 
 // Request helpers.
+
+/// Request body limit axum applies to extractors of routes without their own.
+pub(crate) const DEFAULT_BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
 
 /// Content type of form-encoded request bodies.
 const FORM_CONTENT_TYPE: &str = "application/x-www-form-urlencoded";

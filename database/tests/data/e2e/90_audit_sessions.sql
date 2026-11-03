@@ -110,6 +110,7 @@ insert into audit_log (
 -- SESSIONS
 -- ============================================================================
 
+-- Scheduled sessions sit inside the fixed 10:00 slots of their events.
 insert into session (
     session_id,
     event_id,
@@ -125,8 +126,8 @@ values (
     '55555555-5555-5555-5555-555555555501',
     'Opening Keynote',
     'in-person',
-    now() + interval '10 days',
-    now() + interval '10 days 1 hour',
+    date_trunc('day', now()) + interval '10 days 10 hours',
+    date_trunc('day', now()) + interval '10 days 11 hours',
     'Welcome and introduction to the event.',
     null
 ), (
@@ -134,8 +135,8 @@ values (
     '55555555-5555-5555-5555-555555555501',
     'Technical Workshop',
     'in-person',
-    now() + interval '10 days 1 hour',
-    now() + interval '10 days 2 hours',
+    date_trunc('day', now()) + interval '10 days 11 hours',
+    date_trunc('day', now()) + interval '10 days 12 hours',
     'Hands-on technical session.',
     null
 ), (
@@ -152,8 +153,8 @@ values (
     '55555555-5555-5555-5555-555555555535',
     'Summit Kickoff',
     'virtual',
-    now() + interval '40 days',
-    now() + interval '40 days 1 hour',
+    date_trunc('day', now()) + interval '40 days 10 hours',
+    date_trunc('day', now()) + interval '40 days 11 hours',
     'First day opening for the multi-day summit.',
     null
 ), (
@@ -161,8 +162,8 @@ values (
     '55555555-5555-5555-5555-555555555535',
     'Summit Wrap-Up',
     'virtual',
-    now() + interval '41 days',
-    now() + interval '41 days 1 hour',
+    date_trunc('day', now()) + interval '41 days 10 hours',
+    date_trunc('day', now()) + interval '41 days 11 hours',
     'Second day closing for the multi-day summit.',
     null
 );
@@ -218,8 +219,4 @@ values (
     '88888888-8888-8888-8888-888888888801',
     '77777777-7777-7777-7777-777777777706',
     false
-), (
-    '88888888-8888-8888-8888-888888888803',
-    '77777777-7777-7777-7777-777777777705',
-    true
 );

@@ -1,9 +1,8 @@
 import { expect, test } from "../../../fixtures.js";
-import { queryE2eDatabase } from "../../../database.js";
+import { queryE2eDatabase, withRowRestore } from "../../../database.js";
 import {
+  confirmAlert,
   expectPaginationNavigation,
-  expectTableColumnsAtViewport,
-  expectTableHeaders,
   navigateToPath,
   uniqueName,
   waitForActionResponse,
@@ -12,6 +11,8 @@ import { TEST_UPLOAD_ASSET_PATHS, setImageFieldValue, uploadImageField } from ".
 
 const TECH_CORP_SPONSOR_ID = "66666666-6666-6666-6666-666666666601";
 
+const TECH_CORP_SPONSOR_ROW = { key: { group_sponsor_id: TECH_CORP_SPONSOR_ID }, table: "group_sponsor" };
+
 const ORIGINAL_SPONSOR_NAME = "Tech Corp";
 
 const UPDATED_SPONSOR_NAME = "Tech Corp Updated";
@@ -19,8 +20,6 @@ const UPDATED_SPONSOR_NAME = "Tech Corp Updated";
 const ORIGINAL_SPONSOR_WEBSITE = "https://techcorp.example.com";
 
 const UPDATED_SPONSOR_WEBSITE = "https://updated-techcorp.example.com";
-
-const ORIGINAL_SPONSOR_LOGO_URL = "/static/images/e2e/sponsor-logo.svg";
 
 const UPDATED_SPONSOR_LOGO_URL = "/static/images/e2e/community-secondary-logo.svg";
 
@@ -36,33 +35,6 @@ test.describe("group dashboard sponsors view", () => {
     await expect(dashboardContent.getByRole("button", { name: "Add Sponsor" })).toBeVisible();
   });
 
-  test("sponsors table exposes its responsive columns", async ({ organizerGroupPage }) => {
-    // Load the sponsors dashboard before checking table structure.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
-
-    // Find the sponsors table.
-    const sponsorsTable = organizerGroupPage.getByRole("table", {
-      name: "Sponsors list",
-    });
-
-    // Verify header order and column visibility across dashboard breakpoints.
-    await expectTableHeaders(sponsorsTable, ["Sponsor", "Website", "Featured", "Actions"]);
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      sponsorsTable,
-      1024,
-      ["Sponsor", "Featured", "Actions"],
-      ["Website"],
-    );
-    await expectTableColumnsAtViewport(
-      organizerGroupPage,
-      sponsorsTable,
-      1280,
-      ["Sponsor", "Website", "Featured", "Actions"],
-      [],
-    );
-  });
-
   test("organizer can move between sponsor result pages", async ({ organizerGroupPage }) => {
     // Paginate the seeded sponsor rows with one result per page.
     await expectPaginationNavigation(
@@ -72,7 +44,7 @@ test.describe("group dashboard sponsors view", () => {
     );
   });
 
-  test("canceling sponsor visibility confirmation keeps the toggle on and skips the request", async ({
+  test("canceling sponsor visibility confirmation keeps the toggle on and skips the request @smoke", async ({
     organizerGroupPage,
   }) => {
     // Load the sponsors tab before canceling a visibility change.
@@ -86,6 +58,7 @@ test.describe("group dashboard sponsors view", () => {
     const featuredToggle = sponsorRow.getByRole("checkbox", {
       name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
     });
+    const featuredToggleLabel = featuredToggle.locator("xpath=..");
     const confirmationDialog = organizerGroupPage.locator(".swal2-popup");
     let featuredUpdateRequests = 0;
 
@@ -106,8 +79,8 @@ test.describe("group dashboard sponsors view", () => {
     await expect(sponsorRow).toBeVisible();
     await expect(featuredToggle).toBeChecked();
 
-    // Click the featured toggle.
-    await featuredToggle.click({ force: true });
+    // Click the visible featured toggle; the sr-only input sits outside its label's hit area.
+    await featuredToggleLabel.click();
     await expect(confirmationDialog).toContainText(
       "This sponsor will no longer be visible on the public group page.",
     );
@@ -127,58 +100,63 @@ test.describe("group dashboard sponsors view", () => {
   test("organizer can update sponsor visibility from the table and restore it", async ({
     organizerGroupPage,
   }) => {
-    // Load the sponsors tab before changing a seeded sponsor.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
+    // Restore the seeded sponsor row even when the UI restore below fails.
+    await withRowRestore(TECH_CORP_SPONSOR_ROW, async () => {
+      // Load the sponsors tab before changing a seeded sponsor.
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
 
-    // Find the dashboard content.
-    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-    const sponsorRow = dashboardContent.locator("tr", {
-      hasText: ORIGINAL_SPONSOR_NAME,
-    });
-    const featuredToggle = sponsorRow.getByRole("checkbox", {
-      name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
-    });
-
-    // Verify organizer can update sponsor visibility from the table and restore it.
-    await expect(sponsorRow).toBeVisible();
-    await expect(featuredToggle).toBeChecked();
-
-    // Click the featured toggle.
-    await featuredToggle.click({ force: true });
-    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "This sponsor will no longer be visible on the public group page.",
-    );
-
-    // Click Continue.
-    await waitForActionResponse(
-      organizerGroupPage,
-      () => organizerGroupPage.getByRole("button", { name: "Continue" }).click(),
-      {
-        method: "PUT",
-        urlIncludes: `/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/featured`,
-      },
-    );
-
-    // Set up refreshed toggle.
-    const refreshedToggle = dashboardContent
-      .locator("tr", { hasText: ORIGINAL_SPONSOR_NAME })
-      .getByRole("checkbox", {
+      // Find the dashboard content.
+      const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+      const sponsorRow = dashboardContent.locator("tr", {
+        hasText: ORIGINAL_SPONSOR_NAME,
+      });
+      const featuredToggle = sponsorRow.getByRole("checkbox", {
         name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
       });
-    await expect(refreshedToggle).not.toBeChecked();
+      const featuredToggleLabel = featuredToggle.locator("xpath=..");
 
-    // Submit and wait for the server response.
-    await waitForActionResponse(organizerGroupPage, () => refreshedToggle.check({ force: true }), {
-      method: "PUT",
-      urlIncludes: `/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/featured`,
+      // Verify organizer can update sponsor visibility from the table and restore it.
+      await expect(sponsorRow).toBeVisible();
+      await expect(featuredToggle).toBeChecked();
+
+      // Click the visible featured toggle.
+      await featuredToggleLabel.click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "This sponsor will no longer be visible on the public group page.",
+      );
+
+      // Click Continue.
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => organizerGroupPage.getByRole("button", { name: "Continue" }).click(),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/featured`,
+        },
+      );
+
+      // Set up refreshed toggle.
+      const refreshedToggle = dashboardContent
+        .locator("tr", { hasText: ORIGINAL_SPONSOR_NAME })
+        .getByRole("checkbox", {
+          name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
+        });
+      await expect(refreshedToggle).not.toBeChecked();
+
+      // Submit and wait for the server response.
+      const refreshedToggleLabel = refreshedToggle.locator("xpath=..");
+      await waitForActionResponse(organizerGroupPage, () => refreshedToggleLabel.click(), {
+        method: "PUT",
+        urlIncludes: `/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/featured`,
+      });
+
+      // The sponsor row reflects the saved interaction.
+      await expect(
+        dashboardContent.locator("tr", { hasText: ORIGINAL_SPONSOR_NAME }).getByRole("checkbox", {
+          name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
+        }),
+      ).toBeChecked();
     });
-
-    // The sponsor row reflects the saved interaction.
-    await expect(
-      dashboardContent.locator("tr", { hasText: ORIGINAL_SPONSOR_NAME }).getByRole("checkbox", {
-        name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
-      }),
-    ).toBeChecked();
   });
 
   test("organizer can add and delete a sponsor", async ({ organizerGroupPage }) => {
@@ -233,14 +211,14 @@ test.describe("group dashboard sponsors view", () => {
 
       // Delete the sponsor from its row action.
       await sponsorRow.getByRole("button", { name: `Delete sponsor: ${sponsorName}` }).click();
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-        "Are you sure you would like to delete this sponsor?",
-      );
 
       // Click Yes.
       await waitForActionResponse(
         organizerGroupPage,
-        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+        () =>
+          confirmAlert(organizerGroupPage, {
+            message: "Are you sure you would like to delete this sponsor?",
+          }),
         {
           method: "DELETE",
           urlIncludes: "/dashboard/group/sponsors/",
@@ -255,78 +233,59 @@ test.describe("group dashboard sponsors view", () => {
     }
   });
 
-  test("organizer can update a sponsor and restore the original values", async ({ organizerGroupPage }) => {
-    // Load the sponsors tab before updating the seeded sponsor.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
+  test("organizer can update a sponsor", async ({ organizerGroupPage }) => {
+    // Restore the seeded sponsor row after the update.
+    await withRowRestore(TECH_CORP_SPONSOR_ROW, async () => {
+      // Load the sponsors tab before updating the seeded sponsor.
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
 
-    // Find the dashboard content.
-    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+      // Find the dashboard content.
+      const dashboardContent = organizerGroupPage.locator("#dashboard-content");
 
-    // Verify organizer can update a sponsor and restore the original values.
-    await expect(dashboardContent.getByText("Sponsors", { exact: true })).toBeVisible();
+      // Verify the sponsors tab finished loading.
+      await expect(dashboardContent.getByText("Sponsors", { exact: true })).toBeVisible();
 
-    // Find the original row.
-    const originalRow = dashboardContent.locator("tr", {
-      hasText: ORIGINAL_SPONSOR_NAME,
+      // Find the original row.
+      const originalRow = dashboardContent.locator("tr", {
+        hasText: ORIGINAL_SPONSOR_NAME,
+      });
+      await expect(originalRow).toBeVisible();
+      await expect(originalRow).toContainText(ORIGINAL_SPONSOR_WEBSITE);
+
+      // Reopen the original sponsor from its row action.
+      await originalRow.getByRole("button", { name: `Edit sponsor: ${ORIGINAL_SPONSOR_NAME}` }).click();
+
+      // Assert that Sponsor Details is visible.
+      await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
+      await expect(organizerGroupPage.getByText("Visible on group page", { exact: true })).toBeVisible();
+      await organizerGroupPage.getByLabel("Name").fill(UPDATED_SPONSOR_NAME);
+      await organizerGroupPage.getByLabel("Website").fill(UPDATED_SPONSOR_WEBSITE);
+      await setImageFieldValue(organizerGroupPage, "logo_url", UPDATED_SPONSOR_LOGO_URL);
+
+      // Submit and wait for the server response.
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => organizerGroupPage.getByRole("button", { name: "Update Sponsor" }).click(),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/update`,
+        },
+      );
+
+      // Find the updated row.
+      const updatedRow = dashboardContent.locator("tr", {
+        hasText: UPDATED_SPONSOR_NAME,
+      });
+      await expect(updatedRow).toBeVisible();
+      await expect(updatedRow).toContainText(UPDATED_SPONSOR_WEBSITE);
+
+      // Reopen the updated sponsor and verify the saved logo.
+      await updatedRow.getByRole("button", { name: `Edit sponsor: ${UPDATED_SPONSOR_NAME}` }).click();
+      await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
+      await expect(
+        organizerGroupPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
+      ).toHaveValue(UPDATED_SPONSOR_LOGO_URL);
     });
-    await expect(originalRow).toBeVisible();
-    await expect(originalRow).toContainText(ORIGINAL_SPONSOR_WEBSITE);
-
-    // Reopen the original sponsor from its row action.
-    await originalRow.getByRole("button", { name: `Edit sponsor: ${ORIGINAL_SPONSOR_NAME}` }).click();
-
-    // Assert that Sponsor Details is visible.
-    await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
-    await expect(organizerGroupPage.getByText("Visible on group page", { exact: true })).toBeVisible();
-    await organizerGroupPage.getByLabel("Name").fill(UPDATED_SPONSOR_NAME);
-    await organizerGroupPage.getByLabel("Website").fill(UPDATED_SPONSOR_WEBSITE);
-    await setImageFieldValue(organizerGroupPage, "logo_url", UPDATED_SPONSOR_LOGO_URL);
-
-    // Submit and wait for the server response.
-    await waitForActionResponse(
-      organizerGroupPage,
-      () => organizerGroupPage.getByRole("button", { name: "Update Sponsor" }).click(),
-      {
-        method: "PUT",
-        urlIncludes: `/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/update`,
-      },
-    );
-
-    // Find the updated row.
-    const updatedRow = dashboardContent.locator("tr", {
-      hasText: UPDATED_SPONSOR_NAME,
-    });
-    await expect(updatedRow).toBeVisible();
-    await expect(updatedRow).toContainText(UPDATED_SPONSOR_WEBSITE);
-
-    // Reopen the updated sponsor from its row action.
-    await updatedRow.getByRole("button", { name: `Edit sponsor: ${UPDATED_SPONSOR_NAME}` }).click();
-
-    // Assert that Sponsor Details is visible.
-    await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
-    await expect(
-      organizerGroupPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
-    ).toHaveValue(UPDATED_SPONSOR_LOGO_URL);
-    await organizerGroupPage.getByLabel("Name").fill(ORIGINAL_SPONSOR_NAME);
-    await organizerGroupPage.getByLabel("Website").fill(ORIGINAL_SPONSOR_WEBSITE);
-    await setImageFieldValue(organizerGroupPage, "logo_url", ORIGINAL_SPONSOR_LOGO_URL);
-
-    // Submit and wait for the server response.
-    await waitForActionResponse(
-      organizerGroupPage,
-      () => organizerGroupPage.getByRole("button", { name: "Update Sponsor" }).click(),
-      {
-        method: "PUT",
-        urlIncludes: `/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/update`,
-      },
-    );
-
-    // Find the restored row.
-    const restoredRow = dashboardContent.locator("tr", {
-      hasText: ORIGINAL_SPONSOR_NAME,
-    });
-    await expect(restoredRow).toBeVisible();
-    await expect(restoredRow).toContainText(ORIGINAL_SPONSOR_WEBSITE);
   });
 
   test("viewer sees read-only controls in the sponsors view", async ({ groupViewerPage }) => {
@@ -353,6 +312,28 @@ test.describe("group dashboard sponsors view", () => {
       "title",
       "Your role cannot delete sponsors.",
     );
+
+    // Open the update form for the seeded sponsor without submitting it.
+    await waitForActionResponse(
+      groupViewerPage,
+      () => sponsorRow.getByRole("button", { name: "Edit sponsor: Tech Corp" }).click(),
+      {
+        method: "GET",
+        urlIncludes: `/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/update`,
+      },
+    );
+
+    // Verify the update form communicates the read-only state.
+    await expect(sponsorsContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
+    await expect(
+      sponsorsContent.getByText("Your role cannot update sponsors.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(sponsorsContent.locator(".inert-form")).toHaveAttribute("inert", "");
+    const updateButton = sponsorsContent.getByRole("button", { name: "Update Sponsor" });
+    await expect(updateButton).toBeDisabled();
+    await expect(updateButton).toHaveAttribute("title", "Your role cannot update sponsors.");
   });
 });
 

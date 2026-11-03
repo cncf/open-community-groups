@@ -86,9 +86,12 @@ export class MarkdownEditor extends LitWrapper {
 
     // Show textarea to avoid console errors with required attribute
     textarea.style.display = "block";
+    // Set after init: CodeMirror copies a textarea tabindex onto its own input.
+    textarea.tabIndex = -1;
   }
 
   render() {
+    // The textarea only carries the form value and validation; EasyMDE renders the editable input.
     return html`
       <div class="relative text-sm/6 ${this.mini ? "mini" : ""}">
         <textarea
@@ -96,6 +99,7 @@ export class MarkdownEditor extends LitWrapper {
           id=${this.inputId || nothing}
           name=${this.name || this.id}
           class="absolute top-0 left-0 opacity-0 p-0"
+          aria-hidden="true"
           ?required=${this.required}
           ?disabled=${this.disabled}
           maxlength=${this.maxlength}

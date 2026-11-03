@@ -1,0 +1,20 @@
+- table "Financial work needing attention":
+  - caption: Financial work needs attention Automatic retries are exhausted. Retry the operation or record work completed directly in Stripe.
+  - rowgroup:
+    - row "Attendee Event Amount Operation Status Actions":
+      - columnheader "Attendee"
+      - columnheader "Event"
+      - columnheader "Amount"
+      - columnheader "Operation"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - row /E2E Pending Two e2e-pending-2@example\.com E2E ARIA event \$\d+\.\d+ Credit note View last failure for Credit note/:
+      - cell "E2E Pending Two e2e-pending-2@example.com"
+      - cell "E2E ARIA event"
+      - cell /\$\d+\.\d+/
+      - cell "Credit note"
+      - cell "View last failure for Credit note":
+        - button "View last failure for Credit note": Needs retry
+      - cell:
+        - group

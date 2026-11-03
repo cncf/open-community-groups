@@ -1,0 +1,16 @@
+- dialog "Scan Attendee Codes":
+  - button "Close QR scanner"
+  - heading "Scan Attendee Codes" [level=3]
+  - button "Close modal"
+  - heading "E2E ARIA event" [level=4]
+  - term: Date
+  - definition: Jun 15, 2035 · 6:00 PM UTC
+  - term: Location
+  - definition: Virtual
+  - status: Hold an attendee QR code inside the frame.
+  - text: Camera
+  - combobox "Camera" [disabled]:
+    - option "Test camera" [selected]
+  - checkbox "Mute sounds"
+  - text: Mute sounds
+  - button "Close"

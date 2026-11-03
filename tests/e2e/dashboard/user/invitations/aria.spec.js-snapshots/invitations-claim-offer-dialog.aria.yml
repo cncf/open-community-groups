@@ -1,0 +1,11 @@
+- dialog "Claim offer":
+  - heading "Claim offer" [level=3]
+  - paragraph: E2E ARIA invited event
+  - button "Close modal"
+  - text: RSVP Organizer invitation
+  - paragraph:
+    - text: Confirm by
+    - strong: /[A-Z][a-z]{2} \d{1,2}, \d{4} at \d{1,2}:\d{2} [AP]M UTC/
+    - text: .
+  - button "Cancel"
+  - button "Claim offer"

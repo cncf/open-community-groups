@@ -1,11 +1,16 @@
 import { expect, test } from "../../../fixtures.js";
+import { queryCount, restoreRow, snapshotRow, sqlUuid, withRowRestore } from "../../../database.js";
 
 import { fillMarkdownEditor, fillMultipleInputs } from "../../form-helpers.js";
-import { TEST_PAYMENT_GROUP_RECIPIENT } from "../../../seed.js";
+import { TEST_GROUP_IDS, TEST_PAYMENT_GROUP_RECIPIENT } from "../../../seed.js";
 import { navigateToPath, waitForActionResponse } from "../../../utils.js";
 
 // Group settings page used by the UTM scenarios.
 const SETTINGS_PATH = "/dashboard/group?tab=settings";
+
+// Seeded group rows changed by the settings, UTM round-trip and fiscal sponsor tests.
+const ALPHA_GROUP_ROW = { key: { group_id: TEST_GROUP_IDS.community1.alpha }, table: "group" };
+const DELTA_GROUP_ROW = { key: { group_id: TEST_GROUP_IDS.community2.delta }, table: "group" };
 
 // UTM lists rendered in the group settings form.
 const UTM_FIELDS = [
@@ -151,55 +156,58 @@ test.describe("group dashboard settings view", () => {
   });
 
   test("organizer can save and clear UTM tracking values", async ({ organizerGroupPage }) => {
-    // Load group settings and verify the seeded group has no UTM values.
-    await navigateToPath(organizerGroupPage, SETTINGS_PATH);
-    for (const { fieldName } of UTM_FIELDS) {
-      await expect(getSubmittedUtmInputs(organizerGroupPage, fieldName)).toHaveCount(0);
-    }
-
-    // Enter UTM values.
-    const utmValues = {
-      utm_campaigns: ["spring-launch"],
-      utm_mediums: ["podcast"],
-      utm_sources: ["newsletter", "mastodon"],
-    };
-    for (const { fieldName, label } of UTM_FIELDS) {
-      await fillMultipleInputs(getUtmInputs(organizerGroupPage, fieldName), utmValues[fieldName], label);
-    }
-
-    // Save the UTM values and verify the submitted form contract.
-    const saveResponse = await saveGroupSettings(organizerGroupPage);
-    const savedForm = new URLSearchParams(saveResponse.request().postData() ?? "");
-    expect(savedForm.get("utm_present")).toBe("true");
-    expect(savedForm.getAll("utm_sources[]")).toEqual(["newsletter", "mastodon"]);
-    expect(savedForm.getAll("utm_campaigns[]")).toEqual(["spring-launch"]);
-    expect(savedForm.getAll("utm_mediums[]")).toEqual(["podcast"]);
-
-    // Reload group settings and verify the values persisted.
-    await navigateToPath(organizerGroupPage, SETTINGS_PATH);
-    const sourceInputs = getUtmInputs(organizerGroupPage, "utm_sources");
-    await expect(sourceInputs.getByRole("textbox", { name: "Source 1" })).toHaveValue("newsletter");
-    await expect(sourceInputs.getByRole("textbox", { name: "Source 2" })).toHaveValue("mastodon");
-    await expect(getSubmittedUtmInputs(organizerGroupPage, "utm_campaigns")).toHaveValue("spring-launch");
-    await expect(getSubmittedUtmInputs(organizerGroupPage, "utm_mediums")).toHaveValue("podcast");
-
-    // Clear every UTM value to restore the seeded settings.
-    for (const { fieldName } of UTM_FIELDS) {
-      const valueInputs = getUtmInputs(organizerGroupPage, fieldName).locator("input[data-item-input]");
-      for (let index = 0; index < (await valueInputs.count()); index += 1) {
-        await valueInputs.nth(index).fill("");
+    // Restore the seeded group row even when the UI clear below fails.
+    await withRowRestore(ALPHA_GROUP_ROW, async () => {
+      // Load group settings and verify the seeded group has no UTM values.
+      await navigateToPath(organizerGroupPage, SETTINGS_PATH);
+      for (const { fieldName } of UTM_FIELDS) {
+        await expect(getSubmittedUtmInputs(organizerGroupPage, fieldName)).toHaveCount(0);
       }
-    }
-    const clearResponse = await saveGroupSettings(organizerGroupPage);
-    const clearedForm = new URLSearchParams(clearResponse.request().postData() ?? "");
-    expect(clearedForm.get("utm_present")).toBe("true");
-    expect(clearedForm.has("utm_sources[]")).toBe(false);
 
-    // Reload group settings and verify the UTM values were cleared.
-    await navigateToPath(organizerGroupPage, SETTINGS_PATH);
-    for (const { fieldName } of UTM_FIELDS) {
-      await expect(getSubmittedUtmInputs(organizerGroupPage, fieldName)).toHaveCount(0);
-    }
+      // Enter UTM values.
+      const utmValues = {
+        utm_campaigns: ["spring-launch"],
+        utm_mediums: ["podcast"],
+        utm_sources: ["newsletter", "mastodon"],
+      };
+      for (const { fieldName, label } of UTM_FIELDS) {
+        await fillMultipleInputs(getUtmInputs(organizerGroupPage, fieldName), utmValues[fieldName], label);
+      }
+
+      // Save the UTM values and verify the submitted form contract.
+      const saveResponse = await saveGroupSettings(organizerGroupPage);
+      const savedForm = new URLSearchParams(saveResponse.request().postData() ?? "");
+      expect(savedForm.get("utm_present")).toBe("true");
+      expect(savedForm.getAll("utm_sources[]")).toEqual(["newsletter", "mastodon"]);
+      expect(savedForm.getAll("utm_campaigns[]")).toEqual(["spring-launch"]);
+      expect(savedForm.getAll("utm_mediums[]")).toEqual(["podcast"]);
+
+      // Reload group settings and verify the values persisted.
+      await navigateToPath(organizerGroupPage, SETTINGS_PATH);
+      const sourceInputs = getUtmInputs(organizerGroupPage, "utm_sources");
+      await expect(sourceInputs.getByRole("textbox", { name: "Source 1" })).toHaveValue("newsletter");
+      await expect(sourceInputs.getByRole("textbox", { name: "Source 2" })).toHaveValue("mastodon");
+      await expect(getSubmittedUtmInputs(organizerGroupPage, "utm_campaigns")).toHaveValue("spring-launch");
+      await expect(getSubmittedUtmInputs(organizerGroupPage, "utm_mediums")).toHaveValue("podcast");
+
+      // Clear every UTM value to restore the seeded settings.
+      for (const { fieldName } of UTM_FIELDS) {
+        const valueInputs = getUtmInputs(organizerGroupPage, fieldName).locator("input[data-item-input]");
+        for (let index = 0; index < (await valueInputs.count()); index += 1) {
+          await valueInputs.nth(index).fill("");
+        }
+      }
+      const clearResponse = await saveGroupSettings(organizerGroupPage);
+      const clearedForm = new URLSearchParams(clearResponse.request().postData() ?? "");
+      expect(clearedForm.get("utm_present")).toBe("true");
+      expect(clearedForm.has("utm_sources[]")).toBe(false);
+
+      // Reload group settings and verify the UTM values were cleared.
+      await navigateToPath(organizerGroupPage, SETTINGS_PATH);
+      for (const { fieldName } of UTM_FIELDS) {
+        await expect(getSubmittedUtmInputs(organizerGroupPage, fieldName)).toHaveCount(0);
+      }
+    });
   });
 
   test("invalid pretty slugs are blocked before the group settings request", async ({
@@ -231,106 +239,108 @@ test.describe("group dashboard settings view", () => {
     organizerGroupPage.off("request", countUpdateRequests);
   });
 
-  test("organizer can update and restore group settings", async ({ organizerGroupPage }) => {
-    // Define the settings URL used by the read and submit helpers.
-    const settingsPath = "/dashboard/group?tab=settings";
+  test("organizer can update group settings", async ({ organizerGroupPage }) => {
+    // Restore the seeded group row after the update.
+    await withRowRestore(ALPHA_GROUP_ROW, async () => {
+      // Define the settings URL used by the read and submit helpers.
+      const settingsPath = "/dashboard/group?tab=settings";
 
-    // Read current group settings values before updating them.
-    const readSettingsFormValues = async () => {
-      await navigateToPath(organizerGroupPage, settingsPath);
+      // Read current group settings values before updating them.
+      const readSettingsFormValues = async () => {
+        await navigateToPath(organizerGroupPage, settingsPath);
 
-      // Find the settings form.
-      const settingsForm = organizerGroupPage.locator("#groups-form");
-      await expect(settingsForm).toBeVisible();
+        // Find the settings form.
+        const settingsForm = organizerGroupPage.locator("#groups-form");
+        await expect(settingsForm).toBeVisible();
 
-      // Find the description editor.
-      const descriptionEditor = organizerGroupPage.locator("markdown-editor#description");
-      const description =
-        (await descriptionEditor.getAttribute("content")) ??
-        (await descriptionEditor.locator('textarea[name="description"]').first().inputValue());
-      const regionId = await organizerGroupPage.locator("#region_id").inputValue();
+        // Find the description editor.
+        const descriptionEditor = organizerGroupPage.locator("markdown-editor#description");
+        const description =
+          (await descriptionEditor.getAttribute("content")) ??
+          (await descriptionEditor.locator('textarea[name="description"]').first().inputValue());
+        const regionId = await organizerGroupPage.locator("#region_id").inputValue();
 
-      // Return the values used by the caller.
-      return {
-        categoryId: await organizerGroupPage.locator("#category_id").inputValue(),
-        description,
-        descriptionShort: await organizerGroupPage.locator("#description_short").inputValue(),
-        name: await organizerGroupPage.locator("#name").inputValue(),
-        regionId,
-        websiteUrl: await organizerGroupPage.locator("#website_url").inputValue(),
+        // Return the values used by the caller.
+        return {
+          categoryId: await organizerGroupPage.locator("#category_id").inputValue(),
+          description,
+          descriptionShort: await organizerGroupPage.locator("#description_short").inputValue(),
+          name: await organizerGroupPage.locator("#name").inputValue(),
+          regionId,
+          websiteUrl: await organizerGroupPage.locator("#website_url").inputValue(),
+        };
       };
-    };
 
-    // Submit group settings values and wait for persistence.
-    const submitSettings = async ({
-      categoryId,
-      description,
-      descriptionShort,
-      name,
-      regionId,
-      websiteUrl,
-    }) => {
-      await navigateToPath(organizerGroupPage, settingsPath);
-      await organizerGroupPage.locator("#category_id").selectOption(categoryId);
-      await organizerGroupPage.locator("#region_id").selectOption(regionId);
-      await organizerGroupPage.locator("#name").fill(name);
-      await fillMarkdownEditor(organizerGroupPage, "description", description);
-      await organizerGroupPage.locator("#description_short").fill(descriptionShort);
-      await organizerGroupPage.locator("#website_url").fill(websiteUrl);
+      // Submit group settings values and wait for persistence.
+      const submitSettings = async ({
+        categoryId,
+        description,
+        descriptionShort,
+        name,
+        regionId,
+        websiteUrl,
+      }) => {
+        await navigateToPath(organizerGroupPage, settingsPath);
+        await organizerGroupPage.locator("#category_id").selectOption(categoryId);
+        await organizerGroupPage.locator("#region_id").selectOption(regionId);
+        await organizerGroupPage.locator("#name").fill(name);
+        await fillMarkdownEditor(organizerGroupPage, "description", description);
+        await organizerGroupPage.locator("#description_short").fill(descriptionShort);
+        await organizerGroupPage.locator("#website_url").fill(websiteUrl);
 
-      // Click Update Group.
-      await waitForActionResponse(
-        organizerGroupPage,
-        () => organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
-        {
-          method: "PUT",
-          urlIncludes: "/dashboard/group/settings/update",
-        },
+        // Click Update Group.
+        await waitForActionResponse(
+          organizerGroupPage,
+          () => organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+          {
+            method: "PUT",
+            urlIncludes: "/dashboard/group/settings/update",
+          },
+        );
+      };
+
+      // Count the seeded group row while it has no logo of its own.
+      const countAlphaGroupWithoutOwnLogo = () =>
+        queryCount(`
+          select count(*)
+          from "group"
+          where group_id = ${sqlUuid(TEST_GROUP_IDS.community1.alpha)}
+          and logo_url is null
+        `);
+
+      // Set up original form values; the logo field stays empty while the group uses the
+      // community logo.
+      expect(countAlphaGroupWithoutOwnLogo()).toBe(1);
+      const originalFormValues = await readSettingsFormValues();
+      await expect(
+        organizerGroupPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
+      ).toHaveValue("");
+      const updatedValues = {
+        ...originalFormValues,
+        categoryId: originalFormValues.categoryId,
+        description: "Updated primary meetup details for group settings coverage.",
+        descriptionShort: "Updated short summary for group settings coverage.",
+        name: `${originalFormValues.name} Updated`,
+        regionId: originalFormValues.regionId,
+      };
+
+      // Save the updated settings without storing the community logo fallback.
+      await submitSettings(updatedValues);
+      expect(countAlphaGroupWithoutOwnLogo()).toBe(1);
+
+      // Assert the field value was updated.
+      await expect(organizerGroupPage.locator("#category_id")).toHaveValue(updatedValues.categoryId);
+      await expect(organizerGroupPage.locator("#region_id")).toHaveValue(updatedValues.regionId);
+      await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedValues.name);
+      await expect(organizerGroupPage.locator("markdown-editor#description")).toHaveAttribute(
+        "content",
+        updatedValues.description,
       );
-    };
+      await expect(organizerGroupPage.locator("#website_url")).toHaveValue(updatedValues.websiteUrl);
 
-    // Set up original form values.
-    const originalFormValues = await readSettingsFormValues();
-    const updatedValues = {
-      ...originalFormValues,
-      categoryId: originalFormValues.categoryId,
-      description: "Updated primary meetup details for group settings coverage.",
-      descriptionShort: "Updated short summary for group settings coverage.",
-      name: `${originalFormValues.name} Updated`,
-      regionId: originalFormValues.regionId,
-    };
-
-    // Save the updated settings.
-    await submitSettings(updatedValues);
-
-    // Assert the field value was updated.
-    await expect(organizerGroupPage.locator("#category_id")).toHaveValue(updatedValues.categoryId);
-    await expect(organizerGroupPage.locator("#region_id")).toHaveValue(updatedValues.regionId);
-    await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedValues.name);
-    await expect(organizerGroupPage.locator("markdown-editor#description")).toHaveAttribute(
-      "content",
-      updatedValues.description,
-    );
-    await expect(organizerGroupPage.locator("#website_url")).toHaveValue(updatedValues.websiteUrl);
-
-    // Reload the settings form and verify the short description persisted.
-    expect((await readSettingsFormValues()).descriptionShort).toBe(updatedValues.descriptionShort);
-
-    // Restore the original settings.
-    await submitSettings(originalFormValues);
-
-    // Assert the field value was updated.
-    await expect(organizerGroupPage.locator("#category_id")).toHaveValue(originalFormValues.categoryId);
-    await expect(organizerGroupPage.locator("#region_id")).toHaveValue(originalFormValues.regionId);
-    await expect(organizerGroupPage.locator("#name")).toHaveValue(originalFormValues.name);
-    await expect(organizerGroupPage.locator("markdown-editor#description")).toHaveAttribute(
-      "content",
-      originalFormValues.description,
-    );
-    await expect(organizerGroupPage.locator("#website_url")).toHaveValue(originalFormValues.websiteUrl);
-
-    // Reload the settings form and verify the original short description was restored.
-    expect((await readSettingsFormValues()).descriptionShort).toBe(originalFormValues.descriptionShort);
+      // Reload the settings form and verify the short description persisted.
+      expect((await readSettingsFormValues()).descriptionShort).toBe(updatedValues.descriptionShort);
+    });
   });
 
   test("viewer sees read-only controls on group settings", async ({ groupViewerPage }) => {
@@ -376,7 +386,13 @@ test.describe("group dashboard settings view", () => {
   test("validates fiscal sponsor field pairs without contacting the provider", async ({
     organizerGroupPage,
     organizerGroupWithoutPaymentsPage,
+    owned,
   }) => {
+    // Both saves submit the whole form over the seeded groups and can normalize columns the test
+    // does not edit, so restore their rows.
+    owned.track(snapshotRow(ALPHA_GROUP_ROW), restoreRow);
+    owned.track(snapshotRow(DELTA_GROUP_ROW), restoreRow);
+
     // Define the settings URL and fiscal sponsor fields used by the scenario.
     const settingsPath = "/dashboard/group?tab=settings";
     const sellerDisplayNameInput = organizerGroupWithoutPaymentsPage.locator(

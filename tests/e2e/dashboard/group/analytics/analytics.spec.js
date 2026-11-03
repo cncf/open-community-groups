@@ -1,6 +1,6 @@
 import { expect, test } from "../../../fixtures.js";
 import { TEST_COMMUNITY_IDS, TEST_GROUP_IDS } from "../../../seed.js";
-import { navigateToPath, selectGroupContext } from "../../../utils.js";
+import { navigateToPath, selectGroupContext, waitForActionResponse } from "../../../utils.js";
 
 const GROUP_EMPTY_CHART_COUNT = 12;
 
@@ -149,16 +149,16 @@ test.describe("group dashboard analytics view", () => {
 
     // Enable subgroup analytics and wait for the section to refresh. The real
     // checkbox is visually hidden, so toggle it through its label text.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/dashboard/group/analytics") &&
-          response.url().includes("include_subgroups=true") &&
-          response.ok(),
-      ),
-      organizerGroupPage.getByText("Include subgroups", { exact: true }).click(),
-    ]);
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.getByText("Include subgroups", { exact: true }).click(),
+      {
+        method: "GET",
+        params: { include_subgroups: "true" },
+        pathname: "/dashboard/group/analytics",
+        status: 200,
+      },
+    );
     // Verify the refreshed toggle and hierarchy-counting guidance.
     await expect(
       organizerGroupPage.getByRole("checkbox", {

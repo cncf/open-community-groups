@@ -1,0 +1,12 @@
+- dialog "Any feedback?":
+  - heading "Any feedback?" [level=3]
+  - paragraph: Question 2 · Free-text answers
+  - button "Close modal"
+  - text: Search answers
+  - textbox "Search answers"
+  - list "Answers":
+    - listitem: Great talks.
+  - paragraph: 1 - 1 of 1 answer
+  - button "Prev" [disabled]
+  - button "Next" [disabled]
+  - button "Close"

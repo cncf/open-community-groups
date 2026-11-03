@@ -1,10 +1,5 @@
 import { expect, test } from "../../../fixtures.js";
 
-import {
-  deleteNotifications,
-  expectNewNotifications,
-  snapshotNotifications,
-} from "../../../notifications.js";
 import { TEST_EVENT_IDS, TEST_USER_IDS } from "../../../seed.js";
 import { navigateToPath, waitForActionResponse } from "../../../utils.js";
 
@@ -70,7 +65,10 @@ test.describe("group dashboard attendees tab — notifications", () => {
     await expect(modal).toBeHidden();
   });
 
-  test("organizer can send an attendee email from the attendees tab", async ({ organizerGroupPage }) => {
+  test("organizer can send an attendee email from the attendees tab", async ({
+    notifications,
+    organizerGroupPage,
+  }) => {
     // Load the group events dashboard before opening the seeded event.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
@@ -119,7 +117,7 @@ test.describe("group dashboard attendees tab — notifications", () => {
     await modal.locator("#attendee-subject").fill(ATTENDEE_NOTIFICATION_SUBJECT);
     await modal.locator("#attendee-body").fill(ATTENDEE_NOTIFICATION_BODY);
 
-    // Click Send email.
+    // Send the email and verify it reaches the only eligible attendee.
     await waitForActionResponse(
       organizerGroupPage,
       () => modal.getByRole("button", { name: "Send email" }).click(),
@@ -128,6 +126,17 @@ test.describe("group dashboard attendees tab — notifications", () => {
         urlIncludes: `/dashboard/group/notifications/${TEST_EVENT_IDS.alpha.waitlistLab}`,
       },
     );
+    notifications.expectNew([
+      {
+        kind: "event-custom",
+        templateDataContains: {
+          body: ATTENDEE_NOTIFICATION_BODY,
+          event: { event_id: TEST_EVENT_IDS.alpha.waitlistLab },
+          subject: ATTENDEE_NOTIFICATION_SUBJECT,
+        },
+        userIds: [TEST_USER_IDS.organizer1],
+      },
+    ]);
 
     // Verify the email modal closes after a successful send.
     await expect(modal).toBeHidden();
@@ -192,9 +201,10 @@ test.describe("group dashboard attendees tab — notifications", () => {
     await expect(openEmailActionsButton).toBeEnabled();
   });
 
-  test("organizer can send an attendee email to selected attendees", async ({ organizerGroupPage }) => {
-    let notificationIds = [];
-
+  test("organizer can send an attendee email to selected attendees", async ({
+    notifications,
+    organizerGroupPage,
+  }) => {
     // Load the attendees tab for the seeded waitlist event.
     const attendeesContent = await openAttendeesTab(
       organizerGroupPage,
@@ -225,45 +235,39 @@ test.describe("group dashboard attendees tab — notifications", () => {
     await modal.locator("#attendee-subject").fill(ATTENDEE_NOTIFICATION_SUBJECT);
     await modal.locator("#attendee-body").fill(ATTENDEE_NOTIFICATION_BODY);
 
-    try {
-      // Send the email and capture the generated attendee notification.
-      const snapshot = snapshotNotifications();
-      const notificationResponse = await waitForActionResponse(
-        organizerGroupPage,
-        () => modal.getByRole("button", { name: "Send email" }).click(),
-        {
-          method: "POST",
-          urlIncludes: `/dashboard/group/notifications/${TEST_EVENT_IDS.alpha.waitlistLab}`,
+    // Send the email and verify the generated attendee notification.
+    const notificationResponse = await waitForActionResponse(
+      organizerGroupPage,
+      () => modal.getByRole("button", { name: "Send email" }).click(),
+      {
+        method: "POST",
+        urlIncludes: `/dashboard/group/notifications/${TEST_EVENT_IDS.alpha.waitlistLab}`,
+      },
+    );
+    notifications.expectNew([
+      {
+        kind: "event-custom",
+        templateDataContains: {
+          body: ATTENDEE_NOTIFICATION_BODY,
+          event: { event_id: TEST_EVENT_IDS.alpha.waitlistLab },
+          subject: ATTENDEE_NOTIFICATION_SUBJECT,
         },
-      );
-      notificationIds = expectNewNotifications(snapshot, [
-        {
-          kind: "event-custom",
-          templateDataContains: {
-            body: ATTENDEE_NOTIFICATION_BODY,
-            event: { event_id: TEST_EVENT_IDS.alpha.waitlistLab },
-            subject: ATTENDEE_NOTIFICATION_SUBJECT,
-          },
-          userIds: [TEST_USER_IDS.organizer1],
-        },
-      ]);
+        userIds: [TEST_USER_IDS.organizer1],
+      },
+    ]);
 
-      // Verify the selected-recipient parameters were submitted.
-      expect(notificationResponse.request().postData()).toContain("recipient_scope=selected");
-      expect(notificationResponse.request().postData()).toContain("recipient_user_ids%5B0%5D=");
+    // Verify the selected-recipient parameters were submitted.
+    expect(notificationResponse.request().postData()).toContain("recipient_scope=selected");
+    expect(notificationResponse.request().postData()).toContain("recipient_user_ids%5B0%5D=");
 
-      // Verify the selected email send closes the modal and clears selection mode.
-      await expect(modal).toBeHidden();
-      await expect(selectionBar).toBeHidden();
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-        "Email sent successfully to selected attendees!",
-      );
-      await organizerGroupPage.getByRole("button", { name: "OK" }).click();
-      await expect(organizerGroupPage.locator(".swal2-popup")).toBeHidden();
-    } finally {
-      // Delete generated attendee notifications.
-      deleteNotifications(notificationIds);
-    }
+    // Verify the selected email send closes the modal and clears selection mode.
+    await expect(modal).toBeHidden();
+    await expect(selectionBar).toBeHidden();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Email sent successfully to selected attendees!",
+    );
+    await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toBeHidden();
   });
 
   test("organizer can open attendee email from an attendee row", async ({ organizerGroupPage }) => {

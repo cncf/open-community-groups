@@ -1,6 +1,5 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { cleanupCohostEvents, setupCohostEvent } from "../../../data-graphs/cohosts.js";
 import { TEST_COHOSTED_EVENT, TEST_COMMUNITY_IDS, TEST_GROUP_IDS, TEST_GROUP_NAMES } from "../../../seed.js";
 import {
   buildE2eUrl,
@@ -14,7 +13,7 @@ import { expectCohostDashboardRow, getCohostDashboardRows } from "./helpers.js";
 // Group co-hosts dashboard tab path.
 const COHOSTS_PATH = "/dashboard/group?tab=cohosts";
 // Owning group shown for the seeded cross-community event.
-const SEEDED_OWNER_GROUP_NAME = "E2E Second Group Epsilon";
+const SEEDED_OWNER_GROUP_NAME = TEST_GROUP_NAMES.epsilon;
 
 test.describe("group dashboard co-hosts", () => {
   test("menu opens the empty co-hosts list", async ({ organizerEmptyGroupPage }) => {
@@ -66,104 +65,85 @@ test.describe("group dashboard co-hosts", () => {
   test("team members without settings access cannot respond to pending invitations", async ({
     eventsManagerGroupPage,
     groupViewerPage,
+    owned,
   }) => {
-    const scenario = setupCohostEvent({
+    const scenario = owned.cohostEvent({
       cohosts: [{ groupId: TEST_GROUP_IDS.community1.alpha }],
       ownerGroupId: TEST_GROUP_IDS.community2.delta,
     });
 
-    try {
-      for (const page of [eventsManagerGroupPage, groupViewerPage]) {
-        // Verify the pending invitation is visible without row actions.
-        await navigateToPath(page, COHOSTS_PATH);
-        const row = await expectCohostDashboardRow(page, scenario.name, "Pending");
-        await expect(row.getByLabel(`Open co-host actions for ${scenario.name}`)).toHaveCount(0);
-      }
-    } finally {
-      // Restore seeded state.
-      cleanupCohostEvents([scenario.eventId]);
+    for (const page of [eventsManagerGroupPage, groupViewerPage]) {
+      // Verify the pending invitation is visible without row actions.
+      await navigateToPath(page, COHOSTS_PATH);
+      const row = await expectCohostDashboardRow(page, scenario.name, "Pending");
+      await expect(row.getByLabel(`Open co-host actions for ${scenario.name}`)).toHaveCount(0);
     }
   });
 
   test("stale co-host actions report the server error", async ({
     organizerGroupPage,
     organizerGroupWithoutPaymentsPage,
+    owned,
   }) => {
-    const scenario = setupCohostEvent({ cohosts: [{ groupId: TEST_GROUP_IDS.community2.delta }] });
+    const scenario = owned.cohostEvent({ cohosts: [{ groupId: TEST_GROUP_IDS.community2.delta }] });
 
-    try {
-      // Open the pending invitation actions as the co-host.
-      await navigateToPath(organizerGroupWithoutPaymentsPage, COHOSTS_PATH);
-      const row = await expectCohostDashboardRow(organizerGroupWithoutPaymentsPage, scenario.name, "Pending");
-      await row.getByLabel(`Open co-host actions for ${scenario.name}`).click();
+    // Open the pending invitation actions as the co-host.
+    await navigateToPath(organizerGroupWithoutPaymentsPage, COHOSTS_PATH);
+    const row = await expectCohostDashboardRow(organizerGroupWithoutPaymentsPage, scenario.name, "Pending");
+    await row.getByLabel(`Open co-host actions for ${scenario.name}`).click();
 
-      // Delete the event as the owner while the co-host list stays open.
-      const deleteResponse = await organizerGroupPage.request.delete(
-        buildE2eUrl(`/dashboard/group/events/${scenario.eventId}/delete`),
-      );
-      expect(deleteResponse.ok()).toBe(true);
+    // Delete the event as the owner while the co-host list stays open.
+    const deleteResponse = await organizerGroupPage.request.delete(
+      buildE2eUrl(`/dashboard/group/events/${scenario.eventId}/delete`),
+    );
+    expect(deleteResponse.ok()).toBe(true);
 
-      // Approve from the stale row and verify the server error is shown.
-      await row.getByRole("button", { name: "Approve" }).click();
-      const dialog = organizerGroupWithoutPaymentsPage.locator(".swal2-popup");
-      await waitForActionResponse(
-        organizerGroupWithoutPaymentsPage,
-        () => dialog.getByRole("button", { name: "Approve" }).click(),
-        {
-          method: "PUT",
-          status: 422,
-          urlEndsWith: `/${scenario.invitationIds[TEST_GROUP_IDS.community2.delta]}/approve`,
-        },
-      );
-      await expect(dialog).toContainText("co-hosting invitation not found");
-      await dialog.getByRole("button", { name: "OK", exact: true }).click();
+    // Approve from the stale row and verify the server error is shown.
+    await row.getByRole("button", { name: "Approve" }).click();
+    const dialog = organizerGroupWithoutPaymentsPage.locator(".swal2-popup");
+    await waitForActionResponse(
+      organizerGroupWithoutPaymentsPage,
+      () => dialog.getByRole("button", { name: "Approve" }).click(),
+      {
+        method: "PUT",
+        status: 422,
+        urlEndsWith: `/${scenario.invitationIds[TEST_GROUP_IDS.community2.delta]}/approve`,
+      },
+    );
+    await expect(dialog).toContainText("co-hosting invitation not found");
+    await dialog.getByRole("button", { name: "OK", exact: true }).click();
 
-      // Verify a fresh load drops the deleted event.
-      await navigateToPath(organizerGroupWithoutPaymentsPage, COHOSTS_PATH);
-      await expect(getCohostDashboardRows(organizerGroupWithoutPaymentsPage, scenario.name)).toHaveCount(0);
-    } finally {
-      // Restore seeded state.
-      cleanupCohostEvents([scenario.eventId]);
-    }
+    // Verify a fresh load drops the deleted event.
+    await navigateToPath(organizerGroupWithoutPaymentsPage, COHOSTS_PATH);
+    await expect(getCohostDashboardRows(organizerGroupWithoutPaymentsPage, scenario.name)).toHaveCount(0);
   });
 
-  test("co-hosts list paginates invitations", async ({ organizerGroupWithoutPaymentsPage }) => {
-    const scenarios = [
-      setupCohostEvent({ cohosts: [{ groupId: TEST_GROUP_IDS.community2.delta }], days: 210 }),
-      setupCohostEvent({ cohosts: [{ groupId: TEST_GROUP_IDS.community2.delta }], days: 220 }),
-    ];
-
-    try {
-      // Verify forward and backward pagination with one invitation per page.
-      await expectPaginationNavigation(
-        organizerGroupWithoutPaymentsPage,
-        `${COHOSTS_PATH}&limit=1`,
-        '[aria-label="Co-hosted events list"] tbody th[scope="row"]',
-      );
-    } finally {
-      // Restore seeded state.
-      cleanupCohostEvents(scenarios.map(({ eventId }) => eventId));
+  test("co-hosts list paginates invitations", async ({ organizerGroupWithoutPaymentsPage, owned }) => {
+    for (const days of [210, 220]) {
+      owned.cohostEvent({ cohosts: [{ groupId: TEST_GROUP_IDS.community2.delta }], days });
     }
+
+    // Verify forward and backward pagination with one invitation per page.
+    await expectPaginationNavigation(
+      organizerGroupWithoutPaymentsPage,
+      `${COHOSTS_PATH}&limit=1`,
+      '[aria-label="Co-hosted events list"] tbody th[scope="row"]',
+    );
   });
 
-  test("owner group names are shown for pending invitations", async ({ organizerGroupPage }) => {
-    const scenario = setupCohostEvent({
+  test("owner group names are shown for pending invitations", async ({ organizerGroupPage, owned }) => {
+    const scenario = owned.cohostEvent({
       cohosts: [{ groupId: TEST_GROUP_IDS.community1.alpha }],
       ownerGroupId: TEST_GROUP_IDS.community1.gamma,
     });
 
-    try {
-      // Verify the co-host admin can act on an invitation from another group.
-      await navigateToPath(organizerGroupPage, COHOSTS_PATH);
-      const row = await expectCohostDashboardRow(organizerGroupPage, scenario.name, "Pending");
-      await expect(row).toContainText(TEST_GROUP_NAMES.gamma);
-      await row.getByLabel(`Open co-host actions for ${scenario.name}`).click();
-      await expect(row.getByRole("button", { name: "Approve" })).toBeVisible();
-      await expect(row.getByRole("button", { name: "Reject" })).toBeVisible();
-      await expect(row.getByRole("button", { name: "Cancel co-hosting" })).toHaveCount(0);
-    } finally {
-      // Restore seeded state.
-      cleanupCohostEvents([scenario.eventId]);
-    }
+    // Verify the co-host admin can act on an invitation from another group.
+    await navigateToPath(organizerGroupPage, COHOSTS_PATH);
+    const row = await expectCohostDashboardRow(organizerGroupPage, scenario.name, "Pending");
+    await expect(row).toContainText(TEST_GROUP_NAMES.gamma);
+    await row.getByLabel(`Open co-host actions for ${scenario.name}`).click();
+    await expect(row.getByRole("button", { name: "Approve" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "Reject" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "Cancel co-hosting" })).toHaveCount(0);
   });
 });

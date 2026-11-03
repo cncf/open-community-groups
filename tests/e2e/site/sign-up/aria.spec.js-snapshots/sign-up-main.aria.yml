@@ -1,0 +1,17 @@
+- /children: deep-equal
+- main:
+  - heading "Sign Up" [level=1]
+  - text: Full Name *
+  - textbox "Full Name required"
+  - text: Email Address *
+  - textbox "Email Address required"
+  - text: Username *
+  - textbox "Username required"
+  - text: Password *
+  - textbox "Password required"
+  - text: Confirm Password *
+  - textbox "Confirm Password required"
+  - button "Create Account"
+  - text: Already have an account?
+  - link "Sign in":
+    - /url: /log-in

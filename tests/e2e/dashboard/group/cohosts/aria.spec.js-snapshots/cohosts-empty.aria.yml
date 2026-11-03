@@ -1,0 +1,17 @@
+- text: Co-hosts
+- link "Open documentation":
+  - /url: /docs#/guides/group-dashboard?id=co-hosts-partner-events
+- paragraph: Review event co-hosting invitations for this group.
+- text: 0 invitations
+- table "Co-hosted events list":
+  - rowgroup:
+    - row "Event Owning group Status Actions":
+      - columnheader "Event"
+      - columnheader "Owning group"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No co-hosted events found This group has no event co-hosting invitations yet.":
+      - cell "No co-hosted events found This group has no event co-hosting invitations yet.":
+        - text: ""
+        - paragraph: This group has no event co-hosting invitations yet.

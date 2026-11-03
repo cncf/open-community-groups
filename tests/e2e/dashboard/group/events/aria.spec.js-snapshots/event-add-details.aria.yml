@@ -1,0 +1,96 @@
+- text: Event details
+- paragraph: Please add as many details about this event as possible.
+- text: Choose an event to copy from (optional)
+- button "Select event": Select event Choose an event to copy
+- paragraph: Start and end dates are left blank, and sessions are not copied so you can set a new schedule. Meeting links are not carried over. When copying from events imported from the previous community platform, some fields like event's hosts and speakers won't be copied. Note that this only applies to events that have not been created from Open Community Groups.
+- text: Name *
+- textbox "Name *"
+- paragraph: /Display name of the event \(e\.g\. Kubernetes Amsterdam Meetup\)\. Max \d+ characters\./
+- text: Event Type *
+- combobox "Event Type *":
+  - option "Select an event type" [selected]
+  - option "Hybrid"
+  - option "In Person"
+  - option "Virtual"
+- paragraph: Whether this is an in-person, virtual, or hybrid event.
+- text: Category *
+- combobox "Category *":
+  - option "Select a category" [selected]
+  - option "General"
+  - option "Workshops"
+- paragraph: Type of event or meetup.
+- text: Logo
+- button "Logo Click or drop image":
+  - paragraph: Click or drop image
+- paragraph: "/Images must be \\d+ x \\d+ px \\(square\\)\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Logo"
+- button "Remove image" [disabled]
+- paragraph: If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.
+- text: Banner
+- button "Banner Click to upload or drag and drop":
+  - paragraph: Click to upload or drag and drop
+- paragraph: "/Size required \\d+ x \\d+ px\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Banner"
+- button "Remove image" [disabled]
+- paragraph: If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.
+- text: Banner Mobile
+- button "Banner Mobile Click to upload or drag and drop":
+  - paragraph: Click to upload or drag and drop
+- paragraph: "/Size required \\d+ x \\d+ px\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Banner Mobile"
+- button "Remove image" [disabled]
+- paragraph: If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.
+- text: Short Description
+- textbox "Short Description"
+- paragraph: /Brief description used in event listings and previews\. Max \d+ characters\./
+- text: Description *
+- application:
+  - toolbar:
+    - button "Bold": 
+    - button "Italic": 
+    - button "Heading": 
+    - text: "|"
+    - button "Quote": 
+    - button "Generic List": 
+    - button "Numbered List": 
+    - button "Check List": 
+    - text: "|"
+    - button "Create Link": 
+    - button "Insert Table": 
+    - button "Insert Horizontal Line": 
+    - text: "|"
+    - button "Toggle Preview": 
+    - text: "|"
+    - button "Undo": 
+    - button "Redo": 
+- paragraph: /Full description of the event and its purpose\. Max \d+ characters\./
+- text: Additional Information
+- paragraph: Optional event settings and external links.
+- checkbox "Enable Waitlist"
+- text: Enable Waitlist
+- paragraph: Allow full events, including paid ticket events, to add people to a waiting list instead of rejecting them. Capacity is the total of ticket seats. Invitation approval and the waitlist cannot be enabled together.
+- checkbox "Require Invitation Approval"
+- text: Require Invitation Approval
+- paragraph: Let people request organizer approval before attending or claiming a ticket. Paid ticket events can use invitation approval. Invitation approval and the waitlist cannot be enabled together. Accept pending requests and reissue expired offers while the event is still active, including outside the public registration window.
+- checkbox "Test Event"
+- text: Test Event
+- paragraph: Exclude this event from discovery, stats, and broadcast notifications.
+- text: Meetup.com URL
+- textbox "Meetup.com URL":
+  - /placeholder: https://meetup.com/group/events/123456
+- paragraph: Link to the Meetup.com event page.
+- text: Luma URL
+- textbox "Luma URL":
+  - /placeholder: https://luma.com/event
+- paragraph: Link to the Luma event page.
+- text: Photos
+- paragraph: Optional photos related to the event. Drag and drop thumbnails to change their order before submitting.
+- button "Add images to gallery":
+  - text: ""
+  - status "Uploading..."
+- text: Tags
+- textbox "Tag 1":
+  - /placeholder: ""
+- button "Remove item" [disabled]
+- paragraph: /Optional tags to help categorize and find the event\. Max \d+ characters per tag\./
+- button "Add Tag"

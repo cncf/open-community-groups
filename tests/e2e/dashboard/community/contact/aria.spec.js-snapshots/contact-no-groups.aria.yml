@@ -1,0 +1,25 @@
+- text: Contact
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=groups-contact-group-teams
+- paragraph: Send an email to the teams of the groups in this community.
+- text: Recipients
+- paragraph: Accepted team members with a verified email in active groups. Recipients must match every filter; leave a filter empty to include all.
+- text: Group categories
+- combobox "Group categories"
+- text: Team roles
+- combobox "Team roles"
+- text: Groups
+- combobox "Groups" [disabled]
+- paragraph: This community has no active groups.
+- paragraph: No group team members match these filters.
+- text: Message
+- paragraph: Each recipient gets a single email, even if they're on several teams. Replies aren't delivered.
+- text: Subject *
+- textbox "Subject *":
+  - /placeholder: Enter notification subject
+  - text: /E2E aria community [0-9a-f]{8}/
+- text: Body *
+- textbox "Body *":
+  - /placeholder: Enter notification body (plain text only)
+- paragraph: Plain text only. No HTML formatting.
+- button "Send email" [disabled]

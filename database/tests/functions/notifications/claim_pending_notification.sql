@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -25,7 +25,6 @@ select plan(20);
 \set notificationGroupWelcomeID '8a010000-0000-0000-0000-000000000008'
 \set notificationPreRegisteredAdmissionOfferCanceledID '8a010000-0000-0000-0000-000000000025'
 \set notificationPreRegisteredAdmissionOfferID '8a010000-0000-0000-0000-000000000024'
-\set notificationPreRegisteredEventInvitationID '8a010000-0000-0000-0000-000000000009'
 \set notificationPreRegisteredGroupWelcomeID '8a010000-0000-0000-0000-000000000010'
 \set notificationPreRegisteredVerifiedGroupWelcomeID '8a010000-0000-0000-0000-000000000011'
 \set notificationRetryID '8a010000-0000-0000-0000-000000000012'
@@ -230,16 +229,6 @@ insert into notification (
         :'userUnverifiedID'
     ),
     (
-        '2025-01-01 00:00:11',
-        0,
-        'pending',
-        'event-invitation',
-        null,
-        :'notificationPreRegisteredEventInvitationID',
-        :'templateEventPublishedID',
-        :'userPreRegisteredID'
-    ),
-    (
         '2025-01-01 00:00:11.5',
         0,
         'pending',
@@ -434,20 +423,6 @@ select is(
     (select notification_id from claim_pending_notification()),
     :'notificationUnverifiedEmailVerificationID'::uuid,
     'Should return email verification notifications for unverified users'
-);
-
--- Should return event invitation notifications for pre-registered users
-select is(
-    (select row_to_json(r)::jsonb from claim_pending_notification() r),
-    jsonb_build_object(
-        'attachment_ids', null,
-        'delivery_claimed_at', current_timestamp,
-        'email', 'invited-claim-pending-notification@example.com',
-        'kind', 'event-invitation',
-        'notification_id', :'notificationPreRegisteredEventInvitationID',
-        'template_data', '{"event": "test"}'::jsonb
-    ),
-    'Should return event invitation notifications for pre-registered users'
 );
 
 -- Should return admission offer notifications for pre-registered users

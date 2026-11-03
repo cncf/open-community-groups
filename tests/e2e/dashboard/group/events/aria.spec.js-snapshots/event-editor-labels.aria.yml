@@ -1,0 +1,9 @@
+- text: Labels
+- paragraph: Categorize sessions and Call for Speakers submissions.
+- text: Labels are shared by sessions and Call for Speakers submissions. For example, you can use them to organize sessions by track, topic, or theme. Renaming a label updates it everywhere it is used. To delete a label, use its trash button. Label
+- textbox "Label":
+  - /placeholder: track / ai + ml
+- 'button "Pick label color. Selected color is #FFD866"'
+- button "Remove label" [disabled]
+- paragraph: Use prefixes like track / ai + ml and keep / as the separator for consistency. If you need a different label without renaming the existing one, delete it with its trash button and add a new one.
+- button "Add label"

@@ -5,28 +5,39 @@ const DASHBOARD_ROUTES = ["/dashboard/community", "/dashboard/group", "/dashboar
 
 const MOBILE_WARNING = "This dashboard is not optimized yet for mobile devices";
 
+// Users without an accepted team role; pending1 only has pending (unaccepted) team invitations.
+const TEAMLESS_USERS = [
+  { fixture: "member2Page", label: "plain member" },
+  { fixture: "pending1Page", label: "pending invitee" },
+];
+
 test.describe("dashboard access and shared behavior", () => {
   for (const route of DASHBOARD_ROUTES) {
     test(`requires login for ${route}`, async ({ page }) => {
       // Open the protected dashboard route as a guest.
       await navigateToPath(page, route);
 
-      // Verify requires login for route.
-      await expect(page).toHaveURL(/\/log-in/);
+      // Verify the login page keeps the requested route as its return destination.
+      await expect(page).toHaveURL(
+        (url) => url.pathname === "/log-in" && url.searchParams.get("next_url") === route,
+      );
       await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
     });
   }
 
-  for (const route of ["/dashboard/community", "/dashboard/group"]) {
-    test(`forbids a plain member from ${route}`, async ({ member2Page }) => {
-      // Request the privileged dashboard route with a regular member session.
-      const response = await member2Page.goto(buildE2eUrl(route));
+  for (const { fixture, label } of TEAMLESS_USERS) {
+    for (const route of ["/dashboard/community", "/dashboard/group"]) {
+      test(`forbids a ${label} from ${route}`, async ({ pageAs }) => {
+        // Request the privileged dashboard route with a session that has no accepted team role.
+        const page = await pageAs(fixture);
+        const response = await page.goto(buildE2eUrl(route));
 
-      // Verify members without team roles are sent back to their own dashboard.
-      expect(response).not.toBeNull();
-      expect(response.status()).toBe(200);
-      await expect(member2Page).toHaveURL(buildE2eUrl("/dashboard/user?tab=invitations"));
-    });
+        // Verify the user is sent back to their own dashboard invitations.
+        expect(response).not.toBeNull();
+        expect(response.status()).toBe(200);
+        await expect(page).toHaveURL(buildE2eUrl("/dashboard/user?tab=invitations"));
+      });
+    }
   }
 
   test.describe("mobile experience @mobile", () => {
@@ -37,9 +48,9 @@ test.describe("dashboard access and shared behavior", () => {
       // Verify community dashboard shows the mobile unsupported state.
       await expect(adminCommunityPage.getByText(MOBILE_WARNING, { exact: true })).toBeVisible();
       await expect(adminCommunityPage.locator("#dashboard-main-content")).toBeHidden();
-      const drawer = await openMobileDashboardDrawer(adminCommunityPage);
-      await expect(drawer.locator("a[hx-get]:visible")).toHaveCount(0);
-      await expect(drawer.getByRole("button", { name: "Log out" })).toHaveCount(0);
+
+      // Verify no drawer trigger is offered, since every community section is desktop only.
+      await expect(adminCommunityPage.getByRole("button", { name: "Open dashboard menu" })).toHaveCount(0);
     });
 
     test("group dashboard opens mobile check-in from its only available option", async ({
@@ -94,33 +105,6 @@ test.describe("dashboard access and shared behavior", () => {
       await expect(member1Page.getByText(MOBILE_WARNING, { exact: true })).toBeHidden();
       await expect(member1Page.locator("#dashboard-main-content")).toBeVisible();
       await expect(member1Page.getByRole("heading", { name: "Check-In" })).toBeVisible();
-    });
-
-    test("keeps the drawer and placeholder aligned at the md breakpoint", async ({ member1Page }) => {
-      // Load unsupported user content at the first desktop width.
-      await member1Page.setViewportSize({ width: 768, height: 900 });
-      await navigateToPath(member1Page, "/dashboard/user?tab=events");
-      const main = member1Page.locator("#dashboard-main-content");
-      const openMenuButton = member1Page.getByRole("button", {
-        name: "Open dashboard menu",
-      });
-      const warning = member1Page.getByText(MOBILE_WARNING, { exact: true });
-      await expect(main).toBeVisible();
-      await expect(openMenuButton).toBeHidden();
-      await expect(warning).toBeHidden();
-
-      // Cross below md and verify the placeholder always has its drawer trigger.
-      await member1Page.setViewportSize({ width: 767, height: 900 });
-      await expect(main).toBeHidden();
-      await expect(warning).toBeVisible();
-      await expect(openMenuButton).toBeVisible();
-      await openMobileDashboardDrawer(member1Page);
-
-      // Return to md and verify the static sidebar and content replace mobile state.
-      await member1Page.setViewportSize({ width: 768, height: 900 });
-      await expect(main).toBeVisible();
-      await expect(warning).toBeHidden();
-      await expect(openMenuButton).toBeHidden();
     });
 
     test("desktop version mode replaces the mobile unsupported state", async ({ member1Page }) => {

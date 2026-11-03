@@ -1,0 +1,28 @@
+- button "Back to surveys"
+- text: Survey results
+- heading "E2E ARIA survey" [level=2]
+- text: Open Opened
+- time: /[A-Z][a-z]{2} \d+, \d+/
+- text: 2 questions
+- link "Download CSV":
+  - /url: /\/dashboard\/group\/events\/[0-9a-f-]{36}\/surveys\/[0-9a-f-]{36}\/responses\.csv/
+- group "Results view":
+  - button "Summary"
+  - button "Individual" [pressed]
+- text: Search respondents
+- textbox "Search respondents"
+- text: 1 - 1 of 1 respondent
+- table "Survey respondents":
+  - rowgroup:
+    - row "Respondent Ticket type Answered Submitted":
+      - columnheader "Respondent"
+      - columnheader "Ticket type"
+      - columnheader "Answered"
+      - columnheader "Submitted"
+  - rowgroup:
+    - row /ET E2E Member Three - 2 of 2 [A-Z][a-z]{2} \d+, \d+/:
+      - rowheader "ET E2E Member Three"
+      - cell "-"
+      - cell "2 of 2"
+      - cell /[A-Z][a-z]{2} \d+, \d+/:
+        - time: /[A-Z][a-z]{2} \d+, \d+/

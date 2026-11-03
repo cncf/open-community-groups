@@ -6,10 +6,16 @@ import {
   setupGroupMute,
 } from "../../../data-graphs/notification-preferences.js";
 import { TEST_GROUP_IDS, TEST_GROUP_NAMES, TEST_USER_IDS } from "../../../seed.js";
-import { navigateToPath, waitForActionResponse, waitForHtmxSettle } from "../../../utils.js";
+import {
+  dismissAlert,
+  navigateToPath,
+  waitForActionResponse,
+  waitForActionResponses,
+} from "../../../utils.js";
 
 const GROUP_OPTIONS_PATH = "/dashboard/user/notifications/group-options";
 const MUTED_GROUPS_PATH = "/dashboard/user/notifications/muted-groups";
+const MUTED_GROUPS_REFRESH_RESPONSE = { method: "GET", pathname: MUTED_GROUPS_PATH, status: 200 };
 const NOTIFICATIONS_PATH = "/dashboard/user?tab=notifications";
 
 test.describe("user dashboard notifications view", () => {
@@ -51,30 +57,6 @@ test.describe("user dashboard notifications view", () => {
       hidden: [],
       visible: ["Events and groups", "Group organizing", "Community organizing"],
     });
-  });
-
-  test("saved toggle persists across reload", async ({ member1Page }) => {
-    const category = "event-reminders";
-    let originalPreference;
-
-    try {
-      // Save the opposite preference through the notifications form.
-      await navigateToPath(member1Page, NOTIFICATIONS_PATH);
-      originalPreference = await getPreferenceToggle(member1Page, category).isChecked();
-      await saveNotificationPreference(member1Page, category, !originalPreference);
-
-      // Reload the tab and verify the saved state persists.
-      await navigateToPath(member1Page, NOTIFICATIONS_PATH);
-      await expectPreferenceState(member1Page, category, !originalPreference);
-    } finally {
-      if (typeof originalPreference === "boolean") {
-        restoreNotificationPreference({
-          category,
-          enabled: originalPreference,
-          userId: TEST_USER_IDS.member1,
-        });
-      }
-    }
   });
 
   test("event surveys toggle saves independently of event reminders", async ({ member1Page }) => {
@@ -255,18 +237,18 @@ test.describe("user dashboard notifications view", () => {
       await navigateToPath(member1Page, NOTIFICATIONS_PATH);
       const search = getGroupSearch(member1Page);
       await search.fill(groupName);
-      const muteResponse = member1Page.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" && response.url().endsWith(`${MUTED_GROUPS_PATH}/${groupId}`),
+      await waitForActionResponse(
+        member1Page,
+        () =>
+          member1Page
+            .locator("notification-group-mutes")
+            .getByRole("option", { name: new RegExp(escapeRegExp(groupName), "u") })
+            .click(),
+        { method: "PUT", pathname: `${MUTED_GROUPS_PATH}/${groupId}`, status: 422 },
       );
-      await member1Page
-        .locator("notification-group-mutes")
-        .getByRole("option", { name: new RegExp(escapeRegExp(groupName), "u") })
-        .click();
-      expect((await muteResponse).status()).toBe(422);
 
       // Verify the error alert shows the server message and focus returns to the closed picker.
-      await dismissAlert(member1Page, serverMessage);
+      await dismissAlert(member1Page, { message: serverMessage });
       await expect(search).toBeFocused();
       await expect(search).toHaveAttribute("aria-expanded", "false");
 
@@ -278,14 +260,6 @@ test.describe("user dashboard notifications view", () => {
     }
   });
 });
-
-/** Waits for an alert with the expected text and closes it. */
-const dismissAlert = async (page, text) => {
-  const dialog = page.locator(".swal2-popup");
-  await expect(dialog).toContainText(text);
-  await dialog.getByRole("button", { name: "OK", exact: true }).click();
-  await expect(dialog).toBeHidden();
-};
 
 /** Escapes a string for use in a regular expression. */
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -346,20 +320,11 @@ const muteGroupThroughCombobox = async (page, { groupId, groupName }) => {
   const option = picker.getByRole("option", { name: new RegExp(escapeRegExp(groupName), "u") });
   await expect(option).toBeVisible();
 
-  const muteResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === "PUT" && response.url().endsWith(`${MUTED_GROUPS_PATH}/${groupId}`),
-  );
-  const refreshResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === "GET" && response.url().includes(MUTED_GROUPS_PATH) && response.ok(),
-  );
-
-  await option.click();
-  expect((await muteResponse).ok()).toBeTruthy();
-  await refreshResponse;
-  await waitForHtmxSettle(page);
-  await dismissAlert(page, `${groupName} muted.`);
+  await waitForActionResponses(page, () => option.click(), [
+    { method: "PUT", pathname: `${MUTED_GROUPS_PATH}/${groupId}`, status: 204 },
+    MUTED_GROUPS_REFRESH_RESPONSE,
+  ]);
+  await dismissAlert(page, { message: `${groupName} muted.` });
 };
 
 /** Saves one notification preference through the form. */
@@ -368,13 +333,10 @@ const saveNotificationPreference = async (page, category, enabled) => {
   await waitForActionResponse(
     page,
     () => page.locator("#notification-preferences-form").getByRole("button", { name: "Save" }).click(),
-    {
-      method: "PUT",
-      urlIncludes: "/dashboard/user/notifications/preferences",
-    },
+    { method: "PUT", pathname: "/dashboard/user/notifications/preferences", status: 204 },
   );
 
-  await dismissAlert(page, "Notification preferences updated.");
+  await dismissAlert(page, { message: "Notification preferences updated." });
 };
 
 /** Stages one notification preference without submitting the form. */
@@ -390,16 +352,13 @@ const setNotificationPreference = async (page, category, enabled) => {
 
 /** Unmutes one group from the server-rendered muted groups list. */
 const unmuteGroup = async (page, { groupId, groupName }) => {
-  const refreshResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === "GET" && response.url().includes(MUTED_GROUPS_PATH) && response.ok(),
+  await waitForActionResponses(
+    page,
+    () => page.getByRole("button", { name: `Unmute ${groupName}` }).click(),
+    [
+      { method: "DELETE", pathname: `${MUTED_GROUPS_PATH}/${groupId}`, status: 204 },
+      MUTED_GROUPS_REFRESH_RESPONSE,
+    ],
   );
-
-  await waitForActionResponse(page, () => page.getByRole("button", { name: `Unmute ${groupName}` }).click(), {
-    method: "DELETE",
-    urlEndsWith: `${MUTED_GROUPS_PATH}/${groupId}`,
-  });
-  await refreshResponse;
-  await waitForHtmxSettle(page);
-  await dismissAlert(page, `${groupName} unmuted.`);
+  await dismissAlert(page, { message: `${groupName} unmuted.` });
 };

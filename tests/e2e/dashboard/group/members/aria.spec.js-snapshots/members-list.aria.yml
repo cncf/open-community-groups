@@ -1,0 +1,16 @@
+- text: Members
+- link "Open documentation":
+  - /url: /docs#/guides/group-dashboard?id=members-communication
+- text: 1 - 1 of 1 member
+- button "Send email"
+- table "Members list":
+  - rowgroup:
+    - row "Member Position Joined":
+      - columnheader "Member"
+      - columnheader "Position"
+      - columnheader "Joined"
+  - rowgroup:
+    - row /ET E2E Member Three e2e-member-3 - [A-Z][a-z]{2} \d+, \d+/:
+      - cell "ET E2E Member Three e2e-member-3"
+      - cell "-"
+      - cell /[A-Z][a-z]{2} \d+, \d+/

@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 
-import { queryE2eDatabase, queryE2eDatabaseRows } from "./database.js";
+import { queryE2eDatabase, queryE2eDatabaseRows, sqlString, sqlUuidArray } from "./database.js";
 
 /**
  * Captures the notification queue position so later assertions only consider rows enqueued
@@ -50,22 +50,62 @@ export const deleteNotifications = (notificationIds) => {
     return;
   }
 
-  const idList = notificationIds.map((notificationId) => `'${notificationId}'`).join(", ");
-  queryE2eDatabase(`delete from notification where notification_id in (${idList})`);
+  queryE2eDatabase(`delete from notification where notification_id = any(${sqlUuidArray(notificationIds)})`);
 };
 
-/** Deletes notifications of one kind created for the users after the snapshot. */
-export const deleteNotificationsSince = (snapshot, kind, userIds) => {
+/**
+ * Deletes every notification and custom notification created since the snapshot, plus
+ * the template data rows only those notifications referenced, and the template data and
+ * attachment rows created since the snapshot that no notification references any more (cleanups
+ * that delete notifications directly, or through a user cascade, leave those behind). Relies on
+ * one Playwright worker per database: rows another worker created in the same window would be
+ * deleted too.
+ */
+export const deleteNotificationsCreatedSince = ({ createdAfter }) => {
+  // Rows created before the snapshot are exactly the ones that survive the delete, and every
+  // part of the statement sees the same snapshot, so only those keep template data alive.
   queryE2eDatabase(`
-    delete from notification
-    where created_at >= '${snapshot.createdAfter}'::timestamptz
-    and kind = '${kind}'
-    and user_id in (${userIds.map((userId) => `'${userId}'::uuid`).join(", ")});
+    with deleted as (
+      delete from notification
+      where created_at >= ${sqlString(createdAfter)}::timestamptz
+      returning notification_template_data_id
+    )
+    delete from notification_template_data ntd
+    where ntd.notification_template_data_id in (select notification_template_data_id from deleted)
+    and not exists (
+      select 1
+      from notification n
+      where n.notification_template_data_id = ntd.notification_template_data_id
+      and n.created_at < ${sqlString(createdAfter)}::timestamptz
+    );
+
+    delete from notification_template_data ntd
+    where ntd.created_at >= ${sqlString(createdAfter)}::timestamptz
+    and not exists (
+      select 1
+      from notification n
+      where n.notification_template_data_id = ntd.notification_template_data_id
+    );
+
+    delete from custom_notification
+    where created_at >= ${sqlString(createdAfter)}::timestamptz;
+
+    delete from attachment a
+    where a.created_at >= ${sqlString(createdAfter)}::timestamptz
+    and not exists (
+      select 1
+      from notification_attachment na
+      where na.attachment_id = a.attachment_id
+    );
   `);
 };
 
-/** Returns notification rows created since the snapshot from the notification table. */
-const listNotificationsSince = ({ createdAfter }) =>
+/**
+ * Returns the notification rows created since the snapshot, ordered by kind and recipient.
+ * @param {{ createdAfter: string }} snapshot - Cut-off from `snapshotNotifications`.
+ * @returns {Array<{ kind: string, notificationId: string, templateData: object|null, userId: string }>}
+ */
+export const listNotificationsSince = ({ createdAfter }) =>
   queryE2eDatabaseRows(`
     select
       n.notification_id,
@@ -74,7 +114,7 @@ const listNotificationsSince = ({ createdAfter }) =>
       coalesce(ntd.data::text, 'null')
     from notification n
     left join notification_template_data ntd using (notification_template_data_id)
-    where n.created_at >= '${createdAfter}'::timestamptz
+    where n.created_at >= ${sqlString(createdAfter)}::timestamptz
     order by n.kind, n.user_id
   `).map(parseNotificationRow);
 

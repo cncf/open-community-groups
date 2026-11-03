@@ -1,0 +1,17 @@
+- table "Audit logs table":
+  - rowgroup:
+    - row "Action Actor Target Date Details":
+      - columnheader "Action"
+      - columnheader "Actor"
+      - columnheader "Target"
+      - columnheader "Date"
+      - columnheader "Details"
+  - rowgroup:
+    - row /Group added e2e-admin-1 E2E temporary group [0-9a-f]{8} Group Mar \d+, \d+ \d+:\d+ PM UTC View log details Log details Region North America Status Active/:
+      - cell "Group added"
+      - cell "e2e-admin-1"
+      - cell /E2E temporary group [0-9a-f]{8} Group/
+      - cell /Mar \d+, \d+ \d+:\d+ PM UTC/
+      - cell "View log details Log details Region North America Status Active":
+        - button "View log details" [expanded]
+        - text: ""

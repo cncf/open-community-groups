@@ -37,15 +37,20 @@ pub(crate) async fn list_page(
     Path(event_id): Path<Uuid>,
     ValidatedQuery(mut filters): ValidatedQuery<InvitationRequestsFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event context, questions, and invitation requests
-    let (can_manage_events, event, registration_questions, mut search_results) = tokio::try_join!(
+    // Fetch the event, rejecting events outside the selected group
+    let event = db
+        .find_event_summary_dashboard(community_id, group_id, event_id)
+        .await?
+        .ok_or(HandlerError::NotFound)?;
+
+    // Fetch permissions, questions, and invitation requests
+    let (can_manage_events, registration_questions, mut search_results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary_dashboard(community_id, group_id, event_id),
         db.get_event_registration_questions(community_id, event_id),
         db.search_event_invitation_requests(group_id, event_id, &filters)
     )?;

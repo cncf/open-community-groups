@@ -1,11 +1,9 @@
 import { expect, test } from "../../fixtures.js";
 import { queryE2eDatabase } from "../../database.js";
 import { TEST_EXTERNAL_PAYMENT_EVENTS, TEST_USER_IDS } from "../../seed.js";
-import { getAttendanceContainer } from "../../site/event/helpers.js";
-import { navigateToPath, waitForActionResponse } from "../../utils.js";
+import { getAttendanceContainer, getRefundButton } from "../../site/event/helpers.js";
+import { dismissAlert, navigateToPath, waitForActionResponse } from "../../utils.js";
 import {
-  dismissAlert,
-  getRefundButton,
   markExternalPurchasePaid,
   openExternalEvent,
   resetExternalPaymentFixtures,
@@ -13,9 +11,11 @@ import {
 } from "./external-helpers.js";
 
 test.describe("external payment refunds", () => {
-  test.describe.configure({ mode: "serial" });
-
   test.beforeEach(() => {
+    resetExternalPaymentFixtures();
+  });
+
+  test.afterEach(() => {
     resetExternalPaymentFixtures();
   });
 
@@ -80,10 +80,7 @@ test.describe("external payment refunds", () => {
         urlEndsWith: "/approve",
       },
     );
-    await expect(organizerExternalGroupPage.locator(".swal2-popup")).toContainText(
-      "Refund recorded. Attendance canceled.",
-    );
-    await dismissAlert(organizerExternalGroupPage);
+    await dismissAlert(organizerExternalGroupPage, { message: "Refund recorded. Attendance canceled." });
 
     // Verify external approval cancels attendance without a provider refund row.
     expect(
@@ -153,10 +150,7 @@ test.describe("external payment refunds", () => {
         urlEndsWith: "/reject",
       },
     );
-    await expect(organizerExternalGroupPage.locator(".swal2-popup")).toContainText(
-      "Refund request rejected.",
-    );
-    await dismissAlert(organizerExternalGroupPage);
+    await dismissAlert(organizerExternalGroupPage, { message: "Refund request rejected." });
 
     // Verify the attendee sees the preserved rejection reason on the event.
     await openExternalEvent(member2Page, event);
@@ -194,8 +188,5 @@ const requestExternalRefund = async (page, event, reason) => {
       urlIncludes: `/event/${event.id}/refund-request`,
     },
   );
-  await expect(page.locator(".swal2-popup")).toContainText(
-    "Your refund request has been sent to the organizers.",
-  );
-  await dismissAlert(page);
+  await dismissAlert(page, { message: "Your refund request has been sent to the organizers." });
 };

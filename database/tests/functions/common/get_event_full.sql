@@ -1383,6 +1383,7 @@ select is(
         "attendee_count": 2,
         "banner_url": "https://example.com/event-banner.png",
         "capacity": 500,
+        "custom_logo_url": "https://example.com/event-logo.png",
         "description_short": "Annual Kubernetes conference",
         "ends_at": 1718557200,
         "event_series_id": "0c060000-0000-0000-0000-00000000000b",
@@ -1959,27 +1960,45 @@ select is(
     'Should order event organizers by snapshot order with nulls last'
 );
 
--- Should use group logo when event has no logo
+-- Should use group logo without an own logo when event has no logo
 select is(
-    (get_event_full(
+    jsonb_build_object(
+        'custom_logo_url', event_json->'custom_logo_url',
+        'logo_url', event_json->'logo_url'
+    ),
+    jsonb_build_object(
+        'custom_logo_url', null,
+        'logo_url', 'https://example.com/group-logo.png'
+    ),
+    'Should use group logo without an own logo when event has no logo'
+)
+from (
+    select get_event_full(
         :'communityID'::uuid,
         :'groupID'::uuid,
         :'eventGroupLogoFallbackID'::uuid
-    )::jsonb)->>'logo_url',
-    'https://example.com/group-logo.png',
-    'Should use group logo when event has no logo'
-);
+    )::jsonb as event_json
+) event_projection;
 
--- Should use community logo when event and group have no logo
+-- Should use community logo without an own logo when event and group have no logo
 select is(
-    (get_event_full(
+    jsonb_build_object(
+        'custom_logo_url', event_json->'custom_logo_url',
+        'logo_url', event_json->'logo_url'
+    ),
+    jsonb_build_object(
+        'custom_logo_url', null,
+        'logo_url', 'https://example.com/logo.png'
+    ),
+    'Should use community logo without an own logo when event and group have no logo'
+)
+from (
+    select get_event_full(
         :'communityID'::uuid,
         :'groupNoLogoID'::uuid,
         :'eventCommunityLogoFallbackID'::uuid
-    )::jsonb)->>'logo_url',
-    'https://example.com/logo.png',
-    'Should use community logo when event and group have no logo'
-);
+    )::jsonb as event_json
+) event_projection;
 
 -- Should return an empty organizers array when a legacy event has no snapshots
 select is(

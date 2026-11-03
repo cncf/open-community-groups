@@ -1,0 +1,10 @@
+- /children: deep-equal
+- region "Event summary":
+  - link "Platform Ops Meetup":
+    - /url: /e2e-test-community/group/test-group-alpha
+  - heading "Upcoming In-Person Event" [level=1]
+  - text: "/Capacity: \\d+ \\(Remaining: \\d+\\) in-person/"
+  - link "Meetup":
+    - /url: https://www.meetup.com/test-group/events/123456789/
+  - button "Attend event"
+  - group

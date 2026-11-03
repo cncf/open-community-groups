@@ -157,8 +157,6 @@ pub(crate) enum NotificationKind {
     EventExternalPaymentPending,
     /// Notification reminding an attendee that an external payment is due.
     EventExternalPaymentReminder,
-    /// Notification for an organizer-created event invitation.
-    EventInvitation,
     /// Notification for paid events configured by an organizer.
     EventPaidConfigured,
     /// Notification for an event published.
@@ -187,8 +185,6 @@ pub(crate) enum NotificationKind {
     EventWaitlistJoined,
     /// Notification for leaving an event waiting list.
     EventWaitlistLeft,
-    /// Notification for being promoted from an event waiting list.
-    EventWaitlistPromoted,
     /// Notification welcoming a new event attendee.
     EventWelcome,
     /// Notification for a custom group message.

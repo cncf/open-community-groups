@@ -1,5 +1,6 @@
 import { expect } from "@open-wc/testing";
 
+import "/static/js/common/media/image-field.js";
 import { applyCopiedEventDetails } from "/static/js/dashboard/group/event-selector/copy.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
@@ -32,6 +33,32 @@ describe("event selector copy", () => {
 
   afterEach(() => {
     resetDom();
+  });
+
+  it("copies only the source event's own logo", async () => {
+    // Render the logo field with a value from a previous copy.
+    document.body.innerHTML = `<image-field name="logo_url" value="https://example.com/previous.png"></image-field>`;
+    const logoField = document.querySelector('image-field[name="logo_url"]');
+    await logoField.updateComplete;
+
+    // Copy an event whose logo falls back to the group logo.
+    await applyCopiedEventDetails({
+      logo_url: "https://example.com/group-logo.png",
+      name: "Fallback logo event",
+    });
+
+    // Verify the fallback logo is not copied into the form.
+    expect(logoField.value).to.equal("");
+
+    // Copy an event with its own logo.
+    await applyCopiedEventDetails({
+      custom_logo_url: "https://example.com/event-logo.png",
+      logo_url: "https://example.com/event-logo.png",
+      name: "Own logo event",
+    });
+
+    // Verify the own logo is copied into the form.
+    expect(logoField.value).to.equal("https://example.com/event-logo.png");
   });
 
   it("replaces organizers with the source organizers still on the team", async () => {

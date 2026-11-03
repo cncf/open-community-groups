@@ -1,16 +1,42 @@
 import { expect, test } from "../../../fixtures.js";
-
-import { TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
-
-import { waitForActionResponse } from "../../../utils.js";
-
+import { restoreRow, snapshotRow } from "../../../database.js";
 import {
-  clearCommunityInvitation,
-  ensureGroupInvitation,
-  openUserDashboardPath,
-  resetCommunityInvitation,
-  resetGroupInvitation,
-} from "../helpers.js";
+  cleanupCommunityTeamInvitation,
+  countTeamInvitationAuditLogs,
+  setupCommunityTeamInvitation,
+  setupGroupTeamInvitation,
+} from "../../../data-graphs/invitations.js";
+import { TEST_COMMUNITY_IDS, TEST_COMMUNITY_TITLE, TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
+import { buildE2eUrl, confirmAlert, navigateToPath, waitForActionResponse } from "../../../utils.js";
+import { openUserDashboardPath } from "../helpers.js";
+
+/** Seeded pending community viewer invitation of pending1. */
+const PENDING1_COMMUNITY_INVITATION = {
+  communityId: TEST_COMMUNITY_IDS.community1,
+  role: "viewer",
+  userId: TEST_USER_IDS.pending1,
+};
+
+/** Seeded pending group events-manager invitation of pending1. */
+const PENDING1_GROUP_INVITATION = {
+  groupId: TEST_GROUP_IDS.community1.beta,
+  role: "events-manager",
+  userId: TEST_USER_IDS.pending1,
+};
+
+/** Owned pending community viewer invitation of pending2. */
+const PENDING2_COMMUNITY_INVITATION = {
+  communityId: TEST_COMMUNITY_IDS.community1,
+  role: "viewer",
+  userId: TEST_USER_IDS.pending2,
+};
+
+/** Seeded pending group viewer invitation of pending2. */
+const PENDING2_GROUP_INVITATION = {
+  groupId: TEST_GROUP_IDS.community1.alpha,
+  role: "viewer",
+  userId: TEST_USER_IDS.pending2,
+};
 
 test.describe("user dashboard invitations view", () => {
   test("empty state covers every invitation category", async ({ emptyUserPage }) => {
@@ -24,19 +50,7 @@ test.describe("user dashboard invitations view", () => {
     await expect(dashboardContent).toContainText("You don't have any pending event invitation.");
   });
 
-  test("invitations page shows pending community and group roles", async ({
-    adminCommunityPage,
-    pending1Page,
-  }) => {
-    // Reset seeded invitations before checking the pending roles.
-    await resetCommunityInvitation(adminCommunityPage, TEST_USER_IDS.pending1, "viewer");
-    await resetGroupInvitation(
-      adminCommunityPage,
-      TEST_GROUP_IDS.community1.beta,
-      TEST_USER_IDS.pending1,
-      "events-manager",
-    );
-
+  test("invitations page shows pending community and group roles", async ({ pending1Page }) => {
     // Open the user dashboard page.
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
 
@@ -64,19 +78,7 @@ test.describe("user dashboard invitations view", () => {
     await expect(groupRow.getByTitle("Reject")).toBeVisible();
   });
 
-  test("accepting pending invitations removes them from the user dashboard", async ({
-    adminCommunityPage,
-    pending1Page,
-  }) => {
-    // Reset seeded invitations before accepting them.
-    await resetCommunityInvitation(adminCommunityPage, TEST_USER_IDS.pending1, "viewer");
-    await resetGroupInvitation(
-      adminCommunityPage,
-      TEST_GROUP_IDS.community1.beta,
-      TEST_USER_IDS.pending1,
-      "events-manager",
-    );
-
+  test("accepting pending invitations removes them from the user dashboard", async ({ pending1Page }) => {
     // Open the user dashboard page.
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
 
@@ -89,6 +91,12 @@ test.describe("user dashboard invitations view", () => {
 
     // Verify accepting pending invitations removes them from the user dashboard.
     await expect(approveCommunityInvitationButton).toBeVisible();
+    const communityAuditFilter = {
+      action: "community_team_invitation_accepted",
+      communityId: PENDING1_COMMUNITY_INVITATION.communityId,
+      userId: PENDING1_COMMUNITY_INVITATION.userId,
+    };
+    const communityAuditCount = countTeamInvitationAuditLogs(communityAuditFilter);
 
     try {
       // Accept the community invitation.
@@ -97,9 +105,19 @@ test.describe("user dashboard invitations view", () => {
         urlEndsWith: "/accept",
         urlIncludes: "/dashboard/user/invitations/community/",
       });
+      expect(countTeamInvitationAuditLogs(communityAuditFilter)).toBe(communityAuditCount + 1);
 
-      // Reload the invited user dashboard.
-      await pending1Page.reload();
+      // Verify the accepted role opens the community dashboard with the community selected.
+      await navigateToPath(pending1Page, "/dashboard/community");
+      await expect(pending1Page).toHaveURL(buildE2eUrl("/dashboard/community"));
+      await expect(pending1Page.locator("community-selector")).toHaveAttribute(
+        "selected-community-id",
+        PENDING1_COMMUNITY_INVITATION.communityId,
+      );
+      await expect(pending1Page.locator("#community-selector-button")).toContainText(TEST_COMMUNITY_TITLE);
+
+      // Return to the invited user dashboard.
+      await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
 
       // Find the group invitation row.
       const groupInvitationRow = dashboardContent.locator("tr", {
@@ -123,34 +141,19 @@ test.describe("user dashboard invitations view", () => {
       await expect(dashboardContent.locator("tr", { hasText: "Inactive Local Chapter" })).toHaveCount(0);
     } finally {
       // Restore both pending invitations for later tests.
-      await resetCommunityInvitation(adminCommunityPage, TEST_USER_IDS.pending1, "viewer");
-      await resetGroupInvitation(
-        adminCommunityPage,
-        TEST_GROUP_IDS.community1.beta,
-        TEST_USER_IDS.pending1,
-        "events-manager",
-      );
-
-      // Open the user dashboard page.
-      await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
-      await expect(dashboardContent.locator("tr", { hasText: "e2e-test-community" })).toContainText("viewer");
-      await expect(dashboardContent.locator("tr", { hasText: "Inactive Local Chapter" })).toContainText(
-        "events-manager",
-      );
+      setupCommunityTeamInvitation(PENDING1_COMMUNITY_INVITATION);
+      setupGroupTeamInvitation(PENDING1_GROUP_INVITATION);
     }
   });
 
   test("rejecting a pending group invitation removes it from the user dashboard", async ({
-    organizerGroupPage,
     pending2Page,
   }) => {
-    // Ensure the seeded group invitation exists before rejecting it.
-    await ensureGroupInvitation(
-      organizerGroupPage,
-      TEST_GROUP_IDS.community1.alpha,
-      TEST_USER_IDS.pending2,
-      "viewer",
-    );
+    // Snapshot the seeded invitation, which the rejection deletes.
+    const invitationSnapshot = snapshotRow({
+      key: { group_id: PENDING2_GROUP_INVITATION.groupId, user_id: PENDING2_GROUP_INVITATION.userId },
+      table: "group_team",
+    });
 
     // Open the user dashboard page.
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending2Page);
@@ -168,14 +171,12 @@ test.describe("user dashboard invitations view", () => {
 
       // Click the reject group invitation button.
       await rejectGroupInvitationButton.click();
-      await expect(pending2Page.locator(".swal2-popup")).toContainText(
-        "Are you sure you would like to reject this invitation?",
-      );
 
       // Click Yes.
       await waitForActionResponse(
         pending2Page,
-        () => pending2Page.getByRole("button", { name: "Yes" }).click(),
+        () =>
+          confirmAlert(pending2Page, { message: "Are you sure you would like to reject this invitation?" }),
         {
           method: "PUT",
           urlEndsWith: "/reject",
@@ -189,22 +190,17 @@ test.describe("user dashboard invitations view", () => {
       // Verify the group invitation is gone while similarly named event rows may remain.
       await expect(rejectGroupInvitationButton).toHaveCount(0);
     } finally {
-      // Restore the seeded group invitation for later tests.
-      await ensureGroupInvitation(
-        organizerGroupPage,
-        TEST_GROUP_IDS.community1.alpha,
-        TEST_USER_IDS.pending2,
-        "viewer",
-      );
+      // Re-create the seeded group invitation with its original values.
+      setupGroupTeamInvitation(PENDING2_GROUP_INVITATION);
+      restoreRow(invitationSnapshot);
     }
   });
 
   test("rejecting a pending community invitation removes it from the user dashboard", async ({
-    adminCommunityPage,
     pending2Page,
   }) => {
-    // Reset a pending community invitation before rejecting it.
-    await resetCommunityInvitation(adminCommunityPage, TEST_USER_IDS.pending2, "viewer");
+    // Create a pending community invitation before rejecting it.
+    setupCommunityTeamInvitation(PENDING2_COMMUNITY_INVITATION);
 
     // Open the user dashboard page.
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending2Page);
@@ -223,14 +219,12 @@ test.describe("user dashboard invitations view", () => {
 
       // Click the reject community invitation button.
       await rejectCommunityInvitationButton.click();
-      await expect(pending2Page.locator(".swal2-popup")).toContainText(
-        "Are you sure you would like to reject this invitation?",
-      );
 
       // Click Yes.
       await waitForActionResponse(
         pending2Page,
-        () => pending2Page.getByRole("button", { name: "Yes" }).click(),
+        () =>
+          confirmAlert(pending2Page, { message: "Are you sure you would like to reject this invitation?" }),
         {
           method: "PUT",
           urlEndsWith: "/reject",
@@ -244,8 +238,8 @@ test.describe("user dashboard invitations view", () => {
       // Assert how many matching elements are shown.
       await expect(dashboardContent.locator("tr", { hasText: "e2e-test-community" })).toHaveCount(0);
     } finally {
-      // Clear the rejected community invitation state.
-      await clearCommunityInvitation(adminCommunityPage, TEST_USER_IDS.pending2);
+      // Remove the owned community invitation if the rejection did not.
+      cleanupCommunityTeamInvitation(PENDING2_COMMUNITY_INVITATION);
     }
   });
 });

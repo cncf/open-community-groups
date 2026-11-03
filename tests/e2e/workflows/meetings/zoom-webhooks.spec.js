@@ -1,8 +1,15 @@
 import { expect, test } from "../../fixtures.js";
-import { queryE2eDatabase, queryE2eDatabaseRows } from "../../database.js";
-import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_MEETING_EVENTS, TEST_MEETINGS } from "../../seed.js";
-import { navigateToEvent, navigateToPath } from "../../utils.js";
 import {
+  queryE2eDatabase,
+  queryE2eDatabaseRows,
+  restoreRow,
+  snapshotRow,
+  sqlString,
+} from "../../database.js";
+import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_MEETING_EVENTS, TEST_MEETINGS } from "../../seed.js";
+import { navigateToEvent } from "../../utils.js";
+import {
+  nowInSeconds,
   postZoom,
   signZoom,
   WEBHOOK_ENDPOINTS,
@@ -53,8 +60,9 @@ test.describe("Zoom meeting webhooks", () => {
       },
     };
 
-    // Reset the recording fixture before posting webhooks.
-    resetZoomRecordingFixture();
+    // Snapshot the seeded meeting and event rows the webhooks and the editor save change.
+    const eventSnapshot = snapshotRow({ key: { event_id: ZOOM_RECORDING_EVENT.id }, table: "event" });
+    const meetingSnapshot = snapshotZoomRecordingMeeting();
 
     try {
       // Deliver the signed recording webhook and verify the raw provider URL is persisted.
@@ -87,9 +95,9 @@ test.describe("Zoom meeting webhooks", () => {
         .locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]')
         .fill(ZOOM_RECORDING_MEETING.webhookRecordingUrl);
       const publishRecordingToggle = onlineEventDetails.getByLabel("Publish recording publicly");
-      if (!(await publishRecordingToggle.isChecked())) {
-        await onlineEventDetails.locator("label", { hasText: "Publish recording publicly" }).click();
-      }
+      await expect(publishRecordingToggle).not.toBeChecked();
+      await onlineEventDetails.locator("label", { hasText: "Publish recording publicly" }).click();
+      await expect(publishRecordingToggle).toBeChecked();
       await waitForEventEditorAfterSave(
         organizerGroupPage,
         () => organizerGroupPage.locator("#update-event-button").click(),
@@ -108,7 +116,8 @@ test.describe("Zoom meeting webhooks", () => {
       );
     } finally {
       // Restore the seeded recording fixture.
-      resetZoomRecordingFixture();
+      restoreZoomRecordingMeeting(meetingSnapshot);
+      restoreRow(eventSnapshot);
     }
   });
 
@@ -127,7 +136,7 @@ test.describe("Zoom meeting webhooks", () => {
   test("rejects malformed JSON", async ({ request }) => {
     // Sign the exact malformed bytes so parsing, not authentication, rejects the request.
     const body = "{";
-    const timestamp = Math.floor(Date.now() / 1000);
+    const timestamp = nowInSeconds();
     const response = await request.post(WEBHOOK_ENDPOINTS.zoom, {
       data: Buffer.from(body),
       headers: {
@@ -196,19 +205,26 @@ const readRecordingUrls = () => {
   return rows.map(([recordingUrl]) => recordingUrl);
 };
 
-/** Resets meeting and event recording fields for the Zoom fixture. */
-const resetZoomRecordingFixture = () => {
+/**
+ * Puts back the recording fields of the Zoom fixture meeting.
+ * @param {string} meetingJson - Row returned by `snapshotZoomRecordingMeeting`.
+ */
+const restoreZoomRecordingMeeting = (meetingJson) => {
   queryE2eDatabase(`
-    update meeting
+    update meeting m
     set
-      recording_urls = '{}'::text[],
-      updated_at = current_timestamp
-    where meeting_id = '${ZOOM_RECORDING_MEETING.id}';
-
-    update event
-    set
-      meeting_recording_published = false,
-      meeting_recording_url = null
-    where event_id = '${ZOOM_RECORDING_EVENT.id}';
+      recording_urls = s.recording_urls,
+      updated_at = s.updated_at
+    from jsonb_populate_record(null::meeting, ${sqlString(meetingJson)}::jsonb) s
+    where m.meeting_id = '${ZOOM_RECORDING_MEETING.id}';
   `);
 };
+
+/**
+ * Captures the Zoom fixture meeting row.
+ * @returns {string} The `meeting` row as JSON.
+ */
+const snapshotZoomRecordingMeeting = () =>
+  queryE2eDatabase(
+    `select to_jsonb(m)::text from meeting m where meeting_id = '${ZOOM_RECORDING_MEETING.id}'`,
+  );

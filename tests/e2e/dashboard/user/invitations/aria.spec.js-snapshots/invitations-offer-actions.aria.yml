@@ -1,0 +1,6 @@
+- group:
+  - menu:
+    - listitem:
+      - menuitem "Claim offer"
+    - listitem:
+      - menuitem "Decline offer"

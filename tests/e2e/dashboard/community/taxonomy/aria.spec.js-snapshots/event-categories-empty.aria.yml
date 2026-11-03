@@ -1,0 +1,14 @@
+- text: Event Categories
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=event-categories-event-taxonomy
+- text: 0 categories
+- button "Add Event Category"
+- table:
+  - rowgroup:
+    - row "Name Events Actions":
+      - columnheader "Name"
+      - columnheader "Events"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No event categories found for this community yet.":
+      - cell "No event categories found for this community yet."

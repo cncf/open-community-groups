@@ -268,7 +268,7 @@
                   </div>
                   {# End Event category -#}
 
-                  {% let logo_value -%}value="{{ event.logo_url }}"{%- endlet %}
+                  {% let logo_value -%}value="{%- if let Some(custom_logo_url) = &event.custom_logo_url -%}{{ custom_logo_url }}{%- endif -%}"{%- endlet %}
                 {% let banner_value -%}value="{%- if let Some(banner_url) = &event.banner_url -%}{{ banner_url }}{%- endif -%}"{%- endlet %}
               {% let banner_mobile_value -%}value="{%- if let Some(banner_mobile_url) = &event.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endlet %}
 

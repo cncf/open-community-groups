@@ -1,6 +1,9 @@
 import { expect } from "../../../fixtures.js";
 
-import { openPaymentsSection } from "./helpers.js";
+import { TEST_EVENT_CATEGORY_IDS } from "../../../seed.js";
+import { confirmAlert, futureDate, navigateToPath, selectTimezone } from "../../../utils.js";
+import { fillMarkdownEditor } from "../../form-helpers.js";
+import { openPaymentsSection, waitForEventEditorAfterSave } from "./helpers.js";
 
 /**
  * Adds a session through the session modal and assigns the given event labels.
@@ -90,11 +93,14 @@ export const editTicketType = async (page, currentTitle, values) => {
 export const enableAutomaticMeetingCreation = async (page) => {
   const onlineEventDetails = page.locator("online-event-details");
   const automaticModeInput = onlineEventDetails.locator('input[type="radio"][value="automatic"]');
+  const automaticModeCard = onlineEventDetails.locator('input[type="radio"][value="automatic"] + div');
 
   await expectAutomaticMeetingControls(page);
   await expect(automaticModeInput).toBeEnabled();
 
-  await automaticModeInput.check({ force: true });
+  // Click the visible mode card; the sr-only radio sits outside its label's hit area.
+  await automaticModeCard.click();
+  await expect(automaticModeInput).toBeChecked();
 
   await expect(onlineEventDetails.locator('input[type="hidden"][name="meeting_requested"]')).toHaveValue(
     "true",
@@ -139,6 +145,53 @@ export const expectSessionCardLabels = async (page, sessionName, labelNames) => 
   await expect(labelNamesLocator).toHaveText(labelNames);
 };
 
+/**
+ * Fills the minimum add-event fields required to create a future virtual draft.
+ * @param {import("@playwright/test").Page} page - Playwright page with the add-event form open.
+ * @param {string} eventName - Event name.
+ * @param {{ additionalOccurrences?: number, days: number, meetingUrl?: string }} options - Start
+ *   offset, weekly repeats and meeting link.
+ * @returns {Promise<void>}
+ */
+export const fillVirtualEventDraft = async (
+  page,
+  eventName,
+  { additionalOccurrences = 0, days, meetingUrl = "https://meet.example.com/e2e-virtual-event" },
+) => {
+  // Fill the event details.
+  await page.locator("#name").fill(eventName);
+  await page.locator("#kind_id").selectOption("virtual");
+  await page.locator("#category_id").selectOption(TEST_EVENT_CATEGORY_IDS.general);
+  await page.locator("#description_short").fill("A temporary virtual event from the e2e suite.");
+  await fillMarkdownEditor(page, "description", "A temporary virtual event created by the e2e suite.");
+
+  // Fill the schedule and virtual meeting link.
+  await page.locator('button[data-section="date-venue"]').click();
+  await expect(page.locator('button[data-section="date-venue"]')).toHaveAttribute("data-active", "true");
+  await selectTimezone(page, "UTC");
+  await page.locator("#starts_at").fill(futureDate({ days, hour: 10 }));
+  await page.locator("#ends_at").fill(futureDate({ days, hour: 12 }));
+  await page.locator("#meeting_join_url").fill(meetingUrl);
+
+  // Repeat the event weekly when a series is requested.
+  if (additionalOccurrences > 0) {
+    await page.locator("#recurrence_pattern").selectOption("weekly");
+    await expect(page.locator("#recurrence-additional-occurrences-container")).toBeVisible();
+    await page.locator("#recurrence_additional_occurrences").fill(String(additionalOccurrences));
+  }
+};
+
+/**
+ * Opens the add-event form from the group events dashboard.
+ * @param {import("@playwright/test").Page} page - Playwright page with a selected group.
+ * @returns {Promise<void>}
+ */
+export const openAddEventForm = async (page) => {
+  await navigateToPath(page, "/dashboard/group?tab=events");
+  await page.locator("#dashboard-content").getByRole("button", { name: "Add Event" }).click();
+  await expect(page.locator("#name")).toBeVisible();
+};
+
 /** Opens the event details section and waits until it is active. */
 export const openDetailsSection = async (page) => {
   const detailsSectionButton = page.locator('button[data-section="details"]');
@@ -164,6 +217,25 @@ export const openSessionsSection = async (page) => {
   await scrollSectionButtonIntoView(sessionsSectionButton);
   await sessionsSectionButton.click({ force: true });
   await expect(sessionsSectionButton).toHaveAttribute("data-active", "true");
+};
+
+/**
+ * Publishes the current event and waits for the reloaded editor.
+ * @param {import("@playwright/test").Page} page - Playwright page with the event editor open.
+ * @param {string} eventId - Event id to publish.
+ * @returns {Promise<void>}
+ */
+export const publishCurrentEvent = async (page, eventId) => {
+  await page.locator("#publish-event-button").click();
+  await waitForEventEditorAfterSave(
+    page,
+    () => confirmAlert(page, { message: "Are you sure you wish to publish this event?" }),
+    {
+      eventId,
+      method: "PUT",
+      pathname: `/dashboard/group/events/${eventId}/publish`,
+    },
+  );
 };
 
 /** Removes a discount code from the ticketing summary. */

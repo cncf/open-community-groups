@@ -1,0 +1,8 @@
+- /children: deep-equal
+- button "Open filters"
+- textbox "Search events"
+- button "Search"
+- text: /\d+ - \d+ of \d+ results Sort by/
+- combobox "Sort by":
+  - option "Date ↑" [selected]
+  - option "Date ↓"

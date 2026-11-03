@@ -899,26 +899,6 @@ fn test_delivery_worker_prepare_content_event_custom_legacy_template_data() {
 }
 
 #[test]
-fn test_delivery_worker_prepare_content_event_invitation() {
-    // Prepare content
-    let (subject, body) = render(
-        NotificationKind::EventInvitation,
-        sample_event_invitation_template_data(),
-    );
-
-    // Check content matches expectations
-    assert_eq!(
-        subject,
-        "[Notification Group] You have been invited to an event"
-    );
-    assert!(body.contains("Invitation Event"));
-    assert!(body.contains("Review invitation"));
-    assert!(body.contains("LF SSO"));
-    assert!(body.contains("primary email configured on your LF account"));
-    assert!(body.contains("https://example.test/dashboard/user?tab=invitations"));
-}
-
-#[test]
 fn test_delivery_worker_prepare_content_event_paid_configured_plural() {
     // Prepare an aggregate paid event notification
     let (subject, body) = render(
@@ -1400,51 +1380,6 @@ fn test_delivery_worker_prepare_content_event_waitlist_left() {
     // Check content matches expectations
     assert_eq!(subject, "[Notification Group] You left the waiting list");
     assert!(body.contains("You have left the waiting list"));
-    assert!(body.contains("Waitlist Event"));
-}
-
-#[test]
-fn test_delivery_worker_prepare_content_event_waitlist_promoted() {
-    // Prepare content
-    let (subject, body) = render(
-        NotificationKind::EventWaitlistPromoted,
-        sample_event_waitlist_template_data(),
-    );
-
-    // Check content matches expectations
-    assert_eq!(
-        subject,
-        "[Notification Group] You moved off the waiting list"
-    );
-    assert!(body.contains("You are now registered"));
-    assert!(body.contains("View event"));
-    assert!(!body.contains("Open My Events"));
-    assert!(body.contains("Use the waiting room display name from your ticket."));
-    assert!(body.contains("Please find attached an .ics file containing the event details."));
-    assert!(body.contains("Waitlist Event"));
-}
-
-#[test]
-fn test_delivery_worker_prepare_content_event_waitlist_promoted_with_registration_questions() {
-    // Prepare content
-    let (subject, body) = render(
-        NotificationKind::EventWaitlistPromoted,
-        sample_event_waitlist_template_data_with_registration_questions(),
-    );
-
-    // Check content matches expectations
-    assert_eq!(
-        subject,
-        "[Notification Group] You moved off the waiting list"
-    );
-    assert!(body.contains("Open My Events"));
-    assert!(body.contains("https://example.test/dashboard/user?tab=events"));
-    assert!(!body.contains(
-        "https://example.test/test-community/group/notification-group/event/waitlist-event"
-    ));
-    assert!(!body.contains("https://example.test/waitlist-event/live"));
-    assert!(!body.contains("Use the waiting room display name from your ticket."));
-    assert!(!body.contains("Please find attached an .ics file containing the event details."));
     assert!(body.contains("Waitlist Event"));
 }
 
@@ -2036,20 +1971,6 @@ fn sample_event_custom_legacy_template_data() -> serde_json::Value {
     payload
 }
 
-/// Sample template payload for event invitation notifications.
-fn sample_event_invitation_template_data() -> serde_json::Value {
-    let mut event = sample_event_json("Invitation Event", "invitation-event", "virtual");
-    remove_keys(&mut event, &["starts_at", "venue_name"]);
-    json!({
-        "event": event,
-        "has_registration_questions": false,
-        "link": "https://example.test/dashboard/user?tab=invitations",
-        "theme": {
-            "primary_color": "#000000"
-        }
-    })
-}
-
 /// Sample event JSON shared by the event notification payloads, as stored by
 /// the database: an in-person or hybrid event in UTC with no waitlist.
 fn sample_event_json(name: &str, slug: &str, kind: &str) -> serde_json::Value {
@@ -2238,13 +2159,6 @@ fn sample_event_waitlist_template_data() -> serde_json::Value {
             "primary_color": "#000000"
         }
     })
-}
-
-/// Sample template payload for event waitlist notifications with registration questions.
-fn sample_event_waitlist_template_data_with_registration_questions() -> serde_json::Value {
-    let mut payload = sample_event_waitlist_template_data();
-    payload["has_registration_questions"] = json!(true);
-    payload
 }
 
 /// Sample template payload for event welcome notifications.

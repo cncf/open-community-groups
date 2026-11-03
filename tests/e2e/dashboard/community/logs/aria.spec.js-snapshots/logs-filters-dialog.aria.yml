@@ -1,0 +1,43 @@
+- dialog "Filter logs":
+  - heading "Filter logs" [level=3]
+  - button "Close modal"
+  - text: Action
+  - combobox "Action":
+    - option "All actions"
+    - option "Community custom notification sent"
+    - option "Community team invitation accepted"
+    - option "Community team invitation rejected"
+    - option "Community team member added"
+    - option "Community team member removed"
+    - option "Community team member role updated"
+    - option "Community updated"
+    - option "Event category added"
+    - option "Event category deleted"
+    - option "Event category updated"
+    - option "Group activated"
+    - option "Group added" [selected]
+    - option "Group category added"
+    - option "Group category deleted"
+    - option "Group category updated"
+    - option "Group deactivated"
+    - option "Group deleted"
+    - option "Group external payments updated"
+    - option "Group payment recipient updated"
+    - option "Group updated"
+    - option "Region added"
+    - option "Region deleted"
+    - option "Region updated"
+  - text: Actor
+  - textbox "Actor":
+    - /placeholder: Filter by username
+  - text: From
+  - textbox "From"
+  - text: To
+  - textbox "To"
+  - text: Sort by
+  - combobox "Sort by":
+    - option "Newest first" [selected]
+    - option "Oldest first"
+  - link "Reset":
+    - /url: /dashboard/community?tab=logs
+  - button "Apply"

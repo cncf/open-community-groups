@@ -1,0 +1,5 @@
+- list:
+  - listitem:
+    - button "Activate"
+  - listitem:
+    - button "Delete"

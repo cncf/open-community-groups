@@ -15,14 +15,13 @@ import {
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
 } from "../../seed.js";
+import { buildE2eUrl, getSectionLink, navigateToCommunityHome, navigateToGroup } from "../../utils.js";
 import {
-  buildE2eUrl,
-  getSectionLink,
-  getStatsContainer,
-  getStatValue,
-  navigateToCommunityHome,
-  navigateToGroup,
-} from "../../utils.js";
+  expectLatestGroupsSection,
+  expectNumericStats,
+  expectPaidEventPriceBadges,
+  expectUpcomingEventSections,
+} from "../common/helpers.js";
 
 const EXPLORE_LINK_VIEWPORTS = [
   { name: "desktop", width: 1280 },
@@ -219,85 +218,20 @@ test.describe("community home page", () => {
       expect(itemsAttr).toContain(TEST_COMMUNITY_TITLE);
     });
 
-    test("upcoming in-person events section renders with title", async ({ page }) => {
-      // Verify the in-person events section heading is present.
-      await expect(page.getByText("upcoming in-person events")).toBeVisible();
-    });
-
-    test("upcoming virtual events section renders with title", async ({ page }) => {
-      // Verify the virtual events section heading is present.
-      await expect(page.getByText("upcoming virtual events")).toBeVisible();
-    });
-
-    test("upcoming in-person events shows published event titles", async ({ page }) => {
-      // Verify the in-person events section shows published events.
-      await expect(page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true })).toBeVisible();
-
-      // Verify another seeded in-person event is shown.
-      await expect(page.getByText(TEST_EVENT_NAMES.gamma[0], { exact: true })).toBeVisible();
-    });
-
-    test("upcoming virtual events shows seeded event titles", async ({ page }) => {
-      // Verify the virtual events section shows published events.
-      await expect(page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true })).toBeVisible();
-
-      // Verify additional seeded virtual events are shown.
-      await expect(page.getByText(TEST_EVENT_NAMES.beta[1], { exact: true })).toBeVisible();
-      await expect(page.getByText(TEST_EVENT_NAMES.gamma[1], { exact: true })).toBeVisible();
-    });
-
-    test("paid seeded event cards show price badges", async ({ page }) => {
-      // Target paid in-person and hybrid event cards.
-      const inPersonCard = page.getByRole("link").filter({ hasText: TEST_EVENT_NAMES.gamma[0] }).first();
-      const hybridCard = page.getByRole("link").filter({ hasText: TEST_EVENT_NAMES.beta[2] }).first();
-
-      // Verify paid event cards show their starting prices.
-      await expect(inPersonCard).toContainText(/From (?:US)?\$20\.00/);
-      await expect(hybridCard).toContainText(/From (?:US)?\$15\.00/);
-    });
-
-    test("latest groups section renders heading and explore link", async ({ page }) => {
-      // Verify the latest groups section exposes its explore link.
-      await expect(page.getByText("Latest groups added")).toBeVisible();
-
-      // Target the latest groups explore links.
-      const exploreGroupsLinks = page.getByRole("link", {
-        name: "Explore all groups",
+    test("listing sections show seeded events, prices, and groups", async ({ page }) => {
+      // Verify the shared public listing sections render seeded content.
+      await expectUpcomingEventSections(page, {
+        inPerson: [TEST_EVENT_NAMES.alpha[0], TEST_EVENT_NAMES.gamma[0]],
+        virtual: [TEST_EVENT_NAMES.alpha[1], TEST_EVENT_NAMES.beta[1], TEST_EVENT_NAMES.gamma[1]],
       });
-      await expect(exploreGroupsLinks.first()).toBeVisible();
-    });
-
-    test("latest groups section contains seeded groups with correct links", async ({ page }) => {
-      // Locate the latest groups section before checking card links.
-      const groupsSection = page
-        .getByText("Latest groups added", { exact: true })
-        .locator("..")
-        .locator("..");
-
-      // Define each expected group card and public slug.
-      const groupData = [
-        {
-          name: TEST_GROUP_NAMES.alpha,
-          slug: TEST_GROUP_SLUGS.community1.alpha,
-        },
-        { name: TEST_GROUP_NAMES.beta, slug: TEST_GROUP_SLUGS.community1.beta },
-        {
-          name: TEST_GROUP_NAMES.gamma,
-          slug: TEST_GROUP_SLUGS.community1.gamma,
-        },
-      ];
-
-      // Assert each expected case.
-      for (const { name, slug } of groupData) {
-        // Target the current group card inside the latest groups section.
-        const groupCard = groupsSection
-          .locator(`a[href*="/${TEST_COMMUNITY_NAME}/group/${slug}"]`)
-          .filter({ hasText: name });
-
-        // Verify the current group card links to its public group page.
-        await expect(groupCard).toBeVisible();
-        await expect(groupCard).toHaveAttribute("href", new RegExp(`/${TEST_COMMUNITY_NAME}/group/${slug}`));
-      }
+      await expectPaidEventPriceBadges(page);
+      await expectLatestGroupsSection(
+        page,
+        ["alpha", "beta", "gamma"].map((key) => ({
+          href: `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1[key]}`,
+          name: TEST_GROUP_NAMES[key],
+        })),
+      );
     });
   });
 
@@ -336,21 +270,9 @@ test.describe("community home page", () => {
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
     });
 
-    test("stats strip displays non-empty numeric values", async ({ page }) => {
-      // Target the desktop community stats strip.
-      const desktopStats = getStatsContainer(page, "community", "desktop");
-      const statLabels = ["Groups", "Members", "Events", "Attendees"];
-
-      // Assert each expected case.
-      for (const label of statLabels) {
-        // Target the current desktop stat value.
-        const valueElement = getStatValue(desktopStats, label);
-
-        // Verify the current desktop stat has a numeric value.
-        await expect(valueElement).toBeVisible();
-        const text = await valueElement.textContent();
-        expect(text?.trim()).toMatch(/^\d[\d,]*$/);
-      }
+    test("stats strip displays numeric values at lg breakpoint", async ({ page }) => {
+      // Verify the desktop stats strip shows a number for every stat.
+      await expectNumericStats(page, "community", "desktop");
     });
 
     test("advertisement banner links to the seeded destination", async ({ page }) => {
@@ -431,12 +353,6 @@ test.describe("community home page", () => {
       await expect(advertisementBanner).toBeAttached();
       await expect(advertisementBanner).toBeHidden();
     });
-
-    test("stats strip shows desktop layout at lg breakpoint", async ({ page }) => {
-      // Verify the desktop stats strip is visible at the large breakpoint.
-      const desktopStats = getStatsContainer(page, "community", "desktop");
-      await expect(desktopStats).toBeVisible();
-    });
   });
 
   test.describe("mobile viewport @mobile", () => {
@@ -445,10 +361,9 @@ test.describe("community home page", () => {
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
     });
 
-    test("stats strip shows mobile layout below lg breakpoint", async ({ page }) => {
-      // Verify the mobile stats strip is visible below the large breakpoint.
-      const mobileStats = getStatsContainer(page, "community", "mobile");
-      await expect(mobileStats).toBeVisible();
+    test("stats strip displays numeric values below lg breakpoint", async ({ page }) => {
+      // Verify the mobile stats strip shows a number for every stat.
+      await expectNumericStats(page, "community", "mobile");
     });
   });
 });

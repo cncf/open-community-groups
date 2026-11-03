@@ -4,6 +4,7 @@
 //! and static file handling.
 
 mod dashboard;
+mod route_hits;
 
 #[cfg(test)]
 mod tests;
@@ -13,10 +14,10 @@ use std::sync::Arc;
 use anyhow::Result;
 use axum::{
     Router,
-    extract::{FromRef, Request, State as AxumState},
+    extract::{FromRef, MatchedPath, Request, State as AxumState},
     http::{
         HeaderName, HeaderValue, Method, StatusCode, Uri,
-        header::{CACHE_CONTROL, CONTENT_TYPE, HOST, ORIGIN, REFERER, VARY},
+        header::{CACHE_CONTROL, CONTENT_TYPE, HOST, ORIGIN, REFERER, SET_COOKIE, VARY},
     },
     middleware::{self, Next},
     response::{IntoResponse, Redirect},
@@ -32,7 +33,7 @@ use tower_http::{
     set_header::SetResponseHeaderLayer,
     trace::TraceLayer,
 };
-use tracing::{error, info_span, instrument};
+use tracing::{Span, debug, error, info_span, instrument};
 
 use crate::{
     activity_tracker::DynActivityTracker,
@@ -107,6 +108,9 @@ pub(crate) const PUBLIC_SHARED_CACHE_HEADERS: [(HeaderName, &str); 2] = [
 
 /// Vary header value for public shared-cache responses.
 pub(crate) const PUBLIC_SHARED_CACHE_VARY: &str = "x-ocg-commit-sha, hx-request, x-ocg-fetch";
+
+/// Matched path recorded for requests served by the router fallback.
+const ROUTE_FALLBACK_PATH: &str = "fallback";
 
 /// Path prefix of embedded static assets.
 const STATIC_PATH_PREFIX: &str = "/static/";
@@ -280,6 +284,9 @@ pub(crate) async fn setup(
             login_url = LOG_IN_URL,
             redirect_field = "next_url"
         ))
+        .route_layer(middleware::from_fn(
+            route_hits::mark_log_in_guard_rejections,
+        ))
         // Global site routes (no community prefix)
         .route("/", get(site::home::page))
         .route(
@@ -417,11 +424,16 @@ pub(crate) async fn setup(
     router = router
         .layer(MessagesManagerLayer)
         .layer(auth_layer)
+        .layer(middleware::from_fn(strip_cookies_from_public_responses))
         .layer(
             // Assign a request id, open the request span carrying it, and echo it in the response
             ServiceBuilder::new()
                 .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-                .layer(TraceLayer::new_for_http().make_span_with(make_request_span))
+                .layer(
+                    TraceLayer::new_for_http()
+                        .make_span_with(make_request_span)
+                        .on_response(route_hits::RouteHitLog),
+                )
                 .layer(PropagateRequestIdLayer::x_request_id()),
         )
         .route("/static/{*file}", get(static_handler))
@@ -674,6 +686,40 @@ fn stale_client_refresh_response(is_htmx: bool, is_ocg_fetch: bool) -> axum::res
     response
 }
 
+/// Middleware that removes every `Set-Cookie` header from public responses.
+///
+/// Shared caches may store responses whose `Cache-Control` has the `public`
+/// directive, so they must never carry a cookie. It wraps the session layer to
+/// also drop the removal cookie written for an unknown session ID.
+async fn strip_cookies_from_public_responses(
+    request: Request,
+    next: Next,
+) -> axum::response::Response {
+    // Run the inner layers and handler
+    let mut response = next.run(request).await;
+
+    // Keep cookies on responses shared caches must not store
+    let is_public = response
+        .headers()
+        .get_all(CACHE_CONTROL)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .flat_map(|value| value.split(','))
+        .any(|directive| directive.trim().eq_ignore_ascii_case("public"));
+    if !is_public {
+        return response;
+    }
+
+    // Strip cookies from the public response
+    let cookies = response.headers().get_all(SET_COOKIE).iter().count();
+    if cookies > 0 {
+        response.headers_mut().remove(SET_COOKIE);
+        debug!(cookies, "stripped set-cookie headers from public response");
+    }
+
+    response
+}
+
 // Helpers.
 
 /// Returns the `serde_qs` configuration for query string parsing.
@@ -682,7 +728,7 @@ pub(crate) fn serde_qs_config() -> serde_qs::Config {
 }
 
 /// Opens the request span, carrying the request id so downstream log lines can be correlated.
-fn make_request_span(request: &Request) -> tracing::Span {
+fn make_request_span(request: &Request) -> Span {
     let request_id = request
         .headers()
         .get("x-request-id")
@@ -694,6 +740,16 @@ fn make_request_span(request: &Request) -> tracing::Span {
         method = %request.method(),
         uri = %request.uri(),
         version = ?request.version(),
+        matched_path = request_matched_path(request),
         request_id,
     )
+}
+
+/// Returns the route template matched by the request, or `fallback` when no
+/// route matched.
+fn request_matched_path(request: &Request) -> &str {
+    request
+        .extensions()
+        .get::<MatchedPath>()
+        .map_or(ROUTE_FALLBACK_PATH, MatchedPath::as_str)
 }

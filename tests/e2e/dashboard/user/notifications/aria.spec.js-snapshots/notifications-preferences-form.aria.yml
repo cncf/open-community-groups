@@ -1,0 +1,21 @@
+- group "Events and groups":
+  - text: ""
+  - checkbox "New events" [checked]
+  - text: New events
+  - paragraph: When a group you belong to or help organize publishes a new event or event series, including events it co-hosts with other groups.
+  - checkbox "Group announcements" [checked]
+  - text: Group announcements
+  - paragraph: Messages organizers send to members of a group you belong to or help organize.
+  - checkbox "Event reminders" [checked]
+  - text: Event reminders
+  - paragraph: /A reminder about \d+ hours before an event you're attending or speaking at, if the organizers turned reminders on\./
+  - checkbox "Event surveys" [checked]
+  - text: Event surveys
+  - paragraph: When the organizers of an event you're registered for open a feedback survey after it ends.
+  - checkbox "Messages from event organizers" [checked]
+  - text: Messages from event organizers
+  - paragraph: Updates organizers send to attendees of events you're registered for.
+  - checkbox "Badges" [checked]
+  - text: Badges
+  - paragraph: When a group awards you a badge or revokes one. This only controls the email; awards and revocations still take effect in your dashboard.
+- button "Save"

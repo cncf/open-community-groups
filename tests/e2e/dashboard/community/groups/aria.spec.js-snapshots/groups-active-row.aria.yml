@@ -1,0 +1,10 @@
+- 'row /Open group dashboard: E2E temporary group [0-9a-f]{8} - E2E temporary group category [0-9a-f]{8} Edit group: E2E temporary group [0-9a-f]{8} View group page: E2E temporary group [0-9a-f]{8} Open actions menu for group E2E temporary group [0-9a-f]{8}/':
+  - 'rowheader /Open group dashboard: E2E temporary group [0-9a-f]{8}/':
+    - 'button /Open group dashboard: E2E temporary group [0-9a-f]{8}/'
+  - cell "-"
+  - cell /E2E temporary group category [0-9a-f]{8}/
+  - 'cell /Edit group: E2E temporary group [0-9a-f]{8} View group page: E2E temporary group [0-9a-f]{8} Open actions menu for group E2E temporary group [0-9a-f]{8}/':
+    - 'button /Edit group: E2E temporary group [0-9a-f]{8}/'
+    - 'link /View group page: E2E temporary group [0-9a-f]{8}/':
+      - /url: /\/e2e-aria-community-[0-9a-f]{12}\/group\/e2e-temporary-group-[0-9a-f]{12}/
+    - button /Open actions menu for group E2E temporary group [0-9a-f]{8}/

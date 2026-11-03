@@ -1,0 +1,14 @@
+- dialog "Send email":
+  - heading "Send email" [level=3]
+  - button "Close modal"
+  - paragraph: This email will be sent to all group members.
+  - text: Subject *
+  - textbox "Subject *":
+    - /placeholder: Enter notification subject
+    - text: /E2E temporary group [0-9a-f]{8}/
+  - text: Body *
+  - textbox "Body *":
+    - /placeholder: Enter notification body (plain text only)
+  - paragraph: Plain text only. No HTML formatting.
+  - button "Cancel"
+  - button "Send email"

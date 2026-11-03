@@ -22,6 +22,10 @@
   <script type="module" src="/static/js/dashboard/team-role-form.js"></script>
 {% endblock scripts -%}
 
+{# Every menu section is desktop only, so mobile gets no drawer trigger -#}
+{% block mobile_menu_button -%}
+{% endblock mobile_menu_button -%}
+
 {% block menu -%}
   {% call dashboard::dashboard_menu_shell("Community Dashboard") -%}
   {# Community selector -#}

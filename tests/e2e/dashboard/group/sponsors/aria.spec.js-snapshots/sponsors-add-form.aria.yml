@@ -1,0 +1,21 @@
+- text: Sponsor Details
+- link "Open documentation":
+  - /url: /docs#/guides/group-dashboard?id=sponsors-reusable-profiles
+- paragraph: Please provide the sponsor information.
+- text: Name *
+- textbox "Name *"
+- paragraph: /Sponsor's name\. Max \d+ characters\./
+- text: Logo *
+- button "Logo * Click or drop image":
+  - paragraph: Click or drop image
+- paragraph: "/Images must be \\d+ x \\d+ px \\(square\\)\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Logo"
+- button "Remove image" [disabled]
+- text: Website
+- textbox "Website":
+  - /placeholder: https://example.com
+- checkbox "Visible on group page" [checked]
+- text: Visible on group page
+- paragraph: Only featured sponsors appear in the public group page sponsors section. All sponsors remain available for events.
+- button "Cancel"
+- button "Add Sponsor"

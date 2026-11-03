@@ -24,7 +24,6 @@ import {
 import { closeRefundModal, openRefundModal } from "/static/js/event/attendance-view.js";
 import {
   dismissQuestionAnswers,
-  isCompletingRegistrationQuestions,
   isWaitlistJoinAction,
   requestQuestionAnswers,
   shouldCollectQuestionAnswers,
@@ -76,25 +75,9 @@ export const handleAttendanceClick = (event) => {
   }
 
   const meta = getAttendanceMeta(container);
-  const completingRegistrationQuestions = isCompletingRegistrationQuestions(attendButton);
-
-  // Promoted attendees answer questions before completing their reserved place
-  if (
-    attendButton instanceof HTMLButtonElement &&
-    shouldCollectQuestionAnswers(container) &&
-    completingRegistrationQuestions
-  ) {
-    event.preventDefault();
-    requestQuestionAnswers(container, QUESTIONS_CONTINUE_ACTION_ATTEND);
-    return;
-  }
 
   // Ticketed actions choose a tier before deciding whether answers are required
-  if (
-    attendButton instanceof HTMLButtonElement &&
-    meta.ticketModalRequired &&
-    !completingRegistrationQuestions
-  ) {
+  if (attendButton instanceof HTMLButtonElement && meta.ticketModalRequired) {
     event.preventDefault();
     openTicketModal(container);
     return;

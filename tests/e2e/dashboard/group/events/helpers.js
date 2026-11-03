@@ -3,14 +3,17 @@ import { expect } from "../../../fixtures.js";
 import { queryE2eDatabaseRows } from "../../../database.js";
 import {
   buildE2eUrl,
+  futureDate,
   navigateToPath,
   routeNextRequestWithQuery,
   selectTimezone,
   waitForActionResponse,
+  waitForActionResponses,
 } from "../../../utils.js";
 import { fillMarkdownEditor } from "../../form-helpers.js";
+import { TEST_EVENT_CATEGORY_IDS, TEST_EVENT_IDS } from "../../../seed.js";
 
-/** Opens the payments section and retries until the tab state is active. */
+/** Opens the event editor payments section and waits until its tab is active. */
 export const openPaymentsSection = async (page) => {
   const paymentsSectionButton = page.locator('button[data-section="payments"]');
 
@@ -21,40 +24,26 @@ export const openPaymentsSection = async (page) => {
     return;
   }
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await paymentsSectionButton.click({ force: true });
-
-    try {
-      await expect(paymentsSectionButton).toHaveAttribute("data-active", "true", {
-        timeout: 1000,
-      });
-      return;
-    } catch (error) {
-      if (attempt === 2) {
-        throw error;
-      }
-    }
-  }
+  await paymentsSectionButton.click();
+  await expect(paymentsSectionButton).toHaveAttribute("data-active", "true");
 };
 
+// Seeded event names opened by the shared section openers.
+const CFS_EVENT_NAME = "Event With Active CFS";
+const DASHBOARD_WAITLIST_EVENT_NAME = "Dashboard Waitlist Table Lab";
 const EVENT_EDITOR_UPDATE_PATH = /\/dashboard\/group\/events\/[^/]+\/update$/;
 const GROUP_EVENTS_PAGE_LIMIT = 100;
 
 /**
- * Returns whether a response is the follow-up GET that reloads the event editor.
- * @param {import("@playwright/test").Response} response - Playwright response.
- * @param {string} [eventId] - Optional event id that must appear in the URL.
- * @returns {boolean} Whether the response reloads the update editor.
+ * Builds the matcher for the GET that loads the event update editor.
+ * @param {string} [eventId] - Event id expected in the editor URL; any event when omitted.
+ * @returns {object} Response matcher.
  */
-const isEventEditorFollowUpGet = (response, eventId) => {
-  const pathname = new URL(response.url()).pathname;
-  return (
-    response.request().method() === "GET" &&
-    EVENT_EDITOR_UPDATE_PATH.test(pathname) &&
-    (eventId ? pathname.includes(eventId) : true) &&
-    response.ok()
-  );
-};
+const getEventEditorLoadMatcher = (eventId) => ({
+  method: "GET",
+  pathname: eventId ? `/dashboard/group/events/${eventId}/update` : EVENT_EDITOR_UPDATE_PATH,
+  status: 200,
+});
 
 /**
  * Waits for the event update editor after a successful create or save.
@@ -65,10 +54,12 @@ const isEventEditorFollowUpGet = (response, eventId) => {
  * @param {{
  *   eventId?: string,
  *   method?: string,
- *   status?: number,
+ *   params?: Record<string, string|null|true>,
+ *   pathname?: string|RegExp,
+ *   status?: number|number[],
  *   urlEndsWith?: string,
  *   urlIncludes?: string
- * }} [request] - Mutation request matcher.
+ * }} [request] - Mutation request matcher; `eventId` pins the follow-up editor GET.
  * @returns {Promise<string>} Created or saved event id.
  */
 export const waitForEventEditorAfterSave = async (page, action, request = {}) => {
@@ -83,10 +74,11 @@ export const waitForEventEditorAfterSave = async (page, action, request = {}) =>
   }
 
   if (typeof action === "function") {
-    await Promise.all([
-      page.waitForResponse((response) => isEventEditorFollowUpGet(response, eventId)),
-      actionRequest.method ? waitForActionResponse(page, action, actionRequest) : action(),
-    ]);
+    if (actionRequest.method) {
+      await waitForActionResponses(page, action, [actionRequest, getEventEditorLoadMatcher(eventId)]);
+    } else {
+      await waitForActionResponse(page, action, getEventEditorLoadMatcher(eventId));
+    }
   }
 
   const reloadedEditor = previousEditor
@@ -158,22 +150,14 @@ export const openEventUpdateFormByName = async (page, eventName, eventId, option
   const editButton = eventRow.locator('td button[aria-label^="Edit event:"]:visible');
   await expect(editButton).toBeVisible();
 
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response.url().includes("/dashboard/group/events/") &&
-        response.url().includes("/update") &&
-        (eventId ? response.url().includes(eventId) : true) &&
-        response.ok(),
-    ),
-    editButton.click(),
-  ]);
+  await waitForActionResponse(page, () => editButton.click(), getEventEditorLoadMatcher(eventId));
   await expect(page.locator('[data-event-page="update"]')).toHaveAttribute("data-event-page-ready", "true");
 };
 
 /**
  * Opens one event editor section from the currently loaded event editor.
+ * Clicks the sidebar tab when it is visible and falls back to the compact
+ * section select that replaces it on narrow viewports.
  * @param {import("@playwright/test").Page} page - Playwright page.
  * @param {string} eventId - Event id whose section request should load.
  * @param {string} section - Section data attribute.
@@ -188,14 +172,24 @@ export const openCurrentEventEditorSection = async (
   contentSelector,
   { query = "", tableName } = {},
 ) => {
+  const sectionPath = `/dashboard/group/events/${eventId}/${section}`;
   const sectionTab = page.locator(`button[data-section="${section}"]`);
   if (query !== "") {
-    await routeNextRequestWithQuery(page, `/dashboard/group/events/${eventId}/${section}`, query);
+    await routeNextRequestWithQuery(page, sectionPath, query);
   }
 
-  await waitForActionResponse(page, () => sectionTab.click(), {
+  const openSection = async () => {
+    if (await sectionTab.isVisible()) {
+      await sectionTab.click();
+      return;
+    }
+
+    await page.locator('[data-event-page="update"] [data-section-select]').selectOption(section);
+  };
+  await waitForActionResponse(page, openSection, {
     method: "GET",
-    urlIncludes: `/dashboard/group/events/${eventId}/${section}`,
+    pathname: sectionPath,
+    status: 200,
   });
 
   const content = page.locator(contentSelector);
@@ -204,6 +198,59 @@ export const openCurrentEventEditorSection = async (
   }
 
   return content;
+};
+
+/**
+ * Opens the submissions section of the seeded CFS event.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @param {string} [query] - Optional query override for the first submissions request.
+ * @returns {Promise<import("@playwright/test").Locator>} Submissions content locator.
+ */
+export const openCfsEventSubmissionsTab = (page, query = "") =>
+  openEventSection(page, {
+    contentSelector: "#submissions-content",
+    eventId: TEST_EVENT_IDS.alpha.cfsSummit,
+    eventName: CFS_EVENT_NAME,
+    query,
+    section: "submissions",
+  });
+
+/**
+ * Opens the waitlist section of the seeded dashboard waitlist event.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @param {string} [query] - Optional query override for the first waitlist request.
+ * @returns {Promise<import("@playwright/test").Locator>} Waitlist content locator.
+ */
+export const openDashboardWaitlist = (page, query = "") =>
+  openEventSection(page, {
+    contentSelector: "#waitlist-content",
+    eventId: TEST_EVENT_IDS.alpha.dashboardWaitlist,
+    eventName: DASHBOARD_WAITLIST_EVENT_NAME,
+    query,
+    section: "waitlist",
+  });
+
+/**
+ * Opens an event editor from the group events list and loads one of its sections.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @param {{
+ *   contentSelector: string,
+ *   eventId: string,
+ *   eventName: string,
+ *   eventsTab?: "upcoming"|"past",
+ *   query?: string,
+ *   section: string,
+ *   tableName?: string
+ * }} options - Event to open, section to load and optional query override and table wait.
+ * @returns {Promise<import("@playwright/test").Locator>} Section content locator.
+ */
+export const openEventSection = async (
+  page,
+  { contentSelector, eventId, eventName, eventsTab = "upcoming", query = "", section, tableName },
+) => {
+  await openEventUpdateFormByName(page, eventName, eventId, { eventsTab });
+
+  return openCurrentEventEditorSection(page, eventId, section, contentSelector, { query, tableName });
 };
 
 /** Adds a discount code through the ticketing modal and saves it. */
@@ -280,7 +327,14 @@ export const setDiscountCodeActive = async (page, code, active) => {
   await expect(modal).toBeHidden();
 };
 
-/** Creates a published event that requires organizer approval for attendees. */
+/**
+ * Creates a published event that requires organizer approval for attendees through the editor
+ * and reopens it from the events list. Specs that do not cover event creation should use
+ * `setupApprovalRequiredEvent` from `data-graphs/events.js` instead.
+ * @param {import("@playwright/test").Page} page - Organizer page with the owning group selected.
+ * @param {string} eventName - Name of the new event.
+ * @returns {Promise<{ eventId: string }>} Created event identifier.
+ */
 export const createApprovalRequiredEvent = async (page, eventName) => {
   await navigateToPath(page, "/dashboard/group?tab=events");
 
@@ -291,7 +345,7 @@ export const createApprovalRequiredEvent = async (page, eventName) => {
 
   await page.locator("#name").fill(eventName);
   await page.locator("#kind_id").selectOption("virtual");
-  await page.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
+  await page.locator("#category_id").selectOption(TEST_EVENT_CATEGORY_IDS.general);
   await page.locator("#description_short").fill("A temporary approval-required event from the e2e suite.");
   await fillMarkdownEditor(
     page,
@@ -303,8 +357,8 @@ export const createApprovalRequiredEvent = async (page, eventName) => {
   await page.locator('button[data-section="date-venue"]').click();
   await expect(page.locator('button[data-section="date-venue"]')).toHaveAttribute("data-active", "true");
   await selectTimezone(page, "UTC");
-  await page.locator("#starts_at").fill("2030-06-20T10:00");
-  await page.locator("#ends_at").fill("2030-06-20T12:00");
+  await page.locator("#starts_at").fill(futureDate({ days: 220, hour: 10 }));
+  await page.locator("#ends_at").fill(futureDate({ days: 220, hour: 12 }));
   await page.locator("#meeting_join_url").fill("https://meet.example.com/e2e-invitation-requests");
 
   const visibleAddEventButton = page.locator("#pending-changes-alert:not(.hidden) #add-event-button");
@@ -326,26 +380,8 @@ export const createApprovalRequiredEvent = async (page, eventName) => {
     method: "GET",
     urlIncludes: `/dashboard/group/events/${eventId}/update`,
   });
-  const viewEventHref = await page.locator("#event-update-page").getAttribute("data-event-public-url");
 
-  expect(viewEventHref).not.toBeNull();
-
-  return {
-    eventId: eventId ?? "",
-    viewEventHref: viewEventHref ?? "",
-  };
-};
-
-/** Cancels and deletes the temporary event created for invitation request coverage. */
-export const deleteEventFromList = async (page, eventId) => {
-  if (page.isClosed()) {
-    return;
-  }
-
-  const cancelResponse = await page.request.put(buildE2eUrl(`/dashboard/group/events/${eventId}/cancel`));
-  expect([200, 204, 404]).toContain(cancelResponse.status());
-  const deleteResponse = await page.request.delete(buildE2eUrl(`/dashboard/group/events/${eventId}/delete`));
-  expect([200, 204, 404]).toContain(deleteResponse.status());
+  return { eventId: eventId ?? "" };
 };
 
 /**

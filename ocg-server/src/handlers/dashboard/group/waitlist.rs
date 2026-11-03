@@ -45,9 +45,10 @@ pub(crate) async fn list_page(
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary_dashboard(community_id, group_id, event_id),
+        db.find_event_summary_dashboard(community_id, group_id, event_id),
         db.search_event_waitlist(group_id, event_id, &filters)
     )?;
+    let event = event.ok_or(HandlerError::NotFound)?;
 
     // Step back to the last page with rows when the requested page is past the end
     if filters.clamp_offset_to_last_page(search_waitlist_results.total) {

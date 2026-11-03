@@ -1,0 +1,7 @@
+- /children: deep-equal
+- region "Group summary":
+  - text: North America
+  - heading "Platform Ops Meetup" [level=1]
+  - text: /\d+ members? [A-Z][a-z]+ \d{4}/
+  - button "Join group"
+  - group

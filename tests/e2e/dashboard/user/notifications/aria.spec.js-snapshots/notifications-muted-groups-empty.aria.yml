@@ -1,0 +1,9 @@
+- region "Muted groups":
+  - heading "Muted groups" [level=2]
+  - paragraph: "Stop optional emails from specific groups: new events, group announcements, event reminders, event surveys, messages from event organizers, and badges. Muting a group also covers events it co-hosts. Muting only changes emails; your membership, registrations, badges, and dashboard stay the same. Emails that are always sent, and group or community organizing emails, still arrive. Mute and Unmute save immediately. Unmuting a group doesn't turn back on categories you've turned off."
+  - text: Mute a group
+  - combobox "Mute a group"
+  - status
+  - paragraph: Only groups you belong to, or whose events you attend or speak at, are listed.
+  - paragraph: You haven't muted any groups.
+  - paragraph: Groups you mute will appear here.

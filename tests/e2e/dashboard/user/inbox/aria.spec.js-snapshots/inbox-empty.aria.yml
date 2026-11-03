@@ -1,0 +1,19 @@
+- region "Inbox":
+  - text: ""
+  - link "Open documentation":
+    - /url: /docs#/guides/user-dashboard?id=inbox-conversations-with-organizers
+  - paragraph: Your conversations with group organizers.
+  - text: 0 conversations
+  - table "Inbox conversations":
+    - rowgroup:
+      - row "Group Event Last message":
+        - columnheader "Group"
+        - columnheader "Event"
+        - columnheader "Last message"
+        - columnheader:
+          - group: Status
+    - rowgroup:
+      - row "No conversations yet Use Contact in the Organizers section of an event page to ask a question.":
+        - cell "No conversations yet Use Contact in the Organizers section of an event page to ask a question.":
+          - text: ""
+          - paragraph: Use Contact in the Organizers section of an event page to ask a question.

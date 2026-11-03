@@ -1,0 +1,12 @@
+- /children: deep-equal
+- textbox "Search events"
+- button "Search"
+- button "Search tips"
+- text: /\d+ - \d+ of \d+ results/
+- list:
+  - listitem: List
+  - listitem: Calendar
+- text: Sort by
+- combobox "Sort by":
+  - option "Date ↑" [selected]
+  - option "Date ↓"

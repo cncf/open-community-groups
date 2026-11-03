@@ -380,6 +380,37 @@ Jane Doe,'+Example,,2099-05-10 09:00 UTC,2099-05-11 10:30 UTC,'=SUM(A1),Excellen
 }
 
 #[tokio::test]
+async fn test_download_csv_returns_not_found_for_event_of_another_group() {
+    // Setup identifiers and an export the event check must not reach
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let event_survey_id = Uuid::new_v4();
+    let export = EventSurveyExport {
+        anonymous: true,
+        questions: sample_event_survey_full(event_survey_id).questions,
+        responses: vec![],
+        title: "Feedback".to_string(),
+    };
+
+    // Setup database expectations without an event summary for the selected group
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_event_summary_not_found(&mut db, &ids, event_id);
+    expect_survey_export(&mut db, &ids, event_id, event_survey_id, export);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys/{event_survey_id}/responses.csv"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the export is not found
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn test_download_csv_unknown_survey_returns_not_found() {
     // Setup identifiers and database expectations
     let ids = DashboardIds::new();
@@ -432,6 +463,32 @@ async fn test_list_page_read_only_disables_mutation_controls() {
     let html = String::from_utf8_lossy(&bytes);
     assert!(html.contains("Session feedback"));
     assert!(html.contains("Your role cannot manage surveys."));
+}
+
+#[tokio::test]
+async fn test_list_page_returns_not_found_for_event_of_another_group() {
+    // Setup identifiers and a survey the event check must not render
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let survey = sample_event_survey_summary(Uuid::new_v4(), EventSurveyState::Draft);
+
+    // Setup database expectations without an event summary for the selected group
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, true);
+    expect_event_summary_not_found(&mut db, &ids, event_id);
+    expect_list_event_surveys(&mut db, &ids, event_id, vec![survey]);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request(
+        &format!("/dashboard/group/events/{event_id}/surveys"),
+        ids.session_id,
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the page is not found
+    assert_empty_response(&parts, &bytes, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -1283,14 +1340,27 @@ async fn test_update_removing_last_question() {
 fn expect_event_summary(db: &mut MockDB, ids: &DashboardIds, event_id: Uuid) {
     let ids = *ids;
     let event = sample_event_summary(event_id);
-    db.expect_get_event_summary_dashboard()
+    db.expect_find_event_summary_dashboard()
         .times(1)
         .withf(move |community_id, group_id, survey_event_id| {
             *community_id == ids.community_id
                 && *group_id == ids.group_id
                 && *survey_event_id == event_id
         })
-        .returning(move |_, _, _| Ok(event.clone()));
+        .returning(move |_, _, _| Ok(Some(event.clone())));
+}
+
+/// Expects an event summary read for an event outside the selected group.
+fn expect_event_summary_not_found(db: &mut MockDB, ids: &DashboardIds, event_id: Uuid) {
+    let ids = *ids;
+    db.expect_find_event_summary_dashboard()
+        .times(1)
+        .withf(move |community_id, group_id, survey_event_id| {
+            *community_id == ids.community_id
+                && *group_id == ids.group_id
+                && *survey_event_id == event_id
+        })
+        .returning(|_, _, _| Ok(None));
 }
 
 /// Expects the survey read by the update form and the Individual view.

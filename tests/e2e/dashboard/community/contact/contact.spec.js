@@ -1,13 +1,7 @@
 import { queryE2eDatabase, queryE2eDatabaseRows } from "../../../database.js";
 import { expect, test } from "../../../fixtures.js";
-import {
-  deleteNotifications,
-  expectNewNotifications,
-  snapshotNotifications,
-} from "../../../notifications.js";
 import { TEST_COMMUNITY_IDS, TEST_GROUP_IDS, TEST_GROUP_NAMES } from "../../../seed.js";
 import { navigateToPath, uniqueName, waitForActionResponse } from "../../../utils.js";
-import { ensureCommunityGroupsManagerRole } from "../helpers.js";
 
 const COMMUNITY_ID = TEST_COMMUNITY_IDS.community1;
 const CONTACT_PATH = "/dashboard/community?tab=contact";
@@ -99,7 +93,7 @@ test.describe("community dashboard contact view", () => {
   });
 
   test("no region option filters groups without a region", async ({ adminCommunityPage }) => {
-    test.skip(countRegions() === 0, "the seeded community has no regions");
+    expect(countRegions(), "seeded community1 must define regions").toBeGreaterThan(0);
 
     // Load the contact tab and select the no region option.
     await navigateToPath(adminCommunityPage, CONTACT_PATH);
@@ -254,12 +248,14 @@ test.describe("community dashboard contact view", () => {
     await expect(toggle.getByText("Hide groups")).toBeHidden();
   });
 
-  test("a whitespace-only message is reported before confirming", async ({ adminCommunityPage }) => {
+  test("a whitespace-only message is reported before confirming", async ({
+    adminCommunityPage,
+    notifications,
+  }) => {
     // Load the contact tab and write a blank message.
     await navigateToPath(adminCommunityPage, CONTACT_PATH);
     const body = adminCommunityPage.locator("#community-contact-body");
     await body.fill("   ");
-    const snapshot = snapshotNotifications();
 
     // Try to send the blank message.
     await adminCommunityPage.locator("#community-contact-submit").click();
@@ -269,14 +265,13 @@ test.describe("community dashboard contact view", () => {
     expect(await body.evaluate((field) => field.validity.valueMissing)).toBe(true);
     await expect(adminCommunityPage.locator(".swal2-popup")).toHaveCount(0);
     await expect(adminCommunityPage.locator("#community-contact-submit")).toBeEnabled();
-    expectNewNotifications(snapshot, []);
+    notifications.expectNew([]);
   });
 
-  test("cancelling the confirmation sends nothing", async ({ adminCommunityPage }) => {
+  test("cancelling the confirmation sends nothing", async ({ adminCommunityPage, notifications }) => {
     // Load the contact tab and write a message.
     await navigateToPath(adminCommunityPage, CONTACT_PATH);
     await adminCommunityPage.locator("#community-contact-body").fill("This message is never sent");
-    const snapshot = snapshotNotifications();
 
     // Open and cancel the confirmation dialog.
     await adminCommunityPage.locator("#community-contact-submit").click();
@@ -285,13 +280,16 @@ test.describe("community dashboard contact view", () => {
     await dialog.getByRole("button", { name: "No" }).click();
 
     // Verify nothing was queued and the message is kept.
-    expectNewNotifications(snapshot, []);
+    notifications.expectNew([]);
     await expect(adminCommunityPage.locator("#community-contact-body")).toHaveValue(
       "This message is never sent",
     );
   });
 
-  test("admin sends one email per person and the logs name the filters", async ({ adminCommunityPage }) => {
+  test("admin sends one email per person and the logs name the filters", async ({
+    adminCommunityPage,
+    notifications,
+  }) => {
     // Load the contact tab and select the admin role.
     await navigateToPath(adminCommunityPage, CONTACT_PATH);
     await selectOption(adminCommunityPage, "Team roles", "Admin");
@@ -300,7 +298,6 @@ test.describe("community dashboard contact view", () => {
 
     // Send the message after confirming the audience.
     const subject = uniqueName("contact admins");
-    const snapshot = snapshotNotifications();
     await sendMessage(adminCommunityPage, subject);
 
     // Verify the message is cleared while the filters are kept.
@@ -311,10 +308,9 @@ test.describe("community dashboard contact view", () => {
     ).toHaveValue("admin");
 
     // Verify one notification was queued per deduplicated person.
-    const notificationIds = expectNewNotifications(snapshot, [
+    notifications.expectNew([
       { kind: "community-custom", templateDataContains: { subject }, userIds: recipients },
     ]);
-    deleteNotifications(notificationIds);
 
     // Verify the audit log names the filters used.
     await navigateToPath(adminCommunityPage, CONTACT_LOGS_PATH);
@@ -332,7 +328,10 @@ test.describe("community dashboard contact view", () => {
     await expect(detailsPopover).toContainText("All");
   });
 
-  test("admin sends to the selected groups and the logs name them", async ({ adminCommunityPage }) => {
+  test("admin sends to the selected groups and the logs name them", async ({
+    adminCommunityPage,
+    notifications,
+  }) => {
     // Load the contact tab and select two groups and the admin role.
     await navigateToPath(adminCommunityPage, CONTACT_PATH);
     await selectGroups(adminCommunityPage, [GROUP_LABELS.alpha, GROUP_LABELS.gamma]);
@@ -347,16 +346,14 @@ test.describe("community dashboard contact view", () => {
 
     // Send the message with the selected groups.
     const subject = uniqueName("contact selected groups");
-    const snapshot = snapshotNotifications();
     const response = await sendMessage(adminCommunityPage, subject);
     const params = new URLSearchParams(response.request().postData() ?? "");
     expect(params.getAll("filters[group_ids][]")).toEqual(filters.group_ids);
 
     // Verify one notification was queued per person on the matching teams.
-    const notificationIds = expectNewNotifications(snapshot, [
+    notifications.expectNew([
       { kind: "community-custom", templateDataContains: { subject }, userIds: recipients },
     ]);
-    deleteNotifications(notificationIds);
 
     // Verify the audit log names the selected groups.
     await navigateToPath(adminCommunityPage, CONTACT_LOGS_PATH);
@@ -379,26 +376,21 @@ test.describe("community dashboard contact view", () => {
     await expect(detailsPopover.getByRole("region", { name: "Subject" })).toHaveCount(0);
   });
 
-  test("groups manager can send to group teams", async ({ adminCommunityPage, groupsManagerPage }) => {
-    // Make sure the seeded manager holds the groups-manager role.
-    await ensureCommunityGroupsManagerRole("groups-manager", adminCommunityPage);
-
+  test("groups manager can send to group teams", async ({ groupsManagerPage, notifications }) => {
     // Load the contact tab and select the admin role.
     await navigateToPath(groupsManagerPage, CONTACT_PATH);
     await selectOption(groupsManagerPage, "Team roles", "Admin");
 
-    // Send the message and clean up the queued notifications.
+    // Send the message and verify the queued notifications.
     const subject = uniqueName("contact from groups manager");
-    const snapshot = snapshotNotifications();
     await sendMessage(groupsManagerPage, subject);
-    const notificationIds = expectNewNotifications(snapshot, [
+    notifications.expectNew([
       {
         kind: "community-custom",
         templateDataContains: { subject },
         userIds: expectedRecipients({ roles: ["admin"] }),
       },
     ]);
-    deleteNotifications(notificationIds);
   });
 });
 

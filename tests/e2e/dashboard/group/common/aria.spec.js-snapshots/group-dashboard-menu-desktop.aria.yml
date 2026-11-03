@@ -1,0 +1,37 @@
+- navigation "Dashboard navigation":
+  - text: Group Dashboard Community and group
+  - button "Platform Engineering Community"
+  - button /E2E temporary group [0-9a-f]{8}/
+  - link "Settings":
+    - /url: /dashboard/group?tab=settings
+  - link "Team":
+    - /url: /dashboard/group?tab=team
+  - link "Inbox":
+    - /url: /dashboard/group?tab=inbox
+  - link "Group public site":
+    - /url: /\/e2e-test-community\/group\/e2e-temporary-group-[0-9a-f]{12}/
+  - text: Analytics
+  - link "Analytics":
+    - /url: /dashboard/group?tab=analytics
+  - text: Events
+  - link "Events":
+    - /url: /dashboard/group?tab=events
+  - link "Co-hosts":
+    - /url: /dashboard/group?tab=cohosts
+  - link "Refunds":
+    - /url: /dashboard/group?tab=refunds
+  - text: Badges
+  - link "Badges":
+    - /url: /dashboard/group?tab=badges
+  - link "Artwork":
+    - /url: /dashboard/group?tab=artwork
+  - link "Awards":
+    - /url: /dashboard/group?tab=awards
+  - text: Members and sponsors
+  - link "Members":
+    - /url: /dashboard/group?tab=members
+  - link "Sponsors":
+    - /url: /dashboard/group?tab=sponsors
+  - text: AUDIT
+  - link "Logs":
+    - /url: /dashboard/group?tab=logs

@@ -1,0 +1,24 @@
+- region "Badges Awards":
+  - heading "Badges Awards" [level=1]
+  - paragraph: Review award history and manage active badge credentials.
+  - text: Search awards
+  - textbox "Search awards":
+    - /placeholder: Search recipients or badges
+  - text: Status
+  - combobox "Status":
+    - option "All statuses" [selected]
+    - option "Active"
+    - option "Revoked"
+  - text: ""
+  - combobox "Badge":
+    - option "All badges" [selected]
+  - text: Source
+  - combobox "Source":
+    - option "All sources" [selected]
+  - text: Awarded from
+  - textbox "Awarded from"
+  - text: Through
+  - textbox "Through"
+  - text: 0 awards
+  - heading "No awards matched" [level=2]
+  - paragraph: Awarded badges and revoked history appear here.

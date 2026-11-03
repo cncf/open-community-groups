@@ -21,7 +21,12 @@ describe("dashboard user surveys list template", () => {
     expect(template).to.include('hx-target="#user-event-survey-modal-content"');
     expect(template).to.include('hx-sync="closest tbody:replace"');
     expect(template).to.include("data-user-event-survey-open");
-    expect(template).to.include('<span class="sr-only">: {{ survey.title }}</span>');
+    expect(template).to.include(
+      "{% let action_label = crate::templates::dashboard::user::surveys::survey_action_label(survey) -%}",
+    );
+    expect(template).to.include('aria-label="{{ action_label }}: {{ survey.title }}"');
+    expect(template).to.include('class="btn-primary-outline btn-mini whitespace-nowrap">{{ action_label }}</button>');
+    expect(template).not.to.include('<span class="sr-only">: {{ survey.title }}</span>');
   });
 
   it("reloads the dashboard layout after answers are saved", async () => {

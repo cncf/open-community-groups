@@ -132,7 +132,7 @@
 {% macro meeting_details(event, date_title = "Date & time:", show_meeting_details = true) -%}
   {% if let Some(starts_at) = &event.starts_at -%}
     {{ date_title }}
-    {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+    {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %Y · %I:%M %p %Z") }}
     <br />
   {% endif -%}
   {% if let Some(location) = &event.location(90) -%}

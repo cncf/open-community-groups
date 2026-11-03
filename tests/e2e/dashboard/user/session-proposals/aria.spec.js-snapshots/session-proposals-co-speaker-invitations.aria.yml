@@ -1,0 +1,16 @@
+- table:
+  - rowgroup:
+    - row "Proposal Invited by Updated Actions":
+      - columnheader "Proposal"
+      - columnheader "Invited by"
+      - columnheader "Updated"
+      - columnheader "Actions"
+  - rowgroup:
+    - row /Collaborative Roadmaps EO E2E Member One [A-Z][a-z]{2} \d{1,2}, \d{4} View proposal Accept invitation Decline invitation/:
+      - cell "Collaborative Roadmaps"
+      - cell "EO E2E Member One"
+      - cell /[A-Z][a-z]{2} \d{1,2}, \d{4}/
+      - cell "View proposal Accept invitation Decline invitation":
+        - button "View proposal"
+        - button "Accept invitation"
+        - button "Decline invitation"

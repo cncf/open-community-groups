@@ -1,0 +1,31 @@
+- text: Submissions
+- link "Open documentation":
+  - /url: /docs#/guides/event-operations?id=submissions
+- paragraph: Review and manage call for speakers submissions.
+- text: Filter by labels
+- textbox "Filter by labels" [disabled]:
+  - /placeholder: Search labels
+- text: Sort by
+- combobox "Sort by":
+  - option "Submitted (newest)" [selected]
+  - option "Submitted (oldest)"
+  - option "Ratings count (high to low)"
+  - option "Ratings count (low to high)"
+  - option "Stars (high to low)"
+  - option "Stars (low to high)"
+- table:
+  - rowgroup:
+    - row "Speaker / Proposal Status Ratings Actions":
+      - columnheader "Speaker / Proposal"
+      - columnheader "Status"
+      - columnheader "Ratings"
+      - columnheader "Actions"
+  - rowgroup:
+    - row /ET E2E Member Three E2E ARIA proposal Not reviewed \d+\.\d+ out of 5 stars 0 ratings/:
+      - cell "ET E2E Member Three E2E ARIA proposal"
+      - cell "Not reviewed"
+      - cell /\d+\.\d+ out of 5 stars 0 ratings/:
+        - img /\d+\.\d+ out of 5 stars/
+        - text: ""
+      - cell:
+        - button "Review submission"

@@ -1,0 +1,13 @@
+- dialog "E2E ARIA answered survey":
+  - heading "E2E ARIA answered survey" [level=3]
+  - paragraph: /E2E survey event [0-9a-f]{8} · Platform Ops Meetup/
+  - button "Close modal"
+  - paragraph: This survey is anonymous
+  - paragraph: The organizers see your answers without your name, company or title. Your answers are linked to your account only so you can edit them later. Anything you write in a free-text answer can still reveal who you are.
+  - paragraph: /You answered this survey on [A-Z][a-z]+ \d{1,2}, \d{4} at \d{1,2}:\d{2} [AP]M \S+\. You can edit your answers until the survey closes\./
+  - group "1 Any feedback?":
+    - text: ""
+    - textbox "1 Any feedback?": Great venue, thanks!
+  - paragraph: "* Questions marked with an asterisk are required."
+  - button "Cancel"
+  - button "Save changes"

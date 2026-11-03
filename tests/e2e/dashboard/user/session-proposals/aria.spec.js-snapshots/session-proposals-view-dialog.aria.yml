@@ -1,0 +1,7 @@
+- dialog "Session proposal details":
+  - heading "Session proposal details" [level=3]
+  - button "Close modal"
+  - text: Title E2E ARIA session proposal Description
+  - paragraph: A reusable proposal created from the e2e suite.
+  - text: /Level Intermediate Duration \d+ min/
+  - button "Close"

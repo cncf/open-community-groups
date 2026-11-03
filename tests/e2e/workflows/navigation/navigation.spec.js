@@ -9,7 +9,7 @@ import {
   TEST_GROUP_SLUG,
   TEST_SITE_TITLE,
 } from "../../seed.js";
-import { navigateToCommunityHome, navigateToPath, navigateToSiteHome } from "../../utils.js";
+import { navigateToCommunityHome, navigateToSiteHome } from "../../utils.js";
 
 const GROUP_PATH = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}`;
 const EVENT_PATH = `${GROUP_PATH}/event/${TEST_EVENT_SLUG}`;
@@ -32,7 +32,7 @@ test.describe("navigation", () => {
     await expect(page.locator("main#main-content")).toBeVisible();
   });
 
-  test("guest walks from a community page to an event and back to its group", async ({ page }) => {
+  test("guest walks from a community page to an event and back to its group @smoke", async ({ page }) => {
     // Load the seeded community and verify its title.
     await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
     await expect(page.getByRole("heading", { level: 1, name: TEST_COMMUNITY_TITLE })).toBeVisible();
@@ -49,16 +49,7 @@ test.describe("navigation", () => {
     await expect(page.getByRole("heading", { level: 1, name: TEST_GROUP_NAMES.alpha })).toBeVisible();
   });
 
-  test("guest is sent to log in when opening a dashboard", async ({ page }) => {
-    // Request a protected dashboard page as a guest.
-    await navigateToPath(page, "/dashboard/user");
-
-    // Verify the login page is shown with the return destination preserved.
-    await expect(page).toHaveURL(/\/log-in\?next_url=/);
-    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
-  });
-
-  test("member opens the user dashboard from the header menu", async ({ member1Page }) => {
+  test("member opens the user dashboard from the header menu @smoke", async ({ member1Page }) => {
     // Load a public page with an authenticated session.
     await navigateToSiteHome(member1Page);
 

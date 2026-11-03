@@ -1,10 +1,9 @@
 //! HTTP handlers for attendee check-in credentials.
 
-use askama::Template;
 use axum::{
     extract::{Path, State},
     http::{StatusCode, header::CACHE_CONTROL, header::CONTENT_TYPE},
-    response::{Html, IntoResponse},
+    response::IntoResponse,
 };
 use qrcode::render::svg;
 use tracing::instrument;
@@ -14,25 +13,12 @@ use crate::{
     auth::User,
     db::DynDB,
     handlers::{error::HandlerError, extractors::CurrentUser},
+    services::check_in::format_credential,
     templates::dashboard::user::check_in::ListPage,
 };
 
 #[cfg(test)]
 mod tests;
-
-// Pages handlers.
-
-/// Returns the current user's check-in event list.
-#[instrument(skip_all)]
-pub(crate) async fn list_page(
-    CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare the credential list and attendee display identity
-    let template = prepare_list_page(&db, &user).await?;
-
-    Ok(Html(template.render()?))
-}
 
 // Actions handlers.
 
@@ -49,7 +35,7 @@ pub(crate) async fn qr_code(
     };
 
     // Encode the versioned credential without placing it in a URL or log field
-    let credential = format!("ocg-check-in:v1:{event_id}:{check_in_code}");
+    let credential = format_credential(event_id, check_in_code);
     let code = qrcode::QrCode::new(credential.as_bytes())
         .map_err(|err| anyhow::anyhow!("failed to generate attendee check-in QR code: {err}"))?;
     let svg = code

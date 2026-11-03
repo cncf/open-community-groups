@@ -534,6 +534,7 @@ select ok(
         "has_ticket_purchases": false,
         "starts_at": 1893520800,
         "ends_at": 1893528000,
+        "custom_logo_url": "https://example.com/logo.png",
         "logo_url": "https://example.com/logo.png",
         "luma_url": "https://luma.com/event",
         "meeting_hosts": ["host1@example.com", "host2@example.com"],

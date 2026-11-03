@@ -5,10 +5,24 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      stack_workers:
+        description: Workers, one isolated stack each, per functional shard
+        type: number
+        default: 6
+      repeat_each:
+        description: Times each functional test runs (flake measurement)
+        type: number
+        default: 1
+      js_coverage:
+        description: Record the JS coverage of the functional shards and the unit tests (js-coverage report)
+        type: boolean
+        default: false
 
-# Cancel stale runs when a PR receives new commits.
+# Cancel stale runs when a PR receives new commits. Dispatch runs get their own group so that
+# back-to-back measurement dispatches on one branch do not cancel each other.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -18,16 +32,24 @@ env:
 jobs:
   changes:
     permissions:
+      contents: read
       pull-requests: read
     runs-on: ubuntu-latest
     outputs:
       e2e: ${{ steps.filter.outputs.e2e || steps.manual.outputs.e2e }}
+      repeat_count: ${{ steps.repeat.outputs.repeat_count || '0' }}
+      repeat_matrix: ${{ steps.repeat.outputs.repeat_matrix || '[]' }}
     steps:
+      - name: Checkout code
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v6
+
       - name: Determine changed paths
         if: github.event_name == 'pull_request'
         id: filter
         uses: dorny/paths-filter@v3
         with:
+          list-files: json
           filters: |
             e2e:
               - '.github/actions/**'
@@ -41,6 +63,21 @@ jobs:
               - 'justfile'
               - 'ocg-server/**'
               - 'tests/e2e/**'
+
+      - name: Set up Node.js
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      # Changed specs, and the specs importing changed spec-local helpers, split into chunks.
+      - name: Select changed specs to repeat
+        if: github.event_name == 'pull_request'
+        id: repeat
+        env:
+          CHANGED_PATHS: ${{ steps.filter.outputs.e2e_files }}
+        run: node tests/e2e/scripts/changed-specs.js "${CHANGED_PATHS:-[]}" >> "$GITHUB_OUTPUT"
+
       - name: Mark manual run as e2e-relevant
         if: github.event_name == 'workflow_dispatch'
         id: manual
@@ -89,58 +126,20 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  e2e-tests:
-    name: ${{ matrix.suite }}
+  # Functional suite on isolated stacks, in three shards with one stack per worker. Each shard
+  # archives its blob report, server logs, route attribution and coverage reports for merge-reports.
+  functional:
+    name: Functional ${{ matrix.shard }}/3
     needs:
       - changes
       - build-server
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.e2e == 'true'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.changes.outputs.e2e == 'true')
     runs-on:
       labels: ubuntu-latest-16-cores
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - suite: Smoke chromium
-            browsers: chromium
-            args: --project=chromium-smoke
-            artifact_name: playwright-artifacts-smoke-chromium
-          - suite: Smoke firefox
-            browsers: firefox
-            args: --project=firefox-smoke
-            artifact_name: playwright-artifacts-smoke-firefox
-          - suite: Smoke webkit
-            browsers: webkit
-            args: --project=webkit-smoke
-            artifact_name: playwright-artifacts-smoke-webkit
-          - suite: Functional 1/6
-            browsers: chromium
-            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=1/6
-            artifact_name: playwright-artifacts-functional-1
-          - suite: Functional 2/6
-            browsers: chromium
-            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=2/6
-            artifact_name: playwright-artifacts-functional-2
-          - suite: Functional 3/6
-            browsers: chromium
-            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=3/6
-            artifact_name: playwright-artifacts-functional-3
-          - suite: Functional 4/6
-            browsers: chromium
-            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=4/6
-            artifact_name: playwright-artifacts-functional-4
-          - suite: Functional 5/6
-            browsers: chromium
-            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=5/6
-            artifact_name: playwright-artifacts-functional-5
-          - suite: Functional 6/6
-            browsers: chromium
-            args: --project=chromium-deep --project=chromium-mobile-deep --grep-invert @visual --shard=6/6
-            artifact_name: playwright-artifacts-functional-6
-          - suite: Visual
-            browsers: chromium
-            args: --grep @visual --project=chromium-deep --project=chromium-mobile-deep
-            artifact_name: playwright-artifacts-visual
+        shard: [1, 2, 3]
     permissions:
       contents: read
     services:
@@ -158,13 +157,19 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      # E2E contract consumed by the justfile recipes (tern, psql, server and Playwright).
-      OCG_E2E_BASE_URL: http://127.0.0.1:9001
+      # E2E contract consumed by the justfile recipes; parallel.sh derives the stack databases.
       OCG_E2E_DB_HOST: 127.0.0.1
       OCG_E2E_DB_NAME: ocg_tests_e2e
       OCG_E2E_DB_PASSWORD: postgres
       OCG_E2E_DB_PORT: "5432"
       OCG_E2E_DB_USER: postgres
+      # Six stacks ran without load-caused failures in the flake measurement. Six servers with a pool
+      # of 10 stay well under the PostgreSQL default of 100 connections.
+      OCG_E2E_PARALLEL_WORKERS: ${{ inputs.stack_workers || 6 }}
+      # The fixtures write the raw JS coverage only when this is 1 (js_coverage dispatch input).
+      OCG_E2E_JS_COVERAGE: ${{ inputs.js_coverage && '1' || '' }}
+      OCG_E2E_ROUTE_ATTRIBUTION: "1"
+      OCG_E2E_SERVER_BINARY: target/debug/ocg-server
       OCG_PG_BIN: /usr/bin
 
     steps:
@@ -187,28 +192,25 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          # Keep the key and install flags in sync with cache.yml, which warms this cache on main.
-          key: ${{ runner.os }}-playwright-${{ matrix.browsers }}-${{ hashFiles('tests/e2e/package-lock.json') }}
+          # Same key as the other chromium jobs; keep the key and install flags in sync with cache.yml.
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         working-directory: tests/e2e
         # Headless chromium projects only need the headless shell build.
-        run: npx playwright install --with-deps ${{ matrix.browsers == 'chromium' && '--only-shell' || '' }} ${{ matrix.browsers }}
+        run: npx playwright install --with-deps --only-shell chromium
 
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         working-directory: tests/e2e
-        run: npx playwright install-deps ${{ matrix.browsers }}
+        run: npx playwright install-deps chromium
 
       - name: Install tern
         uses: ./.github/actions/install-tern
 
       - name: Install just
         uses: taiki-e/install-action@just
-
-      - name: Reset e2e database (recreate, migrate, seed, mark)
-        run: just e2e-db-reset
 
       - name: Download e2e server binary
         uses: actions/download-artifact@v4
@@ -223,23 +225,353 @@ jobs:
           test -x ./target/debug/ocg-server || chmod +x ./target/debug/ocg-server
           ls ocg-server/dist/static/css/*.css >/dev/null
 
-      - name: Start server and wait for it to be ready
-        uses: JarvusInnovations/background-action@v1
+      - name: Run functional suite
+        env:
+          OCG_E2E_RUN_ARCHIVE: ${{ runner.temp }}/e2e-runs/functional-${{ matrix.shard }}
+          REPEAT_EACH: ${{ inputs.repeat_each || 1 }}
+          SHARD: ${{ matrix.shard }}
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          just e2e-tests-parallel --project=chromium-deep --project=chromium-mobile-deep \
+            --repeat-each="$REPEAT_EACH" --shard="$SHARD/3"
+
+      - name: Upload run archive
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
         with:
-          run: just e2e-server-binary &
-          wait-on: http://127.0.0.1:9001/health-check
-          tail: true
-          log-output: "stdout,stderr"
-          log-output-if: true
+          name: e2e-run-functional-${{ matrix.shard }}
+          path: ${{ runner.temp }}/e2e-runs/
+          retention-days: 7
+          if-no-files-found: warn
 
-      - name: Run Playwright ${{ matrix.suite }} suite
-        run: just e2e-tests ${{ matrix.args }}
+  # The Firefox and WebKit smoke projects on fresh isolated stacks, archived for merge-reports.
+  smoke:
+    name: Smoke (Firefox and WebKit)
+    needs:
+      - changes
+      - build-server
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.changes.outputs.e2e == 'true')
+    runs-on:
+      labels: ubuntu-latest-16-cores
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ocg_tests_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ocg_tests_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # E2E contract consumed by the justfile recipes; parallel.sh derives the stack databases.
+      OCG_E2E_DB_HOST: 127.0.0.1
+      OCG_E2E_DB_NAME: ocg_tests_e2e
+      OCG_E2E_DB_PASSWORD: postgres
+      OCG_E2E_DB_PORT: "5432"
+      OCG_E2E_DB_USER: postgres
+      OCG_E2E_ROUTE_ATTRIBUTION: "1"
+      OCG_E2E_SERVER_BINARY: target/debug/ocg-server
+      OCG_PG_BIN: /usr/bin
 
-      - name: Upload Playwright artifacts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install Node.js dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Restore Playwright browsers cache
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          # Keep the key in sync with cache.yml, which warms this cache on main.
+          key: ${{ runner.os }}-playwright-firefox-webkit-${{ hashFiles('tests/e2e/package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps firefox webkit
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: tests/e2e
+        run: npx playwright install-deps firefox webkit
+
+      - name: Install tern
+        uses: ./.github/actions/install-tern
+
+      - name: Install just
+        uses: taiki-e/install-action@just
+
+      - name: Download e2e server binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ocg-server-e2e
+          # The artifact root is the repository root; restores target/debug/ocg-server and
+          # ocg-server/dist/static in place.
+          path: .
+
+      - name: Verify e2e server artifact
+        run: |
+          test -x ./target/debug/ocg-server || chmod +x ./target/debug/ocg-server
+          ls ocg-server/dist/static/css/*.css >/dev/null
+
+      - name: Run Firefox and WebKit smoke tests
+        env:
+          OCG_E2E_PARALLEL_WORKERS: "2"
+          OCG_E2E_RUN_ARCHIVE: ${{ runner.temp }}/e2e-runs/smoke
+          TMPDIR: ${{ runner.temp }}
+        run: just e2e-tests-parallel --project=firefox-smoke --project=webkit-smoke
+
+      - name: Upload run archive
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-run-smoke
+          path: ${{ runner.temp }}/e2e-runs/
+          retention-days: 7
+          if-no-files-found: warn
+
+  # Runs each changed spec three times without retries (the README repeat rule). One worker per
+  # chunk keeps every repetition of a file on the same stack, so leaked state fails the run.
+  repeat-changed-specs:
+    name: Repeat changed specs ${{ matrix.chunk }}
+    needs:
+      - changes
+      - build-server
+    if: github.event_name == 'pull_request' && fromJSON(needs.changes.outputs.repeat_count) > 0
+    runs-on:
+      labels: ubuntu-latest-16-cores
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.repeat_matrix) }}
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ocg_tests_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ocg_tests_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # E2E contract consumed by the justfile recipes; parallel.sh derives the stack databases.
+      OCG_E2E_DB_HOST: 127.0.0.1
+      OCG_E2E_DB_NAME: ocg_tests_e2e
+      OCG_E2E_DB_PASSWORD: postgres
+      OCG_E2E_DB_PORT: "5432"
+      OCG_E2E_DB_USER: postgres
+      OCG_E2E_PARALLEL_WORKERS: "1"
+      OCG_E2E_SERVER_BINARY: target/debug/ocg-server
+      OCG_PG_BIN: /usr/bin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install Node.js dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Restore Playwright browsers cache
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          # Same key as the functional job and cache.yml.
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps --only-shell chromium
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: tests/e2e
+        run: npx playwright install-deps chromium
+
+      - name: Install tern
+        uses: ./.github/actions/install-tern
+
+      - name: Install just
+        uses: taiki-e/install-action@just
+
+      - name: Download e2e server binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ocg-server-e2e
+          # Restores target/debug/ocg-server and ocg-server/dist/static in place.
+          path: .
+
+      - name: Verify e2e server artifact
+        run: |
+          test -x ./target/debug/ocg-server || chmod +x ./target/debug/ocg-server
+          ls ocg-server/dist/static/css/*.css >/dev/null
+
+      - name: Repeat changed specs
+        env:
+          SPECS: ${{ matrix.specs }}
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          read -ra specs <<<"$SPECS"
+          just e2e-tests-parallel --project=chromium-deep --project=chromium-mobile-deep \
+            --repeat-each=3 --retries=0 "${specs[@]}"
+
+      - name: Upload Playwright artifacts and server logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
+          name: playwright-artifacts-repeat-${{ matrix.chunk }}
           path: |
-            tests/e2e/playwright-report/
+            tests/e2e/blob-report/
             tests/e2e/test-results/
+            ${{ runner.temp }}/ocg-e2e-parallel/
+
+  # Merges the run archives of functional and smoke into one HTML and JSON report, even when runs
+  # failed. The step summary gets the run summary and the route hits, route coverage and DB
+  # coverage of all runs, which are also uploaded as coverage-reports. With the js_coverage input,
+  # the JS coverage of the functional shards and the unit tests joins them (js-coverage/). When every
+  # test job succeeded, the route and DB function coverage checks then fail on uncovered routes and
+  # uncalled functions without an allowlist entry; JS coverage is only listed.
+  merge-reports:
+    name: Merge reports
+    needs:
+      - functional
+      - smoke
+    if: ${{ !cancelled() && (needs.functional.result != 'skipped' || needs.smoke.result != 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install Node.js dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      # Each archive holds one folder per run (functional-N, smoke).
+      - name: Download run archives
+        uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-run-*
+          merge-multiple: true
+          path: tests/e2e/runs
+
+      - name: Collect blob reports
+        working-directory: tests/e2e
+        run: |
+          mkdir -p blob-report
+          cp runs/*/blob/*.zip blob-report/
+
+      # The diagnostics reporter in merge.config.js appends the browser-health and navigation-retry
+      # counts to the step summary.
+      - name: Merge reports
+        working-directory: tests/e2e
+        run: npx playwright merge-reports --config merge.config.js blob-report
+
+      - name: Summarize runs
+        working-directory: tests/e2e
+        shell: bash
+        run: node scripts/report-summary.js --json merged-report/results.json --runs-dir runs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Coverage reports
+        if: ${{ !cancelled() }}
+        working-directory: tests/e2e
+        continue-on-error: true
+        run: |
+          status=0
+          scripts/coverage-reports.sh runs coverage-reports || status=$?
+          { printf '## Coverage reports\n\n```text\n'; cat coverage-reports/summary.txt; printf '```\n'; } >>"$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      # Only complete runs give meaningful lists, so a failed or cancelled test job skips the checks;
+      # that job is already red.
+      - name: Coverage checks
+        if: ${{ !cancelled() && needs.functional.result == 'success' && needs.smoke.result == 'success' }}
+        working-directory: tests/e2e
+        run: |
+          status=0
+          node scripts/route-coverage.js --route-hits coverage-reports/route-hits.json --summary --blocking || status=1
+          node scripts/db-coverage.js --merge coverage-reports/db-coverage.json --summary --blocking || status=1
+          exit "$status"
+
+      # Unit tests with coverage, merged with the raw JS coverage the functional shards archived.
+      - name: Install unit test dependencies
+        if: ${{ !cancelled() && inputs.js_coverage }}
+        working-directory: tests/unit
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: JS coverage report
+        if: ${{ !cancelled() && inputs.js_coverage }}
+        continue-on-error: true
+        run: |
+          status=0
+          npm --prefix tests/unit test -- --coverage || status=$?
+          e2e_dirs=()
+          for dir in tests/e2e/runs/*/js-coverage; do
+            if [ -d "$dir" ]; then e2e_dirs+=(--e2e "$dir"); fi
+          done
+          summary="$RUNNER_TEMP/js-coverage-summary.txt"
+          node tests/e2e/scripts/js-coverage-report.js ${e2e_dirs[@]+"${e2e_dirs[@]}"} \
+            --out tests/e2e/coverage-reports/js-coverage --summary >"$summary" 2>&1 || status=1
+          cat "$summary"
+          { printf '## JS coverage\n\n```text\n'; cat "$summary"; printf '```\n'; } >>"$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Upload merged report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-merged
+          path: tests/e2e/merged-report/
+          if-no-files-found: error
+
+      - name: Upload coverage reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: tests/e2e/coverage-reports/
+          if-no-files-found: warn

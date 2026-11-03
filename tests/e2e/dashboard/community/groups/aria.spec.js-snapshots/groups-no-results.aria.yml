@@ -1,0 +1,20 @@
+- text: Groups
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=groups-portfolio
+- text: Search groups
+- textbox "Search groups": nothing
+- button "Clear group search"
+- button "Add Group"
+- text: 0 groups
+- table:
+  - rowgroup:
+    - row "Name Location Category Actions":
+      - columnheader "Name"
+      - columnheader "Location"
+      - columnheader "Category"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No groups found matching your search. Try adjusting your search terms or clear the filter to see all groups.":
+      - cell "No groups found matching your search. Try adjusting your search terms or clear the filter to see all groups.":
+        - text: ""
+        - paragraph: Try adjusting your search terms or clear the filter to see all groups.

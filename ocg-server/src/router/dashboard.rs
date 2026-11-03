@@ -600,7 +600,6 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
         // Home endpoints
         .route("/", get(dashboard::user::home::page))
         // Badges endpoints
-        .route("/badges", get(dashboard::user::badges::list_page))
         .route("/badges/order", put(dashboard::user::badges::update_order))
         .route(
             "/badges/{user_badge_id}",
@@ -615,7 +614,6 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             put(dashboard::user::badges::update_listing),
         )
         // Check-in endpoints
-        .route("/check-in", get(dashboard::user::check_in::list_page))
         .route(
             "/check-in/{event_id}/qr-code",
             get(dashboard::user::check_in::qr_code),
@@ -671,7 +669,6 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
         // Logs endpoints
         .route("/logs", get(dashboard::user::logs::list_page))
         // Notifications endpoints
-        .route("/notifications", get(dashboard::user::notifications::page))
         .route(
             "/notifications/group-options",
             get(dashboard::user::notifications::group_options),

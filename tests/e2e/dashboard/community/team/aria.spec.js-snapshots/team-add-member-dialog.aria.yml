@@ -1,0 +1,11 @@
+- heading "Add member" [level=3]
+- button "Close modal"
+- textbox "Search team member by username"
+- paragraph: Search for users by their name or username
+- text: Role
+- combobox "Role":
+  - option "Select a role" [disabled] [selected]
+  - option "Admin"
+  - option "Groups Manager"
+  - option "Viewer"
+- button "Add" [disabled]

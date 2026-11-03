@@ -81,11 +81,16 @@ pub(crate) async fn list_page(
     Path(event_id): Path<Uuid>,
     ValidatedQuery(mut filters): ValidatedQuery<AttendeesFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Load the event, rejecting events outside the selected group
+    let event = db
+        .find_event_summary_dashboard(community_id, group_id, event_id)
+        .await?
+        .ok_or(HandlerError::NotFound)?;
+
     // Load permissions and attendee context concurrently
     let (
         can_manage_check_ins,
         can_manage_events,
-        event,
         registration_questions,
         mut search_attendees_results,
     ) = tokio::try_join!(
@@ -101,7 +106,6 @@ pub(crate) async fn list_page(
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary_dashboard(community_id, group_id, event_id),
         db.get_event_registration_questions(community_id, event_id),
         db.search_event_attendees(group_id, event_id, &filters)
     )?;
@@ -467,9 +471,10 @@ pub(crate) async fn download_csv(
     // Fetch event summary and the confirmed attendee rows within the export bound
     let filters = attendees_export_filters();
     let (event, search_attendees_results) = tokio::try_join!(
-        db.get_event_summary(community_id, group_id, event_id),
+        db.find_event_summary(community_id, group_id, event_id),
         db.search_event_attendees(group_id, event_id, &filters)
     )?;
+    let event = event.ok_or(HandlerError::NotFound)?;
     reject_oversized_export(search_attendees_results.total)?;
 
     // Build CSV payload without registration question answers
@@ -487,10 +492,15 @@ pub(crate) async fn download_csv_with_answers(
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event summary, registration questions, and the confirmed attendee rows within the export bound
+    // Fetch event summary, rejecting events outside the selected group
+    let event = db
+        .find_event_summary(community_id, group_id, event_id)
+        .await?
+        .ok_or(HandlerError::NotFound)?;
+
+    // Fetch registration questions and the confirmed attendee rows within the export bound
     let filters = attendees_export_filters();
-    let (event, registration_questions, search_attendees_results) = tokio::try_join!(
-        db.get_event_summary(community_id, group_id, event_id),
+    let (registration_questions, search_attendees_results) = tokio::try_join!(
         db.get_event_registration_questions(community_id, event_id),
         db.search_event_attendees(group_id, event_id, &filters)
     )?;

@@ -411,7 +411,7 @@ export class GalleryField extends LitWrapper {
         ].join(" ")}
         role="button"
         tabindex="0"
-        aria-label="Add gallery images"
+        aria-label="Add images to gallery"
         aria-disabled=${this._isAddDisabled}
         @click=${this._triggerFilePicker}
         @keydown=${this._handlePlaceholderKeyDown}

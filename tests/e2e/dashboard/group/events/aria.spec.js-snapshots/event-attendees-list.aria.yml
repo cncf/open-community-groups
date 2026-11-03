@@ -1,0 +1,35 @@
+- text: Attendees
+- paragraph: Review registrations and manage attendee check-in.
+- text: Search attendees
+- textbox "Search attendees"
+- text: Status
+- combobox "Status"
+- text: Sort by
+- combobox "Sort by":
+  - option "Attendee ↑" [selected]
+  - option "Attendee ↓"
+  - option "Enrollment Date ↑"
+  - option "Enrollment Date ↓"
+- text: 1 - 1 of 1 attendee
+- button "Scan Attendee Codes"
+- button "Send email"
+- button "Award badge"
+- button "Open attendee actions menu"
+- table "Attendees list":
+  - rowgroup:
+    - row "Attendee Actions":
+      - columnheader "Attendee"
+      - columnheader:
+        - group: Ticket type
+      - columnheader:
+        - group: Checked In
+      - columnheader "Actions"
+  - rowgroup:
+    - row "View profile for E2E Member Three General admission Free Active Check in attendee":
+      - cell "View profile for E2E Member Three":
+        - button "View profile for E2E Member Three": ET E2E Member Three e2e-member-3
+      - cell "General admission Free Active"
+      - cell "Check in attendee":
+        - checkbox "Check in attendee"
+      - cell:
+        - group

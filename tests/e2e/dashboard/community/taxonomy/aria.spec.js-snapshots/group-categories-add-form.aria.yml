@@ -1,0 +1,9 @@
+- text: Group Category Details
+- link "Open documentation":
+  - /url: /docs#/guides/community-dashboard?id=group-categories-group-taxonomy
+- paragraph: Add a new group category for this community.
+- text: Name *
+- textbox "Name *"
+- paragraph: /Category display name\. Max \d+ characters\./
+- button "Cancel"
+- button "Add Group Category"

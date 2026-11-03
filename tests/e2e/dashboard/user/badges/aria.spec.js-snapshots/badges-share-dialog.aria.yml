@@ -1,0 +1,13 @@
+- dialog "Share":
+  - heading "Share" [level=3]
+  - button "Close modal"
+  - text: Share this link via
+  - button "Email"
+  - button "X"
+  - button "Facebook"
+  - button "WhatsApp"
+  - button "Reddit"
+  - button "LinkedIn"
+  - button "Bluesky"
+  - text: /Copy link https?:\/\/\S+\/badges\/credentials\/dadadada-dada-dada-dada-dadadadada06/
+  - button "Copy link"

@@ -1,0 +1,17 @@
+- text: Sponsors
+- link "Open documentation":
+  - /url: /docs#/guides/group-dashboard?id=sponsors-reusable-profiles
+- text: 0 sponsors
+- button "Add Sponsor"
+- table "Sponsors list":
+  - rowgroup:
+    - row "Sponsor Website Featured Actions":
+      - columnheader "Sponsor"
+      - columnheader "Website"
+      - columnheader "Featured"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "This group does not have any sponsors yet. You can add sponsors by clicking on the Add Sponsor button in the top right corner.":
+      - cell "This group does not have any sponsors yet. You can add sponsors by clicking on the Add Sponsor button in the top right corner.":
+        - text: ""
+        - paragraph: You can add sponsors by clicking on the Add Sponsor button in the top right corner.

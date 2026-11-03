@@ -1,0 +1,5 @@
+- text: Registration questions
+- paragraph: Ask attendees extra questions. Mark a question Required if you need the answer with a ticket request, RSVP, checkout, or offer claim.
+- text: Only questions marked Required must be answered. Questions appear with a ticket request, before RSVP or checkout, and when claiming an organizer or waitlist offer. Joining a waiting list does not collect answers. Ticket-request answers are available from Requests. 0 questions • 0 required
+- button "Add question"
+- text: No registration questions yet. Click "Add question" to create one.

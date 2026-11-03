@@ -25,6 +25,16 @@ use crate::{
 /// Common database operations trait.
 #[async_trait]
 pub(crate) trait DBCommon {
+    /// Finds summary event details for an event of the group.
+    ///
+    /// Returns `None` when the event does not belong to the community group.
+    async fn find_event_summary(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Option<EventSummary>>;
+
     /// Retrieves public revocation state for a badge status list.
     async fn get_badge_status_list(
         &self,
@@ -101,6 +111,21 @@ impl<T> DBCommon for T
 where
     T: PgExecutor + Send + Sync,
 {
+    /// [`DBCommon::find_event_summary`].
+    #[instrument(skip(self), err)]
+    async fn find_event_summary(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Option<EventSummary>> {
+        self.fetch_json_opt(
+            "select get_event_summary($1::uuid, $2::uuid, $3::uuid)",
+            &[&community_id, &group_id, &event_id],
+        )
+        .await
+    }
+
     /// [`DBCommon::get_badge_status_list`].
     #[instrument(skip(self), err)]
     async fn get_badge_status_list(

@@ -47,8 +47,8 @@
               <a href="/{{ purchase.community_name }}/group/{{ purchase.public_group_slug() }}/event/{{ purchase.event_slug }}"
                  target="_blank"
                  rel="noopener noreferrer"
-                 class="block max-w-xs truncate hover:underline">{{ purchase.event_name }}</a>
-              <div class="mt-0.5 truncate text-xs font-normal text-stone-400">
+                 class="block max-w-48 truncate hover:underline 2xl:max-w-xs">{{ purchase.event_name }}</a>
+              <div class="mt-0.5 max-w-48 truncate text-xs font-normal text-stone-400 2xl:max-w-xs">
                 {{ purchase.group_name }} · {{ purchase.ticket_title }}
               </div>
               <div class="mt-0.5 text-xs font-normal text-stone-500 xl:hidden">
@@ -84,7 +84,7 @@
             <td class="whitespace-nowrap px-3 py-4 font-medium text-stone-800 xl:px-5">
               <span data-localized-currency>{{ purchase.formatted_amount() }}</span>
               {% if let Some(seller_display_name) = &purchase.seller_display_name -%}
-                <div class="mt-0.5 max-w-48 truncate text-xs font-normal text-stone-400">
+                <div class="mt-0.5 max-w-32 truncate text-xs font-normal text-stone-400 xl:max-w-48">
                   Seller: {{ seller_display_name }}
                 </div>
               {% endif -%}

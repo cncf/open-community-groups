@@ -18,6 +18,7 @@ describe("markdown-editor", () => {
       constructor(options) {
         this.options = options;
         this._changeHandler = null;
+        this.elementTabIndexAtInit = options.element.tabIndex;
         latestEditor = this;
         this.codemirror = {
           on: (eventName, handler) => {
@@ -56,6 +57,24 @@ describe("markdown-editor", () => {
       element.querySelector("textarea"),
     );
     expect(element.querySelector("textarea").style.display).to.equal("block");
+  });
+
+  it("keeps the validation textarea out of the tab order and accessibility tree", async () => {
+    // Render the markdown-editor fixture.
+    const element = await mountLitComponent("markdown-editor", { name: "description" });
+
+    // Only the EasyMDE editor is exposed; the textarea carries the value and validation.
+    const textarea = element.querySelector("textarea");
+    expect(textarea.getAttribute("aria-hidden")).to.equal("true");
+    expect(textarea.tabIndex).to.equal(-1);
+  });
+
+  it("keeps the EasyMDE input in the tab order", async () => {
+    // Render the markdown-editor fixture.
+    await mountLitComponent("markdown-editor", { name: "description" });
+
+    // CodeMirror copies a non-zero textarea tabindex onto its input, so it must be 0 at init.
+    expect(latestEditor.elementTabIndexAtInit).to.equal(0);
   });
 
   it("renders single line breaks in the preview like the server does", async () => {

@@ -52,6 +52,16 @@ describe("gallery-field", () => {
     expect(received[1]).to.deep.equal(["https://example.com/1.png"]);
   });
 
+  it("names the add tile with its visible text", async () => {
+    // Render the gallery-field fixture with room for more images.
+    const element = await mountLitComponent("gallery-field", { images: [], maxImages: 2 });
+
+    // The accessible name keeps the visible "Add images" text (label in name).
+    const addTile = element.querySelector('[role="button"][aria-label]');
+    expect(addTile.getAttribute("aria-label")).to.equal("Add images to gallery");
+    expect(addTile.textContent).to.include("Add images");
+  });
+
   it("hides the add tile when the gallery reaches its limit", async () => {
     // Render the gallery-field fixture.
     const element = await mountLitComponent("gallery-field", {

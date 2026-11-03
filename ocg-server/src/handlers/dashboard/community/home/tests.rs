@@ -311,26 +311,51 @@ async fn test_page_warns_when_community_is_inactive() {
 }
 
 #[tokio::test]
-async fn test_page_without_tab_defaults_to_settings() {
-    // Setup identifiers and database mock
-    let ids = DashboardIds::new();
-    let mut db = MockDB::new();
-    expect_page_reads(&mut db, &ids, sample_community_full(ids.community_id));
-    expect_community_permission_result(&mut db, &ids, CommunityPermission::SettingsWrite, false);
-    db.expect_get_community_stats().never();
+async fn test_page_without_known_tab_defaults_to_settings() {
+    // Setup requests without a known tab
+    let cases = [
+        ("missing tab", "/dashboard/community"),
+        ("unknown tab", "/dashboard/community?tab=bogus"),
+    ];
 
-    // Setup router and send request without selecting a tab
-    let router = TestRouterBuilder::new(db).build().await;
-    let request = get_request("/dashboard/community", ids.session_id);
-    let (parts, bytes) = send(router, request).await;
+    for (case, uri) in cases {
+        // Setup identifiers and database mock
+        let ids = DashboardIds::new();
+        let mut db = MockDB::new();
+        expect_page_reads(&mut db, &ids, sample_community_full(ids.community_id));
+        expect_community_permission_result(
+            &mut db,
+            &ids,
+            CommunityPermission::SettingsWrite,
+            false,
+        );
+        db.expect_get_community_stats().never();
 
-    // Check the read-only settings tab is rendered instead of analytics
-    assert_html_response(&parts, &bytes, StatusCode::OK);
-    let body = std::str::from_utf8(&bytes).unwrap();
-    assert!(body.contains("hx-get=\"/dashboard/community/settings/update\""));
-    assert!(body.contains("Your role cannot update community settings."));
-    assert!(!body.contains("hx-get=\"/dashboard/community/analytics\""));
-    assert!(!body.contains("This community has been deactivated."));
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db).build().await;
+        let request = get_request(uri, ids.session_id);
+        let (parts, bytes) = send(router, request).await;
+
+        // Check the read-only settings tab is rendered instead of analytics
+        assert_eq!(parts.status, StatusCode::OK, "{case}");
+        let body = std::str::from_utf8(&bytes).unwrap();
+        assert!(
+            body.contains("hx-get=\"/dashboard/community/settings/update\""),
+            "{case}"
+        );
+        assert!(
+            body.contains("Your role cannot update community settings."),
+            "{case}"
+        );
+        assert!(
+            !body.contains("hx-get=\"/dashboard/community/analytics\""),
+            "{case}"
+        );
+        assert!(
+            !body.contains("This community has been deactivated."),
+            "{case}"
+        );
+    }
 }
 
 // Helpers.

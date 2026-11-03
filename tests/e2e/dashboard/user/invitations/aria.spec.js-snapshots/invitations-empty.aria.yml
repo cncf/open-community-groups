@@ -1,0 +1,39 @@
+- text: Event Invitations
+- link "Open documentation":
+  - /url: /docs#/guides/user-dashboard?id=invitations-access-and-attendance
+- paragraph: Confirm, resume, or decline event invitations and ticket offers.
+- table:
+  - rowgroup:
+    - row "Event Offer Starts Expires Actions":
+      - columnheader "Event"
+      - columnheader "Offer"
+      - columnheader "Starts"
+      - columnheader "Expires"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "You don't have any pending event invitation.":
+      - cell "You don't have any pending event invitation."
+- text: Group Invitations
+- paragraph: Manage invitations to join groups.
+- table:
+  - rowgroup:
+    - row "Group Role Created Actions":
+      - columnheader "Group"
+      - columnheader "Role"
+      - columnheader "Created"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "You don't have any pending group invitation.":
+      - cell "You don't have any pending group invitation."
+- text: Community Invitations
+- paragraph: Manage invitations to join communities.
+- table:
+  - rowgroup:
+    - row "Community Role Created Actions":
+      - columnheader "Community"
+      - columnheader "Role"
+      - columnheader "Created"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "You don't have any pending community invitation.":
+      - cell "You don't have any pending community invitation."

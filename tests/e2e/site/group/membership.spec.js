@@ -1,5 +1,5 @@
 import { expect, test } from "../../fixtures.js";
-import { deleteNotifications, expectNewNotifications, snapshotNotifications } from "../../notifications.js";
+import { cleanupGroupMember } from "../../data-graphs/groups.js";
 import {
   TEST_COMMUNITY_NAME,
   TEST_GROUP_IDS,
@@ -7,7 +7,7 @@ import {
   TEST_GROUP_SLUGS,
   TEST_USER_IDS,
 } from "../../seed.js";
-import { navigateToGroup, waitForActionResponse } from "../../utils.js";
+import { confirmAlert, navigateToGroup, waitForActionResponse } from "../../utils.js";
 
 const groupId = TEST_GROUP_IDS.community1.alpha;
 
@@ -31,8 +31,13 @@ test.describe("group membership", () => {
     );
   });
 
-  test("member can join and leave a group from the public page", async ({ member2Page }) => {
-    let notificationIds = [];
+  test("member can join and leave a group from the public page @smoke", async ({
+    member2Page,
+    notifications,
+    owned,
+  }) => {
+    // Remove the membership even if the flow fails before leaving.
+    owned.defer(() => cleanupGroupMember({ groupId, userId: TEST_USER_IDS.member2 }));
 
     // Load the group page and resolve the current membership state.
     await navigateToGroup(member2Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
@@ -45,48 +50,28 @@ test.describe("group membership", () => {
       }),
     ).toBeVisible();
 
-    // Resolve existing membership before starting the join flow.
-    await waitForMembershipState(member2Page);
-
-    // Leave any existing attendance before continuing.
-    if (await getLeaveButton(member2Page).isVisible()) {
-      await leaveGroup(member2Page);
-    }
-
     // Target the public join action.
     const joinButton = getJoinButton(member2Page);
     await expect(joinButton).toBeVisible();
 
-    // Join the group and wait for the membership record to be created.
-    const snapshot = snapshotNotifications();
-    try {
-      // Submit the group join and record its notification.
-      await waitForActionResponse(member2Page, () => joinButton.click(), {
-        method: "POST",
-        urlIncludes: `/group/${groupId}/join`,
-      });
-      notificationIds = expectNewNotifications(snapshot, [
-        { kind: "group-welcome", userIds: [TEST_USER_IDS.member2] },
-      ]);
-    } finally {
-      // Remove notifications created while joining the group.
-      deleteNotifications(notificationIds);
-    }
+    // Join the group and verify its welcome notification.
+    await waitForActionResponse(member2Page, () => joinButton.click(), {
+      method: "POST",
+      urlIncludes: `/group/${groupId}/join`,
+    });
+    notifications.expectNew([{ kind: "group-welcome", userIds: [TEST_USER_IDS.member2] }]);
 
     // Verify the member can now leave the group.
     await expect(getLeaveButton(member2Page)).toBeVisible();
 
-    // Restore the reusable membership state.
+    // Leave the group through the public action.
     await leaveGroup(member2Page);
   });
 
   test("failed group join restores the action for retry", async ({ member2Page }) => {
-    // Load the group and restore a non-member state before intercepting join.
+    // Load the group as a non-member before intercepting join.
     await navigateToGroup(member2Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
-    await waitForMembershipState(member2Page);
-    if (await getLeaveButton(member2Page).isVisible()) {
-      await leaveGroup(member2Page);
-    }
+    await expect(getJoinButton(member2Page)).toBeVisible();
 
     // Return a local server failure for the join request only.
     await member2Page.route(`**/${TEST_COMMUNITY_NAME}/group/${groupId}/join`, (route) =>
@@ -116,16 +101,16 @@ test.describe("group membership", () => {
     await expect(getLeaveButton(member2Page)).toBeHidden();
   });
 
-  test("failed group leave preserves membership and restores the action", async ({ member2Page }) => {
-    // Load the group and ensure the reusable user starts as a member.
+  test("failed group leave preserves membership and restores the action", async ({ member2Page, owned }) => {
+    // Remove the membership the test creates.
+    owned.defer(() => cleanupGroupMember({ groupId, userId: TEST_USER_IDS.member2 }));
+
+    // Load the group and join it so the leave action is available.
     await navigateToGroup(member2Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
-    await waitForMembershipState(member2Page);
-    if (await getJoinButton(member2Page).isVisible()) {
-      await waitForActionResponse(member2Page, () => getJoinButton(member2Page).click(), {
-        method: "POST",
-        urlIncludes: `/group/${groupId}/join`,
-      });
-    }
+    await waitForActionResponse(member2Page, () => getJoinButton(member2Page).click(), {
+      method: "POST",
+      urlIncludes: `/group/${groupId}/join`,
+    });
 
     // Prepare the failed leave route.
     const leavePath = `**/${TEST_COMMUNITY_NAME}/group/${groupId}/leave`;
@@ -139,13 +124,15 @@ test.describe("group membership", () => {
         }),
       );
       await getLeaveButton(member2Page).click();
-      const confirmButton = member2Page.getByRole("button", { name: "Yes" });
-      await expect(confirmButton).toBeVisible();
-      await waitForActionResponse(member2Page, () => confirmButton.click(), {
-        method: "DELETE",
-        status: 500,
-        urlIncludes: `/group/${groupId}/leave`,
-      });
+      await waitForActionResponse(
+        member2Page,
+        () => confirmAlert(member2Page, { message: "Are you sure you want to leave this group?" }),
+        {
+          method: "DELETE",
+          status: 500,
+          urlIncludes: `/group/${groupId}/leave`,
+        },
+      );
 
       // Verify membership remains durable and the leave action can be retried.
       await expect(member2Page.locator(".swal2-popup")).toContainText(
@@ -156,19 +143,8 @@ test.describe("group membership", () => {
       await expect(getMembershipContainer(member2Page).locator("#loading-btn")).toBeHidden();
       await expect(getJoinButton(member2Page)).toBeHidden();
     } finally {
-      // Restore the real leave endpoint and clean up membership state.
+      // Restore the real leave endpoint.
       await member2Page.unroute(leavePath);
-      if (!member2Page.isClosed()) {
-        const errorConfirmation = member2Page.getByRole("button", {
-          name: "OK",
-        });
-        if (await errorConfirmation.isVisible()) {
-          await errorConfirmation.click();
-        }
-        if (await getLeaveButton(member2Page).isVisible()) {
-          await leaveGroup(member2Page);
-        }
-      }
     }
   });
 });
@@ -190,25 +166,17 @@ const leaveGroup = async (page) => {
   const leaveButton = getLeaveButton(page);
   await expect(leaveButton).toBeVisible();
 
-  // Request membership removal before confirming the dialog.
+  // Request membership removal, confirm it and wait for membership to be removed.
   await leaveButton.click();
-  const confirmButton = page.getByRole("button", { name: "Yes" });
-  await expect(confirmButton).toBeVisible();
-
-  // Confirm the leave action and wait for membership to be removed.
-  await waitForActionResponse(page, () => confirmButton.click(), {
-    method: "DELETE",
-    urlIncludes: `/group/${groupId}/leave`,
-  });
+  await waitForActionResponse(
+    page,
+    () => confirmAlert(page, { message: "Are you sure you want to leave this group?" }),
+    {
+      method: "DELETE",
+      urlIncludes: `/group/${groupId}/leave`,
+    },
+  );
 
   // Verify the join action returns after leaving.
   await expect(getJoinButton(page)).toBeVisible();
-};
-
-/** Waits until the membership widget resolves to a join or leave state. */
-const waitForMembershipState = async (page) => {
-  await Promise.race([
-    getJoinButton(page).waitFor({ state: "visible" }),
-    getLeaveButton(page).waitFor({ state: "visible" }),
-  ]);
 };

@@ -1,0 +1,10 @@
+- /children: deep-equal
+- navigation "Breadcrumb":
+  - list:
+    - listitem:
+      - link "Home":
+        - /url: /
+    - listitem:
+      - link "Platform Engineering Community":
+        - /url: /e2e-test-community
+    - listitem: Platform Ops Meetup

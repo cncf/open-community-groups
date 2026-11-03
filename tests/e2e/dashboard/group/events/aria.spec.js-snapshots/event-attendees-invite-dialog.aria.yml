@@ -1,0 +1,14 @@
+- dialog "Invite attendee":
+  - heading "Invite attendee" [level=3]
+  - button "Close modal"
+  - text: Search by name, username or email
+  - textbox "Search by name, username or email":
+    - /placeholder: Search users or enter an email address
+  - text: Ticket type *
+  - combobox "Ticket type *":
+    - option "Select ticket type"
+    - option "General admission (Public)" [selected]
+  - paragraph: The admission tier is reserved when the invitation is sent.
+  - text: When inviting by email, the email address must match the primary email on the invitee's LF account. They will need to sign in with LF SSO using that account to accept the invitation.
+  - button "Cancel"
+  - button "Send invitation" [disabled]

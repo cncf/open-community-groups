@@ -137,6 +137,14 @@ export class ImageField extends LitWrapper {
     return `${this._uniqueId}-cropper`;
   }
 
+  get _labelId() {
+    return `${this._uniqueId}-label`;
+  }
+
+  get _promptId() {
+    return `${this._uniqueId}-prompt`;
+  }
+
   get _hasImage() {
     return typeof this.value === "string" && this.value.trim().length > 0;
   }
@@ -177,7 +185,7 @@ export class ImageField extends LitWrapper {
       return html`
         <div class="flex flex-col items-center justify-center gap-2 px-3 text-center">
           <div class="svg-icon ${isWide ? "size-12" : "size-8"} icon-image bg-stone-400"></div>
-          <p class="text-xs leading-snug text-stone-500">${this._directFileName}</p>
+          <p id=${this._promptId} class="text-xs leading-snug text-stone-500">${this._directFileName}</p>
         </div>
       `;
     }
@@ -194,6 +202,7 @@ export class ImageField extends LitWrapper {
           }
           loading="lazy"
         />
+        <span id=${this._promptId} class="sr-only">Change image</span>
       `;
     }
 
@@ -202,7 +211,7 @@ export class ImageField extends LitWrapper {
         class="flex flex-col items-center justify-center text-center ${isWide ? "gap-3 px-4" : "gap-2 px-3"}"
       >
         <div class="svg-icon ${isWide ? "size-12" : "size-8"} icon-image bg-stone-400"></div>
-        <p class="text-xs text-stone-500 leading-snug">
+        <p id=${this._promptId} class="text-xs text-stone-500 leading-snug">
           ${isWide ? "Click to upload or drag and drop" : "Click or drop image"}
         </p>
       </div>
@@ -447,8 +456,9 @@ export class ImageField extends LitWrapper {
 
   /** Render the direct-submit drop zone used when a parent form owns the upload. */
   _renderDirectUploadField(acceptedFormats) {
+    // Name the drop zone from the field label plus its visible prompt (label in name).
     return html`
-      <label for=${this._fileInputId} class="form-label">
+      <label id=${this._labelId} for=${this._fileInputId} class="form-label">
         ${this.label} ${this.required ? html`<span class="asterisk">*</span>` : ""}
       </label>
       <div class="mt-2">
@@ -458,7 +468,7 @@ export class ImageField extends LitWrapper {
           }"
           role="button"
           tabindex="0"
-          aria-label="Upload ${this.label}"
+          aria-labelledby="${this._labelId} ${this._promptId}"
           @click=${this._triggerFilePicker}
           @keydown=${this._handlePreviewKeyDown}
           @dragover=${this._handleDragOver}
@@ -466,7 +476,7 @@ export class ImageField extends LitWrapper {
           @drop=${this._handleDrop}
         >
           <div class="svg-icon size-8 shrink-0 icon-image bg-stone-400" aria-hidden="true"></div>
-          <p class="text-sm">
+          <p id=${this._promptId} class="text-sm">
             <span class="font-semibold text-primary-600">Click to upload</span>
             ${
               this._directFileName
@@ -525,8 +535,9 @@ export class ImageField extends LitWrapper {
       return this._renderDirectUploadField(acceptedFormats);
     }
 
+    // Name the preview from the field label plus its visible prompt (label in name).
     return html`
-      <label for=${this._fileInputId} class="form-label">
+      <label id=${this._labelId} for=${this._fileInputId} class="form-label">
         ${this.label} ${this.required ? html`<span class="asterisk">*</span>` : ""}
       </label>
       <div class="mt-3 flex flex-col gap-4 items-stretch sm:flex-row">
@@ -538,7 +549,7 @@ export class ImageField extends LitWrapper {
           } cursor-pointer ${this.previewBgClass ? ` ${this.previewBgClass}` : ""}"
           role="button"
           tabindex="0"
-          aria-label="Upload image"
+          aria-labelledby="${this._labelId} ${this._promptId}"
           aria-busy=${this._isPending ? "true" : "false"}
           aria-disabled=${this._isPending ? "true" : "false"}
           data-image-upload-preview

@@ -1,0 +1,5 @@
+- dialog "Action required":
+  - heading "Action required" [level=3]
+  - button "Close modal"
+  - paragraph: Please add clearer audience outcomes before we continue the review.
+  - button "Close"

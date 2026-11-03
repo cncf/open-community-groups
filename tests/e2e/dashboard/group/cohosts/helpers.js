@@ -1,8 +1,7 @@
 import { expect } from "../../../fixtures.js";
 
 import { TEST_COMMUNITY_IDS } from "../../../seed.js";
-import { futureDate, navigateToPath, selectTimezone, waitForActionResponse } from "../../../utils.js";
-import { fillMarkdownEditor } from "../../form-helpers.js";
+import { navigateToPath, waitForActionResponse, waitForResponseMatching } from "../../../utils.js";
 
 // Confirmation button labels by co-host action.
 const ACTION_CONFIRM_LABELS = {
@@ -16,8 +15,6 @@ const ACTION_RESULT_STATUSES = {
   cancel: "Canceled",
   reject: "Rejected",
 };
-// Seeded event category used by co-hosting drafts.
-const EVENT_CATEGORY_ID = "33333333-3333-3333-3333-333333333331";
 // Group options endpoint used by the event editor co-host selector.
 const GROUP_OPTIONS_PATH = "/dashboard/group/events/cohosts/groups";
 
@@ -65,37 +62,6 @@ export const expectCohostDashboardRow = async (page, eventName, status) => {
   await expect(row).toBeVisible();
   await expect(row).toContainText(status);
   return row;
-};
-
-/**
- * Fills the minimum add-event fields required to create a future virtual draft.
- * @param {import("@playwright/test").Page} page - Playwright page with the add-event form open.
- * @param {string} eventName - Event name.
- * @param {{ additionalOccurrences?: number, days: number }} schedule - Start offset and weekly repeats.
- * @returns {Promise<void>}
- */
-export const fillVirtualEventDraft = async (page, eventName, { additionalOccurrences = 0, days }) => {
-  // Fill the event details.
-  await page.locator("#name").fill(eventName);
-  await page.locator("#kind_id").selectOption("virtual");
-  await page.locator("#category_id").selectOption(EVENT_CATEGORY_ID);
-  await page.locator("#description_short").fill("A co-hosting workflow event from the e2e suite.");
-  await fillMarkdownEditor(page, "description", "A co-hosting workflow event created by the e2e suite.");
-
-  // Fill the schedule and virtual meeting link.
-  await page.locator('button[data-section="date-venue"]').click();
-  await expect(page.locator('button[data-section="date-venue"]')).toHaveAttribute("data-active", "true");
-  await selectTimezone(page, "UTC");
-  await page.locator("#starts_at").fill(futureDate({ days, hour: 10 }));
-  await page.locator("#ends_at").fill(futureDate({ days, hour: 12 }));
-  await page.locator("#meeting_join_url").fill("https://meet.example.com/e2e-co-hosting");
-
-  // Repeat the event weekly when a series is requested.
-  if (additionalOccurrences > 0) {
-    await page.locator("#recurrence_pattern").selectOption("weekly");
-    await expect(page.locator("#recurrence-additional-occurrences-container")).toBeVisible();
-    await page.locator("#recurrence_additional_occurrences").fill(String(additionalOccurrences));
-  }
 };
 
 /**
@@ -198,10 +164,9 @@ export const respondToCohostInvitation = async (page, eventName, action) => {
  * @returns {Promise<import("@playwright/test").Response>} Group options response.
  */
 export const waitForGroupOptions = (page, communityId) =>
-  page.waitForResponse(
-    (response) =>
-      response.request().method() === "GET" &&
-      response.url().includes(GROUP_OPTIONS_PATH) &&
-      response.url().includes(communityId) &&
-      response.ok(),
-  );
+  waitForResponseMatching(page, {
+    method: "GET",
+    params: { community_id: communityId },
+    pathname: GROUP_OPTIONS_PATH,
+    status: 200,
+  });

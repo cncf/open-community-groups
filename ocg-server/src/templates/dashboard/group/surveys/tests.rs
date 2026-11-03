@@ -659,7 +659,7 @@ fn test_results_page_renders_overview_cards_and_question_sections() {
     )));
     assert!(html.contains(r##"hx-target="#event-survey-text-answers-modal-content""##));
     assert!(html.contains("View all 3 answers"));
-    assert!(html.contains(r#"<span class="sr-only">: What should we improve?</span>"#));
+    assert!(html.contains(r#"aria-label="View all 3 answers: What should we improve?""#));
     assert!(!html.contains("Show more"));
 
     // Check the answers modal shell

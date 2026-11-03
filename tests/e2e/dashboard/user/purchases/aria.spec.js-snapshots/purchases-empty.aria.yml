@@ -1,0 +1,18 @@
+- text: Purchases & documents
+- link "Open documentation":
+  - /url: /docs#/guides/user-dashboard?id=purchases-and-financial-documents
+- paragraph: Invoices and credit notes for your paid tickets, including past and canceled events.
+- text: 0 purchases
+- table:
+  - rowgroup:
+    - row "Event Purchased Amount Status Actions":
+      - columnheader "Event"
+      - columnheader "Purchased"
+      - columnheader "Amount"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - row "No paid-ticket documents yet Invoices appear here after a paid checkout. Free tickets do not create invoices.":
+      - cell "No paid-ticket documents yet Invoices appear here after a paid checkout. Free tickets do not create invoices.":
+        - text: ""
+        - paragraph: Invoices appear here after a paid checkout. Free tickets do not create invoices.

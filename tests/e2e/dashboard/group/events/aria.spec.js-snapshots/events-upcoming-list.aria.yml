@@ -1,0 +1,20 @@
+- table "Upcoming events list":
+  - rowgroup:
+    - row "Name Date Type Status Actions":
+      - columnheader "Name"
+      - columnheader "Date"
+      - columnheader "Type"
+      - columnheader "Status"
+      - columnheader "Actions"
+  - rowgroup:
+    - 'row "Open event details: E2E ARIA event Jun 15, 2035 06:00 PM UTC virtual Published Edit event: E2E ARIA event View event page: E2E ARIA event Open actions for E2E ARIA event"':
+      - 'rowheader "Open event details: E2E ARIA event"':
+        - 'button "Open event details: E2E ARIA event"'
+      - cell "Jun 15, 2035 06:00 PM UTC"
+      - cell "virtual"
+      - cell "Published"
+      - 'cell "Edit event: E2E ARIA event View event page: E2E ARIA event Open actions for E2E ARIA event"':
+        - 'button "Edit event: E2E ARIA event"'
+        - 'link "View event page: E2E ARIA event"':
+          - /url: /\/e2e-test-community\/group\/e2e-temporary-group-[0-9a-f]{12}\/event\/e2e-aria-event/
+        - button "Open actions for E2E ARIA event"
