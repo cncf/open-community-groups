@@ -34,7 +34,7 @@ describe("common header template", () => {
     );
   });
 
-  it("swaps check-in shortcuts for dashboard links at the md breakpoint", async () => {
+  it("swaps check-in shortcuts for dashboard links at md or with a fine pointer", async () => {
     // Load the header template and isolate the logged-in menu.
     const template = normalizeWhitespace(await loadTemplate());
     const loggedInMenu = template.slice(
@@ -42,26 +42,28 @@ describe("common header template", () => {
       template.indexOf("{# User dropdown menu for non-logged users -#}"),
     );
 
-    // Verify the check-in shortcuts only show below md.
+    // Verify the check-in shortcuts only show on narrow touch screens.
     expect(loggedInMenu).to.include(
-      '<li class="md:hidden" role="none"> <a href="/dashboard/user?tab=check-in"',
+      '<li class="md:hidden pointer-fine:hidden" role="none"> <a href="/dashboard/user?tab=check-in"',
     );
     expect(loggedInMenu).to.include(
-      '<li class="md:hidden" role="none"> <a href="/dashboard/group?tab=check-in"',
+      '<li class="md:hidden pointer-fine:hidden" role="none"> <a href="/dashboard/group?tab=check-in"',
     );
 
-    // Verify every dashboard entry point shows from md.
+    // Verify every dashboard entry point shows from md or with a fine pointer.
     [
       "/dashboard/community",
       "/dashboard/user?tab=groups",
       "/dashboard/user?tab=events",
       "/dashboard/group?tab=events",
     ].forEach((href) => {
-      expect(loggedInMenu, href).to.include(`<li class="hidden md:block" role="none"> <a href="${href}"`);
+      expect(loggedInMenu, href).to.include(
+        `<li class="hidden md:block pointer-fine:block" role="none"> <a href="${href}"`,
+      );
     });
     ["group", "user"].forEach((dashboard) => {
       expect(loggedInMenu, dashboard).to.include(
-        `<a id="user-menu-${dashboard}-dashboard-link" href="/dashboard/${dashboard}" hx-boost="true" hx-target="body" class="hidden md:inline-block w-full text-start px-4 py-2 hover:bg-stone-100" role="menuitem">`,
+        `<a id="user-menu-${dashboard}-dashboard-link" href="/dashboard/${dashboard}" hx-boost="true" hx-target="body" class="hidden md:inline-block pointer-fine:inline-block w-full text-start px-4 py-2 hover:bg-stone-100" role="menuitem">`,
       );
     });
     expect(loggedInMenu).not.to.include('class="hidden md:block border-t');

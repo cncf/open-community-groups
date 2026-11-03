@@ -102,7 +102,9 @@ const GRID_CASES = [
 const MOBILE_WARNING = "This dashboard is not optimized yet for mobile devices";
 
 test.describe("dashboard layout", () => {
-  test("keeps the drawer and placeholder aligned at the md breakpoint", async ({ member1Page }) => {
+  test("keeps the drawer and placeholder aligned at the md breakpoint on touch screens @mobile", async ({
+    member1Page,
+  }) => {
     // Load unsupported user content at the first desktop width.
     await member1Page.setViewportSize({ width: 768, height: 900 });
     await navigateToPath(member1Page, "/dashboard/user?tab=events");
@@ -127,6 +129,62 @@ test.describe("dashboard layout", () => {
     await expect(main).toBeVisible();
     await expect(warning).toBeHidden();
     await expect(openMenuButton).toBeHidden();
+  });
+
+  test("keeps the md layout below md with a mouse and scrolls horizontally", async ({ member1Page }) => {
+    // Load user content at md before narrowing the mouse-driven window.
+    await member1Page.setViewportSize({ width: 768, height: 900 });
+    await navigateToPath(member1Page, "/dashboard/user?tab=events");
+    const main = member1Page.locator("#dashboard-main-content");
+    const header = member1Page.locator("#dashboard-header");
+    const sidebar = member1Page.locator("aside#dashboard-menu-drawer");
+    await expect(main).toBeVisible();
+    expect((await getDocumentWidths(member1Page)).overflow).toBe(0);
+
+    // Verify narrow windows keep the static sidebar and content instead of the notice.
+    for (const width of [767, 600]) {
+      await test.step(`${width}px`, async () => {
+        await member1Page.setViewportSize({ width, height: 500 });
+        await expect(main).toBeVisible();
+        await expect(member1Page.getByText(MOBILE_WARNING, { exact: true })).toBeHidden();
+        await expect(member1Page.getByRole("button", { name: "Open dashboard menu" })).toBeHidden();
+        await expect.poll(() => getBoundingRectValue(sidebar, "width")).toBeCloseTo(225, 0);
+        await expectReachableSidebar(member1Page);
+
+        // Verify the whole page keeps the md width and the header scrolls with the content.
+        const { clientWidth, overflow, scrollbarWidth } = await getDocumentWidths(member1Page);
+        expect(overflow).toBe(768 - scrollbarWidth - clientWidth);
+        await member1Page.evaluate(() =>
+          window.scrollTo({
+            left: document.documentElement.scrollWidth,
+            top: document.documentElement.scrollHeight,
+          }),
+        );
+        await expect.poll(() => getBoundingRectValue(main, "right")).toBeLessThanOrEqual(clientWidth);
+        await expect.poll(() => getBoundingRectValue(header, "right")).toBeCloseTo(clientWidth, 0);
+        expect(await getBoundingRectValue(header, "left")).toBeCloseTo(-overflow, 0);
+        expect(await getBoundingRectValue(sidebar, "left")).toBeCloseTo(-overflow, 0);
+
+        // Verify the header and sidebar still stick to the top after scrolling down.
+        expect(await getBoundingRectValue(header, "top")).toBe(0);
+        expect(await getBoundingRectValue(sidebar, "top")).toBe(0);
+        await member1Page.evaluate(() => window.scrollTo({ left: 0, top: 0 }));
+      });
+    }
+
+    // Verify a page loaded directly in a narrow window starts with the same layout.
+    await test.step("600px on load", async () => {
+      await member1Page.setViewportSize({ width: 600, height: 500 });
+      await navigateToPath(member1Page, "/dashboard/user?tab=events");
+      await expect(main).toBeVisible();
+      await expect(member1Page.getByText(MOBILE_WARNING, { exact: true })).toBeHidden();
+      await expect(member1Page.getByRole("button", { name: "Open dashboard menu" })).toBeHidden();
+      await expect.poll(() => getBoundingRectValue(sidebar, "width")).toBeCloseTo(225, 0);
+      expect(await getBoundingRectValue(sidebar, "left")).toBe(0);
+      await expectReachableSidebar(member1Page);
+      const { clientWidth, overflow, scrollbarWidth } = await getDocumentWidths(member1Page);
+      expect(overflow).toBe(768 - scrollbarWidth - clientWidth);
+    });
   });
 
   for (const chromeCase of DASHBOARD_CHROME_CASES) {
@@ -223,13 +281,42 @@ test.describe("dashboard layout", () => {
 });
 
 /**
+ * Asserts the static dashboard sidebar is exposed to assistive technologies and keyboard focus.
+ * @param {import("@playwright/test").Page} page - Dashboard page to inspect.
+ * @returns {Promise<void>}
+ */
+const expectReachableSidebar = async (page) => {
+  const navigation = page.getByRole("navigation", { name: "Dashboard navigation" });
+  await expect(navigation).toBeVisible();
+  await expect(navigation).not.toHaveAttribute("inert");
+  const firstLink = navigation.getByRole("link").first();
+  await firstLink.focus();
+  await expect(firstLink).toBeFocused();
+};
+
+/**
  * Returns one edge or size of an element's bounding client rect.
  * @param {import("@playwright/test").Locator} locator - Element to measure.
- * @param {"left"|"width"} property - Bounding rect property to read.
+ * @param {"left"|"right"|"top"|"width"} property - Bounding rect property to read.
  * @returns {Promise<number>} Measured value in CSS pixels.
  */
 const getBoundingRectValue = (locator, property) =>
   locator.evaluate((element, key) => element.getBoundingClientRect()[key], property);
+
+/**
+ * Returns the document client width, its horizontal overflow, and the classic scrollbar width.
+ * @param {import("@playwright/test").Page} page - Page to measure.
+ * @returns {Promise<{clientWidth: number, overflow: number, scrollbarWidth: number}>} Widths in CSS pixels.
+ */
+const getDocumentWidths = (page) =>
+  page.evaluate(() => {
+    const root = document.documentElement;
+    return {
+      clientWidth: root.clientWidth,
+      overflow: root.scrollWidth - root.clientWidth,
+      scrollbarWidth: window.innerWidth - root.clientWidth,
+    };
+  });
 
 /** Returns the computed CSS grid column count for a grid element. */
 const getGridColumnCount = (grid) =>

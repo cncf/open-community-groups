@@ -8,6 +8,54 @@
 /* Active while the desktop version mode is on (set by common/base.html). */
 @custom-variant viewport-desktop (&:where(html[data-viewport-mode="desktop"] *));
 
+/*
+ * Narrow dashboard windows with a fine pointer keep the md layout and scroll horizontally
+ * (see "Narrow desktop dashboards" below), so only touch screens get the mobile notice.
+ * Redefined sm and md keep their order against wider breakpoints; redefined max-sm and
+ * max-md move after them, so max-md beats sm between 640px and 767px. Do not pair max-md and
+ * sm utilities for the same property.
+ */
+@custom-variant sm {
+  @media (width >= 40rem) {
+    @slot;
+  }
+  @media (width < 40rem) and (pointer: fine) {
+    &:where(body:has(#dashboard-layout) *) {
+      @slot;
+    }
+  }
+}
+@custom-variant md {
+  @media (width >= 48rem) {
+    @slot;
+  }
+  @media (width < 48rem) and (pointer: fine) {
+    &:where(body:has(#dashboard-layout) *) {
+      @slot;
+    }
+  }
+}
+@custom-variant max-sm {
+  @media (width < 40rem) and (not (pointer: fine)) {
+    @slot;
+  }
+  @media (width < 40rem) and (pointer: fine) {
+    &:not(:where(body:has(#dashboard-layout) *)) {
+      @slot;
+    }
+  }
+}
+@custom-variant max-md {
+  @media (width < 48rem) and (not (pointer: fine)) {
+    @slot;
+  }
+  @media (width < 48rem) and (pointer: fine) {
+    &:not(:where(body:has(#dashboard-layout) *)) {
+      @slot;
+    }
+  }
+}
+
 @theme {
   --font-inter: Inter, sans-serif;
   --font-sans:
@@ -414,6 +462,26 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .caps {
     /* Cut descenders “air” */
     padding-block: calc((1em - 1cap) / 2);
+  }
+}
+
+/* Narrow desktop dashboards */
+@media (width < 48rem) and (pointer: fine) {
+  /* The whole page keeps the md width (scrollbar excluded) and scrolls horizontally. */
+  body:has(#dashboard-layout) {
+    min-width: calc(48rem - 100vw + 100%);
+  }
+
+  /* The header sticks to the top but scrolls horizontally with the page. Its wrapper is
+     unboxed so it sticks for the whole page, and the negative margin keeps the offsets
+     designed for a fixed header. */
+  body:has(#dashboard-layout) :has(> #dashboard-header) {
+    display: contents;
+  }
+
+  #dashboard-header {
+    position: sticky;
+    margin-bottom: -5rem;
   }
 }
 

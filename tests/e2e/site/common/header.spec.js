@@ -318,7 +318,7 @@ test.describe("site header", () => {
     await expect(checkInManagerGroupPage).toHaveURL(/\/dashboard\/group\?tab=events$/u);
   });
 
-  test("logged-in menu swaps check-in shortcuts for dashboard links at the md breakpoint", async ({
+  test("logged-in menu swaps check-in shortcuts for dashboard links at the md breakpoint on touch screens @mobile", async ({
     checkInManagerGroupPage,
   }) => {
     // Load the public shell with a group team session right below md.
@@ -353,6 +353,23 @@ test.describe("site header", () => {
     await expect(checkInLink).toBeHidden();
     await expect(scanAttendeesLink).toBeHidden();
     await expect(userMenu.getByRole("menuitem", { name: "Home" })).toBeVisible();
+  });
+
+  test("logged-in menu shows dashboard links in narrow windows with a mouse", async ({
+    checkInManagerGroupPage,
+  }) => {
+    // Load the public shell with a group team session in a narrow mouse-driven window.
+    await checkInManagerGroupPage.setViewportSize({ width: 600, height: 900 });
+    await navigateToSiteHome(checkInManagerGroupPage);
+    await checkInManagerGroupPage.locator('#user-dropdown-button[data-logged-in="true"]').click();
+    const userMenu = checkInManagerGroupPage.locator("#user-dropdown");
+
+    // Verify the full dashboards stay reachable instead of the check-in shortcuts.
+    await expect(userMenu.getByRole("menuitem", { name: "Group dashboard" })).toBeVisible();
+    await expect(userMenu.getByRole("menuitem", { name: "User dashboard" })).toBeVisible();
+    await expect(userMenu.getByRole("menuitem", { name: "Events", exact: true })).toBeVisible();
+    await expect(userMenu.getByRole("menuitem", { name: "Check in" })).toBeHidden();
+    await expect(userMenu.getByRole("menuitem", { name: "Scan attendees" })).toBeHidden();
   });
 
   test("public shell exposes its skip link, logo, and footer destinations", async ({ page }) => {

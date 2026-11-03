@@ -265,8 +265,9 @@
 {# End menu title -#}
 
 {# Mobile notice -#}
-{# Used by dashboards to cover unsupported content on small screens and point to the desktop
-   version option in the user menu. -#}
+{# Used by dashboards to cover unsupported content on small touch screens and point to the
+   desktop version option in the user menu. Fine pointers keep the md layout instead (see the
+   md variant in styles.src.css). -#}
 {% macro mobile_notice() -%}
   <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">
     <div class="max-w-md rounded-lg border-4 border-dashed border-primary-600 bg-stone-100 p-8 text-center text-stone-800">
