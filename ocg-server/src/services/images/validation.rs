@@ -185,7 +185,7 @@ fn image_extension(file_name: &str) -> Result<Cow<'_, str>> {
 }
 
 /// Checks whether an SVG href is safe to retain in an inline SVG document.
-fn is_safe_svg_href(element_name: &[u8], value: &str) -> bool {
+fn is_safe_svg_href(element_name: &str, value: &str) -> bool {
     // Normalize characters that can obscure an explicit URL scheme
     let normalized = value
         .chars()
@@ -206,7 +206,7 @@ fn is_safe_svg_href(element_name: &[u8], value: &str) -> bool {
     let (scheme, rest) = normalized.split_at(colon_index);
     match scheme {
         "http" | "https" => true,
-        "data" if element_name.eq_ignore_ascii_case(b"image") => {
+        "data" if element_name.eq_ignore_ascii_case("image") => {
             let media_type = rest[1..]
                 .split_once([';', ','])
                 .map_or(rest[1..].as_ref(), |(media_type, _)| media_type);
@@ -223,14 +223,14 @@ fn is_safe_svg_href(element_name: &[u8], value: &str) -> bool {
 ///
 /// This performs lightweight XML parsing to verify:
 /// - The extension is "svg"
-/// - The file is well-formed XML
+/// - The file is well-formed, UTF-8 encoded XML
 /// - The root element is <svg> with proper namespace
 /// - No dangerous elements (<script>, <foreignObject>)
 /// - No event handler attributes (onclick, onload, etc.)
 /// - No javascript: or suspicious data: URLs
 fn is_svg(bytes: &[u8], extension: &str) -> bool {
-    const SVG_NAMESPACE: &[u8] = b"http://www.w3.org/2000/svg";
-    const DANGEROUS_ELEMENTS: &[&[u8]] = &[b"script", b"foreignObject"];
+    const SVG_NAMESPACE: &str = "http://www.w3.org/2000/svg";
+    const DANGEROUS_ELEMENTS: &[&str] = &["script", "foreignObject"];
 
     // Check extension first (fast path)
     if !extension.eq_ignore_ascii_case("svg") {
@@ -252,7 +252,7 @@ fn is_svg(bytes: &[u8], extension: &str) -> bool {
 
                 // Check for root <svg> element with proper namespace
                 if !in_root {
-                    if tag_name.as_ref() != b"svg" {
+                    if tag_name.as_ref() != "svg" {
                         return false;
                     }
 
@@ -262,14 +262,11 @@ fn is_svg(bytes: &[u8], extension: &str) -> bool {
                         let Ok(attr) = attr else {
                             return false;
                         };
-                        let Ok(value) = attr.decoded_and_normalized_value(
-                            XmlVersion::Implicit1_0,
-                            reader.decoder(),
-                        ) else {
+                        let Ok(value) = attr.normalized_value(XmlVersion::Implicit1_0) else {
                             return false;
                         };
 
-                        if attr.key.as_ref() == b"xmlns" && value.as_bytes() == SVG_NAMESPACE {
+                        if attr.key.as_ref() == "xmlns" && value == SVG_NAMESPACE {
                             has_svg_namespace = true;
                         }
                     }
@@ -295,19 +292,19 @@ fn is_svg(bytes: &[u8], extension: &str) -> bool {
                         return false;
                     };
                     let key = attr.key.local_name();
-                    let Ok(value) = attr
-                        .decoded_and_normalized_value(XmlVersion::Implicit1_0, reader.decoder())
-                    else {
+                    let Ok(value) = attr.normalized_value(XmlVersion::Implicit1_0) else {
                         return false;
                     };
 
                     // Block event handler attributes (onclick, onload, etc.)
-                    if key.as_ref().len() >= 2 && key.as_ref()[..2].eq_ignore_ascii_case(b"on") {
+                    if key.as_ref().len() >= 2
+                        && key.as_ref().as_bytes()[..2].eq_ignore_ascii_case(b"on")
+                    {
                         return false;
                     }
 
                     // Restrict every namespace variant of href to safe URL forms
-                    if key.as_ref().eq_ignore_ascii_case(b"href")
+                    if key.as_ref().eq_ignore_ascii_case("href")
                         && !is_safe_svg_href(tag_name.local_name().as_ref(), &value)
                     {
                         return false;

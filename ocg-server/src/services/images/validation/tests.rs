@@ -9,7 +9,7 @@ const SAFE_SVG: &[u8] = br#"<svg xmlns="http://www.w3.org/2000/svg"><circle/></s
 
 #[test]
 fn test_is_svg_accepts_safe_documents() {
-    let cases: [(&str, &[u8]); 2] = [
+    let cases: [(&str, &[u8]); 3] = [
         (
             "plain shapes",
             br#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
@@ -22,6 +22,10 @@ fn test_is_svg_accepts_safe_documents() {
                 <image href="data:image/png;base64,iVBORw0KGgoAAAANS=" />
             </svg>"#,
         ),
+        (
+            "multibyte attribute name",
+            b"<svg xmlns=\"http://www.w3.org/2000/svg\"><circle a\xE2\x82\xAC=\"x\"/></svg>",
+        ),
     ];
     for (case, svg) in cases {
         assert!(is_svg(svg, "svg"), "{case}");
@@ -31,7 +35,7 @@ fn test_is_svg_accepts_safe_documents() {
 #[test]
 #[allow(clippy::too_many_lines)]
 fn test_is_svg_rejects_unsafe_documents() {
-    let cases: [(&str, &[u8], &str); 19] = [
+    let cases: [(&str, &[u8], &str); 20] = [
         (
             "data non-image url",
             br#"<svg xmlns="http://www.w3.org/2000/svg">
@@ -130,6 +134,11 @@ fn test_is_svg_rejects_unsafe_documents() {
         (
             "non-svg root element",
             br#"<html xmlns="http://www.w3.org/2000/svg"><body/></html>"#,
+            "svg",
+        ),
+        (
+            "non-utf-8 text",
+            b"<svg xmlns=\"http://www.w3.org/2000/svg\"><text>caf\xE9</text></svg>",
             "svg",
         ),
         (

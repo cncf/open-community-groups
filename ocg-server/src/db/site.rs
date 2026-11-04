@@ -125,7 +125,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_site_home_stats(&self) -> Result<SiteHomeStats> {
         #[cached(
-            ttl = 3600,
+            ttl_secs = 3600,
             key = "String",
             convert = r#"{ String::from("site_home_stats") }"#,
             sync_writes = "by_key"
@@ -135,7 +135,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(stats) = cache_probe(&INNER.0, "site_home_stats").await {
+        if let Some(stats) = cache_probe(&INNER, "site_home_stats").await {
             return Ok(stats);
         }
 
@@ -153,7 +153,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_site_settings(&self) -> Result<SiteSettings> {
         #[cached(
-            ttl = 300,
+            ttl_secs = 300,
             key = "String",
             convert = r#"{ String::from("site_settings") }"#,
             sync_writes = "by_key"
@@ -163,7 +163,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(settings) = cache_probe(&INNER.0, "site_settings").await {
+        if let Some(settings) = cache_probe(&INNER, "site_settings").await {
             return Ok(settings);
         }
 
@@ -175,7 +175,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_site_stats(&self) -> Result<SiteStats> {
         #[cached(
-            ttl = 3600,
+            ttl_secs = 3600,
             key = "String",
             convert = r#"{ String::from("site_stats") }"#,
             sync_writes = "by_key"
@@ -185,7 +185,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(stats) = cache_probe(&INNER.0, "site_stats").await {
+        if let Some(stats) = cache_probe(&INNER, "site_stats").await {
             return Ok(stats);
         }
 
@@ -210,7 +210,7 @@ where
     #[instrument(skip(self), err)]
     async fn list_communities(&self) -> Result<Vec<CommunitySummary>> {
         #[cached(
-            ttl = 300,
+            ttl_secs = 300,
             key = "String",
             convert = r#"{ String::from("communities") }"#,
             sync_writes = "by_key"
@@ -220,7 +220,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(communities) = cache_probe(&INNER.0, "communities").await {
+        if let Some(communities) = cache_probe(&INNER, "communities").await {
             return Ok(communities);
         }
 

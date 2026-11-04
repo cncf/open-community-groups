@@ -448,7 +448,7 @@ mod tests {
     async fn test_cache_probe_returns_without_waiting_for_in_progress_fill() {
         // Setup a cached fill that holds its key lock until released
         #[cached(
-            ttl = 60,
+            ttl_secs = 60,
             key = "String",
             convert = r#"{ String::from(name) }"#,
             sync_writes = "by_key"
@@ -467,7 +467,7 @@ mod tests {
         started.notified().await;
 
         // Probe while the fill is in progress
-        let value = timeout(Duration::from_secs(1), cache_probe(&FILL.0, "key"))
+        let value = timeout(Duration::from_secs(1), cache_probe(&FILL, "key"))
             .await
             .expect("probe not to wait for the in-progress fill");
 
@@ -480,7 +480,7 @@ mod tests {
             .await
             .expect("fill task to complete")
             .expect("fill to succeed");
-        assert_eq!(cache_probe(&FILL.0, "key").await, Some("KEY".to_string()));
+        assert_eq!(cache_probe(&FILL, "key").await, Some("KEY".to_string()));
     }
 
     #[test]
