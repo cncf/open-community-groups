@@ -13,7 +13,7 @@
 {% block header -%}
   {# Header -#}
   <div id="dashboard-header"
-       class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-16 md:h-20 drop-shadow-sm flex items-center justify-between gap-3 px-3 lg:px-5">
+       class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-16 md:h-20 drop-shadow-sm flex items-center justify-between gap-3 px-3 xl:px-5">
     {% block mobile_menu_button -%}
       {# Open menu button (mobile only) -#}
       <button id="open-dashboard-menu"
@@ -43,7 +43,7 @@
        {% endblock dashboard_context_attributes -%}>
     {# Sticky menu -#}
     <aside id="dashboard-menu-drawer"
-           class="fixed top-0 left-0 z-[1100] h-dvh w-80 shrink-0 -translate-x-full bg-stone-100 border-r border-stone-200 shadow-lg transition-transform md:sticky md:z-auto md:w-[225px] md:translate-x-0 md:bg-transparent md:border-r-0 md:shadow-none lg:w-[300px]"
+           class="fixed top-0 left-0 z-[1100] h-dvh w-80 shrink-0 -translate-x-full bg-stone-100 border-r border-stone-200 shadow-lg transition-transform md:sticky md:left-auto md:z-auto md:w-[225px] md:translate-x-0 md:bg-transparent md:border-r-0 md:shadow-none 2xl:w-[300px]"
            role="navigation"
            aria-label="Dashboard navigation"
            tabindex="-1">

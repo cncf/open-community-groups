@@ -83,6 +83,21 @@ test.describe("community dashboard settings view", () => {
     await expect(adminCommunityPage.locator('key-value-inputs[field-name="extra_links"]')).toBeVisible();
   });
 
+  test("long toggle labels keep the toggle track at full width on md screens", async ({
+    adminCommunityPage,
+  }) => {
+    // Load community settings at the narrowest md viewport.
+    await adminCommunityPage.setViewportSize({ width: 768, height: 900 });
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
+
+    // Verify the long restriction label does not squeeze its toggle track.
+    const restrictionTrack = adminCommunityPage.locator(
+      "label:has(#toggle_group_team_management_restricted) .toggle-track",
+    );
+    await expect(restrictionTrack).toBeVisible();
+    await expect.poll(async () => (await restrictionTrack.boundingBox())?.width).toBe(44);
+  });
+
   test("admin can crop an oversized advertisement banner to WEBP", async ({ adminCommunityPage }) => {
     // Load the advertisement banner field and capture the files sent to the image endpoint.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");

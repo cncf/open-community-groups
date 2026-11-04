@@ -1,4 +1,5 @@
 {% import "macros/ui.html" as ui -%}
+{% import "macros/badges.html" as badges -%}
 
 {# Active table filter badge #}
 {# Used by dashboard tables to summarize active waitlist and attendee filters. #}
@@ -67,12 +68,12 @@
        {% if !navigation_select.is_empty() %}hx-select="{{ navigation_select }}"{% endif %}
        {% if !navigation_select_oob.is_empty() %}hx-select-oob="{{ navigation_select_oob }}"{% endif %}
        {% if !navigation_swap.is_empty() %}hx-swap="{{ navigation_swap }}"{% endif %}>
-    <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
-      <div class="font-semibold text-stone-900 text-sm lg:text-lg">{{ title }}</div>
+    <div class="flex justify-between items-center mt-3 mb-6 px-3 xl:px-5">
+      <div class="font-semibold text-stone-900 text-sm xl:text-lg">{{ title }}</div>
       <div id="dashboard-spinner" class="{{ spinner_classes }}">{{ ui::spinner(size = "size-5") -}}</div>
     </div>
 
-    <div class="w-full flex flex-col flex-1 space-y-5 overflow-y-auto px-3 lg:px-5">{{ caller() }}</div>
+    <div class="w-full flex flex-col flex-1 space-y-5 overflow-y-auto px-3 xl:px-5">{{ caller() }}</div>
   </div>
 {% endmacro dashboard_menu_shell -%}
 {# End dashboard menu shell #}
@@ -155,6 +156,28 @@
 {% endmacro inactive_warning -%}
 {# End inactive warning -#}
 
+{# Labels summary -#}
+{# Used by submission lists to show one label chip, or a label count with every label in a tooltip. -#}
+{# djlint:off #}
+{% macro labels_summary(labels, tooltip_id) -%}
+  {% let count_label -%}{{ labels.len() }} labels{%- endlet -%}
+  {% if labels.len() > 1 -%}
+    {% call tooltip_badge_trigger(tooltip_id = tooltip_id, title = "Labels", label = count_label, tone = "neutral") -%}
+    <span class="flex flex-wrap gap-1.5">
+      {% for label in labels -%}
+        {{ badges::label_chip(name = &label.name, color = &label.color, extra_styles = Some("max-w-full whitespace-normal text-wrap break-words")) -}}
+      {% endfor -%}
+    </span>
+    {% endcall -%}
+  {% else -%}
+    {% for label in labels -%}
+      {{ badges::label_chip(name = &label.name, color = &label.color) -}}
+    {% endfor -%}
+  {% endif -%}
+{% endmacro labels_summary -%}
+{# djlint:on #}
+{# End labels summary -#}
+
 {# Menu item -#}
 {# Used by dashboard side menus for user, community, and group navigation. -#}
 {% macro menu_item(name, icon, is_active, href, disabled = false, extra_styles = "", icon_size = "size-4", items_count = 0, compact_name = "" ) -%}
@@ -172,8 +195,8 @@
             {% if compact_name.is_empty() -%}
               {{ name }}
             {% else -%}
-              <span class="xl:hidden">{{ compact_name }}</span>
-              <span class="hidden xl:inline">{{ name }}</span>
+              <span aria-hidden="true" class="2xl:hidden">{{ compact_name }}</span>
+              <span class="max-2xl:sr-only">{{ name }}</span>
             {% endif -%}
           </div>
         </div>
@@ -183,7 +206,7 @@
           </div>
         {% endif -%}
       </a>
-      <div class="absolute top-0.5 -left-3 lg:-left-5 bottom-0.5 w-1 bg-primary-500 rounded-lg"></div>
+      <div class="absolute top-0.5 -left-3 xl:-left-5 bottom-0.5 w-1 bg-primary-500 rounded-lg"></div>
     </div>
   {% else -%}
     {% if disabled -%}
@@ -198,8 +221,8 @@
             {% if compact_name.is_empty() -%}
               {{ name }}
             {% else -%}
-              <span class="xl:hidden">{{ compact_name }}</span>
-              <span class="hidden xl:inline">{{ name }}</span>
+              <span aria-hidden="true" class="2xl:hidden">{{ compact_name }}</span>
+              <span class="max-2xl:sr-only">{{ name }}</span>
             {% endif -%}
           </div>
         </div>
@@ -217,8 +240,8 @@
               {% if compact_name.is_empty() -%}
                 {{ name }}
               {% else -%}
-                <span class="xl:hidden">{{ compact_name }}</span>
-                <span class="hidden xl:inline">{{ name }}</span>
+                <span aria-hidden="true" class="2xl:hidden">{{ compact_name }}</span>
+                <span class="max-2xl:sr-only">{{ name }}</span>
               {% endif -%}
             </div>
           </div>
@@ -242,8 +265,9 @@
 {# End menu title -#}
 
 {# Mobile notice -#}
-{# Used by dashboards to cover unsupported content on small screens and point to the desktop
-   version option in the user menu. -#}
+{# Used by dashboards to cover unsupported content on small touch screens and point to the
+   desktop version option in the user menu. Fine pointers keep the md layout instead (see the
+   md variant in styles.src.css). -#}
 {% macro mobile_notice() -%}
   <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">
     <div class="max-w-md rounded-lg border-4 border-dashed border-primary-600 bg-stone-100 p-8 text-center text-stone-800">
@@ -447,7 +471,7 @@
 {% macro table_filter_menu(id, label, is_active, extra_classes = "", dropdown_classes = "start-0") -%}
   <details class="group relative inline-block text-left {{ extra_classes }}"
            data-table-filter-menu>
-    <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 group-open:bg-white group-open:text-stone-900 [&::-webkit-details-marker]:hidden"
+    <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-1 font-semibold transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 group-open:bg-white group-open:text-stone-900 [&::-webkit-details-marker]:hidden"
              aria-label="{{ label }} filters"
              aria-controls="{{ id }}">
       <span class="whitespace-nowrap">{{ label }}</span>
@@ -493,6 +517,38 @@
   </button>
 {% endmacro table_filter_option_button -%}
 {# End table filter option button #}
+
+{# Tooltip badge trigger #}
+{# Used by dashboard status badges that show details in a tooltip; the caller body fills the panel. #}
+{# Names in the caller body resolve to these and tooltip_panel parameters first (id, label, title). #}
+{# djlint:off #}
+{% macro tooltip_badge_trigger(tooltip_id, title, label, tone = "neutral", dot_tone = "", aria_label = "", currency = false, width_classes = "w-64", alignment_classes = "start-1/2 -translate-x-1/2") -%}
+  {% let body = caller -%}
+  {% let dot -%}{% if dot_tone.is_empty() %}{{ tone }}{% else %}{{ dot_tone }}{% endif %}{%- endlet -%}
+  <span class="group/tooltip-trigger relative inline-flex shrink-0">
+    <button type="button"
+            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            {% if !aria_label.is_empty() %}aria-label="{{ aria_label }}"{% endif %}
+            aria-describedby="{{ tooltip_id }}">
+      <span class="custom-badge badge-{{ tone }}"
+            {% if currency %}data-localized-currency{% endif %}>{{ label }}</span>
+      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
+                   {% if dot == "danger" %}bg-red-800{% else if dot == "success" %}bg-green-800{% else if dot == "warning" %}bg-amber-800{% else if dot == "pending" %}bg-yellow-800{% else %}bg-stone-500{% endif %}"
+            aria-hidden="true"></span>
+    </button>
+    {% call tooltip_panel(
+      id = tooltip_id,
+      title = title,
+      visibility_classes = "group-hover/tooltip-trigger:visible group-hover/tooltip-trigger:opacity-100 group-focus-within/tooltip-trigger:visible group-focus-within/tooltip-trigger:opacity-100",
+      width_classes = width_classes,
+      alignment_classes = alignment_classes
+    ) -%}
+    {{ body() }}
+    {% endcall -%}
+  </span>
+{% endmacro tooltip_badge_trigger -%}
+{# djlint:on #}
+{# End tooltip badge trigger #}
 
 {# Tooltip panel #}
 {# Used by dashboard status and detail tooltips. #}

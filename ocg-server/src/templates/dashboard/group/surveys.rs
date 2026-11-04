@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     templates::{
+        dashboard::BadgeTone,
         filters,
         helpers::{DATE_FORMAT, NOT_APPLICABLE_LABEL, count_label, percent_label, user_initials},
     },
@@ -419,6 +420,29 @@ pub(crate) fn responses_label(survey: &EventSurveySummary) -> String {
         label
     } else {
         format!("{label} · {} total", count_label(survey.responses_count))
+    }
+}
+
+/// Returns the label of the badge showing a survey state. Askama passes the
+/// state by reference.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+pub(crate) fn state_label(state: &EventSurveyState) -> &'static str {
+    match state {
+        EventSurveyState::Closed => "Closed",
+        EventSurveyState::Draft => "Draft",
+        EventSurveyState::Open => "Open",
+        EventSurveyState::Scheduled => "Scheduled",
+    }
+}
+
+/// Returns the tone of the badge showing a survey state. Askama passes the
+/// state by reference.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+pub(crate) fn state_tone(state: &EventSurveyState) -> BadgeTone {
+    match state {
+        EventSurveyState::Closed => BadgeTone::Danger,
+        EventSurveyState::Draft => BadgeTone::Warning,
+        EventSurveyState::Open | EventSurveyState::Scheduled => BadgeTone::Success,
     }
 }
 

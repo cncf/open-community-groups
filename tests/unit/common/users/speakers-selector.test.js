@@ -119,7 +119,6 @@ describe("speakers-selector", () => {
     );
 
     expect(tableHeaders).to.deep.equal(["Name", "Featured", "Actions"]);
-    expect(speakerRow.children[0].querySelector(".icon-star")).to.equal(null);
     expect(speakerRow.children[1].querySelector(".icon-star").classList.contains("size-4")).to.equal(true);
     expect(bulkAwardButton.dataset.userIds).to.equal("21,22");
     expect(bulkAwardButton.hasAttribute("data-badge-award-all-speakers")).to.equal(true);
@@ -177,5 +176,24 @@ describe("speakers-selector", () => {
     expect(featuredCell.textContent.trim()).to.equal("No");
     expect(featuredCell.querySelector(".sr-only")).to.not.equal(null);
     expect(featuredCell.textContent).to.not.include("—");
+  });
+
+  it("marks featured speakers in the identity cell without a title", async () => {
+    // Render one featured and one regular event speaker.
+    const element = await mountLitComponent("speakers-selector", {
+      displayMode: "table",
+      selectedSpeakers: [
+        { user_id: "21", username: "grace", name: "Grace Hopper", featured: true },
+        { user_id: "22", username: "ada", name: "Ada Lovelace", featured: false },
+      ],
+    });
+    const [featuredRow, regularRow] = element.querySelectorAll("tbody tr");
+    const marker = featuredRow.children[0].querySelector("[data-featured-speaker-marker]");
+
+    // Verify only the featured row carries the marker and its accessible text.
+    expect(marker).to.not.equal(null);
+    expect(marker.querySelector(".sr-only").textContent.trim()).to.equal("Featured speaker");
+    expect(featuredRow.children[0].querySelector("[title]")).to.equal(null);
+    expect(regularRow.children[0].querySelector("[data-featured-speaker-marker]")).to.equal(null);
   });
 });

@@ -8,7 +8,8 @@ import {
 
 const BACKDROP_ID = "dashboard-menu-backdrop";
 const CLOSE_BUTTON_ID = "close-dashboard-menu";
-const DESKTOP_MEDIA_QUERY = "(min-width: 768px)";
+// Mirrors the md variant in styles.src.css: fine pointers keep the desktop layout when narrow.
+const DESKTOP_MEDIA_QUERY = "(min-width: 768px), (pointer: fine)";
 const DRAWER_CLOSED_CLASS = "-translate-x-full";
 const DRAWER_ID = "dashboard-menu-drawer";
 const OPEN_BUTTON_ID = "open-dashboard-menu";

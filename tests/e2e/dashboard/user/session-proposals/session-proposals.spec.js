@@ -1,4 +1,5 @@
 import { expect, test } from "../../../fixtures.js";
+import { cleanupTemporaryUser, setupTemporaryUser } from "../../../data-graphs/users.js";
 import { TEST_USER_IDS } from "../../../seed.js";
 import { expectPaginationNavigation, uniqueName, waitForActionResponse } from "../../../utils.js";
 import { createSessionProposal, openUserDashboardPath } from "../helpers.js";
@@ -195,5 +196,46 @@ test.describe("user dashboard session proposals view", () => {
     await expect(invitationRow.getByTitle("View proposal")).toBeVisible();
     await expect(invitationRow.getByTitle("Accept invitation")).toBeVisible();
     await expect(invitationRow.getByTitle("Decline invitation")).toBeVisible();
+  });
+
+  test("co-speaker names with long data stay inside the tables at md", async ({ owned, pending2Page }) => {
+    // Create a long-named co-speaker who invites the user and is invited by the user.
+    const coSpeaker = setupTemporaryUser({ label: "long-named-co-speaker-guest" });
+    owned.defer(() => cleanupTemporaryUser(coSpeaker.userId));
+    const invitation = owned.sessionProposal({
+      coSpeakerUserId: TEST_USER_IDS.pending2,
+      title: uniqueName("md co-speaker invitation"),
+      userId: coSpeaker.userId,
+    });
+    const ownProposal = owned.sessionProposal({
+      coSpeakerUserId: coSpeaker.userId,
+      title: uniqueName("md co-speaker proposal"),
+      userId: TEST_USER_IDS.pending2,
+    });
+
+    // Load the session proposals tab at the narrowest md width.
+    await pending2Page.setViewportSize({ width: 768, height: 900 });
+    await openUserDashboardPath("/dashboard/user?tab=session-proposals", pending2Page);
+    const dashboardContent = pending2Page.locator("#dashboard-content");
+
+    // Verify the own proposal names its co-speaker below the title while the column is hidden.
+    const proposalRow = dashboardContent.locator("tr", { hasText: ownProposal.title });
+    await expect(proposalRow.getByText(`with ${coSpeaker.name}`)).toBeVisible();
+
+    // Verify the invitation actions stay inside the invitations table and the content.
+    const invitationsTable = dashboardContent.getByRole("table").filter({ hasText: invitation.title });
+    const declineButton = invitationsTable
+      .locator("tr", { hasText: invitation.title })
+      .getByRole("button", { name: "Decline invitation" });
+    await expect(declineButton).toBeVisible();
+    const [contentBox, declineBox, tableBox] = await Promise.all([
+      dashboardContent.boundingBox(),
+      declineButton.boundingBox(),
+      invitationsTable.boundingBox(),
+    ]);
+    for (const containerBox of [contentBox, tableBox]) {
+      expect(declineBox.x).toBeGreaterThanOrEqual(containerBox.x);
+      expect(declineBox.x + declineBox.width).toBeLessThanOrEqual(containerBox.x + containerBox.width + 0.5);
+    }
   });
 });

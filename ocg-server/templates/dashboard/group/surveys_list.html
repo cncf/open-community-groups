@@ -34,19 +34,18 @@
 {% endif -%}
 {# Event surveys table -#}
 <div class="relative overflow-visible">
-  <table class="mb-8 w-full table-auto text-left text-xs text-stone-500 lg:text-sm"
+  <table class="mb-8 w-full table-auto dashboard-table"
          role="table"
          aria-label="Event surveys list">
     {# Table header -#}
-    <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700"
-           role="rowgroup">
+    <thead class="dashboard-table-head" role="rowgroup">
       <tr>
         <th scope="col" class="px-3 py-3 xl:px-5">Survey</th>
         <th scope="col" class="px-3 py-3 xl:px-5">Status</th>
         <th scope="col" class="hidden px-3 py-3 2xl:table-cell xl:px-5">Questions</th>
         <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Responses</th>
         <th scope="col" class="hidden px-3 py-3 2xl:table-cell xl:px-5">Closes</th>
-        <th scope="col" class="w-[152px] px-3 py-3 xl:px-5">
+        <th scope="col" class="w-[152px] dashboard-table-actions py-3">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -141,7 +140,7 @@
             {# End closes -#}
 
             {# Actions -#}
-            <td class="w-[152px] px-3 py-4 xl:px-5">
+            <td class="w-[152px] dashboard-table-actions py-4">
               {% let status = crate::templates::dashboard::group::surveys::status_action(survey, event, *now) -%}
               {% let has_no_results = survey.state == EventSurveyState::Draft && survey.responses_count == 0 -%}
               <div class="flex items-center justify-end gap-2 whitespace-nowrap">

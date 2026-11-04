@@ -1,7 +1,7 @@
 import { withRowRestore } from "../../../database.js";
 import { expect, test } from "../../../fixtures.js";
 
-import { cleanupGroupTeamInvitation } from "../../../data-graphs/invitations.js";
+import { cleanupGroupTeamInvitation, setupGroupTeamInvitation } from "../../../data-graphs/invitations.js";
 import { TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
 import {
   confirmAlert,
@@ -9,7 +9,8 @@ import {
   navigateToPath,
   waitForActionResponse,
 } from "../../../utils.js";
-import { inviteTeamMember } from "../../team-helpers.js";
+import { expectPendingBadgePlacement, inviteTeamMember } from "../../team-helpers.js";
+import { setupAriaGroup } from "../aria-helpers.js";
 
 const GROUP_VIEWER_TEAM_ROW = {
   key: { group_id: TEST_GROUP_IDS.community1.alpha, user_id: TEST_USER_IDS.groupViewer1 },
@@ -58,6 +59,25 @@ test.describe("group dashboard team view", () => {
       hasText: "E2E Group Viewer One",
     });
     await expect(viewerRow.locator('select[name="role"]')).toHaveValue("viewer");
+  });
+
+  test("pending member badge moves from the role cell to the name row on the widest layout", async ({
+    organizerGroupPage,
+    owned,
+  }) => {
+    // Give a temporary group a pending viewer invitation next to the organizer, its only admin.
+    const { groupId } = await setupAriaGroup({ owned, page: organizerGroupPage });
+    owned.track(setupGroupTeamInvitation({ groupId, role: "viewer", userId: TEST_USER_IDS.member3 }), () =>
+      cleanupGroupTeamInvitation({ groupId, userId: TEST_USER_IDS.member3 }),
+    );
+
+    // Load the team tab and find the pending member.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
+    const pendingRow = organizerGroupPage.locator("#dashboard-content tr", { hasText: "E2E Member Three" });
+    await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
+
+    // Verify the badge placement at xl and 2xl.
+    await expectPendingBadgePlacement(organizerGroupPage, pendingRow);
   });
 
   test("organizer can invite and remove a pending group team member @smoke", async ({

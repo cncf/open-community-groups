@@ -1,3 +1,4 @@
+{% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
 
 {# Results header -#}
@@ -18,13 +19,13 @@
 
     {# Survey summary, styled like the inbox conversation header -#}
     <header class="rounded-lg border border-stone-200 bg-white">
-      <div class="px-4 py-4 sm:px-6 sm:py-5">
+      <div class="px-4 py-3 lg:px-6 lg:py-5">
         <div class="text-sm font-semibold uppercase tracking-wide text-stone-500">Survey results</div>
-        <h2 class="mt-1 break-words text-xl font-semibold leading-tight text-stone-900 lg:text-2xl">
+        <h2 class="mt-1 break-words text-lg font-semibold leading-tight text-stone-900 lg:text-xl xl:text-2xl">
           {{ survey.title }}
         </h2>
       </div>
-      <div class="flex min-h-12.5 flex-wrap items-center gap-x-6 gap-y-2 border-t border-stone-200 px-4 py-3 text-xs text-stone-600 sm:px-6"
+      <div class="flex min-h-12.5 flex-wrap items-center gap-x-6 gap-y-2 border-t border-stone-200 px-4 py-3 text-xs text-stone-600 lg:px-6"
            data-event-survey-facts>
         {{ state_badge(state = survey.state) -}}
         {% if survey.state == crate::types::event_survey::EventSurveyState::Open || survey.state == crate::types::event_survey::EventSurveyState::Closed -%}
@@ -162,38 +163,15 @@
 {# State badge -#}
 {# Used by the event surveys list and the event analytics surveys section. -#}
 {% macro state_badge(state) -%}
-  {% match state -%}
-  {% when crate::types::event_survey::EventSurveyState::Draft -%}
-  <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Draft</span>
-  {% when crate::types::event_survey::EventSurveyState::Scheduled -%}
-  <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Scheduled</span>
-  {% when crate::types::event_survey::EventSurveyState::Open -%}
-  <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Open</span>
-  {% when crate::types::event_survey::EventSurveyState::Closed -%}
-  <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">Closed</span>
-{% endmatch -%}
+  {{ badges::tone_badge(label = crate::templates::dashboard::group::surveys::state_label(state), tone = crate::templates::dashboard::group::surveys::state_tone(state).as_str()) -}}
 {% endmacro state_badge -%}
 {# End state badge -#}
 
 {# State badge with details -#}
 {# Used by the event surveys list to show state details in a hover tooltip. -#}
 {% macro state_badge_details(state, tooltip_id, title, details) -%}
-  <span class="group/survey-state relative inline-flex shrink-0">
-    <button type="button"
-            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-            aria-describedby="{{ tooltip_id }}">
-      {{ state_badge(state = state) -}}
-      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
-                   {% if *state == crate::types::event_survey::EventSurveyState::Draft %}bg-amber-800{% else if *state == crate::types::event_survey::EventSurveyState::Closed %}bg-red-800{% else %}bg-green-800{% endif %}"
-            aria-hidden="true"></span>
-    </button>
-    {% call dashboard::tooltip_panel(
-      id = tooltip_id,
-      title = title,
-      visibility_classes = "group-hover/survey-state:visible group-hover/survey-state:opacity-100 group-focus-within/survey-state:visible group-focus-within/survey-state:opacity-100"
-    ) -%}
-    <span class="block text-stone-900">{{ details }}</span>
-    {% endcall -%}
-  </span>
+  {% call dashboard::tooltip_badge_trigger(tooltip_id = tooltip_id, title = title, label = crate::templates::dashboard::group::surveys::state_label(state), tone = crate::templates::dashboard::group::surveys::state_tone(state).as_str()) -%}
+  <span class="block text-stone-900">{{ details }}</span>
+  {% endcall -%}
 {% endmacro state_badge_details -%}
 {# End state badge with details -#}

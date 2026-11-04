@@ -1,7 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 
 import { queryCount, queryE2eDatabase, queryE2eDatabaseRows, sqlString, sqlUuid } from "../../../database.js";
-import { cleanupEventsByIds } from "../../../data-graphs/events.js";
+import { cleanupEventsByIds, setupLabeledSessionEvent } from "../../../data-graphs/events.js";
 import {
   TEST_CANCELED_PUBLIC_EVENT,
   TEST_COMMUNITY_NAME,
@@ -30,17 +30,20 @@ import { getAttendanceContainer, waitForAttendanceState } from "../../../site/ev
 
 import {
   expectSearchDropdownInViewport,
+  expectSessionLabelsFit,
   listEventLabels,
   listSessionLabels,
   openEventUpdateFormByName,
   openPaymentsSection,
   scrollToViewportBottom,
+  showEventEditorSection,
   waitForEventEditorAfterSave,
 } from "./helpers.js";
 
 import {
   addSession,
   expectSessionCardLabels,
+  openDetailsSection,
   openLabelsSection,
   openSessionsSection,
   setLabels,
@@ -972,6 +975,104 @@ test.describe("group dashboard event editor", () => {
     expect(copiedLabels.map((label) => label.name)).toEqual(["track / copy a", "track / copy b"]);
     expect(copiedLabels.filter((label) => sourceLabelIds.includes(label.id))).toEqual([]);
     expect(listSessionLabels(copiedEventId)).toEqual([]);
+  });
+
+  test("session card labels fit their row once the hidden sessions section is shown", async ({
+    organizerGroupPage,
+    owned,
+  }) => {
+    // Create an event whose session has four long labels and open its editor below lg.
+    const event = owned.track(
+      setupLabeledSessionEvent({ groupId: TEST_GROUP_IDS.community1.alpha }),
+      (graph) => cleanupEventsByIds([graph.eventId]),
+    );
+    await organizerGroupPage.setViewportSize({ width: 771, height: 900 });
+    await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
+
+    // Show the sessions section and verify the chips and the counter fit inside the labels row.
+    await showEventEditorSection(organizerGroupPage, "sessions");
+    const sessionCard = organizerGroupPage
+      .locator("sessions-section session-card")
+      .filter({ hasText: event.sessionName });
+    await expectSessionLabelsFit(sessionCard, event.labelNames.length);
+
+    // Reach the counter with the keyboard and verify its tooltip lists every label.
+    const counterButton = sessionCard.locator("[data-session-labels-more] button");
+    const tooltip = sessionCard.getByRole("tooltip");
+    await organizerGroupPage.mouse.move(0, 0);
+    await counterButton.focus();
+    await organizerGroupPage.keyboard.press("Shift+Tab");
+    await organizerGroupPage.keyboard.press("Tab");
+    await expect(counterButton).toBeFocused();
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip.locator("[data-session-label-name]")).toHaveText(event.labelNames);
+
+    // Switch to another section and back at xl, and verify the labels fit again.
+    await organizerGroupPage.setViewportSize({ width: 1280, height: 900 });
+    await openDetailsSection(organizerGroupPage);
+    await openSessionsSection(organizerGroupPage);
+    await expectSessionLabelsFit(sessionCard, event.labelNames.length);
+  });
+
+  test("session card labels tooltip receives the pointer inside its panel", async ({
+    organizerGroupPage,
+    owned,
+  }) => {
+    // Create an event whose session has four long labels and show its sessions at lg.
+    const event = owned.track(
+      setupLabeledSessionEvent({ groupId: TEST_GROUP_IDS.community1.alpha }),
+      (graph) => cleanupEventsByIds([graph.eventId]),
+    );
+    await organizerGroupPage.setViewportSize({ width: 1024, height: 900 });
+    await openEventUpdateFormByName(organizerGroupPage, event.name, event.eventId);
+    await showEventEditorSection(organizerGroupPage, "sessions");
+    const sessionCard = organizerGroupPage
+      .locator("sessions-section session-card")
+      .filter({ hasText: event.sessionName });
+    await expectSessionLabelsFit(sessionCard, event.labelNames.length);
+
+    // Hover the counter to open its tooltip without focusing it.
+    const counterButton = sessionCard.locator("[data-session-labels-more] button");
+    const panel = sessionCard.locator("[data-session-labels-more] [data-tooltip-panel]");
+    await counterButton.hover();
+    await expect(panel).toBeVisible();
+
+    // Moving the pointer slowly across the gap onto the panel keeps it open on hover alone.
+    const counterBox = await counterButton.boundingBox();
+    let panelBox = await panel.boundingBox();
+    const panelIsAbove = panelBox.y + panelBox.height <= counterBox.y;
+    const pointerX = Math.min(
+      Math.max(counterBox.x + counterBox.width / 2, panelBox.x + 2),
+      panelBox.x + panelBox.width - 2,
+    );
+    await organizerGroupPage.mouse.move(
+      pointerX,
+      panelIsAbove ? counterBox.y + 1 : counterBox.y + counterBox.height - 1,
+    );
+    await organizerGroupPage.mouse.move(
+      pointerX,
+      panelIsAbove ? panelBox.y + panelBox.height - 2 : panelBox.y + 2,
+      { steps: 12 },
+    );
+    await expect(panel).toBeVisible();
+
+    // Click the counter so it takes focus and keeps its tooltip open.
+    await counterButton.click();
+    await expect(counterButton).toBeFocused();
+    await expect(panel).toBeVisible();
+
+    // A click on a chip hits the panel itself, keeps it open and reaches no card action.
+    panelBox = await panel.boundingBox();
+    const chipBox = await panel.locator("[data-session-label-name]").first().boundingBox();
+    await panel.click({
+      position: {
+        x: chipBox.x - panelBox.x + chipBox.width / 2,
+        y: chipBox.y - panelBox.y + chipBox.height / 2,
+      },
+    });
+    await expect(panel).toBeVisible();
+    await expect(organizerGroupPage.locator("session-form-modal").getByRole("dialog")).toHaveCount(0);
+    await expect(sessionCard).toHaveCount(1);
   });
 
   test("labels tab is locked for viewers", async ({ groupViewerPage }) => {

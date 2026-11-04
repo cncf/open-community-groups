@@ -163,6 +163,25 @@ test.describe("community dashboard analytics view", () => {
       await expect(tabButton).toHaveAttribute("aria-selected", "true");
       await expect(dashboardContent.getByRole("tabpanel", { name: analyticsTab.label })).toBeVisible();
     }
+
+    // Verify the tab list fits without scrolling and shows the full active underline.
+    await expectTabListFits(mobileTabList);
+
+    // Move between the tabs with the arrow, Home and End keys.
+    await mobileTabList.getByRole("tab", { exact: true, name: "Groups" }).click();
+    await adminCommunityPage.keyboard.press("ArrowRight");
+    await expectKeyboardSelectedTab(dashboardContent, mobileTabList, "Members");
+    await adminCommunityPage.keyboard.press("End");
+    await expectKeyboardSelectedTab(dashboardContent, mobileTabList, "Page views");
+    await adminCommunityPage.keyboard.press("Home");
+    await expectKeyboardSelectedTab(dashboardContent, mobileTabList, "Groups");
+    await adminCommunityPage.keyboard.press("ArrowLeft");
+    await expectKeyboardSelectedTab(dashboardContent, mobileTabList, "Page views");
+
+    // Verify the narrowest md viewport also fits the tab list with the last tab active.
+    await adminCommunityPage.setViewportSize({ width: 768, height: 800 });
+    await expect(mobileTabList).toBeVisible();
+    await expectTabListFits(mobileTabList);
   });
 });
 
@@ -174,4 +193,43 @@ const expectChartRendered = async (container, chartId) => {
   await expect(chart).not.toHaveClass(/chart-empty-state/u);
   await expect(chart.locator("svg-spinner")).toHaveCount(0);
   await expect.poll(async () => chart.locator("canvas, svg").count()).toBeGreaterThan(0);
+};
+
+/**
+ * Verifies a keyboard-selected analytics tab is focused, selected, in the tab order and showing its panel.
+ * @param {import("@playwright/test").Locator} dashboardContent - Dashboard content region.
+ * @param {import("@playwright/test").Locator} tabList - Analytics tab list.
+ * @param {string} name - Accessible name of the expected tab.
+ * @returns {Promise<void>}
+ */
+const expectKeyboardSelectedTab = async (dashboardContent, tabList, name) => {
+  const tab = tabList.getByRole("tab", { exact: true, name });
+
+  await expect(tab).toBeFocused();
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+  await expect(tab).toHaveAttribute("tabindex", "0");
+  await expect(tabList.locator('[role="tab"][tabindex="0"]')).toHaveCount(1);
+  await expect(dashboardContent.getByRole("tabpanel", { exact: true, name })).toBeVisible();
+};
+
+/**
+ * Verifies the analytics tab list wrapper does not scroll and does not clip the active tab underline.
+ * @param {import("@playwright/test").Locator} tabList - Analytics tab list.
+ * @returns {Promise<void>}
+ */
+const expectTabListFits = async (tabList) => {
+  await expect
+    .poll(() =>
+      tabList.evaluate((list) => {
+        const wrapper = list.parentElement;
+        const activeTab = list.querySelector('[role="tab"][aria-selected="true"]');
+        const wrapperBottom = wrapper.getBoundingClientRect().top + wrapper.clientTop + wrapper.clientHeight;
+
+        return {
+          scrollsHorizontally: wrapper.scrollWidth > wrapper.clientWidth,
+          underlineClipped: activeTab.getBoundingClientRect().bottom > wrapperBottom + 0.5,
+        };
+      }),
+    )
+    .toEqual({ scrollsHorizontally: false, underlineClipped: false });
 };

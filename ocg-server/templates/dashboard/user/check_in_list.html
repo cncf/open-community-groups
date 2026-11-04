@@ -25,7 +25,7 @@
                 data-qr-code-url="/dashboard/user/check-in/{{ event.event_id }}/qr-code"
                 data-ticket-title="{{ event.ticket_title|assigned_or("") }}">
           {% call cards::check_in_event_card(event) -%}
-          <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Pending check-in</span>
+          <span class="custom-badge badge-warning">Pending check-in</span>
           {% endcall -%}
         </button>
       {% endif -%}

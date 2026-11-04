@@ -47,6 +47,15 @@ describe("dashboard group event survey templates", () => {
     expect(template).to.include('title = "Cannot mark ready"');
     expect(template).to.include('title = "Opening"');
 
+    // Verify the state tooltip renders through the shared badge trigger.
+    const macros = await loadTemplate("macros/surveys.html");
+    const detailsMacro = macros.slice(
+      macros.indexOf("{% macro state_badge_details("),
+      macros.indexOf("{% endmacro state_badge_details -%}"),
+    );
+    expect(detailsMacro).to.include("{% call dashboard::tooltip_badge_trigger(tooltip_id = tooltip_id,");
+    expect(detailsMacro).to.include('<span class="block text-stone-900">{{ details }}</span>');
+
     // Verify status and delete actions use unique ids and the confirmation contract.
     expect(template).to.include('id="event-survey-status-{{ survey_id }}"');
     expect(template).to.include('hx-vals="{{ status.request_values }}"');

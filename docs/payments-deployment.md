@@ -226,7 +226,7 @@ live copy shown to those attendees.
 
 OCG does not calculate tax, issue invoices, or produce credit notes for
 external purchases; the organizer handles receipts, tax, and returning money.
-Attendees see an `Externally managed` label on those purchases in their
+Attendees see an `External` label on those purchases in their
 dashboard.
 
 ### Platform Fee

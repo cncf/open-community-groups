@@ -25,8 +25,38 @@ describe("dashboard user surveys list template", () => {
       "{% let action_label = crate::templates::dashboard::user::surveys::survey_action_label(survey) -%}",
     );
     expect(template).to.include('aria-label="{{ action_label }}: {{ survey.title }}"');
-    expect(template).to.include('class="btn-primary-outline btn-mini whitespace-nowrap">{{ action_label }}</button>');
+    expect(template).to.include(
+      'class="btn-primary-outline btn-mini whitespace-nowrap">{{ action_label }}</button>',
+    );
     expect(template).not.to.include('<span class="sr-only">: {{ survey.title }}</span>');
+  });
+
+  it("puts the event context before the survey title", async () => {
+    // Load the surveys list template before checking the row header order.
+    const template = normalizeWhitespace(await loadTemplate());
+    const contextIndex = template.indexOf("{{ survey.event_name }} · {{ survey.group_name }}");
+    const titleIndex = template.indexOf("{{ survey.title }}</div>");
+
+    // Verify the context is read before the survey title.
+    expect(contextIndex).to.be.greaterThan(-1);
+    expect(contextIndex).to.be.lessThan(titleIndex);
+  });
+
+  it("renders open survey statuses with the shared tone badges", async () => {
+    // Load the surveys list template before checking the status badges.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify answered and pending surveys use bordered tone badges.
+    expect(template).to.include('{{ badges::tone_badge(label = "Answered", tone = "success") -}}');
+    expect(template).to.include('{{ badges::tone_badge(label = "To answer", tone = "pending") -}}');
+  });
+
+  it("spans the empty state across the columns visible at each breakpoint", async () => {
+    // Load the surveys list template before checking the per-breakpoint empty cells.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the empty state matches the hidden Status and Closing columns.
+    expect(template.match(/colspan="\d"/g)).to.deep.equal(['colspan="2"', 'colspan="3"', 'colspan="4"']);
   });
 
   it("reloads the dashboard layout after answers are saved", async () => {

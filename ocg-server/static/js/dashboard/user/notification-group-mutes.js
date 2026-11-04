@@ -353,11 +353,7 @@ export class NotificationGroupMutes extends LitWrapper {
         >
           ${renderGroupLogo(group)}
           <span class="min-w-0">
-            <span
-              class="block truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400"
-            >
-              ${group.community_display_name}
-            </span>
+            <span class="title-preheader block">${group.community_display_name}</span>
             <span class="mt-0.5 block truncate text-sm/5 font-semibold text-stone-900">${group.name}</span>
           </span>
         </button>

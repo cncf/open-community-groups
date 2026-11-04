@@ -17,8 +17,8 @@
 
 {% if !financial_recoveries.is_empty() -%}
   {# Exhausted financial work -#}
-  <div class="relative mt-8 mb-10 overflow-x-auto lg:overflow-x-visible">
-    <table class="table-auto w-full min-w-[64rem] lg:min-w-0 text-xs lg:text-sm text-left text-stone-500"
+  <div class="relative mt-8 mb-10 overflow-visible">
+    <table class="table-auto w-full dashboard-table"
            aria-label="Financial work needing attention">
       <caption class="border-b border-amber-200 bg-amber-50 px-3 py-3 text-left text-amber-900 xl:px-5">
         <span class="block text-sm font-semibold">Financial work needs attention</span>
@@ -26,14 +26,16 @@
           Automatic retries are exhausted. Retry the operation or record work completed directly in Stripe.
         </span>
       </caption>
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <thead class="dashboard-table-head">
         <tr>
-          <th scope="col" class="px-3 py-3 xl:px-5">Attendee</th>
-          <th scope="col" class="px-3 py-3 xl:px-5">Event</th>
+          <th scope="col" class="w-2/5 max-w-0 px-3 py-3 xl:px-5">Attendee</th>
+          <th scope="col"
+              class="hidden max-w-0 px-3 py-3 xl:table-cell xl:w-1/4 xl:px-5">Event</th>
           <th scope="col" class="px-3 py-3 xl:px-5">Amount</th>
-          <th scope="col" class="px-3 py-3 xl:px-5">Operation</th>
-          <th scope="col" class="px-3 py-3 xl:px-5">Status</th>
-          <th scope="col" class="w-[72px] px-3 py-3 text-right xl:px-5">
+          <th scope="col"
+              class="hidden whitespace-nowrap px-3 py-3 2xl:table-cell xl:px-5">Operation</th>
+          <th scope="col" class="w-px whitespace-nowrap px-3 py-3 xl:px-5">Status</th>
+          <th scope="col" class="w-[72px] dashboard-table-actions py-3 text-right">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -42,38 +44,34 @@
         {% for recovery in financial_recoveries -%}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle"
               data-financial-work-kind="{{ recovery.kind }}">
-            <td class="px-3 py-4 xl:px-5">
-              <div class="font-medium text-stone-900">{{ recovery.name.as_deref() |assigned_or(recovery.username) }}</div>
-              <div class="mt-0.5 text-xs text-stone-600">{{ recovery.email }}</div>
+            <td class="w-2/5 max-w-0 px-3 py-4 xl:px-5">
+              <div class="truncate font-medium text-stone-900">{{ recovery.name.as_deref() |assigned_or(recovery.username) }}</div>
+              <div class="mt-0.5 truncate text-xs text-stone-600">{{ recovery.email }}</div>
             </td>
-            <td class="px-3 py-4 font-medium text-stone-900 xl:px-5">{{ recovery.event_name }}</td>
-            <td class="px-3 py-4 font-medium text-stone-900 xl:px-5"
-                data-localized-currency>{{ recovery.formatted_amount() }}</td>
-            <td class="px-3 py-4 text-stone-900 xl:px-5">{{ recovery.operation }}</td>
-            <td class="px-3 py-4 xl:px-5">
+            <td class="hidden max-w-0 px-3 py-4 xl:table-cell xl:w-1/4 xl:px-5">
+              <div class="truncate font-medium text-stone-900"
+                   title="{{ recovery.event_name }}">{{ recovery.event_name }}</div>
+            </td>
+            <td class="max-w-0 px-3 py-4 xl:px-5">
+              <div class="mb-1 truncate font-medium text-stone-900 xl:hidden"
+                   title="{{ recovery.event_name }}">{{ recovery.event_name }}</div>
+              <span class="whitespace-nowrap font-medium text-stone-900"
+                    data-localized-currency>{{ recovery.formatted_amount() }}</span>
+              <div class="mt-0.5 truncate text-xs text-stone-600 2xl:hidden">{{ recovery.operation }}</div>
+            </td>
+            <td class="hidden whitespace-nowrap px-3 py-4 text-stone-900 2xl:table-cell xl:px-5">{{ recovery.operation }}</td>
+            <td class="w-px whitespace-nowrap px-3 py-4 xl:px-5">
               {% let failure_tooltip_id -%}financial-failure-{{ recovery.payment_job_id }}{%- endlet %}
-            <span class="group/financial-failure relative inline-flex">
-              <button type="button"
-                      class="relative inline-flex cursor-help rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                      aria-label="View last failure for {{ recovery.operation }}"
-                      aria-describedby="{{ failure_tooltip_id }}">
-                <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">Needs retry</span>
-                <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-red-800"
-                      aria-hidden="true"></span>
-              </button>
-              {% call dashboard::tooltip_panel(
-                id = failure_tooltip_id,
-                title = "Last failure",
-                visibility_classes = "group-hover/financial-failure:visible group-hover/financial-failure:opacity-100 group-focus-within/financial-failure:visible group-focus-within/financial-failure:opacity-100",
-                width_classes = "w-80"
-              ) -%}
-              <span class="block text-stone-900">
-                {{ recovery.failure_message }} ({{ recovery.attempt_count }} attempt{% if recovery.attempt_count != 1 %}s{% endif %})
-              </span>
-              {% endcall -%}
+            {# djlint:off #}
+            {% let failure_aria_label -%}Needs retry: view last failure for {{ recovery.operation }}{%- endlet %}
+            {# djlint:on #}
+            {% call dashboard::tooltip_badge_trigger(tooltip_id = failure_tooltip_id, title = "Last failure", label = "Needs retry", tone = "danger", aria_label = failure_aria_label, width_classes = "w-80") -%}
+            <span class="block text-stone-900">
+              {{ recovery.failure_message }} ({{ recovery.attempt_count }} attempt{% if recovery.attempt_count != 1 %}s{% endif %})
             </span>
+            {% endcall -%}
           </td>
-          <td class="w-[72px] px-3 py-4 text-right xl:px-5">
+          <td class="w-[72px] dashboard-table-actions py-4 text-right">
             {% if can_manage_events -%}
               <details data-actions-menu class="group relative inline-flex justify-end">
                 <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
@@ -136,7 +134,7 @@
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner">
   <input type="hidden" name="tab" value="refunds">
-  <div class="relative w-80 max-w-full 2xl:w-[30rem]">
+  <div class="relative w-full lg:w-80 2xl:w-[30rem]">
     <label for="refund-search" class="sr-only">Search refunds</label>
     <input id="refund-search"
            class="input-primary peer pe-9"
@@ -210,16 +208,16 @@
 {# Refunds table -#}
 {% if !refunds.is_empty() || financial_recoveries.is_empty() -%}
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+    <table class="table-auto w-full dashboard-table mb-8"
            aria-label="Refunds list">
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <thead class="dashboard-table-head">
         <tr>
           <th scope="col" class="w-[40%] px-3 py-3 xl:w-auto xl:px-5">Attendee</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Event</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Refund</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Updated</th>
-          <th scope="col" class="px-1 sm:px-3 xl:px-5 py-3 w-12 xl:w-[72px]">
+          <th scope="col" class="dashboard-table-actions py-3 w-12 xl:w-[72px]">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -243,7 +241,7 @@
         {% else -%}
           {% for refund in refunds -%}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
-              <td class="w-[40%] px-3 py-4 xl:w-auto xl:max-w-64 xl:px-5">
+              <td class="w-[40%] max-w-0 px-3 py-4 xl:w-auto xl:max-w-64 xl:px-5">
                 <div class="flex items-center gap-3">
                   <logo-image {% if let Some(photo_url) = &refund.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-9" placeholder="{{ self::user_initials(refund.name.as_deref() , refund.username.as_str()) }}">
                   </logo-image>
@@ -253,89 +251,74 @@
                   </div>
                 </div>
               </td>
-              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-64">
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 w-1/4 max-w-0">
                 <div class="truncate font-medium text-stone-900"
                      title="{{ refund.event_name }}">{{ refund.event_name }}</div>
               </td>
               <td class="px-3 xl:px-5 py-4 max-w-72">
                 <div class="mb-2 truncate font-medium text-stone-900 xl:hidden"
                      title="{{ refund.event_name }}">{{ refund.event_name }}</div>
-                <div class="flex flex-wrap items-center gap-1.5 md:flex-nowrap">
+                <div class="flex flex-wrap items-center gap-1.5 xl:flex-nowrap">
                   {% let refund_details_tooltip_id -%}refund-details-{{ refund.event_purchase_id }}{%- endlet %}
-                <span class="group/refund-details relative inline-flex shrink-0">
-                  <button type="button"
-                          class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                          aria-describedby="{{ refund_details_tooltip_id }}">
-                    <span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
-                          data-localized-currency>{{ refund.formatted_amount() }}</span>
-                    <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500"
-                          aria-hidden="true"></span>
-                  </button>
-                  {% call dashboard::tooltip_panel(
-                    id = refund_details_tooltip_id,
-                    title = "Refund details",
-                    visibility_classes = "group-hover/refund-details:visible group-hover/refund-details:opacity-100 group-focus-within/refund-details:visible group-focus-within/refund-details:opacity-100",
-                    width_classes = "w-72"
-                  ) -%}
-                  <span class="block">
-                    <span class="block font-semibold text-stone-500">Ticket</span>
-                    <span class="mt-0.5 block text-stone-900">{{ refund.ticket_title }}</span>
-                  </span>
-                  <span class="block">
-                    <span class="block font-semibold text-stone-500">Request</span>
-                    <span class="mt-0.5 block text-stone-900">{{ refund.kind_label() }}</span>
-                  </span>
-                  <span class="block">
-                    <span class="block font-semibold text-stone-500">Started</span>
-                    <span class="mt-0.5 block text-stone-900">{{ refund.created_at.format("%b %d, %Y") }}</span>
-                  </span>
-                  <span class="block 2xl:hidden">
-                    <span class="block font-semibold text-stone-500">Updated</span>
-                    <span class="mt-0.5 block text-stone-900">{{ refund.updated_at.format("%b %d, %Y at %H:%M UTC") }}</span>
-                  </span>
-                  {% if let Some(reason) = &refund.requested_reason -%}
-                    <span class="block">
-                      <span class="block font-semibold text-stone-500">
-                        {% if refund.kind.as_deref() == Some("attendance-cancellation") || refund.kind.as_deref() == Some("event-cancellation") -%}
-                          Original attendee request reason
-                        {% else -%}
-                          Reason
-                        {% endif -%}
-                      </span>
-                      <span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ reason }}</span>
-                    </span>
-                  {% endif -%}
-                  {% if let Some(review_note) = &refund.review_note -%}
-                    <span class="block">
-                      <span class="block font-semibold text-stone-500">Review</span>
-                      <span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ review_note }}</span>
-                    </span>
-                  {% endif -%}
-                  {% if let Some(failure_message) = &refund.failure_message -%}
-                    <span class="block">
-                      <span class="block font-semibold text-stone-500">Failure</span>
-                      <span class="mt-0.5 block whitespace-pre-wrap text-red-700">{{ failure_message }}</span>
-                    </span>
-                  {% endif -%}
-                  {% if let Some(provider_refund_id) = &refund.provider_refund_id -%}
-                    <span class="block">
-                      <span class="block font-semibold text-stone-500">Provider refund ID</span>
-                      <span class="mt-0.5 block break-all font-mono text-[11px] text-stone-900">{{ provider_refund_id }}</span>
-                    </span>
-                  {% endif -%}
-                  {% endcall -%}
+                {% call dashboard::tooltip_badge_trigger(tooltip_id = refund_details_tooltip_id, title = "Refund details", label = refund.formatted_amount(), tone = "neutral", currency = true, width_classes = "w-72") -%}
+                <span class="block">
+                  <span class="block font-semibold text-stone-500">Ticket</span>
+                  <span class="mt-0.5 block text-stone-900">{{ refund.ticket_title }}</span>
                 </span>
+                <span class="block">
+                  <span class="block font-semibold text-stone-500">Request</span>
+                  <span class="mt-0.5 block text-stone-900">{{ refund.kind_label() }}</span>
+                </span>
+                <span class="block">
+                  <span class="block font-semibold text-stone-500">Started</span>
+                  <span class="mt-0.5 block text-stone-900">{{ refund.created_at.format("%b %d, %Y") }}</span>
+                </span>
+                <span class="block 2xl:hidden">
+                  <span class="block font-semibold text-stone-500">Updated</span>
+                  <span class="mt-0.5 block text-stone-900">{{ refund.updated_at.format("%b %d, %Y at %H:%M UTC") }}</span>
+                </span>
+                {% if let Some(reason) = &refund.requested_reason -%}
+                  <span class="block">
+                    <span class="block font-semibold text-stone-500">
+                      {% if refund.kind.as_deref() == Some("attendance-cancellation") || refund.kind.as_deref() == Some("event-cancellation") -%}
+                        Original attendee request reason
+                      {% else -%}
+                        Reason
+                      {% endif -%}
+                    </span>
+                    <span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ reason }}</span>
+                  </span>
+                {% endif -%}
+                {% if let Some(review_note) = &refund.review_note -%}
+                  <span class="block">
+                    <span class="block font-semibold text-stone-500">Review</span>
+                    <span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ review_note }}</span>
+                  </span>
+                {% endif -%}
+                {% if let Some(failure_message) = &refund.failure_message -%}
+                  <span class="block">
+                    <span class="block font-semibold text-stone-500">Failure</span>
+                    <span class="mt-0.5 block whitespace-pre-wrap text-red-700">{{ failure_message }}</span>
+                  </span>
+                {% endif -%}
+                {% if let Some(provider_refund_id) = &refund.provider_refund_id -%}
+                  <span class="block">
+                    <span class="block font-semibold text-stone-500">Provider refund ID</span>
+                    <span class="mt-0.5 block break-all font-mono text-[11px] text-stone-900">{{ provider_refund_id }}</span>
+                  </span>
+                {% endif -%}
+                {% endcall -%}
                 {% if refund.external -%}
-                  {{ badges::common_badge(content = "External", extra_styles = Some("shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700")) -}}
+                  {{ badges::common_badge(content = "External", extra_styles = Some("shrink-0 badge-neutral")) -}}
                 {% endif -%}
                 <div class="shrink-0 xl:hidden">
                   {% let attempt_count = refund.attempt_count.unwrap_or(0) -%}
                   {% if attempt_count > 0 && refund.can_retry() -%}
-                    <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">
+                    <span class="custom-badge badge-danger">
                       {{ refund.status.label() }} ({{ attempt_count }} attempt{% if attempt_count != 1 %}s{% endif %})
                     </span>
                   {% else -%}
-                    {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
+                    {{ badges::payment_status_badge(label = refund.status.label() , tone = crate::templates::dashboard::group::refunds::status_tone(&refund.status).as_str()) -}}
                   {% endif -%}
                 </div>
               </div>
@@ -343,18 +326,18 @@
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
               {% let attempt_count = refund.attempt_count.unwrap_or(0) -%}
               {% if attempt_count > 0 && refund.can_retry() -%}
-                <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">
+                <span class="custom-badge badge-danger">
                   {{ refund.status.label() }} ({{ attempt_count }} attempt{% if attempt_count != 1 %}s{% endif %})
                 </span>
               {% else -%}
-                {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
+                {{ badges::payment_status_badge(label = refund.status.label() , tone = crate::templates::dashboard::group::refunds::status_tone(&refund.status).as_str()) -}}
               {% endif -%}
             </td>
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
               <div class="text-stone-900">{{ refund.updated_at.format("%b %d, %Y") }}</div>
               <div class="mt-1 text-xs text-stone-600">{{ refund.updated_at.format("%H:%M UTC") }}</div>
             </td>
-            <td class="px-1 sm:px-3 xl:px-5 py-4 w-12 xl:w-[72px] text-right">
+            <td class="dashboard-table-actions py-4 w-12 xl:w-[72px] text-right">
               {% if (can_manage_events && (refund.can_approve() || refund.can_reject() || (refund.can_retry() && refund.payment_job_id.is_some()))) || refund.can_recover() -%}
                 <details data-actions-menu class="group relative">
                   <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
@@ -431,7 +414,7 @@
                             <button type="button"
                                     disabled
                                     aria-disabled="true"
-                                    class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400 opacity-60">
+                                    class="pointer-events-none flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400 opacity-60">
                               <div class="svg-icon size-4 icon-check shrink-0 bg-stone-400"></div>
                               <span>Complete recovery</span>
                             </button>

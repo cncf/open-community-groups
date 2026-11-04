@@ -25,13 +25,17 @@ export const cleanupTemporaryUser = (userId) => {
 
 /**
  * Creates a verified temporary user; release it with `cleanupTemporaryUser`.
- * @param {{ label: string }} options - Short label used in the username, email and name.
- * @returns {{ userId: string }}
+ * @param {{ email?: string, label: string, name?: string }} options - Short label used in the
+ *   username, and in the email and name unless `email` or `name` replace them (for long-data
+ *   layout coverage). An `email` must be unique, so build it from a unique value.
+ * @returns {{ email: string, name: string, userId: string }}
  */
-export const setupTemporaryUser = ({ label }) => {
+export const setupTemporaryUser = ({ email, label, name }) => {
   const userId = randomUUID();
   const suffix = shortId(userId);
   const username = `e2e-${label}-${suffix}`;
+  const userEmail = email ?? `${username}@example.com`;
+  const userName = name ?? `E2E ${label} ${suffix}`;
 
   queryE2eDatabase(`
     insert into "user" (
@@ -45,13 +49,13 @@ export const setupTemporaryUser = ({ label }) => {
     ) values (
       ${sqlUuid(userId)},
       ${sqlString(username)},
-      ${sqlString(`${username}@example.com`)},
+      ${sqlString(userEmail)},
       true,
-      ${sqlString(`E2E ${label} ${suffix}`)},
+      ${sqlString(userName)},
       ${sqlString(TEMP_PASSWORD_HASH)},
       ${sqlString(`e2e-temporary-${suffix}`)}
     );
   `);
 
-  return { userId };
+  return { email: userEmail, name: userName, userId };
 };

@@ -605,6 +605,9 @@ refund for a confirmed paid attendee by selecting `Cancel attendance and refund`
 recovery, then OCG cancels it and reconciles the released capacity. Read-only
 roles can inspect every state but cannot use those actions.
 
+Badges marked with a small dot show details on hover, keyboard focus, click or tap; press Escape
+to hide them.
+
 Purchases collected outside OCG through [external payments](#external-payments)
 carry an `External` badge in the refunds table. They never involve a payment
 provider: approving such a request, or selecting `Cancel attendance and refund`
@@ -619,6 +622,9 @@ record work completed directly in Stripe. Recording that out-of-band completion
 requires the Stripe object ID, a reference for the action taken, and a note
 describing the evidence reviewed. OCG stores that evidence and adds the
 completion to the audit log.
+
+On narrower screens, the panel shows each row's event and operation together
+with the amount instead of in separate columns. The `Needs retry` badge opens the last failure on hover, focus, click or tap.
 
 Rejecting a request requires a reason. The modal identifies it as attendee-visible because the
 same reason appears in the attendee's email, `My Events`, and the public event page. Approval notes
@@ -665,6 +671,9 @@ Rows are ordered by newest first by default, and you can switch the ordering to 
 can filter by `Action`, `Actor`, and date range, and pagination keeps the active filters applied.
 When an audit row has extra metadata, such as a role or notification subject, `Details` opens a
 popover with it.
+
+On narrower screens the popover also lists the columns hidden at that width (target, type and, in
+community and group logs, the date).
 
 For each entry, OCG shows the resource type plus the current resource name. If the resource no
 longer exists, the audit entry still remains and falls back to the name recorded when the action

@@ -56,7 +56,7 @@
                height="512"
                loading="lazy">
           <button id="delete-badge-artwork-{{ image.badge_artwork_id }}"
-                  class="btn-tertiary absolute right-2 top-2 p-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                  class="btn-tertiary absolute right-2 top-2 p-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100"
                   type="button"
                   hx-delete="/dashboard/group/badges/artwork/{{ image.badge_artwork_id }}"
                   hx-trigger="confirmed"

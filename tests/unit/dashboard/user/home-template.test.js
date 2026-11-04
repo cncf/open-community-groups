@@ -46,7 +46,7 @@ describe("dashboard user home template", () => {
     expect(template).to.include('class="leading-10 grid gap-y-0.5 max-md:hidden"');
   });
 
-  it("uses a compact purchases label through the large breakpoint", async () => {
+  it("uses a compact purchases label until the wide sidebar", async () => {
     // Load the user dashboard shell before checking responsive navigation copy.
     const template = await loadTemplate();
 
@@ -54,6 +54,15 @@ describe("dashboard user home template", () => {
     expect(template).to.include(
       'menu_item(name = "Purchases & documents", compact_name = "Purchases", icon = "invoice"',
     );
+  });
+
+  it("loads the tooltip panel enhancement for dashboard content", async () => {
+    // Load the user dashboard shell before checking the tooltip wiring.
+    const template = await loadTemplate();
+
+    // Verify the tooltip module loads and its dashboard content scope is rendered.
+    expect(template).to.include('<script type="module" src="/static/js/common/tooltip-panel.js">');
+    expect(template).to.include('<div id="dashboard-content"');
   });
 
   it("loads notification scripts and links the notifications menu item", async () => {

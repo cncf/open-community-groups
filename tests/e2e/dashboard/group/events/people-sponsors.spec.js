@@ -408,7 +408,13 @@ const assertEditorContributors = async (
   await expect(speakersSelector.getByRole("table", { name: "Event speakers" })).toContainText(
     "E2E Member One",
   );
-  await expect(speakersSelector.locator('[title="Featured speaker"]')).toBeVisible();
+  await expect(
+    speakersSelector
+      .getByRole("row")
+      .filter({ hasText: "E2E Member One" })
+      .locator(".icon-star")
+      .filter({ visible: true }),
+  ).toHaveCount(1);
   await expect(speakersSelector.getByText("E2E Member Two", { exact: true })).toHaveCount(
     memberTwoVisible ? 1 : 0,
   );

@@ -57,7 +57,10 @@ export const setupCfsSubmission = ({ eventId, proposalId }) =>
 
 /**
  * Creates a ready-for-submission session proposal, matching the dashboard form defaults.
+ * With `coSpeakerUserId`, the proposal invites that user and waits for their response,
+ * as after the dashboard co-speaker invitation.
  * @param {{
+ *   coSpeakerUserId?: string,
  *   description?: string,
  *   durationMinutes?: number,
  *   levelId?: string,
@@ -67,14 +70,17 @@ export const setupCfsSubmission = ({ eventId, proposalId }) =>
  * @returns {{ proposalId: string, title: string, userId: string }}
  */
 export const setupSessionProposal = ({
+  coSpeakerUserId = "",
   description = "A reusable proposal created from the e2e suite.",
   durationMinutes = 45,
   levelId = "intermediate",
   title,
   userId,
 }) => {
+  const statusId = coSpeakerUserId ? "pending-co-speaker-response" : "ready-for-submission";
   const proposalId = queryScalar(`
     insert into session_proposal (
+      co_speaker_user_id,
       description,
       duration,
       session_proposal_level_id,
@@ -82,10 +88,11 @@ export const setupSessionProposal = ({
       title,
       user_id
     ) values (
+      ${coSpeakerUserId ? sqlUuid(coSpeakerUserId) : "null"},
       ${sqlString(description)},
       make_interval(mins => ${Number(durationMinutes)}),
       ${sqlString(levelId)},
-      'ready-for-submission',
+      ${sqlString(statusId)},
       ${sqlString(title)},
       ${sqlUuid(userId)}
     )

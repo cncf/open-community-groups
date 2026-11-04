@@ -98,6 +98,9 @@ describe("dashboard community analytics", () => {
     // Verify initializes the default groups analytics tab.
     expect(setOptionCalls).to.have.length(8);
     expect(setOptionCalls.map((call) => call.id)).to.include("groups-region-chart");
+    expect(setOptionCalls.find((call) => call.id === "groups-region-chart").option.legend.orient).to.equal(
+      "horizontal",
+    );
     expect(
       setOptionCalls.find((call) => call.id === "groups-running-chart").option.baseOption.title.subtext,
     ).to.equal("Cumulative active groups over time");
@@ -160,13 +163,118 @@ describe("dashboard community analytics", () => {
       expect(eventsCard.getAttribute("role")).to.equal("tab");
       expect(eventsCard.getAttribute("aria-selected")).to.equal("true");
       expect(eventsCard.getAttribute("aria-controls")).to.equal("analytics-panel-events");
-      expect(eventsCard.hasAttribute("tabindex")).to.equal(false);
+      expect(eventsCard.getAttribute("tabindex")).to.equal("0");
       expect(groupsCard.getAttribute("aria-selected")).to.equal("false");
+      expect(groupsCard.getAttribute("tabindex")).to.equal("-1");
 
       // Removed analytics content stops following the viewport.
       summary.remove();
       changeViewport(false);
       expect(query.listeners.size).to.equal(0);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it("moves between the exposed tabs with the arrow, Home and End keys", async () => {
+    // Stub the xl media query so the summary cards stay plain stat cards.
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = () => ({
+      matches: false,
+      addEventListener() {},
+      removeEventListener() {},
+    });
+
+    // Replace the bare tab buttons with the summary cards and the tab list.
+    document.querySelectorAll("body > [data-analytics-tab]").forEach((button) => button.remove());
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      `<div role="tablist" aria-label="Analytics summary" data-analytics-summary>
+        <button type="button" role="tab" data-analytics-tab="groups" data-active="true"></button>
+        <button type="button" role="tab" data-analytics-tab="events" data-active="false"></button>
+      </div>
+      <ul role="tablist" aria-label="Analytics tabs">
+        <li role="presentation">
+          <button type="button" role="tab" data-analytics-tab="groups">Groups</button>
+        </li>
+        <li role="presentation">
+          <button type="button" role="tab" data-analytics-tab="events">Events</button>
+        </li>
+        <li role="presentation">
+          <button type="button" role="tab" data-analytics-tab="attendees">Attendees</button>
+        </li>
+        <li role="presentation">
+          <button type="button" role="tab" data-analytics-tab="page-views">Page views</button>
+        </li>
+      </ul>`,
+    );
+    const summaryCards = Array.from(
+      document.querySelectorAll("[data-analytics-summary] [data-analytics-tab]"),
+    );
+    const tabs = Array.from(document.querySelectorAll('[aria-label="Analytics tabs"] [role="tab"]'));
+    const [groupsTab, eventsTab, attendeesTab, pageViewsTab] = tabs;
+    const pressKey = (element, key, modifiers = {}) => {
+      const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key, ...modifiers });
+      element.dispatchEvent(event);
+      return event;
+    };
+    const expectActiveTab = (activeTab) => {
+      expect(document.activeElement).to.equal(activeTab);
+      tabs.forEach((tab) => {
+        const isActive = tab === activeTab;
+        expect(tab.getAttribute("aria-selected")).to.equal(String(isActive));
+        expect(tab.getAttribute("tabindex")).to.equal(isActive ? "0" : "-1");
+      });
+      document.querySelectorAll("[data-analytics-content]").forEach((content) => {
+        const isVisible = content.dataset.analyticsContent === activeTab.dataset.analyticsTab;
+        expect(content.classList.contains("hidden")).to.equal(!isVisible);
+      });
+    };
+
+    try {
+      // The default tab is the only one in the tab order.
+      await initAnalyticsCharts(getCommunityAnalyticsPayload());
+      expect(groupsTab.getAttribute("tabindex")).to.equal("0");
+      expect(eventsTab.getAttribute("tabindex")).to.equal("-1");
+
+      // ArrowRight focuses and activates the next tab.
+      groupsTab.focus();
+      expect(pressKey(groupsTab, "ArrowRight").defaultPrevented).to.equal(true);
+      expectActiveTab(eventsTab);
+
+      // ArrowLeft from the first tab wraps to the last one.
+      pressKey(eventsTab, "ArrowLeft");
+      expectActiveTab(groupsTab);
+      pressKey(groupsTab, "ArrowLeft");
+      expectActiveTab(pageViewsTab);
+
+      // ArrowRight from the last tab wraps to the first one.
+      pressKey(pageViewsTab, "ArrowRight");
+      expectActiveTab(groupsTab);
+
+      // End and Home jump to the last and first tabs.
+      pressKey(groupsTab, "End");
+      expectActiveTab(pageViewsTab);
+      pressKey(pageViewsTab, "Home");
+      expectActiveTab(groupsTab);
+
+      // Other keys are left to the browser.
+      expect(pressKey(groupsTab, "ArrowDown").defaultPrevented).to.equal(false);
+      expectActiveTab(groupsTab);
+
+      // Modified keys keep their browser shortcuts (Alt+ArrowLeft goes back in history).
+      expect(pressKey(groupsTab, "ArrowLeft", { altKey: true }).defaultPrevented).to.equal(false);
+      expect(pressKey(groupsTab, "End", { ctrlKey: true }).defaultPrevented).to.equal(false);
+      expect(pressKey(groupsTab, "ArrowRight", { metaKey: true }).defaultPrevented).to.equal(false);
+      expectActiveTab(groupsTab);
+
+      // Summary cards below xl are not tabs, so their keys do nothing.
+      attendeesTab.click();
+      const summaryEvent = pressKey(summaryCards[0], "ArrowRight");
+      expect(summaryEvent.defaultPrevented).to.equal(false);
+      expect(document.querySelector("[data-analytics-summary]").getAttribute("role")).to.equal("group");
+      expect(attendeesTab.getAttribute("aria-selected")).to.equal("true");
+      expect(summaryCards.map((card) => card.getAttribute("tabindex"))).to.deep.equal(["-1", "-1"]);
     } finally {
       window.matchMedia = originalMatchMedia;
     }

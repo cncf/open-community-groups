@@ -23,13 +23,11 @@
           </div>
         {% endif -%}
         <div class="min-w-0 flex-1">
-          <div class="truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400">
-            {{ group.community_display_name }}
-          </div>
+          <div class="title-preheader">{{ group.community_display_name }}</div>
           <div class="mt-0.5 flex min-w-0 items-center gap-2">
             <div class="truncate text-sm/5 font-semibold text-stone-900">{{ group.name }}</div>
             {% if !group.available -%}
-              <span class="custom-badge shrink-0 border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Not available</span>
+              <span class="custom-badge badge-warning shrink-0 px-2 py-0">Not available</span>
             {% endif -%}
           </div>
         </div>

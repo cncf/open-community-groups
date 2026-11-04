@@ -72,25 +72,31 @@ export const readCohostStatus = (eventId, groupId) =>
 
 /**
  * Creates a future virtual event owned by one group with co-host invitations in given states.
+ * A temporary owner group needs `categoryId`, an event category of its community; seeded owner
+ * groups use their community's category.
  * @param {{
  *   attendeeUserIds?: string[],
+ *   categoryId?: string,
  *   cohosts?: Array<{ groupId: string, status?: "approved"|"canceled"|"pending"|"rejected" }>,
  *   days?: number,
+ *   name?: string,
  *   ownerGroupId?: string,
  *   published?: boolean
- * }} [options] - Event shape.
+ * }} [options] - Event shape; `name` replaces the generated name (for long-data layout coverage).
  * @returns {{ eventId: string, invitationIds: Record<string, string>, name: string, slug: string }}
  */
 export const setupCohostEvent = ({
   attendeeUserIds = [],
+  categoryId,
   cohosts = [],
   days = 200,
+  name: eventName,
   ownerGroupId = TEST_GROUP_IDS.community1.alpha,
   published = false,
 } = {}) => {
   const eventId = randomUUID();
   const suffix = eventId.replace(/-/g, "").slice(0, 8);
-  const name = `E2E co-hosted event ${suffix}`;
+  const name = eventName ?? `E2E co-hosted event ${suffix}`;
   const slug = `e2e-cohosted-event-${suffix}`;
   const invitationIds = Object.fromEntries(cohosts.map(({ groupId }) => [groupId, randomUUID()]));
   const cohostValues = cohosts.map(
@@ -107,7 +113,7 @@ export const setupCohostEvent = ({
 
   insertOwnedEvent({
     attendeeUserIds,
-    categoryId: getOwnerEventCategoryId(ownerGroupId),
+    categoryId: categoryId ?? getOwnerEventCategoryId(ownerGroupId),
     description: "Disposable event used by E2E co-hosting coverage.",
     descriptionShort: "Disposable co-hosting coverage.",
     eventId,

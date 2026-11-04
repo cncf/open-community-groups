@@ -119,8 +119,8 @@ that admin to a non-admin role.
 !> The final accepted community admin cannot be removed or demoted.
 Add another accepted member first, then retry removal.
 
-Pending states are visible (`Invitation sent`) so you can tell the difference between invited and
-fully active collaborators.
+Pending members show an `Invitation sent` badge so you can tell the difference between invited
+and fully active collaborators.
 
 When you add a team member, OCG sends an invitation with a direct link to
 [User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
@@ -303,6 +303,9 @@ Coverage in this view includes:
 Rows are ordered by newest first by default, and you can switch the ordering to oldest first. You
 can filter by `Action`, `Actor`, and date range, and pagination keeps the active filters applied.
 When an audit row has extra metadata, `Details` opens a popover with it.
+
+On narrower screens the popover also lists the columns hidden at that width (target, type and, in
+community and group logs, the date).
 
 For each entry, OCG shows the resource type plus the current resource name. If the resource no
 longer exists, the audit entry still remains and falls back to the name recorded when the action

@@ -4,6 +4,7 @@ use chrono_tz::{Europe::Madrid, Tz};
 use uuid::Uuid;
 
 use crate::{
+    templates::dashboard::BadgeTone,
     test_util::normalize_whitespace,
     types::{
         dashboard::group::surveys::{
@@ -29,7 +30,8 @@ use super::{
     FEW_RESPONSES_THRESHOLD, FormPage, ListPage, MarkReadyBlocker, ResponseModal, ResponsesPage,
     ResultsPage, TextAnswersModal, answered_label, closes_label, few_anonymous_responses,
     format_date, mark_ready_blocker, opening_label, respondent_details, respondent_name,
-    responses_label, status_action, text_answers_url, view_all_answers_label,
+    responses_label, state_label, state_tone, status_action, text_answers_url,
+    view_all_answers_label,
 };
 
 #[test]
@@ -665,6 +667,37 @@ fn test_results_page_renders_overview_cards_and_question_sections() {
     // Check the answers modal shell
     assert!(html.contains(r#"id="event-survey-text-answers-modal""#));
     assert!(html.contains(r#"aria-labelledby="event-survey-text-answers-modal-title""#));
+}
+
+#[test]
+fn test_state_label_and_tone() {
+    // (case, state, expected label, expected tone)
+    let cases = [
+        (
+            "closed",
+            EventSurveyState::Closed,
+            "Closed",
+            BadgeTone::Danger,
+        ),
+        (
+            "draft",
+            EventSurveyState::Draft,
+            "Draft",
+            BadgeTone::Warning,
+        ),
+        ("open", EventSurveyState::Open, "Open", BadgeTone::Success),
+        (
+            "scheduled",
+            EventSurveyState::Scheduled,
+            "Scheduled",
+            BadgeTone::Success,
+        ),
+    ];
+
+    for (case, state, expected_label, expected_tone) in cases {
+        assert_eq!(state_label(&state), expected_label, "{case}");
+        assert_eq!(state_tone(&state), expected_tone, "{case}");
+    }
 }
 
 #[test]

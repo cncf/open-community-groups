@@ -69,16 +69,15 @@
     </div>
   {% else -%}
     <div class="relative overflow-x-auto">
-      <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+      <table class="table-fixed w-full dashboard-table mb-8"
              role="table"
              aria-label="Badges list">
         {# Table header -#}
-        <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
-               role="rowgroup">
+        <thead class="dashboard-table-head" role="rowgroup">
           <tr>
             <th scope="col" class="px-3 xl:px-5 py-3 xl:w-[35%]">Badge</th>
             <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Description</th>
-            <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
+            <th scope="col" class="dashboard-table-actions py-3 w-[112px]">
               <span class="sr-only">Actions</span>
             </th>
           </tr>
@@ -110,7 +109,7 @@
               {# End description -#}
 
               {# Actions -#}
-              <td class="px-3 xl:px-5 py-4 w-[112px]">
+              <td class="dashboard-table-actions py-4 w-[112px]">
                 <div class="flex items-center justify-end gap-2">
                   <div>
                     <button class="btn-tertiary p-2"

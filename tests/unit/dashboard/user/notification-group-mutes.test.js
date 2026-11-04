@@ -149,8 +149,13 @@ describe("notification group mutes", () => {
       expect(withoutLogo.querySelector(".icon-broken-image")).to.not.equal(null);
 
       // The community label precedes the group name.
-      const labels = [...withLogo.querySelectorAll(".truncate")].map((label) => label.textContent.trim());
+      const labels = [...withLogo.querySelectorAll(".title-preheader, .truncate")].map((label) =>
+        label.textContent.trim(),
+      );
       expect(labels).to.deep.equal(["Cloud Native Community", "Kubernetes Group"]);
+      expect(withLogo.querySelector(".title-preheader")?.textContent.trim()).to.equal(
+        "Cloud Native Community",
+      );
     } finally {
       fetchMock.restore();
     }

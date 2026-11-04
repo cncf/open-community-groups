@@ -7,6 +7,7 @@ import {
   markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
+import { getVisibleVerticalBounds } from "/static/js/common/dropdown-placement.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 
 const MODAL_ID = "audit-log-filters-modal";
@@ -20,10 +21,12 @@ const ACTION_FILTER_ID = "audit-action";
 const ACTOR_FILTER_ID = "audit-actor";
 const DATE_FROM_FILTER_ID = "audit-date-from";
 const DATE_TO_FILTER_ID = "audit-date-to";
+const DETAILS_CARD_SELECTOR = "[data-audit-log-details-card]";
 const DETAILS_GROUP_SELECTOR = "[data-audit-log-details-group]";
 const DETAILS_TRIGGER_SELECTOR = "[data-audit-log-details-trigger]";
 const DETAILS_HOVER_DISABLED_ATTRIBUTE = "data-audit-log-hover-disabled";
 const DETAILS_HOVER_BOUND_ATTRIBUTE = "data-audit-log-hover-bound";
+const DETAILS_PLACEMENT_ATTRIBUTE = "data-placement";
 
 let auditLogGlobalHandlersBound = false;
 
@@ -82,6 +85,38 @@ const setAuditLogDetailsExpanded = (trigger, expanded) => {
 };
 
 /**
+ * Places a rendered details popover above its trigger when it overflows the
+ * visible area below and there is more room above.
+ * @param {HTMLElement} group - Details popover group element.
+ * @returns {boolean} Whether the popover was rendered and measured.
+ */
+const placeAuditLogDetails = (group) => {
+  const card = group.querySelector(DETAILS_CARD_SELECTOR);
+
+  if (!(card instanceof HTMLElement)) {
+    return false;
+  }
+
+  // Measure from the default placement below the trigger.
+  card.removeAttribute(DETAILS_PLACEMENT_ATTRIBUTE);
+  if (card.getClientRects().length === 0) {
+    return false;
+  }
+
+  const cardRect = card.getBoundingClientRect();
+  const groupRect = group.getBoundingClientRect();
+  const bounds = getVisibleVerticalBounds(group);
+  const spaceAbove = groupRect.top - bounds.top;
+  const spaceBelow = bounds.bottom - groupRect.bottom;
+
+  if (cardRect.bottom > bounds.bottom && spaceAbove > spaceBelow) {
+    card.setAttribute(DETAILS_PLACEMENT_ATTRIBUTE, "top");
+  }
+
+  return true;
+};
+
+/**
  * Closes all audit log detail popovers except the optional open trigger.
  * @param {Document|Element} root - Root element to search from.
  * @param {Element|null} triggerToKeepOpen - Trigger that should remain open.
@@ -96,6 +131,9 @@ const closeAuditLogDetails = (root = document, triggerToKeepOpen = null, suppres
 
     setAuditLogDetailsHoverDisabled(trigger, Boolean(hoverDisabled));
     setAuditLogDetailsExpanded(trigger, expanded);
+    if (expanded && group) {
+      placeAuditLogDetails(group);
+    }
   });
 };
 
@@ -121,6 +159,11 @@ const syncAuditLogDetails = (root = document) => {
           setAuditLogDetailsExpanded(trigger, false);
         }
       });
+
+      // The hover rule may not have shown the card yet, so retry once on the next frame.
+      if (!placeAuditLogDetails(group)) {
+        window.requestAnimationFrame(() => placeAuditLogDetails(group));
+      }
     });
     group.addEventListener("mouseleave", () => {
       group.removeAttribute(DETAILS_HOVER_DISABLED_ATTRIBUTE);

@@ -22,15 +22,16 @@
   </div>
 
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+    <table class="table-auto w-full dashboard-table mb-8"
            aria-label="Co-hosted events list">
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <thead class="dashboard-table-head">
         <tr>
           <th scope="col" class="px-3 py-3 xl:px-5">Event</th>
           <th scope="col" class="hidden xl:table-cell px-3 py-3 xl:px-5">Owning group</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 py-3 xl:px-5">Date</th>
           <th scope="col" class="px-3 py-3 xl:px-5">Status</th>
-          <th scope="col" class="w-[72px] px-3 py-3 text-right xl:px-5">
+          <th scope="col"
+              class="w-[72px] min-w-[72px] dashboard-table-actions py-3 text-right">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -53,10 +54,13 @@
           {% for event in events -%}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
               <th scope="row"
-                  class="px-3 py-4 font-medium text-stone-900 min-w-[100px] max-w-[250px] xl:px-5">
+                  class="px-3 py-4 font-medium text-stone-900 w-full max-w-0 xl:px-5">
                 <div class="flex min-w-0 items-center gap-3">
                   {{ ui::logo(logo_url = event.event_logo_url, classes = "size-10 shrink-0", size = 40) -}}
                   <div class="min-w-0">
+                    <div class="title-preheader mb-0.5 xl:hidden">
+                      {{ event.owner_group_name }} · {{ event.owner_community_display_name }}
+                    </div>
                     {% if let Some(public_url) = event.public_url() -%}
                       <a href="{{ public_url|safe_href }}"
                          target="_blank"
@@ -66,17 +70,6 @@
                     {% else -%}
                       <div class="truncate" title="{{ event.event_name }}">{{ event.event_name }}</div>
                     {% endif -%}
-                    <div class="mt-1 flex flex-wrap items-center gap-1.5 xl:hidden">
-                      {{ badges::event_badge(kind = event.event_kind, extra_styles = Some("px-2.5 py-0.5")) -}}
-                      {% if event.canceled -%}
-                        {{ badges::status_badge(label = "Canceled", canceled = true, published = false) -}}
-                      {% else if event.published -%}
-                        {{ badges::status_badge(label = "Published", canceled = false, published = true) -}}
-                      {% endif -%}
-                    </div>
-                    <div class="mt-1 truncate text-xs text-stone-600 xl:hidden">
-                      {{ event.owner_group_name }} · {{ event.owner_community_display_name }}
-                    </div>
                     {% if let Some(starts_at) = &event.starts_at -%}
                       <div class="mt-1 truncate text-xs text-stone-500 2xl:hidden">
                         {{ starts_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
@@ -88,7 +81,7 @@
               <td class="hidden xl:table-cell px-3 py-4 xl:px-5">
                 <div class="flex min-w-0 items-center gap-3">
                   {{ ui::logo(logo_url = event.owner_group_logo_url, classes = "size-9 shrink-0", size = 36) -}}
-                  <div class="min-w-0">
+                  <div class="min-w-0 max-w-48 2xl:max-w-xs">
                     <div class="truncate font-medium text-stone-900">{{ event.owner_group_name }}</div>
                     <div class="truncate text-xs text-stone-600">{{ event.owner_community_display_name }}</div>
                   </div>
@@ -107,7 +100,7 @@
                 {% let is_pending = event.status == crate::types::event::EventCohostStatus::Pending -%}
                 {{ badges::status_badge(label = event.status_label(), canceled = !is_approved && !is_pending, published = is_approved) -}}
               </td>
-              <td class="w-[72px] px-3 py-4 text-right xl:px-5">
+              <td class="w-[72px] min-w-[72px] dashboard-table-actions py-4 text-right">
                 {% if can_manage_cohosts && (event.can_respond() || event.can_cancel()) -%}
                   <details data-actions-menu class="group relative inline-flex justify-end">
                     <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"

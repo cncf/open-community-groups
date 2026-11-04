@@ -109,7 +109,7 @@ describe("dashboard group home template", () => {
     // Verify swapped dashboard content can fill the dashboard card.
     expect(template).to.include('id="dashboard-content"');
     expect(template).to.include(
-      'class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 lg:p-12"',
+      'class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 xl:p-12"',
     );
     expect(template).to.include('hx-indicator="#dashboard-spinner" class="contents"');
   });
@@ -143,6 +143,15 @@ describe("dashboard group home template", () => {
       '<script type="module" src="/static/js/common/modals/user-info-modal.js"></script>',
     );
     expect(template).to.include("<user-info-modal></user-info-modal>");
+  });
+
+  it("loads the tooltip panel enhancement for dashboard content", async () => {
+    // Load the group dashboard shell before checking the tooltip wiring.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the tooltip module loads and its dashboard content scope is rendered.
+    expect(template).to.include('<script type="module" src="/static/js/common/tooltip-panel.js">');
+    expect(template).to.include('<div id="dashboard-content"');
   });
 
   it("loads group settings form validation", async () => {

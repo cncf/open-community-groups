@@ -1,6 +1,6 @@
 import { expect } from "@open-wc/testing";
 
-import "/static/js/dashboard/event/sessions/speaker-modal.js";
+import "/static/js/common/users/speaker-modal.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("session-speaker-modal", () => {
@@ -140,7 +140,9 @@ describe("session-speaker-modal", () => {
     document.body.append(trigger);
     const element = await mountLitComponent("session-speaker-modal");
     const pressKey = (key, shiftKey = false) => {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key, shiftKey, bubbles: true, cancelable: true }));
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key, shiftKey, bubbles: true, cancelable: true }),
+      );
     };
 
     try {

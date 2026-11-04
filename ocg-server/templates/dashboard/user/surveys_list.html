@@ -20,9 +20,9 @@
   {% if survey.is_closed() -%}
     {{ surveys_macros::state_badge(state = survey.state) -}}
   {% else if survey.answered -%}
-    {{ badges::invitation_badge(label = "Answered", tone = "success", with_border = true) -}}
+    {{ badges::tone_badge(label = "Answered", tone = "success") -}}
   {% else -%}
-    {{ badges::invitation_badge(label = "To answer", with_border = true) -}}
+    {{ badges::tone_badge(label = "To answer", tone = "pending") -}}
   {% endif -%}
 {% endmacro survey_status_badge -%}
 {# End survey status badge. #}
@@ -54,14 +54,16 @@
      hx-indicator="#dashboard-spinner"></div>
 
 {# Surveys table -#}
-<div class="relative overflow-x-auto lg:overflow-x-visible">
-  <table class="w-full table-auto text-left text-xs text-stone-500 lg:text-sm">
-    <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
+<div class="relative overflow-visible">
+  <table class="dashboard-table w-full table-auto">
+    <thead class="dashboard-table-head">
       <tr>
         <th scope="col" class="px-3 py-3 xl:px-5">Survey</th>
         <th scope="col" class="hidden px-3 py-3 lg:table-cell xl:px-5">Status</th>
-        <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Closing</th>
-        <th scope="col" class="w-36 px-3 py-3 text-right xl:px-5">
+        <th scope="col"
+            class="hidden whitespace-nowrap px-3 py-3 xl:table-cell xl:px-5">Closing</th>
+        <th scope="col"
+            class="dashboard-table-actions w-px whitespace-nowrap py-3 text-right">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -85,17 +87,15 @@
           <tr data-user-event-survey="{{ survey.event_survey_id }}"
               class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
             <th scope="row"
-                class="min-w-[180px] px-3 py-4 font-medium text-stone-900 xl:px-5">
-              <div class="max-w-md break-words">{{ survey.title }}</div>
-              <div class="mt-0.5 max-w-md truncate text-xs font-normal text-stone-400">
-                {{ survey.event_name }} · {{ survey.group_name }}
-              </div>
+                class="w-full max-w-0 px-3 py-4 font-medium text-stone-900 xl:px-5">
+              <div class="title-preheader">{{ survey.event_name }} · {{ survey.group_name }}</div>
+              <div class="mt-0.5 break-words">{{ survey.title }}</div>
               <div class="mt-0.5 text-xs font-normal text-stone-500 xl:hidden">{{ survey_date(survey = survey) -}}</div>
               <div class="mt-1 lg:hidden">{{ survey_status_badge(survey = survey) -}}</div>
             </th>
             <td class="hidden px-3 py-4 lg:table-cell xl:px-5">{{ survey_status_badge(survey = survey) -}}</td>
-            <td class="hidden px-3 py-4 xl:table-cell xl:px-5">{{ survey_date(survey = survey) -}}</td>
-            <td class="w-36 px-3 py-4 text-right xl:px-5">
+            <td class="hidden whitespace-nowrap px-3 py-4 xl:table-cell xl:px-5">{{ survey_date(survey = survey) -}}</td>
+            <td class="dashboard-table-actions w-px whitespace-nowrap py-4 text-right">
               {% let action_label = crate::templates::dashboard::user::surveys::survey_action_label(survey) -%}
               <button type="button"
                       aria-label="{{ action_label }}: {{ survey.title }}"

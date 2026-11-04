@@ -208,13 +208,13 @@ export class UserSearchSelector extends LitWrapper {
     const hasActions = !this.disabled || Boolean(this.canAwardBadges && this.eventId);
     return html`
       <div class="mt-4 overflow-visible">
-        <table class="w-full text-left text-sm text-stone-600" aria-label=${copy.ariaLabel}>
-          <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
+        <table class="dashboard-table w-full" aria-label=${copy.ariaLabel}>
+          <thead class="dashboard-table-head">
             <tr>
-              <th scope="col" class="px-4 py-3">${copy.header}</th>
+              <th scope="col" class="px-3 xl:px-5 py-3">${copy.header}</th>
               ${
                 hasActions
-                  ? html`<th scope="col" class="w-[72px] px-4 py-3">
+                  ? html`<th scope="col" class="w-[72px] dashboard-table-actions py-3">
                       <span class="sr-only">Actions</span>
                     </th>`
                   : ""
@@ -235,10 +235,10 @@ export class UserSearchSelector extends LitWrapper {
                     (user) => {
                       return html`
                         <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
-                          <td class="px-4 py-3">${renderContributorIdentity(user)}</td>
+                          <td class="max-w-0 px-3 xl:px-5 py-4">${renderContributorIdentity(user)}</td>
                           ${
                             hasActions
-                              ? html`<td class="px-4 py-3 text-right">
+                              ? html`<td class="dashboard-table-actions py-4 text-right">
                                   ${renderContributorActions({
                                     actionLabel: copy.actionLabel,
                                     awardsDisabled: this.awardsDisabled,

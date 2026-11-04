@@ -82,7 +82,7 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"');
-    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
+    expect(template).to.include('class="dashboard-table-actions py-1.5 w-[72px]"');
     expect(template).to.include('<span class="whitespace-nowrap">Entry</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Created</span>');
     expect(template).to.include(
@@ -238,14 +238,14 @@ describe("dashboard group waitlist list template", () => {
 
     // Active and expired offer details remain available with mouse or keyboard.
     expect(template).to.include("waitlist-offer-deadline-{{ entry.user.user_id }}");
-    expect(template).to.include('aria-describedby="{{ waitlist_offer_tooltip_id }}"');
-    expect(template).to.include("dashboard::tooltip_panel(");
-    expect(template).to.include('title = "Ticket offer"');
-    expect(template).to.include("-end-1 -top-1 size-2.5 rounded-full border-2 border-white");
+    expect(template).to.include(
+      "{% let offer_tone -%}{% if canceled %}danger{% else if published %}success{% else %}warning{% endif %}{%- endlet %}",
+    );
+    expect(template).to.include(
+      '{% call dashboard::tooltip_badge_trigger(tooltip_id = waitlist_offer_tooltip_id, title = "Ticket offer", label = label, tone = offer_tone) -%}',
+    );
     expect(template).to.include('<span class="block font-semibold text-stone-500">');
     expect(template).to.include('<span class="mt-0.5 block text-stone-900">');
-    expect(template).to.include("group-hover/offer-deadline:visible");
-    expect(template).to.include("group-focus-within/offer-deadline:visible");
     expect(template).to.include(
       'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',
     );

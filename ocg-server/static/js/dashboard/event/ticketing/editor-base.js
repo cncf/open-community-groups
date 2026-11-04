@@ -1,3 +1,4 @@
+import { html } from "lit";
 import { resolveEventTimezone } from "/static/js/common/datetime.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
@@ -354,5 +355,16 @@ export class TicketingEditorBase extends LitWrapper {
     const rowId = this._nextId;
     this._nextId += 1;
     return rowId;
+  }
+
+  /**
+   * Renders the shared active state badge used by ticketing table rows.
+   * @param {boolean} active Whether the row is active
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderActiveBadge(active) {
+    return active
+      ? html`<span class="custom-badge badge-success shrink-0">Active</span>`
+      : html`<span class="custom-badge badge-neutral shrink-0">Inactive</span>`;
   }
 }

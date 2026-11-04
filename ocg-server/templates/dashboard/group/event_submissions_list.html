@@ -67,7 +67,7 @@
 {# Submissions table -#}
 <div class="mt-10">
   <div class="relative overflow-visible">
-    <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500">
+    <table class="table-fixed w-full dashboard-table">
       {# Table columns -#}
       <colgroup>
         <col class="2xl:w-[250px]" />
@@ -79,7 +79,7 @@
       </colgroup>
       {# End table columns -#}
       {# Table header -#}
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <thead class="dashboard-table-head">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">
             <span class="2xl:hidden">Speaker / Proposal</span>
@@ -89,7 +89,7 @@
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Ratings</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Submitted</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
+          <th scope="col" class="dashboard-table-actions py-3 w-[72px]">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -125,10 +125,11 @@
                 <div class="mt-3 2xl:hidden">
                   <div class="font-medium text-stone-900 line-clamp-2">{{ submission.session_proposal.title }}</div>
                   {% if !submission.labels.is_empty() -%}
-                    <div class="mt-2 flex flex-wrap gap-1.5 min-w-0">
-                      {% for label in submission.labels -%}
-                        {{ badges::label_chip(name = &label.name, color = &label.color) -}}
-                      {% endfor -%}
+                    {# djlint:off #}
+                    {% let submission_labels_tooltip_id -%}submission-labels-{{ submission.cfs_submission_id }}{%- endlet %}
+                    {# djlint:on #}
+                    <div class="mt-2">
+                      {{ dashboard::labels_summary(labels = submission.labels, tooltip_id = submission_labels_tooltip_id) -}}
                     </div>
                   {% endif -%}
                 </div>
@@ -179,7 +180,7 @@
               </td>
               {# End submitted date -#}
               {# Actions -#}
-              <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
+              <td class="dashboard-table-actions py-4 w-[72px] text-right">
                 <button type="button"
                         class="btn-tertiary p-2
                                {% if !can_manage_events -%}

@@ -10,48 +10,100 @@ const loadTemplate = async () => {
 
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
-describe("badge macros template", () => {
-  it("uses the compact uppercase badge foundation for dashboard badge variants", async () => {
-    // Load the badge macros template and isolate the invitation badge variants.
-    const template = normalizeWhitespace(await loadTemplate());
-    const invitationBadge = template.slice(
-      template.indexOf("{% macro invitation_badge"),
-      template.indexOf("{% endmacro invitation_badge"),
-    );
+const getMacro = (template, name) =>
+  template.slice(template.indexOf(`{% macro ${name}(`), template.indexOf(`{% endmacro ${name}`));
 
-    // Verify shared badge styles and invitation state borders stay consistent.
+describe("badge macros template", () => {
+  it("keeps the label chip on the compact badge foundation", async () => {
+    // Load the badge macros template before checking the label chip.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify label chips keep the shared badge styles.
     expect(template).to.include(
       'class="custom-badge inline-block max-w-full truncate px-2.5 py-0.5 text-stone-900',
     );
-    expect(invitationBadge.match(/<span class="custom-badge bg-/g)).to.have.lengthOf(3);
-    expect(invitationBadge).to.include(
-      "{% if with_border %}border-green-800{% else %}border-transparent{% endif %}",
-    );
-    expect(invitationBadge).to.include(
-      "{% if with_border %}border-red-800{% else %}border-transparent{% endif %}",
-    );
-    expect(invitationBadge).to.include(
-      "{% if with_border %}border-yellow-800{% else %}border-transparent{% endif %}",
-    );
   });
 
-  it("uses semantic payment colors without blue states", async () => {
-    // Load and isolate the shared payment badge before checking its palette.
+  it("renders tone badges from the badge tone classes", async () => {
+    // Load and isolate the shared tone badge.
     const template = normalizeWhitespace(await loadTemplate());
-    const paymentStatusBadge = template.slice(
-      template.indexOf("{% macro payment_status_badge"),
-      template.indexOf("{% endmacro payment_status_badge"),
+    const toneBadge = getMacro(template, "tone_badge");
+
+    // Verify the tone selects the badge class and the label stays the direct text.
+    expect(toneBadge).to.include(
+      'macro tone_badge(label, tone, title = "", compact_label = "", extra_styles = None)',
+    );
+    expect(toneBadge).to.include('class="custom-badge badge-{{ tone }} {{ extra_styles_ }}"');
+    expect(toneBadge).to.include('{% if !title.is_empty() %}title="{{ title }}"{% endif %}');
+    expect(toneBadge).to.include("{%- if compact_label.is_empty() -%} {{ label }} {%- else -%}");
+
+    // Verify the compact label is hidden from assistive technology and the full label names the badge.
+    expect(toneBadge).to.match(/<span aria-hidden="true"[^>]*>\{\{ compact_label \}\}<\/span>/);
+    expect(toneBadge).to.match(/<span(?! aria-hidden)[^>]*>\{\{ label \}\}<\/span>/);
+  });
+
+  it("renders payment and inbox badges from typed tones instead of label text", async () => {
+    // Load and isolate the payment and inbox status badges.
+    const template = normalizeWhitespace(await loadTemplate());
+    const paymentStatusBadge = getMacro(template, "payment_status_badge");
+    const inboxStatusBadge = getMacro(template, "inbox_status_badge");
+
+    // Verify payment badges require the tone and delegate to the tone badge.
+    expect(paymentStatusBadge).to.include("macro payment_status_badge(label, tone, extra_styles = None)");
+    expect(paymentStatusBadge).to.include(
+      "{{ tone_badge(label = label, tone = tone, extra_styles = extra_styles) -}}",
     );
 
-    // Verify terminal, active, and neutral payment states use semantic colors.
-    expect(paymentStatusBadge).to.include('label.as_bytes() == "Paid".as_bytes()');
-    expect(paymentStatusBadge).to.include("border-green-800 bg-green-100");
-    expect(paymentStatusBadge).to.include('label.as_bytes() == "Refund requested".as_bytes()');
-    expect(paymentStatusBadge).to.include("border-amber-800 bg-amber-100");
-    expect(paymentStatusBadge).to.include('label.as_bytes() == "Refund rejected".as_bytes()');
-    expect(paymentStatusBadge).to.include("border-red-800 bg-red-100");
-    expect(paymentStatusBadge).to.include('tone.as_bytes() == "danger".as_bytes()');
-    expect(paymentStatusBadge).to.include("border-stone-500 bg-stone-100");
-    expect(paymentStatusBadge).not.to.include("blue");
+    // Verify inbox badges take their tone from the typed conversation status.
+    expect(inboxStatusBadge).to.include(
+      "tone = crate::templates::dashboard::inbox::status_tone(status).as_str()",
+    );
+
+    // Verify neither badge compares label text.
+    expect(paymentStatusBadge).not.to.include("label.as_bytes()");
+    expect(inboxStatusBadge).not.to.include("label.as_bytes()");
+  });
+
+  it("maps status and submission badges to tone badges", async () => {
+    // Load and isolate the status, submission, and test event badges.
+    const template = normalizeWhitespace(await loadTemplate());
+    const statusBadge = getMacro(template, "status_badge");
+    const submissionStatusBadge = getMacro(template, "submission_status_badge");
+    const submissionWithActionRequired = getMacro(template, "submission_status_with_action_required");
+    const testEventBadge = getMacro(template, "test_event_badge");
+
+    // Verify the event status flags choose the tone and forward the compact label.
+    expect(statusBadge).to.include(
+      'macro status_badge(label, canceled = false, published = false, title = "", compact_label = "", extra_styles = None)',
+    );
+    expect(statusBadge).to.include(
+      "{% let tone -%}{% if canceled %}danger{% else if published %}success{% else %}warning{% endif %}{%- endlet -%}",
+    );
+    expect(statusBadge).to.include("compact_label = compact_label");
+
+    // Verify submission status ids choose the tone and unreviewed submissions stay untoned.
+    expect(submissionStatusBadge).to.include(
+      'macro submission_status_badge(status_id, label, compact_label = "", extra_styles = None)',
+    );
+    [
+      ["approved", "success"],
+      ["rejected", "danger"],
+      ["information-requested", "warning"],
+      ["withdrawn", "neutral"],
+    ].forEach(([statusId, tone]) => {
+      expect(submissionStatusBadge).to.include(
+        `status_id == "${statusId}" -%} {{ tone_badge(label = label, tone = "${tone}", compact_label = compact_label, extra_styles = extra_styles) -}}`,
+      );
+    });
+    expect(submissionStatusBadge).to.include(
+      "{% else -%} {# Not reviewed and unknown statuses keep the untoned badge #} {{ common_badge(content = label, extra_styles = extra_styles) -}}",
+    );
+    expect(submissionWithActionRequired).to.include(
+      'action_required_message, compact_label = "", extra_styles = None)',
+    );
+    expect(submissionWithActionRequired).to.include("compact_label = compact_label");
+
+    // Verify test event badges use the warning tone.
+    expect(testEventBadge).to.include('class="custom-badge badge-warning {{ extra_styles_ }}"');
   });
 });

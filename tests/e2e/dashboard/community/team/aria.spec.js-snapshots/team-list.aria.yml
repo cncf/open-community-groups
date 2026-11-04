@@ -21,13 +21,14 @@
           - option "Viewer"
       - cell:
         - button "At least one accepted admin is required." [disabled]
-    - row "ET E2E Member Three Invitation sent e2e-member-3 - Viewer Delete team member":
-      - cell "ET E2E Member Three Invitation sent e2e-member-3"
+    - row "ET E2E Member Three e2e-member-3 - Viewer Invitation sent Delete team member":
+      - cell "ET E2E Member Three e2e-member-3"
       - cell "-"
-      - cell "Viewer":
+      - cell "Viewer Invitation sent":
         - combobox "Role":
           - option "Admin"
           - option "Groups Manager"
           - option "Viewer" [selected]
+        - text: ""
       - cell "Delete team member":
         - button "Delete team member"

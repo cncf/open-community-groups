@@ -260,6 +260,46 @@ fn test_list_page_counterpart_label_per_scope() {
 }
 
 #[test]
+fn test_list_page_last_writer_label_per_scope() {
+    let cases = [
+        (
+            "group scope, from group",
+            InboxScope::Group,
+            InboxMessageKind::GroupReply,
+            "Organizers",
+        ),
+        (
+            "group scope, from user",
+            InboxScope::Group,
+            InboxMessageKind::UserReply,
+            "User",
+        ),
+        (
+            "user scope, from group",
+            InboxScope::User,
+            InboxMessageKind::GroupReply,
+            "Organizers",
+        ),
+        (
+            "user scope, from user",
+            InboxScope::User,
+            InboxMessageKind::Initial,
+            "You",
+        ),
+    ];
+
+    for (case, scope, kind, expected) in cases {
+        // Setup a list page whose conversation was last written by the given party
+        let page = sample_list_page(scope);
+        let mut conversation = page.conversations[0].clone();
+        conversation.last_message_kind = kind;
+
+        // Check the label names the last writer from the scope's point of view
+        assert_eq!(page.last_writer_label(&conversation), expected, "{case}");
+    }
+}
+
+#[test]
 fn test_list_page_renders_empty_states() {
     let mut page = sample_list_page(InboxScope::Group);
     page.conversations = vec![];
@@ -274,6 +314,19 @@ fn test_list_page_renders_empty_states() {
 }
 
 #[test]
+fn test_list_page_renders_last_writer_in_group_scope() {
+    // Render the default sample, last written by the user
+    let mut page = sample_list_page(InboxScope::Group);
+    let body = page.render().unwrap();
+    assert!(body.contains(">From user</span>"));
+
+    // Render the same conversation after a group reply
+    page.conversations[0].last_message_kind = InboxMessageKind::GroupReply;
+    let body = page.render().unwrap();
+    assert!(body.contains(">From organizers</span>"));
+}
+
+#[test]
 fn test_list_page_renders_rows_linking_to_threads() {
     let page = sample_list_page(InboxScope::User);
     let id = page.conversations[0].inbox_conversation_id;
@@ -285,6 +338,11 @@ fn test_list_page_renders_rows_linking_to_threads() {
     assert!(body.contains("Test Event"));
     assert!(body.contains("When do doors open?"));
     assert!(body.contains(">Open</span>"));
+
+    // Check the status cell repeats the short date and last writer below xl
+    assert_eq!(body.matches("datetime=\"").count(), 3);
+    assert!(body.contains("class=\"block\">Jan 10, 2030</time>"));
+    assert!(body.contains(">From you</span>"));
 }
 
 #[test]
@@ -294,6 +352,16 @@ fn test_list_page_renders_spam_filter_only_for_group() {
 
     assert!(group_page.render().unwrap().contains("value=\"spam\""));
     assert!(!user_page.render().unwrap().contains("value=\"spam\""));
+}
+
+#[test]
+fn test_list_page_renders_status_badge_tone() {
+    let page = sample_list_page(InboxScope::Group);
+
+    let body = page.render().unwrap();
+
+    assert!(body.contains("custom-badge badge-warning"));
+    assert!(body.contains(">Open</span>"));
 }
 
 #[test]
@@ -313,6 +381,28 @@ fn test_list_page_renders_warning_only_when_set() {
             .unwrap()
             .contains("This conversation isn&#39;t in your Inbox.")
     );
+}
+
+#[test]
+fn test_status_tone() {
+    let cases = [
+        (
+            "answered",
+            InboxConversationStatus::Answered,
+            BadgeTone::Success,
+        ),
+        (
+            "closed",
+            InboxConversationStatus::Closed,
+            BadgeTone::Neutral,
+        ),
+        ("open", InboxConversationStatus::Open, BadgeTone::Warning),
+        ("spam", InboxConversationStatus::Spam, BadgeTone::Danger),
+    ];
+
+    for (case, status, expected) in cases {
+        assert_eq!(status_tone(&status), expected, "{case}");
+    }
 }
 
 // Helpers.

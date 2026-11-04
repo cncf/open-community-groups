@@ -5,9 +5,8 @@
 - paragraph: Add speakers or presenters for this event.
 - table "Event speakers":
   - rowgroup:
-    - row "Name Featured Actions":
+    - row "Name Actions":
       - columnheader "Name"
-      - columnheader "Featured"
       - columnheader "Actions"
   - rowgroup:
     - row "No event speakers added yet.":
@@ -16,9 +15,8 @@
 - paragraph: Speakers added to individual sessions are listed here. Manage their session assignments from the Sessions tab.
 - table "Session-level speakers":
   - rowgroup:
-    - row "Name Featured Sessions Actions":
+    - row "Name Sessions Actions":
       - columnheader "Name"
-      - columnheader "Featured"
       - columnheader "Sessions"
       - columnheader "Actions"
   - rowgroup:

@@ -9,7 +9,7 @@ import {
   navigateToPath,
   waitForActionResponse,
 } from "../../../utils.js";
-import { inviteTeamMember } from "../../team-helpers.js";
+import { expectPendingBadgePlacement, inviteTeamMember } from "../../team-helpers.js";
 
 const GROUPS_MANAGER_TEAM_ROW = {
   key: { community_id: TEST_COMMUNITY_IDS.community1, user_id: TEST_USER_IDS.groupsManager1 },
@@ -76,6 +76,9 @@ test.describe("community dashboard team view", () => {
     });
     await expect(pendingRow).toContainText("e2e-pending-1");
     await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
+
+    // Verify the pending badge moves from the role cell to the name row on the widest layout.
+    await expectPendingBadgePlacement(adminCommunityPage, pendingRow);
   });
 
   test("admin can invite and remove a pending community team member", async ({

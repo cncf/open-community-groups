@@ -9,6 +9,10 @@ const CFS_APPROVAL_SUBMISSION_ID = "99999999-9999-9999-9999-999999999911";
 
 const CFS_APPROVAL_TITLE = "Platform Reliability Patterns";
 
+const CFS_APPROVED_SUBMISSION_ID = "99999999-9999-9999-9999-999999999913";
+
+const CFS_APPROVED_TITLE = "Scaling Community Workshops";
+
 const CFS_EVENT_ID = TEST_EVENT_IDS.alpha.cfsSummit;
 
 const CFS_EVENT_PUBLIC_PATH = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alphaDashboard[0]}`;
@@ -89,6 +93,41 @@ test.describe("group dashboard submissions tab", () => {
     // Close the review without saving.
     await reviewModal.getByRole("button", { name: "Close modal" }).click();
     await expect(reviewDialog).toHaveCount(0);
+  });
+
+  test("events manager sees several compact labels behind a labels tooltip below 2xl", async ({
+    eventsManagerGroupPage,
+  }) => {
+    // Load the CFS event submissions section at xl, where labels sit below the proposal title.
+    await eventsManagerGroupPage.setViewportSize({ width: 1280, height: 900 });
+    const submissionsContent = await openCfsEventSubmissionsTab(eventsManagerGroupPage);
+
+    // The submission with two labels shows a labels trigger instead of its chips.
+    const approvedRow = submissionsContent.locator("tr", { hasText: CFS_APPROVED_TITLE });
+    const labelsTrigger = approvedRow.getByRole("button", { exact: true, name: "2 labels" });
+    const labelsTooltip = approvedRow.getByRole("tooltip");
+    await expect(labelsTrigger).toBeVisible();
+    await expect(labelsTrigger).toHaveAttribute(
+      "aria-describedby",
+      `submission-labels-${CFS_APPROVED_SUBMISSION_ID}`,
+    );
+
+    // Reaching the trigger with the keyboard shows both label names.
+    await eventsManagerGroupPage.mouse.move(0, 0);
+    await labelsTrigger.focus();
+    await eventsManagerGroupPage.keyboard.press("Shift+Tab");
+    await eventsManagerGroupPage.keyboard.press("Tab");
+    await expect(labelsTrigger).toBeFocused();
+    await expect(labelsTooltip).toBeVisible();
+    await expect(labelsTooltip).toContainText("Platform");
+    await expect(labelsTooltip).toContainText("Workshop");
+
+    // The submission with one label shows its chip without a trigger.
+    const singleLabelRow = submissionsContent.locator("tr", { hasText: CFS_APPROVAL_TITLE });
+    await expect(singleLabelRow.getByText("Platform", { exact: true }).filter({ visible: true })).toHaveCount(
+      1,
+    );
+    await expect(singleLabelRow.getByRole("button", { name: /^\d+ labels$/ })).toHaveCount(0);
   });
 
   test("events manager filters submissions by label", async ({ eventsManagerGroupPage }) => {
