@@ -9,6 +9,7 @@ import {
 } from "../../data-graphs/payments.js";
 import {
   TEST_APPROVAL_REQUIRED_EVENT,
+  TEST_CANCELED_PUBLIC_EVENT,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
@@ -39,12 +40,15 @@ import {
   confirmAlert,
   navigateToEvent,
   navigateToPath,
+  sendCloseRequest,
   waitForActionResponse,
 } from "../../utils.js";
 
 const OWNED_CHECKOUT_CANCEL_URL = "https://example.test/checkout/e2e-owned-cancel";
 
 const OWNED_CHECKOUT_RESUME_URL = "https://example.test/checkout/e2e-owned-resume";
+
+const WHITE = "rgb(255, 255, 255)";
 
 const EVENT_REFUND_REQUESTED_RECIPIENT_IDS = [
   TEST_USER_IDS.admin1,
@@ -1358,6 +1362,384 @@ test.describe("event attendance", () => {
     });
   });
 });
+
+test.describe("event action bar @mobile", () => {
+  test("a signed-out visitor sees the summary beside one filled action", async ({ page }) => {
+    // Load an open event with capacity.
+    await navigateToEvent(
+      page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+    const signInButton = getSignInButton(page);
+    await expect(signInButton).toBeVisible();
+
+    // Verify the container itself is the bar, so no control is duplicated.
+    await expectBarAtBottom(page);
+    await expect(page.locator('[data-attendance-role="attend-btn"]')).toHaveCount(1);
+    await expect(page.locator('[data-attendance-role="signin-btn"]')).toHaveCount(1);
+    await expect(page.locator('[id="attend-btn-main"]')).toHaveCount(1);
+    const duplicateIds = await page.evaluate(() => {
+      const ids = [...document.querySelectorAll("[id]")].map((node) => node.id);
+      return ids.filter((id, index) => ids.indexOf(id) !== index);
+    });
+    expect(duplicateIds).toEqual([]);
+
+    // Verify the left text and the filled action.
+    await expect(getBarSummary(page)).toContainText(/\d+ spots? left · [A-Z][a-z]{2} +\d+/, {
+      useInnerText: true,
+    });
+    expect(await getBackgroundColor(signInButton)).not.toBe(WHITE);
+    expect((await signInButton.boundingBox()).height).toBe(44);
+    await expect(page.getByRole("button", { name: "More actions" })).toBeHidden();
+  });
+
+  test("a signed-out tap shows a bottom alert with a Log in button and no timer", async ({ page }) => {
+    // Load the event and tap the action.
+    await navigateToEvent(
+      page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+    await getSignInButton(page).tap();
+
+    // Verify the prompt sits at the bottom with a real target and stays open.
+    const prompt = page.locator(".swal2-popup");
+    const logInButton = prompt.getByRole("button", { name: "Log in", exact: true });
+    await expect(prompt).toContainText("You need to be logged in to attend this event.");
+    await expect(page.locator(".swal2-container")).toHaveClass(/swal2-bottom/);
+    // Read the layout height, because Swal's entrance animation scales the box.
+    const logInHeight = await logInButton.evaluate((node) =>
+      Number.parseFloat(getComputedStyle(node).height),
+    );
+    expect(logInHeight).toBeGreaterThanOrEqual(44);
+    await expect(prompt.getByRole("link", { name: "logged in" })).toHaveCount(0);
+
+    // Verify the prompt spans the bar's gutters, so no cut-off bar text shows beside it.
+    const promptWidth = await prompt.evaluate((node) => Number.parseFloat(getComputedStyle(node).width));
+    expect(promptWidth).toBeGreaterThanOrEqual(page.viewportSize().width - 24);
+    expect(await page.evaluate(() => globalThis.Swal.getTimerLeft())).toBeUndefined();
+
+    // Verify the button returns here after logging in.
+    await logInButton.tap();
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/log-in\\?next_url=%2F${TEST_COMMUNITY_NAME}%2Fgroup%2F${TEST_GROUP_SLUGS.community1.alpha}%2Fevent%2F${TEST_EVENT_SLUGS.alpha[0]}`,
+      ),
+    );
+  });
+
+  test("a sold-out event with a waiting list reads Sold out in red", async ({ page }) => {
+    // Load the full event with a waiting list.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, "alpha-waitlist-lab");
+    await expect(getSignInButton(page)).toContainText("Join waiting list");
+
+    // Verify the line, its colour and that no price or kind sits next to it.
+    const summary = getBarSummary(page);
+    await expect(summary).toContainText(/^Sold out/, { useInnerText: true });
+    await expect(summary).not.toContainText("event", { useInnerText: true });
+    await expect(summary.locator("[data-localized-currency]")).toBeHidden();
+    await expect(page.locator("[data-availability-summary]").locator("..")).toHaveCSS(
+      "color",
+      /oklch\(0\.505|rgb\(185, 28, 28\)/,
+    );
+  });
+
+  test("an attending member gets a full-width outline control", async ({ member2Page, owned }) => {
+    owned.defer(() =>
+      cleanupEventEnrollment({ eventId: TEST_EVENT_IDS.alpha.one, userId: TEST_USER_IDS.member2 }),
+    );
+
+    // Attend the event from the bar.
+    await navigateToEvent(
+      member2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+    await waitForAttendanceState(member2Page);
+    const attendButton = getAttendButton(member2Page);
+    expect(await getBackgroundColor(attendButton)).not.toBe(WHITE);
+    await waitForActionResponse(member2Page, () => attendButton.click(), {
+      method: "POST",
+      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/attend`,
+    });
+
+    // Verify the outline control fills the gutters and the summary is gone.
+    const leaveButton = getLeaveButton(member2Page);
+    await expect(leaveButton).toBeVisible();
+    await dismissProfileCompletionPrompt(member2Page);
+    expect(await getBackgroundColor(leaveButton)).toBe(WHITE);
+    await expectFullWidth(member2Page, leaveButton);
+    await expect(getBarSummary(member2Page)).toBeHidden();
+  });
+
+  test("pending payment fills the bar and keeps Cancel checkout in the menu", async ({
+    emptyUserPage,
+    owned,
+  }) => {
+    // Create an owned active checkout hold before loading the paid event.
+    owned.track(
+      setupOwnedPendingCheckout({
+        eventId: TEST_PAYMENT_EVENT_IDS.draft,
+        providerCheckoutSessionId: "cs_e2e_owned_mobile_bar",
+        providerCheckoutUrl: OWNED_CHECKOUT_RESUME_URL,
+        userId: TEST_USER_IDS.empty,
+      }),
+      cleanupOwnedPaymentPurchase,
+    );
+    await navigateToEvent(
+      emptyUserPage,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_PAYMENT_EVENT_SLUGS.draft,
+    );
+    await waitForAttendanceState(emptyUserPage);
+
+    // Verify the filled action and the menu share the bar, without the summary.
+    const attendButton = getAttendButton(emptyUserPage);
+    await expect(attendButton).toContainText("Continue to checkout");
+    expect(await getBackgroundColor(attendButton)).not.toBe(WHITE);
+    await expect(getBarSummary(emptyUserPage)).toBeHidden();
+
+    // Verify the menu opens upward, with nothing the page already offers.
+    const menu = emptyUserPage.locator('[data-attendance-role="actions-menu"]');
+    await menu.locator("summary").tap();
+    const cancelCheckout = menu.locator('[data-attendance-role="checkout-cancel-btn"]');
+    await expect(cancelCheckout).toBeVisible();
+    await expect(menu.locator("share-modal")).toBeHidden();
+    const barTop = (await getAttendanceContainer(emptyUserPage).boundingBox()).y;
+    const cancelBox = await cancelCheckout.boundingBox();
+    expect(cancelBox.y + cancelBox.height).toBeLessThanOrEqual(barTop);
+    expect(cancelBox.height).toBeGreaterThanOrEqual(44);
+
+    // Verify the panel lines up with the menu button on the bar's gutter.
+    const panelBox = await cancelCheckout.locator("..").boundingBox();
+    const summaryBox = await menu.locator("summary").boundingBox();
+    expect(Math.round(panelBox.x + panelBox.width)).toBe(Math.round(summaryBox.x + summaryBox.width));
+  });
+
+  test("an expired offer shows its label as the reason", async ({ member1Page, owned }) => {
+    // Record an expired organizer invitation for the member on an owned event.
+    const event = owned.event({ groupId: TEST_GROUP_IDS.community1.alpha });
+    setupTicketOffer({
+      eventId: event.eventId,
+      source: "organizer_invitation",
+      status: "expired",
+      ticketTypeId: event.ticketTypeIds.general,
+      userId: TEST_USER_IDS.member1,
+    });
+    await navigateToEvent(member1Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, event.slug);
+
+    // Verify plain text replaces the disabled button, as for every other disabled state.
+    const reason = member1Page.locator('[data-attendance-role="bar-reason"]');
+    await expect(reason).toHaveText("Ticket offer expired");
+    await expect(reason).toBeVisible();
+    await expect(getAttendButton(member1Page)).toBeHidden();
+  });
+
+  test("a disabled control gives way to its reason at 320", async ({ pending2Page }) => {
+    // Load the approval event with a seeded rejected request on the narrowest phone.
+    await pending2Page.setViewportSize({ width: 320, height: 640 });
+    await navigateToEvent(
+      pending2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_APPROVAL_REQUIRED_EVENT.slug,
+    );
+
+    // Verify the reason replaces the control, whole.
+    const reason = pending2Page.locator('[data-attendance-role="bar-reason"]');
+    await expect(reason).toHaveText("Your invitation request was rejected.");
+    await expect(reason).toBeVisible();
+    await expect(getAttendButton(pending2Page)).toBeHidden();
+    await expectBarAtBottom(pending2Page);
+    await expect.poll(() => reason.evaluate((node) => node.scrollHeight <= node.clientHeight)).toBe(true);
+  });
+
+  test("the longest disabled title fits two lines at 320", async ({ page }) => {
+    // Load an event and write the longest fixed title into the reason line.
+    await page.setViewportSize({ width: 320, height: 640 });
+    await navigateToEvent(
+      page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+    await expect(getSignInButton(page)).toBeVisible();
+    const reason = page.locator('[data-attendance-role="bar-reason"]');
+    await getSignInButton(page).evaluate((button) => {
+      button.disabled = true;
+      button.closest("[data-attendance-container]").toggleAttribute("data-bar-reason", true);
+    });
+    await reason.evaluate((node) => {
+      node.textContent = "You cannot change attendance because the event has already started.";
+    });
+
+    // Verify nothing is clipped.
+    expect(await reason.evaluate((node) => node.scrollHeight <= node.clientHeight)).toBe(true);
+  });
+
+  test("the summary falls back to the kind when no count is known", async ({ page }) => {
+    // Hold availability so the page stays unhydrated.
+    const event = TEST_TICKETING_EVENTS.migratedCapacity;
+    let releaseAvailability;
+    const availabilityHeld = new Promise((resolve) => {
+      releaseAvailability = resolve;
+    });
+    await page.route("**/availability", async (route) => {
+      await availabilityHeld;
+
+      // Drop the counts, because every event with a visible tier reports a capacity.
+      const response = await route.fetch();
+      const json = { ...(await response.json()), capacity: null, remaining_capacity: null };
+      await route.fulfill({ json, response });
+    });
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, event.slug);
+
+    // Verify the loading bar shows the kind beside the spinner.
+    const kind = /(In-person|Virtual|Hybrid) event/;
+    await expect(page.locator('[data-attendance-role="loading-btn"]')).toBeVisible();
+    await expect(getBarSummary(page)).toContainText(kind, { useInnerText: true });
+
+    // Verify an uncapped event keeps the kind once availability arrives.
+    releaseAvailability();
+    await expect(getAttendanceContainer(page)).toHaveAttribute("data-availability-hydrated", "true");
+    await expect(page.locator("[data-availability-summary]")).toBeEmpty();
+    await expect(getBarSummary(page)).toContainText(kind, { useInnerText: true });
+  });
+
+  test("the bar leaves the last content uncovered", async ({ page }) => {
+    // Scroll to the end of an event page.
+    await navigateToEvent(
+      page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+    await expect(getSignInButton(page)).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+
+    // Verify the footer's last text ends above the bar.
+    const barTop = (await getAttendanceContainer(page).boundingBox()).y;
+    const lastTextBottom = await page.locator('footer[role="contentinfo"]').evaluate((footer) => {
+      const range = document.createRange();
+      range.selectNodeContents(footer);
+      return range.getBoundingClientRect().bottom;
+    });
+    expect(lastTextBottom).toBeLessThanOrEqual(barTop);
+  });
+
+  test("past and canceled events show no bar", async ({ page }) => {
+    for (const slug of [TEST_CANCELED_PUBLIC_EVENT.slug, "alpha-past-roundup"]) {
+      // Load the event and wait for the enrollment state.
+      await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, slug);
+      const container = getAttendanceContainer(page);
+      await expect(container).toHaveAttribute("data-availability-hydrated", "true");
+
+      // Verify the bar is gone and the footer does not make room for it.
+      await expect(container).toHaveAttribute("data-phone-bar", "hidden");
+      await expect(container).toBeHidden();
+      await expect(page.locator('footer[role="contentinfo"]')).not.toHaveCSS("padding-bottom", "72px");
+    }
+  });
+
+  test("a refund state shows as text in the bar", async ({ member1Page }) => {
+    // Load the refund-ready event with a pending request.
+    await navigateToEvent(
+      member1Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_PAYMENT_EVENT_SLUGS.refunds,
+    );
+
+    // Verify the disabled control gives way to its title and the bar stays.
+    const reason = member1Page.locator('[data-attendance-role="bar-reason"]');
+    await expect(reason).toHaveText("Your refund request is waiting for organizer review.");
+    await expect(reason).toBeVisible();
+    await expect(getRefundButton(member1Page)).toBeHidden();
+    await expectBarAtBottom(member1Page);
+  });
+
+  test("Join meeting replaces the attendee's other controls while live", async ({ pending2Page }) => {
+    // Load the live event where the user is a seeded attendee.
+    await navigateToEvent(
+      pending2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_OPEN_CHECK_IN_EVENT.slug,
+    );
+
+    // Verify the filled link fills the bar on its own.
+    const joinLink = getAttendanceContainer(pending2Page).locator("[data-join-link]");
+    await expect(joinLink).toBeVisible();
+    expect(await getBackgroundColor(joinLink)).not.toBe(WHITE);
+    await expectFullWidth(pending2Page, joinLink);
+    await expect(getLeaveButton(pending2Page)).toBeHidden();
+    await expect(getRefundButton(pending2Page)).toBeHidden();
+  });
+
+  test("the ticket dialog opens as a sheet and returns focus", async ({ member1Page }) => {
+    // Open the ticket dialog from the bar.
+    await navigateToEvent(
+      member1Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_PAYMENT_EVENT_SLUGS.draft,
+    );
+    await waitForAttendanceState(member1Page);
+    const attendButton = getAttendButton(member1Page);
+    await attendButton.tap();
+
+    // Verify it sits on the bottom edge with a 44px close button and the grabber.
+    const ticketModal = getTicketModal(member1Page);
+    const panel = ticketModal.locator(".sheet-panel");
+    await expect(panel).toHaveAttribute("data-sheet-drag");
+    const box = await panel.boundingBox();
+    expect(Math.round(box.y + box.height)).toBe(member1Page.viewportSize().height);
+
+    // Verify a finger drags the title row, which has no sheet head rule of its own.
+    await expect(ticketModal.locator(".sheet-grab")).toHaveCSS("touch-action", "none");
+    const closeBox = await ticketModal.locator('[data-attendance-role="ticket-modal-close"]').boundingBox();
+    expect(closeBox.height).toBe(44);
+
+    // Verify the empty panel wrapper leaves no band over the scrim.
+    const wrapperHeight = await ticketModal
+      .locator(".modal-panel")
+      .evaluate((node) => node.getBoundingClientRect().height);
+    expect(wrapperHeight).toBe(0);
+
+    // Verify the primary action comes first and a close request goes through the real button.
+    const cancelBox = await ticketModal.locator('[data-attendance-role="ticket-modal-cancel"]').boundingBox();
+    const checkoutBox = await getCheckoutButton(member1Page).boundingBox();
+    expect(checkoutBox.y).toBeLessThan(cancelBox.y);
+    await sendCloseRequest(member1Page);
+    await expect(ticketModal).toBeHidden();
+    await expect(attendButton).toBeFocused();
+  });
+});
+
+/** Verifies the action bar sits on the bottom edge of the viewport. */
+const expectBarAtBottom = async (page) => {
+  const box = await getAttendanceContainer(page).boundingBox();
+  expect(Math.round(box.y + box.height)).toBe(page.viewportSize().height);
+};
+
+/** Verifies a bar control spans the page gutters. */
+const expectFullWidth = async (page, control) => {
+  const box = await control.boundingBox();
+  expect(Math.round(box.x)).toBe(12);
+  expect(Math.round(box.x + box.width)).toBe(page.viewportSize().width - 12);
+};
+
+/** Returns a control's computed background colour. */
+const getBackgroundColor = (control) =>
+  control.evaluate((node) => window.getComputedStyle(node).backgroundColor);
+
+/** Returns the phone bar's left text. */
+const getBarSummary = (page) => page.locator('[data-attendance-role="bar-summary"]');
 
 /** Returns the sign-in action shown to anonymous users. */
 const getSignInButton = (page) => page.locator('[data-attendance-role="signin-btn"]');

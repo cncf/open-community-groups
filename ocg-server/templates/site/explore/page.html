@@ -11,7 +11,7 @@
 
 {% block jumbotron -%}
   {# Site title -#}
-  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 sm:px-6 lg:px-8">
+  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 sm:px-6 lg:px-8 phone:hidden">
     <div class="relative max-w-7xl text-center">
       <h1 class="mt-2 xl:mt-3 mb-2 xl:mb-6 text-[1.8rem] font-semibold tracking-tight leading-10 md:leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
         {{ site_settings.title }}
@@ -24,7 +24,7 @@
 {% block content -%}
   {# Main content -#}
   <div id="explore-content"
-       class="relative container mx-auto max-w-7xl p-4 pb-8 sm:p-6 lg:p-8 lg:pb-16 flex grow h-full">
+       class="relative container mx-auto max-w-7xl p-4 pb-8 sm:p-6 lg:p-8 lg:pb-16 flex grow h-full phone:p-0">
 
     {# Entity section -#}
     <div id="entity-section" class="relative w-full">
@@ -40,6 +40,12 @@
 {% endmatch -%}
 </div>
 {# End entity section -#}
+
+{# Applied filter announcements: a live region inside the section would be replaced with it -#}
+<div id="explore-filter-status"
+     role="status"
+     class="sr-only not-phone:hidden"></div>
+{# End applied filter announcements -#}
 </div>
 {# End main content -#}
 

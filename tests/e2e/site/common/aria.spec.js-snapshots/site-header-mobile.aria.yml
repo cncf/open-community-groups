@@ -1,6 +1,8 @@
 - /children: deep-equal
 - banner:
   - navigation "Main navigation":
-    - link "Go to homepage":
+    - button "Open menu"
+    - link "Go to E2E Test Site homepage":
       - /url: /
+      - text: ""
     - button "User menu"

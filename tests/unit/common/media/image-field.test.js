@@ -22,6 +22,21 @@ const createAnimatedGifFile = (name = "clip.gif") => {
   return new File([new Uint8Array([...header, ...frame, ...frame, 0x3b])], name, { type: "image/gif" });
 };
 
+/**
+ * Reads an element's text as one layout shows it, since the tests load no stylesheet.
+ * @param {HTMLElement} element - Element to read.
+ * @param {string} hiddenClass - Class the layout hides.
+ * @returns {string} Normalized visible text.
+ */
+const readVisibleText = (element, hiddenClass) => {
+  const clone = element.cloneNode(true);
+  [...clone.querySelectorAll("*")]
+    .filter((node) => node.classList.contains(hiddenClass))
+    .forEach((node) => node.remove());
+
+  return clone.textContent.replace(/\s+/g, " ").trim();
+};
+
 describe("image-field", () => {
   const env = useDashboardTestEnv({ withSwal: true, withScroll: true });
   useMountedElementsCleanup("image-field");
@@ -650,9 +665,37 @@ describe("image-field", () => {
     const nameParts = dropZone
       .getAttribute("aria-labelledby")
       .split(" ")
-      .map((id) => document.getElementById(id).textContent.replace(/\s+/g, " ").trim());
+      .map((id) => readVisibleText(document.getElementById(id), "not-phone:hidden"));
     expect(dropZone.hasAttribute("aria-label")).to.equal(false);
     expect(nameParts).to.deep.equal(["Exported PNG", "Click to upload or drag and drop a file"]);
+  });
+
+  it("offers a tap prompt on phones and keeps the chosen file name", async () => {
+    // Render the verification upload drop zone.
+    const element = await mountLitComponent("image-field", {
+      directUpload: true,
+      label: "Exported PNG",
+      name: "png",
+    });
+    const prompt = element.querySelector('[role="button"] p');
+
+    // Verify phones read the tap prompt and drop the drag wording.
+    expect(readVisibleText(prompt, "phone:hidden")).to.equal("Tap to upload");
+
+    // Verify a camera file name, which has no break points, cannot widen the page.
+    expect(prompt.classList.contains("phone:wrap-anywhere")).to.equal(true);
+
+    // Pick a file through the input.
+    const fileInput = element.querySelector('input[type="file"]');
+    const selectedFiles = new DataTransfer();
+    selectedFiles.items.add(new File(["badge"], "badge-export.png", { type: "image/png" }));
+    fileInput.files = selectedFiles.files;
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+    await element.updateComplete;
+
+    // Verify the file name stays visible on both layouts.
+    expect(readVisibleText(prompt, "phone:hidden")).to.equal("Tap to upload badge-export.png");
+    expect(readVisibleText(prompt, "not-phone:hidden")).to.equal("Click to upload badge-export.png");
   });
 
   it("names the preview from its label and visible prompt", async () => {

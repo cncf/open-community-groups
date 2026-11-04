@@ -5,9 +5,12 @@ import { computeUserInitials } from "/static/js/common/users/initials.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
+  focusBottomSheet,
   isModalOverlayTarget,
   openModalBodyScroll,
+  trapBottomSheetFocus,
 } from "/static/js/common/modals/modal-lifecycle.js";
+import { bindSheetGestures } from "/static/js/common/modals/sheet-gestures.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 import { resolveUrl } from "/static/js/common/url-utils.js";
@@ -43,6 +46,9 @@ export class UserInfoModal extends LitWrapper {
     this._badgesAbortController = null;
     this._badgesRequestId = 0;
     this._removeDismissListeners = null;
+    this._removeSheetGestures = null;
+    this._restoreSheetFocus = null;
+    this._sheetOpener = null;
   }
 
   connectedCallback() {
@@ -60,11 +66,27 @@ export class UserInfoModal extends LitWrapper {
     this._badgesRequestId += 1;
     this._badgesAbortController?.abort();
     this._isOpen = closeModalBodyScroll(this._isOpen);
+    this._restoreSheetFocus = null;
     document.removeEventListener("open-user-modal", this._handleOpenModal);
+  }
+
+  /**
+   * Binds the sheet gestures and moves focus in once Lit has rendered the panel.
+   * Checks the held cleanup, not a change of _isOpen, because a second open event
+   * while open releases them without changing _isOpen.
+   */
+  updated() {
+    if (this._isOpen && !this._removeSheetGestures) {
+      const panel = this.querySelector(".sheet-panel");
+      this._removeSheetGestures = bindSheetGestures(panel, { onPageRestore: () => this._closeModal() });
+      this._restoreSheetFocus ??= focusBottomSheet(panel, this._sheetOpener);
+      this._sheetOpener = null;
+    }
   }
 
   _handleOpenModal(event) {
     this._badgesAbortController?.abort();
+    this._sheetOpener = event.target;
     this._userData = event.detail;
     this._badges = [];
     this._badgesState = "loading";
@@ -82,6 +104,8 @@ export class UserInfoModal extends LitWrapper {
     this._badgesAbortController?.abort();
     this._isOpen = closeModalBodyScroll(this._isOpen);
     this._removeEventListeners();
+    this._restoreSheetFocus?.();
+    this._restoreSheetFocus = null;
   }
 
   async _loadBadges() {
@@ -117,12 +141,17 @@ export class UserInfoModal extends LitWrapper {
   _removeEventListeners() {
     this._removeDismissListeners?.();
     this._removeDismissListeners = null;
+    this._removeSheetGestures?.();
+    this._removeSheetGestures = null;
   }
 
   _handleKeydown(event) {
     if (this._isOpen && isEscapeEvent(event)) {
       event.preventDefault();
       this._closeModal();
+    }
+    if (this._restoreSheetFocus) {
+      trapBottomSheetFocus(event, this.querySelector(".sheet-panel"));
     }
   }
 
@@ -199,12 +228,12 @@ export class UserInfoModal extends LitWrapper {
                 href=${link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="group btn-secondary-anchor p-3 flex items-center justify-center"
+                class="group btn-secondary-anchor p-3 flex items-center justify-center phone:size-11 phone:p-0"
                 title=${link.label}
                 aria-label=${link.label}
               >
                 <div
-                  class="svg-icon size-6 bg-primary-500 group-hover:bg-white transition-colors icon-${link.icon}"
+                  class="svg-icon size-6 bg-primary-500 group-hover:bg-white transition-colors phone:size-5 icon-${link.icon}"
                 ></div>
               </a>
             `,
@@ -318,7 +347,7 @@ export class UserInfoModal extends LitWrapper {
         href=${openProfileUrl}
         target="_blank"
         rel="noopener noreferrer"
-        class="group btn-primary-outline-anchor inline-flex max-w-full items-center justify-center gap-2 h-10 md:h-[30px]"
+        class="group btn-primary-outline-anchor inline-flex max-w-full items-center justify-center gap-2 h-10 md:h-[30px] pill-link phone:h-auto"
       >
         <span>openprofile.dev</span>
         <div class="svg-icon size-3 icon-external-link"></div>
@@ -362,19 +391,21 @@ export class UserInfoModal extends LitWrapper {
           @click=${this._closeModal}
         ></div>
 
-        <div class="modal-panel p-4 max-w-3xl">
-          <div class="modal-card rounded-lg">
+        <div class="modal-panel p-4 max-w-3xl phone:p-0">
+          <div class="modal-card sheet-panel rounded-lg">
             <div
-              class="flex items-center justify-between gap-3 border-b border-stone-200 rounded-t p-5 sm:gap-4 sm:p-6"
+              class="sheet-head sheet-grab flex items-center justify-between gap-3 border-b border-stone-200 rounded-t p-5 sm:gap-4 sm:p-6 phone:py-0"
             >
               <h3
                 id="user-info-modal-title"
-                class="min-w-0 flex-1 text-lg font-semibold leading-tight text-stone-900 sm:text-2xl"
+                class="min-w-0 flex-1 text-lg font-semibold leading-tight text-stone-900 sm:text-2xl phone:sr-only"
               >
                 <span class="sm:hidden">User</span>
                 <span class="hidden sm:inline">User Information</span>
               </h3>
-              <div class="flex shrink-0 items-center gap-3 sm:gap-5 sm:pe-2">
+              <div
+                class="flex shrink-0 items-center gap-3 sm:gap-5 sm:pe-2 phone:ms-auto phone:gap-2 phone:pe-0"
+              >
                 ${this._renderLinuxFoundationLink()}
                 <button
                   type="button"
@@ -389,8 +420,10 @@ export class UserInfoModal extends LitWrapper {
               </div>
             </div>
 
-            <div class="modal-body p-6 sm:p-8">
-              <div class="mb-6 flex items-center gap-4 text-left sm:gap-6">
+            <div class="modal-body sheet-body p-6 sm:p-8 phone:p-3">
+              <div
+                class="mb-6 flex items-center gap-4 text-left sm:gap-6 phone:gap-3 phone:[&>logo-image>div]:size-18 phone:[&>logo-image>div>div]:text-2xl"
+              >
                 <logo-image
                   image-url=${this._userData.imageUrl || ""}
                   placeholder=${initials}

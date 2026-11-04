@@ -27,4 +27,13 @@ describe("site stats template", () => {
     expect(macros).to.include('padding_class = "px-2 py-4 md:p-4 xl:p-6") -%}');
     expect(macros).to.include("rounded-lg {{ padding_class }} {{ wrapper_class }}");
   });
+
+  it("shortens charts on phones without changing the desktop height", async () => {
+    // Load the public stats page.
+    const page = await loadTemplate("site/stats/page.html");
+
+    // Verify running and monthly charts carry their phone heights after the desktop one.
+    expect(page.match(/class = "h-\[320px\] phone:h-\[224px\] phone:min-h-0"/g)).to.have.length(4);
+    expect(page.match(/class = "h-\[320px\] phone:h-\[208px\] phone:min-h-0"/g)).to.have.length(4);
+  });
 });

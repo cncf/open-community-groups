@@ -25,10 +25,10 @@ describe("event organizers section template", () => {
     expect(sectionStart).to.be.greaterThan(-1);
     expect(sectionEnd).to.be.greaterThan(sectionStart);
     expect(section).to.match(
-      /^\{# Organizers section -#\} \{% if !event\.organizers\.is_empty\(\) -%\} <div class="hidden has-\[user-chip\]:block"> <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14"> Organizers <\/div>/,
+      /^\{# Organizers section -#\} \{% if !event\.organizers\.is_empty\(\) -%\} <div class="hidden has-\[user-chip\]:block"> <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3"> Organizers <\/div>/,
     );
     expect(section).to.include(
-      "<div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4\"> {% for organizer in event.organizers -%} {% if organizer.name.is_some() -%} <user-chip user='{{ organizer|json }}' display-modal></user-chip> {% endif -%} {% endfor -%} </div>",
+      "<div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 phone:grid-cols-1 phone:gap-2\"> {% for organizer in event.organizers -%} {% if organizer.name.is_some() -%} <user-chip user='{{ organizer|json }}' display-modal></user-chip> {% endif -%} {% endfor -%} </div>",
     );
   });
 });

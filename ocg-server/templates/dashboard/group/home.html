@@ -128,9 +128,9 @@
     {{ dashboard::menu_title(text = "Events", extra_styles = "py-1.5") -}}
     {{ dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events", extra_styles = "max-md:hidden") -}}
     {% if can_manage_check_ins -%}
-      {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden") -}}
+      {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden phone:[&>a]:py-1.5") -}}
     {% else -%}
-      {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = is_check_in_fallback , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden") -}}
+      {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = is_check_in_fallback , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden phone:[&>a]:py-1.5") -}}
     {% endif -%}
     {{ dashboard::menu_item(name = "Co-hosts", icon = "cohosts", is_active = content.is_cohosts() , href = "/dashboard/group?tab=cohosts", extra_styles = "max-md:hidden") -}}
     {{ dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds", extra_styles = "max-md:hidden") -}}
@@ -168,13 +168,16 @@
 {% block dashboard_main -%}
   {% let current_selection = current_selection_details() -%}
   {# Keep page-level warnings outside partial content swaps. -#}
-  <div class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 xl:p-12">
+  <div class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 xl:p-12 phone:p-0 phone:min-h-[calc(100dvh-4rem)]">
     {% if content.is_refunds() && !payments_ready -%}
       {{ dashboard::permission_warning(message = "Automatic payment processing is unavailable. Historical records remain accessible, and external refunds can still be recorded after the money is returned outside OCG.") -}}
     {% endif -%}
     {% if is_inbox_fallback -%}
       {{ dashboard::permission_warning(message = "You don't have Inbox access for the selected group. If you came from an email, select the group it mentions in the group selector.") -}}
     {% endif -%}
+    {# Group context at the door. The text sits in ::before, away from desktop text locators. -#}
+    <div class="title-preheader not-phone:hidden phone:whitespace-normal phone:px-3 phone:pt-4 phone:before:content-[attr(data-group-context)]"
+         data-group-context="Group Dashboard · {{ current_selection.1.name }}"></div>
     <div id="dashboard-content"
          data-community="{{ current_selection.0.name }}"
          data-community-name="{{ current_selection.0.name }}"
@@ -190,7 +193,7 @@
          hx-indicator="#dashboard-spinner"
          class="contents">
       {% if is_check_in_fallback -%}
-        {{ dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.", extra_classes = "mb-6 md:hidden") -}}
+        {{ dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.", extra_classes = "mb-6 md:hidden phone:mx-3 phone:mt-4") -}}
       {% endif -%}
       {# Content -#}
       {% if is_check_in_fallback -%}

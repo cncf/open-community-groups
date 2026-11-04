@@ -962,5 +962,9 @@
   {
     "method": "GET",
     "path": "/{community}/group/{group_slug}/event/{event_slug}/availability"
+  },
+  {
+    "method": "GET",
+    "path": "/{community}/group/{group_slug}/event/{event_slug}/calendar.ics"
   }
 ]

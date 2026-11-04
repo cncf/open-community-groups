@@ -24,6 +24,22 @@ describe("badge macros template", () => {
     );
   });
 
+  it("tightens sponsor cards on phones and marks only linked ones as external", async () => {
+    // Load and isolate the sponsor badge.
+    const template = normalizeWhitespace(await loadTemplate());
+    const sponsorBadge = getMacro(template, "sponsor_badge");
+
+    // Verify both branches keep their frame and gain the phone padding.
+    expect(sponsorBadge.match(/rounded-xl border border-stone-200 bg-white p-4 w-full/g)).to.have.length(2);
+    expect(sponsorBadge.match(/phone:px-3 phone:py-2\.5/g)).to.have.length(2);
+
+    // Verify the phone-only icon closes the link branch and never the plain card.
+    const icon =
+      '<div class="svg-icon ms-auto size-4 shrink-0 bg-stone-400 icon-external-link not-phone:hidden" aria-hidden="true"></div>';
+    expect(sponsorBadge).to.include(`{% if let Some(website_url) = &website_url -%} ${icon} </a> {% else -%} </div>`);
+    expect(sponsorBadge.match(/icon-external-link/g)).to.have.length(1);
+  });
+
   it("renders tone badges from the badge tone classes", async () => {
     // Load and isolate the shared tone badge.
     const template = normalizeWhitespace(await loadTemplate());

@@ -1,12 +1,16 @@
 import { expect, test } from "../../fixtures.js";
+import { queryE2eDatabase, sqlUuid } from "../../database.js";
 import {
   TEST_CANCELED_PUBLIC_EVENT,
   TEST_COHOSTED_EVENT,
   TEST_COMMUNITY_NAME,
   TEST_COMMUNITY_NAME_2,
+  TEST_COMMUNITY_TITLE,
   TEST_EVENT_NAME,
   TEST_EVENT_PAGE_BADGE_EVENT,
   TEST_EVENT_SLUG,
+  TEST_EVENT_SLUGS,
+  TEST_GROUP_IDS,
   TEST_GROUP_NAME,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUG,
@@ -14,6 +18,7 @@ import {
   TEST_MULTI_DAY_EVENT,
 } from "../../seed.js";
 import {
+  getAttendanceContainer,
   getAttendButton,
   getEventAboutSection,
   getEventInfoSection,
@@ -23,13 +28,19 @@ import {
 import {
   buildE2eUrl,
   getIntroSection,
+  getPageOverflow,
   navigateToEvent,
   navigateToPath,
   routeEmptyBasemap,
+  swipeHorizontally,
   waitForResponseMatching,
 } from "../../utils.js";
 import { selectLabels } from "../../dashboard/group/events/event-form-helpers.js";
+import { enableDesktopVersion, waitForPageSettled } from "../../snapshots.js";
 
+// Android Chrome, which keeps the Google Maps directions link.
+const ANDROID_USER_AGENT =
+  "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36";
 // Approved co-hosts seeded for the cross-community summit.
 const COHOSTED_EVENT_COHOSTS = [
   {
@@ -464,6 +475,74 @@ test.describe("event page - sold-out availability", () => {
 });
 
 test.describe("event page - responsive", () => {
+  test("gallery shows its position and swipes in the lightbox @mobile", async ({ page }) => {
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+
+    const gallery = page.locator("images-gallery");
+    const lightbox = gallery.locator(".modal");
+    const activeSlideImage = lightbox.locator(".z-30.translate-x-0 img");
+    const counter = gallery.locator("[data-snap-counter]");
+    const dots = gallery.locator("[data-snap-dots] .snap-dot");
+    const secondTile = gallery.getByRole("button", { name: `Open Event ${TEST_EVENT_NAME} image 2` });
+
+    await test.step("dots and counter follow the tiles", async () => {
+      await gallery.scrollIntoViewIfNeeded();
+      await expect(dots).toHaveCount(2);
+      await expect(dots.first()).toHaveAttribute("data-active", "");
+      await expect(counter).toHaveText("1 / 2");
+
+      await gallery.locator(":has(+ [data-snap-dots])").evaluate((list) => {
+        list.scrollTo({ left: list.scrollWidth });
+      });
+      await expect(dots.last()).toHaveAttribute("data-active", "");
+      await expect(counter).toHaveText("2 / 2");
+    });
+
+    await test.step("a tile opens the lightbox on its image", async () => {
+      await secondTile.tap();
+      await expect(lightbox).not.toHaveClass(/opacity-0/);
+      await expect(activeSlideImage).toHaveAttribute("alt", `Event ${TEST_EVENT_NAME} image 2`);
+    });
+
+    await test.step("a swipe changes the image and a short one does not", async () => {
+      await swipeHorizontally(page, 300, 150);
+      await expect(activeSlideImage).toHaveAttribute("alt", `Event ${TEST_EVENT_NAME} image 1`);
+
+      await swipeHorizontally(page, 150, 300);
+      await expect(activeSlideImage).toHaveAttribute("alt", `Event ${TEST_EVENT_NAME} image 2`);
+
+      await swipeHorizontally(page, 300, 270);
+      await expect(activeSlideImage).toHaveAttribute("alt", `Event ${TEST_EVENT_NAME} image 2`);
+    });
+
+    await test.step("the close button still works", async () => {
+      await lightbox.getByRole("button", { name: "Close" }).tap();
+      await expect(lightbox).toHaveClass(/opacity-0/);
+    });
+  });
+
+  test("a single gallery image has no position row and ignores swipes @mobile", async ({ page }) => {
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+
+    const gallery = page.locator("images-gallery");
+    const lightbox = gallery.locator(".modal");
+    const activeSlideImage = lightbox.locator(".z-30.translate-x-0 img");
+
+    // The seed has no single-image event, so trim the rendered gallery to one image.
+    await gallery.evaluate((element) => {
+      element.images = element.images.slice(1);
+    });
+    await expect(gallery.locator("[data-snap-dots]")).toHaveCount(0);
+
+    // A swipe leaves the only slide in place.
+    await gallery.getByRole("button", { name: `Open Event ${TEST_EVENT_NAME} image 1` }).tap();
+    await expect(lightbox).not.toHaveClass(/opacity-0/);
+    await swipeHorizontally(page, 300, 100);
+    await expect(activeSlideImage).toHaveCount(1);
+    await expect(activeSlideImage).toHaveAttribute("alt", `Event ${TEST_EVENT_NAME} image 1`);
+    await expect(lightbox).not.toHaveClass(/opacity-0/);
+  });
+
   test("event page renders correctly on mobile viewport @mobile", async ({ page }) => {
     // Load the event page for the mobile viewport.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
@@ -499,6 +578,446 @@ test.describe("event page - responsive", () => {
     await page.setViewportSize({ width: 767, height: 900 });
     await expect(mobileMeetupLink).toBeVisible();
     await expect(desktopMeetupLink).toBeHidden();
+  });
+});
+
+test.describe("event page - phone layout @mobile", () => {
+  /** Checks that a dialog opened as a sheet on the bottom edge with a 44px close button. */
+  const expectBottomSheet = async (page, dialog) => {
+    const panel = dialog.locator(".sheet-panel");
+    const close = dialog.locator(".sheet-head button");
+
+    await expect(panel).toHaveCSS("position", "fixed");
+    await expect
+      .poll(async () => {
+        const box = await panel.boundingBox();
+        return Math.round(box.y + box.height);
+      })
+      .toBe(page.viewportSize().height);
+    expect(await close.boundingBox()).toMatchObject({ height: 44, width: 44 });
+  };
+
+  test("action row offers Share and Add to calendar as 44px pills", async ({ page }) => {
+    // Load an upcoming event.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+
+    // Find the two pills in the summary.
+    const summary = getIntroSection(page);
+    const share = summary.locator('share-modal[trigger-variant="action"]').getByRole("button", {
+      name: "Share",
+    });
+    const calendar = summary.getByRole("link", { name: "Add to calendar" });
+
+    // Verify they sit side by side at the tap size.
+    await expect(share).toBeVisible();
+    await expect(calendar).toBeVisible();
+    const [shareBox, calendarBox] = [await share.boundingBox(), await calendar.boundingBox()];
+    expect(shareBox.height).toBe(44);
+    expect(calendarBox.height).toBe(44);
+    expect(calendarBox.y).toBe(shareBox.y);
+    expect(calendarBox.x).toBeGreaterThan(shareBox.x + shareBox.width);
+    expect(calendarBox.width).toBe(shareBox.width);
+
+    // Verify the calendar link points at the event's public file.
+    await expect(calendar).toHaveAttribute(
+      "href",
+      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}/calendar.ics`,
+    );
+
+    // Verify Share falls back to the sheet where the system share is missing.
+    await share.tap();
+    await expectBottomSheet(page, page.getByRole("dialog", { name: "Share" }));
+  });
+
+  test("past events show a Past event pill and Share takes the row", async ({ page }) => {
+    // Load a past event.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, "alpha-past-roundup");
+
+    // Verify the pill shows and there is no calendar to add to.
+    const summary = getIntroSection(page);
+    await expect(summary.getByText("Past event", { exact: true })).toBeVisible();
+    await expect(summary.getByRole("link", { name: "Add to calendar" })).toHaveCount(0);
+
+    // Verify Share fills the row on its own.
+    const share = summary.locator('share-modal[trigger-variant="action"]');
+    const [shareBox, rowBox] = [await share.boundingBox(), await share.locator("..").boundingBox()];
+    expect(shareBox.width).toBe(rowBox.width);
+  });
+
+  test("canceled events keep the ribbon clear of the title and drop the calendar", async ({ page }) => {
+    // Load a canceled event.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_CANCELED_PUBLIC_EVENT.slug);
+
+    // Verify the ribbon shows, the title clears it and the calendar is gone.
+    await expect(page.getByText("Canceled", { exact: true })).toBeVisible();
+    await expect(page.locator(".event-title-col")).toHaveCSS("padding-right", "36px");
+    await expect(getIntroSection(page).getByRole("link", { name: "Add to calendar" })).toHaveCount(0);
+  });
+
+  test("sold-out events keep the ribbon clear of the title", async ({ page }) => {
+    // Load the full event.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, "alpha-waitlist-lab");
+
+    // Verify the title makes room once availability shows the ribbon.
+    await expect(page.locator("[data-availability-sold-out-ribbon]")).toBeVisible();
+    await expect(page.locator(".event-title-col")).toHaveCSS("padding-right", "36px");
+  });
+
+  test("meta and social links share a row without overflowing at 320", async ({ page }) => {
+    // Load an event with a Meetup link and add a second link, as Luma would.
+    await page.setViewportSize({ width: 320, height: 640 });
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    const social = page.locator('div.md\\:hidden:has(a[title="Meetup"])');
+    await social.locator('a[title="Meetup"]').evaluate((link) => link.after(link.cloneNode(true)));
+
+    // Verify the links stay on the right edge of the gutter, in the meta row.
+    const socialBox = await social.boundingBox();
+    const metaBox = await social.locator("..").boundingBox();
+    expect(Math.round(socialBox.x + socialBox.width)).toBe(308);
+    expect(socialBox.y).toBeGreaterThanOrEqual(metaBox.y);
+    expect(socialBox.y + socialBox.height).toBeLessThanOrEqual(metaBox.y + metaBox.height);
+    expect(await getPageOverflow(page)).toBeLessThanOrEqual(0);
+
+    // Verify the narrower meta column keeps the remaining caption on one line.
+    const remaining = page.locator('[data-availability-caption="remaining"]');
+    await expect(remaining).toBeVisible();
+    expect((await remaining.boundingBox()).height).toBeLessThanOrEqual(16);
+  });
+
+  test("a long unbroken place name stays inside the map pill", async ({ page }) => {
+    // Load an event with a map at the narrowest phone and give the pill a long name.
+    await page.setViewportSize({ width: 320, height: 640 });
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    const pill = page.locator('[class*="phone:wrap-anywhere"]:visible').first();
+    await pill.evaluate((node) => {
+      node.textContent = "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch";
+    });
+
+    // Verify the name wraps rather than running past the pill's edge.
+    expect(await pill.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  });
+
+  test("the date card shows the large desktop date", async ({ page }) => {
+    // Load a single-day event.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    const panel = page.locator("[data-registration-window-date-panel]");
+
+    // Verify the full date replaces the short one.
+    await expect(panel.locator(".phone\\:text-2xl\\/7")).toBeVisible();
+    await expect(panel.locator(".phone\\:text-2xl\\/7")).toHaveCSS("font-size", "24px");
+    await expect(panel.locator("div.sm\\:hidden")).toBeHidden();
+  });
+
+  test("multi-day dates stack below 375 and sit side by side above it", async ({ page }) => {
+    // Load a multi-day event.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_MULTI_DAY_EVENT.slug);
+    const panel = page.locator("[data-registration-window-date-panel]");
+    const range = panel.locator("div.flex.items-start");
+    const arrow = panel.getByText("→", { exact: true });
+
+    // Use dates wider than the seed's, so the fit does not depend on the month.
+    await panel.locator(".phone\\:text-lg\\/6").evaluateAll((dates) => {
+      dates.forEach((date, index) => {
+        date.textContent = `Nov ${28 + 2 * index}, 2026`;
+      });
+    });
+
+    // Verify the narrow widths stack From and To without the arrow.
+    for (const width of [320, 360]) {
+      await page.setViewportSize({ width, height: 700 });
+      await expect(range).toHaveCSS("flex-direction", "column");
+      await expect(arrow).toBeHidden();
+      expect(await getPageOverflow(page)).toBeLessThanOrEqual(0);
+    }
+
+    // Verify wider phones keep desktop's row.
+    await page.setViewportSize({ width: 402, height: 874 });
+    await expect(range).toHaveCSS("flex-direction", "row");
+    await expect(arrow).toBeVisible();
+    expect(await getPageOverflow(page)).toBeLessThanOrEqual(0);
+
+    // Verify the labels read like the eyebrow, because the panel's stone-400 fails contrast.
+    const eyebrowColor = await page
+      .getByText("Event date", { exact: true })
+      .first()
+      .evaluate((eyebrow) => getComputedStyle(eyebrow).color);
+    await expect(panel.getByText("From", { exact: true })).toHaveCSS("color", eyebrowColor);
+    await expect(panel.getByText("To", { exact: true })).toHaveCSS("color", eyebrowColor);
+  });
+
+  test("the location card shows the full address over a 150px map", async ({ page }) => {
+    // Load an event with coordinates.
+    await routeEmptyBasemap(page);
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    const location = getEventInfoSection(page, "Location");
+
+    // Verify the long address pill shows and the map keeps its height.
+    await expect(location.getByText(PRIMARY_EVENT_LOCATION, { exact: true }).first()).toBeVisible();
+    const panel = location.locator(".phone\\:h-\\[150px\\]");
+    expect((await panel.boundingBox()).height).toBe(150);
+
+    // Verify the map opens as a sheet that the close button dismisses.
+    await location.getByRole("button", { name: "Open full map view" }).tap();
+    const mapSheet = page.locator("#event-map-modal");
+    await expectBottomSheet(page, mapSheet);
+    await mapSheet.locator(".sheet-head button").tap();
+    await expect(mapSheet).toBeHidden();
+  });
+
+  test("directions open Apple Maps on an iPhone", async ({ page }) => {
+    // Load an event with coordinates under the iPhone user agent.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+
+    // Verify the Google link was swapped.
+    const directions = getEventInfoSection(page, "Location").getByRole("link", { name: "Directions" });
+    await expect(directions).toBeVisible();
+    await expect(directions).toHaveAttribute(
+      "href",
+      /^https:\/\/maps\.apple\.com\/directions\?destination=40\.71\d*,-74\.00\d*$/,
+    );
+    await expect(directions).toHaveAttribute("target", "_blank");
+  });
+
+  test("an event without coordinates keeps its address pill and directions", async ({ owned, page }) => {
+    // Create an in-person event that stores its address but no coordinates.
+    const event = owned.event({ groupId: TEST_GROUP_IDS.community1.alpha, kind: "in-person" });
+    queryE2eDatabase(`
+      update event
+      set venue_city = 'Chicago', venue_name = 'Harbor Hall'
+      where event_id = ${sqlUuid(event.eventId)}
+    `);
+
+    // Load the event.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, event.slug);
+    const location = getEventInfoSection(page, "Location");
+
+    // Verify the card shows the place over the static map.
+    await expect(location.getByText("Harbor Hall, Chicago", { exact: true }).first()).toBeVisible();
+
+    // Verify the place is the destination, since there is nothing else to navigate to.
+    await expect(location.getByRole("link", { name: "Directions" })).toHaveAttribute(
+      "href",
+      "https://maps.apple.com/directions?destination=Harbor%20Hall,%20Chicago",
+    );
+  });
+
+  for (const { name, slug } of [
+    { name: "virtual events", slug: "alpha-event-2" },
+    { name: "events without a location", slug: "alpha-event-3" },
+  ]) {
+    test(`${name} drop the location card and directions`, async ({ page }) => {
+      // Load the event.
+      await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, slug);
+
+      // Verify the card takes no room and offers no directions.
+      await expect(getEventInfoSection(page, "Location")).toBeHidden();
+      await expect(page.locator("[data-directions-link]")).toHaveCount(0);
+    });
+  }
+
+  test("section headings pin under the header", async ({ page }) => {
+    // Load an event and find a section title.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    const heading = page.getByText("About this event", { exact: true });
+
+    // Verify the title takes the strip's look.
+    await expect(heading).toHaveCSS("position", "sticky");
+    await expect(heading).toHaveCSS("font-size", "15px");
+
+    // Scroll until the title would sit just under the header's bottom edge.
+    await heading.evaluate((element) => {
+      window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 43);
+    });
+
+    // Verify it stops at the header's hairline.
+    await expect.poll(async () => Math.round((await heading.boundingBox()).y)).toBe(63);
+  });
+
+  test("the About text collapses behind Read more", async ({ page }) => {
+    // Load an event with a short description.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    const about = getEventAboutSection(page);
+    const body = about.locator(".read-more-body");
+    const toggle = about.getByRole("button", { name: "Read more" });
+
+    // Verify a short description offers nothing to expand.
+    await expect(body).toContainText(PRIMARY_EVENT_DESCRIPTION);
+    await expect(toggle).toBeHidden();
+
+    // Grow it past three lines.
+    await body.evaluate((element) => {
+      element.firstElementChild.textContent = "Long event description. ".repeat(40);
+    });
+
+    // Verify it clips to three lines and opens on tap.
+    await expect(toggle).toBeVisible();
+    expect(await body.evaluate((element) => element.clientHeight)).toBe(72);
+    await toggle.tap();
+    await expect(about.getByRole("button", { name: "Read less" })).toHaveAttribute("aria-expanded", "true");
+    expect(await body.evaluate((element) => element.clientHeight)).toBeGreaterThan(72);
+  });
+
+  test("agenda descriptions collapse behind Read more", async ({ page }) => {
+    // Load an event whose sessions have descriptions.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    const block = page.locator("[data-agenda-session] .read-more").first();
+    const body = block.locator(".read-more-body");
+    const toggle = block.getByRole("button", { name: "Read more" });
+
+    // Grow one past three lines.
+    await expect(toggle).toBeHidden();
+    await body.evaluate((element) => {
+      element.firstElementChild.textContent = "Long session description. ".repeat(40);
+    });
+
+    // Verify it clips to three lines and opens on tap.
+    await expect(toggle).toBeVisible();
+    expect(await body.evaluate((element) => element.clientHeight)).toBe(72);
+    await toggle.tap();
+    await expect(block.getByRole("button", { name: "Read less" })).toBeVisible();
+  });
+
+  test("agenda tabs stay on one scrolling row at the tap size", async ({ page }) => {
+    // Load a multi-day event.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_MULTI_DAY_EVENT.slug);
+    const firstTab = page.locator("button[data-day-tab]").first();
+    const tabs = page.locator("ul:has(> li > button[data-day-tab])");
+
+    // Verify the row scrolls instead of wrapping, and each tab is a 44px target.
+    await expect(tabs).toHaveCSS("flex-wrap", "nowrap");
+    await expect(tabs).toHaveCSS("overflow-x", "auto");
+    expect((await firstTab.boundingBox()).height).toBeGreaterThanOrEqual(44);
+  });
+
+  test("contact organizers opens a sheet from a full-width button", async ({ page }) => {
+    // Load an event and find the button.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    const contact = page.locator("#open-contact-modal");
+
+    // Verify the button fills its row at the tap size.
+    const [contactBox, rowBox] = [await contact.boundingBox(), await contact.locator("..").boundingBox()];
+    expect(contactBox.height).toBe(44);
+    expect(contactBox.width).toBe(rowBox.width);
+
+    // Verify the modal opens as a sheet.
+    await contact.tap();
+    const sheet = page.locator("#contact-modal");
+    await expect(sheet.locator("[data-contact-sign-in]")).toBeVisible();
+    await expectBottomSheet(page, sheet);
+  });
+
+  test("the proposal form opens a sheet from a full-width button", async ({ page }) => {
+    // Load an event with an open Call for Speakers.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, "alpha-cfs-summit");
+    const submit = page.locator("#open-cfs-modal");
+
+    // Verify the button fills its row at the tap size.
+    const [submitBox, rowBox] = [await submit.boundingBox(), await submit.locator("..").boundingBox()];
+    expect(submitBox.height).toBe(44);
+    expect(submitBox.width).toBe(rowBox.width);
+
+    // Verify the modal opens as a sheet.
+    await submit.tap();
+    await expectBottomSheet(page, page.locator("#cfs-modal"));
+  });
+
+  test("breadcrumb opens its links over the event summary", async ({ page }) => {
+    // Load an upcoming event once its controls have hydrated.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    await waitForPageSettled(page);
+    const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
+    const links = breadcrumb.getByRole("listbox", { name: "Breadcrumb links" });
+    await expect(links).toBeHidden();
+
+    // Open the trail.
+    await breadcrumb.getByRole("button", { name: TEST_EVENT_NAME }).tap();
+    await expect(links).toBeVisible();
+
+    // Verify every level is listed and only the current page has no link.
+    const options = links.getByRole("option");
+    const groupPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}`;
+    await expect(options).toHaveText(["Home", TEST_COMMUNITY_TITLE, TEST_GROUP_NAME, TEST_EVENT_NAME]);
+    await expect(options.nth(0)).toHaveAttribute("href", "/");
+    await expect(options.nth(1)).toHaveAttribute("href", `/${TEST_COMMUNITY_NAME}`);
+    await expect(options.nth(2)).toHaveAttribute("href", groupPath);
+    await expect(options.nth(3)).not.toHaveAttribute("href");
+    await expect(options.nth(3)).toHaveAttribute("aria-selected", "true");
+
+    // Verify the rows reach 44px once the opening transition ends.
+    await expect
+      .poll(() => options.evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height)))
+      .toEqual([44, 44, 44, 44]);
+
+    // Verify the list reaches the summary and every row paints on top of it.
+    const lastRow = await options.last().boundingBox();
+    const summary = await getIntroSection(page).boundingBox();
+    expect(lastRow.y + lastRow.height / 2).toBeGreaterThan(summary.y);
+    const paintedRows = await options.evaluateAll((rows) =>
+      rows.map((row) => {
+        const { height, left, top, width } = row.getBoundingClientRect();
+        return row.contains(document.elementFromPoint(left + width / 2, top + height / 2));
+      }),
+    );
+    expect(paintedRows).toEqual([true, true, true, true]);
+
+    // Follow the group row.
+    await options.nth(2).tap();
+    await expect(page).toHaveURL(buildE2eUrl(groupPath));
+    await expect(page.getByRole("heading", { level: 1, name: TEST_GROUP_NAME })).toBeVisible();
+  });
+
+  test("the page does not overflow at phone widths", async ({ page }) => {
+    // Load an event with a map, an agenda and a gallery.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+
+    // Verify each supported width.
+    for (const width of [320, 360, 402]) {
+      await page.setViewportSize({ width, height: 800 });
+      await expect.poll(() => getPageOverflow(page)).toBeLessThanOrEqual(0);
+    }
+  });
+});
+
+test.describe("event page - desktop version on a phone @mobile", () => {
+  test("keeps the desktop event page", async ({ page }) => {
+    // Load an upcoming event in the desktop version.
+    await enableDesktopVersion(page);
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+
+    // Verify the attendance controls stay in the summary, with no bar.
+    const container = getAttendanceContainer(page);
+    await expect(container).toHaveAttribute("data-availability-hydrated", "true");
+    await expect(container).toBeVisible();
+    await expect(container).not.toHaveCSS("position", "fixed");
+    await expect(container.locator('[data-attendance-role="bar-summary"]')).toBeHidden();
+
+    // Verify the phone pills and pinned headings stay out.
+    const summary = getIntroSection(page);
+    await expect(summary.locator('share-modal[trigger-variant="action"]')).toBeHidden();
+    await expect(summary.getByRole("link", { name: "Add to calendar" })).toBeHidden();
+    await expect(page.locator(".section-strip").first()).not.toHaveCSS("position", "sticky");
+
+    // Verify Share stays in the actions menu and opens the centred modal rather than a sheet.
+    await page.locator('[data-attendance-role="actions-menu"] summary').click();
+    await page.locator('share-modal[trigger-variant="menu-item"]').getByRole("button").click();
+    const dialog = page.getByRole("dialog", { name: "Share" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator(".sheet-panel")).not.toHaveCSS("position", "fixed");
+  });
+});
+
+test.describe("event page - directions on Android @mobile", () => {
+  test.use({ userAgent: ANDROID_USER_AGENT });
+
+  test("directions stay on Google Maps", async ({ page }) => {
+    // Load an event with coordinates under an Android user agent.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+
+    // Verify the server's link is left alone.
+    await expect(page.locator("[data-directions-link]")).toHaveAttribute(
+      "href",
+      /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&destination=40\.71\d*%2C-74\.00\d*$/,
+    );
   });
 });
 

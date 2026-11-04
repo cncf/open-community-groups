@@ -5,6 +5,7 @@ import {
   markDatasetReady,
 } from "/static/js/common/dom.js";
 import { getHtmxTriggerNames } from "/static/js/common/htmx-triggers.js";
+import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
 import { escapeHtml } from "/static/js/common/trusted-html.js";
 import { isInterceptedXHR } from "/static/js/common/utils.js";
 
@@ -20,7 +21,7 @@ const REFRESH_BODY_EVENT = "refresh-body";
  */
 export const getCommonAlertOptions = () => {
   return {
-    position: "top-end",
+    position: isPhoneViewport() ? "bottom" : "top-end",
     topLayer: true,
     buttonsStyling: false,
     iconColor: "var(--color-primary-500)",
@@ -307,6 +308,36 @@ export const showInfoAlert = (message, withHtml = false) => {
     alertOptions.html = message; // Use HTML content if specified
   }
   Swal.fire(alertOptions);
+};
+
+/**
+ * Tells a signed-out user that an action needs a login. Phones get a real Log in
+ * button and no timer, because the inline link is a small target on a timed alert.
+ * @param {string} actionText - What the user was trying to do, such as "join this group"
+ * @param {string} path - Path to return to after logging in
+ * @returns {Promise<void>} Resolved once a phone prompt is answered
+ */
+export const showSigninPrompt = async (actionText, path) => {
+  const loginUrl = `/log-in?next_url=${encodeURIComponent(path)}`;
+  if (!isPhoneViewport()) {
+    showInfoAlert(
+      `You need to be <a href='${loginUrl}' class='underline font-medium' hx-boost='true'>logged in</a> to ${actionText}.`,
+      true,
+    );
+    return;
+  }
+
+  const result = await Swal.fire({
+    text: `You need to be logged in to ${actionText}.`,
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Log in",
+    cancelButtonText: "Dismiss",
+    ...getCommonAlertOptions(),
+  });
+  if (result?.isConfirmed) {
+    window.location.assign(loginUrl);
+  }
 };
 
 /**

@@ -15,6 +15,12 @@ describe("breadcrumb-nav", () => {
     { label: "CNCF Madrid", icon: "groups", current: true },
   ];
 
+  const originalMatchMedia = window.matchMedia;
+
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
   it("renders nothing when no items are provided", async () => {
     // Render the empty breadcrumb navigation fixture.
     const element = await mountLitComponent("breadcrumb-nav");
@@ -74,6 +80,93 @@ describe("breadcrumb-nav", () => {
     expect(
       element.querySelector('li[aria-current="page"]').textContent,
     ).to.include("KubeCon");
+  });
+
+  it("names the dropdown listbox on phones", async () => {
+    // Stub a matching phone query.
+    window.matchMedia = () => ({ matches: true });
+
+    // Render the breadcrumb navigation with a mobile dropdown.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+    });
+
+    // Verify the listbox has an accessible name.
+    expect(
+      element
+        .querySelector("[data-breadcrumb-dropdown]")
+        .getAttribute("aria-label"),
+    ).to.equal("Breadcrumb links");
+  });
+
+  it("leaves the dropdown listbox unnamed off phones", async () => {
+    // Stub a query that does not match.
+    window.matchMedia = () => ({ matches: false });
+
+    // Render the breadcrumb navigation with a mobile dropdown.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+    });
+
+    // Verify no attribute reaches narrow fine-pointer windows.
+    expect(
+      element
+        .querySelector("[data-breadcrumb-dropdown]")
+        .hasAttribute("aria-label"),
+    ).to.equal(false);
+  });
+
+  it("hides the closed dropdown from phone focus and screen readers", async () => {
+    // Render the breadcrumb navigation with a closed dropdown.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+    });
+    const dropdown = element.querySelector("[data-breadcrumb-dropdown]");
+
+    // Verify the closed state carries the phone token.
+    expect(dropdown.classList.contains("phone:invisible")).to.equal(true);
+
+    // Open the dropdown.
+    element._isOpen = true;
+    await element.updateComplete;
+
+    // Verify the open state drops it.
+    expect(dropdown.classList.contains("phone:invisible")).to.equal(false);
+  });
+
+  it("uses the mobile layout tokens on phones only", async () => {
+    // Render the breadcrumb navigation with both banners.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+      bannerUrl: "/img/banner-desktop.png",
+      bannerMobileUrl: "/img/banner-mobile.png",
+    });
+
+    // Collect the elements that swap at the phone breakpoint.
+    const mobileBanner = element.querySelector(
+      'img[src="/img/banner-mobile.png"]',
+    ).parentElement;
+    const desktopBanner = element.querySelector(
+      'img[src="/img/banner-desktop.png"]',
+    ).parentElement;
+    const dropdownBlock = element.querySelector(
+      "[data-breadcrumb-trigger]",
+    ).parentElement;
+    const desktopList = element.querySelector("nav ol");
+
+    // Verify phones get the uncropped mobile banner and the dropdown at every width.
+    expect(mobileBanner.classList.contains("phone:block")).to.equal(true);
+    expect(mobileBanner.classList.contains("phone:aspect-[1220/192]")).to.equal(
+      true,
+    );
+    expect(desktopBanner.classList.contains("phone:hidden")).to.equal(true);
+    expect(dropdownBlock.classList.contains("phone:block")).to.equal(true);
+    expect(desktopList.classList.contains("phone:hidden")).to.equal(true);
+
+    // Verify the existing tokens stay for non-phone widths.
+    expect(mobileBanner.classList.contains("aspect-[61/12]")).to.equal(true);
+    expect(mobileBanner.classList.contains("sm:hidden")).to.equal(true);
+    expect(desktopBanner.classList.contains("sm:block")).to.equal(true);
   });
 
   it("closes the mobile dropdown on outside clicks and escape", async () => {

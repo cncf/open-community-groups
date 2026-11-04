@@ -1,14 +1,66 @@
+{# Active filters count -#}
+{# Used inside the phone Filters pill's accessible name. -#}
+{% macro active_filters_count(count) -%}
+  {% if count > 0 -%}
+    <span class="not-phone:hidden">, {{ count }} active</span>
+  {%- endif -%}
+{%- endmacro active_filters_count -%}
+{# End active filters count -#}
+
+{# Active filters dot -#}
+{# Used by the phone Filters pill to show that filters apply. -#}
+{% macro active_filters_dot(count) -%}
+  {% if count > 0 -%}
+    <span class="size-2 rounded-full bg-primary-600 not-phone:hidden"
+          aria-hidden="true"></span>
+  {%- endif -%}
+{%- endmacro active_filters_dot -%}
+{# End active filters dot -#}
+
+{# Applied filter chip -#}
+{# Used by the phone chip row. Page controls remove the filter through its real control. -#}
+{# Labels follow their desktop control: only collapsible-filter options are capitalized. -#}
+{% macro applied_filter_chip(name, value, label) -%}
+  <button type="button"
+          data-applied-filter="{{ name }}"
+          data-applied-filter-value="{{ value }}"
+          aria-label="Remove filter {{ label }}"
+          class="inline-flex min-h-11 max-w-full items-center">
+    <span class="inline-flex h-8 max-w-full items-center gap-1.5 rounded-lg border border-primary-600 bg-white px-2.5 text-xs text-primary-600">
+      <span class="truncate{% if *name != "kind" && *name != "group" %}
+                     capitalize{% endif %}">{{ label }}</span>
+      <span class="svg-icon size-3 shrink-0 bg-primary-600 icon-close"></span>
+    </span>
+  </button>
+{% endmacro applied_filter_chip -%}
+{# End applied filter chip -#}
+
+{# Applied filters -#}
+{# Used by explore section shells: the phone chip row, skipped when no filter has a chip. -#}
+{% macro applied_filters(chips) -%}
+  {% if !chips.is_empty() -%}
+    <div role="group"
+         aria-label="Applied filters"
+         class="flex flex-wrap gap-x-2 px-3 not-phone:hidden">
+      {% for chip in chips.iter() -%}
+        {{ applied_filter_chip(name = chip.name, value = chip.value, label = chip.label) -}}
+      {% endfor -%}
+    </div>
+  {% endif -%}
+{% endmacro applied_filters -%}
+{# End applied filters -#}
+
 {# Input date -#}
 {# Used by explore filters for start and end date fields. -#}
 {% macro date_input(name, label, value) -%}
   <div class="w-full">
     <div class="text-xs/6 text-stone-500/75 capitalize mb-1">{{ label }}:</div>
-    <div class="relative w-[75%]">
+    <div class="relative w-[75%] phone:w-full">
       <input name="{{ name }}"
              validate="false"
              value="{%- if let Some(date) = &value -%} {{ date }} {%- endif -%}"
              type="date"
-             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-stone-50 transition-colors"
+             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-stone-50 transition-colors phone:h-11 phone:text-base"
              placeholder="Date {{ label }}">
     </div>
   </div>
@@ -35,8 +87,8 @@
 
 {# Entity selector -#}
 {# Used by explore section shells to switch between events and groups. -#}
-{% macro entity_radio(selected, ts_query = None) -%}
-  <div class="px-6 py-7 border-b border-stone-100">
+{% macro entity_radio(selected, ts_query = None, community = None, styles = None) -%}
+  <div class="px-6 py-7 border-b border-stone-100 {%- if styles.is_some() %} {{ styles.unwrap_or("") }}{%- endif -%}">
     <ul class="flex items-center w-full">
       {% match selected -%}
       {% when Entity::Groups -%}
@@ -48,8 +100,7 @@
                 hx-trigger="click"
                 hx-target="#entity-section"
                 hx-indicator="#loading-filters, #loading-filters-mobile"
-                {# TODO: Hardcoded community until we add more #}
-                hx-vals='{"community[0]":"cncf"{% if let Some(query) = &ts_query %},"ts_query":{{ query|json|safe }}{% endif %}}'
+                hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
                 class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-l-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
         {# djlint:on #}
         {{ entity_content(kind = "events", title = "Events", icon_styles = Some("bg-stone-500")) -}}
@@ -80,8 +131,7 @@
                 hx-trigger="click"
                 hx-target="#entity-section"
                 hx-indicator="#loading-filters, #loading-filters-mobile"
-                {# TODO: Hardcoded community until we add more #}
-                hx-vals='{"community[0]":"cncf"{% if let Some(query) = &ts_query %},"ts_query":{{ query|json|safe }}{% endif %}}'
+                hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
                 class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-r-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
       {# djlint:on #}
       {{ entity_content(kind = "groups", title = "Groups", icon_styles = Some("bg-stone-500")) -}}
@@ -93,3 +143,68 @@
 </div>
 {% endmacro entity_radio -%}
 {# End entity selector -#}
+
+{# Entity switch -#}
+{# Used by the phone controls: desktop's entity tiles laid sideways, same values as entity_radio. -#}
+{% macro entity_switch(selected, ts_query = None, community = None) -%}
+  <div role="group" aria-label="Show" class="flex shrink-0">
+    {% match selected -%}
+    {% when Entity::Groups -%}
+    {# djlint:off #}
+    <button type="button"
+            aria-pressed="false"
+            hx-get='/explore/events-section'
+            hx-trigger="click"
+            hx-target="#entity-section"
+            hx-indicator="#loading-filters, #loading-filters-mobile"
+            hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
+            class="inline-flex h-11 items-center gap-1.5 rounded-l-lg border border-stone-200 bg-white px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+    {# djlint:on #}
+    <div class="svg-icon size-4 bg-stone-500 icon-events"></div>
+    Events
+  </button>
+  <button type="button"
+          aria-pressed="true"
+          class="-ms-px inline-flex h-11 items-center gap-1.5 rounded-r-lg border border-primary-600 bg-white px-3 text-sm text-primary-600 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+    <div class="svg-icon size-4 bg-primary-600 icon-groups"></div>
+    Groups
+  </button>
+  {% when Entity::Events -%}
+  <button type="button"
+          aria-pressed="true"
+          class="relative inline-flex h-11 items-center gap-1.5 rounded-l-lg border border-primary-600 bg-white px-3 text-sm text-primary-600 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+    <div class="svg-icon size-4 bg-primary-600 icon-events"></div>
+    Events
+  </button>
+  {# djlint:off #}
+    <button type="button"
+            aria-pressed="false"
+            hx-get='/explore/groups-section'
+            hx-trigger="click"
+            hx-target="#entity-section"
+            hx-indicator="#loading-filters, #loading-filters-mobile"
+            hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
+            class="-ms-px inline-flex h-11 items-center gap-1.5 rounded-r-lg border border-stone-200 bg-white px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+  {# djlint:on #}
+  <div class="svg-icon size-4 bg-stone-500 icon-groups"></div>
+  Groups
+  </button>
+{% endmatch -%}
+</div>
+{% endmacro entity_switch -%}
+{# End entity switch -#}
+
+{# Entity values -#}
+{# Used as hx-vals by the explore entity switches. Omits absent values, so the JSON has no stray comma. -#}
+{% macro entity_vals(community, ts_query) -%}
+  {
+  {%- if let Some(name) = &community -%}
+    "community[0]":{{ name|json|safe }}
+    {%- if ts_query.is_some() -%},{%- endif -%}
+  {%- endif -%}
+  {%- if let Some(query) = &ts_query -%}
+    "ts_query":{{ query|json|safe }}
+  {%- endif -%}
+  }
+{%- endmacro entity_vals -%}
+{# End entity values -#}

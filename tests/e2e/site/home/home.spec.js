@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { expect, test } from "../../fixtures.js";
 
 import {
@@ -10,7 +12,8 @@ import {
   TEST_GROUP_SLUG,
   TEST_SITE_TITLE,
 } from "../../seed.js";
-import { getCommunityBanner, getSectionLink, navigateToSiteHome } from "../../utils.js";
+import { enableDesktopVersion } from "../../snapshots.js";
+import { getCommunityBanner, getPageOverflow, getSectionLink, navigateToSiteHome } from "../../utils.js";
 import {
   expectLatestGroupsSection,
   expectNumericStats,
@@ -18,13 +21,19 @@ import {
   expectUpcomingEventSections,
 } from "../common/helpers.js";
 
-// Site home explore links are currently hardcoded to cncf in shared templates.
-const SITE_HOME_EXPLORE_COMMUNITY_NAME = "cncf";
-
 const EXPLORE_LINK_VIEWPORTS = [
   { name: "desktop", width: 1280 },
   { name: "mobile", width: 375 },
 ];
+
+// The seed has two communities, so the carousel case borrows the template's own tokens.
+const HOME_TEMPLATE = readFileSync(
+  new URL("../../../../ocg-server/templates/site/home/page.html", import.meta.url),
+  "utf8",
+);
+const [CAROUSEL_LIST_TOKENS, CAROUSEL_TILE_TOKENS] = [
+  ...HOME_TEMPLATE.matchAll(/{% if carousel %}(.*?){% (?:else|endif) %}/g),
+].map(([, tokens]) => tokens);
 
 test.describe("site home page", () => {
   test.describe("default viewport", () => {
@@ -106,7 +115,7 @@ test.describe("site home page", () => {
         await page.setViewportSize({ width: viewport.width, height: 900 });
         await navigateToSiteHome(page);
 
-        // Verify the events link points to the filtered explore page.
+        // Verify the events link points to the explore page.
         const linkLayout = viewport.name === "desktop" ? "desktop" : "mobile";
         const eventsLink = getSectionLink(
           page,
@@ -115,18 +124,12 @@ test.describe("site home page", () => {
           linkLayout,
         );
         await expect(eventsLink).toBeVisible();
-        await expect(eventsLink).toHaveAttribute(
-          "href",
-          `/explore?community[0]=${SITE_HOME_EXPLORE_COMMUNITY_NAME}&entity=events`,
-        );
+        await expect(eventsLink).toHaveAttribute("href", "/explore?entity=events");
 
-        // Verify the groups link points to the filtered explore page.
+        // Verify the groups link points to the explore page.
         const groupsLink = getSectionLink(page, "Latest groups added", "Explore all groups", linkLayout);
         await expect(groupsLink).toBeVisible();
-        await expect(groupsLink).toHaveAttribute(
-          "href",
-          `/explore?community[0]=${SITE_HOME_EXPLORE_COMMUNITY_NAME}&entity=groups`,
-        );
+        await expect(groupsLink).toHaveAttribute("href", "/explore?entity=groups");
       });
     }
   });
@@ -193,6 +196,200 @@ test.describe("site home page", () => {
         .filter({ has: page.getByAltText(`${TEST_COMMUNITY_TITLE} banner`) })
         .first();
       await expect(community1Link).toHaveAttribute("href", `/${TEST_COMMUNITY_NAME}`);
+    });
+
+    test("hero carries the gradient and replaces the Explore link with search", async ({ page }) => {
+      // Find the hero around the introduction region.
+      const introduction = page.getByRole("region", { name: "Site introduction" });
+      const hero = introduction.locator("../..");
+
+      // Verify the gradient moved onto the hero with the phone wrapper gone.
+      expect(await hero.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain(
+        "linear-gradient",
+      );
+
+      // Verify search takes the place of the desktop link.
+      await expect(introduction.getByRole("searchbox", { name: "Search events" })).toBeVisible();
+      await expect(introduction.getByRole("button", { name: "Explore", exact: true })).toBeVisible();
+      await expect(introduction.getByRole("link", { name: "Explore groups and events" })).toBeHidden();
+    });
+
+    test("an empty tap on the Explore pill lands on Explore", async ({ page }) => {
+      // Tap the pill without typing.
+      await page.getByRole("search").getByRole("button", { name: "Explore", exact: true }).tap();
+
+      // Verify Explore loads with no empty search value.
+      await expect(page).toHaveURL(/\/explore\?/);
+      await expect(page.getByPlaceholder("Search events")).toHaveValue("");
+      const params = new URL(page.url()).searchParams;
+      expect(params.get("entity")).toBe("events");
+      expect(params.has("ts_query")).toBe(false);
+    });
+
+    test("a typed tap on the Explore pill carries the search", async ({ page }) => {
+      // Type a query and tap the pill.
+      const search = page.getByRole("search");
+      await search.getByRole("searchbox", { name: "Search events" }).fill("platform");
+      await search.getByRole("button", { name: "Explore", exact: true }).tap();
+
+      // Verify Explore receives the query and no community.
+      await expect(page).toHaveURL(/ts_query=platform/);
+      await expect(page.getByPlaceholder("Search events")).toHaveValue("platform");
+      const params = new URL(page.url()).searchParams;
+      expect(params.get("entity")).toBe("events");
+      expect([...params.keys()].filter((key) => key.startsWith("community"))).toEqual([]);
+    });
+
+    test("stats box lays out as a two by two grid", async ({ page }) => {
+      // Measure the four cells.
+      const cells = await page.locator(".stat-box > *").evaluateAll((elements) =>
+        elements.map((element) => {
+          const { left, top } = element.getBoundingClientRect();
+          return { left, top };
+        }),
+      );
+
+      // Verify two rows of two.
+      expect(cells).toHaveLength(4);
+      expect(cells[0].top).toBe(cells[1].top);
+      expect(cells[2].top).toBe(cells[3].top);
+      expect(cells[2].top).toBeGreaterThan(cells[0].top);
+      expect(cells[0].left).toBe(cells[2].left);
+    });
+
+    test("few communities stack at full width with no dots", async ({ page }) => {
+      // Find the two seeded banners.
+      const banners = [TEST_COMMUNITY_TITLE, TEST_COMMUNITY_TITLE_2].map((title) =>
+        page.getByRole("link").filter({ has: page.getByAltText(`${title} banner`) }),
+      );
+      const boxes = await Promise.all(banners.map((banner) => banner.boundingBox()));
+      const [first, second] = boxes.toSorted((a, b) => a.y - b.y);
+
+      // Verify both show at once, one above the other, inside the 12px gutter.
+      expect(first.x).toBe(12);
+      expect(first.width).toBeCloseTo(page.viewportSize().width - 24, 0);
+      expect(second.x).toBe(first.x);
+      expect(second.y).toBeGreaterThan(first.y + first.height);
+
+      // Verify there is nothing to swipe.
+      await expect(page.locator("[data-snap-dots]")).toHaveCount(0);
+    });
+
+    test("many communities swipe with dots that follow the scroll", async ({ page }) => {
+      // Rebuild the seeded list as the template renders five communities.
+      await page.evaluate(
+        async ({ listTokens, tileTokens }) => {
+          const tile = document.querySelector("a[href='/e2e-second-community']");
+          const list = tile.parentElement;
+          list.classList.remove("phone:grid-cols-1");
+          list.classList.add(...listTokens.split(" "));
+          list.append(...Array.from({ length: 3 }, () => tile.cloneNode(true)));
+          [...list.children].forEach((item) => item.classList.add(...tileTokens.split(" ")));
+          list.insertAdjacentHTML(
+            "afterend",
+            '<div class="not-phone:hidden" aria-hidden="true" data-snap-dots></div>',
+          );
+          // The server hashes asset names, so reuse the URL the page already loaded.
+          const { src } = document.querySelector("script[src*='/snap-dots']");
+          const { syncSnapDots } = await import(src);
+          syncSnapDots();
+        },
+        { listTokens: CAROUSEL_LIST_TOKENS, tileTokens: CAROUSEL_TILE_TOKENS },
+      );
+
+      // Verify a dot per community with the first active.
+      const dots = page.locator("[data-snap-dots] .snap-dot");
+      await expect(dots).toHaveCount(5);
+      await expect(dots.nth(0)).toHaveAttribute("data-active");
+
+      // Verify the page itself does not scroll sideways.
+      expect(await getPageOverflow(page)).toBeLessThanOrEqual(0);
+
+      // Verify the dots follow the swipe position.
+      await page.evaluate(() => {
+        const list = document.querySelector("[data-snap-dots]").previousElementSibling;
+        list.scrollTo({
+          behavior: "instant",
+          left: list.children[2].offsetLeft - list.children[0].offsetLeft,
+        });
+      });
+      await expect(dots.nth(2)).toHaveAttribute("data-active");
+      await expect(dots.nth(0)).not.toHaveAttribute("data-active");
+    });
+
+    test("listing headings offer a sentence case See all", async ({ page }) => {
+      // Find the pills in the upcoming and groups headings.
+      const eventsLink = page.getByRole("link", { name: "See all upcoming in-person events" });
+      const groupsLink = page.getByRole("link", { name: "See all latest groups added" });
+
+      // Verify they sit in their headings and reach Explore.
+      await expect(eventsLink).toBeVisible();
+      await expect(eventsLink).toHaveAttribute("href", "/explore?entity=events");
+      await expect(groupsLink).toBeVisible();
+      await expect(groupsLink).toHaveAttribute("href", "/explore?entity=groups");
+
+      // Verify the strip's uppercase does not reach the pill.
+      expect(await eventsLink.evaluate((element) => getComputedStyle(element).textTransform)).toBe("none");
+      await expect(eventsLink).toHaveText("See all");
+
+      // Verify the block under each list is gone and Communities has no pill.
+      await expect(page.getByRole("link", { name: "Explore all events" })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Explore all groups" })).toHaveCount(0);
+      await expect(page.locator(".section-strip", { hasText: "Communities" }).getByRole("link")).toHaveCount(
+        0,
+      );
+
+      // Verify the pill navigates.
+      await groupsLink.tap();
+      await expect(page).toHaveURL(/\/explore\?entity=groups/);
+    });
+
+    test("cards show the community above the group", async ({ page }) => {
+      // Find an event card and its pre-header.
+      const eventCard = page.getByRole("link").filter({ hasText: TEST_EVENT_NAMES.alpha[0] }).first();
+      const community = eventCard.locator(".card-header").getByText(TEST_COMMUNITY_TITLE);
+      const group = eventCard.locator(".card-header").getByText("Platform Ops Meetup");
+
+      // Verify the community sits on its own line above the group.
+      await expect(community).toBeVisible();
+      const [communityBox, groupBox] = await Promise.all([community.boundingBox(), group.boundingBox()]);
+      expect(groupBox.y + groupBox.height).toBeGreaterThan(communityBox.y + communityBox.height);
+
+      // Verify the separator stays off phones.
+      await expect(eventCard.locator(".card-header").getByText("·")).toBeHidden();
+    });
+
+    test("card badges drop below the location when it would be cut short", async ({ page }) => {
+      // Load the narrowest phone, where a paid hybrid card has two badges.
+      await page.setViewportSize({ height: 640, width: 320 });
+      await navigateToSiteHome(page);
+
+      // Find the first location row holding both badges.
+      const badges = page.locator(".icon-text + div:has(.custom-badge + .custom-badge)").first();
+      const location = page.locator(".icon-text:has(+ div .custom-badge + .custom-badge)").first();
+      await expect(badges).toBeVisible();
+
+      // Verify the location keeps its width and the badges take the next line.
+      const [locationBox, badgesBox] = await Promise.all([location.boundingBox(), badges.boundingBox()]);
+      expect(locationBox.width).toBeGreaterThanOrEqual(96);
+      expect(badgesBox.y).toBeGreaterThanOrEqual(locationBox.y + locationBox.height);
+    });
+  });
+
+  test.describe("desktop version on a phone @mobile", () => {
+    test("keeps the desktop home page", async ({ page }) => {
+      // Load the home page in the desktop version.
+      await enableDesktopVersion(page);
+      await navigateToSiteHome(page);
+      const introduction = page.getByRole("region", { name: "Site introduction" });
+
+      // Verify the desktop link is back and the phone search stays out.
+      await expect(introduction.getByRole("link", { name: "Explore groups and events" })).toBeVisible();
+      await expect(introduction.getByRole("searchbox", { name: "Search events" })).toBeHidden();
+
+      // Verify nothing of the phone shell shows around it.
+      await expect(page.getByRole("button", { name: "Open menu" })).toBeHidden();
+      await expect(page.locator(".section-strip").first()).not.toHaveCSS("position", "sticky");
     });
   });
 });

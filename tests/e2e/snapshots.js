@@ -10,6 +10,10 @@ const ATTENDANCE_READY_TIMEOUT_MS = 10_000;
 const DESKTOP_VERSION_COOKIE = { name: "ocg_viewport_mode", value: "desktop" };
 // Subpixel rounding allowed when comparing region edges with the viewport.
 const LAYOUT_EDGE_TOLERANCE_PX = 0.5;
+// Dashboard tabs with a phone layout; the others show the mobile notice.
+const PHONE_DASHBOARD_TABS = ["check-in", "invitations"];
+// Query of the `phone` variant (see static/js/common/phone-viewport.js).
+const PHONE_MEDIA_QUERY = "screen and (width < 48rem) and (not (pointer: fine))";
 
 /**
  * Makes the pages of a context load in the desktop version, as the user menu's "Desktop version"
@@ -40,7 +44,7 @@ export const expectAriaSnapshot = async (page, region, name) => {
 /**
  * Asserts the platform-independent layout of the current page: the application stylesheet
  * applies, nothing overflows the viewport horizontally, and every key region is visible and
- * horizontally inside the viewport.
+ * horizontally inside the viewport. See `getViewportWidth` for the width each page must fit.
  * @param {import("@playwright/test").Page} page - Page already loaded.
  * @param {{ regions?: import("@playwright/test").Locator[] }} [options] - Key regions, one
  *   element each.
@@ -60,11 +64,11 @@ export const expectPageLayout = async (page, { regions = [] } = {}) => {
   expect(stylesheetApplies, "the application stylesheet hides the skip link (sr-only)").toBe(true);
 
   // Verify the page does not scroll horizontally at this viewport.
-  const { innerWidth, scrollWidth } = await page.evaluate(() => ({
-    innerWidth: window.innerWidth,
-    scrollWidth: document.documentElement.scrollWidth,
-  }));
-  expect(scrollWidth, `document width fits the ${innerWidth}px viewport`).toBeLessThanOrEqual(innerWidth);
+  const viewportWidth = await getViewportWidth(page);
+  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(scrollWidth, `document width fits the ${viewportWidth}px viewport`).toBeLessThanOrEqual(
+    viewportWidth,
+  );
 
   // Verify every key region is visible and horizontally inside the viewport.
   for (const region of regions) {
@@ -72,8 +76,8 @@ export const expectPageLayout = async (page, { regions = [] } = {}) => {
     const box = await region.boundingBox();
     expect(box, `${region} has a layout box`).not.toBeNull();
     expect(box.x, `${region} starts inside the viewport`).toBeGreaterThanOrEqual(-LAYOUT_EDGE_TOLERANCE_PX);
-    expect(box.x + box.width, `${region} ends inside the ${innerWidth}px viewport`).toBeLessThanOrEqual(
-      innerWidth + LAYOUT_EDGE_TOLERANCE_PX,
+    expect(box.x + box.width, `${region} ends inside the ${viewportWidth}px viewport`).toBeLessThanOrEqual(
+      viewportWidth + LAYOUT_EDGE_TOLERANCE_PX,
     );
   }
 };
@@ -87,6 +91,29 @@ export const waitForPageSettled = async (page) => {
   await page.waitForLoadState("load");
   await waitForHtmxSettle(page);
   await waitForAttendanceReady(page);
+};
+
+/**
+ * Reads the width a page must fit. Pages with a phone layout use `clientWidth`, because on a
+ * phone `innerWidth` grows with content wider than the viewport and would hide the overflow.
+ * Desktop layouts and the dashboard tabs that show the mobile notice keep `innerWidth`.
+ * @param {import("@playwright/test").Page} page - Page already loaded.
+ * @returns {Promise<number>} Width in CSS pixels.
+ */
+const getViewportWidth = async (page) => {
+  const { pathname, searchParams } = new URL(page.url());
+  const { clientWidth, innerWidth, isPhone } = await page.evaluate(
+    (phoneQuery) => ({
+      clientWidth: document.documentElement.clientWidth,
+      innerWidth: window.innerWidth,
+      isPhone: window.matchMedia(phoneQuery).matches,
+    }),
+    PHONE_MEDIA_QUERY,
+  );
+  const showsMobileNotice =
+    pathname.startsWith("/dashboard") && !PHONE_DASHBOARD_TABS.includes(searchParams.get("tab"));
+
+  return isPhone && !showsMobileNotice ? clientWidth : innerWidth;
 };
 
 /**

@@ -3,15 +3,36 @@
  */
 import { closestElement, getElementById, isElementHidden, setElementHidden } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import {
+  focusModal,
+  lockBodyScroll,
+  restoreModalFocus,
+  trapModalFocus,
+  unlockBodyScroll,
+} from "/static/js/common/modals/modal-lifecycle.js";
+import { bindSheetGestures } from "/static/js/common/modals/sheet-gestures.js";
+import { isPhoneViewport, PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 
 let documentHandlersBound = false;
 let lifecycleListenersBound = false;
 let pendingHeaderNavLink = null;
 let pendingHeaderNavLinkTimer = null;
+let releaseUserSheetGestures = null;
+let userSheetDropdown = null;
+let userSheetOpen = false;
+let userSheetPhoneQuery = null;
+let userSheetTrigger = null;
 
 const headerNavLinkSelector = "[data-header-nav-link]";
 /** Wait before showing nav loading so quick HTMX requests can finish without flicker. */
 const headerNavLinkPendingDelayMs = 120;
+const openSiteMenuId = "open-site-menu";
+const userSheetCloseSelector = ".sheet-head button";
+// Everything behind the scrim, so screen readers cannot walk there while the sheet is open.
+const userSheetInertSelector =
+  '#main-content, #dashboard-layout, footer[role="contentinfo"], #header a[aria-label$=" homepage"], ' +
+  "div:has(> #header) ~ *";
+const userSheetTriggerSelector = `#user-dropdown-button, #${openSiteMenuId}`;
 
 /**
  * Finds the header nav link that triggered an event.
@@ -68,9 +89,14 @@ const clearHeaderLoading = () => {
 };
 
 /**
- * Restores header interactions after browser or HTMX history navigation.
+ * Restores header interactions after browser or HTMX history navigation. A first
+ * pageshow restores nothing, and the sheet may already be open by then.
+ * @param {Event} [event] - HTMX historyRestore or pageshow event.
  */
-const restoreHeaderState = () => {
+const restoreHeaderState = (event) => {
+  if (event?.type !== "pageshow" || event.persisted) {
+    resetUserSheet();
+  }
   clearHeaderLoading();
   initUserDropdown();
 };
@@ -148,6 +174,149 @@ const startHeaderNavLoadingFromHtmx = (event) => {
   queueHeaderNavLoading(link);
 };
 
+/**
+ * Returns the sheet's reachable controls. The shared modal targets skip anything
+ * under a literal hidden class, which the Desktop version row carries.
+ * @param {Element} dropdown - User dropdown.
+ * @returns {HTMLElement[]} Rendered links and buttons.
+ */
+const getUserSheetFocusTargets = (dropdown) =>
+  Array.from(dropdown.querySelectorAll("a[href], button:not([disabled])")).filter(
+    (target) => target.getClientRects().length > 0,
+  );
+
+/**
+ * Marks the sheet rows that lead to the current page. The menu is a shared section
+ * that cannot know the page, so rows are matched by pathname and dashboard tab.
+ * @param {Element} dropdown - User dropdown.
+ */
+const markCurrentUserSheetRow = (dropdown) => {
+  const currentTab = new URLSearchParams(window.location.search).get("tab");
+
+  getUserSheetFocusTargets(dropdown)
+    .filter((target) => target.matches('a[role="menuitem"]'))
+    .forEach((link) => {
+      const url = new URL(link.href);
+      const tab = url.searchParams.get("tab");
+      if (url.pathname === window.location.pathname && (!tab || tab === currentTab)) {
+        link.setAttribute("aria-current", "page");
+      }
+    });
+};
+
+/**
+ * Removes every sheet marker from the page, whatever module state says.
+ */
+const clearUserSheetMarkers = () => {
+  document.querySelectorAll(userSheetInertSelector).forEach((element) => {
+    element.inert = false;
+  });
+  document.querySelectorAll(userSheetTriggerSelector).forEach((trigger) => {
+    trigger.removeAttribute("aria-expanded");
+  });
+  document.querySelectorAll('#user-dropdown [aria-current="page"]').forEach((link) => {
+    link.removeAttribute("aria-current");
+  });
+};
+
+/**
+ * Releases what the open sheet holds and leaves the dropdown as it is. Keyed on held
+ * state, because a rotation past md must release even though the query is now false.
+ */
+const releaseUserSheet = () => {
+  if (!userSheetOpen) {
+    return;
+  }
+
+  userSheetDropdown = null;
+  userSheetOpen = false;
+  userSheetTrigger = null;
+  releaseUserSheetGestures?.();
+  releaseUserSheetGestures = null;
+  userSheetPhoneQuery?.removeEventListener("change", handleUserSheetQueryChange);
+  userSheetPhoneQuery = null;
+  document.removeEventListener("htmx:beforeHistorySave", resetUserSheet);
+  unlockBodyScroll();
+  clearUserSheetMarkers();
+};
+
+/**
+ * Leaves sheet mode when the phone query turns false. The dropdown stays open as
+ * the anchored menu.
+ * @param {MediaQueryListEvent} event - Query change event.
+ */
+const handleUserSheetQueryChange = (event) => {
+  if (!event.matches) {
+    releaseUserSheet();
+  }
+};
+
+/**
+ * Closes the sheet, or the dropdown left open by crossing into phone widths, and
+ * returns focus to the trigger that opened it.
+ */
+const closeUserSheet = () => {
+  const dropdown = getElementById(document, "user-dropdown");
+  releaseUserSheet();
+  setElementHidden(dropdown, true);
+  restoreModalFocus(dropdown);
+};
+
+/**
+ * Releases a sheet an HTMX swap removed and returns focus, which fell to the body
+ * with it. The swap can replace the trigger as well, so its successor takes focus then.
+ */
+const releaseSwappedUserSheet = () => {
+  const dropdown = userSheetDropdown;
+  const trigger = userSheetTrigger;
+  releaseUserSheet();
+  restoreModalFocus(dropdown);
+  if (!trigger.isConnected) {
+    getElementById(document, trigger.id)?.focus();
+  }
+};
+
+/**
+ * Opens the dropdown as the phone account sheet.
+ * @param {HTMLElement} trigger - Control that opened the sheet.
+ */
+const openUserSheet = (trigger) => {
+  const dropdown = getElementById(document, "user-dropdown");
+  if (!dropdown || userSheetOpen) {
+    return;
+  }
+
+  userSheetDropdown = dropdown;
+  userSheetOpen = true;
+  userSheetTrigger = trigger;
+  setElementHidden(dropdown, false);
+  lockBodyScroll();
+  document.querySelectorAll(userSheetInertSelector).forEach((element) => {
+    element.inert = true;
+  });
+  trigger.setAttribute("aria-expanded", "true");
+  markCurrentUserSheetRow(dropdown);
+  focusModal(dropdown, trigger);
+  releaseUserSheetGestures = bindSheetGestures(dropdown);
+  userSheetPhoneQuery = window.matchMedia(PHONE_MEDIA_QUERY);
+  userSheetPhoneQuery.addEventListener("change", handleUserSheetQueryChange);
+  document.addEventListener("htmx:beforeHistorySave", resetUserSheet);
+};
+
+/**
+ * Closes the sheet without moving focus, so open state never survives history.
+ * Reads the DOM on phones, because a restored snapshot can show a sheet no flag knows of.
+ */
+const resetUserSheet = () => {
+  if (!userSheetOpen && !isPhoneViewport()) {
+    return;
+  }
+
+  releaseUserSheet();
+  setElementHidden(getElementById(document, "user-dropdown"), true);
+  clearUserSheetMarkers();
+};
+
 // Ensures global handlers close the dropdown on outside click or Escape.
 const ensureDocumentHandlers = () => {
   if (documentHandlersBound) {
@@ -162,16 +331,40 @@ const ensureDocumentHandlers = () => {
       return;
     }
 
-    const clickedButton = button.contains(event.target);
+    const trigger = closestElement(event.target, userSheetTriggerSelector);
     const clickedDropdown = dropdown.contains(event.target);
 
-    if (!clickedButton && !clickedDropdown) {
+    // The menu button renders only on phones, so it gets no listener of its own at other widths.
+    if (trigger?.id === openSiteMenuId) {
+      toggleDropdownVisibility(event);
+      return;
+    }
+
+    if (!trigger && !clickedDropdown) {
       // Hide if the click did not originate inside the dropdown or trigger.
-      setElementHidden(dropdown, true);
+      if (userSheetOpen) {
+        closeUserSheet();
+      } else {
+        setElementHidden(dropdown, true);
+      }
+      return;
+    }
+
+    // The scrim is the dropdown itself, whose margins keep the anchored menu open.
+    const clickedSheetClose =
+      event.target === dropdown || Boolean(closestElement(event.target, userSheetCloseSelector));
+    if (clickedSheetClose && (userSheetOpen || isPhoneViewport())) {
+      closeUserSheet();
     }
   };
 
   const handleKeydown = (event) => {
+    if (userSheetOpen && event.key === "Tab") {
+      const dropdown = getElementById(document, "user-dropdown");
+      trapModalFocus(event, dropdown, getUserSheetFocusTargets(dropdown));
+      return;
+    }
+
     if (!isEscapeEvent(event)) {
       return;
     }
@@ -180,6 +373,11 @@ const ensureDocumentHandlers = () => {
     const dropdown = getElementById(document, "user-dropdown");
 
     if (!button || !dropdown || isElementHidden(dropdown)) {
+      return;
+    }
+
+    if (userSheetOpen) {
+      closeUserSheet();
       return;
     }
 
@@ -245,14 +443,28 @@ const bindLifecycleListeners = () => {
   lifecycleListenersBound = true;
 };
 
-// Toggles dropdown visibility when the avatar button is clicked.
-const toggleDropdownVisibility = () => {
+// Toggles dropdown visibility when a trigger is clicked, as a sheet on phones.
+const toggleDropdownVisibility = (event) => {
   const dropdown = getElementById(document, "user-dropdown");
   if (!dropdown) {
     return;
   }
 
-  setElementHidden(dropdown, !isElementHidden(dropdown));
+  if (userSheetOpen) {
+    closeUserSheet();
+  } else if (isPhoneViewport()) {
+    openUserSheet(closestElement(event.target, userSheetTriggerSelector));
+  } else {
+    setElementHidden(dropdown, !isElementHidden(dropdown));
+  }
+};
+
+// Enables the phone menu button once the sheet it opens has mounted.
+const enableOpenSiteMenu = () => {
+  const menuButton = getElementById(document, openSiteMenuId);
+  if (menuButton) {
+    menuButton.disabled = false;
+  }
 };
 
 // Public initializer for the user dropdown interactions.
@@ -263,7 +475,19 @@ export const initUserDropdown = () => {
   const button = getElementById(document, "user-dropdown-button");
   const dropdown = getElementById(document, "user-dropdown");
 
-  if (!button || !dropdown || button.__ocgDropdownInitialized) {
+  // A swap replaced the open sheet, so what it held has nothing left to close it. The new
+  // node's class cannot tell, because HTMX keeps the old class on it until settling.
+  if (userSheetOpen && !userSheetDropdown.isConnected) {
+    releaseSwappedUserSheet();
+  }
+
+  if (!button || !dropdown) {
+    return;
+  }
+
+  enableOpenSiteMenu();
+
+  if (button.__ocgDropdownInitialized) {
     return;
   }
 
@@ -286,7 +510,11 @@ export const initUserDropdown = () => {
           }
           return;
         }
-        setElementHidden(dropdown, true);
+        if (userSheetOpen) {
+          closeUserSheet();
+        } else {
+          setElementHidden(dropdown, true);
+        }
       },
       true,
     );

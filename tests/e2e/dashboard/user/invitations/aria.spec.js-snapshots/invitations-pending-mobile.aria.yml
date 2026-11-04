@@ -1,0 +1,33 @@
+- text: Event Invitations
+- link "Open documentation":
+  - /url: /docs#/guides/user-dashboard?id=invitations-access-and-attendance
+- paragraph: Confirm, resume, or decline event invitations and ticket offers.
+- table:
+  - rowgroup:
+    - row /Platform Ops Meetup · Platform Engineering Community E2E ARIA invited event Starts \d{4}-\d{2}-\d{2} Offer RSVP Organizer invitation Expires [A-Z][a-z]{2} \d{1,2}, \d{4} \d{1,2}:\d{2} [AP]M UTC/:
+      - cell /Platform Ops Meetup · Platform Engineering Community E2E ARIA invited event Starts \d{4}-\d{2}-\d{2}/
+      - cell "Offer RSVP Organizer invitation"
+      - cell /Expires [A-Z][a-z]{2} \d{1,2}, \d{4} \d{1,2}:\d{2} [AP]M UTC/
+      - cell:
+        - button "Claim offer"
+        - group
+- text: Group Invitations
+- paragraph: Manage invitations to join groups.
+- table:
+  - rowgroup:
+    - row /Platform Ops Meetup Created \d{4}-\d{2}-\d{2} Role viewer/:
+      - cell /Platform Ops Meetup Created \d{4}-\d{2}-\d{2}/
+      - cell "Role viewer"
+      - cell:
+        - button "Approve"
+        - button "Reject"
+- text: Community Invitations
+- paragraph: Manage invitations to join communities.
+- table:
+  - rowgroup:
+    - row /e2e-test-community Created \d{4}-\d{2}-\d{2} Role viewer/:
+      - cell /e2e-test-community Created \d{4}-\d{2}-\d{2}/
+      - cell "Role viewer"
+      - cell:
+        - button "Approve"
+        - button "Reject"

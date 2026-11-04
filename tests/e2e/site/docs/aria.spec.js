@@ -20,8 +20,11 @@ test.describe("site docs page ARIA snapshots", () => {
     // Load the docs page and check its layout.
     const sidebar = await openDocs(page);
 
-    // Capture the documentation navigation.
-    await expectAriaSnapshot(page, sidebar, "docs-sidebar");
+    // Open the Contents sheet, which stays out of the tree while closed.
+    await page.locator(".ocg-docs-root").getByRole("button", { name: "Contents" }).click();
+
+    // Capture the documentation navigation; the strip replaces the sheet's own title.
+    await expectAriaSnapshot(page, sidebar, "docs-sidebar-mobile");
   });
 });
 

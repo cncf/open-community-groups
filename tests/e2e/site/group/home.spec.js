@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { expect, test } from "../../fixtures.js";
 
 import { getSeedClock, queryE2eDatabase } from "../../database.js";
@@ -12,10 +14,31 @@ import {
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
 } from "../../seed.js";
-import { buildE2eUrl, dismissAlert, getSectionLink, navigateToGroup } from "../../utils.js";
+import {
+  buildE2eUrl,
+  dismissAlert,
+  getIntroSection,
+  getPageOverflow,
+  getSectionByHeading,
+  getSectionLink,
+  navigateToGroup,
+  sendCloseRequest,
+  swipeHorizontally,
+} from "../../utils.js";
 
 // Owner group credited on co-host group event cards.
 const COHOSTED_EVENT_OWNER_GROUP_NAME = TEST_GROUP_NAMES.epsilon;
+
+// Only the dashboard-only empty group has no upcoming events, and the desktop case toggles
+// it, so the phone case renders the template's own markup inside a seeded card.
+const GROUP_TEMPLATE = readFileSync(
+  new URL("../../../../ocg-server/templates/group/page.html", import.meta.url),
+  "utf8",
+);
+const NO_UPCOMING_EVENTS_MARKUP = GROUP_TEMPLATE.slice(
+  GROUP_TEMPLATE.indexOf('<div class="flex flex-col gap-3 relative">'),
+  GROUP_TEMPLATE.indexOf("{% endif -%}\n</div>\n</div>\n</div>\n{# End next event section"),
+);
 
 test.describe("group page", () => {
   test.beforeEach(async ({ page }) => {
@@ -428,8 +451,466 @@ test.describe("group page - responsive links", () => {
     // Load the group page before checking mobile links.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
 
-    // Verify mobile section links are visible.
-    await expect(getSectionLink(page, "Upcoming Events", "See all events", "mobile")).toBeVisible();
-    await expect(getSectionLink(page, "Past Events", "See all events", "mobile")).toBeVisible();
+    // Verify each heading carries a pill that keeps the group filters.
+    const upcomingLink = getSectionLink(page, "Upcoming Events", "See all upcoming events", "mobile");
+    const pastLink = getSectionLink(page, "Past Events", "See all past events", "mobile");
+    await expect(upcomingLink).toHaveText("See all");
+    await expect(upcomingLink).toHaveAttribute(
+      "href",
+      `/explore?entity=events&group[0]=${TEST_GROUP_SLUGS.community1.alpha}` +
+        `&group[1]=${TEST_GROUP_SLUGS.community1.beta}` +
+        `&community[0]=${TEST_COMMUNITY_NAME}`,
+    );
+    await expect(pastLink).toHaveText("See all");
+    await expect(pastLink).toHaveAttribute("href", /date_from=1900-01-01&sort_direction=desc/);
+
+    // Verify the bottom links give way to the pills.
+    await expect(
+      getSectionByHeading(page, "Upcoming Events").locator("div.md\\:hidden").getByRole("link"),
+    ).toHaveCount(0);
+
+    // Verify the past pill reaches the past list.
+    await pastLink.click();
+    await expect(page).toHaveURL(/\/explore\?.*date_from=1900-01-01/);
+  });
+});
+
+test.describe("group page - phone layout", () => {
+  /**
+   * Finds the card that holds a Next event or Location eyebrow.
+   * @param {import("@playwright/test").Page} page - Page under test.
+   * @param {string} eyebrow - Exact eyebrow text.
+   * @returns {import("@playwright/test").Locator} Card element.
+   */
+  const getSummaryCard = (page, eyebrow) =>
+    page
+      .getByText(eyebrow, { exact: true })
+      .locator("xpath=ancestor::div[contains(@class, 'rounded-lg')][1]");
+
+  test("summary keeps the logo and title above a filled Join and the Share pill @mobile", async ({
+    page,
+  }) => {
+    // Load the group signed out.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+    const summary = getIntroSection(page);
+    const join = summary.getByRole("button", { name: "Join group" });
+    const share = summary.getByRole("button", { name: "Share" });
+
+    // Verify desktop's logo and title stay, and the three-dots menu goes.
+    await expect(summary.locator("div.md\\:row-span-2")).toBeVisible();
+    await expect(summary.getByRole("heading", { level: 1, name: TEST_GROUP_NAMES.alpha })).toBeVisible();
+    await expect(summary.locator("details[data-group-actions-menu]")).toBeHidden();
+
+    // Verify Join is the page's filled main action.
+    await expect(join).toBeVisible();
+    await expect(join).toHaveCSS("color", "rgb(255, 255, 255)");
+    await expect(join).not.toHaveCSS("background-color", "rgb(255, 255, 255)");
+    await expect(share).toHaveCSS("background-color", "rgb(255, 255, 255)");
+
+    // Verify both pills share one 44px row across the panel's gutters.
+    const viewportWidth = page.viewportSize().width;
+    const joinBox = await join.boundingBox();
+    const shareBox = await share.boundingBox();
+    expect(joinBox.height).toBe(44);
+    expect(shareBox.height).toBe(44);
+    expect(shareBox.y).toBe(joinBox.y);
+    expect(joinBox.x).toBe(12);
+    expect(joinBox.x + joinBox.width).toBeLessThan(shareBox.x);
+    expect(shareBox.x + shareBox.width).toBeCloseTo(viewportWidth - 12, 1);
+  });
+
+  test("social links sit above the action row at 44px @mobile", async ({ page }) => {
+    // Load the group that carries seeded social links.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
+    const summary = getIntroSection(page);
+    const website = summary.locator('div.md\\:hidden a[title="Website"]');
+    await expect(website).toBeVisible();
+
+    // Verify the tap target and icon sizes.
+    const websiteBox = await website.boundingBox();
+    expect(websiteBox.width).toBe(44);
+    expect(websiteBox.height).toBe(44);
+    await expect(website.locator(".svg-icon")).toHaveCSS("width", "20px");
+
+    // Verify the links stay above Join, as on desktop.
+    const joinBox = await summary.getByRole("button", { name: "Join group" }).boundingBox();
+    expect(websiteBox.y + websiteBox.height).toBeLessThanOrEqual(joinBox.y);
+  });
+
+  test("social links keep their spacing on wide phones @mobile", async ({ page }) => {
+    // Load the group with two social links.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
+    const links = getIntroSection(page).locator("div.md\\:hidden a");
+    await expect(links).toHaveCount(2);
+
+    for (const width of [568, 639, 667, 700]) {
+      await test.step(`${width}px`, async () => {
+        await page.setViewportSize({ height: 375, width });
+
+        // Verify the columns stop spreading at a normal phone's spacing.
+        await expect
+          .poll(async () => {
+            const firstBox = await links.first().boundingBox();
+            const secondBox = await links.last().boundingBox();
+
+            return secondBox.x - (firstBox.x + firstBox.width);
+          })
+          .toBe(41);
+      });
+    }
+  });
+
+  test("next event and location read as matching cards @mobile", async ({ page }) => {
+    // Load the group that has a location and an upcoming event.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
+    const nextEventCard = getSummaryCard(page, "Next event");
+    const locationCard = getSummaryCard(page, "Location");
+    await expect(nextEventCard).toBeVisible();
+    await expect(locationCard).toBeVisible();
+
+    // Verify the cards share an edge, a width and a frame.
+    const nextEventBox = await nextEventCard.boundingBox();
+    const locationBox = await locationCard.boundingBox();
+    expect(locationBox.x).toBe(nextEventBox.x);
+    expect(locationBox.width).toBe(nextEventBox.width);
+    expect(locationBox.y - (nextEventBox.y + nextEventBox.height)).toBeCloseTo(12, 1);
+    for (const card of [nextEventCard, locationCard]) {
+      await expect(card).toHaveCSS("border-top-width", "1px");
+      await expect(card).toHaveCSS("border-top-left-radius", "8px");
+      await expect(card.locator(":scope > div")).toHaveCSS("padding-top", "12px");
+    }
+
+    // Verify the map panel keeps its fixed preview height.
+    expect((await locationCard.locator("div.border-dashed").boundingBox()).height).toBe(150);
+
+    // Verify See details reads as the small outlined pill.
+    const seeDetails = nextEventCard.getByRole("link", { name: "See details" });
+    await expect(seeDetails).toHaveCSS("font-size", "13px");
+  });
+
+  test("location card drops out when the group has no map @mobile", async ({ page }) => {
+    // Load the group that has no location.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+
+    // Verify Next event stays and the empty Location card goes.
+    await expect(getSummaryCard(page, "Next event")).toBeVisible();
+    await expect(page.getByText("Location", { exact: true })).toBeHidden();
+    await expect(page.getByText("Location not provided", { exact: true })).toBeHidden();
+  });
+
+  test("no upcoming events keeps the card with one plain message @mobile", async ({ page }) => {
+    // Render the empty state in a seeded Next event card.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+    const nextEventCard = getSummaryCard(page, "Next event");
+    const panel = nextEventCard.locator("div.border-dashed");
+    await panel.evaluate((element, markup) => {
+      element.innerHTML = markup;
+    }, NO_UPCOMING_EVENTS_MARKUP);
+
+    // Verify the message flows in the panel at the phone size.
+    const message = panel.getByText("No upcoming events scheduled", { exact: true });
+    await expect(message).toBeVisible();
+    await expect(message).toHaveCSS("font-size", "16px");
+    await expect(message.locator("..")).toHaveCSS("position", "static");
+
+    // Verify the skeleton bars go and the panel shrinks to its message.
+    await expect(panel.locator(".bg-stone-100")).toHaveCount(3);
+    await expect(panel.locator(".bg-stone-100:visible")).toHaveCount(0);
+    expect((await panel.boundingBox()).height).toBeLessThan(108);
+  });
+
+  test("gallery tile opens the lightbox and a swipe changes the image @mobile", async ({ owned, page }) => {
+    // Give a group two photos, which no seeded group has.
+    const groupId = TEST_GROUP_IDS.community1.alpha;
+    queryE2eDatabase(`
+      update "group"
+      set photos_urls = array['/static/images/e2e/event-banner.svg', '/static/images/e2e/event-logo.svg']
+      where group_id = '${groupId}';
+    `);
+    owned.defer(() =>
+      queryE2eDatabase(`update "group" set photos_urls = null where group_id = '${groupId}';`),
+    );
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+
+    // Open the lightbox from the second tile.
+    const gallery = page.locator("images-gallery");
+    const lightbox = gallery.locator(".modal");
+    const activeSlideImage = lightbox.locator(".z-30.translate-x-0 img");
+    const imageName = `Group ${TEST_GROUP_NAMES.alpha} image`;
+    await gallery.getByRole("button", { name: `Open ${imageName} 2` }).tap();
+    await expect(lightbox).not.toHaveClass(/opacity-0/);
+    await expect(activeSlideImage).toHaveAttribute("alt", `${imageName} 2`);
+
+    // Verify a swipe moves to the other image.
+    await swipeHorizontally(page, 300, 150);
+    await expect(activeSlideImage).toHaveAttribute("alt", `${imageName} 1`);
+  });
+
+  test("section titles pin as headings under the header @mobile", async ({ page }) => {
+    // Load the group with every seeded section.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+    const viewportWidth = page.viewportSize().width;
+
+    // Verify each title sits in a full-width strip.
+    for (const title of [
+      "About this group",
+      "Subgroups",
+      "Upcoming Events",
+      "Past Events",
+      "Organizers",
+      "Sponsors",
+    ]) {
+      const strip = page.locator(".section-strip", { hasText: title });
+      await expect(strip).toHaveCSS("position", "sticky");
+      await expect(strip).toHaveCSS("font-size", "15px");
+      const stripBox = await strip.boundingBox();
+      expect(stripBox.x).toBe(0);
+      expect(stripBox.width).toBe(viewportWidth);
+    }
+
+    // Scroll into the Upcoming Events section.
+    const upcomingStrip = page.locator(".section-strip", { hasText: "Upcoming Events" });
+    await upcomingStrip.evaluate((element) => {
+      window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top + 40);
+    });
+
+    // Verify the heading pins under the header with its See all pill.
+    await expect
+      .poll(() => upcomingStrip.evaluate((element) => element.getBoundingClientRect().top))
+      .toBe(63);
+    await expect(upcomingStrip.getByRole("link", { name: "See all upcoming events" })).toBeInViewport();
+  });
+
+  test("upcoming list stops at three cards @mobile", async ({ page }) => {
+    // Load the group with more than three upcoming events.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+    const upcomingGrid = getSectionByHeading(page, "Upcoming Events").locator(":scope > div.grid");
+
+    // Verify the rest stay behind See all.
+    expect(await upcomingGrid.locator(":scope > *").count()).toBeGreaterThan(3);
+    await expect(upcomingGrid.locator(":scope > *:visible")).toHaveCount(3);
+  });
+
+  test("about text shows read more only while clipped @mobile", async ({ page }) => {
+    // Load the group with a short seeded description.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+    const description = page.locator(".read-more-body");
+    const toggle = page.getByRole("button", { name: "Read more" });
+    await expect(description).toBeVisible();
+
+    // Verify the short description has nothing to expand.
+    await expect(toggle).toBeHidden();
+
+    // Grow the description past three lines.
+    await description.evaluate((element) => {
+      element.firstElementChild.textContent = "Long group description. ".repeat(40);
+    });
+
+    // Verify it clips at three lines behind the toggle.
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(await description.evaluate((element) => element.clientHeight)).toBe(72);
+
+    // Verify the toggle opens the text.
+    await toggle.click();
+    await expect(page.getByRole("button", { name: "Read less" })).toHaveAttribute("aria-expanded", "true");
+    expect(await description.evaluate((element) => element.clientHeight)).toBeGreaterThan(72);
+  });
+
+  test("action row and cards fit narrow phones without overflow @mobile", async ({ page }) => {
+    // Load the group with social links, a map and upcoming events.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
+    const summary = getIntroSection(page);
+    const share = summary.getByRole("button", { name: "Share" });
+
+    // Give the legend a long region, which no seeded group has.
+    await summary.locator("span.tracking-wide").evaluate((legend) => {
+      legend.textContent = "Asia Pacific, Middle East and North Africa Regional Chapters";
+    });
+
+    for (const width of [320, 360, 402]) {
+      await test.step(`${width}px`, async () => {
+        await page.setViewportSize({ height: 640, width });
+
+        // Verify the page holds its width and Share stays inside the gutter.
+        await expect.poll(() => getPageOverflow(page)).toBeLessThanOrEqual(0);
+        const shareBox = await share.boundingBox();
+        expect(shareBox.x + shareBox.width).toBeLessThanOrEqual(width - 12);
+      });
+    }
+  });
+});
+
+test.describe("group page - share and profile sheets", () => {
+  /**
+   * Stubs the system share before the page loads and records its calls.
+   * @param {import("@playwright/test").Page} page - Page under test.
+   * @param {string|null} rejection - DOMException name to reject with, or null to succeed.
+   * @returns {Promise<void>} Resolves once the stub is registered.
+   */
+  const stubSystemShare = (page, rejection) =>
+    page.addInitScript((rejectionName) => {
+      window.shareCalls = [];
+      Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true });
+      Object.defineProperty(navigator, "share", {
+        configurable: true,
+        value: async (data) => {
+          window.shareCalls.push(data);
+          if (rejectionName) {
+            throw new DOMException("Stubbed share result", rejectionName);
+          }
+        },
+      });
+    }, rejection);
+
+  /**
+   * Loads the group and returns its Share pill.
+   * @param {import("@playwright/test").Page} page - Page under test.
+   * @returns {Promise<import("@playwright/test").Locator>} Share pill button.
+   */
+  const openGroupWithSharePill = async (page) => {
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+
+    return page.locator('share-modal[trigger-variant="pill"]').getByRole("button", { name: "Share" });
+  };
+
+  /**
+   * Verifies a sheet panel rests on the bottom edge of the screen.
+   * @param {import("@playwright/test").Locator} dialog - Open dialog.
+   * @returns {Promise<void>} Resolves once the panel has settled.
+   */
+  const expectBottomSheet = async (dialog) => {
+    const panel = dialog.locator(".sheet-panel");
+    await expect(panel).toHaveAttribute("data-sheet-drag", "");
+    await expect
+      .poll(() =>
+        panel.evaluate((element) => Math.round(window.innerHeight - element.getBoundingClientRect().bottom)),
+      )
+      .toBe(0);
+  };
+
+  test("share pill hands off to the system share and opens nothing @mobile", async ({ page }) => {
+    // Load the page with a working system share.
+    await stubSystemShare(page, null);
+    const sharePill = await openGroupWithSharePill(page);
+
+    // Tap the pill.
+    await sharePill.click();
+
+    // Verify the system share got the canonical URL and the modal stayed closed.
+    await expect.poll(() => page.evaluate(() => window.shareCalls.length)).toBe(1);
+    const [shareCall] = await page.evaluate(() => window.shareCalls);
+    expect(shareCall).toEqual({
+      title: TEST_GROUP_NAMES.alpha,
+      url: buildE2eUrl(`/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}`),
+    });
+    await expect(page.getByRole("dialog", { name: "Share" })).toHaveCount(0);
+  });
+
+  test("share pill does nothing when the person cancels the system share @mobile", async ({ page }) => {
+    // Load the page with a system share the person dismisses.
+    await stubSystemShare(page, "AbortError");
+    const sharePill = await openGroupWithSharePill(page);
+
+    // Tap the pill.
+    await sharePill.click();
+
+    // Verify cancelling opens no fallback.
+    await expect.poll(() => page.evaluate(() => window.shareCalls.length)).toBe(1);
+    await expect(page.getByRole("dialog", { name: "Share" })).toHaveCount(0);
+    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+  });
+
+  test("share pill falls back to the sheet when the system share fails @mobile", async ({ page }) => {
+    // Load the page with a failing system share.
+    await stubSystemShare(page, "NotAllowedError");
+    const sharePill = await openGroupWithSharePill(page);
+
+    // Tap the pill.
+    await sharePill.click();
+
+    // Verify the share sheet opens as the fallback.
+    await expect.poll(() => page.evaluate(() => window.shareCalls.length)).toBe(1);
+    await expectBottomSheet(page.getByRole("dialog", { name: "Share" }));
+  });
+
+  test("share pill opens the sheet without system share, and Back-style close releases it @mobile", async ({
+    page,
+  }) => {
+    // Load the page without the system share.
+    await page.addInitScript(() => {
+      delete Navigator.prototype.canShare;
+      delete Navigator.prototype.share;
+    });
+    const sharePill = await openGroupWithSharePill(page);
+    const historyLength = await page.evaluate(() => window.history.length);
+
+    // Tap the pill.
+    await sharePill.click();
+    const shareDialog = page.getByRole("dialog", { name: "Share" });
+    await expectBottomSheet(shareDialog);
+    await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+
+    // Reach the CloseWatcher past the sheet's own Escape handler.
+    await sendCloseRequest(page);
+
+    // Verify the sheet closed and history did not move.
+    await expect(shareDialog).toHaveCount(0);
+    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
+  });
+
+  test("share sheet closes when dragged past the threshold @mobile", async ({ page }) => {
+    // Open the share sheet.
+    await page.addInitScript(() => {
+      delete Navigator.prototype.canShare;
+      delete Navigator.prototype.share;
+    });
+    const sharePill = await openGroupWithSharePill(page);
+    await sharePill.click();
+    const shareDialog = page.getByRole("dialog", { name: "Share" });
+    await expectBottomSheet(shareDialog);
+
+    // Drag the title row down from its start, away from the close button.
+    const box = await shareDialog.locator(".sheet-grab").boundingBox();
+    await page.mouse.move(box.x + 60, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 60, box.y + box.height / 2 + 200, { steps: 4 });
+    await page.mouse.up();
+
+    // Verify the drag closed the sheet through its real close path.
+    await expect(shareDialog).toHaveCount(0);
+    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+  });
+
+  test("organizer card shows a chevron and opens the profile as a sheet @mobile", async ({ page }) => {
+    // Load the group and find the organizer card.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+    const organizerCard = page.getByRole("button", { name: "View E2E Organizer One's profile" });
+    await expect(organizerCard.locator(".icon-arrow-right")).toBeVisible();
+    const historyLength = await page.evaluate(() => window.history.length);
+
+    // Open the profile.
+    await organizerCard.click();
+
+    // Verify the sheet keeps the dialog name while the title leaves the head.
+    const profileDialog = page.getByRole("dialog", { name: /^User/ });
+    await expectBottomSheet(profileDialog);
+    await expect(profileDialog).toContainText("E2E Organizer One");
+    await expect
+      .poll(() =>
+        profileDialog
+          .getByRole("button", { name: "Close modal" })
+          .evaluate((element) => element.getBoundingClientRect().height),
+      )
+      .toBe(44);
+
+    // Reach the CloseWatcher past the sheet's own Escape handler.
+    await sendCloseRequest(page);
+
+    // Verify the sheet closed and history did not move.
+    await expect(profileDialog).toHaveCount(0);
+    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
   });
 });

@@ -4,7 +4,8 @@
          data-group-check-in-root
          aria-labelledby="group-check-in-title">
   {# Check-in header -#}
-  <div data-group-check-in-scanner-view>
+  <div class="phone:px-3 phone:pt-4 phone:pb-3"
+       data-group-check-in-scanner-view>
     <h1 id="group-check-in-title"
         class="text-xl font-medium text-stone-900 lg:text-2xl">Check-In</h1>
     <p class="mt-1 text-sm/6 text-stone-500">
@@ -21,7 +22,7 @@
   {# Events available for check-in -#}
   {% if events.is_empty() -%}
     {# Empty state -#}
-    <div class="mt-8 rounded-lg border border-dashed border-stone-300 px-6 py-12 text-center"
+    <div class="mt-8 rounded-lg border border-dashed border-stone-300 px-6 py-12 text-center phone:mx-3"
          data-group-check-in-scanner-view>
       <div class="mx-auto size-8 svg-icon icon-qr-code bg-stone-400"></div>
       <h2 class="mt-4 text-lg font-semibold text-stone-900">No events available for check-in</h2>
@@ -30,17 +31,17 @@
     {# End empty state -#}
   {% else -%}
     {# Event cards -#}
-    <div class="mt-6 grid min-w-0 max-w-full grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2 2xl:grid-cols-3"
+    <div class="mt-6 grid min-w-0 max-w-full grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2 2xl:grid-cols-3 phone:mx-3 phone:mb-4 phone:mt-0 phone:gap-3"
          data-group-check-in-scanner-view>
       {% for event in events -%}
-        <article class="card-hover-border relative flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition-all hover:border-primary-300 hover:shadow-sm"
+        <article class="card-hover-border relative flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition-all hover:border-primary-300 hover:shadow-sm phone:pb-14"
                  data-group-check-in-card>
           {% call cards::check_in_event_card(event) -%}
           {% if event.in_progress -%}
             <span class="custom-badge bg-green-50 text-green-800">In progress</span>
           {% endif -%}
           <button type="button"
-                  class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                  class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 phone:absolute phone:inset-x-3 phone:bottom-3 phone:h-11 phone:justify-center phone:text-sm"
                   data-group-check-in-open
                   data-event-id="{{ event.event_id }}"
                   data-event-date="{{ event.starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}"

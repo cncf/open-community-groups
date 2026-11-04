@@ -1,4 +1,5 @@
 - /children: deep-equal
 - banner:
   - navigation "Main navigation":
+    - button "Open menu"
     - button "User menu"

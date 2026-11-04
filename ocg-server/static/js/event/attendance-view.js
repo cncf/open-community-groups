@@ -176,6 +176,7 @@ export const renderMeetingDetails = (isAttendee, meta) => {
   joinLinksLive.forEach((link) => {
     setElementHidden(link, !showAttendeeMeetingAccess);
     link.classList.toggle("xl:flex", showAttendeeMeetingAccess);
+    link.classList.toggle("phone:flex", showAttendeeMeetingAccess);
   });
 
   const joinLinksMenu = document.querySelectorAll("[data-join-link-menu]");

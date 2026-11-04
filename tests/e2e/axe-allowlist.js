@@ -45,7 +45,19 @@ export const AXE_ALLOWLIST = [
   {
     reason: USER_CHIP_INITIALS_REASON,
     rule: "label-content-name-mismatch",
+    scan: "event mobile",
+    target: "user-chip",
+  },
+  {
+    reason: USER_CHIP_INITIALS_REASON,
+    rule: "label-content-name-mismatch",
     scan: "group",
+    target: "user-chip",
+  },
+  {
+    reason: USER_CHIP_INITIALS_REASON,
+    rule: "label-content-name-mismatch",
+    scan: "group mobile",
     target: "user-chip",
   },
 ];

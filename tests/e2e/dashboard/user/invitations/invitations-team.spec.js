@@ -2,12 +2,16 @@ import { expect, test } from "../../../fixtures.js";
 import { restoreRow, snapshotRow } from "../../../database.js";
 import {
   cleanupCommunityTeamInvitation,
+  cleanupEventEnrollment,
+  cleanupGroupTeamInvitation,
   countTeamInvitationAuditLogs,
   setupCommunityTeamInvitation,
+  setupEventInvitation,
   setupGroupTeamInvitation,
 } from "../../../data-graphs/invitations.js";
 import { TEST_COMMUNITY_IDS, TEST_COMMUNITY_TITLE, TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
 import { buildE2eUrl, confirmAlert, navigateToPath, waitForActionResponse } from "../../../utils.js";
+import { getMobileNotice } from "../aria-helpers.js";
 import { openUserDashboardPath } from "../helpers.js";
 
 /** Seeded pending community viewer invitation of pending1. */
@@ -37,6 +41,9 @@ const PENDING2_GROUP_INVITATION = {
   role: "viewer",
   userId: TEST_USER_IDS.pending2,
 };
+
+/** Name of the owned event in the phone states test. */
+const PHONE_EVENT_NAME = "E2E phone invited event";
 
 test.describe("user dashboard invitations view", () => {
   test("empty state covers every invitation category", async ({ emptyUserPage }) => {
@@ -240,6 +247,166 @@ test.describe("user dashboard invitations view", () => {
     } finally {
       // Remove the owned community invitation if the rejection did not.
       cleanupCommunityTeamInvitation(PENDING2_COMMUNITY_INVITATION);
+    }
+  });
+});
+
+test.describe("user dashboard invitations states on phones @mobile", () => {
+  test("sections follow the pending invitations and the help link stays", async ({
+    emptyUserPage,
+    owned,
+  }) => {
+    const content = emptyUserPage.locator("#dashboard-content");
+    const title = (text) => content.getByText(text, { exact: true });
+    // The table renders one placeholder per breakpoint, and the first one serves phones.
+    const eventPlaceholder = title("You don't have any pending event invitation.").first();
+    const sharedEmptyState = title("No pending invitations");
+    const helpLink = content.getByRole("link", { name: "Open documentation" });
+
+    await test.step("no rows", async () => {
+      // Load the tab of a user without invitations.
+      await openUserDashboardPath("/dashboard/user?tab=invitations", emptyUserPage);
+
+      // Verify one shared empty state replaces the per-section placeholders.
+      await expect(title("Event Invitations")).toBeVisible();
+      await expect(helpLink).toBeVisible();
+      await expect(sharedEmptyState).toBeVisible();
+      await expect(eventPlaceholder).toBeHidden();
+
+      // Verify a tap just outside the 28px circle still reaches the help link.
+      const helpBox = await helpLink.boundingBox();
+      const tappedLink = await emptyUserPage.evaluate(
+        ({ x, y }) => document.elementFromPoint(x, y)?.closest("a")?.getAttribute("aria-label"),
+        { x: helpBox.x - 6, y: helpBox.y + helpBox.height / 2 },
+      );
+      expect(tappedLink).toContain("Open documentation");
+      await expect(title("Group Invitations")).toBeHidden();
+      await expect(title("Community Invitations")).toBeHidden();
+    });
+
+    // Invite the user to a group team.
+    const groupInvitation = { groupId: TEST_GROUP_IDS.community1.alpha, userId: TEST_USER_IDS.empty };
+    setupGroupTeamInvitation({ ...groupInvitation, role: "viewer" });
+    owned.defer(() => cleanupGroupTeamInvitation(groupInvitation));
+
+    await test.step("only team rows", async () => {
+      // Reload the tab with the team invitation.
+      await openUserDashboardPath("/dashboard/user?tab=invitations", emptyUserPage);
+
+      // Verify the event section keeps its placeholder and only sections with rows follow.
+      await expect(title("Event Invitations")).toBeVisible();
+      await expect(helpLink).toBeVisible();
+      await expect(eventPlaceholder).toBeVisible();
+      await expect(sharedEmptyState).toHaveCount(0);
+      await expect(title("Group Invitations")).toBeVisible();
+      await expect(title("Community Invitations")).toBeHidden();
+    });
+
+    // Replace the team invitation with an owned event invitation.
+    cleanupGroupTeamInvitation(groupInvitation);
+    const { eventId } = owned.event({ groupId: TEST_GROUP_IDS.community1.alpha, name: PHONE_EVENT_NAME });
+    const eventInvitation = { eventId, userId: TEST_USER_IDS.empty };
+    setupEventInvitation(eventInvitation);
+    owned.defer(() => cleanupEventEnrollment(eventInvitation));
+
+    await test.step("event rows", async () => {
+      // Reload the tab with the event invitation.
+      await openUserDashboardPath("/dashboard/user?tab=invitations", emptyUserPage);
+
+      // Verify the rows show under the desktop title, and the empty team sections hide.
+      await expect(title("Event Invitations")).toBeVisible();
+      await expect(helpLink).toBeVisible();
+      await expect(content.locator("tr", { hasText: PHONE_EVENT_NAME })).toBeVisible();
+      await expect(eventPlaceholder).toHaveCount(0);
+      await expect(title("Group Invitations")).toBeHidden();
+      await expect(title("Community Invitations")).toBeHidden();
+    });
+  });
+
+  test("the notice leaves Invitations while Inbox keeps it", async ({ member1Page }) => {
+    const notice = getMobileNotice(member1Page);
+    const main = member1Page.locator("#dashboard-main-content");
+
+    // Verify Invitations renders its content.
+    await openUserDashboardPath("/dashboard/user?tab=invitations", member1Page);
+    await expect(main).toBeVisible();
+    await expect(notice).toBeHidden();
+
+    // Verify Inbox stays desktop only.
+    await openUserDashboardPath("/dashboard/user?tab=inbox", member1Page);
+    await expect(notice).toBeVisible();
+    await expect(main).toBeHidden();
+  });
+
+  test("approving a team invitation uses the labelled action", async ({ pending1Page }) => {
+    await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
+    const groupRow = pending1Page.locator("#dashboard-content tr", { hasText: "Inactive Local Chapter" });
+    const approveButton = groupRow.getByRole("button", { name: "Approve" });
+    const rejectButton = groupRow.getByRole("button", { name: "Reject" });
+
+    try {
+      // Verify both labels show at 44px, side by side, with the role label above them.
+      await expect(groupRow.getByText("Role", { exact: true })).toBeVisible();
+      await expect(approveButton).toHaveText("Approve");
+      await expect(rejectButton).toHaveText("Reject");
+      const approveBox = await approveButton.boundingBox();
+      const rejectBox = await rejectButton.boundingBox();
+      expect(approveBox.height).toBeGreaterThanOrEqual(44);
+      expect(rejectBox.height).toBeGreaterThanOrEqual(44);
+      expect(rejectBox.y).toBe(approveBox.y);
+      expect(rejectBox.x).toBeGreaterThan(approveBox.x + approveBox.width);
+
+      // Verify only Approve carries an outline.
+      await expect(approveButton).toHaveCSS("border-top-width", "1px");
+      await expect(rejectButton).toHaveCSS("border-top-width", "0px");
+
+      // Approve the invitation.
+      await waitForActionResponse(pending1Page, () => approveButton.click(), {
+        method: "PUT",
+        urlEndsWith: "/accept",
+        urlIncludes: "/dashboard/user/invitations/group/",
+      });
+
+      // Verify the row leaves the list.
+      await pending1Page.reload();
+      await expect(groupRow).toHaveCount(0);
+    } finally {
+      // Restore the seeded invitation for later tests.
+      setupGroupTeamInvitation(PENDING1_GROUP_INVITATION);
+    }
+  });
+
+  test("rejecting a team invitation asks first", async ({ pending2Page }) => {
+    // Snapshot the seeded invitation, which the rejection deletes.
+    const invitationSnapshot = snapshotRow({
+      key: { group_id: PENDING2_GROUP_INVITATION.groupId, user_id: PENDING2_GROUP_INVITATION.userId },
+      table: "group_team",
+    });
+    await openUserDashboardPath("/dashboard/user?tab=invitations", pending2Page);
+    const rejectButton = pending2Page.locator(`#reject-group-${TEST_GROUP_IDS.community1.alpha}`);
+
+    try {
+      // Tap Reject and confirm.
+      await expect(rejectButton).toHaveText("Reject");
+      await rejectButton.click();
+      await waitForActionResponse(
+        pending2Page,
+        () =>
+          confirmAlert(pending2Page, { message: "Are you sure you would like to reject this invitation?" }),
+        {
+          method: "PUT",
+          urlEndsWith: "/reject",
+          urlIncludes: "/dashboard/user/invitations/group/",
+        },
+      );
+
+      // Verify the row leaves the list.
+      await pending2Page.reload();
+      await expect(rejectButton).toHaveCount(0);
+    } finally {
+      // Re-create the seeded group invitation with its original values.
+      setupGroupTeamInvitation(PENDING2_GROUP_INVITATION);
+      restoreRow(invitationSnapshot);
     }
   });
 });

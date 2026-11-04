@@ -82,14 +82,14 @@
 
 {% when ViewMode::List -%}
 {# List view -#}
-<div class="mt-5 flex flex-col gap-4 px-5 pb-5 md:mt-7 md:gap-5 md:px-7 md:pb-7">
+<div class="mt-5 flex flex-col gap-4 px-5 pb-5 md:mt-7 md:gap-5 md:px-7 md:pb-7 phone:mt-1 phone:gap-3 phone:px-3 phone:pb-4">
   {# Placeholder cards -#}
   {% if events.len() == 0 -%}
     <div class="no-results-default hidden">
       {{ feedback::alert(title = "No events found", content = "By default, only upcoming events are displayed. You can adjust the date range in the filters to search for past events, or try different search criteria.") -}}
     </div>
     <div class="no-results-filtered hidden">
-      {{ feedback::alert(title = "No events found", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
+      {{ feedback::alert(title = "No events found", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.", with_reset = true) -}}
     </div>
   {% endif -%}
   {# End placeholder cards -#}

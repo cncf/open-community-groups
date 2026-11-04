@@ -13,19 +13,19 @@
           data-group-check-in-close
           tabindex="-1"
           aria-label="Close QR scanner"></button>
-  <div class="modal-panel h-full max-h-full max-w-2xl p-4 sm:h-auto sm:max-h-[90vh]">
-    <div class="modal-card h-full max-h-full rounded-lg sm:h-auto sm:max-h-[calc(90vh-2rem)]">
+  <div class="modal-panel h-full max-h-full max-w-2xl p-4 sm:h-auto sm:max-h-[90vh] phone:max-sm:p-0 phone:max-sm:rounded-none">
+    <div class="modal-card h-full max-h-full rounded-lg sm:h-auto sm:max-h-[calc(90vh-2rem)] phone:max-sm:p-0 phone:max-sm:rounded-none phone:[&_button:has(>.icon-close)]:-m-1.5 phone:[&_button:has(>.icon-close)]:size-11">
       {{ dashboard::modal_header(title_id = "group-check-in-scanner-title",
         title = "Scan Attendee Codes",
         close_attrs = "data-group-check-in-close") -}}
 
-      <div class="modal-body flex-1 p-4 md:p-6">
-        <div class="w-full overflow-hidden rounded-xl border border-stone-200 bg-white">
-          <div class="p-4 sm:p-5">
+      <div class="modal-body flex-1 p-4 md:p-6 phone:max-sm:flex phone:max-sm:flex-col phone:max-sm:p-0">
+        <div class="w-full overflow-hidden rounded-xl border border-stone-200 bg-white phone:max-sm:flex phone:max-sm:shrink-0 phone:max-sm:basis-auto phone:max-sm:flex-1 phone:max-sm:flex-col phone:max-sm:rounded-none phone:max-sm:border-0">
+          <div class="p-4 sm:p-5 phone:max-sm:py-2">
             <h4 id="group-check-in-event-name"
-                class="text-lg font-semibold text-stone-900"></h4>
-            <dl class="mt-2 space-y-2 text-sm text-stone-600">
-              <div class="flex min-w-0 items-center gap-2">
+                class="text-lg font-semibold text-stone-900 phone:max-sm:line-clamp-1"></h4>
+            <dl class="mt-2 space-y-2 text-sm text-stone-600 phone:max-sm:mt-1 phone:max-sm:flex phone:max-sm:gap-3 phone:max-sm:space-y-0">
+              <div class="flex min-w-0 items-center gap-2 phone:max-sm:shrink-0 phone:max-sm:whitespace-nowrap">
                 <span class="svg-icon size-4 shrink-0 icon-date bg-stone-400"
                       aria-hidden="true"></span>
                 <dt class="sr-only">Date</dt>
@@ -42,13 +42,13 @@
             </dl>
           </div>
 
-          <div class="relative aspect-[4/3] overflow-hidden border-t border-stone-200 bg-stone-950">
+          <div class="relative aspect-[4/3] overflow-hidden border-t border-stone-200 bg-stone-950 phone:max-sm:aspect-auto phone:max-sm:min-h-48 phone:max-sm:flex-1">
             <video data-group-check-in-video
-                   class="size-full object-cover"
+                   class="size-full object-cover phone:max-sm:absolute phone:max-sm:inset-0"
                    playsinline
                    muted>
             </video>
-            <div class="pointer-events-none absolute inset-[10%] rounded-2xl border-2 border-white/70">
+            <div class="pointer-events-none absolute inset-[10%] rounded-2xl border-2 border-white/70 phone:max-sm:inset-auto phone:max-sm:top-1/2 phone:max-sm:left-1/2 phone:max-sm:aspect-square phone:max-sm:w-[70%] phone:max-sm:max-h-[80%] phone:max-sm:-translate-x-1/2 phone:max-sm:-translate-y-1/2">
               <div data-group-check-in-camera-unavailable
                    class="absolute inset-0 hidden items-center justify-center px-4 text-center text-stone-300">
                 <div>
@@ -68,32 +68,32 @@
           </div>
         </div>
 
-        <div class="mt-4 flex items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-600">
+        <div class="mt-4 flex items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-600 phone:max-sm:mx-4 phone:max-sm:mt-3">
           <span class="size-2 shrink-0 rounded-full bg-stone-400" aria-hidden="true"></span>
           <div id="group-check-in-scanner-status"
                data-group-check-in-status
                role="status">Starting camera...</div>
         </div>
 
-        <div class="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-          <div class="min-w-0">
+        <div class="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end phone:max-sm:mx-4 phone:max-sm:my-3 phone:max-sm:gap-3">
+          <div class="min-w-0 phone:has-[option:only-child]:max-sm:hidden">
             <label for="group-check-in-camera" class="form-label">Camera</label>
             <select id="group-check-in-camera"
                     data-group-check-in-camera
-                    class="select select-primary mt-1"
+                    class="select select-primary mt-1 phone:min-h-11"
                     disabled>
               <option>Finding cameras...</option>
             </select>
           </div>
 
           <div class="flex flex-wrap items-center gap-4 sm:pb-1">
-            <label class="inline-flex cursor-pointer items-center has-[:disabled]:cursor-not-allowed">
+            <label class="inline-flex cursor-pointer items-center has-[:disabled]:cursor-not-allowed phone:min-h-11">
               <input type="checkbox" class="sr-only peer" data-group-check-in-mute>
               <span class="toggle-track"></span>
               <span class="ms-3 text-sm font-medium text-stone-900"
                     data-group-check-in-mute-label>Mute sounds</span>
             </label>
-            <label class="hidden cursor-pointer items-center has-[:disabled]:cursor-not-allowed"
+            <label class="hidden cursor-pointer items-center has-[:disabled]:cursor-not-allowed phone:min-h-11"
                    data-group-check-in-torch-control>
               <input type="checkbox"
                      class="sr-only peer"

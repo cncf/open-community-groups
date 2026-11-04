@@ -1,11 +1,15 @@
 import { expect, test } from "../../fixtures.js";
 
-import { buildE2eUrl, navigateToPath } from "../../utils.js";
+import { buildE2eUrl, getPageOverflow, navigateToPath } from "../../utils.js";
 
 const ACTIVE_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada02";
 const ACTIVE_CREDENTIAL_IMAGE_FILE_NAME =
   "7744970faed216a0b2d3be30ffef5aeb1bd6b65c5407ccc4f3dd824d132f1656.png";
 const ACTIVE_CREDENTIAL_SHARE_DESCRIPTION = "Platform Ops Meetup (Platform Engineering Community)";
+const PHONE_VIEWPORTS = [
+  { height: 568, width: 320 },
+  { height: 874, width: 402 },
+];
 const REVOKED_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada04";
 
 test.describe("public badge credential page", () => {
@@ -91,5 +95,46 @@ test.describe("public badge credential page", () => {
     expect(imageResponse.status()).toBe(200);
     expect(imageHeaders["content-type"]).toBe("image/png");
     expect(imageHeaders["cross-origin-resource-policy"]).toBe("cross-origin");
+  });
+
+  for (const { height, width } of PHONE_VIEWPORTS) {
+    test(`credential card stacks at ${width}px @mobile`, async ({ page }) => {
+      // Load the credential at this phone size.
+      await page.setViewportSize({ height, width });
+      await navigateToPath(page, `/badges/credentials/${ACTIVE_CREDENTIAL_ID}`);
+      await expect(page.getByRole("heading", { name: "Host" })).toBeVisible();
+
+      // Verify the header height and the card's 12px gutter.
+      expect((await page.getByRole("navigation", { name: "Badge navigation" }).boundingBox()).height).toBe(
+        64,
+      );
+      const card = await page.locator("article").boundingBox();
+      expect(card.x).toBe(12);
+      expect(card.width).toBe(width - 24);
+
+      // Verify the art is centred above a centred title.
+      const art = await page.getByAltText("Host badge artwork").boundingBox();
+      expect(art.width).toBe(160);
+      expect(art.x + art.width / 2).toBeCloseTo(width / 2, 0);
+      await expect(page.getByRole("heading", { name: "Host" })).toHaveCSS("text-align", "center");
+
+      // Verify the page does not scroll sideways.
+      expect(await getPageOverflow(page)).toBeLessThanOrEqual(0);
+    });
+  }
+
+  test("revoked pill stays readable over broken artwork @mobile", async ({ page }) => {
+    // Break the artwork, which is what a failed image host looks like.
+    await page.route("**/images/badges/**", (route) => route.abort());
+    await navigateToPath(page, `/badges/credentials/${REVOKED_CREDENTIAL_ID}`);
+
+    // Verify the pill is painted on top at its own centre.
+    const pill = page.getByText("Permanently revoked", { exact: true });
+    await expect(pill).toBeVisible();
+    const isOnTop = await pill.evaluate((element) => {
+      const { height, width, x, y } = element.getBoundingClientRect();
+      return document.elementFromPoint(x + width / 2, y + height / 2) === element;
+    });
+    expect(isOnTop).toBe(true);
   });
 });

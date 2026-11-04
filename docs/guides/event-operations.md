@@ -675,7 +675,7 @@ This tab supports delivery-day execution. From here you can:
   attendees; larger events are rejected with a message stating both counts.
 
 Use [Check-In](/dashboard/group?tab=check-in ':ignore') for the primary event-day workflow. Select
-the community and group above the event list when working on mobile, then select an event, allow
+the community and group from the dashboard menu when working on mobile, then select an event, allow
 camera access, and scan each attendee's personal QR code. The scanner stays open, shows the attendee
 name and ticket, distinguishes a new check-in from a duplicate scan, and then resumes automatically.
 On desktop, the Attendees tab also offers a `Scan Attendee Codes` button that opens the same scanner in

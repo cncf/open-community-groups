@@ -3,7 +3,8 @@
 {# Control content -#}
 {# Used by event attendance buttons for their icon and label content. -#}
 {% macro control_content(label, icon_class) -%}
-  <div class="svg-icon size-3 {{ icon_class }}" data-attendance-icon></div>
+  <div class="svg-icon size-3 {{ icon_class }} phone:max-[360px]:hidden"
+       data-attendance-icon></div>
   <span data-attendance-label>{{ label }}</span>
 {% endmacro control_content -%}
 {# End control content -#}
@@ -65,10 +66,12 @@
     {% endif -%}
   {% endif -%}
   {% if event.has_single_free_public_ticket_type() -%}
-    <div class="svg-icon size-3 icon-user-plus" data-attendance-icon></div>
+    <div class="svg-icon size-3 icon-user-plus phone:max-[360px]:hidden"
+         data-attendance-icon></div>
     <span data-attendance-label>Attend event</span>
   {% else -%}
-    <div class="svg-icon size-3 icon-ticket" data-attendance-icon></div>
+    <div class="svg-icon size-3 icon-ticket phone:max-[360px]:hidden"
+         data-attendance-icon></div>
     <span data-attendance-label>Get ticket</span>
   {% endif -%}
 {% endmacro initial_control_content -%}

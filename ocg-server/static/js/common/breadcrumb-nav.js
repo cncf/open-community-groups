@@ -1,6 +1,7 @@
 import { html, nothing } from "lit";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
@@ -12,8 +13,8 @@ import { parseJsonAttribute } from "/static/js/common/utils.js";
  *   - href: string (optional) - Link URL (omit for current page)
  *   - icon: string (required) - Icon name without 'icon-' prefix
  *   - current: boolean (optional) - Mark as current page
- * - banner-url: string (optional) - URL to banner image displayed above breadcrumb (sm+)
- * - banner-mobile-url: string (optional) - URL to mobile banner image (below sm breakpoint)
+ * - banner-url: string (optional) - URL to banner image displayed above breadcrumb (sm+, not phones)
+ * - banner-mobile-url: string (optional) - URL to mobile banner image (below sm, and on phones)
  *
  * Example:
  * <breadcrumb-nav
@@ -123,7 +124,7 @@ export class BreadcrumbNav extends LitWrapper {
     if (isCurrent || !item.href) {
       return html`
         <div
-          class="flex items-center gap-3 px-4 py-2.5 ${isCurrent ? "bg-stone-50" : ""} text-sm"
+          class="flex items-center gap-3 px-4 py-2.5 ${isCurrent ? "bg-stone-50" : ""} text-sm phone:min-h-11"
           role="option"
           aria-selected="${isCurrent}"
           aria-current="${isCurrent ? "page" : nothing}"
@@ -141,7 +142,7 @@ export class BreadcrumbNav extends LitWrapper {
     return html`
       <a
         href="${item.href}"
-        class="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 transition-colors group text-sm"
+        class="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 transition-colors group text-sm phone:min-h-11"
         role="option"
         aria-selected="false"
         hx-boost="true"
@@ -220,13 +221,13 @@ export class BreadcrumbNav extends LitWrapper {
     const breadcrumbCount = Math.max(nonHomeItems.length, 1);
 
     return html`
-      <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8">
+      <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8 phone:px-3 phone:pt-3">
         <div class="bg-white border border-stone-200 rounded-lg">
           ${
             this.bannerMobileUrl
               ? html`
                   <div
-                    class="aspect-[61/12] w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg"
+                    class="aspect-[61/12] w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg phone:block phone:aspect-[1220/192]"
                   >
                     <img src="${this.bannerMobileUrl}" class="w-full h-full object-cover" alt="Banner" />
                   </div>
@@ -237,19 +238,19 @@ export class BreadcrumbNav extends LitWrapper {
             this.bannerUrl
               ? html`
                   <div
-                    class="aspect-[607/48] w-full border-b border-stone-200 hidden sm:block overflow-hidden rounded-t-lg"
+                    class="aspect-[607/48] w-full border-b border-stone-200 hidden sm:block overflow-hidden rounded-t-lg phone:hidden"
                   >
                     <img src="${this.bannerUrl}" class="w-full h-full object-cover" alt="Banner" />
                   </div>
                 `
               : ""
           }
-          <nav class="px-4 sm:px-6 lg:px-10 py-3" aria-label="Breadcrumb">
+          <nav class="px-4 sm:px-6 lg:px-10 py-3 phone:px-4 phone:py-0" aria-label="Breadcrumb">
             <!-- Mobile breadcrumb dropdown -->
-            <div class="relative sm:hidden">
+            <div class="relative sm:hidden phone:block">
               <button
                 data-breadcrumb-trigger
-                class="flex items-center gap-2 w-full text-sm"
+                class="flex items-center gap-2 w-full text-sm phone:min-h-11 phone:px-3"
                 aria-expanded="${this._isOpen}"
                 aria-haspopup="listbox"
                 aria-controls="${this._dropdownId}"
@@ -266,12 +267,13 @@ export class BreadcrumbNav extends LitWrapper {
               <div
                 id="${this._dropdownId}"
                 data-breadcrumb-dropdown
-                class="origin-top transition-all duration-150 ease-out motion-reduce:transition-none absolute top-full left-0 mt-3 -mx-4 w-[calc(100%+2rem)] bg-white rounded-xl shadow-lg border border-stone-200 z-50 max-h-64 overflow-y-auto ${
+                class="origin-top transition-all duration-150 ease-out motion-reduce:transition-none absolute top-full left-0 mt-3 -mx-4 w-[calc(100%+2rem)] bg-white rounded-xl shadow-lg border border-stone-200 z-50 max-h-64 overflow-y-auto phone:mt-1 phone:z-[25] ${
                   this._isOpen
                     ? "opacity-100 scale-y-100 translate-y-0"
-                    : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
+                    : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none phone:invisible"
                 }"
                 role="listbox"
+                aria-label="${isPhoneViewport() ? "Breadcrumb links" : nothing}"
               >
                 <div class="py-1">${this.items.map((item) => this._renderMobileDropdownItem(item))}</div>
               </div>
@@ -279,7 +281,7 @@ export class BreadcrumbNav extends LitWrapper {
 
             <!-- Desktop breadcrumb -->
             <ol
-              class="hidden sm:flex sm:items-center gap-2 text-sm text-stone-500 px-1"
+              class="hidden sm:flex sm:items-center gap-2 text-sm text-stone-500 px-1 phone:hidden"
               style="--breadcrumb-count: ${breadcrumbCount};"
             >
               ${this.items.map((item, index) => this._renderDesktopItem(item, index))}

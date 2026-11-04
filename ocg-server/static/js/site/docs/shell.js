@@ -10,9 +10,17 @@ import {
   createCurrentSidebarPageClickHandler,
   createSamePageAnchorClickHandler,
   mirrorDocsifyBodyClasses,
+  reloadDocsPage,
+  setupDocsPhoneShell,
   setupDocsTopOffsetSync,
   setupMobileSidebarOutsideDismiss,
+  syncPhoneDocsTitle,
 } from "/static/js/site/docs/interactions.js";
+import {
+  armDocsScrollRestore,
+  createDocsScrollRestore,
+  setupDocsScrollMemory,
+} from "/static/js/site/docs/scroll-memory.js";
 import { setupDocsScopedStyles } from "/static/js/site/docs/styles.js";
 
 const DOCS_ROOT_SELECTOR = ".ocg-docs-root";
@@ -27,6 +35,8 @@ let activeDocsRoot = null;
 let cleanupCurrentMount = null;
 let mountRunId = 0;
 let lifecycleListenersBound = false;
+const DOCS_RELOAD_LATCH_MS = 500;
+let reloadRequested = false;
 const DOCS_LOAD_ERROR_MESSAGE = "We could not load the documentation. Please refresh and try again.";
 
 /**
@@ -65,7 +75,7 @@ const handleSamePageAnchorClick = createSamePageAnchorClickHandler({
  */
 const ensureInitialDocsHash = () => {
   if (!window.location.hash) {
-    window.history.replaceState(null, "", `${window.location.pathname}#/`);
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}#/`);
   }
 };
 
@@ -136,17 +146,18 @@ const createDocsEnhancementsScheduler = (runId, docsRoot) => {
  * Builds docsify plugins for docs shell behavior.
  * @param {number} runId Mount run ID.
  * @param {HTMLElement} docsRoot Docs root container.
- * @param {() => void} scheduleDocsEnhancements Enhancements scheduler.
+ * @param {() => void} afterRender Callback for each finished render.
  * @returns {Function[]} Docsify plugins.
  */
-const createDocsifyPlugins = (runId, docsRoot, scheduleDocsEnhancements) => [
+const createDocsifyPlugins = (runId, docsRoot, afterRender) => [
   (hook) => {
     hook.doneEach(() => {
       if (!isCurrentMount(runId, docsRoot)) {
         return;
       }
 
-      scheduleDocsEnhancements();
+      syncPhoneDocsTitle(docsRoot);
+      afterRender();
     });
   },
 ];
@@ -188,6 +199,10 @@ const mountDocs = async (docsRoot, docsApp) => {
   };
 
   try {
+    // Taken before anything async, so a mount that never finishes cannot leave it for a later visit.
+    const { cancel: cancelScrollRestore, start: startScrollRestore } = createDocsScrollRestore();
+    cleanups.push(cancelScrollRestore);
+
     ensureInitialDocsHash();
     // Docsify injects its own styles, so scoped shell styles must exist first.
     await setupDocsScopedStyles();
@@ -203,7 +218,10 @@ const mountDocs = async (docsRoot, docsApp) => {
       createDocsEnhancementsScheduler(runId, docsRoot);
     cleanups.push(cancelDocsEnhancements);
 
-    const docsifyPlugins = createDocsifyPlugins(runId, docsRoot, scheduleDocsEnhancements);
+    const docsifyPlugins = createDocsifyPlugins(runId, docsRoot, () => {
+      scheduleDocsEnhancements();
+      startScrollRestore();
+    });
 
     // Docsify reads this global when its script module executes.
     window.$docsify = {
@@ -223,6 +241,9 @@ const mountDocs = async (docsRoot, docsApp) => {
     };
 
     cleanups.push(mirrorDocsifyBodyClasses(docsRoot));
+    cleanups.push(setupDocsPhoneShell(docsRoot));
+    // Docsify scrolls within its own hashchange listener, so this one has to bind first.
+    cleanups.push(setupDocsScrollMemory());
     document.addEventListener("click", handleCurrentSidebarPageClick);
     cleanups.push(() => {
       document.removeEventListener("click", handleCurrentSidebarPageClick);
@@ -263,18 +284,64 @@ const mountDocs = async (docsRoot, docsApp) => {
 };
 
 /**
- * Synchronizes docs lifecycle with current DOM.
+ * Reloads once, however many lifecycle events ask for it before the page goes.
  */
-const syncDocsLifecycle = () => {
-  const docsRoot = document.querySelector(DOCS_ROOT_SELECTOR);
-  const docsApp = docsRoot ? docsRoot.querySelector(DOCS_APP_SELECTOR) : null;
+const reloadDocsOnce = () => {
+  if (reloadRequested) {
+    return;
+  }
 
-  if (!docsRoot || !docsApp) {
+  // Covers the events of one restore. A reader can abort the reload and stay on this document.
+  reloadRequested = true;
+  setTimeout(() => {
+    reloadRequested = false;
+  }, DOCS_RELOAD_LATCH_MS);
+  reloadDocsPage();
+};
+
+/**
+ * Replaces a page HTMX restored from history, keeping the reader's place.
+ */
+const reloadRestoredDocs = () => {
+  armDocsScrollRestore();
+  reloadDocsOnce();
+};
+
+/**
+ * Synchronizes docs lifecycle with current DOM.
+ * @param {Event} [event] Lifecycle event, absent on the first run.
+ */
+const syncDocsLifecycle = (event) => {
+  const docsRoot = document.querySelector(DOCS_ROOT_SELECTOR);
+
+  // A restore always swaps the page and HTMX fires afterSwap first, so even a mount here is only
+  // as old as this restore. Snapshots and server markup both need a new start for Docsify.
+  if (event?.type === "htmx:historyRestore" && docsRoot) {
+    reloadRestoredDocs();
+    return;
+  }
+
+  // Docsify replaces the app node, so only the root tells a live mount from a new page.
+  if (docsRoot === activeDocsRoot && cleanupCurrentMount) {
+    return;
+  }
+
+  const docsApp = docsRoot?.querySelector(DOCS_APP_SELECTOR);
+
+  // Only a snapshot lacks the app node, when this module first ran after its restore event.
+  if (!event && docsRoot && !docsApp) {
+    reloadRestoredDocs();
+    return;
+  }
+
+  if (!docsApp) {
     unmountDocs();
     return;
   }
 
-  if (docsRoot === activeDocsRoot && cleanupCurrentMount) {
+  // Docsify only starts on script load, so a second mount in this document would never render.
+  if (typeof window.Docsify !== "undefined") {
+    reloadDocsOnce();
     return;
   }
 

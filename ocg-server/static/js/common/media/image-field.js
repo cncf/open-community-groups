@@ -476,12 +476,13 @@ export class ImageField extends LitWrapper {
           @drop=${this._handleDrop}
         >
           <div class="svg-icon size-8 shrink-0 icon-image bg-stone-400" aria-hidden="true"></div>
-          <p id=${this._promptId} class="text-sm">
-            <span class="font-semibold text-primary-600">Click to upload</span>
+          <p id=${this._promptId} class="text-sm phone:wrap-anywhere">
+            <span class="font-semibold text-primary-600 phone:hidden">Click to upload</span>
+            <span class="font-semibold text-primary-600 not-phone:hidden">Tap to upload</span>
             ${
               this._directFileName
                 ? html`<span> ${this._directFileName}</span>`
-                : html`<span> or drag and drop a file</span>`
+                : html`<span class="phone:hidden"> or drag and drop a file</span>`
             }
           </p>
           <input

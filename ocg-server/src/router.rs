@@ -366,6 +366,10 @@ pub(crate) async fn setup(
             get(event::availability),
         )
         .route(
+            "/{community}/group/{group_slug}/event/{event_slug}/calendar.ics",
+            get(event::calendar),
+        )
+        .route(
             "/{community}/group/{group_slug}/event/{event_slug}",
             get(event::page),
         )

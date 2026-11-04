@@ -4,7 +4,10 @@ use askama::Template;
 use axum::{
     Json,
     extract::{Path, State},
-    http::{HeaderMap, HeaderValue, StatusCode, Uri, header::CACHE_CONTROL},
+    http::{
+        HeaderMap, HeaderValue, StatusCode, Uri,
+        header::{CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_TYPE},
+    },
     response::{Html, IntoResponse, Redirect, Response},
 };
 use garde::Validate;
@@ -39,11 +42,12 @@ use crate::{
         event::{CfsModal, ContactModal, Page},
     },
     types::{
-        event::{EventAttendanceInput, EventEnrollmentStatus, EventFull},
+        event::{EventAttendanceInput, EventEnrollmentStatus, EventFull, EventSummary},
         inbox::InboxMessageInput,
         payments::{CheckoutInput, EventTicketType, PreparedEventCheckout},
         utm::UtmParams,
     },
+    util::build_public_event_calendar_attachment,
     validation::{MAX_ASSIGNED_EVENT_LABELS, MAX_LEN_DESCRIPTION_SHORT, trimmed_non_empty_opt},
 };
 
@@ -171,6 +175,46 @@ pub(crate) async fn contact_modal(
     };
 
     Ok(Html(template.render()?))
+}
+
+// Calendar handlers.
+
+/// Handler that serves the public calendar file of an event.
+///
+/// The file is identical for every visitor and carries no meeting access
+/// details, so it can be cached like the event page.
+#[instrument(skip_all)]
+pub(crate) async fn calendar(
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    CommunityId(community_id): CommunityId,
+    Path((_, group_slug, event_slug)): Path<(String, String, String)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get the event, which is only returned when it is public
+    let event = db
+        .get_event_full_by_slug(community_id, &group_slug, &event_slug)
+        .await?
+        .ok_or(HandlerError::NotFound)?;
+
+    // A calendar entry cannot be imported without a start time
+    if event.starts_at.is_none() {
+        return Err(HandlerError::NotFound);
+    }
+
+    // Build the calendar file
+    let attachment =
+        build_public_event_calendar_attachment(&server_cfg.base_url, &EventSummary::from(&event));
+
+    // Prepare response
+    let headers = [
+        (
+            CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", attachment.file_name),
+        ),
+        (CONTENT_TYPE, attachment.content_type),
+    ];
+
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, headers, attachment.data).into_response())
 }
 
 // JSON handlers.

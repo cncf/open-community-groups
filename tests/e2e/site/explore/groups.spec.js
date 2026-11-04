@@ -12,6 +12,18 @@ import {
 const GROUP_CARD_PATHNAME = /^\/explore\/groups\/[0-9a-f-]+\/card$/;
 
 test.describe("site explore groups page", () => {
+  for (const tag of ["", " @mobile"]) {
+    test(`bare landing lists groups from every community${tag}`, async ({ page }) => {
+      // Load Explore with no community selected.
+      await navigateToPath(page, "/explore?entity=groups");
+
+      // Verify groups from both seeded communities are listed.
+      const groupCards = page.locator("#cards-list article");
+      await expect(groupCards.filter({ hasText: TEST_GROUP_NAMES.alpha })).toHaveCount(1);
+      await expect(groupCards.filter({ hasText: TEST_GROUP_NAMES.delta })).toHaveCount(1);
+    });
+  }
+
   test("moves between group result pages and restores the first card", async ({ page }) => {
     // Paginate seeded group cards with one result per page.
     await expectPaginationNavigation(
@@ -98,6 +110,24 @@ test.describe("site explore groups page", () => {
     await backdrop.click({ position: { x: 350, y: 50 } });
     await expect(drawer).toHaveClass(/-translate-x-full/);
     await expect(backdrop).toHaveClass(/hidden/);
+  });
+
+  test("offers Reset filters from the empty state @mobile", async ({ page }) => {
+    // Load a search with no matches.
+    await navigateToPath(page, "/explore?entity=groups&ts_query=No%20matching%20group");
+    const resetButton = page.getByRole("alert").getByRole("button", { name: "Reset filters" });
+    await expect(resetButton).toBeVisible();
+
+    // Reset from the alert.
+    await waitForActionResponse(page, () => resetButton.click(), {
+      method: "GET",
+      pathname: "/explore/groups-section",
+      status: 200,
+    });
+
+    // Verify the search cleared and results came back.
+    await expect(page.getByPlaceholder("Search groups")).toHaveValue("");
+    await expect(page.locator("#cards-list article").first()).toBeVisible();
   });
 
   test("filters move between the drawer and the sidebar at the lg breakpoint", async ({ page }) => {

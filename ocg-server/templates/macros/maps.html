@@ -18,12 +18,12 @@
           class="absolute inset-0 z-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
           aria-label="Open full map view"></button>
   {% if let Some(text) = &overlay_text -%}
-    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block">
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block phone:block phone:max-w-[calc(100%-1rem)] phone:rounded-lg phone:whitespace-normal phone:wrap-anywhere">
       {{ text }}
     </div>
   {% endif -%}
   {% if let Some(text) = &small_overlay_text -%}
-    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none block sm:hidden md:block xl:hidden">
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none block sm:hidden md:block xl:hidden phone:hidden">
       {{ text }}
     </div>
   {% endif -%}
@@ -36,30 +36,30 @@
        class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1200] justify-center items-center w-full md:inset-0 h-full max-h-full flex">
     <div id="backdrop-{{ base_id }}-map-modal"
          class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"></div>
-    <div class="modal-panel p-4 max-w-4xl">
-      <div class="modal-card rounded-lg">
-        <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+    <div class="modal-panel p-4 max-w-4xl phone:p-0">
+      <div class="modal-card sheet-panel rounded-lg">
+        <div class="sheet-head sheet-grab flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t phone:py-0">
           <h3 id="{{ base_id }}-map-modal-title"
-              class="text-xl font-semibold text-stone-900">{{ modal_title }} location</h3>
+              class="text-xl font-semibold text-stone-900 phone:min-w-0 phone:truncate">{{ modal_title }} location</h3>
           <button id="close-{{ base_id }}-map-modal"
                   type="button"
-                  class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center">
+                  class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center phone:shrink-0">
             <div class="svg-icon h-5 w-5 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
             <span class="sr-only">Close modal</span>
           </button>
         </div>
-        <div class="modal-body p-4 md:p-6">
+        <div class="modal-body sheet-body p-4 md:p-6 phone:p-3">
           <div class="relative">
             <div id="{{ base_id }}-map-modal-map"
-                 class="w-full h-[500px] md:h-[600px] rounded-lg overflow-hidden border border-stone-200">
+                 class="w-full h-[500px] md:h-[600px] rounded-lg overflow-hidden border border-stone-200 phone:h-[60dvh]">
             </div>
             {% if let Some(text) = &overlay_text -%}
-              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block">
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block phone:block phone:max-w-[calc(100%-1rem)] phone:rounded-lg phone:whitespace-normal phone:wrap-anywhere">
                 {{ text }}
               </div>
             {% endif -%}
             {% if let Some(text) = &small_overlay_text -%}
-              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none md:block xl:hidden">
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none md:block xl:hidden phone:hidden">
                 {{ text }}
               </div>
             {% endif -%}

@@ -1,0 +1,12 @@
+- /children: deep-equal
+- region "Verify an OCG badge":
+  - form "Verify an OCG badge":
+    - heading "Verify an OCG badge" [level=1]
+    - paragraph: Enter an OCG credential URL or ID, or upload an exported PNG.
+    - text: Credential URL or ID
+    - textbox "Credential URL or ID":
+      - /placeholder: https://... or credential ID
+    - text: Exported PNG
+    - button "Exported PNG Tap to upload":
+      - paragraph: Tap to upload
+    - button "Verify badge"

@@ -121,6 +121,27 @@ describe("common utilities", () => {
     expect(description.querySelector("p")).to.equal(null);
   });
 
+  it("leaves images that handle their own failure alone", () => {
+    // Create an image that keeps its own failure state.
+    const container = document.createElement("div");
+    const image = document.createElement("img");
+    image.dataset.ocgSkipBrokenImage = "";
+    image.src = "https://example.com/missing.png";
+    container.append(image);
+    document.body.append(container);
+
+    // Assert the error event.
+    image.dispatchEvent(new Event("error"));
+
+    // The image keeps its element and source, and no tile or positioning is added.
+    expect(applyBrokenImagePlaceholder(image)).to.equal(false);
+    expect(image.isConnected).to.equal(true);
+    expect(image.src).to.equal("https://example.com/missing.png");
+    expect(image.dataset.ocgBrokenImagePlaceholder).to.equal(undefined);
+    expect(container.querySelector("[data-ocg-broken-image-icon]")).to.equal(null);
+    expect(container.classList.contains("relative")).to.equal(false);
+  });
+
   it("removes opted-in images that failed before the error listener ran", () => {
     // Create the completed failed image fixture.
     const description = document.createElement("div");

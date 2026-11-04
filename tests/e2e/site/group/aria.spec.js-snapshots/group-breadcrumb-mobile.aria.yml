@@ -1,7 +1,3 @@
 - /children: deep-equal
 - navigation "Breadcrumb":
   - button "Platform Ops Meetup"
-  - listbox:
-    - option "Home"
-    - option "Platform Engineering Community"
-    - option "Platform Ops Meetup" [selected]

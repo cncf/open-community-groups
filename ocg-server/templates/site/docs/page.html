@@ -3,9 +3,14 @@
 
 {# Site Docs Page -#}
 {% block content -%}
-  <section class="w-full ocg-docs-root relative overflow-hidden"
+  <section class="w-full ocg-docs-root relative overflow-hidden phone:overflow-visible"
            aria-label="Documentation"
            data-ocg-docs="/static/docs/index.html#/">
+    {# Phone heading; shell.css places Docsify's toggle on it and keys its phone rules to it -#}
+    <div class="section-strip section-strip-stone section-strip-plain not-phone:hidden"
+         data-docs-strip>
+      <p class="section-strip-title font-semibold text-stone-900">Documentation</p>
+    </div>
     <div id="ocg-docs-app"
          class="flex min-h-[50vh] items-center justify-center">
       {{ ui::main_loading() -}}

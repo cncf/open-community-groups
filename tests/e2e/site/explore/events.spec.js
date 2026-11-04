@@ -7,11 +7,13 @@ import {
   TEST_COHOSTED_EVENT,
   TEST_COMMUNITY_NAME,
   TEST_COMMUNITY_NAME_2,
+  TEST_COMMUNITY_TITLE,
   TEST_EVENT_NAMES,
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUG,
 } from "../../seed.js";
+import { enableDesktopVersion, expectPageLayout } from "../../snapshots.js";
 import {
   buildE2eUrl,
   expectPaginationNavigation,
@@ -27,10 +29,93 @@ const COHOSTED_EVENT_COHOST_NAMES = [TEST_GROUP_NAMES.delta, TEST_GROUP_NAMES.ze
 // Path of the explore event card requested when a calendar event opens its tooltip.
 const EVENT_CARD_PATHNAME = /^\/explore\/events\/[0-9a-f-]+\/card$/;
 
+// Explore URLs and what the Groups switch must send from each one.
+const ENTITY_SWITCH_CASES = [
+  {
+    path: "/explore?entity=events&ts_query=Platform",
+    params: { "community[0]": null, ts_query: "Platform" },
+  },
+  {
+    path: `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+    params: { "community[0]": TEST_COMMUNITY_NAME, ts_query: null },
+  },
+  {
+    path: `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}&ts_query=Platform`,
+    params: { "community[0]": TEST_COMMUNITY_NAME, ts_query: "Platform" },
+  },
+  {
+    path: `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}&community[1]=${TEST_COMMUNITY_NAME_2}`,
+    params: { "community[0]": null, "community[1]": null, ts_query: null },
+  },
+];
+
 // Date filter values `SearchEventsFilters` rejects: unparsable, out-of-range and non-`YYYY` years.
 const INVALID_DATE_FILTERS = ["not-a-date", "2031-13-45", "2031/01/15", "0000-01-01", "-5000-01-01"];
 
+/** Selects the applied filter chips of the phone chip row. */
+const getAppliedFilterChips = (page) =>
+  page.getByRole("group", { name: "Applied filters" }).getByRole("button");
+
+/** Selects the phone Events and Groups switch. */
+const getEntitySwitch = (page) => page.getByRole("group", { name: "Show" });
+
+/** Selects the option label of a collapsible filter by its value. */
+const getFilterOption = (filter, value) =>
+  filter.locator("label").filter({ has: filter.page().locator(`input[value="${value}"]`) });
+
+/** Opens the phone filter sheet and returns it. */
+const openFilterSheet = async (page) => {
+  await page.locator("#open-filters").click();
+  const sheet = page.locator("#drawer-filters");
+  await expect(page.getByRole("dialog", { name: "Filters" })).toBeVisible();
+  return sheet;
+};
+
+/** Records the URL of every HTMX section request sent from now on. */
+const trackSectionRequests = (page, pathname) => {
+  const requests = [];
+  page.on("request", (request) => {
+    if (request.resourceType() === "xhr" && new URL(request.url()).pathname === pathname) {
+      requests.push(request.url());
+    }
+  });
+  return requests;
+};
+
 test.describe("site explore events page", () => {
+  test("entity switch keeps the search and a single selected community", async ({ page }) => {
+    for (const { params, path } of ENTITY_SWITCH_CASES) {
+      // Load the filtered events page.
+      await navigateToPath(page, path);
+
+      // Switch to groups from the visible sidebar and verify the values sent.
+      await waitForActionResponse(page, () => page.locator("#explore-filters #groups-button").click(), {
+        method: "GET",
+        params,
+        pathname: "/explore/groups-section",
+        status: 200,
+      });
+      await expect(page.locator("#groups-form")).toBeAttached();
+    }
+  });
+
+  test("entity switch keeps the search and a single selected community @mobile", async ({ page }) => {
+    for (const { params, path } of ENTITY_SWITCH_CASES) {
+      // Load the filtered events page.
+      await navigateToPath(page, path);
+
+      // Switch to groups from the phone switch and verify the values sent.
+      const groupsSwitch = getEntitySwitch(page).getByRole("button", { name: "Groups" });
+      await waitForActionResponse(page, () => groupsSwitch.click(), {
+        method: "GET",
+        params,
+        pathname: "/explore/groups-section",
+        status: 200,
+      });
+      await expect(page.locator("#groups-form-mobile")).toBeAttached();
+    }
+  });
+
   test("omits free badges from explore and calendar event cards", async ({ page }) => {
     // Load community event results before checking free badge visibility.
     await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
@@ -812,6 +897,667 @@ test.describe("site explore events page", () => {
     await expect(notice).toContainText("Showing 1 of 1865 events.");
     await expect(notice).toContainText("Refine your filters to see them all.");
     await expect(page.getByRole("status").filter({ has: notice })).toHaveCount(1);
+  });
+
+  test("pins the results bar under the header while the controls scroll away @mobile", async ({ page }) => {
+    // Load the bare landing, long enough to scroll.
+    await navigateToPath(page, "/explore?entity=events");
+    await expect(getEntitySwitch(page).getByRole("button", { name: "Events" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    // Scroll past the controls.
+    const header = page.locator("#header");
+    const resultsBar = page.locator(".section-strip-results");
+    await page.evaluate(() => window.scrollTo({ top: 500, behavior: "instant" }));
+
+    // Verify the bar pins right under the header, and the controls left the screen.
+    const headerBox = await header.boundingBox();
+    await expect
+      .poll(async () => (await resultsBar.boundingBox()).y)
+      .toBeCloseTo(headerBox.y + headerBox.height - 1, 0);
+    await expect(page.getByPlaceholder("Search events")).not.toBeInViewport();
+  });
+
+  test("hides the calendar and map switch and the desktop title @mobile", async ({ page }) => {
+    // Load the bare landing.
+    await navigateToPath(page, "/explore?entity=events");
+
+    // Verify one page title and the list as the only view.
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Explore");
+    await expect(page.locator('label[for="calendar"]')).toBeHidden();
+    await expect(page.locator("#cards-list article").first()).toBeVisible();
+  });
+
+  test("shows no chip row on the bare landing @mobile", async ({ page }) => {
+    // Load Explore with no filters.
+    await navigateToPath(page, "/explore?entity=events");
+
+    // Verify nothing reads as applied.
+    await expect(page.getByRole("group", { name: "Applied filters" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Open filters", exact: true })).toBeVisible();
+  });
+
+  test("defers sheet changes and applies them with one request @mobile", async ({ page }) => {
+    // Count the section requests of a filter session.
+    await navigateToPath(page, "/explore?entity=events");
+    const requests = trackSectionRequests(page, "/explore/events-section");
+    const historyLength = await page.evaluate(() => history.length);
+
+    // Pick two types inside the sheet.
+    const sheet = await openFilterSheet(page);
+    await expect(sheet.getByRole("button", { name: "Close filters" })).toBeFocused();
+    await sheet.locator("label").filter({ hasText: "Virtual" }).click();
+    await sheet.locator("label").filter({ hasText: "Hybrid" }).click();
+
+    // Verify nothing went out and the sheet stayed.
+    await expect(sheet).toBeVisible();
+    expect(requests).toHaveLength(0);
+
+    // Apply both with one tap.
+    await waitForActionResponse(page, () => sheet.getByRole("button", { name: "Show results" }).click(), {
+      method: "GET",
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+
+    // Verify one request, one history entry, and a released sheet.
+    expect(requests).toHaveLength(1);
+    expect(new URL(requests[0]).searchParams.getAll("kind[]")).toEqual(["virtual", "hybrid"]);
+    expect(await page.evaluate(() => history.length)).toBe(historyLength + 1);
+    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
+    await expect(page.locator("#open-filters")).toBeFocused();
+    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expect(getAppliedFilterChips(page)).toHaveCount(2);
+  });
+
+  test("outlines a Type tile as soon as it is tapped, and clears it on the next tap @mobile", async ({
+    page,
+  }) => {
+    // Open the sheet with one type applied, which the server outlines.
+    await navigateToPath(page, "/explore?entity=events&kind[0]=virtual");
+    const sheet = await openFilterSheet(page);
+    const applied = sheet.locator("label").filter({ hasText: "Virtual" });
+    const tile = sheet.locator("label").filter({ hasText: "Hybrid" });
+    const borderColor = (label) => label.evaluate((node) => getComputedStyle(node).borderTopColor);
+    const [appliedColor, restingColor] = [await borderColor(applied), await borderColor(tile)];
+    expect(appliedColor).not.toBe(restingColor);
+
+    // Verify the deferred choice looks like an applied one, and an unticked one like a resting one.
+    await tile.click();
+    await expect.poll(() => borderColor(tile)).toBe(appliedColor);
+    await applied.click();
+    await expect.poll(() => borderColor(applied)).toBe(restingColor);
+  });
+
+  test("keeps one community selected and highlighted across taps @mobile", async ({ page }) => {
+    // Open the sheet on the bare landing.
+    await navigateToPath(page, "/explore?entity=events");
+    const sheet = await openFilterSheet(page);
+    const community = sheet.locator('collapsible-filter[name="community"]');
+    const firstOption = getFilterOption(community, TEST_COMMUNITY_NAME);
+    const secondOption = getFilterOption(community, TEST_COMMUNITY_NAME_2);
+
+    // Tap two options.
+    await firstOption.click();
+    await secondOption.click();
+
+    // Verify only the second is checked and highlighted.
+    await expect(community.locator("input:checked")).toHaveCount(1);
+    await expect(secondOption.locator("input")).toBeChecked();
+    await expect(secondOption).toHaveClass(/border-primary-500/);
+    await expect(firstOption).not.toHaveClass(/border-primary-500/);
+  });
+
+  test("reveals a community's filters in the sheet before applying @mobile", async ({ page }) => {
+    // Open the sheet on the bare landing, which has no community filters.
+    await navigateToPath(page, "/explore?entity=events");
+    const requests = trackSectionRequests(page, "/explore/events-section");
+    const sheet = await openFilterSheet(page);
+    await expect(sheet.locator('collapsible-filter[name="region"]')).toHaveCount(0);
+
+    // Keep a choice, then pick a community.
+    await sheet.locator("label").filter({ hasText: "Virtual" }).click();
+    const community = sheet.locator('collapsible-filter[name="community"]');
+    await getFilterOption(community, TEST_COMMUNITY_NAME).click();
+
+    // Verify the filters appear at once, with the choice and the focus kept.
+    await expect(sheet.locator('collapsible-filter[name="region"]')).toBeAttached();
+    await expect(sheet.locator('input[name="kind[]"][value="virtual"]')).toBeChecked();
+    await expect(community.locator("input:checked")).toBeFocused();
+
+    // Verify the results, the URL and the history wait for Show results.
+    expect(requests).toHaveLength(0);
+    expect(new URL(page.url()).searchParams.has("community[]")).toBe(false);
+
+    // Apply and verify the community lands.
+    await waitForActionResponse(page, () => sheet.getByRole("button", { name: "Show results" }).click(), {
+      method: "GET",
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+    expect(requests).toHaveLength(1);
+    await expect(page.getByRole("button", { name: `Remove filter ${TEST_COMMUNITY_TITLE}` })).toBeVisible();
+  });
+
+  test("leaves a refreshed sheet out of the history entry it applied from @mobile", async ({ page }) => {
+    // Apply a community from the sheet, which refreshes its form first.
+    await navigateToPath(page, "/explore?entity=events");
+    const sheet = await openFilterSheet(page);
+    const community = sheet.locator('collapsible-filter[name="community"]');
+    await getFilterOption(community, TEST_COMMUNITY_NAME).click();
+    await expect(sheet.locator('collapsible-filter[name="region"]')).toBeAttached();
+    await waitForActionResponse(page, () => sheet.getByRole("button", { name: "Show results" }).click(), {
+      method: "GET",
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+    await expect(getAppliedFilterChips(page)).toHaveCount(1);
+
+    // Go back to the bare landing.
+    await page.goBack();
+    await expect(page).not.toHaveURL(/community/);
+    await expect(page.getByRole("group", { name: "Applied filters" })).toHaveCount(0);
+
+    // Verify the sheet matches the page again, in the DOM and once reopened.
+    await expect(sheet.locator('collapsible-filter[name="region"]')).toHaveCount(0);
+    await openFilterSheet(page);
+    await expect(sheet.locator('collapsible-filter[name="community"] input:checked')).toHaveCount(0);
+    await expect(sheet.locator('collapsible-filter[name="region"]')).toHaveCount(0);
+  });
+
+  test("keeps a refreshed sheet out of the entry Forward leaves @mobile", async ({ page }) => {
+    // Build a history entry to go forward to, and return to the bare landing.
+    await navigateToPath(page, "/explore?entity=events");
+    await waitForActionResponse(
+      page,
+      () => getEntitySwitch(page).getByRole("button", { name: "Groups" }).click(),
+      { method: "GET", pathname: "/explore/groups-section", status: 200 },
+    );
+    await page.goBack();
+    await expect(page.locator("#events-form-mobile")).toBeAttached();
+
+    // Refresh the sheet's form, then leave with the sheet open.
+    const sheet = await openFilterSheet(page);
+    const community = sheet.locator('collapsible-filter[name="community"]');
+    await getFilterOption(community, TEST_COMMUNITY_NAME).click();
+    await expect(sheet.locator('collapsible-filter[name="region"]')).toBeAttached();
+    await page.goForward();
+    await expect(page.locator("#groups-form-mobile")).toBeAttached();
+
+    // Verify the landing comes back with only the filters it applied.
+    await page.goBack();
+    await expect(page.locator("#events-form-mobile")).toBeAttached();
+    await expect(sheet.locator('collapsible-filter[name="region"]')).toHaveCount(0);
+  });
+
+  test("removes chips one after the other with no lost tap @mobile", async ({ page }) => {
+    // Load two chips of the same filter.
+    await navigateToPath(page, "/explore?entity=events&kind[0]=virtual&kind[1]=hybrid");
+    const chips = getAppliedFilterChips(page);
+    await expect(chips).toHaveCount(2);
+
+    // Tap both without waiting for the first swap.
+    await chips.first().click();
+    await chips.last().click();
+
+    // Verify both went, and the last request wins.
+    await expect(chips).toHaveCount(0);
+    await expect(page).not.toHaveURL(/kind(\[|%5B)/);
+    await expect(page.locator("#results")).toBeFocused();
+    await expect(page.locator("#explore-filter-status")).toContainText("Removed filter");
+  });
+
+  test("moves focus to the next chip after a removal @mobile", async ({ page }) => {
+    // Load two chips.
+    await navigateToPath(page, "/explore?entity=events&kind[0]=virtual&kind[1]=hybrid");
+    const chips = getAppliedFilterChips(page);
+
+    // Remove the first.
+    await waitForActionResponse(page, () => chips.first().click(), {
+      method: "GET",
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+
+    // Verify the remaining chip takes focus.
+    await expect(chips).toHaveCount(1);
+    await expect(chips.first()).toBeFocused();
+  });
+
+  test("moves focus to the pressed side of the switch after each swap @mobile", async ({ page }) => {
+    // Load events, then press Groups.
+    await navigateToPath(page, "/explore?entity=events");
+    const entitySwitch = getEntitySwitch(page);
+    await waitForActionResponse(page, () => entitySwitch.getByRole("button", { name: "Groups" }).click(), {
+      method: "GET",
+      pathname: "/explore/groups-section",
+      status: 200,
+    });
+
+    // Verify the new pressed button takes focus instead of the body.
+    await expect(page.locator("#groups-form-mobile")).toBeAttached();
+    const pressedGroups = entitySwitch.getByRole("button", { name: "Groups", pressed: true });
+    await expect(pressedGroups).toBeFocused();
+
+    // Verify the way back behaves the same.
+    await waitForActionResponse(page, () => entitySwitch.getByRole("button", { name: "Events" }).click(), {
+      method: "GET",
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+    await expect(page.locator("#events-form-mobile")).toBeAttached();
+    await expect(entitySwitch.getByRole("button", { name: "Events", pressed: true })).toBeFocused();
+
+    // Verify the buttons stay free of ids.
+    await expect(entitySwitch.locator("button[id]")).toHaveCount(0);
+  });
+
+  test("alerts when a switch press fails and leaves focus alone @mobile", async ({ page }) => {
+    // Fail the Groups section request.
+    await navigateToPath(page, "/explore?entity=events");
+    await page.route("**/explore/groups-section*", (route) => route.fulfill({ status: 500 }));
+    const groupsResponse = page.waitForResponse((response) =>
+      response.url().includes("/explore/groups-section"),
+    );
+    const entitySwitch = getEntitySwitch(page);
+    await entitySwitch.getByRole("button", { name: "Groups" }).click();
+    await groupsResponse;
+
+    // Verify the failure is reported, and the page stays on Events.
+    await expect(page.locator(".swal2-popup")).toBeVisible();
+    await expect(entitySwitch.getByRole("button", { name: "Events", pressed: true })).toBeVisible();
+    await page.locator(".swal2-confirm").click();
+    await expect(page.locator(".swal2-popup")).toHaveCount(0);
+
+    // Run a search, which swaps the same side of the section, and wait for it to settle.
+    const sectionSettled = page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const handleSettle = (event) => {
+            if (event.target.id === "entity-section") {
+              document.removeEventListener("htmx:afterSettle", handleSettle);
+              resolve();
+            }
+          };
+          document.addEventListener("htmx:afterSettle", handleSettle);
+        }),
+    );
+    const search = page.locator("#ts_query");
+    await search.fill("alpha");
+    await search.press("Enter");
+    await sectionSettled;
+
+    // Verify the failed press did not pull focus to the switch.
+    await expect(entitySwitch.getByRole("button", { name: "Events", pressed: true })).not.toBeFocused();
+  });
+
+  test("rings an option in the sheet while its hidden checkbox has keyboard focus @mobile", async ({
+    page,
+  }) => {
+    // Open the sheet and reach a Community option from the keyboard.
+    await navigateToPath(page, "/explore?entity=events");
+    const sheet = await openFilterSheet(page);
+    const community = sheet.locator('collapsible-filter[name="community"]');
+    const option = community.locator("label").first();
+    await page.keyboard.press("Tab");
+    await option.locator("input").focus();
+
+    // Verify the label shows the focus its clipped checkbox cannot.
+    await expect(option).toHaveCSS("box-shadow", /0px 0px 0px 2px/);
+  });
+
+  test("recovers a chip whose removal failed @mobile", async ({ page }) => {
+    // Load a checkbox chip and a community chip, then fail the section request.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}&kind[0]=virtual`);
+    const chips = getAppliedFilterChips(page);
+    await expect(chips).toHaveCount(2);
+    const failSection = (route) => route.fulfill({ status: 500, body: "" });
+    await page.route("**/explore/events-section?**", failSection);
+
+    // Fail one removal of each, dismissing the alert each time.
+    const form = page.locator("#explore-filters .filters-form");
+    const virtual = page.getByRole("button", { name: "Remove filter Virtual" });
+    const community = page.getByRole("button", { name: `Remove filter ${TEST_COMMUNITY_TITLE}` });
+    for (const chip of [virtual, community]) {
+      await chip.click();
+      await expect(page.locator(".swal2-popup")).toBeVisible();
+      await page.locator(".swal2-confirm").click();
+      await expect(page.locator(".swal2-popup")).toHaveCount(0);
+    }
+
+    // Verify the chips stay, the form matches them, and nothing read as removed.
+    await expect(chips).toHaveCount(2);
+    await expect(form.locator('input[name="kind[]"][value="virtual"]')).toBeChecked();
+    await expect(form.locator(`input[name="community[]"][value="${TEST_COMMUNITY_NAME}"]`)).toBeChecked();
+    await expect(page.locator("#explore-filter-status")).toHaveText("");
+
+    // Verify an unrelated request does not carry the removal.
+    await page.unroute("**/explore/events-section?**", failSection);
+    await waitForActionResponse(page, () => page.locator("#sort_selector").selectOption("date-desc"), {
+      method: "GET",
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+    await expect(chips).toHaveCount(2);
+    await expect(page.locator("#explore-filter-status")).toHaveText("");
+
+    // Verify the chip works once the server is back.
+    await waitForActionResponse(page, () => virtual.click(), {
+      method: "GET",
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+    await expect(chips).toHaveCount(1);
+    await expect(page.locator("#explore-filter-status")).toContainText("Removed filter Virtual");
+  });
+
+  test("restores a closed sheet when Back leaves an open one @mobile", async ({ page }) => {
+    // Build a history entry to go back to.
+    await navigateToPath(page, "/explore?entity=events");
+    await waitForActionResponse(
+      page,
+      () => getEntitySwitch(page).getByRole("button", { name: "Groups" }).click(),
+      { method: "GET", pathname: "/explore/groups-section", status: 200 },
+    );
+
+    // Go back with the sheet open.
+    await openFilterSheet(page);
+    await page.goBack();
+
+    // Verify the restored page holds no open state.
+    await expect(page.locator("#events-form-mobile")).toBeAttached();
+    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
+    await expect(page.locator("#drawer-filters")).toHaveClass(/-translate-x-full/);
+    await expect(page.locator("#drawer-backdrop")).toHaveClass(/hidden/);
+    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+
+    // Verify Forward restores a closed sheet, which still opens.
+    await page.goForward();
+    await expect(page.locator("#groups-form-mobile")).toBeAttached();
+    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
+    await openFilterSheet(page);
+  });
+
+  test("applies pending changes through the sheet's close request @mobile", async ({ page }) => {
+    // Leave a pending change in the sheet.
+    await navigateToPath(page, "/explore?entity=events");
+    const requests = trackSectionRequests(page, "/explore/events-section");
+    const sheet = await openFilterSheet(page);
+    await sheet.locator("label").filter({ hasText: "Virtual" }).click();
+
+    // Reach the CloseWatcher, as Android Back does, past the sheet's own Escape handler.
+    await page.evaluate(() => {
+      window.addEventListener("keydown", (event) => event.stopImmediatePropagation(), {
+        capture: true,
+        once: true,
+      });
+    });
+    await waitForActionResponse(page, () => page.keyboard.press("Escape"), {
+      method: "GET",
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+
+    // Verify the choice was applied in one request and the sheet went away.
+    expect(requests).toHaveLength(1);
+    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
+    await expect(getAppliedFilterChips(page)).toHaveCount(1);
+  });
+
+  test("closes an Escape in the Group filter on its dropdown only @mobile", async ({ page }) => {
+    // Open the sheet with a community, which brings the Group filter.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    const sheet = await openFilterSheet(page);
+    const groupSearch = sheet.getByRole("combobox", { name: "Group filter" });
+    await groupSearch.click();
+    await expect(groupSearch).toHaveAttribute("aria-expanded", "true");
+
+    // Escape closes the dropdown and leaves the sheet.
+    await page.keyboard.press("Escape");
+    await expect(groupSearch).toHaveAttribute("aria-expanded", "false");
+    await expect(sheet).toBeVisible();
+
+    // A second Escape closes the sheet.
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
+  });
+
+  test("keeps the sheet's title and footer in place when a low option takes focus @mobile", async ({
+    page,
+  }) => {
+    // Open the sheet in landscape, where the options run past the footer.
+    await page.setViewportSize({ height: 375, width: 667 });
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    const sheet = await openFilterSheet(page);
+
+    // Focus the last option, as a keyboard or a screen reader does.
+    await sheet.locator('input[name="event_category[]"]').last().focus();
+
+    // Verify the form scrolled to it, and the panel around it stayed put.
+    expect(await sheet.locator("form").evaluate((form) => form.scrollTop)).toBeGreaterThan(0);
+    expect(await sheet.evaluate((panel) => panel.scrollTop)).toBe(0);
+    await expect(sheet.getByRole("button", { name: "Close filters" })).toBeInViewport();
+    await expect(sheet.getByRole("button", { name: "Show results" })).toBeInViewport();
+  });
+
+  test("closes the sheet by dragging its title row @mobile", async ({ page }) => {
+    // Open the sheet with nothing pending.
+    await navigateToPath(page, "/explore?entity=events");
+    const sheet = await openFilterSheet(page);
+    const grabber = sheet.locator(".sheet-grab");
+    const box = await grabber.boundingBox();
+
+    // Drag the row down past the threshold.
+    await page.mouse.move(box.x + 60, box.y + 12);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 60, box.y + 212, { steps: 8 });
+    await page.mouse.up();
+
+    // Verify the sheet closed and focus went back.
+    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
+    await expect(page.locator("#open-filters")).toBeFocused();
+  });
+
+  test("alerts on a failed apply and keeps the choices in the sheet @mobile", async ({ page }) => {
+    // Fail the section request.
+    await navigateToPath(page, "/explore?entity=events");
+    await page.route("**/explore/events-section?**", (route) => route.fulfill({ status: 500, body: "" }));
+
+    // Apply a change.
+    const sheet = await openFilterSheet(page);
+    await sheet.locator("label").filter({ hasText: "Virtual" }).click();
+    await sheet.getByRole("button", { name: "Show results" }).click();
+
+    // Verify the alert shows above the sheet, and the choice stays.
+    await expect(page.locator(".swal2-popup")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Filters" })).toBeAttached();
+    await expect(sheet.locator('input[name="kind[]"][value="virtual"]')).toBeChecked();
+  });
+
+  test("leaves the calendar for the list when a rotation reaches phone width @mobile", async ({ page }) => {
+    // Load the calendar in landscape, above the phone width.
+    await page.setViewportSize({ height: 390, width: 844 });
+    await navigateToPath(
+      page,
+      "/explore?entity=events&view_mode=calendar&date_from=2030-01-01&date_to=2030-01-31",
+    );
+    await expect(page.locator("#calendar-box")).toBeVisible();
+
+    // Rotate into phone width.
+    await page.setViewportSize({ height: 844, width: 390 });
+
+    // Verify the list replaced the calendar, without its month.
+    await expect(page).not.toHaveURL(/view_mode|date_from|date_to/);
+    await expect(page.locator("#cards-list article").first()).toBeVisible();
+  });
+
+  test("closes the sheet and drops phone attributes on rotation out of phone width @mobile", async ({
+    page,
+  }) => {
+    // Open the sheet on a phone.
+    await navigateToPath(page, "/explore?entity=events");
+    await expect(page.locator(".filters-form").first()).toHaveAttribute("hx-sync", /#entity-section/);
+    await openFilterSheet(page);
+
+    // Rotate past the phone width.
+    await page.setViewportSize({ height: 390, width: 844 });
+
+    // Verify nothing held survives.
+    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
+    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expect(page.locator(".filters-form[hx-sync]")).toHaveCount(0);
+    await expect(page.locator("#ts_query")).not.toHaveAttribute("enterkeyhint", /.*/);
+  });
+
+  test("lands paging below the results bar @mobile", async ({ page }) => {
+    // Load a paged list and reach its pager.
+    await navigateToPath(page, "/explore?entity=events&limit=3&offset=0");
+    const nextLink = page.locator(".pagination").getByRole("link", { name: "Next" });
+    await nextLink.scrollIntoViewIfNeeded();
+    await expect(page.locator(".pagination").getByRole("link", { name: "First" })).toBeHidden();
+
+    // Go to the next page.
+    await waitForActionResponse(page, () => nextLink.click(), {
+      method: "GET",
+      pathname: "/explore/events-results-section",
+      status: 200,
+    });
+
+    // Verify the first card lands right under the pinned bar.
+    const resultsBar = page.locator(".section-strip-results");
+    const firstCard = page.locator("#cards-list article").first();
+    await expect
+      .poll(async () => {
+        const [bar, card] = [await resultsBar.boundingBox(), await firstCard.boundingBox()];
+        return card.y - (bar.y + bar.height);
+      })
+      .toBeGreaterThanOrEqual(0);
+    await expect.poll(async () => (await firstCard.boundingBox()).y).toBeLessThan(160);
+  });
+
+  test("offers Reset filters from the filtered empty state @mobile", async ({ page }) => {
+    // Load a search with no matches.
+    await navigateToPath(page, "/explore?entity=events&ts_query=No%20matching%20event");
+    const emptyState = page.locator(".no-results-filtered:not(.hidden)");
+    await expect(emptyState).toBeVisible();
+    await expect(page.locator("#sort_selector")).toBeHidden();
+    await expect(page.getByText("0 results", { exact: true })).toBeVisible();
+
+    // Reset from the alert.
+    await waitForActionResponse(
+      page,
+      () => emptyState.getByRole("button", { name: "Reset filters" }).click(),
+      { method: "GET", pathname: "/explore/events-section", status: 200 },
+    );
+
+    // Verify the search cleared and results came back.
+    await expect(page.getByPlaceholder("Search events")).toHaveValue("");
+    await expect(page.locator("#cards-list article").first()).toBeVisible();
+  });
+
+  test("fits filters and chips at 320px @mobile", async ({ page }) => {
+    // Load a filtered list on the narrowest phone.
+    await page.setViewportSize({ height: 640, width: 320 });
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}&kind[0]=in-person&kind[1]=virtual&kind[2]=hybrid`,
+    );
+
+    // Verify the page does not scroll sideways, open or closed.
+    await expectPageLayout(page, { regions: [page.locator("#explore-cards")] });
+    await openFilterSheet(page);
+    await expectPageLayout(page, { regions: [page.getByRole("dialog", { name: "Filters" })] });
+  });
+
+  test("keeps each chip in the casing of its filter @mobile", async ({ page }) => {
+    // Load a list with a Type, a Group and a Community chip.
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}&group[0]=${TEST_GROUP_SLUG}&kind[0]=in-person`,
+    );
+    const chips = page.getByRole("group", { name: "Applied filters" });
+    const chipLabel = (name) => chips.locator(`[data-applied-filter="${name}"] span span`).first();
+
+    // Verify Type and Group read as desktop's tile and search chip do.
+    await expect(chipLabel("kind")).toHaveText("In-person", { useInnerText: true });
+    await expect(chipLabel("group")).toHaveCSS("text-transform", "none");
+    await expect(chipLabel("community")).toHaveCSS("text-transform", "capitalize");
+  });
+
+  test("wraps a long unbroken option inside its tile @mobile", async ({ page }) => {
+    // Give the Community filter a name with no break opportunity.
+    await page.setViewportSize({ height: 640, width: 320 });
+    await navigateToPath(page, "/explore?entity=events");
+    const sheet = await openFilterSheet(page);
+    const filter = sheet.locator('collapsible-filter[name="community"]');
+    await filter.evaluate((element, name) => {
+      element.visibleOptions = [{ name, value: "long-name" }, ...element.visibleOptions];
+    }, "Supercalifragilistic".repeat(4));
+    const tile = getFilterOption(filter, "long-name");
+    await expect(tile).toBeVisible();
+
+    // Verify the text stays within the tile's own edge.
+    const overflow = await tile.evaluate(
+      (label) =>
+        label.querySelector("div").getBoundingClientRect().right - label.getBoundingClientRect().right,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  test("lets the Group search fill its box @mobile", async ({ page }) => {
+    // Open a sheet that has the Group filter.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    const sheet = await openFilterSheet(page);
+    const search = sheet.getByRole("combobox", { name: "Group filter" });
+    await expect(search).toBeVisible();
+
+    // Verify a tap anywhere on the box's height lands on the input.
+    const box = await search.boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(42);
+  });
+
+  test("shows a whole co-hosted title at 320px @mobile", async ({ page }) => {
+    // Load the co-hosted card on the narrowest phone.
+    await page.setViewportSize({ height: 640, width: 320 });
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME_2}`);
+    const eventCard = page.getByRole("link").filter({ hasText: TEST_COHOSTED_EVENT.name }).first();
+    const title = eventCard.getByText(TEST_COHOSTED_EVENT.name, { exact: true });
+    await expect(title).toBeVisible();
+
+    // Verify the title takes two lines instead of cutting off.
+    await expect(title).toHaveCSS("-webkit-line-clamp", "2");
+    const clipped = await title.evaluate((node) => node.scrollHeight > node.clientHeight);
+    expect(clipped).toBe(false);
+  });
+
+  test("keeps the location readable beside two badges @mobile", async ({ page }) => {
+    // Load a Hybrid card with a price at a large phone width.
+    await page.setViewportSize({ height: 874, width: 402 });
+    await navigateToPath(page, "/explore?entity=events&ts_query=Secondary%20Hybrid");
+    const eventCard = page.getByRole("link").filter({ hasText: "Secondary Hybrid Event" }).first();
+    await expect(eventCard).toBeVisible();
+
+    // Verify the badges wrap before the place name is cut short.
+    const location = eventCard.locator(".icon-text span").filter({ hasText: "E2E Admission Hall" });
+    const truncated = await location.evaluate((node) => node.scrollWidth > node.clientWidth);
+    expect(truncated).toBe(false);
+  });
+
+  test("keeps the desktop layout in the desktop version @mobile", async ({ page }) => {
+    // Load a filtered list in the desktop version of a phone.
+    await enableDesktopVersion(page);
+    await navigateToPath(page, "/explore?entity=events&kind[0]=virtual");
+
+    // Verify the side panel is back, with nothing of the phone layout around it.
+    await expect(page.locator("#explore-filters")).toBeVisible();
+    await expect(page.locator('label[for="calendar"]')).toBeVisible();
+    await expect(getEntitySwitch(page)).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Applied filters" })).toHaveCount(0);
+    await expect(page.locator(".section-strip-results")).not.toHaveCSS("position", "sticky");
+    await expect(page.locator(".filters-form[hx-sync]")).toHaveCount(0);
+    await expect(page.locator("#ts_query")).not.toHaveAttribute("enterkeyhint", /.*/);
   });
 
   test("treats blank date filters as missing and rejects malformed ones", async ({ request }) => {

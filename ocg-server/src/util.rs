@@ -7,7 +7,10 @@ use sha2::{Digest, Sha256};
 
 use crate::{
     config::HttpClientConfig,
-    types::{event::EventSummary, notifications::Attachment},
+    types::{
+        event::{EventKind, EventSummary},
+        notifications::Attachment,
+    },
 };
 
 /// Returns a base URL without trailing slashes.
@@ -19,14 +22,16 @@ pub(crate) fn base_url_without_trailing_slash(base_url: &str) -> &str {
 pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSummary) -> Attachment {
     // Prepare some event data
     let description = build_event_calendar_description(event);
-    let location = event.location(512);
+    let event_name = replace_ics_line_breaks(&event.name);
+    let group_name = replace_ics_line_breaks(&event.group_name);
+    let location = event.location(512).map(|location| replace_ics_line_breaks(&location));
     let uid = format!("{}", event.event_id);
     let tz_string = event.timezone.to_string();
 
     // Setup ical event
     let mut ical_event = Event::new();
     ical_event
-        .summary(&event.name)
+        .summary(&event_name)
         .uid(&uid)
         .timestamp(Utc::now())
         .created(Utc::now())
@@ -73,7 +78,7 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
             .append_parameter(("X-APPLE-RADIUS", "100"))
             .append_parameter((
                 "X-APPLE-TITLE",
-                quote_ics_parameter_value(location.as_deref().unwrap_or(&event.name)).as_str(),
+                quote_ics_parameter_value(location.as_deref().unwrap_or(&event_name)).as_str(),
             ));
         if let Some(address) = &location {
             let escaped_address = quote_ics_parameter_value(address);
@@ -83,7 +88,7 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
     }
 
     // Setup calendar and add ical event
-    let calendar_name = format!("{} - {}", event.group_name, event.name);
+    let calendar_name = format!("{group_name} - {event_name}");
     let mut calendar = Calendar::new();
     calendar
         .name(&calendar_name)
@@ -129,7 +134,12 @@ fn build_event_calendar_description(event: &EventSummary) -> String {
         description.push(format!("Meeting password: {password}"));
     }
 
-    description.join("\n\n")
+    // Keep line breaks only between the parts
+    description
+        .iter()
+        .map(|part| replace_ics_line_breaks(part))
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 /// Build the event page link based on the base URL and event and group slugs.
@@ -155,6 +165,40 @@ pub(crate) fn build_http_client(cfg: &HttpClientConfig) -> Result<reqwest::Clien
         .timeout(cfg.request_timeout())
         .build()
         .context("error building http client")
+}
+
+/// Build the publicly downloadable iCalendar (ICS) file for the specified event.
+///
+/// Anyone can fetch this file, so it never carries meeting access details, nor
+/// venue data left on a virtual event, which the event page does not show.
+pub(crate) fn build_public_event_calendar_attachment(
+    base_url: &str,
+    event: &EventSummary,
+) -> Attachment {
+    // Remove the meeting access details from a copy of the event
+    let mut public_event = EventSummary {
+        meeting_join_instructions: None,
+        meeting_join_url: None,
+        meeting_password: None,
+        ..event.clone()
+    };
+
+    // Remove the venue of a virtual event
+    if public_event.kind == EventKind::Virtual {
+        public_event.latitude = None;
+        public_event.longitude = None;
+        public_event.venue_address = None;
+        public_event.venue_city = None;
+        public_event.venue_country_code = None;
+        public_event.venue_country_name = None;
+        public_event.venue_name = None;
+        public_event.venue_state_code = None;
+        public_event.venue_state_name = None;
+        public_event.venue_zip_code = None;
+    }
+
+    // Build the calendar from the public copy
+    build_event_calendar_attachment(base_url, &public_event)
 }
 
 /// Build the user dashboard events link.
@@ -186,7 +230,7 @@ fn format_datetime_for_ics<Tz: chrono::TimeZone>(dt: &DateTime<Tz>) -> String {
 /// Quote parameter value for ICS output according to RFC 5545 section 3.2.
 fn quote_ics_parameter_value(input: &str) -> String {
     // Remove characters not allowed
-    let sanitized = input.replace('"', "");
+    let sanitized = replace_ics_line_breaks(input).replace('"', "");
 
     // Quote if it contains special characters
     if sanitized.contains(',') || sanitized.contains(';') || sanitized.contains(':') {
@@ -196,13 +240,16 @@ fn quote_ics_parameter_value(input: &str) -> String {
     }
 }
 
+/// Replaces CR and LF with spaces, so a value cannot start a new ICS content line.
+fn replace_ics_line_breaks(input: &str) -> String {
+    input.replace(['\r', '\n'], " ")
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::{TimeZone, Utc};
     use chrono_tz::America::Los_Angeles;
     use uuid::Uuid;
-
-    use crate::types::event::EventKind;
 
     use super::*;
 
@@ -274,6 +321,123 @@ mod tests {
     }
 
     #[test]
+    fn test_build_event_calendar_attachment_replaces_line_breaks() {
+        // Setup a canceled event, whose description has several parts, with
+        // properties injected into every free text field
+        let mut event = sample_event(true);
+        event.description_short =
+            Some("URL:https://evil.test/first\r\nURL:https://evil.test/second".to_string());
+        event.group_name = "Group\r\nURL:https://evil.test/group".to_string();
+        event.name =
+            "Meetup\r\nBEGIN:VEVENT\r\nUID:injected\r\nSUMMARY:Injected\r\nEND:VEVENT\rX-CR:bare"
+                .to_string();
+        event.venue_address = Some("Hall\r\nURL:https://evil.test/venue".to_string());
+
+        // Build the calendar and split it into unfolded content lines
+        let attachment = build_event_calendar_attachment(BASE_URL, &event);
+        let data = String::from_utf8(attachment.data).unwrap();
+        let unfolded = data.replace("\r\n ", "");
+        let lines: Vec<&str> = unfolded.split("\r\n").collect();
+
+        // Check no line break is left inside a content line
+        assert!(lines.iter().all(|line| !line.contains(['\r', '\n'])));
+
+        // Check no injected property starts a line
+        for line in ["BEGIN:VEVENT", "END:VEVENT"] {
+            assert_eq!(lines.iter().filter(|value| **value == line).count(), 1);
+        }
+        for prefix in [
+            "SUMMARY:Injected",
+            "UID:injected",
+            "URL:https://evil.test",
+            "X-CR:",
+        ] {
+            assert!(
+                !lines.iter().any(|line| line.starts_with(prefix)),
+                "{prefix}"
+            );
+        }
+
+        // Check the text stays on its own property
+        assert!(unfolded.contains("SUMMARY:Meetup  BEGIN:VEVENT  UID:injected"));
+        assert!(unfolded.contains("LOCATION:Test Venue\\, Hall  URL:https://evil.test/venue"));
+        assert!(unfolded.contains("NAME:Group  URL:https://evil.test/group - Meetup"));
+        assert!(unfolded.contains(concat!(
+            r"DESCRIPTION:** This event has been canceled **\n\n",
+            "URL:https://evil.test/first  URL:https://evil.test/second",
+        )));
+    }
+
+    #[test]
+    fn test_build_public_event_calendar_attachment_removes_meeting_access() {
+        // Setup an event with every meeting access detail
+        let mut event = sample_event(false);
+        event.meeting_join_instructions = Some("Use the private room".to_string());
+
+        // Build the public calendar
+        let attachment = build_public_event_calendar_attachment(BASE_URL, &event);
+        let data = String::from_utf8(attachment.data).unwrap();
+        let unfolded = data.replace("\r\n ", "").replace("\n ", "");
+
+        // Check the meeting access details are gone
+        assert!(!unfolded.contains("Meeting link"));
+        assert!(!unfolded.contains("https://example.test/live"));
+        assert!(!unfolded.contains("Meeting password"));
+        assert!(!unfolded.contains("secret123"));
+        assert!(!unfolded.contains("Use the private room"));
+
+        // Check the rest of the calendar is kept
+        assert_eq!(attachment.content_type, "text/calendar; charset=utf-8");
+        assert_eq!(attachment.file_name, "event-test-event.ics");
+        assert!(unfolded.contains("DESCRIPTION:Short description"));
+        assert!(unfolded.contains("DTSTART;TZID=America/Los_Angeles:20260112T110000"));
+        assert!(unfolded.contains("SUMMARY:Test Event"));
+        assert!(
+            unfolded.contains(
+                "URL:https://example.test/test-community/group/test-group/event/test-event"
+            )
+        );
+    }
+
+    #[test]
+    fn test_build_public_event_calendar_attachment_removes_venue_of_virtual_events() {
+        // Setup the cases: (kind, venue kept)
+        let cases = [
+            (EventKind::Hybrid, true),
+            (EventKind::InPerson, true),
+            (EventKind::Virtual, false),
+        ];
+
+        for (kind, venue_kept) in cases {
+            // Setup an event with venue data
+            let mut event = sample_event(false);
+            event.kind = kind.clone();
+
+            // Build the public calendar
+            let attachment = build_public_event_calendar_attachment(BASE_URL, &event);
+            let data = String::from_utf8(attachment.data).unwrap();
+            let unfolded = data.replace("\r\n ", "").replace("\n ", "");
+
+            // Check the venue is only kept for events that have one
+            assert_eq!(
+                unfolded.contains("GEO:37.780000;-122.420000"),
+                venue_kept,
+                "{kind}"
+            );
+            assert_eq!(unfolded.contains("\r\nLOCATION:"), venue_kept, "{kind}");
+            assert_eq!(unfolded.contains("Test Venue"), venue_kept, "{kind}");
+            assert_eq!(
+                unfolded.contains("X-APPLE-STRUCTURED-LOCATION"),
+                venue_kept,
+                "{kind}"
+            );
+
+            // Check the rest of the calendar is kept
+            assert!(unfolded.contains("SUMMARY:Test Event"), "{kind}");
+        }
+    }
+
+    #[test]
     fn test_format_datetime_for_ics() {
         let dt = Utc.with_ymd_and_hms(2026, 1, 12, 19, 0, 0).unwrap();
         let formatted = format_datetime_for_ics(&dt);
@@ -295,6 +459,11 @@ mod tests {
                 "double quotes",
                 r#"Joe's "Best" Venue, 123 Main St"#,
                 r#""Joe's Best Venue, 123 Main St""#,
+            ),
+            (
+                "line breaks",
+                "Hall\r\nURL:https://evil.test\rB\nC",
+                "\"Hall  URL:https://evil.test B C\"",
             ),
         ];
 

@@ -8,7 +8,9 @@ describe("badge credential template", () => {
     // Verify visible issuer details remain separate from social metadata.
     expect(response.ok).to.equal(true);
     const template = await response.text();
-    expect(template).to.include('<p class="mt-6 text-stone-700">{{ award.snapshot.description }}</p>');
+    expect(template).to.include(
+      '<p class="mt-6 text-stone-700 phone:mt-2 phone:text-center phone:text-[15px]/6">{{ award.snapshot.description }}</p>',
+    );
     expect(template).to.include(
       'format!("{} ({})", self.award.snapshot.issuer.group_name, self.award.snapshot.issuer.community_name)',
     );
@@ -18,5 +20,16 @@ describe("badge credential template", () => {
     expect(template).to.include(
       "{{ award.snapshot.issuer.group_name }} ({{ award.snapshot.issuer.community_name }})",
     );
+  });
+
+  it("keeps the revoked pill above broken artwork on phones", async () => {
+    // Load the public credential template.
+    const response = await fetch("/ocg-server/templates/badges/credential.html");
+
+    // Verify the pill wrapper stacks over the artwork only through a phone token.
+    expect(response.ok).to.equal(true);
+    const template = await response.text();
+    expect(template).to.match(/<div class="phone:relative">\s+\{% if revoked -%\}/u);
+    expect(template.match(/phone:text-stone-500/gu)).to.have.length(3);
   });
 });

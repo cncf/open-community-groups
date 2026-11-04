@@ -3,7 +3,7 @@ use axum::{
     body::Body,
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, LOCATION},
+        header::{CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_TYPE, LOCATION, VARY},
     },
 };
 use chrono::TimeZone;
@@ -14,14 +14,19 @@ use crate::{
     activity_tracker::{Activity, MockActivityTracker},
     db::mock::{MockDB, expect_site_settings},
     handlers::tests::*,
-    router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
+    router::{
+        CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED,
+        PUBLIC_SHARED_CACHE_VARY,
+    },
     services::{
         enrollment::{AttendOutcome, EnrollmentError, MockEnrollmentManager},
         inbox::{InboxError, MockInboxManager},
         payments::MockPaymentsManager,
     },
     types::{
-        event::{EventEnrollmentState, EventEnrollmentStatus, EventFull, EventLeaveOutcome},
+        event::{
+            EventEnrollmentState, EventEnrollmentStatus, EventFull, EventKind, EventLeaveOutcome,
+        },
         inbox::{InboxContactContext, InboxContactViewer},
         payments::{
             EventPurchaseChargeModel, EventPurchaseStatus, EventTicketCurrentPrice,
@@ -132,6 +137,128 @@ async fn test_availability_success() {
         payload["ticket_types"][1]["current_price_label"],
         json!("Free")
     );
+}
+
+#[tokio::test]
+async fn test_calendar_community_not_found() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(|_| Ok(None));
+    db.expect_get_event_full_by_slug().never();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, _) = send(router, calendar_request()).await;
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_calendar_event_not_public() {
+    // Setup database mock, which returns no event unless it is public
+    let community_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_calendar_reads(&mut db, community_id, None);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, calendar_request()).await;
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert!(parts.headers.get(CONTENT_DISPOSITION).is_none());
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_calendar_event_without_start_time() {
+    // Setup an event that has no date yet
+    let community_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, Uuid::new_v4(), Uuid::new_v4());
+    event.ends_at = None;
+    event.starts_at = None;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_calendar_reads(&mut db, community_id, Some(event));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let (parts, bytes) = send(router, calendar_request()).await;
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_calendar_success_without_meeting_access() {
+    // Setup an event with every meeting access detail
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, event_id, Uuid::new_v4());
+    event.community.name = "test-community".to_string();
+    event.group.slug_pretty = Some("pretty-group".to_string());
+    event.meeting_join_instructions = Some("Use the private room".to_string());
+    event.meeting_join_url = Some("https://meet.example.test/private".to_string());
+    event.meeting_password = Some("secret123".to_string());
+    event.name = "Test Event".to_string();
+    event.slug = "test-event".to_string();
+    event.starts_at = Some(chrono::Utc.with_ymd_and_hms(2030, 3, 5, 18, 0, 0).unwrap());
+    event.timezone = chrono_tz::UTC;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_calendar_reads(&mut db, community_id, Some(event));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+    let (parts, bytes) = send(router, calendar_request()).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap().replace("\r\n ", "");
+
+    // Check the response headers
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
+    );
+    assert_eq!(
+        parts.headers.get(CONTENT_DISPOSITION).unwrap(),
+        &HeaderValue::from_static("attachment; filename=\"event-test-event.ics\"")
+    );
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/calendar; charset=utf-8")
+    );
+    assert_eq!(
+        parts.headers.get(VARY).unwrap(),
+        &HeaderValue::from_static(PUBLIC_SHARED_CACHE_VARY)
+    );
+
+    // Check the calendar describes the event
+    assert!(body.contains("BEGIN:VCALENDAR"));
+    assert!(body.contains("DTSTART;TZID=UTC:20300305T180000"));
+    assert!(body.contains("SUMMARY:Test Event"));
+    assert!(body.contains(&format!("UID:{event_id}")));
+    assert!(
+        body.contains(
+            "URL:https://example.test/test-community/group/pretty-group/event/test-event"
+        )
+    );
+
+    // Check the meeting access details stay out of the file
+    assert!(!body.contains("Meeting link"));
+    assert!(!body.contains("meet.example.test"));
+    assert!(!body.contains("Meeting password"));
+    assert!(!body.contains("secret123"));
+    assert!(!body.contains("Use the private room"));
 }
 
 #[tokio::test]
@@ -276,6 +403,59 @@ async fn test_page_renders_contact_opener_without_organizers() {
     )));
     assert!(body.contains("<span>Contact organizers</span>"));
     assert!(body.contains("<div id=\"contact-modal-root\""));
+}
+
+#[tokio::test]
+async fn test_page_renders_location_card_for_venue_over_display_limit() {
+    // Setup an event whose only venue text is longer than the display limit
+    let community_id = Uuid::new_v4();
+    let venue_address = "a".repeat(90);
+    let mut event = sample_event_full(community_id, Uuid::new_v4(), Uuid::new_v4());
+    event.community.name = "test-community".to_string();
+    event.group.slug = "test-group".to_string();
+    event.kind = EventKind::InPerson;
+    event.latitude = None;
+    event.longitude = None;
+    event.slug = "test-event".to_string();
+    event.venue_address = Some(venue_address.clone());
+    event.venue_city = None;
+    event.venue_country_code = None;
+    event.venue_country_name = None;
+    event.venue_name = None;
+    event.venue_state_code = None;
+    event.venue_state_name = None;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_event_page_reads(
+        &mut db,
+        community_id,
+        "test-group",
+        "test-event",
+        Some(event),
+    );
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/test-community/group/test-group/event/test-event")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check phones keep the card, the full address and the directions link
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    let body = body.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(!body.contains("flex flex-col phone:p-3 phone:hidden"));
+    assert!(body.contains(&format!("phone:pb-0\"> {venue_address} </div>")));
+    assert!(body.contains("data-directions-link"));
+    assert!(body.contains(&format!("destination={venue_address}")));
+
+    // Check the desktop placeholder is kept, and hidden on phones
+    assert!(body.contains(
+        "justify-center phone:hidden\"> <div class=\"text-xl font-semibold text-stone-700 \
+         text-center\">Location not provided</div>"
+    ));
 }
 
 #[tokio::test]
@@ -1913,9 +2093,31 @@ async fn test_track_view_rejects_missing_origin_request() {
 
 // Helpers.
 
+/// Builds the calendar file request of the test event.
+fn calendar_request() -> Request<Body> {
+    request(
+        "GET",
+        "/test-community/group/test-group/event/test-event/calendar.ics",
+    )
+    .body(Body::empty())
+    .unwrap()
+}
+
 /// Builds the URI of an event-scoped route of the test community.
 fn event_uri(event_id: Uuid, action: &str) -> String {
     format!("/test-community/event/{event_id}/{action}")
+}
+
+/// Expects the test community read and the event lookup by slug of the calendar
+/// file request, which returns `event`.
+fn expect_calendar_reads(db: &mut MockDB, community_id: Uuid, event: Option<EventFull>) {
+    expect_test_community(db, community_id);
+    db.expect_get_event_full_by_slug()
+        .times(1)
+        .withf(move |id, group_slug, event_slug| {
+            *id == community_id && group_slug == "test-group" && event_slug == "test-event"
+        })
+        .returning(move |_, _, _| Ok(event.clone()));
 }
 
 /// Expects one contact context read for the viewer, returning `context`.

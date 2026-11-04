@@ -5,7 +5,7 @@ use askama::Template;
 use minify_html::{Cfg as MinifyCfg, minify};
 use tracing::instrument;
 
-use crate::types::site::explore::{Entity, FiltersOptions};
+use crate::types::site::explore::{Entity, FilterOption, FiltersOptions};
 use crate::{
     templates::{
         PageId,
@@ -65,6 +65,73 @@ pub(crate) struct EventsSection {
     pub filters_options: FiltersOptions,
     /// Results section containing matching events.
     pub results_section: EventsResultsSection,
+}
+
+impl EventsSection {
+    /// Return the filters shown as removable chips on phones. Dates get none.
+    pub(crate) fn applied_filters(&self) -> Vec<AppliedFilter> {
+        let Self {
+            filters,
+            filters_options: options,
+            ..
+        } = self;
+
+        // Event kinds have fixed labels
+        let mut applied: Vec<AppliedFilter> = [
+            (EventKind::InPerson, "In-person"),
+            (EventKind::Virtual, "Virtual"),
+            (EventKind::Hybrid, "Hybrid"),
+        ]
+        .into_iter()
+        .filter(|(kind, _)| filters.kind.contains(kind))
+        .map(|(kind, label)| AppliedFilter {
+            label: label.to_string(),
+            name: "kind",
+            value: kind.to_string(),
+        })
+        .collect();
+
+        // The rest take their labels from the filter options
+        for (name, available, selected) in [
+            (
+                "community",
+                Some(options.communities.as_slice()),
+                &filters.community,
+            ),
+            ("group", options.groups.as_deref(), &filters.group),
+            (
+                "group_category",
+                options.group_category.as_deref(),
+                &filters.group_category,
+            ),
+            ("region", options.region.as_deref(), &filters.region),
+            (
+                "event_category",
+                options.event_category.as_deref(),
+                &filters.event_category,
+            ),
+        ] {
+            applied.extend(AppliedFilter::from_options(
+                name,
+                available.unwrap_or_default(),
+                selected,
+            ));
+        }
+
+        // Distance is a filter only with a viewer location
+        if filters.latitude.is_some()
+            && filters.longitude.is_some()
+            && let Some(distance) = filters.distance
+        {
+            applied.extend(AppliedFilter::from_options(
+                "distance",
+                &options.distance,
+                &[distance.to_string()],
+            ));
+        }
+
+        applied
+    }
 }
 
 /// Template for displaying event search results.
@@ -128,6 +195,53 @@ pub(crate) struct GroupsSection {
     pub results_section: GroupsResultsSection,
 }
 
+impl GroupsSection {
+    /// Return the filters shown as removable chips on phones.
+    pub(crate) fn applied_filters(&self) -> Vec<AppliedFilter> {
+        let Self {
+            filters,
+            filters_options: options,
+            ..
+        } = self;
+
+        // Filters take their labels from the filter options
+        let mut applied = Vec::new();
+        for (name, available, selected) in [
+            (
+                "community",
+                Some(options.communities.as_slice()),
+                &filters.community,
+            ),
+            (
+                "group_category",
+                options.group_category.as_deref(),
+                &filters.group_category,
+            ),
+            ("region", options.region.as_deref(), &filters.region),
+        ] {
+            applied.extend(AppliedFilter::from_options(
+                name,
+                available.unwrap_or_default(),
+                selected,
+            ));
+        }
+
+        // Distance is a filter only with a viewer location
+        if filters.latitude.is_some()
+            && filters.longitude.is_some()
+            && let Some(distance) = filters.distance
+        {
+            applied.extend(AppliedFilter::from_options(
+                "distance",
+                &options.distance,
+                &[distance.to_string()],
+            ));
+        }
+
+        applied
+    }
+}
+
 /// Template for displaying group search results.
 ///
 /// This template renders the list of matching groups along with pagination controls,
@@ -164,6 +278,38 @@ impl GroupsResultsSection {
 pub(crate) struct GroupCard {
     /// Group data
     pub group: GroupSummary,
+}
+
+// Types.
+
+/// Filter applied to the explore results, shown as a removable chip on phones.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct AppliedFilter {
+    /// Display name shown to users.
+    pub label: String,
+    /// Form field name, without its brackets.
+    pub name: &'static str,
+    /// Technical value used in queries.
+    pub value: String,
+}
+
+impl AppliedFilter {
+    /// Builds one applied filter per selected option, in option order.
+    pub(crate) fn from_options(
+        name: &'static str,
+        options: &[FilterOption],
+        selected: &[String],
+    ) -> Vec<Self> {
+        options
+            .iter()
+            .filter(|option| selected.contains(&option.value))
+            .map(|option| Self {
+                label: option.name.clone(),
+                name,
+                value: option.value.clone(),
+            })
+            .collect()
+    }
 }
 
 // Helpers for rendering popovers.

@@ -183,4 +183,72 @@ describe("event attendance button template", () => {
       (label) => expect(macros).to.include(`>${label}</span>`),
     );
   });
+
+  describe("phone bar", () => {
+    it("hides the bar from the server on past and canceled events only", async () => {
+      // Load the container that becomes the sticky bar.
+      const template = normalizeWhitespace(await loadTemplate());
+
+      expect(template).to.include(
+        '{% if event.is_past() || event.canceled %}data-phone-bar="hidden"{% endif %}',
+      );
+      // A hydrated value is reserved for availability, which would skip the local past check.
+      expect(template).to.not.include("data-is-past");
+    });
+
+    it("renders one phone-only summary as the first child", async () => {
+      // Load the summary and the controls that follow it.
+      const template = normalizeWhitespace(await loadTemplate());
+
+      expect(template.match(/data-attendance-role="bar-summary"/g)).to.have.length(1);
+      expect(template).to.include(
+        'data-attendance-role="bar-summary" class="order-first min-w-0 flex-1 not-phone:hidden"',
+      );
+      expect(template.indexOf("bar-summary")).to.be.lessThan(template.indexOf("loading-btn"));
+    });
+
+    it("keeps the kind directly after the availability span", async () => {
+      // The fallback rule hides the sibling after a non-empty summary.
+      const template = normalizeWhitespace(await loadTemplate());
+
+      expect(template).to.include(
+        "<span data-availability-summary></span> <span> {% if event.kind == EventKind::Virtual -%}",
+      );
+      expect(template).to.include('.format("%b %e")');
+    });
+
+    it("leaves phone:flex on the join link to JS", async () => {
+      // JS hides these with .hidden, so only JS may add phone:flex (Join meeting).
+      const template = await loadTemplate();
+      const joinLink = template.match(/data-join-link\s[^>]*>/)[0];
+
+      expect(joinLink).to.include("phone:btn-fill");
+      expect(joinLink).to.not.include("phone:flex");
+    });
+
+    it("turns the three attendance dialogs into sheets", async () => {
+      // Load the modal cards and their title rows.
+      const template = await loadTemplate();
+
+      expect(template.match(/modal-card sheet-panel/g)).to.have.length(3);
+      expect(template.match(/sheet-grab/g)).to.have.length(3);
+    });
+
+    it("keeps the sheet panel wrappers from blocking scrim taps", async () => {
+      // A fixed sheet leaves the wrapper empty, so its padding would sit over the scrim.
+      const template = await loadTemplate();
+
+      expect(template.match(/class="modal-panel p-4 max-w-\dxl phone:p-0"/g)).to.have.length(3);
+      expect(template.match(/class="modal-panel/g)).to.have.length(3);
+    });
+
+    it("keeps the tax label one space from the summary price", async () => {
+      // The trim drops the source newline, because the label starts with a non-breaking space.
+      const template = await loadTemplate();
+
+      expect(template).to.match(
+        /<\/span>\s+\{%- if event\.shows_additional_ticket_tax\(\) %\}&nbsp;\+ tax\{% endif %\}\s+<\/div>/,
+      );
+    });
+  });
 });

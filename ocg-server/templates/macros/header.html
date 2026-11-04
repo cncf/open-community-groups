@@ -1,3 +1,18 @@
+{# Account sheet head -#}
+{# Used by both user menus for the title row and close button of the phone account sheet. -#}
+{% macro account_sheet_head() -%}
+  <li class="sheet-head sheet-grab not-phone:hidden" role="none">
+    <span aria-hidden="true">Menu</span>
+    <button type="button"
+            class="inline-flex items-center justify-center rounded-full cursor-pointer"
+            role="menuitem"
+            aria-label="Close menu">
+      <div class="svg-icon size-4 icon-close"></div>
+    </button>
+  </li>
+{% endmacro account_sheet_head -%}
+{# End account sheet head -#}
+
 {# Link -#}
 {# Used by the shared site header for top-level navigation links. -#}
 {% macro link(content, href, current_path, path = "", extra_styles = None, hx_boost = "true", hx_target = "body", target = "") -%}

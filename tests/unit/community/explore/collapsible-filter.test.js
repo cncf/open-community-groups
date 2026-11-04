@@ -1,10 +1,8 @@
 import { expect } from "@open-wc/testing";
 
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import "/static/js/community/explore/collapsible-filter.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("collapsible-filter", () => {
   useMountedElementsCleanup("collapsible-filter");
@@ -24,6 +22,27 @@ describe("collapsible-filter", () => {
     // Expands when a hidden option is selected initially.
     expect(element.isCollapsed).to.equal(false);
     expect(element.visibleOptions).to.have.length(3);
+  });
+
+  it("rings an option label on phones while its hidden checkbox has focus", async () => {
+    // Render one selected and one unselected option.
+    const element = await mountLitComponent("collapsible-filter", {
+      title: "Region",
+      name: "region",
+      options: [
+        { value: "emea", name: "EMEA" },
+        { value: "latam", name: "LATAM" },
+      ],
+      selected: ["emea"],
+    });
+
+    // The checkbox is sr-only, so the label shows focus in both states.
+    const labels = [...element.querySelectorAll("label")];
+    expect(labels).to.have.length(2);
+    labels.forEach((label) => {
+      expect(label.classList.contains("phone:has-[:focus-visible]:ring-2")).to.equal(true);
+      expect(label.classList.contains("phone:has-[:focus-visible]:ring-primary-300")).to.equal(true);
+    });
   });
 
   it("exposes collapsed state and context to assistive technologies", async () => {
@@ -97,6 +116,50 @@ describe("collapsible-filter", () => {
     expect(filterChangeEvents[1].target).to.equal(element);
   });
 
+  it("clears a single selection tapped again on phones, where the form applies later", async () => {
+    // Render a selected single selection filter on a phone.
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query) => ({ matches: query === PHONE_MEDIA_QUERY });
+    const element = await mountLitComponent("collapsible-filter", {
+      name: "community",
+      options: [
+        { value: "one", name: "One" },
+        { value: "two", name: "Two" },
+      ],
+      selected: ["one"],
+      singleSelection: true,
+    });
+
+    try {
+      // Tap the selected option, which unchecks its checkbox.
+      element.querySelector('input[value="one"]').click();
+      await element.updateComplete;
+
+      // Verify the selection follows the checkbox, so the highlight never outlives the value.
+      expect(element.selected).to.deep.equal([]);
+      expect(element.querySelector("input:checked")).to.equal(null);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it("keeps a single selection tapped again off phones", async () => {
+    // Render a selected single selection filter.
+    const element = await mountLitComponent("collapsible-filter", {
+      name: "community",
+      options: [{ value: "one", name: "One" }],
+      selected: ["one"],
+      singleSelection: true,
+    });
+
+    // Tap the selected option.
+    element.querySelector('input[value="one"]').click();
+    await element.updateComplete;
+
+    // Verify the selection stays for the live request to resolve.
+    expect(element.selected).to.deep.equal(["one"]);
+  });
+
   it("resets dependent filters when configured and an option is selected", async () => {
     // Build the DOM fixture with filters form.
     document.body.innerHTML = '<form id="filters-form"></form>';
@@ -124,9 +187,7 @@ describe("collapsible-filter", () => {
     await element.updateComplete;
 
     // Selecting the option clears dependent filters.
-    element
-      .querySelector('input[type="checkbox"]')
-      ?.dispatchEvent(new Event("change", { bubbles: true }));
+    element.querySelector('input[type="checkbox"]')?.dispatchEvent(new Event("change", { bubbles: true }));
     await element.updateComplete;
 
     // Dependent filters are reset after the selected option changes.

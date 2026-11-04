@@ -11,28 +11,35 @@ const loadTemplate = async () => {
 };
 
 describe("dashboard user home template", () => {
-  it("keeps only Check-In content visible below md", async () => {
+  it("keeps only Check-In and Invitations content visible below md", async () => {
     // Load the user dashboard shell before checking responsive content ownership.
     const template = await loadTemplate();
 
-    // Verify Check-In stays visible while unsupported content, including Inbox, yields to the placeholder.
+    // Verify the phone tabs stay visible while unsupported content, including Inbox, yields to the placeholder.
     expect(template).to.include('{% extends "dashboard/dashboard_base.html" -%}');
-    expect(template).to.include("{% if content.is_check_in() %}block{% else %}hidden md:block{% endif %}");
+    expect(template).to.include(
+      "{% if content.is_check_in() %}block{% else %}hidden md:block{% if content.is_invitations() %} phone:block{% endif %}{% endif %}",
+    );
   });
 
-  it("keeps only Check-In navigation in the mobile drawer menu", async () => {
+  it("keeps only Check-In and Invitations navigation in the mobile drawer menu", async () => {
     // Load the user dashboard shell before checking responsive navigation.
     const template = await loadTemplate();
 
-    // Verify the notice stays conditional while the drawer offers Check-In only.
+    // Verify the notice stays conditional while the drawer offers the two phone tabs only.
     expect(template).to.include("{% block mobile_dashboard_view -%}");
-    expect(template).to.include("{% if !content.is_check_in() -%}");
+    expect(template).to.include('{{ dashboard::mobile_notice(extra_styles = "phone:hidden") -}}');
+    expect(template).to.include("{% else if !content.is_check_in() -%}");
     expect(template).to.include(
-      'menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/user?tab=check-in")',
+      'menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/user?tab=check-in", extra_styles = "phone:[&>a]:py-1.5")',
     );
+    expect(template).to.include(
+      'menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations", extra_styles = "phone:[&>a]:py-1.5")',
+    );
+    expect(template.match(/name = "Invitations"/gu)).to.have.length(1);
     expect(
       template.split(
-        'menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/user?tab=inbox")',
+        'menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/user?tab=inbox", extra_styles = "phone:hidden")',
       ).length,
     ).to.equal(2);
     const mobileMenu = template.slice(
@@ -43,7 +50,10 @@ describe("dashboard user home template", () => {
     expect(template).to.include("{% if let Some(refresh_path) = content.refresh_path() -%}");
     expect(template).to.include('hx-get="/dashboard/user/{{ refresh_path }}"');
     expect(template).to.include('class="leading-10 grid gap-y-0.5 md:hidden"');
-    expect(template).to.include('class="leading-10 grid gap-y-0.5 max-md:hidden"');
+    expect(template).to.include(
+      'class="leading-10 grid gap-y-0.5 max-md:hidden phone:grid phone:border-t phone:border-stone-200 phone:pt-6">',
+    );
+    expect(template.match(/menu_item\([^\n]*extra_styles = "phone:hidden"/gu)).to.have.length(8);
   });
 
   it("uses a compact purchases label until the wide sidebar", async () => {
@@ -53,6 +63,16 @@ describe("dashboard user home template", () => {
     // Verify the item keeps its full label, compact fallback, and invoice icon.
     expect(template).to.include(
       'menu_item(name = "Purchases & documents", compact_name = "Purchases", icon = "invoice"',
+    );
+  });
+
+  it("gives the phone panel the whole page", async () => {
+    // Load the user dashboard shell before checking the panel tokens.
+    const template = await loadTemplate();
+
+    // Verify the desktop panel classes stay and phones drop the padding.
+    expect(template).to.include(
+      'class="min-h-[calc(100dvh-5rem)] p-4 sm:p-6 md:min-h-0 xl:p-12 phone:p-0 phone:min-h-[calc(100dvh-4rem)]"',
     );
   });
 
@@ -75,7 +95,7 @@ describe("dashboard user home template", () => {
 
     // Verify the dashboard exposes the Notifications menu item.
     expect(template).to.include(
-      'menu_item(name = "Notifications", icon = "bell", is_active = content.is_notifications() , href = "/dashboard/user?tab=notifications")',
+      'menu_item(name = "Notifications", icon = "bell", is_active = content.is_notifications() , href = "/dashboard/user?tab=notifications", extra_styles = "phone:hidden")',
     );
   });
 
@@ -86,7 +106,7 @@ describe("dashboard user home template", () => {
     // Verify the Surveys tab follows My Events and counts the surveys left to answer.
     const eventsIndex = template.indexOf('menu_item(name = "My Events"');
     const surveysIndex = template.indexOf(
-      'menu_item(name = "Surveys", icon = "survey", is_active = content.is_surveys() , href = "/dashboard/user?tab=surveys", items_count = surveys_unanswered_count)',
+      'menu_item(name = "Surveys", icon = "survey", is_active = content.is_surveys() , href = "/dashboard/user?tab=surveys", items_count = surveys_unanswered_count, extra_styles = "phone:hidden")',
     );
     expect(surveysIndex).to.be.greaterThan(eventsIndex);
     expect(eventsIndex).to.be.greaterThan(-1);

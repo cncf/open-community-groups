@@ -4,19 +4,34 @@ import {
   bindModalControlClicks,
   bindModalDismissListeners,
   closeModalBodyScroll,
+  focusBottomSheet,
   isModalOverlayTarget,
   openModalBodyScroll,
   resetRestoredModalState,
+  toggleModalVisibility,
+  trapBottomSheetFocus,
   trapModalFocus,
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 describe("modal lifecycle", () => {
+  const originalMatchMedia = window.matchMedia;
+
+  /**
+   * Answers the phone query as given.
+   * @param {boolean} matches Whether the phone query matches.
+   * @returns {void}
+   */
+  const mockMatchMedia = (matches) => {
+    window.matchMedia = () => ({ addEventListener() {}, matches, removeEventListener() {} });
+  };
+
   beforeEach(() => {
     resetDom();
   });
 
   afterEach(() => {
+    window.matchMedia = originalMatchMedia;
     resetDom();
   });
 
@@ -98,6 +113,46 @@ describe("modal lifecycle", () => {
     expect(clickCount).to.equal(2);
   });
 
+  it("keeps skipping targets under a hidden class off phones", () => {
+    // Build an open modal inside a panel that keeps the hidden class.
+    const panel = document.createElement("main");
+    panel.className = "hidden";
+    panel.style.display = "block";
+    const modal = document.createElement("div");
+    modal.setAttribute("role", "dialog");
+    modal.className = "hidden";
+    const button = document.createElement("button");
+    modal.append(button);
+    panel.append(modal);
+    document.body.append(panel);
+
+    // The dialog itself takes focus, as it always has.
+    mockMatchMedia(false);
+    toggleModalVisibility(modal);
+    expect(document.activeElement).to.equal(modal);
+  });
+
+  it("reaches targets a phone shows under a hidden class", () => {
+    // Build an open modal inside a panel shown with phone:block.
+    const panel = document.createElement("main");
+    panel.className = "hidden";
+    panel.style.display = "block";
+    const modal = document.createElement("div");
+    modal.setAttribute("role", "dialog");
+    modal.className = "hidden";
+    const button = document.createElement("button");
+    const offscreen = document.createElement("button");
+    offscreen.style.display = "none";
+    modal.append(offscreen, button);
+    panel.append(modal);
+    document.body.append(panel);
+
+    // The first rendered button takes focus, and the undisplayed one is skipped.
+    mockMatchMedia(true);
+    toggleModalVisibility(modal);
+    expect(document.activeElement).to.equal(button);
+  });
+
   it("wraps forward and reverse keyboard focus within an open modal", () => {
     // Build an open modal with two keyboard focus targets.
     const modal = document.createElement("div");
@@ -129,6 +184,106 @@ describe("modal lifecycle", () => {
     expect(trapModalFocus(backwardEvent, modal)).to.equal(true);
     expect(backwardEvent.defaultPrevented).to.equal(true);
     expect(document.activeElement).to.equal(lastButton);
+  });
+
+  describe("bottom sheet focus", () => {
+    /**
+     * Builds a sheet whose head renders a link before the close button.
+     * @returns {{close: HTMLElement, last: HTMLElement, link: HTMLElement, panel: HTMLElement}} Fixture.
+     */
+    const renderSheet = () => {
+      document.body.innerHTML = `
+        <button id="opener" type="button">Open</button>
+        <user-host id="host"><div id="host-control" role="button" tabindex="0">Chip</div></user-host>
+        <div id="panel" class="sheet-panel" style="position: fixed">
+          <a id="head-link" href="#profile">Profile</a>
+          <button id="close" type="button"><div class="icon-close"></div></button>
+          <button id="last" type="button">Copy</button>
+        </div>
+      `;
+
+      return {
+        close: document.getElementById("close"),
+        last: document.getElementById("last"),
+        link: document.getElementById("head-link"),
+        panel: document.getElementById("panel"),
+      };
+    };
+
+    /**
+     * Presses Tab on the panel and reports whether the trap took it.
+     * @param {HTMLElement} panel Sheet panel.
+     * @returns {boolean} True when focus wrapped.
+     */
+    const pressTab = (panel) => {
+      const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Tab" });
+      trapBottomSheetFocus(event, panel);
+      return event.defaultPrevented;
+    };
+
+    it("enters at the close button and returns to the opener", () => {
+      mockMatchMedia(true);
+      const { close, panel } = renderSheet();
+      const opener = document.getElementById("opener");
+
+      // Nothing focuses the opener first, as on iOS after a tap.
+      const restore = focusBottomSheet(panel, opener);
+      expect(document.activeElement).to.equal(close);
+
+      restore();
+      expect(document.activeElement).to.equal(opener);
+    });
+
+    it("stops a closing mouse press from clearing the returned focus", () => {
+      mockMatchMedia(true);
+      const { panel } = renderSheet();
+      const restore = focusBottomSheet(panel, document.getElementById("opener"));
+
+      // A backdrop tap closes on mousedown.
+      const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+      document.addEventListener("mousedown", restore, { once: true });
+      document.body.dispatchEvent(press);
+
+      expect(press.defaultPrevented).to.equal(true);
+    });
+
+    it("returns to the control a host element renders", () => {
+      mockMatchMedia(true);
+      const { panel } = renderSheet();
+
+      const restore = focusBottomSheet(panel, document.getElementById("host"));
+      restore();
+
+      expect(document.activeElement).to.equal(document.getElementById("host-control"));
+    });
+
+    it("leaves focus alone off phones and on missing panels", () => {
+      mockMatchMedia(false);
+      const { panel } = renderSheet();
+      const opener = document.getElementById("opener");
+      opener.focus();
+
+      expect(focusBottomSheet(panel, opener)).to.equal(null);
+      expect(focusBottomSheet(null, opener)).to.equal(null);
+      expect(document.activeElement).to.equal(opener);
+    });
+
+    it("wraps Tab while the panel is a sheet and lets go when it stops being one", () => {
+      mockMatchMedia(true);
+      const { last, link, panel } = renderSheet();
+      focusBottomSheet(panel, document.getElementById("opener"));
+      last.focus();
+
+      // Verify Tab wraps from the last target to the first.
+      expect(pressTab(panel)).to.equal(true);
+      expect(document.activeElement).to.equal(link);
+
+      // Verify a rotation past phone widths ends the trap.
+      mockMatchMedia(false);
+      last.focus();
+      expect(pressTab(panel)).to.equal(false);
+      expect(document.activeElement).to.equal(last);
+    });
   });
 
   it("locks body scroll only across modal open transitions", () => {

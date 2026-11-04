@@ -173,3 +173,240 @@
     transform: none;
   }
 }
+
+/* Phones: same query as the phone variant. The strip gate leaves older cached HTML untouched. */
+@media screen and (width < 48rem) and (not (pointer: fine)) {
+  html:has(body.close .ocg-docs-root > [data-docs-strip]) {
+    overflow: hidden;
+  }
+
+  /* Scoped Docsify body rules set overflow here, unlayered, so the phone token alone loses. */
+  .ocg-docs-root:has(> [data-docs-strip]) {
+    background: var(--color-white);
+    overflow: visible;
+  }
+
+  /* Pins level with the fixed toggle, not at the primitive's 63px. */
+  .ocg-docs-root:has(> [data-docs-strip]) > [data-docs-strip] {
+    top: 64px;
+  }
+
+  /* Docsify's main is a stacking context that would trap the toggle and sheet below the strip. */
+  .ocg-docs-root:has(> [data-docs-strip]) main {
+    z-index: auto;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .content {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    margin: 0;
+    padding-top: 0;
+    z-index: auto;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section {
+    font-size: 15px;
+    line-height: 24px;
+    margin: 0;
+    max-width: none;
+    padding: 20px 12px 24px;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section :is(ol, p, ul) {
+    line-height: 24px;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section h1 {
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section h2 {
+    font-size: 19px;
+    line-height: 26px;
+  }
+
+  /* Long inline code would run off the page, which clips it. */
+  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+
+  /* Tables: stacked label and value with full-bleed hairlines. */
+  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section table.ocg-mobile-card-table {
+    border-top: 1px solid var(--color-stone-200);
+    margin: 12px -12px 20px;
+    max-width: none;
+    width: calc(100% + 24px);
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section table.ocg-mobile-card-table tbody tr {
+    border: 0;
+    border-bottom: 1px solid var(--color-stone-200);
+    border-radius: 0;
+    margin: 0;
+    padding: 6px 0;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section table.ocg-mobile-card-table tbody td {
+    padding: 6px 12px;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip])
+    .markdown-section
+    table.ocg-mobile-card-table
+    tbody
+    td::before {
+    color: var(--color-stone-800);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 18px;
+    margin-bottom: 2px;
+    text-transform: none;
+  }
+
+  /* Contents sheet: Docsify's own sidebar, stopping at the strip, which stays visible above it. */
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar {
+    background: var(--color-white);
+    border-radius: 1rem 1rem 0 0;
+    bottom: 0;
+    box-shadow: 0 -8px 30px color-mix(in srgb, var(--color-stone-900) 18%, transparent);
+    height: auto;
+    left: 0;
+    max-height: calc(100dvh - 108px);
+    overscroll-behavior: contain;
+    padding: 0;
+    right: 0;
+    top: auto;
+    transform: translateY(100%);
+    transition:
+      transform 0.2s ease-out,
+      visibility 0s linear 0.2s;
+    visibility: hidden;
+    width: auto;
+    z-index: 1100;
+  }
+
+  body.close .ocg-docs-root:has(> [data-docs-strip]) .sidebar {
+    transform: none;
+    transition-delay: 0s;
+    visibility: visible;
+  }
+
+  /* The scrim stops at the strip, so the toggle keeps its contrast on stone. */
+  body.close .ocg-docs-root:has(> [data-docs-strip])::before {
+    background: color-mix(in srgb, var(--color-stone-950) 35%, transparent);
+    content: "";
+    inset: 0;
+    position: fixed;
+    z-index: 20;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar > h1.app-name {
+    display: none;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .sidebar-nav {
+    padding: 4px 0 12px;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar ul {
+    margin: 0;
+    padding: 0;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar li {
+    margin: 0;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-nav > ul > li > p {
+    color: var(--color-stone-900);
+    font-size: 15px;
+    line-height: 20px;
+    margin: 0;
+    padding: 14px 12px 2px;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-nav > ul > li > p:has(> a) {
+    padding: 0;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-nav > ul > li > p > a {
+    align-items: center;
+    display: flex;
+    font-size: 15px;
+    line-height: 20px;
+    margin: 0;
+    min-height: 44px;
+    padding: 8px 12px;
+    white-space: normal;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar ul li ul li a {
+    align-items: center;
+    border: 0;
+    display: flex;
+    font-size: 15px;
+    line-height: 20px;
+    min-height: 44px;
+    padding: 8px 12px 8px 28px;
+    white-space: normal;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .app-sub-sidebar li a {
+    font-size: 14px;
+    line-height: 20px;
+    padding: 8px 12px 8px 44px;
+  }
+
+  /* Toggle: fixed over the strip. The phone shell names it after this visible word. */
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    bottom: auto;
+    box-shadow: none;
+    color: var(--color-primary-700);
+    display: flex;
+    gap: 6px;
+    height: 44px;
+    left: auto;
+    padding: 0 12px;
+    right: 0;
+    top: 64px;
+    width: auto;
+    z-index: 22;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle:focus-visible {
+    outline: 2px solid var(--color-primary-700);
+    outline-offset: -2px;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle-button {
+    display: none;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle::before {
+    background-color: currentColor;
+    content: "";
+    height: 16px;
+    mask: url("/static/images/icons/list.svg") center / contain no-repeat;
+    width: 16px;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle::after {
+    content: "Contents";
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ocg-docs-root:has(> [data-docs-strip]) .sidebar {
+      transition: none;
+    }
+  }
+}

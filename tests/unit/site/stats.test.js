@@ -1,20 +1,121 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  createAreaChart,
+  createMonthlyBarChart,
+  dashboardFontFamily,
+  getChartUiColors,
+  getThemePalette,
+} from "/static/js/common/charts/charts.js";
+import { getCategoryLabelInterval, getTimeSplitNumber } from "/static/js/common/charts/stats.js";
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
+import {
   initializeSiteStatsFromPage,
   initSiteStatsCharts,
 } from "/static/js/site/stats.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
+/** Stats payload with two years of months in every section. */
+const buildStatsPayload = () => {
+  const section = {
+    running_total: [
+      [1735689600000, 2],
+      [1738368000000, 3],
+      [1740787200000, 12500],
+    ],
+    per_month: Array.from({ length: 24 }, (_, index) => {
+      const year = 2025 + Math.floor(index / 12);
+      const month = String((index % 12) + 1).padStart(2, "0");
+      return [`${year}-${month}`, index + 1];
+    }),
+  };
+
+  return { groups: section, members: section, events: section, attendees: section };
+};
+
+/**
+ * Builds the options the stats page rendered before phones had their own, for one section.
+ * @param {string} label Section label.
+ * @param {Object} section Section payload.
+ * @param {number} labelTarget Monthly label target of the viewport.
+ * @returns {{monthly: Object, running: Object}} Chart options.
+ */
+const buildDesktopOptions = (label, section, labelTarget) => {
+  const palette = getThemePalette();
+  const legend = {
+    bottom: 10,
+    left: "center",
+    itemGap: 12,
+    textStyle: {
+      fontFamily: dashboardFontFamily,
+      fontSize: 12,
+      color: getChartUiColors().muted,
+    },
+  };
+
+  const running = createAreaChart(`${label} over time`, label, section.running_total, palette);
+  running.baseOption.legend = Object.assign({}, running.baseOption.legend, legend);
+  running.baseOption.grid = Object.assign({}, running.baseOption.grid, { bottom: 100 });
+  running.xAxis = {
+    axisLabel: { formatter: "{yyyy}-{MM}", hideOverlap: true },
+    splitNumber: getTimeSplitNumber(section.running_total.length),
+  };
+
+  const monthly = createMonthlyBarChart(`New ${label} per Month`, label, section.per_month, palette);
+  monthly.legend = Object.assign({}, monthly.legend, legend);
+  monthly.xAxis = Object.assign({}, monthly.xAxis, {
+    axisLabel: Object.assign({}, monthly.xAxis.axisLabel, {
+      hideOverlap: false,
+      rotate: 0,
+      interval: getCategoryLabelInterval(monthly.xAxis.data.length, labelTarget),
+      formatter: (value) => value,
+    }),
+  });
+
+  return { monthly, running };
+};
+
+/**
+ * Makes an option comparable by deep equality, with functions compared by source.
+ * @param {Object} option ECharts option.
+ * @returns {Object} Plain option.
+ */
+const toComparableOption = (option) =>
+  JSON.parse(JSON.stringify(option, (_, value) => (typeof value === "function" ? String(value) : value)));
+
 describe("site stats", () => {
   const originalEcharts = globalThis.echarts;
   const originalMatchMedia = window.matchMedia;
   let initCalls;
+  let mediaListeners;
   let resizeCalls;
+
+  /**
+   * Replaces matchMedia with one matching only the given queries.
+   * @param {string[]} matchingQueries Queries that match.
+   * @returns {void}
+   */
+  const mockMatchMedia = (matchingQueries) => {
+    window.matchMedia = (query) => ({
+      matches: matchingQueries.includes(query),
+      addEventListener() {
+        mediaListeners += 1;
+      },
+      removeEventListener() {},
+    });
+  };
+
+  /**
+   * Finds the option rendered into a chart.
+   * @param {string} id Chart element id.
+   * @returns {Object} ECharts option.
+   */
+  const getChartOption = (id) => initCalls.find(({ element }) => element.id === id)?.option;
 
   beforeEach(() => {
     resetDom();
     initCalls = [];
+    mediaListeners = 0;
     resizeCalls = [];
 
     // Run the behavior under test.
@@ -164,6 +265,73 @@ describe("site stats", () => {
     // Verify renders charts for each stats section and registers resize handling.
     expect(resizeCalls).to.include("groups-running-chart");
     expect(resizeCalls).to.include("attendees-monthly-chart");
+  });
+
+  for (const { name, queries, labelTarget } of [
+    { name: "width 600", queries: ["(max-width: 640px)"], labelTarget: 4 },
+    { name: "width 1280", queries: [], labelTarget: 8 },
+  ]) {
+    it(`keeps today's options when the phone query is false at ${name}`, async () => {
+      // Match the viewport without matching the phone query.
+      mockMatchMedia(queries);
+      const stats = buildStatsPayload();
+
+      // Render every section.
+      await initSiteStatsCharts(stats);
+
+      // Verify each chart option deep-equals the pre-phone build.
+      expect(initCalls).to.have.length(8);
+      for (const [key, label] of [
+        ["groups", "Groups"],
+        ["members", "Members"],
+        ["events", "Events"],
+        ["attendees", "Attendees"],
+      ]) {
+        const expected = buildDesktopOptions(label, stats[key], labelTarget);
+        expect(toComparableOption(getChartOption(`${key}-running-chart`))).to.deep.equal(
+          toComparableOption(expected.running),
+        );
+        expect(toComparableOption(getChartOption(`${key}-monthly-chart`))).to.deep.equal(
+          toComparableOption(expected.monthly),
+        );
+      }
+    });
+  }
+
+  it("renders plain charts with short labels on phones", async () => {
+    // Match the phone query above the old 640px label breakpoint.
+    mockMatchMedia([PHONE_MEDIA_QUERY]);
+
+    // Render every section.
+    await initSiteStatsCharts(buildStatsPayload());
+
+    // Verify the area chart drops baseOption, media and the legend.
+    const running = getChartOption("groups-running-chart");
+    expect(running).to.not.have.any.keys("baseOption", "media");
+    expect(running.legend).to.deep.equal({ show: false });
+    expect(running.grid).to.deep.equal({ left: 8, right: 24, top: 56, bottom: 8, containLabel: true });
+    expect(running.title.left).to.equal("center");
+    expect(running.series[0].type).to.equal("line");
+
+    // Verify the area chart's axes.
+    expect(running.xAxis.type).to.equal("time");
+    expect(running.xAxis.splitNumber).to.equal(4);
+    expect(running.xAxis.axisLabel).to.include({ fontSize: 10, hideOverlap: true, rotate: 0 });
+    expect(running.yAxis.axisLabel.fontSize).to.equal(10);
+    expect(running.yAxis.axisLabel.formatter(12500)).to.equal("13K");
+    expect(running.yAxis.axisLabel.formatter(7)).to.equal("7");
+
+    // Verify the monthly chart gets the same treatment and four labels.
+    const monthly = getChartOption("groups-monthly-chart");
+    expect(monthly.legend).to.deep.equal({ show: false });
+    expect(monthly.grid).to.deep.equal(running.grid);
+    expect(monthly.xAxis.type).to.equal("category");
+    expect(monthly.xAxis.axisLabel).to.include({ fontSize: 10, hideOverlap: true, interval: 5, rotate: 0 });
+    expect(monthly.yAxis.axisLabel.formatter(1500)).to.equal("1.5K");
+
+    // Verify every chart rendered and options were chosen without a rotation listener.
+    expect(initCalls).to.have.length(8);
+    expect(mediaListeners).to.equal(0);
   });
 
   it("initializes charts from the page payload only once", async () => {

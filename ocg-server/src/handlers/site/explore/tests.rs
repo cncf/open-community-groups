@@ -6,7 +6,7 @@ use axum::{
     },
 };
 use chrono::{Months, Utc};
-use serde_json::Value;
+use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
     router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
     types::{
         search::{EXPLORE_WIDGET_MAX_ITEMS, SearchEventsFilters, SearchGroupsFilters, ViewMode},
-        site::explore::Entity,
+        site::explore::{Entity, FilterOption, FiltersOptions},
     },
 };
 
@@ -241,6 +241,119 @@ async fn test_events_results_section_success() {
 }
 
 #[tokio::test]
+async fn test_events_section_applied_filters() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_filters_options()
+        .times(1)
+        .returning(|_, _| Ok(sample_applied_filters_options()));
+    db.expect_search_events()
+        .times(1)
+        .returning(|_| Ok(sample_search_events_output(Uuid::new_v4())));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let uri = "/explore/events-section?community[0]=alpha&event_category[0]=talks&group[0]=core\
+        &group_category[0]=cloud&kind[0]=in-person&kind[1]=virtual&region[0]=emea";
+    let request = request("GET", uri).body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check every filter with a known option gets a chip, in filter order
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        applied_filter_labels(&body),
+        [
+            "In-person",
+            "Virtual",
+            "Alpha",
+            "Core group",
+            "Cloud",
+            "EMEA",
+            "Talks"
+        ]
+    );
+    assert!(body.contains(r#"data-applied-filter="kind""#));
+    assert!(body.contains(r#"data-applied-filter-value="in-person""#));
+    assert!(body.contains(r#"data-applied-filter-value="virtual""#));
+    assert!(body.contains(", 7 active"));
+}
+
+#[tokio::test]
+async fn test_events_section_applied_filters_distance_without_location() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_filters_options()
+        .times(1)
+        .returning(|_, _| Ok(sample_applied_filters_options()));
+    db.expect_search_events()
+        .times(1)
+        .returning(|_| Ok(sample_search_events_output(Uuid::new_v4())));
+
+    // Setup router and send request without a viewer location
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/events-section?distance=5000")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the distance gets no chip without a location to measure from
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(applied_filter_labels(&body), Vec::<&str>::new());
+    assert!(!body.contains("Applied filters"));
+}
+
+#[tokio::test]
+async fn test_events_section_applied_filters_with_distance() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_filters_options()
+        .times(1)
+        .returning(|_, _| Ok(sample_applied_filters_options()));
+    db.expect_search_events()
+        .times(1)
+        .returning(|_| Ok(sample_search_events_output(Uuid::new_v4())));
+
+    // Setup router and send request with a viewer location
+    let router = TestRouterBuilder::new(db).build().await;
+    let mut request = request("GET", "/explore/events-section?distance=5000")
+        .body(Body::empty())
+        .unwrap();
+    *request.headers_mut() = sample_location_headers("40.7128", "-74.0060");
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the distance gets a chip with a location to measure from
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(applied_filter_labels(&body), ["5 km"]);
+}
+
+#[tokio::test]
+async fn test_events_section_no_applied_filters() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_filters_options()
+        .times(1)
+        .returning(|_, _| Ok(sample_applied_filters_options()));
+    db.expect_search_events()
+        .times(1)
+        .returning(|_| Ok(sample_search_events_output(Uuid::new_v4())));
+
+    // Setup router and send request with only a date range, which gets no chip
+    let router = TestRouterBuilder::new(db).build().await;
+    let uri = "/explore/events-section?date_from=2030-01-01&date_to=2030-12-31";
+    let request = request("GET", uri).body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check neither the chip row nor the active state renders
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(!body.contains("Applied filters"));
+    assert!(!body.contains(" active</span>"));
+}
+
+#[tokio::test]
 async fn test_events_section_success() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
@@ -270,6 +383,35 @@ async fn test_events_section_success() {
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
         "/explore?entity=events&community=&event_category=&group=&group_category=&kind=&region=&limit=10&offset=0"
     );
+}
+
+#[tokio::test]
+async fn test_events_section_switch_values() {
+    for (query, expected) in entity_switch_cases() {
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_filters_options()
+            .times(1)
+            .returning(|_, _| Ok(sample_filters_options()));
+        db.expect_search_events()
+            .times(1)
+            .returning(|_| Ok(sample_search_events_output(Uuid::new_v4())));
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db).build().await;
+        let uri = format!("/explore/events-section{query}");
+        let request = request("GET", &uri).body(Body::empty()).unwrap();
+        let (parts, bytes) = send(router, request).await;
+        let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+        // Check the drawer, sidebar and phone switches send the expected values
+        assert_html_response(&parts, &bytes, StatusCode::OK);
+        assert_eq!(
+            entity_switch_vals(&body),
+            [expected.clone(), expected.clone(), expected],
+            "{query}"
+        );
+    }
 }
 
 #[tokio::test]
@@ -440,6 +582,55 @@ async fn test_groups_results_section_success() {
 }
 
 #[tokio::test]
+async fn test_groups_section_applied_filters() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_filters_options()
+        .times(1)
+        .returning(|_, _| Ok(sample_applied_filters_options()));
+    db.expect_search_groups()
+        .times(1)
+        .returning(|_| Ok(sample_search_groups_output(Uuid::new_v4())));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let uri = "/explore/groups-section?community[0]=alpha&group_category[0]=cloud&region[0]=emea";
+    let request = request("GET", uri).body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check every filter with a known option gets a chip, in filter order
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(applied_filter_labels(&body), ["Alpha", "Cloud", "EMEA"]);
+    assert!(body.contains(", 3 active"));
+}
+
+#[tokio::test]
+async fn test_groups_section_applied_filters_with_distance() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_filters_options()
+        .times(1)
+        .returning(|_, _| Ok(sample_applied_filters_options()));
+    db.expect_search_groups()
+        .times(1)
+        .returning(|_| Ok(sample_search_groups_output(Uuid::new_v4())));
+
+    // Setup router and send request with a viewer location
+    let router = TestRouterBuilder::new(db).build().await;
+    let mut request = request("GET", "/explore/groups-section?distance=5000")
+        .body(Body::empty())
+        .unwrap();
+    *request.headers_mut() = sample_location_headers("40.7128", "-74.0060");
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the distance gets a chip with a location to measure from
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(applied_filter_labels(&body), ["5 km"]);
+}
+
+#[tokio::test]
 async fn test_groups_section_success() {
     // Setup identifiers and data structures
     let group_id = Uuid::new_v4();
@@ -469,6 +660,35 @@ async fn test_groups_section_success() {
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
         "/explore?entity=groups&community=&group_category=&region=&limit=10&offset=0"
     );
+}
+
+#[tokio::test]
+async fn test_groups_section_switch_values() {
+    for (query, expected) in entity_switch_cases() {
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_filters_options()
+            .times(1)
+            .returning(|_, _| Ok(sample_filters_options()));
+        db.expect_search_groups()
+            .times(1)
+            .returning(|_| Ok(sample_search_groups_output(Uuid::new_v4())));
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db).build().await;
+        let uri = format!("/explore/groups-section{query}");
+        let request = request("GET", &uri).body(Body::empty()).unwrap();
+        let (parts, bytes) = send(router, request).await;
+        let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+        // Check the drawer, sidebar and phone switches send the expected values
+        assert_html_response(&parts, &bytes, StatusCode::OK);
+        assert_eq!(
+            entity_switch_vals(&body),
+            [expected.clone(), expected.clone(), expected],
+            "{query}"
+        );
+    }
 }
 
 #[tokio::test]
@@ -1007,6 +1227,56 @@ fn test_viewer_location_reads_valid_headers_only() {
 }
 
 // Helpers
+
+/// Returns the label of every applied filter chip in the body.
+fn applied_filter_labels(body: &str) -> Vec<&str> {
+    body.split(r#"aria-label="Remove filter "#)
+        .skip(1)
+        .map(|rest| &rest[..rest.find('"').expect("aria-label to be closed")])
+        .collect()
+}
+
+/// Returns section query strings with the values the entity switch should send.
+fn entity_switch_cases() -> Vec<(&'static str, Value)> {
+    vec![
+        ("", json!({})),
+        ("?ts_query=Platform", json!({"ts_query": "Platform"})),
+        ("?community[0]=alpha", json!({"community[0]": "alpha"})),
+        (
+            "?community[0]=alpha&ts_query=Platform",
+            json!({"community[0]": "alpha", "ts_query": "Platform"}),
+        ),
+        ("?community[0]=alpha&community[1]=beta", json!({})),
+    ]
+}
+
+/// Returns the parsed `hx-vals` of every entity switch in the body.
+fn entity_switch_vals(body: &str) -> Vec<Value> {
+    body.split("hx-vals='")
+        .skip(1)
+        .map(|rest| {
+            let end = rest.find('\'').expect("hx-vals to be closed");
+            serde_json::from_str(&rest[..end]).expect("hx-vals to be valid JSON")
+        })
+        .collect()
+}
+
+/// Returns filter options for the applied filters tests.
+fn sample_applied_filters_options() -> FiltersOptions {
+    let option = |name: &str, value: &str| FilterOption {
+        name: name.to_string(),
+        value: value.to_string(),
+    };
+
+    FiltersOptions {
+        communities: vec![option("Alpha", "alpha")],
+        distance: vec![option("5 km", "5000")],
+        event_category: Some(vec![option("Talks", "talks")]),
+        group_category: Some(vec![option("Cloud", "cloud")]),
+        groups: Some(vec![option("Core group", "core")]),
+        region: Some(vec![option("EMEA", "emea")]),
+    }
+}
 
 /// Returns `CloudFront` viewer location headers with the given values.
 fn sample_location_headers(latitude: &'static str, longitude: &'static str) -> HeaderMap {

@@ -5,8 +5,8 @@
 ## Is OCG Mobile Friendly?
 
 Public pages are usable on mobile, so you can discover groups and events from your phone. The
-user and group Check-In sections are also mobile-friendly. Dashboards work on tablets and other
-screens at least 768px wide; on narrower phones, every dashboard section except Check-In shows a
+Check-In sections and user Invitations are also mobile-friendly. Dashboards work on tablets and
+other screens at least 768px wide; on narrower phones, every other dashboard section shows a
 notice that it is not optimized yet for mobile devices. On a computer with a mouse or trackpad,
 narrower browser windows, such as one snapped to half of the screen, keep the dashboard layout and
 scroll horizontally instead.

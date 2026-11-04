@@ -56,7 +56,7 @@ describe("dashboard group check-in template", () => {
     // Verify cards contain a real compact action instead of an unlabeled QR icon.
     expect(template).to.include("data-group-check-in-card");
     expect(template).to.include(
-      'class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"',
+      'class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 phone:absolute phone:inset-x-3 phone:bottom-3 phone:h-11 phone:justify-center phone:text-sm"',
     );
     expect(template).to.include("<span>Scan Attendee Codes</span>");
     expect(template).to.include(
@@ -85,12 +85,14 @@ describe("dashboard group check-in template", () => {
       'class="fixed inset-0 z-[1000] hidden h-full max-h-full w-full items-center justify-center overflow-x-hidden overflow-y-auto flex"',
     );
     expect(template).to.include(
-      '<div class="modal-panel h-full max-h-full max-w-2xl p-4 sm:h-auto sm:max-h-[90vh]">',
+      '<div class="modal-panel h-full max-h-full max-w-2xl p-4 sm:h-auto sm:max-h-[90vh] phone:max-sm:p-0 phone:max-sm:rounded-none">',
     );
     expect(template).to.include(
-      '<div class="modal-card h-full max-h-full rounded-lg sm:h-auto sm:max-h-[calc(90vh-2rem)]">',
+      '<div class="modal-card h-full max-h-full rounded-lg sm:h-auto sm:max-h-[calc(90vh-2rem)] phone:max-sm:p-0 phone:max-sm:rounded-none phone:[&_button:has(>.icon-close)]:-m-1.5 phone:[&_button:has(>.icon-close)]:size-11">',
     );
-    expect(template).to.include('<div class="modal-body flex-1 p-4 md:p-6">');
+    expect(template).to.include(
+      '<div class="modal-body flex-1 p-4 md:p-6 phone:max-sm:flex phone:max-sm:flex-col phone:max-sm:p-0">',
+    );
     expect(template).to.include(
       '{{ dashboard::modal_header(title_id = "group-check-in-scanner-title", title = "Scan Attendee Codes", close_attrs = "data-group-check-in-close") -}}',
     );
@@ -100,15 +102,17 @@ describe("dashboard group check-in template", () => {
       'id="group-check-in-event-location" class="min-w-0 truncate"',
     );
     expect(template).to.include(
-      '<div class="w-full overflow-hidden rounded-xl border border-stone-200 bg-white">',
+      '<div class="w-full overflow-hidden rounded-xl border border-stone-200 bg-white phone:max-sm:flex phone:max-sm:shrink-0 phone:max-sm:basis-auto phone:max-sm:flex-1 phone:max-sm:flex-col phone:max-sm:rounded-none phone:max-sm:border-0">',
     );
     expect(template).to.include(
-      '<div class="relative aspect-[4/3] overflow-hidden border-t border-stone-200 bg-stone-950">',
+      '<div class="relative aspect-[4/3] overflow-hidden border-t border-stone-200 bg-stone-950 phone:max-sm:aspect-auto phone:max-sm:min-h-48 phone:max-sm:flex-1">',
     );
     expect(template).to.include(
-      '<div class="pointer-events-none absolute inset-[10%] rounded-2xl border-2 border-white/70"> <div data-group-check-in-camera-unavailable',
+      '<div class="pointer-events-none absolute inset-[10%] rounded-2xl border-2 border-white/70 phone:max-sm:inset-auto phone:max-sm:top-1/2 phone:max-sm:left-1/2 phone:max-sm:aspect-square phone:max-sm:w-[70%] phone:max-sm:max-h-[80%] phone:max-sm:-translate-x-1/2 phone:max-sm:-translate-y-1/2"> <div data-group-check-in-camera-unavailable',
     );
-    expect(template).to.include('class="select select-primary mt-1" disabled');
+    expect(template).to.include(
+      'class="select select-primary mt-1 phone:min-h-11" disabled',
+    );
     expect(template).not.to.include("icon-caret-down");
     expect(template).to.include(
       'class="sr-only peer" data-group-check-in-mute>',
@@ -126,5 +130,51 @@ describe("dashboard group check-in template", () => {
     expect(template).to.include('class="btn-primary-outline w-full sm:w-auto"');
     expect(template).not.to.include("data-group-check-in-manual");
     expect(template).not.to.include("data-attendees-url");
+  });
+
+  it("keeps desktop's cards on phones with the scan button on its own line", async () => {
+    // Load the Check-In template before checking the phone card layout.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the list inset, and the room the card leaves for the bottom button.
+    expect(template).to.include("phone:mx-3 phone:mb-4 phone:mt-0 phone:gap-3");
+    expect(template).to.include("hover:shadow-sm phone:pb-14");
+    expect(template).to.include("phone:px-3 phone:pt-4 phone:pb-3");
+  });
+
+  it("scopes every scanner layout change below 640px", async () => {
+    // Load the shared scanner modal, which the desktop Attendees tab also uses.
+    const template = normalizeWhitespace(
+      await loadTemplate(
+        "/ocg-server/templates/dashboard/group/check_in_scanner_modal.html",
+      ),
+    );
+
+    // Verify the frame centres itself only on phones below 640px.
+    expect(template).to.include("phone:max-sm:-translate-x-1/2 phone:max-sm:-translate-y-1/2");
+    expect(template).to.include('border-white/70 phone:max-sm:inset-auto');
+    expect(template).not.to.match(/[\s"]max-sm:/);
+
+    // Verify a single camera hides the select, without depending on its disabled state.
+    expect(template).to.include("phone:has-[option:only-child]:max-sm:hidden");
+    expect(template).not.to.include("select:disabled");
+  });
+
+  it("gives the scanner controls 44px targets on phones", async () => {
+    // Load the shared scanner modal before checking its touch targets.
+    const template = normalizeWhitespace(
+      await loadTemplate(
+        "/ocg-server/templates/dashboard/group/check_in_scanner_modal.html",
+      ),
+    );
+
+    // Verify the header close grows into its padding, and both switches reach 44px.
+    expect(template).to.include("phone:[&_button:has(>.icon-close)]:size-11");
+    expect(template).to.include(
+      '<label class="inline-flex cursor-pointer items-center has-[:disabled]:cursor-not-allowed phone:min-h-11">',
+    );
+    expect(template).to.include(
+      '<label class="hidden cursor-pointer items-center has-[:disabled]:cursor-not-allowed phone:min-h-11"',
+    );
   });
 });

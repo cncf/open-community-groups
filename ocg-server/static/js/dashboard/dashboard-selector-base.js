@@ -283,7 +283,7 @@ export class DashboardSelectorBase extends LitWrapper {
           aria-expanded=${this._combobox.isOpen ? "true" : "false"}
           @click=${() => this._combobox.toggle()}
         >
-          <div class="flex flex-col justify-center min-h-10">
+          <div class="flex flex-col justify-center min-h-10 phone:min-h-11">
             <div class="text-xs/4 text-stone-900 line-clamp-2">${selectedLabel}</div>
           </div>
           <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
@@ -292,7 +292,7 @@ export class DashboardSelectorBase extends LitWrapper {
         </button>
 
         <div
-          class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${
+          class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 phone:top-[60px] ${
             this._combobox.isOpen ? "" : "hidden"
           }"
         >
@@ -357,7 +357,7 @@ export class DashboardSelectorBase extends LitWrapper {
           type="button"
           class="${
             this._selectorConfig.selectorName
-          }-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${this._getOptionStatusClass(
+          }-button w-full px-4 py-2 whitespace-normal min-h-10 phone:min-h-11 flex flex-col justify-center text-left focus:outline-none ${this._getOptionStatusClass(
             isDisabled,
             isActive,
           )}"

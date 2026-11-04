@@ -27,8 +27,40 @@
      {% if let Some(starts_at) = &event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
      data-waitlist-enabled="{{ event.waitlist_enabled }}"
      data-attendee-meeting-access-open="{{ event.is_live() }}"
-     class="flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:gap-4 md:max-xl:gap-2
+     {% if event.is_past() || event.canceled %}data-phone-bar="hidden"{% endif %}
+     class="cta-bar flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:gap-4 md:max-xl:gap-2 phone:flex-nowrap phone:mt-0
             {% if !event.is_past() && event.formatted_ticket_price_badge().is_some() %}mt-3 md:mt-0{% endif %}">
+
+  {# Phone bar summary -#}
+  <div data-attendance-role="bar-summary"
+       class="order-first min-w-0 flex-1 not-phone:hidden">
+    {% if !event.is_past() -%}
+      {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
+        <div class="truncate text-sm font-semibold text-stone-900">
+          <span data-localized-currency>{{ ticket_price_badge }}</span>
+          {%- if event.shows_additional_ticket_tax() %}&nbsp;+ tax{% endif %}
+        </div>
+      {% endif -%}
+    {% endif -%}
+    <div class="truncate text-[13px]/[18px] text-stone-600">
+      <span data-availability-summary></span>
+      <span>
+        {% if event.kind == EventKind::Virtual -%}
+          Virtual event
+        {% else if event.kind == EventKind::Hybrid -%}
+          Hybrid event
+        {% else -%}
+          In-person event
+        {% endif -%}
+      </span>
+      {% if let Some(starts_at) = &event.starts_at -%}
+        <span>· {{ starts_at.with_timezone(event.timezone).format("%b %e") }}</span>
+      {% endif -%}
+    </div>
+    <p data-attendance-role="bar-reason"
+       class="line-clamp-2 text-[13px]/[18px] text-stone-600"></p>
+  </div>
+  {# End phone bar summary -#}
 
   {# Loading spinner -#}
   <button id="loading-btn-{{ attendance_instance }}"
@@ -36,7 +68,7 @@
           role="status"
           aria-live="polite"
           disabled
-          class="group relative is-loading btn-primary-outline h-10 md:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+          class="group relative is-loading btn-primary-outline h-10 md:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:px-6 phone:text-[15px] phone:shrink-0 phone:max-[360px]:px-4 phone:max-[360px]:text-sm">
     {{ ui::spinner(size = "size-4") -}}
     <span class="ms-2">Checking...</span>
   </button>
@@ -46,7 +78,7 @@
   <button id="signin-btn-{{ attendance_instance }}"
           data-attendance-role="signin-btn"
           data-path="{{ path }}"
-          class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+          class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:px-6 phone:text-[15px] phone:shrink-0 phone:max-[360px]:px-4 phone:max-[360px]:text-sm phone:enabled:btn-fill">
     {{ attendance::initial_control_content(event = event) -}}
   </button>
   {# End sign in prompt -#}
@@ -60,10 +92,10 @@
               hx-include="#registration-answers-input-{{ attendance_instance }}"
             {% endif -%}
             hx-swap="none"
-            class="hidden group btn-primary-outline relative h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+            class="hidden group btn-primary-outline relative h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:px-6 phone:text-[15px] phone:shrink-0 phone:max-[360px]:px-4 phone:max-[360px]:text-sm phone:enabled:btn-fill">
       {{ attendance::initial_control_content(event = event) -}}
       <span data-attendance-role="external-payment-details-indicator"
-            class="hidden pointer-events-none absolute -end-0.5 -top-0.5 size-3 rounded-full border-2 border-white bg-primary-500"
+            class="hidden pointer-events-none absolute -end-0.5 -top-0.5 size-3 rounded-full border-2 border-white bg-primary-500 phone:border-primary-600 phone:bg-white"
             aria-hidden="true"></span>
     </button>
     {{ attendance::external_payment_tooltip(attendance_instance = attendance_instance) -}}
@@ -81,23 +113,23 @@
          class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
       <div data-attendance-role="registration-modal-overlay"
            class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-      <div class="modal-panel p-4 max-w-6xl">
-        <div class="modal-card rounded-lg">
-          <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+      <div class="modal-panel p-4 max-w-6xl phone:p-0">
+        <div class="modal-card sheet-panel rounded-lg">
+          <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t sheet-grab phone:ps-3 phone:pe-1.5 phone:pt-4 phone:pb-2">
             <div>
               <h3 id="registration-questions-title-{{ attendance_instance }}"
-                  class="text-xl font-semibold text-stone-900">Registration questions</h3>
+                  class="text-xl font-semibold text-stone-900 phone:text-lg">Registration questions</h3>
               <p class="mt-1 text-sm text-stone-600">Answer these questions to complete your registration.</p>
             </div>
             <button data-attendance-role="registration-modal-close"
                     type="button"
-                    class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                    class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center phone:shrink-0">
               <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
               <span class="sr-only">Close modal</span>
             </button>
           </div>
           <form data-attendance-role="registration-form"
-                class="modal-body p-4 md:p-6 space-y-7">
+                class="modal-body sheet-body p-4 md:p-6 space-y-7 phone:p-3">
             {% let empty_registration_answers = crate::types::questionnaire::QuestionnaireAnswers::default() -%}
             {{ question_answers::fields(questions = event.registration_questions,
               answers = Some(empty_registration_answers) ,
@@ -109,7 +141,7 @@
                    name="registration_answers">
             <div class="flex flex-col gap-3 border-t border-stone-200 pt-4 md:flex-row md:items-center md:justify-between">
               {{ question_answers::required_note() -}}
-              <div class="flex flex-col gap-3 md:flex-row md:justify-end">
+              <div class="flex flex-col gap-3 md:flex-row md:justify-end phone:flex-col-reverse">
                 <button data-attendance-role="registration-modal-cancel"
                         type="button"
                         class="btn-primary-outline">Cancel</button>
@@ -136,12 +168,12 @@
     <div id="overlay-ticket-modal-{{ attendance_instance }}"
          data-attendance-role="ticket-modal-overlay"
          class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-    <div class="modal-panel p-4 max-w-3xl">
-      <div class="modal-card rounded-lg">
-        <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+    <div class="modal-panel p-4 max-w-3xl phone:p-0">
+      <div class="modal-card sheet-panel rounded-lg">
+        <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t sheet-grab phone:items-start phone:ps-3 phone:pe-1.5 phone:pt-4 phone:pb-2">
           <div>
             <h3 id="ticket-modal-title-{{ attendance_instance }}"
-                class="text-xl font-semibold text-stone-900">
+                class="text-xl font-semibold text-stone-900 phone:text-lg">
               {% if event.attendee_approval_required -%}
                 Request a ticket
               {% else -%}
@@ -162,13 +194,13 @@
           <button id="close-ticket-modal-{{ attendance_instance }}"
                   data-attendance-role="ticket-modal-close"
                   type="button"
-                  class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                  class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center phone:shrink-0">
             <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
             <span class="sr-only">Close modal</span>
           </button>
         </div>
 
-        <div class="modal-body p-4 md:p-6 space-y-6">
+        <div class="modal-body sheet-body p-4 md:p-6 space-y-6 phone:p-3">
           {% let visible_ticket_types = event.visible_ticket_types() -%}
           <form data-attendance-role="checkout-form"
                 data-attend-url="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
@@ -281,7 +313,7 @@
               {% endif -%}
             </div>
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end phone:flex-col-reverse phone:items-stretch">
               <button id="cancel-ticket-modal-{{ attendance_instance }}"
                       data-attendance-role="ticket-modal-cancel"
                       type="button"
@@ -323,18 +355,18 @@
        class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
     <div data-attendance-role="refund-modal-overlay"
          class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-    <div class="modal-panel p-4 max-w-2xl">
-      <div class="modal-card rounded-lg">
-        <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+    <div class="modal-panel p-4 max-w-2xl phone:p-0">
+      <div class="modal-card sheet-panel rounded-lg">
+        <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t sheet-grab phone:ps-3 phone:pe-1.5 phone:pt-4 phone:pb-2">
           <div>
             <h3 id="refund-modal-title-{{ attendance_instance }}"
-                class="text-xl font-semibold text-stone-900">Request a refund</h3>
+                class="text-xl font-semibold text-stone-900 phone:text-lg">Request a refund</h3>
             <p id="refund-modal-description-{{ attendance_instance }}"
                class="mt-1 text-sm text-stone-600">Add a reason to help the organizers review your request.</p>
           </div>
           <button data-attendance-role="refund-modal-close"
                   type="button"
-                  class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                  class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center phone:shrink-0">
             <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
             <span class="sr-only">Close modal</span>
           </button>
@@ -343,8 +375,9 @@
               hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/refund-request"
               hx-swap="none"
               hx-ext="no-empty-vals"
-              hx-disabled-elt="find button[type='submit']">
-          <div class="modal-body p-4 md:px-6 md:py-5">
+              hx-disabled-elt="find button[type='submit']"
+              class="phone:flex phone:min-h-0 phone:flex-col">
+          <div class="modal-body sheet-body p-4 md:px-6 md:py-5 phone:p-3">
             <label for="refund-reason-{{ attendance_instance }}" class="form-label">Reason (optional)</label>
             <textarea id="refund-reason-{{ attendance_instance }}"
                       data-attendance-role="refund-reason-input"
@@ -354,7 +387,7 @@
                       class="input-primary mt-2 min-h-28"
                       placeholder="Tell the organizers why you're requesting a refund"></textarea>
           </div>
-          <div class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5">
+          <div class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5 sheet-foot phone:flex-col-reverse">
             <button data-attendance-role="refund-modal-cancel"
                     type="button"
                     class="btn-primary-outline">Cancel</button>
@@ -381,7 +414,7 @@
          data-join-link
          target="_blank"
          rel="noopener noreferrer"
-         class="hidden max-xl:hidden group btn-primary-outline-anchor h-10 md:h-[30px] items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+         class="hidden max-xl:hidden group btn-primary-outline-anchor h-10 md:h-[30px] items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:px-6 phone:text-[15px] phone:shrink-0 phone:max-[360px]:px-4 phone:max-[360px]:text-sm phone:btn-fill">
         <div class="svg-icon size-3 icon-meeting"></div>
         <span>Join meeting</span>
       </a>
@@ -395,7 +428,7 @@
           hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/leave"
           hx-trigger="confirmed"
           hx-swap="none"
-          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:px-6 phone:text-[15px] phone:shrink-0 phone:max-[360px]:px-4 phone:max-[360px]:text-sm">
     {{ attendance::control_content(label = "Cancel attendance", icon_class = "icon-cancel") -}}
   </button>
   {# End leave button -#}
@@ -405,14 +438,14 @@
     <details id="actions-menu-{{ attendance_instance }}"
              data-attendance-role="actions-menu"
              data-event-actions-menu
-             class="order-last static shrink-0 sm:relative">
-      <summary class="group btn-primary-outline flex h-10 w-10 cursor-pointer list-none items-center justify-center p-0 md:h-[30px] md:w-[30px] [&::-webkit-details-marker]:hidden"
+             class="order-last static shrink-0 sm:relative phone:static phone:hidden phone:has-[[data-attendance-role=checkout-cancel-btn]:not(.hidden)]:block">
+      <summary class="group btn-primary-outline flex h-10 w-10 cursor-pointer list-none items-center justify-center p-0 md:h-[30px] md:w-[30px] [&::-webkit-details-marker]:hidden phone:size-11"
                aria-label="More actions"
                title="More actions">
         <div class="svg-icon size-4 icon-vertical-dots"></div>
       </summary>
-      <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
-        <share-modal trigger-variant="menu-item" title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.public_slug() }}/event/{{ event.slug }}">
+      <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48 phone:left-auto phone:right-3 phone:bottom-full phone:mb-2 phone:top-auto phone:mt-0">
+        <share-modal class="phone:hidden" trigger-variant="menu-item" title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.public_slug() }}/event/{{ event.slug }}">
         </share-modal>
         {% if let Some(meeting_join_url) = &event.meeting_join_url %}
           <a id="join-meeting-menu-btn-{{ attendance_instance }}"
@@ -421,7 +454,7 @@
              data-join-link-menu
              target="_blank"
              rel="noopener noreferrer"
-             class="hidden xl:hidden group w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">
+             class="hidden xl:hidden group w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50 phone:hidden">
             <div class="svg-icon size-4 bg-stone-600 icon-meeting"></div>
             <span>Join meeting</span>
           </a>
@@ -437,7 +470,7 @@
                 hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/checkout"
                 hx-trigger="confirmed"
                 hx-swap="none"
-                class="hidden group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">
+                class="hidden group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50 phone:min-h-11">
           <div class="svg-icon size-4 bg-stone-600 icon-cancel" data-attendance-icon></div>
           <span data-attendance-label>Cancel checkout</span>
         </button>
@@ -452,7 +485,7 @@
   <button id="refund-btn-{{ attendance_instance }}"
           data-attendance-role="refund-btn"
           type="button"
-          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:px-6 phone:text-[15px] phone:shrink-0 phone:max-[360px]:px-4 phone:max-[360px]:text-sm">
     {{ attendance::control_content(label = "Request refund", icon_class = "icon-refund") -}}
   </button>
   <button type="button"

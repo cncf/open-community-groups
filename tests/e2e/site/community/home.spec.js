@@ -15,7 +15,13 @@ import {
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
 } from "../../seed.js";
-import { buildE2eUrl, getSectionLink, navigateToCommunityHome, navigateToGroup } from "../../utils.js";
+import {
+  buildE2eUrl,
+  getSectionByHeading,
+  getSectionLink,
+  navigateToCommunityHome,
+  navigateToGroup,
+} from "../../utils.js";
 import {
   expectLatestGroupsSection,
   expectNumericStats,
@@ -364,6 +370,140 @@ test.describe("community home page", () => {
     test("stats strip displays numeric values below lg breakpoint", async ({ page }) => {
       // Verify the mobile stats strip shows a number for every stat.
       await expectNumericStats(page, "community", "mobile");
+    });
+
+    test("stats box keeps its four cells in a two by two", async ({ page }) => {
+      // Measure the mobile stat cells.
+      const cells = await page
+        .locator(".stat-box > *")
+        .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect()));
+
+      // Verify two columns of two rows inside the box.
+      expect(cells).toHaveLength(4);
+      expect(cells[0].top).toBe(cells[1].top);
+      expect(cells[2].top).toBe(cells[3].top);
+      expect(cells[0].left).toBe(cells[2].left);
+      expect(cells[1].left).toBeGreaterThan(cells[0].left);
+      expect(cells[2].top).toBeGreaterThan(cells[0].top);
+    });
+
+    test("about heading stays visible as a section strip", async ({ page }) => {
+      // Verify the visible heading the sr-only h1 does not replace.
+      const heading = page.getByText("About this community", { exact: true });
+      await expect(heading).toBeVisible();
+      await expect(heading).toHaveCSS("position", "sticky");
+      await expect(heading).toHaveCSS("text-transform", "uppercase");
+    });
+
+    test("long unbroken name stays inside the breadcrumb trigger", async ({ page }) => {
+      // Serve the page with a name that cannot wrap, on the narrowest phone.
+      const longName = "Community".repeat(14);
+      await page.route(buildE2eUrl(`/${TEST_COMMUNITY_NAME}`), async (route) => {
+        const response = await route.fetch();
+        const body = (await response.text()).replaceAll(TEST_COMMUNITY_TITLE, longName);
+        await route.fulfill({ body, response });
+      });
+      await page.setViewportSize({ height: 640, width: 320 });
+      await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
+
+      // Verify the trigger holds the name without widening the page.
+      const trigger = page
+        .getByRole("navigation", { name: "Breadcrumb" })
+        .locator('button[aria-haspopup="listbox"]');
+      await expect(trigger).toContainText(longName);
+      const triggerBox = await trigger.boundingBox();
+      expect(triggerBox.x + triggerBox.width).toBeLessThanOrEqual(320);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+    });
+
+    test("read more shows only while the description is clipped", async ({ page }) => {
+      const description = page.locator(".community-description");
+      const toggle = page.getByRole("button", { name: "Read more" });
+
+      // Verify the seeded short description has nothing to expand.
+      await expect(description).toContainText(TEST_COMMUNITY_DESCRIPTION);
+      await expect(toggle).toBeHidden();
+
+      // Grow the description past three lines.
+      await description.evaluate((element) => {
+        element.firstElementChild.textContent = "Long community description. ".repeat(40);
+      });
+
+      // Verify it clips at three lines behind the toggle.
+      await expect(toggle).toBeVisible();
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(await description.evaluate((element) => element.clientHeight)).toBe(72);
+      expect((await toggle.boundingBox()).height).toBeGreaterThanOrEqual(44);
+
+      // Expand it, then collapse it again.
+      await toggle.click();
+      const collapse = page.getByRole("button", { name: "Read less" });
+      await expect(collapse).toHaveAttribute("aria-expanded", "true");
+      expect(await description.evaluate((element) => element.clientHeight)).toBeGreaterThan(72);
+      await collapse.click();
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(await description.evaluate((element) => element.clientHeight)).toBe(72);
+    });
+
+    test("read more fades the clipped edge and drops a leading margin", async ({ page }) => {
+      const description = page.locator(".community-description");
+      const toggle = page.getByRole("button", { name: "Read more" });
+
+      // Lead the description with a heading and grow it past three lines.
+      await description.evaluate((element) => {
+        element.innerHTML = `<h2>Heading</h2><p>${"Long community description. ".repeat(40)}</p>`;
+      });
+      await expect(toggle).toBeVisible();
+
+      // Verify the heading starts at the top and the clip edge fades.
+      await expect(description.locator("h2")).toHaveCSS("margin-top", "0px");
+      await expect(description).toHaveCSS("mask-image", /linear-gradient/);
+
+      // Verify the open text carries no fade.
+      await toggle.click();
+      await expect(description).toHaveCSS("mask-image", "none");
+    });
+
+    test("see all replaces the explore link beside the groups heading", async ({ page }) => {
+      const section = getSectionByHeading(page, "Latest groups added");
+      const seeAll = section.getByRole("link", { name: "See all latest groups added" });
+
+      // Verify the phone link is the only way to the list in this section.
+      await expect(seeAll).toHaveText("See all");
+      await expect(seeAll).toHaveCSS("text-transform", "none");
+      await expect(section.getByRole("link", { name: "Explore all groups" })).toHaveCount(0);
+
+      // Verify it keeps the community filter.
+      await expect(seeAll).toHaveAttribute(
+        "href",
+        `/explore?entity=groups&sort_by=name&community[0]=${TEST_COMMUNITY_NAME}`,
+      );
+    });
+
+    test("new groups stays hidden and the about actions fill the width", async ({ page }) => {
+      // Load the secondary community, the one with new group instructions and social links.
+      await navigateToCommunityHome(page, TEST_COMMUNITY_NAME_2);
+
+      // Verify the block is rendered but hidden on phones.
+      const newGroups = page.getByText("New groups", { exact: true });
+      await expect(newGroups).toHaveCount(1);
+      await expect(newGroups).toBeHidden();
+
+      // Verify social links reach the tap target size.
+      const socialBox = await page.getByRole("main").locator('a[title="GitHub"]').boundingBox();
+      expect(socialBox.width).toBe(44);
+      expect(socialBox.height).toBe(44);
+
+      // Verify the explore pill spans the panel's text column.
+      const exploreLink = page.getByRole("link", { name: "Explore community groups and events" });
+      const exploreBox = await exploreLink.boundingBox();
+      const { width } = page.viewportSize();
+      expect(exploreBox.x).toBe(12);
+      expect(exploreBox.width).toBe(width - 24);
+      expect(exploreBox.height).toBe(48);
     });
   });
 });

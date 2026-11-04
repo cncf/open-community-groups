@@ -2,13 +2,17 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/question_answers.html" as question_answers -%}
 
+{% let no_invitations = event_invitations.is_empty() && group_invitations.is_empty() && community_invitations.is_empty() -%}
+
 {{ dashboard::page_title(title = "Event Invitations", docs_href = "/docs#/guides/user-dashboard?id=invitations-access-and-attendance",
   description = "Confirm, resume, or decline event invitations and ticket offers.") -}}
 
 {# Event Invitations -#}
-<div class="mt-10">
+{# Hidden on the wrapper, so the page title stays (see .dashboard-table-stacked). -#}
+<div class="mt-10 phone:mt-0{% if no_invitations %}
+              phone:hidden{% endif %}">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full dashboard-table mb-12">
+    <table class="table-auto w-full dashboard-table mb-12 dashboard-table-stacked phone:mb-0">
       {# Table header -#}
       <thead class="dashboard-table-head">
         <tr>
@@ -38,11 +42,11 @@
           {% for invitation in event_invitations -%}
             {# Invitation row -#}
             <tr id="event-offer-{{ invitation.admission_offer_id }}"
-                class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 scroll-mt-4">
+                class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 scroll-mt-4 phone:-scroll-mt-11">
               {# Event -#}
               <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
                 <div class="title-preheader">{{ invitation.group_name }} · {{ invitation.community_display_name }}</div>
-                <div class="mt-0.5 max-w-full text-black truncate">{{ invitation.event_name }}</div>
+                <div class="mt-0.5 max-w-full text-black truncate phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5">{{ invitation.event_name }}</div>
                 <div class="mt-0.5 truncate text-xs font-normal text-stone-500 lg:hidden">
                   {% if let Some(starts_at) = &invitation.starts_at -%}
                     Starts {{ starts_at.with_timezone(invitation.timezone).format(DATE_FORMAT_2) }}
@@ -54,6 +58,7 @@
               {# End event -#}
               {# Offer -#}
               <td class="px-3 xl:px-5 py-4">
+                <span class="not-phone:hidden phone:mb-0.5 phone:block text-xs uppercase text-stone-700">Offer</span>
                 {% if invitation.is_simple_rsvp -%}
                   <div class="font-medium text-stone-700">RSVP</div>
                   <div class="text-xs text-stone-500">{{ invitation.source_label() }}</div>
@@ -74,7 +79,7 @@
             <div class="text-xs text-stone-500">{{ invitation.source_label() }}</div>
           {% endif -%}
           {% if let Some(external_payment) = &invitation.external_payment -%}
-            <div class="mt-2 space-y-0.5 text-xs text-stone-500">
+            <div class="mt-2 space-y-0.5 text-xs text-stone-500 phone:wrap-anywhere phone:[&_.font-mono]:break-all">
               <div>
                 Confirm by {{ external_payment.deadline.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}
               </div>
@@ -96,50 +101,38 @@
           </td>
           {# End starts date -#}
           {# Expiration date -#}
-          <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+          <td class="px-3 xl:px-5 py-4 whitespace-nowrap phone:whitespace-normal">
+            <span class="not-phone:hidden phone:mb-0.5 phone:block text-xs uppercase text-stone-700">Expires</span>
             {{ invitation.expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y") }}
-            <div class="text-xs text-stone-400">
+            <div class="text-xs text-stone-400 phone:text-stone-500">
               {{ invitation.expires_at.with_timezone(invitation.timezone).format("%-I:%M %p %Z") }}
             </div>
           </td>
           {# End expiration date -#}
           {# Actions -#}
           <td class="dashboard-table-actions py-4 w-[72px] text-right">
-            <details data-actions-menu class="group relative inline-flex justify-end">
-              <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+            {# Primary action (phones only) -#}
+            <div class="not-phone:hidden phone:min-w-0 phone:flex-1 phone:[&_.svg-icon]:bg-current">
+              {{ event_offer_primary_action(invitation = invitation,
+                button_classes = "btn-primary-outline flex w-full items-center justify-center gap-2",
+                anchor_classes = "btn-primary-outline-anchor w-full gap-2",
+                role = None::<&str>) -}}
+            </div>
+            {# End primary action (phones only) -#}
+            <details data-actions-menu
+                     class="group relative inline-flex justify-end phone:[&>.dropdown]:top-12">
+              <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden phone:size-11"
                        aria-label="Open offer actions for {{ invitation.event_name }}"
                        title="Open offer actions">
                 <div class="svg-icon size-4 icon-vertical-dots"></div>
               </summary>
               <div class="dropdown absolute end-0 top-8 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
                 <ul class="text-sm text-stone-700" role="menu">
-                  <li>
-                    {% if let Some(external_payment) = &invitation.external_payment -%}
-                      <a href="{{ external_payment.url }}"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         role="menuitem"
-                         class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                        <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
-                        <span>Open payment page</span>
-                      </a>
-                    {% else if let Some(resume_checkout_url) = &invitation.resume_checkout_url -%}
-                      <a href="{{ resume_checkout_url }}"
-                         role="menuitem"
-                         class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                        <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
-                        <span>Continue to checkout</span>
-                      </a>
-                    {% else -%}
-                      <button type="button"
-                              data-user-event-offer-open
-                              data-user-event-offer-modal="event-offer-modal-{{ invitation.admission_offer_id }}"
-                              role="menuitem"
-                              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                        <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
-                        <span>Claim offer</span>
-                      </button>
-                    {% endif -%}
+                  <li class="phone:hidden">
+                    {{ event_offer_primary_action(invitation = invitation,
+                      button_classes = "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900",
+                      anchor_classes = "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900",
+                      role = Some("menuitem")) -}}
                   </li>
                   {% if invitation.checkout_started() -%}
                     <li>
@@ -156,7 +149,7 @@
                               data-confirm-text="Yes"
                               data-error-message="Something went wrong canceling checkout. Please try again later."
                               role="menuitem"
-                              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 phone:py-3">
                         <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
                         <span>Cancel checkout</span>
                       </button>
@@ -173,7 +166,7 @@
                             data-confirm-text="Yes"
                             data-error-message="Something went wrong declining this offer. Please try again later."
                             role="menuitem"
-                            class="reject-modal flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                            class="reject-modal flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 phone:py-3">
                       <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
                       <span>Decline offer</span>
                     </button>
@@ -193,15 +186,24 @@
 </div>
 {# End Event Invitations -#}
 
+{# Shared empty state (phones only) -#}
+{% if no_invitations -%}
+  <div class="not-phone:hidden phone:px-3 text-stone-500">
+    {% call dashboard::empty_state("No pending invitations", title_margin = "mb-0") -%}{% endcall -%}
+  </div>
+{% endif -%}
+{# End shared empty state -#}
+
 {# Groups Invitations -#}
 <div>
   {{ dashboard::form_title(title = "Group Invitations",
     description = "Manage invitations to join groups.") -}}
 </div>
 
-<div class="mt-10">
+<div class="mt-10 phone:mt-0">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full dashboard-table mb-12">
+    <table class="table-auto w-full dashboard-table mb-12 dashboard-table-stacked phone:mb-0{% if group_invitations.is_empty() %}
+                    phone:hidden{% endif %}">
       {# Table header -#}
       <thead class="dashboard-table-head">
         <tr>
@@ -234,7 +236,7 @@
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Group -#}
               <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
-                <div class="max-w-full text-black truncate">{{ invitation.group_name }}</div>
+                <div class="max-w-full text-black truncate phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5">{{ invitation.group_name }}</div>
                 <div class="mt-0.5 text-xs font-normal text-stone-500 lg:hidden">
                   Created {{ invitation.created_at.format(DATE_FORMAT_2) }}
                 </div>
@@ -242,7 +244,7 @@
               {# End group -#}
 
               {# Role -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ badges::common_badge(content = invitation.role, extra_styles = Some("px-2.5 py-0.5")) -}}</td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap"><span class="not-phone:hidden phone:mb-0.5 phone:block text-xs uppercase text-stone-700">Role</span>{{ badges::common_badge(content = invitation.role, extra_styles = Some("px-2.5 py-0.5")) -}}</td>
               {# End role -#}
 
               {# Created at date -#}
@@ -251,14 +253,15 @@
 
               {# Actions -#}
               <td class="dashboard-table-actions py-4 w-[112px]">
-                <div class="flex items-center justify-end gap-2">
+                <div class="flex items-center justify-end gap-2 phone:grid phone:w-full phone:grid-cols-2">
                   <div>
                     <button hx-put="/dashboard/user/invitations/group/{{ invitation.group_id }}/accept"
                             hx-indicator="#dashboard-spinner"
                             hx-disabled-elt="this"
-                            class="btn-tertiary p-2"
+                            class="btn-tertiary p-2 phone:flex phone:w-full phone:items-center phone:justify-center phone:gap-2 phone:border phone:border-primary-500 phone:text-primary-500 phone:disabled:opacity-50"
                             title="Approve">
-                      <div class="svg-icon size-3 md:size-4 icon-check"></div>
+                      <div class="svg-icon size-3 md:size-4 icon-check phone:size-4 phone:bg-current"></div>
+                      <span class="not-phone:hidden">Approve</span>
                     </button>
                   </div>
                   <div>
@@ -271,9 +274,10 @@
                             data-confirm-message="Are you sure you would like to reject this invitation?"
                             data-confirm-text="Yes"
                             data-error-message="Something went wrong rejecting this invitation. Please try again later."
-                            class="btn-tertiary p-2 reject-modal"
+                            class="btn-tertiary p-2 reject-modal phone:flex phone:w-full phone:items-center phone:justify-center phone:gap-2 phone:disabled:opacity-50"
                             title="Reject">
-                      <div class="svg-icon size-2.5 md:size-3.5 icon-cancel"></div>
+                      <div class="svg-icon size-2.5 md:size-3.5 icon-cancel phone:size-3.5"></div>
+                      <span class="not-phone:hidden">Reject</span>
                     </button>
                   </div>
                 </div>
@@ -295,9 +299,10 @@
     description = "Manage invitations to join communities.") -}}
 </div>
 
-<div class="mt-10">
+<div class="mt-10 phone:mt-0">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full dashboard-table">
+    <table class="table-auto w-full dashboard-table dashboard-table-stacked{% if community_invitations.is_empty() %}
+                    phone:hidden{% endif %}">
       {# Table header -#}
       <thead class="dashboard-table-head">
         <tr>
@@ -330,7 +335,7 @@
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Community -#}
               <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
-                <div class="max-w-full text-black truncate uppercase">{{ invitation.community_name }}</div>
+                <div class="max-w-full text-black truncate uppercase phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5">{{ invitation.community_name }}</div>
                 <div class="mt-0.5 text-xs font-normal text-stone-500 lg:hidden">
                   Created {{ invitation.created_at.format(DATE_FORMAT_2) }}
                 </div>
@@ -338,7 +343,7 @@
               {# End community -#}
 
               {# Role -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ badges::common_badge(content = invitation.role, extra_styles = Some("px-2.5 py-0.5")) -}}</td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap"><span class="not-phone:hidden phone:mb-0.5 phone:block text-xs uppercase text-stone-700">Role</span>{{ badges::common_badge(content = invitation.role, extra_styles = Some("px-2.5 py-0.5")) -}}</td>
               {# End role -#}
 
               {# Created at date -#}
@@ -347,14 +352,15 @@
 
               {# Actions -#}
               <td class="dashboard-table-actions py-4 w-[112px]">
-                <div class="flex items-center justify-end gap-2">
+                <div class="flex items-center justify-end gap-2 phone:grid phone:w-full phone:grid-cols-2">
                   <div>
                     <button hx-put="/dashboard/user/invitations/community/{{ invitation.community_id }}/accept"
                             hx-indicator="#dashboard-spinner"
                             hx-disabled-elt="this"
-                            class="btn-tertiary p-2"
+                            class="btn-tertiary p-2 phone:flex phone:w-full phone:items-center phone:justify-center phone:gap-2 phone:border phone:border-primary-500 phone:text-primary-500 phone:disabled:opacity-50"
                             title="Approve">
-                      <div class="svg-icon size-3 md:size-4 icon-check"></div>
+                      <div class="svg-icon size-3 md:size-4 icon-check phone:size-4 phone:bg-current"></div>
+                      <span class="not-phone:hidden">Approve</span>
                     </button>
                   </div>
                   <div>
@@ -367,9 +373,10 @@
                             data-confirm-message="Are you sure you would like to reject this invitation?"
                             data-confirm-text="Yes"
                             data-error-message="Something went wrong rejecting this invitation. Please try again later."
-                            class="btn-tertiary p-2 reject-modal"
+                            class="btn-tertiary p-2 reject-modal phone:flex phone:w-full phone:items-center phone:justify-center phone:gap-2 phone:disabled:opacity-50"
                             title="Reject">
-                      <div class="svg-icon size-2.5 md:size-3.5 icon-cancel"></div>
+                      <div class="svg-icon size-2.5 md:size-3.5 icon-cancel phone:size-3.5"></div>
+                      <span class="not-phone:hidden">Reject</span>
                     </button>
                   </div>
                 </div>
@@ -397,17 +404,17 @@
          class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
       <div data-user-event-offer-close
            class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-      <div class="modal-panel p-4 max-w-3xl">
-        <div class="modal-card rounded-lg">
-          <div class="flex items-start justify-between border-b border-stone-200 p-4 md:p-5">
-            <div>
+      <div class="modal-panel p-4 max-w-3xl phone:p-0">
+        <div class="modal-card sheet-panel rounded-lg">
+          <div class="sheet-grab flex items-start justify-between border-b border-stone-200 p-4 md:p-5 phone:gap-3 phone:pt-3 phone:pe-1.5 phone:pb-3 phone:ps-3">
+            <div class="phone:min-w-0">
               <h3 id="event-offer-title-{{ invitation.admission_offer_id }}"
-                  class="text-xl font-semibold text-stone-900">Claim offer</h3>
-              <p class="mt-1 text-sm text-stone-600">{{ invitation.event_name }}</p>
+                  class="text-xl font-semibold text-stone-900 phone:text-lg">Claim offer</h3>
+              <p class="mt-1 text-sm text-stone-600 phone:line-clamp-2 phone:wrap-anywhere">{{ invitation.event_name }}</p>
             </div>
             <button data-user-event-offer-close
                     type="button"
-                    class="group ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-900">
+                    class="group ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-900 phone:shrink-0">
               <div class="svg-icon h-5 w-5 icon-close bg-stone-500 transition-colors group-hover:bg-stone-900"></div>
               <span class="sr-only">Close modal</span>
             </button>
@@ -418,7 +425,7 @@
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="find button[type='submit']"
                 hx-swap="none"
-                class="modal-body space-y-6 p-4 md:p-6">
+                class="modal-body sheet-body space-y-6 p-4 md:p-6 phone:p-3">
             <input type="hidden"
                    name="admission_offer_id"
                    value="{{ invitation.admission_offer_id }}">
@@ -495,3 +502,35 @@
 {% endif -%}
 {% endfor -%}
 {# End event offer claim modals -#}
+
+{# Event offer primary action -#}
+{# Used in the row menu and, on phones, as a labelled action beside it. -#}
+{% macro event_offer_primary_action(invitation, button_classes, anchor_classes, role) -%}
+  {% if let Some(external_payment) = &invitation.external_payment -%}
+    <a href="{{ external_payment.url }}"
+       target="_blank"
+       rel="noopener noreferrer"
+       {% if let Some(role_value) = role %}role="{{ role_value }}"{% endif %}
+       class="{{ anchor_classes }}">
+      <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
+      <span>Open payment page</span>
+    </a>
+  {% else if let Some(resume_checkout_url) = &invitation.resume_checkout_url -%}
+    <a href="{{ resume_checkout_url }}"
+       {% if let Some(role_value) = role %}role="{{ role_value }}"{% endif %}
+       class="{{ anchor_classes }}">
+      <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
+      <span>Continue to checkout</span>
+    </a>
+  {% else -%}
+    <button type="button"
+            data-user-event-offer-open
+            data-user-event-offer-modal="event-offer-modal-{{ invitation.admission_offer_id }}"
+            {% if let Some(role_value) = role %}role="{{ role_value }}"{% endif %}
+            class="{{ button_classes }}">
+      <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
+      <span>Claim offer</span>
+    </button>
+  {% endif -%}
+{% endmacro event_offer_primary_action -%}
+{# End event offer primary action -#}

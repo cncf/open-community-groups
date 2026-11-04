@@ -10,6 +10,8 @@ const loadTemplate = async () => {
 
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
+const countOf = (value, text) => value.split(text).length - 1;
+
 describe("dashboard user invitations list template", () => {
   it("orders event group and community invitations", async () => {
     // Load the invitations template before checking section order.
@@ -145,6 +147,109 @@ describe("dashboard user invitations list template", () => {
     expect(template).to.include(
       "{% else if let Some(resume_checkout_url) = &invitation.resume_checkout_url -%}",
     );
+  });
+
+  it("stacks the three tables on phones", async () => {
+    // Load the invitations template before checking the phone table tokens.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Every table stacks, and the spacing between sections collapses.
+    expect(countOf(template, " dashboard-table-stacked")).to.equal(3);
+    expect(countOf(template, 'class="mt-10 phone:mt-0')).to.equal(3);
+    expect(countOf(template, "mb-12 dashboard-table-stacked phone:mb-0")).to.equal(2);
+
+    // Names wrap, and the desktop column labels return beside their values.
+    expect(countOf(template, "phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5")).to.equal(3);
+    for (const [label, count] of [
+      ["Offer", 1],
+      ["Expires", 1],
+      ["Role", 2],
+    ]) {
+      expect(countOf(template, `text-xs uppercase text-stone-700">${label}</span>`)).to.equal(count);
+    }
+    expect(template).to.include("whitespace-nowrap phone:whitespace-normal");
+
+    // A deep link lands below the fixed header.
+    expect(template).to.include("scroll-mt-4 phone:-scroll-mt-11");
+  });
+
+  it("hides empty sections on phones and keeps the event title", async () => {
+    // Load the invitations template before checking the section states.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // The event section hides only when nothing is pending, on the wrapper, so its title stays.
+    expect(template).to.include(
+      "{% let no_invitations = event_invitations.is_empty() && group_invitations.is_empty() && community_invitations.is_empty() -%}",
+    );
+    expect(template).to.include(
+      '<div class="mt-10 phone:mt-0{% if no_invitations %} phone:hidden{% endif %}">',
+    );
+
+    // Team tables hide when empty; the title before them follows through the primitive.
+    expect(template).to.include("{% if group_invitations.is_empty() %} phone:hidden{% endif %}");
+    expect(template).to.include("{% if community_invitations.is_empty() %} phone:hidden{% endif %}");
+
+    // One shared empty state replaces the per-section placeholders.
+    expect(template).to.include(
+      '{% if no_invitations -%} <div class="not-phone:hidden phone:px-3 text-stone-500"> {% call dashboard::empty_state("No pending invitations", title_margin = "mb-0") -%}',
+    );
+  });
+
+  it("shares the primary offer action between the menu and the phone row", async () => {
+    // Load the invitations template before checking the extracted action.
+    const template = normalizeWhitespace(await loadTemplate());
+    const macroStart = template.indexOf("{% macro event_offer_primary_action(");
+    const macro = template.slice(macroStart, template.indexOf("{% endmacro event_offer_primary_action"));
+
+    // Each branch writes the role only when the caller passes one, and keeps the ticket icon.
+    expect(macroStart).to.be.greaterThan(-1);
+    expect(countOf(macro, '{% if let Some(role_value) = role %}role="{{ role_value }}"{% endif %}')).to.equal(
+      3,
+    );
+    expect(countOf(macro, "icon-ticket")).to.equal(3);
+    expect(countOf(macro, 'class="{{ anchor_classes }}"')).to.equal(2);
+    expect(countOf(macro, 'class="{{ button_classes }}"')).to.equal(1);
+
+    // The menu keeps its row and hides it on phones, where a labelled action sits before the kebab.
+    const phoneAction = template.indexOf('<div class="not-phone:hidden phone:min-w-0 phone:flex-1');
+    const actionsMenu = template.indexOf("<details data-actions-menu");
+    const menuAction = template.indexOf('<li class="phone:hidden"> {{ event_offer_primary_action(');
+    expect(phoneAction).to.be.greaterThan(-1);
+    expect(phoneAction).to.be.lessThan(actionsMenu);
+    expect(menuAction).to.be.greaterThan(actionsMenu);
+    expect(template.slice(phoneAction, actionsMenu)).to.include("role = None");
+    expect(template.slice(menuAction, macroStart)).to.include('role = Some("menuitem")');
+
+    // The kebab and its menu fit a 44px trigger.
+    expect(template).to.include("phone:[&>.dropdown]:top-12");
+    expect(template).to.include("[&::-webkit-details-marker]:hidden phone:size-11");
+    expect(countOf(template, 'hover:text-stone-900 phone:py-3"')).to.equal(2);
+  });
+
+  it("labels team row actions on phones", async () => {
+    // Load the invitations template before checking the team actions.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Both team tables use a two-column action grid with visible labels and busy feedback.
+    expect(countOf(template, "justify-end gap-2 phone:grid phone:w-full phone:grid-cols-2")).to.equal(2);
+    expect(countOf(template, '<span class="not-phone:hidden">Approve</span>')).to.equal(2);
+    expect(countOf(template, '<span class="not-phone:hidden">Reject</span>')).to.equal(2);
+    expect(countOf(template, "phone:disabled:opacity-50")).to.equal(4);
+
+    // Only Approve carries the outline, so the two actions do not weigh the same.
+    expect(countOf(template, "phone:border phone:border-primary-500")).to.equal(2);
+  });
+
+  it("opens the claim form as a bottom sheet on phones", async () => {
+    // Load the invitations template before checking the sheet adoption.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // The modal card becomes the sheet, with a grabber on its title row and a scrolling body.
+    expect(template).to.include('<div class="modal-panel p-4 max-w-3xl phone:p-0">');
+    expect(template).to.include('<div class="modal-card sheet-panel rounded-lg">');
+    expect(template).to.include('<div class="sheet-grab flex items-start justify-between');
+    expect(template).to.include('class="modal-body sheet-body space-y-6 p-4 md:p-6 phone:p-3"');
+    expect(template).to.include("phone:line-clamp-2 phone:wrap-anywhere");
   });
 
   it("collects registration answers in the offer claim modal", async () => {

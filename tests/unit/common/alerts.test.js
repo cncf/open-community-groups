@@ -13,6 +13,7 @@ import {
   showErrorAlert,
   showInfoAlert,
   showServerErrorAlert,
+  showSigninPrompt,
   showSuccessAlert,
   waitForAlertToClose,
 } from "/static/js/common/alerts.js";
@@ -563,5 +564,71 @@ describe("alerts", () => {
 
     // Declined confirmation does not trigger HTMX.
     expect(env.current.htmx.triggerCalls).to.deep.equal([]);
+  });
+
+  describe("on phones", () => {
+    const originalMatchMedia = window.matchMedia;
+
+    beforeEach(() => {
+      window.matchMedia = () => ({ matches: true });
+    });
+
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
+    it("moves alerts to the bottom and keeps their timers", () => {
+      // Show the alerts that take the shared position.
+      showSuccessAlert("Saved");
+      showInfoAlert("Heads up");
+
+      // Assert only the position differs from desktop.
+      expect(getCommonAlertOptions().position).to.equal("bottom");
+      expect(env.current.swal.calls[0]).to.include({ position: "bottom", timer: 5000 });
+      expect(env.current.swal.calls[1]).to.include({ position: "bottom", timer: 10000 });
+    });
+
+    it("keeps confirmation dialogs centered", async () => {
+      await confirmAction({ message: "Leave?", confirmText: "Yes" });
+
+      expect(env.current.swal.calls[0]).to.include({ position: "center", backdrop: true });
+    });
+
+    it("shows the sign-in prompt with a Log in button and no timer", async () => {
+      // Dismiss the prompt, because confirming navigates the test page.
+      env.current.swal.setNextResult({ isConfirmed: false, isDismissed: true, dismiss: "cancel" });
+      await showSigninPrompt("join this group", "/test/group/alpha");
+
+      // Assert the button replaces the inline link and nothing closes the prompt by itself.
+      expect(env.current.swal.calls).to.have.length(1);
+      expect(env.current.swal.calls[0]).to.include({
+        text: "You need to be logged in to join this group.",
+        icon: "info",
+        position: "bottom",
+        showCancelButton: true,
+        confirmButtonText: "Log in",
+        cancelButtonText: "Dismiss",
+      });
+      expect("timer" in env.current.swal.calls[0]).to.equal(false);
+      expect("html" in env.current.swal.calls[0]).to.equal(false);
+    });
+  });
+
+  it("keeps the desktop position and the inline login link off phones", async () => {
+    // Show the prompt under the test browser's false phone query.
+    await showSigninPrompt("attend this event", "/test/group/alpha/event/one?ref=home");
+
+    // Assert today's alert: top-end, timed, and a link back to the same page.
+    expect(getCommonAlertOptions().position).to.equal("top-end");
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      icon: "info",
+      position: "top-end",
+      timer: 10000,
+    });
+    expect(env.current.swal.calls[0].html).to.equal(
+      "You need to be <a href='/log-in?next_url=%2Ftest%2Fgroup%2Falpha%2Fevent%2Fone%3Fref%3Dhome' class='underline font-medium' hx-boost='true'>logged in</a> to attend this event.",
+    );
+    expect("confirmButtonText" in env.current.swal.calls[0]).to.equal(false);
   });
 });

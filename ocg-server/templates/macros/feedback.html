@@ -1,11 +1,15 @@
 {# Alert -#}
 {# Used by explore result partials for full-width feedback messages. -#}
-{% macro alert(title, content) -%}
-  <div class="p-10 md:p-14">
-    <div class="border border-primary-300 p-10 text-sm text-stone-800 rounded-lg bg-primary-50 text-center"
+{% macro alert(title, content, with_reset = false) -%}
+  <div class="p-10 md:p-14 phone:p-0 phone:pt-1 phone:pb-4">
+    <div class="border border-primary-300 p-10 text-sm text-stone-800 rounded-lg bg-primary-50 text-center phone:p-6"
          role="alert">
       <div class="text-xl mb-6">{{ title }}</div>
       {{ content }}
+      {% if with_reset -%}
+        <button type="button"
+                class="reset-filters btn-primary-outline mx-auto mt-4 block not-phone:hidden">Reset filters</button>
+      {% endif -%}
     </div>
   </div>
 {% endmacro alert -%}

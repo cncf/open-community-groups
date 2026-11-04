@@ -2,7 +2,7 @@ import { expect } from "../fixtures.js";
 import { expectPageLayout } from "../snapshots.js";
 import { navigateToPath } from "../utils.js";
 
-// Shown instead of the dashboard content on mobile, except on the Check-In tabs.
+// Shown instead of the dashboard content on mobile, except on Check-In and user Invitations.
 export const MOBILE_NOTICE = "This dashboard is not optimized yet for mobile devices";
 
 /**

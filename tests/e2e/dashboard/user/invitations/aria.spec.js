@@ -26,6 +26,10 @@ test.describe("user dashboard invitations ARIA snapshots", () => {
     await enableDesktopVersion(emptyUserPage);
     await expectInvitationsViews({ emptyUserPage, owned });
   });
+
+  test("matches the phone views @mobile", async ({ emptyUserPage, owned }) => {
+    await expectPhoneInvitationsViews({ emptyUserPage, owned });
+  });
 });
 
 /** Checks the layout of the invitations tab views and captures them. */
@@ -79,6 +83,68 @@ const expectInvitationsViews = async ({ emptyUserPage, owned }) => {
     await expectPageLayout(emptyUserPage, { regions: [dialog] });
 
     // Capture the RSVP summary and the form actions without submitting it.
+    await expectAriaSnapshot(emptyUserPage, dialog, "invitations-claim-offer-dialog");
+    await dialog.getByRole("button", { name: "Close modal" }).click();
+    await expect(dialog).toBeHidden();
+  });
+};
+
+/** Checks the layout of the phone views, whose stacked rows differ from the desktop table. */
+const expectPhoneInvitationsViews = async ({ emptyUserPage, owned }) => {
+  // The menu is a closed drawer on phones.
+  const options = { menu: false };
+
+  await test.step("empty state", async () => {
+    // Load the invitations of a user without invitations and check the layout.
+    const content = await openUserDashboardView(emptyUserPage, "tab=invitations", options);
+
+    // Capture the event title and the shared empty state.
+    await expectAriaSnapshot(emptyUserPage, content, "invitations-empty-mobile");
+  });
+
+  // Invite the user to an owned event, a group team and a community team.
+  const userId = TEST_USER_IDS.empty;
+  const { eventId } = owned.event({ groupId: TEST_GROUP_IDS.community1.alpha, name: INVITED_EVENT_NAME });
+  setupEventInvitation({ eventId, userId });
+  owned.defer(() => cleanupEventEnrollment({ eventId, userId }));
+  setupGroupTeamInvitation({ groupId: TEST_GROUP_IDS.community1.alpha, role: "viewer", userId });
+  owned.defer(() => cleanupGroupTeamInvitation({ groupId: TEST_GROUP_IDS.community1.alpha, userId }));
+  setupCommunityTeamInvitation({ communityId: TEST_COMMUNITY_IDS.community1, role: "viewer", userId });
+  owned.defer(() => cleanupCommunityTeamInvitation({ communityId: TEST_COMMUNITY_IDS.community1, userId }));
+
+  await test.step("pending invitations", async () => {
+    // Load the pending invitations and check the layout.
+    const content = await openUserDashboardView(emptyUserPage, "tab=invitations", options);
+
+    // Capture the stacked rows with their labels and actions; the dates follow the seed day.
+    await expectAriaSnapshot(emptyUserPage, content, "invitations-pending-mobile");
+  });
+
+  const offerRow = emptyUserPage
+    .locator("#dashboard-content")
+    .getByRole("row")
+    .filter({ hasText: INVITED_EVENT_NAME });
+
+  await test.step("event offer actions", async () => {
+    // Open the actions menu of the event offer and check the layout.
+    const actions = offerRow.getByRole("group");
+    await actions.getByLabel(`Open offer actions for ${INVITED_EVENT_NAME}`).click();
+    await expect(actions.getByRole("menu")).toBeVisible();
+    await expectPageLayout(emptyUserPage, { regions: [actions.getByRole("menu")] });
+
+    // Capture the menu, which leaves the claim action to the row.
+    await expectAriaSnapshot(emptyUserPage, actions, "invitations-offer-actions-mobile");
+    await actions.getByLabel(`Open offer actions for ${INVITED_EVENT_NAME}`).click();
+  });
+
+  await test.step("event offer claim dialog", async () => {
+    // Open the claim form from the row and check the layout.
+    const dialog = emptyUserPage.getByRole("dialog", { name: "Claim offer" });
+    await offerRow.getByRole("button", { name: "Claim offer", exact: true }).click();
+    await expect(dialog).toBeVisible();
+    await expectPageLayout(emptyUserPage, { regions: [dialog] });
+
+    // The sheet shares the desktop dialog's tree.
     await expectAriaSnapshot(emptyUserPage, dialog, "invitations-claim-offer-dialog");
     await dialog.getByRole("button", { name: "Close modal" }).click();
     await expect(dialog).toBeHidden();

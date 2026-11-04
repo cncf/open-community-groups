@@ -166,6 +166,84 @@ describe("user-chip", () => {
     expect(featuredCard?.className).to.not.include("hover:bg-");
   });
 
+  it("shows a phone-only chevron only on clickable cards", async () => {
+    const clickable = await mountLitComponent("user-chip", {
+      user: { name: "Grace Hopper", username: "grace" },
+      displayModal: true,
+    });
+    const plain = await mountLitComponent("user-chip", {
+      user: { name: "Radia Perlman", username: "radia" },
+    });
+    const small = await mountLitComponent("user-chip", {
+      user: { name: "Ada Lovelace", username: "ada" },
+      displayModal: true,
+      small: true,
+    });
+
+    // The chevron is hidden off phones and from assistive technology.
+    const chevron = clickable.querySelector(".icon-arrow-right");
+    expect(chevron?.classList.contains("not-phone:hidden")).to.equal(true);
+    expect(chevron?.classList.contains("bg-stone-400")).to.equal(true);
+    expect(chevron?.getAttribute("aria-hidden")).to.equal("true");
+
+    // Plain cards open nothing, and chips stay compact.
+    expect(plain.querySelector(".icon-arrow-right")).to.equal(null);
+    expect(small.querySelector(".icon-arrow-right")).to.equal(null);
+  });
+
+  it("tightens the default card on phones without touching its desktop tokens", async () => {
+    const element = await mountLitComponent("user-chip", {
+      user: { name: "Grace Hopper", title: "Rear Admiral", username: "grace" },
+      displayModal: true,
+    });
+
+    const card = element.firstElementChild;
+    const title = [...element.querySelectorAll("div")].find((node) => node.textContent === "Rear Admiral");
+
+    // Verify the phone tokens sit beside the unchanged desktop ones.
+    for (const token of ["px-4", "py-3", "gap-4", "phone:min-h-16", "phone:px-3", "phone:py-2.5", "phone:gap-3"]) {
+      expect(card.classList.contains(token), token).to.equal(true);
+    }
+    expect(card.classList.contains("phone:[&[role=button]:active]:border-primary-300")).to.equal(true);
+    expect(title?.classList.contains("mt-3")).to.equal(true);
+    expect(title?.classList.contains("phone:mt-0.5")).to.equal(true);
+    expect(card.classList.contains("phone:[&>logo-image>div]:size-12")).to.equal(true);
+    expect(element.querySelector("logo-image")?.getAttribute("size")).to.equal("size-15 md:size-18");
+  });
+
+  it("keeps the featured card's amber frame and larger avatar on phones", async () => {
+    const element = await mountLitComponent("user-chip", {
+      user: { name: "Radia Perlman", username: "radia" },
+      displayModal: true,
+      featured: true,
+    });
+
+    const card = element.firstElementChild;
+
+    // Verify the shared phone layout keeps the featured look, with no extra star.
+    expect(card.classList.contains("phone:px-3")).to.equal(true);
+    expect(card.classList.contains("border-amber-200")).to.equal(true);
+    expect(card.classList.contains("phone:[&[role=button]:active]:border-amber-500")).to.equal(true);
+    expect(card.classList.contains("phone:[&>logo-image>div]:size-12")).to.equal(false);
+    expect(element.querySelector("logo-image")?.getAttribute("size")).to.equal("size-18 md:size-22");
+    expect(element.querySelector(".icon-star")).to.equal(null);
+  });
+
+  it("extends the small chip's hit area on phones only", async () => {
+    const element = await mountLitComponent("user-chip", {
+      user: { name: "Grace Hopper", username: "grace" },
+      displayModal: true,
+      small: true,
+    });
+
+    const chip = element.firstElementChild;
+
+    // Verify the hit area comes from a phone pseudo-element, which moves no layout.
+    for (const token of ["phone:relative", "phone:after:absolute", "phone:after:inset-x-0", "phone:after:-inset-y-1.5"]) {
+      expect(chip.classList.contains(token), token).to.equal(true);
+    }
+  });
+
   it("renders the card rollover variants", async () => {
     const regularElement = await mountLitComponent("user-chip", {
       user: {

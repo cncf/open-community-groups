@@ -6,16 +6,16 @@
      rel="noopener noreferrer"
      class="group btn-secondary-anchor flex items-center justify-center
             {% if big %}
-              size-[40px] p-2
+              size-[40px] p-2 phone:size-11
             {% else %}
-              size-[40px] sm:size-[30px] p-1.5
+              size-[40px] sm:size-[30px] p-1.5 phone:size-11
             {% endif %}"
      title="{{ platform_name }}">
     <div class="svg-icon
                 {% if big %}
                   size-5
                 {% else %}
-                  size-4
+                  size-4 phone:size-5
                 {% endif %}
                 bg-primary-500 group-hover:bg-white transition-colors icon-{{ icon_name }}"></div>
   </a>

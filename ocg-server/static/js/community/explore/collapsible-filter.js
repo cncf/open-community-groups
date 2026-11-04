@@ -2,6 +2,7 @@ import { html } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { FILTER_CHANGE_EVENT } from "/static/js/community/explore/filters.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
 
 /**
  * Collapsible filter component for managing multiple selection options.
@@ -188,6 +189,10 @@ export class CollapsibleFilter extends LitWrapper {
       } else {
         this.selected = this.selected.filter((item) => item !== value);
       }
+    } else if (isPhoneViewport() && this.selected.includes(value)) {
+      // The tap unchecked the option. Desktop's request applies that at once; a phone sheet
+      // defers it, so the selection has to follow the checkbox.
+      this.selected = this.selected.filter((item) => item !== value);
     } else {
       this.selected = [value];
     }
@@ -236,7 +241,7 @@ export class CollapsibleFilter extends LitWrapper {
     const canCollapse = this.options.length > this.maxVisibleItems;
     const optionsId = `${this.name}-filter-options`;
 
-    return html`<div class="px-6 py-7 pt-5 border-b border-stone-100">
+    return html`<div class="px-6 py-7 pt-5 border-b border-stone-100 phone:px-3">
       <div class="flex justify-between items-center">
         <div class="font-semibold leading-4 md:leading-8 text-sm text-stone-700">${this.title}</div>
         <div>
@@ -248,7 +253,7 @@ export class CollapsibleFilter extends LitWrapper {
                   aria-controls=${optionsId}
                   aria-expanded=${String(!this.isCollapsed)}
                   aria-label=${this.isCollapsed ? `Expand ${this.title}` : `Collapse ${this.title}`}
-                  class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center"
+                  class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center phone:relative phone:after:absolute phone:after:-inset-3"
                 >
                   ${
                     this.isCollapsed
@@ -273,13 +278,13 @@ export class CollapsibleFilter extends LitWrapper {
             type="button"
             @click=${this._onSelectAny}
             aria-label=${`Any ${this.title}`}
-            class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none ${
+            class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none phone:min-h-11 phone:px-3 ${
               this.selected.length === 0
                 ? "border-primary-500 text-primary-500"
                 : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
             }"
           >
-            <div class="text-[0.775rem] text-center text-nowrap">Any</div>
+            <div class="text-[0.775rem] text-center text-nowrap phone:text-sm">Any</div>
           </button>
         </li>
         ${repeat(
@@ -288,7 +293,7 @@ export class CollapsibleFilter extends LitWrapper {
           (opt) =>
             html`<li>
               <label
-                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none ${
+                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none phone:min-h-11 phone:px-3 phone:has-[:focus-visible]:ring-2 phone:has-[:focus-visible]:ring-primary-300 ${
                   this.selected.includes(opt.value)
                     ? "border-primary-500 text-primary-500"
                     : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
@@ -302,7 +307,11 @@ export class CollapsibleFilter extends LitWrapper {
                   @change=${() => this._onSelect(opt.value)}
                   class="sr-only"
                 />
-                <div class="text-[0.775rem] text-center text-nowrap capitalize">${opt.name}</div>
+                <div
+                  class="text-[0.775rem] text-center text-nowrap capitalize phone:min-w-0 phone:text-left phone:text-sm phone:text-wrap phone:wrap-anywhere"
+                >
+                  ${opt.name}
+                </div>
               </label>
             </li>`,
         )}
@@ -316,7 +325,7 @@ export class CollapsibleFilter extends LitWrapper {
                 @click=${this._changeCollapseState}
                 aria-controls=${optionsId}
                 aria-expanded=${String(!this.isCollapsed)}
-                class="text-xs/6 text-stone-500/75 hover:text-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium"
+                class="text-xs/6 text-stone-500/75 hover:text-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium phone:min-h-11 phone:text-sm"
               >
                 ${this.isCollapsed ? "+ Show more" : "- Show less"}
               </button>

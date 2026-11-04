@@ -1,7 +1,35 @@
 import { expect, waitUntil } from "@open-wc/testing";
 
 import "/static/js/common/modals/user-info-modal.js";
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+
+/** Close watcher double that records its instances. */
+class FakeCloseWatcher extends EventTarget {
+  static instances = [];
+
+  destroyCount = 0;
+
+  constructor() {
+    super();
+    FakeCloseWatcher.instances.push(this);
+  }
+
+  destroy() {
+    this.destroyCount += 1;
+  }
+}
+
+/**
+ * Opens the profile through the document event.
+ * @param {HTMLElement} element Modal element.
+ * @param {object} [detail] Event detail.
+ * @returns {Promise<void>} Resolves after Lit renders.
+ */
+const openProfile = async (element, detail = { name: "Grace Hopper", username: "grace" }) => {
+  document.dispatchEvent(new CustomEvent("open-user-modal", { bubbles: true, detail }));
+  await element.updateComplete;
+};
 
 describe("user-info-modal", () => {
   useMountedElementsCleanup("user-info-modal");
@@ -14,6 +42,308 @@ describe("user-info-modal", () => {
 
   afterEach(() => {
     window.fetch = originalFetch;
+  });
+
+  describe("bottom sheet", () => {
+    const originalCloseWatcher = window.CloseWatcher;
+    const originalMatchMedia = window.matchMedia;
+    let panelStyle;
+
+    /**
+     * Sets the phone query and lays the panel out, as the compiled CSS would.
+     * @param {boolean} matches Phone query state.
+     * @returns {void}
+     */
+    const useSheetFixture = (matches) => {
+      window.matchMedia = (text) => ({
+        addEventListener() {},
+        matches: text === PHONE_MEDIA_QUERY && matches,
+        removeEventListener() {},
+      });
+      panelStyle = document.createElement("style");
+      panelStyle.textContent = ".sheet-panel { position: fixed; }";
+      document.head.append(panelStyle);
+    };
+
+    beforeEach(() => {
+      FakeCloseWatcher.instances = [];
+      window.CloseWatcher = FakeCloseWatcher;
+    });
+
+    afterEach(() => {
+      panelStyle?.remove();
+      window.matchMedia = originalMatchMedia;
+
+      // Restore the original CloseWatcher after sheet tests.
+      if (originalCloseWatcher) {
+        window.CloseWatcher = originalCloseWatcher;
+      } else {
+        delete window.CloseWatcher;
+      }
+    });
+
+    it("marks the panel, title row and body as a sheet", async () => {
+      const element = await mountLitComponent("user-info-modal");
+
+      await openProfile(element);
+
+      // Verify the primitives sit beside the desktop modal classes.
+      const panel = element.querySelector(".modal-card");
+      expect(panel?.classList.contains("sheet-panel")).to.equal(true);
+      expect(panel?.querySelector(".sheet-head.sheet-grab #user-info-modal-title")).to.not.equal(null);
+      expect(panel?.querySelector(".modal-body")?.classList.contains("sheet-body")).to.equal(true);
+
+      // The title leaves the head on phones and still names the dialog.
+      const title = element.querySelector("#user-info-modal-title");
+      expect(title?.classList.contains("phone:sr-only")).to.equal(true);
+      expect(element.querySelector('[role="dialog"]')?.getAttribute("aria-labelledby")).to.equal(title?.id);
+
+      // Phone sizes sit on the row, so logo-image's attributes stay as on desktop.
+      const logo = element.querySelector("logo-image");
+      expect(logo?.parentElement?.classList.contains("phone:[&>logo-image>div]:size-18")).to.equal(true);
+      expect(logo?.getAttribute("size")).to.equal("size-16 sm:size-24");
+      expect(logo?.getAttribute("font-size")).to.equal("text-xl sm:text-3xl");
+    });
+
+    it("keeps the placeholder and the social link size inside the sheet", async () => {
+      const element = await mountLitComponent("user-info-modal");
+
+      // A profile with no details shows the placeholder in the body.
+      await openProfile(element);
+      expect(element.querySelector(".sheet-body")?.textContent).to.include("Profile not completed");
+
+      // A social link gets the 44px target.
+      await openProfile(element, {
+        name: "Grace Hopper",
+        username: "grace",
+        websiteUrl: "https://example.com",
+      });
+      const link = element.querySelector('a[aria-label="Website"]') ?? element.querySelector(".btn-secondary-anchor");
+      expect(link?.classList.contains("phone:size-11")).to.equal(true);
+    });
+
+    it("uses the small title-row pill for openprofile.dev, which clears the grabber", async () => {
+      const element = await mountLitComponent("user-info-modal");
+
+      await openProfile(element, {
+        name: "Ada Lovelace",
+        provider: { linuxfoundation: { username: "ada-lf" } },
+        username: "ada",
+      });
+
+      // Verify the link sits in the head and keeps its desktop button classes.
+      const link = element.querySelector('.sheet-head a[href*="openprofile.dev"]');
+      expect(link?.classList.contains("btn-primary-outline-anchor")).to.equal(true);
+      expect(link?.classList.contains("pill-link")).to.equal(true);
+    });
+
+    it("binds gestures after Lit renders and closes through the real button", async () => {
+      useSheetFixture(true);
+      const element = await mountLitComponent("user-info-modal");
+
+      await openProfile(element);
+      const panel = element.querySelector(".sheet-panel");
+      expect(panel.hasAttribute("data-sheet-drag")).to.equal(true);
+      expect(FakeCloseWatcher.instances).to.have.length(1);
+
+      // A close request runs the modal's own close path.
+      FakeCloseWatcher.instances[0].dispatchEvent(new Event("close"));
+      await element.updateComplete;
+
+      // Verify the modal closed and the watcher is gone.
+      expect(element._isOpen).to.equal(false);
+      expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
+      expect(document.body.style.overflow).to.equal("");
+    });
+
+    it("keeps one watcher across badge updates and rebinds after a second open", async () => {
+      useSheetFixture(true);
+      window.fetch = async () =>
+        new Response("[]", { headers: { "Content-Type": "application/json" } });
+      const element = await mountLitComponent("user-info-modal");
+
+      // The badge load re-renders the open sheet.
+      await openProfile(element);
+      await waitUntil(() => element._badgesState === "empty");
+      await element.updateComplete;
+      expect(FakeCloseWatcher.instances).to.have.length(1);
+
+      // A second open event releases the gestures, so the update binds them again.
+      await openProfile(element, { name: "Ada Lovelace", username: "ada" });
+      expect(FakeCloseWatcher.instances).to.have.length(2);
+      expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
+      expect(element.querySelector(".sheet-panel").hasAttribute("data-sheet-drag")).to.equal(true);
+    });
+
+    it("releases gestures when the element disconnects while open", async () => {
+      useSheetFixture(true);
+      const element = await mountLitComponent("user-info-modal");
+
+      await openProfile(element);
+      element.remove();
+
+      // Verify nothing outlives the element.
+      expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
+      expect(element._removeSheetGestures).to.equal(null);
+    });
+
+    it("adds no gestures under a false phone query", async () => {
+      useSheetFixture(false);
+      const element = await mountLitComponent("user-info-modal");
+
+      await openProfile(element);
+
+      // Verify the modal opens exactly as it does on desktop.
+      expect(element.querySelector(".sheet-panel").hasAttribute("data-sheet-drag")).to.equal(false);
+      expect(FakeCloseWatcher.instances).to.have.length(0);
+    });
+
+    describe("focus", () => {
+      const LF_PROFILE = { name: "Grace Hopper", provider: { linuxfoundation: { username: "grace" } }, username: "grace" };
+
+      /**
+       * Opens the profile from a host element that renders the real control, as a chip does.
+       * @param {HTMLElement} element Modal element.
+       * @param {object} [detail] Event detail.
+       * @returns {Promise<HTMLElement>} The focusable control inside the host.
+       */
+      const openFromChip = async (element, detail) => {
+        const chip = document.createElement("div");
+        chip.innerHTML = '<div role="button" tabindex="0">Grace</div>';
+        document.body.append(chip);
+        chip.dispatchEvent(new CustomEvent("open-user-modal", { bubbles: true, composed: true, detail }));
+        await element.updateComplete;
+        return chip.firstElementChild;
+      };
+
+      /**
+       * Presses a key on the document.
+       * @param {string} key Key name.
+       * @returns {void}
+       */
+      const press = (key) => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key }));
+      };
+
+      afterEach(() => {
+        document.querySelectorAll('[role="button"]').forEach((control) => control.parentElement.remove());
+      });
+
+      it("moves focus to Close and returns it to the chip on close", async () => {
+        useSheetFixture(true);
+        const element = await mountLitComponent("user-info-modal");
+
+        const control = await openFromChip(element, { name: "Grace Hopper", username: "grace" });
+        const close = element.querySelector('[aria-label="Close modal"]');
+        expect(document.activeElement).to.equal(close);
+
+        // Close through the real button.
+        close.click();
+        await element.updateComplete;
+
+        expect(document.activeElement).to.equal(control);
+      });
+
+      it("enters at Close when the head renders a link before it", async () => {
+        useSheetFixture(true);
+        const element = await mountLitComponent("user-info-modal");
+
+        await openFromChip(element, LF_PROFILE);
+
+        // Verify the link really comes first.
+        const panel = element.querySelector(".sheet-panel");
+        expect(panel.querySelector("a, button").getAttribute("href")).to.include("openprofile.dev");
+        expect(document.activeElement).to.equal(element.querySelector('[aria-label="Close modal"]'));
+      });
+
+      it("wraps Tab and restores focus on Escape", async () => {
+        useSheetFixture(true);
+        const element = await mountLitComponent("user-info-modal");
+        const control = await openFromChip(element, { name: "Grace Hopper", username: "grace" });
+        const close = element.querySelector('[aria-label="Close modal"]');
+
+        // Tab from outside the sheet comes back in.
+        control.focus();
+        press("Tab");
+        expect(element.querySelector(".sheet-panel").contains(document.activeElement)).to.equal(true);
+        expect(document.activeElement).to.equal(close);
+
+        // Escape closes and returns focus.
+        press("Escape");
+        await element.updateComplete;
+        expect(document.activeElement).to.equal(control);
+      });
+
+      it("keeps the first opener across a second open event", async () => {
+        useSheetFixture(true);
+        const element = await mountLitComponent("user-info-modal");
+        const control = await openFromChip(element, { name: "Grace Hopper", username: "grace" });
+
+        await openProfile(element, { name: "Ada Lovelace", username: "ada" });
+        element.querySelector('[aria-label="Close modal"]').click();
+        await element.updateComplete;
+
+        expect(document.activeElement).to.equal(control);
+      });
+
+      it("leaves focus and Tab alone under a false phone query", async () => {
+        useSheetFixture(false);
+        const element = await mountLitComponent("user-info-modal");
+
+        const control = await openFromChip(element, { name: "Grace Hopper", username: "grace" });
+        control.focus();
+        press("Tab");
+        expect(document.activeElement).to.equal(control);
+
+        // A close leaves focus where it is.
+        document.body.focus();
+        control.blur();
+        press("Escape");
+        await element.updateComplete;
+        expect(document.activeElement).to.not.equal(control);
+      });
+    });
+
+    describe("back-forward cache", () => {
+      /** Builds a pageshow event for a restored page. */
+      const restoredPageShow = () => {
+        const event = new Event("pageshow");
+        Object.defineProperty(event, "persisted", { value: true });
+        return event;
+      };
+
+      it("closes on a restore, so the next open shows the sheet", async () => {
+        useSheetFixture(true);
+        const element = await mountLitComponent("user-info-modal");
+        await openProfile(element);
+
+        // The shared restore hides the dialog before or after this listener.
+        element.querySelector('[role="dialog"]').classList.add("hidden");
+        window.dispatchEvent(restoredPageShow());
+        await element.updateComplete;
+
+        // Verify nothing is left armed.
+        expect(element._isOpen).to.equal(false);
+        expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
+        expect(document.body.style.overflow).to.equal("");
+
+        // Verify the next open shows a fresh dialog.
+        await openProfile(element);
+        expect(element.querySelector('[role="dialog"]').classList.contains("hidden")).to.equal(false);
+      });
+
+      it("keeps the modal open on a restore under a false phone query", async () => {
+        useSheetFixture(false);
+        const element = await mountLitComponent("user-info-modal");
+        await openProfile(element);
+
+        window.dispatchEvent(restoredPageShow());
+        await element.updateComplete;
+
+        // Verify only phones change.
+        expect(element._isOpen).to.equal(true);
+      });
+    });
   });
 
   it("renders nothing while closed", async () => {

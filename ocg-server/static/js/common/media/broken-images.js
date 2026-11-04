@@ -5,6 +5,7 @@ export const BROKEN_IMAGE_PLACEHOLDER_URL = "/static/images/icons/broken_image.s
 
 const DEFAULT_BROKEN_IMAGE_PLACEHOLDER_BG_CLASS = "bg-stone-50";
 const REMOVE_BROKEN_IMAGE_SELECTOR = "[data-ocg-remove-broken-images]";
+const SKIP_BROKEN_IMAGE_SELECTOR = "logo-image, [data-ocg-skip-broken-image]";
 const EMPTY_IMAGE_WRAPPER_SELECTOR = "img, video, iframe, object, embed";
 
 /**
@@ -52,7 +53,7 @@ const removeBrokenImage = (target) => {
  * @returns {boolean} True when the global fallback should not replace it.
  */
 const shouldSkipBrokenImagePlaceholder = (image) => {
-  if (image.closest("logo-image")) {
+  if (image.closest(SKIP_BROKEN_IMAGE_SELECTOR)) {
     return true;
   }
 

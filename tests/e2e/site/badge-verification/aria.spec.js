@@ -16,8 +16,8 @@ test.describe("public badge verification page ARIA snapshots", () => {
     // Load the verification page and check its layout.
     const form = await openVerification(page);
 
-    // Capture the verification form.
-    await expectAriaSnapshot(page, form, "badge-verification-form");
+    // Capture the verification form; phones read the tap prompt.
+    await expectAriaSnapshot(page, form, "badge-verification-form-mobile");
   });
 });
 

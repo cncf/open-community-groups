@@ -10,6 +10,8 @@ import {
 import { restoreCheckoutModalControls } from "/static/js/event/attendance-ticket-view.js";
 import "/static/js/event/attendance-ticket-card.js";
 
+const SOLD_OUT_SUMMARY = "Sold out";
+
 /**
  * Returns a trimmed string value from an availability payload field.
  * @param {unknown} value Availability payload field.
@@ -65,6 +67,28 @@ export const renderAttendanceAvailability = (container, availability) => {
 };
 
 /**
+ * Returns the phone bar's availability text, which leaves the event kind showing when empty.
+ * @param {Object} availability Public availability payload.
+ * @returns {string} Remaining spots, sold out, or an empty string.
+ */
+const getAvailabilitySummary = (availability) => {
+  if (
+    availability?.canceled === true ||
+    !isFiniteNumberValue(availability?.capacity) ||
+    !isFiniteNumberValue(availability?.remaining_capacity)
+  ) {
+    return "";
+  }
+
+  const remainingCapacity = Number(availability.remaining_capacity);
+  if (remainingCapacity <= 0) {
+    return SOLD_OUT_SUMMARY;
+  }
+
+  return remainingCapacity === 1 ? "1 spot left" : `${remainingCapacity} spots left`;
+};
+
+/**
  * Toggles an availability caption's responsive display classes.
  * @param {string} caption Availability caption key.
  * @param {boolean} visible Whether the caption should be visible.
@@ -111,6 +135,7 @@ const renderAvailabilityCaptions = (availability) => {
     remainingCapacity <= 0 &&
     isFiniteNumberValue(availability?.waitlist_count) &&
     waitlistCount > 0;
+  const availabilitySummary = getAvailabilitySummary(availability);
 
   document.querySelectorAll("[data-availability-capacity]").forEach((node) => {
     node.textContent = hasCapacity ? String(capacity) : "";
@@ -123,6 +148,10 @@ const renderAvailabilityCaptions = (availability) => {
   });
   document.querySelectorAll("[data-availability-waitlist]").forEach((node) => {
     node.textContent = hasWaitlistCount ? String(waitlistCount) : "";
+  });
+  document.querySelectorAll("[data-availability-summary]").forEach((node) => {
+    node.textContent = availabilitySummary;
+    node.toggleAttribute("data-sold-out", availabilitySummary === SOLD_OUT_SUMMARY);
   });
   renderAvailabilityCaption("attendees", hasAttendeeCount, ["flex"]);
   renderAvailabilityCaption("capacity", hasCapacity, ["flex"]);

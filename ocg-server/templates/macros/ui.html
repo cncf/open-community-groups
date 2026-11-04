@@ -14,9 +14,9 @@
 {# Used by public community and home pages for event preview lists. -#}
 {% macro events_list(title, link, events) -%}
   <div>
-    <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
+    <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12 section-strip phone:-mx-3">
       {# Title -#}
-      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">{{ title }}</div>
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2 section-strip-title">{{ title }}</div>
       {# End title -#}
 
       {# See all events on desktop -#}
@@ -27,10 +27,18 @@
            class="btn-secondary-anchor ms-4">Explore all events</a>
       </div>
       {# End see all events on desktop -#}
+
+      {# See all events on phones -#}
+      <a href="{{ link }}"
+         hx-boost="true"
+         hx-target="body"
+         aria-label="See all {{ title }}"
+         class="btn-secondary-anchor pill-link not-phone:hidden">See all</a>
+      {# End see all events on phones -#}
     </div>
     <div>
       {# Cards list -#}
-      <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex">
+      <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex phone:gap-3">
         {% for event in events -%}
           {{- event|safe -}}
         {% endfor -%}
@@ -38,7 +46,7 @@
       {# End cards list -#}
 
       {# End see all events on mobile -#}
-      <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+      <div class="flex mt-9 justify-self-center md:hidden md:mt-0 phone:hidden">
         <a href="{{ link }}"
            hx-boost="true"
            hx-target="body"

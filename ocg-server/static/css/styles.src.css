@@ -13,7 +13,8 @@
  * (see "Narrow desktop dashboards" below), so only touch screens get the mobile notice.
  * Redefined sm and md keep their order against wider breakpoints; redefined max-sm and
  * max-md move after them, so max-md beats sm between 640px and 767px. Do not pair max-md and
- * sm utilities for the same property.
+ * sm utilities for the same property. The phone variant below sorts after all of them, so it
+ * is safe to pair with any of them, and new phone work uses only phone.
  */
 @custom-variant sm {
   @media (width >= 40rem) {
@@ -53,6 +54,12 @@
     &:not(:where(body:has(#dashboard-layout) *)) {
       @slot;
     }
+  }
+}
+/* Phones: touch screens below md, on screen only. Sorts after sm, md and max-md, so it wins. */
+@custom-variant phone {
+  @media screen and (width < 48rem) and (not (pointer: fine)) {
+    @slot;
   }
 }
 
@@ -99,27 +106,27 @@
   }
 
   .btn-primary {
-     @apply py-1.5 px-5 h-10 text-sm text-center text-white rounded-full bg-primary-500 transition-colors enabled:hover:bg-primary-700 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden;
+     @apply py-1.5 px-5 h-10 text-sm text-center text-white rounded-full bg-primary-500 transition-colors enabled:hover:bg-primary-700 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:enabled:active:bg-primary-700;
   }
 
   .btn-primary-anchor {
-    @apply py-2 px-5 inline-block text-sm text-center text-white rounded-full bg-primary-500 transition-colors hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white relative overflow-hidden;
+    @apply py-2 px-5 inline-block text-sm text-center text-white rounded-full bg-primary-500 transition-colors hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:active:bg-primary-700 phone:inline-flex phone:items-center phone:justify-center;
   }
 
   .btn-secondary {
-    @apply py-1.5 px-5 h-10 bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors enabled:hover:bg-primary-500 enabled:hover:text-white enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden;
+    @apply py-1.5 px-5 h-10 bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors enabled:hover:bg-primary-500 enabled:hover:text-white enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11;
   }
 
   .btn-secondary-anchor {
-    @apply py-2 px-5 inline-block bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white relative overflow-hidden;
+    @apply py-2 px-5 inline-block bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
   }
 
   .btn-tertiary {
-    @apply enabled:cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:enabled:bg-stone-50 hover:enabled:border-stone-50 relative overflow-hidden;
+    @apply enabled:cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:enabled:bg-stone-50 hover:enabled:border-stone-50 relative overflow-hidden phone:min-h-11 phone:min-w-11;
   }
 
   .btn-tertiary-anchor {
-    @apply cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:bg-stone-50 hover:border-stone-50 relative overflow-hidden;
+    @apply cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:bg-stone-50 hover:border-stone-50 relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
   }
 
   .btn-tertiary .svg-icon,
@@ -138,11 +145,11 @@
   }
 
   .btn-primary-outline {
-    @apply enabled:cursor-pointer text-center text-primary-500 border border-primary-500 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-500 hover:enabled:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+    @apply enabled:cursor-pointer text-center text-primary-500 border border-primary-500 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-500 hover:enabled:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden phone:min-h-11 phone:min-w-11;
   }
 
   .btn-primary-outline-anchor {
-    @apply cursor-pointer text-center text-primary-500 border border-primary-500 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-500 hover:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+    @apply cursor-pointer text-center text-primary-500 border border-primary-500 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-500 hover:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
   }
 
   .btn-primary-outline .svg-icon,
@@ -151,11 +158,16 @@
   }
 
   .btn-mini {
-    @apply py-1 px-3 text-xs;
+    @apply py-1 px-3 text-xs phone:min-h-0 phone:min-w-0;
   }
 
   .ocg-swal-popup {
     @apply py-8! px-6! rounded-lg! max-w-[calc(100%-2rem)]! md:max-w-[560px]! shadow-lg!;
+  }
+
+  /* Bottom alerts share the bar's gutter, so no bar text shows beside them. */
+  .swal2-bottom > .ocg-swal-popup {
+    @apply phone:max-w-[calc(100%-0.25rem)]!;
   }
 
   .ocg-swal-popup > .swal2-icon {
@@ -482,6 +494,586 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   #dashboard-header {
     position: sticky;
     margin-bottom: -5rem;
+  }
+}
+
+/*
+ * Phone primitives
+ *
+ * Unlayered, so they beat utilities on the same element. That also means a phone: token
+ * cannot override a property set here: use a modifier with the same specificity, placed after
+ * the rule it overrides. Unlayered rules later in this file win ties, so rules that override
+ * one need a higher specificity. Primitives that set display use :not(.hidden).
+ *
+ * Stacking ladder: strip 21, breadcrumb dropdown 25, header 30, CTA 40, existing modals
+ * 50-1000, drawers and sheets 1100, map modal 1200, Lit modals 1300, Swal top layer.
+ */
+@utility btn-fill {
+  @apply bg-primary-600 text-white border-primary-600;
+}
+
+@keyframes sheet-up {
+  from {
+    translate: 0 100%;
+  }
+}
+
+@keyframes tap-bar-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@variant phone {
+  /* One azure: :root keeps the real 500 for charts, the calendar and derived shades. */
+  body {
+    --color-primary-500: var(--color-primary-600);
+  }
+
+  /* Header shell */
+  html {
+    scroll-padding-top: 7.5rem;
+  }
+
+  html:has(.cta-bar:not(.hidden, [data-phone-bar="hidden"])) {
+    scroll-padding-bottom: 5.5rem;
+  }
+
+  /* Tap progress bar: desktop's nav loading bar, shown after the same 120ms delay. */
+  body:has(a.htmx-request, form[hx-boost].htmx-request) #header::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background-image: linear-gradient(
+      90deg,
+      var(--color-primary-500) 0%,
+      var(--color-primary-500) 36%,
+      var(--color-stone-200) 50%,
+      var(--color-primary-500) 64%,
+      var(--color-primary-500) 100%
+    );
+    background-position: 110% 0;
+    background-size: 260% 100%;
+    opacity: 0;
+    pointer-events: none;
+    animation:
+      tap-bar-in 1ms linear 120ms forwards,
+      header-nav-loading 1.1s ease-in-out infinite;
+
+    @variant motion-reduce {
+      animation: tap-bar-in 1ms linear 120ms forwards;
+    }
+  }
+
+  /* Section heading */
+  .section-strip:not(.hidden) {
+    --strip-surface: var(--color-white);
+    @apply sticky top-[63px] z-[21] mb-1.5 flex min-h-11 items-center justify-between gap-3 bg-(--strip-surface) px-3 py-1 text-[15px]/5 font-bold uppercase tracking-wide;
+  }
+
+  .section-strip:not(.hidden)::before {
+    content: "";
+    background-image: linear-gradient(to bottom, var(--strip-surface), transparent);
+    @apply pointer-events-none absolute inset-x-0 top-full h-1.5;
+  }
+
+  .section-strip-title {
+    @apply min-w-0 p-0 text-[15px]/5;
+  }
+
+  .section-strip-stone:not(.hidden) {
+    --strip-surface: var(--color-stone-100);
+  }
+
+  .section-strip-plain:not(.hidden) {
+    @apply font-normal normal-case tracking-normal;
+  }
+
+  .section-strip-results:not(.hidden) {
+    @apply h-[52px];
+  }
+
+  /* Bottom sheet */
+  .sheet-panel {
+    box-shadow: 0 -8px 30px color-mix(in srgb, var(--color-stone-900) 18%, transparent);
+    @apply fixed inset-x-0 bottom-0 z-[1] max-h-[calc(100dvh-4rem)] w-auto max-w-none flex-col rounded-t-2xl rounded-b-none bg-white pb-[env(safe-area-inset-bottom)] motion-safe:animate-[sheet-up_200ms_ease-out];
+  }
+
+  .sheet-panel:not(.hidden) {
+    @apply flex;
+  }
+
+  .sheet-head {
+    @apply sticky top-0 z-[1] h-[52px] flex-none items-center justify-between border-b border-stone-200 bg-white ps-3 pe-1.5 touch-none;
+  }
+
+  .sheet-head:not(.hidden) {
+    @apply flex;
+  }
+
+  .sheet-head > :not(button) {
+    @apply text-lg font-semibold;
+  }
+
+  .sheet-head button:has(> .icon-close) > .icon-close {
+    @apply bg-stone-500;
+  }
+
+  .sheet-body {
+    @apply min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y touch-pinch-zoom;
+  }
+
+  .sheet-foot {
+    @apply flex-none gap-2 border-t border-stone-200 bg-white px-3 py-3;
+  }
+
+  .sheet-foot:not(.hidden) {
+    @apply flex;
+  }
+
+  .sheet-panel button:has(> .icon-close) {
+    @apply size-11;
+  }
+
+  /* Shared with the tablet drawer, which sets top, height and its own slide. */
+  #drawer-filters.sheet-panel {
+    @apply top-auto z-[1100] h-auto animate-none transition-[translate] motion-reduce:transition-none;
+  }
+
+  /* Holds the sr-only filter inputs, or focusing one scrolls the panel and moves its head away. */
+  #drawer-filters .sheet-body {
+    @apply relative;
+  }
+
+  /* Closed state, here so the class list has no -translate-x-full token once open. Visibility
+     eases only on close: opening has to be focusable at once. */
+  #drawer-filters.sheet-panel.-translate-x-full {
+    @apply invisible translate-x-0 translate-y-full transition-[translate,visibility] motion-reduce:transition-none;
+  }
+
+  /* The sheet's form refreshes outside htmx, so no request class reaches the spinner. */
+  #drawer-filters:has(> form[aria-busy="true"]) #loading-filters {
+    @apply block;
+  }
+
+  /* Draggable grabber: gestures set data-sheet-drag only where dragging works. */
+  [data-sheet-drag] {
+    @apply motion-safe:transition-[translate] motion-safe:duration-150;
+  }
+
+  [data-sheet-drag] .sheet-grab {
+    @apply touch-none;
+  }
+
+  [data-sheet-drag] .sheet-grab:not(.sheet-head) {
+    @apply relative;
+  }
+
+  [data-sheet-drag] .sheet-grab::before {
+    content: "";
+    @apply pointer-events-none absolute inset-x-0 top-1.5 mx-auto h-1 w-9 rounded-full bg-stone-300;
+  }
+
+  /* Account sheet: #user-dropdown is the scrim, its list the panel. */
+  .account-sheet:not(.hidden) {
+    @apply fixed inset-0 z-[1100] w-auto rounded-none border-0 bg-stone-950/35 shadow-none touch-pinch-zoom;
+  }
+
+  .account-sheet > ul {
+    @apply m-0 flex-row flex-wrap content-start gap-x-2;
+  }
+
+  /* min-w-0 keeps a long username truncated instead of widening the sheet. */
+  .account-sheet > ul > li {
+    @apply min-w-0 basis-full;
+  }
+
+  /* Rows reach 48px by padding only: a display here would reveal hidden dashboard rows. */
+  .account-sheet li:not(.sheet-head) [role="menuitem"] {
+    @apply px-3 py-3;
+  }
+
+  .account-sheet li:not(.sheet-head) [role="menuitem"] .text-xs\/6 {
+    @apply text-[15px]/6;
+  }
+
+  .account-sheet li:not(.sheet-head) [role="menuitem"] .svg-icon {
+    @apply size-[18px];
+  }
+
+  /* The reorder puts Desktop version directly under the Docs row and its hairline. */
+  .account-sheet ul:has(.account-sheet-cta) li:has(> [data-viewport-mode]) {
+    @apply mt-0 border-t-0 pt-0;
+  }
+
+  .account-sheet > ul > .account-sheet-cta {
+    @apply order-1 basis-[calc(50%-0.25rem)] pb-3 ps-3;
+  }
+
+  .account-sheet > ul > .account-sheet-cta-fill {
+    @apply order-2 ps-0 pe-3;
+  }
+
+  .account-sheet li.account-sheet-cta [role="menuitem"] {
+    @apply flex min-h-11 items-center justify-center gap-2 rounded-full border border-primary-600 py-0 text-sm font-semibold text-primary-600;
+  }
+
+  .account-sheet li.account-sheet-cta [role="menuitem"] .text-xs\/6 {
+    @apply text-sm/6;
+  }
+
+  .account-sheet li.account-sheet-cta [role="menuitem"] .svg-icon {
+    @apply bg-primary-600;
+  }
+
+  .account-sheet li.account-sheet-cta-fill [role="menuitem"] {
+    @apply bg-primary-600 text-white;
+  }
+
+  .account-sheet li.account-sheet-cta-fill [role="menuitem"] .svg-icon {
+    @apply bg-white;
+  }
+
+  .account-sheet [aria-current="page"] {
+    @apply font-semibold text-primary-600;
+  }
+
+  .account-sheet [aria-current="page"] .svg-icon {
+    @apply bg-primary-600;
+  }
+
+  /* Sticky bottom CTA */
+  .cta-bar:not(.hidden) {
+    @apply fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-stone-200 bg-white px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))];
+  }
+
+  body:has(.cta-bar:not(.hidden, [data-phone-bar="hidden"])) footer[role="contentinfo"] {
+    @apply pb-[calc(4.5rem+env(safe-area-inset-bottom))];
+  }
+
+  /* Event action bar: the summary shows beside a live action, and the control fills the bar otherwise. */
+  .cta-bar[data-attendance-container]:not(.hidden) {
+    @apply gap-2;
+  }
+
+  .cta-bar[data-phone-bar="hidden"],
+  [data-attendance-role="bar-summary"] {
+    @apply hidden;
+  }
+
+  .cta-bar[data-bar-reason] [data-attendance-role="bar-summary"],
+  .cta-bar:has(
+      [data-attendance-role="loading-btn"]:not(.hidden),
+      [data-attendance-role="signin-btn"]:enabled:not(.hidden),
+      [data-attendance-role="attend-btn"]:enabled:not(.hidden, [data-resume-url])
+    )
+    [data-attendance-role="bar-summary"] {
+    @apply block;
+  }
+
+  .cta-bar:not(
+      [data-bar-reason],
+      :has(
+        [data-attendance-role="loading-btn"]:not(.hidden),
+        [data-attendance-role="signin-btn"]:enabled:not(.hidden),
+        [data-attendance-role="attend-btn"]:enabled:not(.hidden, [data-resume-url])
+      )
+    )
+    > :is(button, a, span) {
+    @apply flex-1;
+  }
+
+  .cta-bar > span > :is([data-attendance-role="attend-btn"], [data-attendance-role="refund-btn"]) {
+    @apply w-full;
+  }
+
+  /* A disabled control gives way to its reason, and Join meeting replaces Cancel and Refund. */
+  .cta-bar[data-bar-reason] > button:disabled:not([data-attendance-role="loading-btn"]),
+  .cta-bar[data-bar-reason] > span:has(> button:disabled),
+  .cta-bar[data-bar-reason] [data-attendance-role="bar-summary"] > :not([data-attendance-role="bar-reason"]),
+  .cta-bar:not([data-bar-reason]) [data-attendance-role="bar-reason"],
+  .cta-bar:has([data-join-link]:not(.hidden)) > [data-attendance-role="leave-btn"],
+  .cta-bar:has([data-join-link]:not(.hidden)) > span:has(> [data-attendance-role="refund-btn"]) {
+    @apply hidden;
+  }
+
+  [data-attendance-role="bar-summary"] > :first-child:where(:not(:has([data-localized-currency]))) {
+    @apply text-sm font-medium text-stone-700;
+  }
+
+  [data-attendance-role="bar-summary"]:has([data-sold-out]) > :has([data-localized-currency]),
+  [data-availability-summary]:not(:empty) + span {
+    @apply hidden;
+  }
+
+  [data-attendance-role="bar-summary"] > :has(> [data-sold-out]) {
+    @apply text-sm font-medium text-red-700;
+  }
+
+  /* Stats box: a 2x2 with desktop's dividers as a cross. */
+  .stat-box:not(.hidden) {
+    @apply gap-0 p-1;
+  }
+
+  .stat-box > * {
+    @apply m-0 w-auto min-w-0 place-self-stretch px-2 py-3;
+  }
+
+  .stat-box > :nth-child(odd) {
+    @apply border-e border-stone-200;
+  }
+
+  .stat-box > :nth-child(n + 3) {
+    @apply border-t border-stone-200;
+  }
+
+  .stat-box > * > :first-child {
+    @apply flex-wrap;
+  }
+
+  .stat-box .svg-icon {
+    @apply size-7;
+  }
+
+  .stat-box > * > * > :last-child {
+    @apply ms-2.5;
+  }
+
+  .stat-box > * > * > :last-child > :last-child {
+    @apply tabular-nums max-[359px]:text-lg;
+  }
+
+  /* Detail page hero */
+  breadcrumb-nav {
+    min-height: calc((100vw - 1.625rem) * 192 / 1220 + 3.625rem);
+  }
+
+  div:has(> [data-availability-sold-out-ribbon]:not(.hidden)) .event-title-col {
+    @apply pe-9;
+  }
+
+  /* Links and pills */
+  .pill-link {
+    @apply relative min-h-0 shrink-0 overflow-visible whitespace-nowrap px-3.5 py-[5px] text-[13px]/[18px] font-normal normal-case tracking-normal after:absolute after:-inset-x-1 after:-inset-y-2;
+  }
+
+  /* The body prefix outranks the source colours, which come later in this file. */
+  body :is(.jumbotron-description, .community-description, .markdown) a,
+  .read-more-toggle {
+    color: color-mix(in srgb, var(--ocg-primary) 65%, black);
+  }
+
+  /* Read more */
+  .read-more:not([data-expanded]) .read-more-body {
+    max-height: 3lh;
+    @apply overflow-hidden;
+  }
+
+  .read-more:not([data-expanded]) .read-more-body img {
+    @apply max-h-16;
+  }
+
+  /* Headings and margins can land the clip mid-line, so the last line fades out. */
+  .read-more[data-overflowing]:not([data-expanded]) .read-more-body {
+    mask-image: linear-gradient(to bottom, black calc(100% - 0.75lh), transparent);
+  }
+
+  .read-more-body > :first-child {
+    @apply mt-0;
+  }
+
+  .read-more-toggle {
+    @apply hidden font-semibold;
+  }
+
+  .read-more[data-overflowing] .read-more-toggle {
+    @apply inline-flex min-h-11 items-center;
+  }
+
+  /* Snap carousel position row. 24 dots fit one line at 320px. */
+  [data-snap-dots]:not(.hidden) {
+    @apply mt-2 flex items-center justify-center gap-1.5;
+  }
+
+  [data-snap-counter] {
+    @apply ms-1.5 text-xs/5 font-medium text-stone-600;
+  }
+
+  .snap-dot {
+    @apply size-1.5 rounded-full bg-stone-300;
+  }
+
+  .snap-dot[data-active] {
+    @apply bg-primary-500;
+  }
+
+  /* Map attribution */
+  .maplibregl-ctrl-attrib {
+    @apply text-[10px]/[14px];
+  }
+
+  /* Dashboard tables stacked into label and value rows */
+  .dashboard-table-stacked:not(.hidden, .phone\:hidden),
+  .dashboard-table-stacked tbody {
+    @apply block;
+  }
+
+  .dashboard-table-stacked thead {
+    @apply hidden;
+  }
+
+  .dashboard-table-stacked tr:not(.hidden) {
+    @apply grid grid-cols-2 gap-x-3 gap-y-2 border-b border-stone-200 bg-white px-3 py-3;
+  }
+
+  .dashboard-table-stacked td:not(.hidden) {
+    @apply block w-auto max-w-none p-0;
+  }
+
+  .dashboard-table-stacked td:first-child,
+  .dashboard-table-stacked td.dashboard-table-actions {
+    @apply col-span-2;
+  }
+
+  .dashboard-table-stacked td.dashboard-table-actions:not(.hidden) {
+    @apply flex gap-2;
+  }
+
+  /* The title before a stacked table takes the row gutter and hides with an empty table. */
+  div:has(+ div > div > .dashboard-table-stacked) {
+    @apply px-3 pt-5 pb-3;
+  }
+
+  div:has(+ div > div > .dashboard-table-stacked.phone\:hidden) {
+    @apply hidden;
+  }
+
+  /* The 28px help circle stays, with a 44px hit area around it. */
+  #dashboard-content a:has(> .icon-question) {
+    @apply relative after:absolute after:-inset-2;
+  }
+
+  /* Between head and foot a short screen holds less than the code's 12rem floor, so the whole
+     sheet takes the screen and scrolls under its sticky head. The foot stays for focus order.
+     Below 16rem the floor gives way too, because the code must still fit under the head. */
+  @media (height < 26rem) {
+    #user-check-in-modal .sheet-panel {
+      @apply h-dvh max-h-dvh overflow-y-auto overscroll-contain;
+    }
+
+    #user-check-in-modal [data-user-check-in-body] {
+      @apply flex-none overflow-visible;
+    }
+
+    #user-check-in-modal #user-check-in-qr-image {
+      @apply max-w-[min(12rem,100dvh-4rem)];
+    }
+  }
+
+  /* Short and wide enough for two columns: the code sits beside the details, so all of it shows
+     under the head on open. Its size leaves room for the head, padding and caption, and below
+     16.5rem only for the head and padding, with the caption reached by scrolling. */
+  @media (height < 26rem) and (width >= 30rem) {
+    #user-check-in-modal [data-user-check-in-credential] {
+      --qr-size: clamp(min(12.5rem, 100dvh - 4rem), 100dvh - 6rem, 18rem);
+      @apply grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[1fr_auto];
+    }
+
+    #user-check-in-modal :has(> #user-check-in-qr-image) {
+      @apply col-start-2 row-span-2 row-start-1 min-h-[calc(var(--qr-size)+2.5rem)] w-[calc(var(--qr-size)+1.5rem+1px)] border-t-0 border-l;
+    }
+
+    #user-check-in-modal #user-check-in-qr-image {
+      @apply w-(--qr-size) max-w-none;
+    }
+
+    #user-check-in-modal [data-user-check-in-user] {
+      @apply col-start-1 row-start-2;
+    }
+  }
+
+  /* Landscape scanner: the camera fills the left under a pinned head, and the event, status,
+     controls and foot scroll beside it, so the whole view shows on open and stays in view. */
+  @media (orientation: landscape) {
+    #group-check-in-scanner-modal {
+      --scanner-height: 100dvh;
+    }
+
+    #group-check-in-scanner-modal .modal-panel {
+      @apply h-dvh max-h-none;
+    }
+
+    #group-check-in-scanner-modal .modal-card {
+      @apply grid h-(--scanner-height) max-h-none scroll-pt-16 grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-[4rem_auto_auto_1fr_auto] overflow-y-auto overscroll-contain;
+    }
+
+    #group-check-in-scanner-modal .modal-card > :first-child {
+      @apply sticky top-0 z-10 col-span-2 h-16 bg-white py-0;
+    }
+
+    #group-check-in-scanner-modal .modal-body,
+    #group-check-in-scanner-modal .modal-body > :first-child {
+      @apply contents;
+    }
+
+    #group-check-in-scanner-modal .modal-body > :first-child > :first-child {
+      @apply col-start-2 row-start-2 min-w-0 px-3 py-2;
+    }
+
+    #group-check-in-scanner-modal #group-check-in-event-name {
+      @apply line-clamp-2 text-base wrap-anywhere;
+    }
+
+    #group-check-in-scanner-modal dl {
+      @apply mt-1 block space-y-1;
+    }
+
+    #group-check-in-scanner-modal dd {
+      @apply whitespace-normal;
+    }
+
+    #group-check-in-scanner-modal :has(> [data-group-check-in-video]) {
+      @apply sticky top-16 col-start-1 row-span-4 row-start-2 aspect-auto h-[calc(var(--scanner-height)-4rem)] min-h-0 self-start border-t-0 @container-size;
+    }
+
+    #group-check-in-scanner-modal [data-group-check-in-video] {
+      @apply absolute inset-0;
+    }
+
+    /* The frame follows the camera view's shorter side, so it stays a square that fits. */
+    #group-check-in-scanner-modal :has(> [data-group-check-in-camera-unavailable]) {
+      @apply inset-auto top-1/2 left-1/2 size-[min(80cqw,80cqh)] max-h-none -translate-x-1/2 -translate-y-1/2;
+    }
+
+    #group-check-in-scanner-modal .modal-body > :nth-child(2) {
+      @apply col-start-2 row-start-3 mx-3 mt-0;
+    }
+
+    #group-check-in-scanner-modal .modal-body > :nth-child(3) {
+      @apply col-start-2 row-start-4 mx-3 my-2 grid-cols-1 content-start gap-2;
+    }
+
+    #group-check-in-scanner-modal footer {
+      @apply col-start-2 row-start-5 p-3;
+    }
+  }
+
+  /* From 640px the scanner stays a modal, with a margin on every side. */
+  @media (orientation: landscape) and (width >= 40rem) {
+    #group-check-in-scanner-modal {
+      --scanner-height: calc(100dvh - 1rem);
+    }
+
+    #group-check-in-scanner-modal .modal-panel {
+      @apply py-2;
+    }
   }
 }
 

@@ -3,3 +3,6 @@
   - text: User Dashboard Events
   - link "Check-In":
     - /url: /dashboard/user?tab=check-in
+  - text: User
+  - link "Invitations":
+    - /url: /dashboard/user?tab=invitations
