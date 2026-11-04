@@ -1,10 +1,15 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { navigateToPath, waitForActionResponse } from "../../../utils.js";
+import { setupAuditLog } from "../../../data-graphs/audit.js";
+import { cleanupTemporaryGroup, setupTemporaryGroup } from "../../../data-graphs/groups.js";
+import { TEST_COMMUNITY_IDS, TEST_USER_IDS } from "../../../seed.js";
+import { navigateToPath, selectGroupContext, waitForActionResponse } from "../../../utils.js";
 
 const FILTERED_GROUP_LOGS_PATH = "/dashboard/group?tab=logs&action=group_updated&actor=e2e-organizer-1";
 const GROUP_DETAILS_LOGS_PATH = "/dashboard/group?tab=logs&action=group_sponsor_added&actor=e2e-organizer-1";
 const GROUP_LOGS_PATH = "/dashboard/group?tab=logs";
+// Rows the temporary group needs so its last row can scroll to the bottom of a 600px viewport.
+const SCROLLABLE_LOGS_COUNT = 8;
 
 test.describe("group dashboard logs view", () => {
   test("empty state explains when a group has no audit history", async ({ organizerEmptyGroupPage }) => {
@@ -199,7 +204,21 @@ test.describe("group dashboard logs view", () => {
 
   test("organizer sees log details above the trigger when there is no room below", async ({
     organizerGroupPage,
+    owned,
   }) => {
+    // Give a temporary group enough logs to scroll its last row to the viewport bottom.
+    const { groupId } = owned.track(
+      setupTemporaryGroup({ teamRole: "admin", teamUserId: TEST_USER_IDS.organizer1 }),
+      ({ groupId: temporaryGroupId }) => cleanupTemporaryGroup(temporaryGroupId),
+    );
+    for (let index = 0; index < SCROLLABLE_LOGS_COUNT; index += 1) {
+      setupGroupUpdatedLog({
+        createdAt: `2025-03-${String(index + 1).padStart(2, "0")} 18:30:00+00`,
+        groupId,
+      });
+    }
+    await selectGroupContext(organizerGroupPage, TEST_COMMUNITY_IDS.community1, groupId);
+
     // Load the full logs list in a short viewport.
     const viewport = { width: 1024, height: 600 };
     await organizerGroupPage.setViewportSize(viewport);
@@ -230,6 +249,23 @@ test.describe("group dashboard logs view", () => {
     await expect(lastCard).toBeHidden();
   });
 });
+
+/**
+ * Records the organizer updating a group on the given date.
+ * @param {{ createdAt: string, groupId: string }} options - Log date and group.
+ */
+const setupGroupUpdatedLog = ({ createdAt, groupId }) =>
+  setupAuditLog({
+    action: "group_updated",
+    actorUserId: TEST_USER_IDS.organizer1,
+    actorUsername: "e2e-organizer-1",
+    communityId: TEST_COMMUNITY_IDS.community1,
+    createdAt,
+    details: {},
+    groupId,
+    resourceId: groupId,
+    resourceType: "group",
+  });
 
 /**
  * Checks that an element's bounding box sits inside the viewport.
