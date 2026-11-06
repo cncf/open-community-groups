@@ -4,15 +4,16 @@
 
 {% let no_invitations = event_invitations.is_empty() && group_invitations.is_empty() && community_invitations.is_empty() -%}
 
-{{ dashboard::page_title(title = "Event Invitations", docs_href = "/docs#/guides/user-dashboard?id=invitations-access-and-attendance",
-  description = "Confirm, resume, or decline event invitations and ticket offers.") -}}
+<div class="phone:px-3 phone:pt-4">
+  {{ dashboard::page_title(title = "Event Invitations", docs_href = "/docs#/guides/user-dashboard?id=invitations-access-and-attendance",
+    description = "Confirm, resume, or decline event invitations and ticket offers.") -}}
+</div>
 
 {# Event Invitations -#}
-{# Hidden on the wrapper, so the page title stays (see .dashboard-table-stacked). -#}
-<div class="mt-10 phone:mt-0{% if no_invitations %}
-              phone:hidden{% endif %}">
+{# Desktop table. On phones it is replaced by the action cards below. -#}
+<div class="mt-10 phone:mt-0 phone:hidden">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full dashboard-table mb-12 dashboard-table-stacked phone:mb-0">
+    <table class="table-auto w-full dashboard-table mb-12">
       {# Table header -#}
       <thead class="dashboard-table-head">
         <tr>
@@ -179,12 +180,146 @@
           </tr>
           {# End invitation row -#}
         {% endfor -%}
-      {% endif -%}
-    </tbody>
-  </table>
-</div>
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
 </div>
 {# End Event Invitations -#}
+
+{# Event Invitations (phone action cards) -#}
+{% if !event_invitations.is_empty() -%}
+  <div class="not-phone:hidden space-y-3 px-3 pt-1.5 pb-4">
+    {% for invitation in event_invitations -%}
+      {# Invitation card -#}
+      <article id="event-offer-card-{{ invitation.admission_offer_id }}"
+               class="scroll-mt-14 rounded-lg border border-stone-200 bg-white p-3">
+        <div class="title-preheader">{{ invitation.group_name }} · {{ invitation.community_display_name }}</div>
+        <h3 class="mt-0.5 line-clamp-2 text-[15px]/5 font-semibold text-stone-900">{{ invitation.event_name }}</h3>
+        {# Starts -#}
+        <div class="mt-1.5 flex items-center gap-1.5 text-[13px] text-stone-600">
+          <span class="svg-icon size-4 shrink-0 bg-stone-400 icon-calendar"
+                aria-hidden="true"></span>
+          {% if let Some(starts_at) = &invitation.starts_at -%}
+            Starts {{ starts_at.with_timezone(invitation.timezone).format(DATE_FORMAT_2) }}
+          {% else -%}
+            Starts -
+          {% endif -%}
+        </div>
+        {# Offer source -#}
+        <div class="mt-1.5 flex items-center gap-1.5 text-[13px] text-stone-600">
+          <span class="svg-icon size-4 shrink-0 bg-stone-400 icon-pending-invitation"
+                aria-hidden="true"></span>
+          {{ invitation.source_label() }}
+        </div>
+        {# Offer summary chips -#}
+        <div class="mt-2 flex flex-wrap items-center gap-1.5">
+          {% if invitation.is_simple_rsvp -%}
+            <span class="custom-badge badge-neutral">Free RSVP</span>
+          {% else if let Some(price_label) = invitation.price_label() -%}
+            <span class="custom-badge badge-neutral" data-localized-currency>{{ price_label }}</span>
+            <span class="custom-badge badge-neutral">{{ invitation.ticket_title }}</span>
+          {% else -%}
+            <span class="custom-badge badge-neutral">{{ invitation.ticket_title }}</span>
+          {% endif -%}
+          {% if !invitation.registration_questions.is_empty() -%}
+            <span class="custom-badge badge-neutral">{{ invitation.registration_questions.len() }} question{% if invitation.registration_questions.len() != 1 %}s{% endif %}</span>
+          {% endif -%}
+        </div>
+        {# External payment details -#}
+        {% if let Some(external_payment) = &invitation.external_payment -%}
+          <div class="mt-2 space-y-0.5 text-xs text-stone-500 wrap-anywhere [&_.font-mono]:break-all">
+            <div>
+              Confirm by {{ external_payment.deadline.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}
+            </div>
+            <div>Reference: <span class="font-mono">{{ external_payment.reference }}</span></div>
+            {% if let Some(instructions) = &external_payment.instructions -%}
+              <div class="whitespace-pre-wrap">{{ instructions }}</div>
+            {% endif -%}
+          </div>
+        {% endif -%}
+        {# Expires -#}
+        <div class="mt-2 flex items-center gap-1.5 text-[13px] text-stone-600">
+          <span class="svg-icon size-4 shrink-0 bg-stone-400 icon-clock"
+                aria-hidden="true"></span>
+          Expires {{ invitation.expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y") }} · {{ invitation.expires_at.with_timezone(invitation.timezone).format("%-I:%M %p %Z") }}
+        </div>
+        {# Actions -#}
+        <div class="mt-3 grid grid-cols-[1fr_auto] gap-2">
+          <div class="[&_.svg-icon]:bg-current">
+            {{ event_offer_primary_action(invitation = invitation,
+              button_classes = "btn-primary flex w-full items-center justify-center gap-2",
+              anchor_classes = "btn-primary-anchor flex w-full items-center justify-center gap-2",
+              role = None::<&str>) -}}
+          </div>
+          {% if invitation.checkout_started() -%}
+            {# Checkout holds a seat, so cancel and decline move into a menu. -#}
+            <details data-actions-menu
+                     class="group relative inline-flex justify-end [&>.dropdown]:top-12">
+              <summary class="btn-actions btn-primary-outline flex size-11 cursor-pointer list-none items-center justify-center [&::-webkit-details-marker]:hidden"
+                       aria-label="Open offer actions for {{ invitation.event_name }}"
+                       title="Open offer actions">
+                <div class="svg-icon size-4 icon-vertical-dots"></div>
+              </summary>
+              <div class="dropdown absolute end-0 top-12 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                <ul class="text-sm text-stone-700" role="menu">
+                  <li>
+                    <button id="cancel-event-offer-checkout-card-{{ invitation.admission_offer_id }}"
+                            type="button"
+                            hx-delete="/{{ invitation.community_name }}/event/{{ invitation.event_id }}/checkout"
+                            hx-indicator="#dashboard-spinner"
+                            hx-trigger="confirmed"
+                            hx-swap="none"
+                            hx-disabled-elt="this"
+                            data-confirm-action
+                            data-user-event-offer-checkout-cancel
+                            data-confirm-message="Are you sure you want to cancel this checkout? Your ticket hold will be released."
+                            data-confirm-text="Yes"
+                            data-error-message="Something went wrong canceling checkout. Please try again later."
+                            role="menuitem"
+                            class="flex w-full items-center gap-2 px-3 py-3 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                      <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
+                      <span>Cancel checkout</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button id="decline-event-offer-card-{{ invitation.admission_offer_id }}"
+                            hx-put="/dashboard/user/invitations/event-offers/{{ invitation.admission_offer_id }}/decline"
+                            hx-indicator="#dashboard-spinner"
+                            hx-trigger="confirmed"
+                            hx-disabled-elt="this"
+                            data-confirm-action
+                            data-confirm-message="Decline your invitation to {{ invitation.event_name }}? Your spot will be released."
+                            data-confirm-text="Yes"
+                            data-error-message="Something went wrong declining this offer. Please try again later."
+                            role="menuitem"
+                            class="reject-modal flex w-full items-center gap-2 px-3 py-3 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                      <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
+                      <span>Decline offer</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </details>
+          {% else -%}
+            <button id="decline-event-offer-card-{{ invitation.admission_offer_id }}"
+                    hx-put="/dashboard/user/invitations/event-offers/{{ invitation.admission_offer_id }}/decline"
+                    hx-indicator="#dashboard-spinner"
+                    hx-trigger="confirmed"
+                    hx-disabled-elt="this"
+                    data-confirm-action
+                    data-confirm-message="Decline your invitation to {{ invitation.event_name }}? Your spot will be released."
+                    data-confirm-text="Yes"
+                    data-error-message="Something went wrong declining this offer. Please try again later."
+                    class="reject-modal btn-primary-outline">Decline</button>
+          {% endif -%}
+        </div>
+      </article>
+      {# End invitation card -#}
+    {% endfor -%}
+  </div>
+{% endif -%}
+{# End Event Invitations (phone action cards) -#}
 
 {# Shared empty state (phones only) -#}
 {% if no_invitations -%}
@@ -195,14 +330,15 @@
 {# End shared empty state -#}
 
 {# Groups Invitations -#}
-<div>
+<div class="phone:px-3{% if group_invitations.is_empty() %}
+              phone:hidden{% endif %}">
   {{ dashboard::form_title(title = "Group Invitations",
     description = "Manage invitations to join groups.") -}}
 </div>
 
-<div class="mt-10 phone:mt-0">
+<div class="mt-10 phone:mt-0 phone:hidden">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full dashboard-table mb-12 dashboard-table-stacked phone:mb-0{% if group_invitations.is_empty() %}
+    <table class="table-auto w-full dashboard-table mb-12{% if group_invitations.is_empty() %}
                     phone:hidden{% endif %}">
       {# Table header -#}
       <thead class="dashboard-table-head">
@@ -293,15 +429,57 @@
 </div>
 {# End Groups Invitations -#}
 
+{# Groups Invitations (phone action cards) -#}
+{% if !group_invitations.is_empty() -%}
+  <div class="not-phone:hidden space-y-3 px-3 pt-1.5 pb-4">
+    {% for invitation in group_invitations -%}
+      {# Invitation card -#}
+      <article class="rounded-lg border border-stone-200 bg-white p-3">
+        <div class="min-w-0">
+          <h3 class="flex items-start gap-1.5 break-words text-[15px]/5 font-semibold text-stone-900">
+            <span class="svg-icon mt-0.5 size-4 shrink-0 bg-stone-400 icon-groups"
+                  aria-hidden="true"></span>
+            {{ invitation.group_name }}
+          </h3>
+          <div class="mt-1.5">{{ badges::common_badge(content = invitation.role, extra_styles = Some("px-2.5 py-0.5")) -}}</div>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <button hx-put="/dashboard/user/invitations/group/{{ invitation.group_id }}/accept"
+                  hx-indicator="#dashboard-spinner"
+                  hx-disabled-elt="this"
+                  class="btn-primary flex w-full items-center justify-center gap-2 disabled:opacity-50"
+                  title="Approve">
+            <div class="svg-icon size-4 icon-check shrink-0 bg-current"></div>
+            <span>Approve</span>
+          </button>
+          <button id="reject-group-card-{{ invitation.group_id }}"
+                  hx-put="/dashboard/user/invitations/group/{{ invitation.group_id }}/reject"
+                  hx-indicator="#dashboard-spinner"
+                  hx-trigger="confirmed"
+                  hx-disabled-elt="this"
+                  data-confirm-action
+                  data-confirm-message="Decline your invitation to join {{ invitation.group_name }}?"
+                  data-confirm-text="Yes"
+                  data-error-message="Something went wrong rejecting this invitation. Please try again later."
+                  class="reject-modal btn-primary-outline w-full disabled:opacity-50">Reject</button>
+        </div>
+      </article>
+      {# End invitation card -#}
+    {% endfor -%}
+  </div>
+{% endif -%}
+{# End Groups Invitations (phone action cards) -#}
+
 {# Community Invitations -#}
-<div>
+<div class="phone:px-3{% if community_invitations.is_empty() %}
+              phone:hidden{% endif %}">
   {{ dashboard::form_title(title = "Community Invitations",
     description = "Manage invitations to join communities.") -}}
 </div>
 
-<div class="mt-10 phone:mt-0">
+<div class="mt-10 phone:mt-0 phone:hidden">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full dashboard-table dashboard-table-stacked{% if community_invitations.is_empty() %}
+    <table class="table-auto w-full dashboard-table{% if community_invitations.is_empty() %}
                     phone:hidden{% endif %}">
       {# Table header -#}
       <thead class="dashboard-table-head">
@@ -392,6 +570,47 @@
 </div>
 {# End Community Invitations -#}
 
+{# Community Invitations (phone action cards) -#}
+{% if !community_invitations.is_empty() -%}
+  <div class="not-phone:hidden space-y-3 px-3 pt-1.5 pb-4">
+    {% for invitation in community_invitations -%}
+      {# Invitation card -#}
+      <article class="rounded-lg border border-stone-200 bg-white p-3">
+        <div class="min-w-0">
+          <h3 class="flex items-start gap-1.5 break-words text-[15px]/5 font-semibold text-stone-900">
+            <span class="svg-icon mt-0.5 size-4 shrink-0 bg-stone-400 icon-community"
+                  aria-hidden="true"></span>
+            {{ invitation.community_name }}
+          </h3>
+          <div class="mt-1.5">{{ badges::common_badge(content = invitation.role, extra_styles = Some("px-2.5 py-0.5")) -}}</div>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <button hx-put="/dashboard/user/invitations/community/{{ invitation.community_id }}/accept"
+                  hx-indicator="#dashboard-spinner"
+                  hx-disabled-elt="this"
+                  class="btn-primary flex w-full items-center justify-center gap-2 disabled:opacity-50"
+                  title="Approve">
+            <div class="svg-icon size-4 icon-check shrink-0 bg-current"></div>
+            <span>Approve</span>
+          </button>
+          <button id="reject-community-card-{{ invitation.community_id }}"
+                  hx-put="/dashboard/user/invitations/community/{{ invitation.community_id }}/reject"
+                  hx-indicator="#dashboard-spinner"
+                  hx-trigger="confirmed"
+                  hx-disabled-elt="this"
+                  data-confirm-action
+                  data-confirm-message="Decline your invitation to join {{ invitation.community_name }}?"
+                  data-confirm-text="Yes"
+                  data-error-message="Something went wrong rejecting this invitation. Please try again later."
+                  class="reject-modal btn-primary-outline w-full disabled:opacity-50">Reject</button>
+        </div>
+      </article>
+      {# End invitation card -#}
+    {% endfor -%}
+  </div>
+{% endif -%}
+{# End Community Invitations (phone action cards) -#}
+
 {# Event offer claim modals -#}
 {% for invitation in event_invitations -%}
   {% if invitation.resume_checkout_url.is_none() -%}
@@ -415,7 +634,8 @@
             <button data-user-event-offer-close
                     type="button"
                     class="group ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-900 phone:shrink-0">
-              <div class="svg-icon h-5 w-5 icon-close bg-stone-500 transition-colors group-hover:bg-stone-900"></div>
+              <div class="svg-icon h-5 w-5 icon-close bg-stone-500 transition-colors group-hover:bg-stone-900">
+              </div>
               <span class="sr-only">Close modal</span>
             </button>
           </div>
