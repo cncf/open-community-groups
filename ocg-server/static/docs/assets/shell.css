@@ -310,6 +310,61 @@
     display: none;
   }
 
+  /* Sheet head: a sticky title and close button, so the Contents sheet closes like the app's
+     other sheets instead of only through the scrim, a link, Back or Escape. */
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head {
+    align-items: center;
+    background: var(--color-white);
+    border-bottom: 1px solid var(--color-stone-200);
+    display: flex;
+    justify-content: space-between;
+    min-height: 52px;
+    padding: 0 8px 0 16px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head-title {
+    color: var(--color-stone-900);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 28px;
+    text-transform: uppercase;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head-close {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 9999px;
+    color: var(--color-stone-500);
+    cursor: pointer;
+    display: inline-flex;
+    height: 44px;
+    justify-content: center;
+    padding: 0;
+    width: 44px;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head-close:hover {
+    background: var(--color-stone-200);
+    color: var(--color-stone-900);
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head-close:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: -2px;
+  }
+
+  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head-close::before {
+    background-color: currentColor;
+    content: "";
+    height: 20px;
+    mask: url("/static/images/icons/close.svg") center / contain no-repeat;
+    width: 20px;
+  }
+
   .ocg-docs-root:has(> [data-docs-strip]) .sidebar .sidebar-nav {
     padding: 4px 0 12px;
   }

@@ -388,6 +388,9 @@ describe("docs shell interactions", () => {
       expect(toggle.hasAttribute("aria-expanded")).to.equal(false);
       expect(content.hasAttribute("inert")).to.equal(false);
 
+      // Verify no sheet head mounts without the phone shell.
+      expect(docsRoot.querySelector(".docs-sheet-head")).to.equal(null);
+
       // Verify a sidebar link keeps today's behavior.
       document.getElementById("guide-link").click();
       expect(document.body.classList.contains("close")).to.equal(true);
@@ -421,6 +424,47 @@ describe("docs shell interactions", () => {
       // Verify cleanup leaves nothing on the query.
       release();
       expect(listeners.size).to.equal(0);
+    });
+
+    it("adds a Contents head with a working close button on phones", async () => {
+      // Mount the phone shell so the head is injected into the sidebar.
+      stubPhoneQuery(true);
+      const release = setupDocsPhoneShell(docsRoot);
+
+      // Verify the head carries a title and a labelled close button.
+      const head = docsRoot.querySelector(".docs-sheet-head");
+      expect(head).to.not.equal(null);
+      expect(head.querySelector(".docs-sheet-head-title").textContent).to.equal("Contents");
+      const close = head.querySelector(".docs-sheet-head-close");
+      expect(close.textContent.trim()).to.equal("Close contents");
+
+      // Open the sheet, then press close from inside it.
+      toggle.click();
+      await waitForMicrotask();
+      expect(document.body.classList.contains("close")).to.equal(true);
+      document.getElementById("guide-link").focus();
+      close.click();
+      await waitForMicrotask();
+
+      // Verify close dismisses through the toggle and returns focus to it.
+      expect(document.body.classList.contains("close")).to.equal(false);
+      expect(document.activeElement).to.equal(toggle);
+      release();
+    });
+
+    it("mounts the Contents head once and removes it on cleanup", async () => {
+      // Mount the phone shell and cycle the sheet open and closed.
+      stubPhoneQuery(true);
+      const release = setupDocsPhoneShell(docsRoot);
+      await setSheetOpen(true);
+      await setSheetOpen(false);
+
+      // Verify reopening never stacks duplicate heads.
+      expect(docsRoot.querySelectorAll(".docs-sheet-head")).to.have.length(1);
+
+      // Verify cleanup removes the injected head.
+      release();
+      expect(docsRoot.querySelector(".docs-sheet-head")).to.equal(null);
     });
 
     it("closes through the toggle on a close request", async () => {

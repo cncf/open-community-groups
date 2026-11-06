@@ -7,6 +7,8 @@ const DOCS_ANCHOR_SCROLL_PADDING_PX = 30;
 // Header 64, strip 44 and a gap of 8.
 const DOCS_PHONE_ANCHOR_OFFSET_PX = 116;
 const DOCS_PHONE_TOGGLE_NAME = "Contents";
+const DOCS_SHEET_HEAD_CLOSE_SELECTOR = ".docs-sheet-head-close";
+const DOCS_SHEET_HEAD_SELECTOR = ".docs-sheet-head";
 const DOCS_SIDEBAR_SELECTOR = ".sidebar-nav";
 const DOCS_TOGGLE_SELECTOR = ".sidebar-toggle";
 
@@ -280,6 +282,7 @@ export const createSamePageAnchorClickHandler =
 const bindContentsSheet = (docsRoot) => {
   let closeWatcher = null;
   let sheetOpen = false;
+  let releaseSheetHead = null;
 
   const hideSheet = () => {
     document.body.classList.remove("close");
@@ -331,6 +334,7 @@ const bindContentsSheet = (docsRoot) => {
   };
 
   const syncSheetState = ({ returnFocus = true } = {}) => {
+    releaseSheetHead ??= insertContentsSheetHead(docsRoot);
     const open = document.body.classList.contains("close");
     if (open && !sheetOpen) {
       revealCurrentRow(docsRoot);
@@ -352,6 +356,12 @@ const bindContentsSheet = (docsRoot) => {
   // Docsify closes on any tap when it loaded at 600px or less, and on none above that, so links
   // close here and its body listener never sees the rest of the sheet.
   const handleSheetClick = (event) => {
+    if (closestElement(event.target, DOCS_SHEET_HEAD_CLOSE_SELECTOR)) {
+      // The close button sits inside the sidebar, so dismiss here before the swallow below eats it.
+      event.stopPropagation();
+      requestClose();
+      return;
+    }
     const link = closestElement(event.target, `${DOCS_SIDEBAR_SELECTOR} a`);
     if (link?.hash === window.location.hash) {
       // The current page goes nowhere, so this close counts as a dismissal.
@@ -385,6 +395,8 @@ const bindContentsSheet = (docsRoot) => {
 
   return () => {
     bodyObserver.disconnect();
+    releaseSheetHead?.();
+    releaseSheetHead = null;
     releaseCloseRequests();
     clearSheetAttributes(docsRoot);
     docsRoot.removeEventListener("click", handleSheetClick, true);
@@ -403,6 +415,43 @@ const clearSheetAttributes = (docsRoot) => {
   toggle?.removeAttribute("aria-expanded");
   toggle?.setAttribute("aria-label", DOCSIFY_TOGGLE_NAME);
   docsRoot.querySelector(".content")?.removeAttribute("inert");
+};
+
+/**
+ * Inserts the Contents sheet head with a title and close button, so the phone Contents sheet
+ * matches the close affordance of the app's other sheets. No-op once the head exists or before
+ * Docsify has rendered the sidebar. The close button is handled by the sheet's delegated click
+ * listener, so no per-button listener is attached here.
+ * @param {HTMLElement} docsRoot Docs root container.
+ * @returns {(() => void)|null} Cleanup that removes the head, or null when nothing was inserted.
+ */
+const insertContentsSheetHead = (docsRoot) => {
+  const sidebar = docsRoot.querySelector(".sidebar");
+  if (!sidebar || sidebar.querySelector(DOCS_SHEET_HEAD_SELECTOR)) {
+    return null;
+  }
+
+  const head = document.createElement("div");
+  head.className = "docs-sheet-head";
+
+  const title = document.createElement("span");
+  title.className = "docs-sheet-head-title";
+  title.textContent = DOCS_PHONE_TOGGLE_NAME;
+
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "docs-sheet-head-close";
+  const closeLabel = document.createElement("span");
+  closeLabel.className = "sr-only";
+  closeLabel.textContent = "Close contents";
+  close.append(closeLabel);
+
+  head.append(title, close);
+  sidebar.prepend(head);
+
+  return () => {
+    head.remove();
+  };
 };
 
 /**

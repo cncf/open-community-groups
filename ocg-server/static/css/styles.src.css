@@ -614,7 +614,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   .sheet-head > :not(button) {
-    @apply text-lg font-semibold;
+    @apply text-lg font-semibold uppercase;
   }
 
   .sheet-head button:has(> .icon-close) > .icon-close {
