@@ -939,6 +939,117 @@ test.describe("site explore events page", () => {
     await expect(page.getByRole("button", { name: "Open filters", exact: true })).toBeVisible();
   });
 
+  test("puts the title above a full-width switch @mobile", async ({ page }) => {
+    // Load the bare landing.
+    await navigateToPath(page, "/explore?entity=events");
+    const title = await page.getByRole("heading", { level: 1 }).boundingBox();
+    const entitySwitch = await getEntitySwitch(page).boundingBox();
+    const filters = await page.getByRole("button", { name: "Open filters", exact: true }).boundingBox();
+    const filtersRight = filters.x + filters.width;
+    const inset = page.viewportSize().width - filtersRight;
+
+    // Verify the switch starts below the title and spans the controls row.
+    expect(entitySwitch.y).toBeGreaterThanOrEqual(title.y + title.height);
+    expect(entitySwitch.x + entitySwitch.width).toBeCloseTo(filtersRight, 0);
+    expect(entitySwitch.width).toBeGreaterThan(page.viewportSize().width - 2 * inset - 1);
+  });
+
+  test("fits the active filters on one line and shows the rest from the toggle @mobile", async ({ page }) => {
+    // Load more filters than one line holds.
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}&group[0]=${TEST_GROUP_SLUG}&kind[0]=in-person&kind[1]=virtual&kind[2]=hybrid`,
+    );
+    const chips = getAppliedFilterChips(page);
+    const toggle = page.locator("[data-applied-filters-toggle]");
+
+    // Verify the shown chips share one line, and the toggle counts the rest.
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const shown = await chips.count();
+    expect(shown).toBeLessThan(5);
+    await expect(toggle).toHaveText(`+${5 - shown} more`);
+    const tops = await chips.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
+    const toggleBox = await toggle.boundingBox();
+    expect(new Set([...tops, toggleBox.y]).size).toBe(1);
+    const lastChip = await chips.last().boundingBox();
+    expect(toggleBox.x - (lastChip.x + lastChip.width)).toBeLessThanOrEqual(8);
+
+    // Expand and collapse the card.
+    await toggle.click();
+    await expect(chips).toHaveCount(5);
+    await expect(toggle).toHaveText("Show less");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await toggle.click();
+    await expect(chips).toHaveCount(shown);
+  });
+
+  test("truncates a chip wider than the card to one line @mobile", async ({ page }) => {
+    // Give the first of two chips a label wider than the narrowest phone.
+    await page.setViewportSize({ height: 640, width: 320 });
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}&kind[0]=virtual`);
+    const card = page.locator("[data-applied-filters]");
+    const chips = getAppliedFilterChips(page);
+    const toggle = page.locator("[data-applied-filters-toggle]");
+    await chips
+      .first()
+      .locator("span span")
+      .first()
+      .evaluate((label) => {
+        label.textContent = "A very long community name that never fits ".repeat(3);
+        window.dispatchEvent(new Event("resize"));
+      });
+    const expectTruncatedInCard = async () => {
+      const chip = chips.first();
+      const label = chip.locator("span span").first();
+      const [cardBox, chipBox, text] = await Promise.all([
+        card.boundingBox(),
+        chip.boundingBox(),
+        label.evaluate((element) => ({
+          clipped: element.scrollWidth > element.clientWidth,
+          height: element.clientHeight,
+        })),
+      ]);
+      expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(cardBox.x + cardBox.width);
+      expect(text.clipped).toBe(true);
+      expect(text.height).toBeLessThan(24);
+      await expect(label).toHaveCSS("text-overflow", "ellipsis");
+      await expect(label).toHaveCSS("white-space", "nowrap");
+    };
+
+    // Verify the long chip stays shown, on one line with an ellipsis.
+    await expect(toggle).toHaveText("+1 more");
+    await expect(chips).toHaveCount(1);
+    await expectTruncatedInCard();
+
+    // Verify it still holds one line once the card is expanded.
+    await toggle.click();
+    await expect(chips).toHaveCount(2);
+    await expectTruncatedInCard();
+  });
+
+  test("resets every filter from the Active filters card @mobile", async ({ page }) => {
+    // Load two filters.
+    await navigateToPath(page, "/explore?entity=events&kind[0]=virtual&kind[1]=hybrid");
+
+    // Reset them from the card.
+    await waitForActionResponse(
+      page,
+      () => page.getByRole("button", { name: "Reset", exact: true }).click(),
+      {
+        method: "GET",
+        pathname: "/explore/events-section",
+        status: 200,
+      },
+    );
+
+    // Verify the card is gone, focus is on Filters and the change was announced.
+    await expect(page.getByRole("group", { name: "Applied filters" })).toHaveCount(0);
+    await expect(page).not.toHaveURL(/kind(\[|%5B)/);
+    await expect(page.locator("#open-filters")).toBeFocused();
+    await expect(page.locator("#explore-filter-status")).toContainText("Filters reset.");
+  });
+
   test("defers sheet changes and applies them with one request @mobile", async ({ page }) => {
     // Count the section requests of a filter session.
     await navigateToPath(page, "/explore?entity=events");

@@ -38,10 +38,13 @@ describe("site explore templates", () => {
     expect(entitySwitch).to.include("{{ entity_vals(community = community, ts_query = ts_query) }}");
     expect(entitySwitch).to.not.include(" id=");
 
+    // Verify both sides share the full width.
+    expect(entitySwitch).to.include('aria-label="Show" class="grid grid-cols-2"');
+
     // Verify the shell keeps it off desktop and hides the drawer's copy on phones.
     const shell = await loadTemplate("site/explore/entity_section_base.html");
     const row = shell.slice(shell.indexOf("{# Phone title and entity switch -#}"));
-    expect(row).to.match(/<div class="[^"]*not-phone:hidden[^"]*">\s*<h1[^>]*>Explore<\/h1>/);
+    expect(row).to.match(/<div class="flex flex-col [^"]*not-phone:hidden[^"]*">\s*<h1[^>]*>Explore<\/h1>/);
     expect(shell).to.include('styles = Some("phone:hidden")');
   });
 
@@ -57,6 +60,13 @@ describe("site explore templates", () => {
     expect(row).to.include("{% if !chips.is_empty() -%}");
     expect(row).to.include('aria-label="Applied filters"');
     expect(row).to.include("not-phone:hidden");
+
+    // Verify Reset is served by the delegated reset, and the toggle waits for page controls.
+    expect(row).to.match(/class="reset-filters [^"]*">\s*Reset/);
+    expect(row).to.include('id="applied-filters"');
+    expect(row).to.match(
+      /data-applied-filters-toggle\s+aria-controls="applied-filters"\s+aria-expanded="false"\s+hidden/,
+    );
 
     // Verify the chip names the filter and carries what its removal needs.
     expect(chip).to.include('aria-label="Remove filter {{ label }}"');
@@ -135,7 +145,7 @@ describe("site explore templates", () => {
     ]);
 
     // Verify the community shows, and the separators and category do not.
-    const community = "phone:block phone:truncate\"";
+    const community = 'phone:block phone:truncate"';
     expect(eventCard).to.include(community);
     expect(groupCard).to.include(community);
     expect(eventCard.match(/class="px-1 hidden sm:inline phone:hidden"/g)).to.have.length(2);

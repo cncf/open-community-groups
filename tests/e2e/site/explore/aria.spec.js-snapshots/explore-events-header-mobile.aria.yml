@@ -3,9 +3,11 @@
 - group "Show":
   - button "Events" [pressed]
   - button "Groups"
-- button "Open filters, 1 active"
 - textbox "Search events"
 - button "Search"
+- button "Open filters, 1 active"
+- paragraph: Active filters
+- button "Reset"
 - group "Applied filters":
   - button "Remove filter Platform Engineering Community": Platform Engineering Community
 - text: /\d+ - \d+ of \d+ results Sort by/

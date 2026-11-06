@@ -41,6 +41,11 @@ const renderSwitchButton = (label, entity) => {
   return `<button type="button" aria-pressed="${pressed}" ${request}>${label}</button>`;
 };
 
+// Unit tests load no stylesheet, so the Active filters row and its items get fixed sizes: its
+// 300px holds the 70px toggle and the 120px and 60px chips, but not the 140px one with them.
+const CHIP_STYLE = "box-sizing: border-box; flex: none; padding: 0";
+const ROW_STYLE = "display: flex; column-gap: 8px; padding: 0 12px; width: 300px";
+
 /**
  * Renders the Explore shell the page controls act on.
  * @param {string} [entity="Events"] Selected entity label.
@@ -75,10 +80,18 @@ const renderExplore = (entity = "Events") => {
         ${renderSwitchButton("Groups", entity)}
       </div>
       <input id="ts_query" name="ts_query" />
-      <div role="group" aria-label="Applied filters">
-        <button type="button" data-applied-filter="kind" data-applied-filter-value="virtual">Virtual</button>
-        <button type="button" data-applied-filter="kind" data-applied-filter-value="hybrid">Hybrid</button>
-        <button type="button" data-applied-filter="group" data-applied-filter-value="alpha">Alpha group</button>
+      <div data-applied-filters>
+        <button class="reset-filters" type="button">Reset</button>
+        <div style="${ROW_STYLE}">
+          <div id="applied-filters" role="group" aria-label="Applied filters" style="display: flex; flex-wrap: wrap; column-gap: 8px; min-width: 0">
+            <button type="button" data-applied-filter="kind" data-applied-filter-value="virtual" style="${CHIP_STYLE}; width: 120px">Virtual</button>
+            <button type="button" data-applied-filter="kind" data-applied-filter-value="hybrid" style="${CHIP_STYLE}; width: 140px">Hybrid</button>
+            <button type="button" data-applied-filter="group" data-applied-filter-value="alpha" style="${CHIP_STYLE}; width: 60px">Alpha group</button>
+          </div>
+          <button type="button" data-applied-filters-toggle aria-controls="applied-filters" aria-expanded="false" hidden style="${CHIP_STYLE}; width: 70px">
+            <span data-applied-filters-toggle-label></span>
+          </button>
+        </div>
       </div>
       <div id="results">1 - 10 of 12 results</div>
       <div id="cards-list"></div>
@@ -119,10 +132,18 @@ const getForm = () => document.getElementById("events-form-mobile");
  * @returns {HTMLButtonElement} Switch button.
  */
 const getSwitchButton = (label) =>
-  [...document.querySelectorAll('[aria-label="Show"] button')].find(
-    (button) => button.textContent === label,
-  );
+  [...document.querySelectorAll('[aria-label="Show"] button')].find((button) => button.textContent === label);
 
+/**
+ * Lists the Active filters chips the card shows.
+ * @returns {string[]} Chip texts.
+ */
+const getShownChips = () =>
+  [...document.querySelectorAll("[data-applied-filter]")]
+    .filter((chip) => !chip.hidden)
+    .map((chip) => chip.textContent);
+
+const getAppliedFiltersToggle = () => document.querySelector("[data-applied-filters-toggle]");
 const isSheetOpen = () => !getDrawer().classList.contains("-translate-x-full");
 const openSheet = () => document.getElementById("open-filters").click();
 
@@ -866,6 +887,112 @@ describe("explore page controls", () => {
 
       // Verify the desktop tree is back.
       expect(document.getElementById("results").hasAttribute("tabindex")).to.equal(false);
+    });
+
+    it("fits the chips on one line and shows the rest from the toggle", () => {
+      // Verify the chip that does not fit leaves its space to a shorter one after it.
+      const toggle = getAppliedFiltersToggle();
+      expect(getShownChips()).to.deep.equal(["Virtual", "Alpha group"]);
+      expect(toggle.hidden).to.equal(false);
+      expect(toggle.textContent.trim()).to.equal("+1 more");
+      expect(toggle.getAttribute("aria-expanded")).to.equal("false");
+
+      // Expand and collapse the card from the keyboard's focus.
+      toggle.focus();
+      toggle.click();
+      expect(getShownChips()).to.have.length(3);
+      expect(toggle.textContent.trim()).to.equal("Show less");
+      expect(toggle.getAttribute("aria-expanded")).to.equal("true");
+      toggle.click();
+      expect(getShownChips()).to.deep.equal(["Virtual", "Alpha group"]);
+      expect(toggle.getAttribute("aria-expanded")).to.equal("false");
+      expect(document.activeElement).to.equal(toggle);
+    });
+
+    it("refits the chips when the viewport resizes", () => {
+      // Widen the row past every chip.
+      getAppliedFiltersToggle().parentElement.style.width = "400px";
+      window.dispatchEvent(new Event("resize"));
+
+      // Verify every chip shows, with no toggle.
+      expect(getShownChips()).to.have.length(3);
+      expect(getAppliedFiltersToggle().hidden).to.equal(true);
+    });
+
+    it("spares a pixel so a chip the rounded row width fits never wraps", () => {
+      // Leave the row a fraction of a pixel short of Virtual, Hybrid and the toggle.
+      getAppliedFiltersToggle().parentElement.style.width = "299.6px";
+      document.querySelector('[data-applied-filter-value="hybrid"]').style.width = "94px";
+      document.querySelector('[data-applied-filter-value="alpha"]').style.width = "80px";
+      window.dispatchEvent(new Event("resize"));
+
+      // Verify Hybrid leaves its place to the shorter chip after it.
+      expect(getShownChips()).to.deep.equal(["Virtual", "Alpha group"]);
+      expect(getAppliedFiltersToggle().textContent.trim()).to.equal("+1 more");
+    });
+
+    it("shows a chip wider than the row, truncated, before the toggle", () => {
+      // Settle a swap whose first chip alone overflows the row.
+      renderExplore();
+      document.querySelector('[data-applied-filter-value="virtual"]').style.width = "400px";
+      document.querySelector('[data-applied-filter-value="hybrid"]').style.width = "400px";
+      document.querySelector('[data-applied-filter-value="alpha"]').remove();
+      fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
+
+      // Verify the first chip stays in view, and the toggle counts the other.
+      expect(getShownChips()).to.deep.equal(["Virtual"]);
+      expect(getAppliedFiltersToggle().textContent.trim()).to.equal("+1 more");
+    });
+
+    it("keeps the card expanded across a swap", () => {
+      // Expand the card, then settle a swap.
+      getAppliedFiltersToggle().click();
+      swapSection();
+
+      // Verify the new card shows every chip.
+      expect(getShownChips()).to.have.length(3);
+      expect(getAppliedFiltersToggle().getAttribute("aria-expanded")).to.equal("true");
+    });
+
+    it("focuses the toggle when the chip after a removed one is hidden", () => {
+      // Remove the first chip.
+      document.querySelector('[data-applied-filter-value="virtual"]').click();
+
+      // Settle a swap whose next chip no longer fits.
+      renderExplore();
+      document.querySelector('[data-applied-filter-value="virtual"]').remove();
+      document.querySelector('[data-applied-filter-value="hybrid"]').style.width = "400px";
+      fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
+
+      // Verify focus lands on the toggle that shows it.
+      expect(getShownChips()).to.deep.equal(["Alpha group"]);
+      expect(document.activeElement).to.equal(getAppliedFiltersToggle());
+    });
+
+    it("shows every chip again when the query turns false", () => {
+      // Rotate past the phone width.
+      phoneQuery.setMatches(false);
+
+      // Verify the card is back as served.
+      expect(getShownChips()).to.have.length(3);
+      expect(getAppliedFiltersToggle().hidden).to.equal(true);
+    });
+
+    it("focuses the Filters button and announces Reset once its swap settles", async () => {
+      // Reset from the card.
+      document.querySelector("[data-applied-filters] .reset-filters").click();
+      await waitUntil(() => htmx.triggerCalls.length > 0);
+
+      // Settle a swap with no card.
+      renderExplore();
+      document.querySelector("[data-applied-filters]").remove();
+      fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
+
+      // Verify focus and the announcement.
+      expect(document.activeElement).to.equal(document.getElementById("open-filters"));
+      expect(document.getElementById("explore-filter-status").textContent).to.equal(
+        "Filters reset. 1 - 10 of 12 results",
+      );
     });
 
     it("focuses the count once the last chip is gone", () => {

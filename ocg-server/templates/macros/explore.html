@@ -18,14 +18,14 @@
 {# End active filters dot -#}
 
 {# Applied filter chip -#}
-{# Used by the phone chip row. Page controls remove the filter through its real control. -#}
+{# Used by the phone Active filters card. Page controls remove the filter through its real control. -#}
 {# Labels follow their desktop control: only collapsible-filter options are capitalized. -#}
 {% macro applied_filter_chip(name, value, label) -%}
   <button type="button"
           data-applied-filter="{{ name }}"
           data-applied-filter-value="{{ value }}"
           aria-label="Remove filter {{ label }}"
-          class="inline-flex min-h-11 max-w-full items-center">
+          class="inline-flex min-h-11 min-w-0 max-w-full items-center">
     <span class="inline-flex h-8 max-w-full items-center gap-1.5 rounded-lg border border-primary-500 bg-white px-2.5 text-xs text-primary-500">
       <span class="truncate{% if *name != "kind" && *name != "group" %}
                      capitalize{% endif %}">{{ label }}</span>
@@ -36,15 +36,38 @@
 {# End applied filter chip -#}
 
 {# Applied filters -#}
-{# Used by explore section shells: the phone chip row, skipped when no filter has a chip. -#}
+{# Used by explore section shells: the phone Active filters card, skipped when no filter has a chip. -#}
+{# Page controls fit the chips on one line and show the more toggle when some do not fit. -#}
 {% macro applied_filters(chips) -%}
   {% if !chips.is_empty() -%}
-    <div role="group"
-         aria-label="Applied filters"
-         class="flex flex-wrap gap-x-2 px-3 not-phone:hidden">
-      {% for chip in chips.iter() -%}
-        {{ applied_filter_chip(name = chip.name, value = chip.value, label = chip.label) -}}
-      {% endfor -%}
+    <div data-applied-filters
+         class="mx-3 mb-3 rounded-xl border border-stone-200 bg-white not-phone:hidden">
+      <div class="flex items-center justify-between gap-3 border-b border-stone-100 ps-3 pe-1">
+        <p class="text-xs font-semibold uppercase tracking-wider text-stone-500">Active filters</p>
+        <button type="button"
+                class="reset-filters inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-primary-500 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300">
+          Reset
+        </button>
+      </div>
+      <div class="group/applied-filters flex gap-x-2 px-3 py-1 has-[[aria-expanded=true]]:flex-wrap">
+        <div id="applied-filters"
+             role="group"
+             aria-label="Applied filters"
+             class="flex min-w-0 gap-x-2 group-has-[[aria-expanded=true]]/applied-filters:flex-wrap">
+          {% for chip in chips.iter() -%}
+            {{ applied_filter_chip(name = chip.name, value = chip.value, label = chip.label) -}}
+          {% endfor -%}
+        </div>
+        <button type="button"
+                data-applied-filters-toggle
+                aria-controls="applied-filters"
+                aria-expanded="false"
+                hidden
+                class="inline-flex min-h-11 shrink-0 items-center">
+          <span data-applied-filters-toggle-label
+                class="inline-flex h-8 items-center rounded-lg border border-dashed border-stone-300 bg-white px-2.5 text-xs font-medium text-stone-700"></span>
+        </button>
+      </div>
     </div>
   {% endif -%}
 {% endmacro applied_filters -%}
@@ -145,9 +168,9 @@
 {# End entity selector -#}
 
 {# Entity switch -#}
-{# Used by the phone controls: desktop's entity tiles laid sideways, same values as entity_radio. -#}
+{# Used by the phone controls: desktop's entity tiles laid sideways and full width, same values as entity_radio. -#}
 {% macro entity_switch(selected, ts_query = None, community = None) -%}
-  <div role="group" aria-label="Show" class="flex shrink-0">
+  <div role="group" aria-label="Show" class="grid grid-cols-2">
     {% match selected -%}
     {% when Entity::Groups -%}
     {# djlint:off #}
@@ -158,21 +181,21 @@
             hx-target="#entity-section"
             hx-indicator="#loading-filters, #loading-filters-mobile"
             hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
-            class="inline-flex h-11 items-center gap-1.5 rounded-l-lg border border-stone-200 bg-white px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+            class="inline-flex h-11 items-center justify-center gap-1.5 rounded-l-lg border border-stone-200 bg-white px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
     {# djlint:on #}
     <div class="svg-icon size-4 bg-stone-500 icon-events"></div>
     Events
   </button>
   <button type="button"
           aria-pressed="true"
-          class="-ms-px inline-flex h-11 items-center gap-1.5 rounded-r-lg border border-primary-500 bg-white px-3 text-sm text-primary-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+          class="-ms-px inline-flex h-11 items-center justify-center gap-1.5 rounded-r-lg border border-primary-500 bg-white px-3 text-sm text-primary-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
     <div class="svg-icon size-4 bg-primary-500 icon-groups"></div>
     Groups
   </button>
   {% when Entity::Events -%}
   <button type="button"
           aria-pressed="true"
-          class="relative inline-flex h-11 items-center gap-1.5 rounded-l-lg border border-primary-500 bg-white px-3 text-sm text-primary-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+          class="relative inline-flex h-11 items-center justify-center gap-1.5 rounded-l-lg border border-primary-500 bg-white px-3 text-sm text-primary-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
     <div class="svg-icon size-4 bg-primary-500 icon-events"></div>
     Events
   </button>
@@ -184,7 +207,7 @@
             hx-target="#entity-section"
             hx-indicator="#loading-filters, #loading-filters-mobile"
             hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
-            class="-ms-px inline-flex h-11 items-center gap-1.5 rounded-r-lg border border-stone-200 bg-white px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+            class="-ms-px inline-flex h-11 items-center justify-center gap-1.5 rounded-r-lg border border-stone-200 bg-white px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
   {# djlint:on #}
   <div class="svg-icon size-4 bg-stone-500 icon-groups"></div>
   Groups

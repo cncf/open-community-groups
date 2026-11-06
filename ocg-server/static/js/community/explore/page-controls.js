@@ -57,6 +57,10 @@ const PREV_MONTH_BUTTON_ID = "prev-month-btn";
 const NEXT_MONTH_BUTTON_ID = "next-month-btn";
 const CALENDAR_MODULE_PATH = "/static/js/community/explore/calendar.js";
 const APPLIED_FILTER_SELECTOR = "[data-applied-filter]";
+const APPLIED_FILTERS_CARD_SELECTOR = "[data-applied-filters]";
+const APPLIED_FILTERS_ID = "applied-filters";
+const APPLIED_FILTERS_TOGGLE_LABEL_SELECTOR = "[data-applied-filters-toggle-label]";
+const APPLIED_FILTERS_TOGGLE_SELECTOR = "[data-applied-filters-toggle]";
 const APPLY_FILTERS_SELECTOR = "[data-apply-filters]";
 const CARDS_LIST_ID = "cards-list";
 const CLOSE_FILTERS_ID = "close-filters";
@@ -71,6 +75,10 @@ const OPEN_FILTERS_ID = "open-filters";
 const RESULTS_EMPTY_SELECTOR = "[data-results-empty]";
 const RESULTS_ID = "results";
 const SEARCH_KEY_HINT = "search";
+
+// Whether the phone Active filters card shows every chip. Kept across swaps, so removing a chip
+// from the expanded card leaves the rest in view.
+let appliedFiltersExpanded = false;
 
 // Calendar module, once a calendar view has loaded it.
 let calendarModule = null;
@@ -186,6 +194,13 @@ const handleExploreClick = (event) => {
     return;
   }
 
+  if (closestElement(event.target, APPLIED_FILTERS_TOGGLE_SELECTOR)) {
+    event.preventDefault();
+    appliedFiltersExpanded = !appliedFiltersExpanded;
+    fitAppliedFilters();
+    return;
+  }
+
   const entitySwitch = closestElement(event.target, ENTITY_SWITCH_REQUEST_SELECTOR);
   if (entitySwitch && isPhoneViewport()) {
     settleFocus = { switchLabel: entitySwitch.textContent.trim() };
@@ -212,8 +227,13 @@ const handleExploreClick = (event) => {
     return;
   }
 
-  if (closestElement(event.target, ".reset-filters")) {
+  const resetButton = closestElement(event.target, ".reset-filters");
+  if (resetButton) {
     event.preventDefault();
+    // Reset leaves with the card it sits in.
+    if (isPhoneViewport() && closestElement(resetButton, APPLIED_FILTERS_CARD_SELECTOR)) {
+      settleFocus = { reset: true };
+    }
     resetFilters(formId);
     return;
   }
@@ -463,6 +483,21 @@ const applyPhoneViewMode = () => {
 };
 
 /**
+ * Announces a filter change in the status region, followed by the results count.
+ * @param {string} message - Change to announce
+ */
+const announceFilterChange = (message) => {
+  const status = getElementById(document, FILTER_STATUS_ID);
+  if (!status) {
+    return;
+  }
+
+  const results = document.querySelector(RESULTS_EMPTY_SELECTOR) ?? getElementById(document, RESULTS_ID);
+  const count = results?.textContent.trim() ?? "";
+  status.textContent = `${message} ${count}`.trim();
+};
+
+/**
  * Reads the filter values of a form, to put them back if a removal fails.
  * @param {HTMLFormElement} form - Form holding the applied state
  * @returns {Function} Puts the values back
@@ -507,6 +542,73 @@ const closeFilterSheet = ({ retry = false } = {}) => {
   releaseFilterSheet();
   settleFocus = null;
   restoreModalFocus(drawer);
+};
+
+/**
+ * Fits the Active filters chips on one line, followed by a toggle that shows the rest. A chip that
+ * does not fit is hidden, and a shorter one after it may still take the space left.
+ */
+const fitAppliedFilters = () => {
+  const group = getElementById(document, APPLIED_FILTERS_ID);
+  const toggle = document.querySelector(APPLIED_FILTERS_TOGGLE_SELECTOR);
+  const label = toggle?.querySelector(APPLIED_FILTERS_TOGGLE_LABEL_SELECTOR);
+  if (!group || !label) {
+    appliedFiltersExpanded = false;
+    return;
+  }
+
+  const chips = [...group.querySelectorAll(APPLIED_FILTER_SELECTOR)];
+  chips.forEach((chip) => {
+    chip.hidden = false;
+  });
+  toggle.setAttribute("aria-expanded", String(appliedFiltersExpanded));
+
+  // Measured on a wrapping row, where no chip gives up width to the toggle. The toggle keeps its
+  // box meanwhile, so it keeps focus too. Widths keep their fractions, and a pixel is spared so
+  // rounding never wraps a chip the sum says fits.
+  const row = toggle.parentElement;
+  const rowStyle = getComputedStyle(row);
+  row.style.flexWrap = "wrap";
+  group.style.flexWrap = "wrap";
+  const width =
+    row.getBoundingClientRect().width -
+    parseFloat(rowStyle.paddingLeft) -
+    parseFloat(rowStyle.paddingRight) -
+    1;
+  const chipGap = parseFloat(getComputedStyle(group).columnGap) || 0;
+  const chipWidths = chips.map((chip) => chip.getBoundingClientRect().width);
+  row.style.removeProperty("flex-wrap");
+  group.style.removeProperty("flex-wrap");
+
+  const chipsWidth = chipWidths.reduce((sum, chipWidth) => sum + chipWidth + chipGap, -chipGap);
+  toggle.hidden = chips.length === 0 || width <= 0 || chipsWidth <= width;
+  if (toggle.hidden) {
+    return;
+  }
+
+  if (appliedFiltersExpanded) {
+    label.textContent = "Show less";
+    return;
+  }
+
+  // The widest label the toggle can show, so the chips kept never push it to a new line.
+  label.textContent = `+${chips.length} more`;
+  const available = width - toggle.getBoundingClientRect().width - (parseFloat(rowStyle.columnGap) || 0);
+  let used = 0;
+  chips.forEach((chip, index) => {
+    const needed = used + (used > 0 ? chipGap : 0) + chipWidths[index];
+    if (needed <= available) {
+      used = needed;
+    } else {
+      chip.hidden = true;
+    }
+  });
+
+  // A chip wider than the space left still shows, truncated.
+  if (used === 0) {
+    chips[0].hidden = false;
+  }
+  label.textContent = `+${chips.filter((chip) => chip.hidden).length} more`;
 };
 
 /**
@@ -689,6 +791,7 @@ const handlePhoneQueryChange = (event) => {
   if (event.matches) {
     document.addEventListener("htmx:afterSettle", handlePhoneAfterSettle);
     document.addEventListener("htmx:beforeHistorySave", showAppliedFiltersToSnapshot);
+    window.addEventListener("resize", fitAppliedFilters);
     setPhoneAttributes();
     applyPhoneViewMode();
     return;
@@ -696,11 +799,13 @@ const handlePhoneQueryChange = (event) => {
 
   document.removeEventListener("htmx:afterSettle", handlePhoneAfterSettle);
   document.removeEventListener("htmx:beforeHistorySave", showAppliedFiltersToSnapshot);
+  window.removeEventListener("resize", fitAppliedFilters);
   leaveFilterSheet();
   restoreAppliedFilters();
   releaseChipRemoval();
   releaseEntitySwitchPress();
   settleFocus = null;
+  appliedFiltersExpanded = false;
   removePhoneAttributes();
 };
 
@@ -717,6 +822,13 @@ const initializePhoneControls = () => {
   if (phoneQuery.matches) {
     handlePhoneQueryChange(phoneQuery);
   }
+
+  // Chips measured before the web font loads are narrower or wider than the ones shown.
+  document.fonts?.ready.then(() => {
+    if (phoneQuery.matches) {
+      fitAppliedFilters();
+    }
+  });
 };
 
 /**
@@ -787,7 +899,7 @@ const placeSettleFocus = () => {
     return;
   }
 
-  const { chipIndex, chipLabel, switchLabel } = settleFocus;
+  const { chipIndex, chipLabel, reset, switchLabel } = settleFocus;
   settleFocus = null;
   if (switchLabel) {
     const pressedSwitch = document.querySelector(ENTITY_SWITCH_PRESSED_SELECTOR);
@@ -799,6 +911,9 @@ const placeSettleFocus = () => {
 
   if (chipIndex === undefined) {
     getElementById(document, OPEN_FILTERS_ID)?.focus({ preventScroll: true });
+    if (reset) {
+      announceFilterChange("Filters reset.");
+    }
     return;
   }
 
@@ -806,14 +921,14 @@ const placeSettleFocus = () => {
   const results = getElementById(document, RESULTS_ID);
   results?.setAttribute("tabindex", "-1");
   const emptyResults = document.querySelector(RESULTS_EMPTY_SELECTOR);
-  const target = chips[chipIndex] ?? chips.at(-1) ?? emptyResults ?? results;
+  // A chip the card hides behind its toggle cannot take focus, so the toggle takes it.
+  const chip = chips[chipIndex] ?? chips.at(-1);
+  const target =
+    (chip?.hidden ? document.querySelector(APPLIED_FILTERS_TOGGLE_SELECTOR) : chip) ??
+    emptyResults ??
+    results;
   target?.focus({ preventScroll: true });
-
-  const status = getElementById(document, FILTER_STATUS_ID);
-  if (status) {
-    const count = (emptyResults ?? results)?.textContent.trim() ?? "";
-    status.textContent = `Removed filter ${chipLabel}. ${count}`.trim();
-  }
+  announceFilterChange(`Removed filter ${chipLabel}.`);
 };
 
 /**
@@ -935,6 +1050,7 @@ const removePhoneAttributes = () => {
   document.querySelectorAll(FILTER_FORM_SELECTOR).forEach((form) => form.removeAttribute("hx-sync"));
   getElementById(document, RESULTS_ID)?.removeAttribute("tabindex");
   getElementById(document, SEARCH_INPUT_ID)?.removeAttribute("enterkeyhint");
+  showAllAppliedFilters();
 };
 
 /**
@@ -993,6 +1109,23 @@ const restoreAppliedFilters = () => {
 
   appliedFilterNodes.delete(form);
   placeFiltersAroundCommunity(form, nodes);
+};
+
+/**
+ * Shows every Active filters chip and hides the toggle, as the card is served.
+ */
+const showAllAppliedFilters = () => {
+  getElementById(document, APPLIED_FILTERS_ID)
+    ?.querySelectorAll(APPLIED_FILTER_SELECTOR)
+    .forEach((chip) => {
+      chip.hidden = false;
+    });
+
+  const toggle = document.querySelector(APPLIED_FILTERS_TOGGLE_SELECTOR);
+  if (toggle) {
+    toggle.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+  }
 };
 
 /**
@@ -1067,13 +1200,14 @@ const setFilterSheetSemantics = (drawer, open) => {
 /**
  * Sets the attributes phones need on shared nodes, at init and after every swap. Both forms get
  * the sync, because chips act on the hidden desktop form: a second chip tap replaces the first
- * request instead of being lost.
+ * request instead of being lost. The Active filters chips are fitted on one line.
  */
 const setPhoneAttributes = () => {
   document.querySelectorAll(FILTER_FORM_SELECTOR).forEach((form) => {
     form.setAttribute("hx-sync", FILTER_SECTION_SYNC);
   });
   getElementById(document, SEARCH_INPUT_ID)?.setAttribute("enterkeyhint", SEARCH_KEY_HINT);
+  fitAppliedFilters();
 };
 
 initializeExploreControls();

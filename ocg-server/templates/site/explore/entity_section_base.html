@@ -94,25 +94,13 @@
       {# Results header: search bar and results controls -#}
       <div id="explore-results-header" class="phone:contents">
         {# Phone title and entity switch -#}
-        <div class="flex items-center justify-between gap-3 px-3 pt-4 not-phone:hidden">
+        <div class="flex flex-col gap-3 px-3 pt-4 not-phone:hidden">
           <h1 class="text-2xl font-medium text-stone-900">Explore</h1>
           {{ explore::entity_switch(selected = entity, ts_query = filters.ts_query.as_ref(), community = single_community) -}}
         </div>
         {# End phone title and entity switch -#}
 
         <div class="flex items-center mb-6 md:mb-10 px-5 md:px-7 phone:mb-0 phone:gap-2 phone:px-3 phone:pt-3 phone:pb-3">
-          {# Mobile filters button -#}
-          <div class="flex lg:hidden">
-            <button id="open-filters"
-                    class="h-10 w-10 mr-3 inline-flex justify-center items-center bg-primary-500 text-lg rounded-full p-2 md:mr-5 hover:bg-primary-700 transition-colors phone:mr-0 phone:h-11 phone:w-auto phone:gap-1.5 phone:border phone:border-primary-500 phone:bg-white phone:px-4 phone:text-sm phone:text-primary-500 phone:hover:bg-white">
-              <div class="svg-icon h-4 w-4 bg-white icon-filter phone:bg-primary-500"></div>
-              <span class="sr-only">Open filters{{- explore::active_filters_count(count = applied_filters.len()) -}}</span>
-              <span class="not-phone:hidden" aria-hidden="true">Filters</span>
-              {{ explore::active_filters_dot(count = applied_filters.len()) -}}
-            </button>
-          </div>
-          {# End mobile filters button -#}
-
           <div class="grow flex items-center justify-center">
             {# Searchbar -#}
             <div class="w-full">
@@ -121,6 +109,18 @@
             </div>
             {# End searchbar -#}
           </div>
+
+          {# Mobile filters button -#}
+          <div class="flex lg:hidden">
+            <button id="open-filters"
+                    class="h-10 w-10 ml-3 inline-flex justify-center items-center bg-primary-500 text-lg rounded-full p-2 md:ml-5 hover:bg-primary-700 transition-colors phone:ml-0 phone:h-11 phone:w-auto phone:gap-1.5 phone:border phone:border-primary-500 phone:bg-white phone:px-4 phone:text-sm phone:text-primary-500 phone:hover:bg-white">
+              <div class="svg-icon h-4 w-4 bg-white icon-filter phone:bg-primary-500"></div>
+              <span class="sr-only">Open filters{{- explore::active_filters_count(count = applied_filters.len()) -}}</span>
+              <span class="not-phone:hidden" aria-hidden="true">Filters</span>
+              {{ explore::active_filters_dot(count = applied_filters.len()) -}}
+            </button>
+          </div>
+          {# End mobile filters button -#}
         </div>
 
         {# Applied filters -#}
