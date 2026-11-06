@@ -9,10 +9,7 @@ import {
 } from "/static/js/common/charts/charts.js";
 import { getCategoryLabelInterval, getTimeSplitNumber } from "/static/js/common/charts/stats.js";
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
-import {
-  initializeSiteStatsFromPage,
-  initSiteStatsCharts,
-} from "/static/js/site/stats.js";
+import { initializeSiteStatsFromPage, initSiteStatsCharts } from "/static/js/site/stats.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 /** Stats payload with two years of months in every section. */
@@ -137,14 +134,8 @@ describe("site stats", () => {
     };
 
     // Run the behavior under test.
-    document.documentElement.style.setProperty(
-      "--color-primary-500",
-      "#0f766e",
-    );
-    document.documentElement.style.setProperty(
-      "--color-primary-700",
-      "#115e59",
-    );
+    document.documentElement.style.setProperty("--color-primary-500", "#0f766e");
+    document.documentElement.style.setProperty("--color-primary-700", "#115e59");
     document.documentElement.style.setProperty("--color-stone-400", "#78716c");
     window.matchMedia = () => ({
       matches: false,
@@ -242,20 +233,12 @@ describe("site stats", () => {
       left: "center",
       itemGap: 12,
     });
-    expect(
-      groupsRunningOption.baseOption.legend.textStyle.fontFamily,
-    ).to.include("Inter");
-    expect(groupsRunningOption.baseOption.legend.textStyle.color).to.not.equal(
-      "",
-    );
+    expect(groupsRunningOption.baseOption.legend.textStyle.fontFamily).to.include("Inter");
+    expect(groupsRunningOption.baseOption.legend.textStyle.color).to.not.equal("");
     expect(groupsRunningOption.xAxis.splitNumber).to.equal(3);
-    expect(groupsRunningOption.xAxis.axisLabel.formatter).to.equal(
-      "{yyyy}-{MM}",
-    );
+    expect(groupsRunningOption.xAxis.axisLabel.formatter).to.equal("{yyyy}-{MM}");
     expect(groupsMonthlyOption.xAxis.axisLabel.interval).to.equal(1);
-    expect(groupsMonthlyOption.xAxis.axisLabel.formatter("Jan'25")).to.equal(
-      "Jan'25",
-    );
+    expect(groupsMonthlyOption.xAxis.axisLabel.formatter("Jan'25")).to.equal("Jan'25");
     expect(groupsMonthlyOption.legend.bottom).to.equal(10);
 
     // Dispatch the resize event.
@@ -329,9 +312,48 @@ describe("site stats", () => {
     expect(monthly.xAxis.axisLabel).to.include({ fontSize: 10, hideOverlap: true, interval: 5, rotate: 0 });
     expect(monthly.yAxis.axisLabel.formatter(1500)).to.equal("1.5K");
 
-    // Verify every chart rendered and options were chosen without a rotation listener.
+    // Verify every chart rendered and a single rotation listener was registered.
     expect(initCalls).to.have.length(8);
-    expect(mediaListeners).to.equal(0);
+    expect(mediaListeners).to.equal(1);
+  });
+
+  it("re-renders the charts when the viewport crosses the phone boundary", async () => {
+    let changeHandler = null;
+    let isPhone = false;
+    window.matchMedia = (query) => ({
+      matches: query === PHONE_MEDIA_QUERY ? isPhone : false,
+      addEventListener(_event, handler) {
+        if (query === PHONE_MEDIA_QUERY) {
+          changeHandler = handler;
+        }
+      },
+      removeEventListener() {},
+    });
+
+    // The page always carries the stats marker, which the re-render guards on.
+    const marker = document.createElement("script");
+    marker.type = "application/json";
+    marker.dataset.siteStats = "";
+    document.body.append(marker);
+
+    const latestOption = (id) => initCalls.filter(({ element }) => element.id === id).pop().option;
+
+    // Render in the desktop layout first: the area chart keeps its media base option and legend.
+    await initSiteStatsCharts(buildStatsPayload());
+    expect(latestOption("groups-running-chart")).to.have.property("baseOption");
+    expect(changeHandler).to.be.a("function");
+
+    // Rotate into the phone layout and fire the media change.
+    isPhone = true;
+    changeHandler();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // The charts now use the phone layout without a second rotation listener being added.
+    const phoneRunning = latestOption("groups-running-chart");
+    expect(phoneRunning).to.not.have.any.keys("baseOption", "media");
+    expect(phoneRunning.legend).to.deep.equal({ show: false });
+    expect(phoneRunning.grid).to.deep.equal({ left: 8, right: 24, top: 56, bottom: 8, containLabel: true });
+    expect(latestOption("attendees-monthly-chart").legend).to.deep.equal({ show: false });
   });
 
   it("initializes charts from the page payload only once", async () => {

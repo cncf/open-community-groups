@@ -60,7 +60,7 @@
          data-user-check-in-panel>
       <div class="flex shrink-0 items-center justify-between gap-4 border-b border-stone-200 px-5 py-4 sm:px-6 sm:py-5 sheet-head sheet-grab phone:py-0">
         <h2 id="user-check-in-modal-title"
-            class="text-xl font-semibold text-stone-900 sm:text-2xl">Attendee check-in</h2>
+            class="text-xl font-semibold text-stone-900 sm:text-2xl phone:min-w-0 phone:truncate">Attendee check-in</h2>
         {{ dashboard::modal_close_button(attrs = "data-user-check-in-close") -}}
       </div>
 
@@ -95,7 +95,7 @@
                    class="text-center text-sm text-stone-600"
                    role="status">Loading QR code…</div>
               <img id="user-check-in-qr-image"
-                   class="mx-auto hidden aspect-square w-full max-w-72 phone:max-w-[max(12rem,min(100%,calc(100dvh-21rem)))]"
+                   class="mx-auto hidden aspect-square w-full max-w-72 phone:max-w-[max(12rem,min(100%,calc(100dvh-26rem)))]"
                    width="500"
                    height="500"
                    alt=""

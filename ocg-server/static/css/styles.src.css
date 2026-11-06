@@ -162,7 +162,7 @@
   }
 
   .ocg-swal-popup {
-    @apply py-8! px-6! rounded-lg! max-w-[calc(100%-2rem)]! md:max-w-[560px]! shadow-lg!;
+    @apply py-8! px-6! rounded-lg! max-w-[calc(100%-2rem)]! md:max-w-[560px]! shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_0_20px_-2px_rgba(0,0,0,0.25)]!;
   }
 
   /* Bottom alerts share the bar's gutter, so no bar text shows beside them. */
@@ -424,7 +424,7 @@
   }
 
   .modal-body {
-    @apply min-h-0 overflow-y-auto;
+    @apply min-h-0 overflow-x-hidden overflow-y-auto;
   }
 
   .featured-speakers-grid:empty {
@@ -614,7 +614,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   .sheet-head > :not(button) {
-    @apply text-lg font-semibold uppercase;
+    @apply text-base! font-semibold uppercase text-stone-500!;
   }
 
   .sheet-head button:has(> .icon-close) > .icon-close {
@@ -622,7 +622,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   .sheet-body {
-    @apply min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y touch-pinch-zoom;
+    @apply min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y touch-pinch-zoom;
   }
 
   .sheet-foot {
@@ -633,7 +633,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     @apply flex;
   }
 
-  .sheet-panel button:has(> .icon-close) {
+  /* Scoped to the head so chip and clear buttons inside sheet bodies keep their small touch
+     targets. Mirrors the glyph rule below; without the scope a sheet body's own icon-close
+     button (chip remove, clear search) would be forced to 44px and tower over its content. */
+  .sheet-panel :is(.sheet-grab button, #close-filters):has(> .icon-close) {
     @apply size-11;
   }
 
@@ -662,6 +665,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   /* The sheet's form refreshes outside htmx, so no request class reaches the spinner. */
   #drawer-filters:has(> form[aria-busy="true"]) #loading-filters {
     @apply block;
+  }
+
+  /* Dashboard menu: a static sidebar on desktop, a bottom sheet on phone. Mirrors the filters
+     drawer, remapping its -translate-x-full close token to a downward slide. */
+  #dashboard-menu-drawer.sheet-panel {
+    @apply top-auto z-[1100] h-auto w-auto animate-none transition-[translate] motion-reduce:transition-none;
+  }
+
+  #dashboard-menu-drawer.sheet-panel.-translate-x-full {
+    @apply invisible translate-x-0 translate-y-full transition-[translate,visibility] motion-reduce:transition-none;
   }
 
   /* Draggable grabber: gestures set data-sheet-drag only where dragging works. */
@@ -868,7 +881,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
   /* Read more */
   .read-more:not([data-expanded]) .read-more-body {
-    max-height: 3lh;
+    max-height: 6lh;
     @apply overflow-hidden;
   }
 

@@ -143,13 +143,13 @@ describe("group page template", () => {
     );
   });
 
-  it("caps the phone social grid so wide phones keep its spacing", async () => {
+  it("lays the phone social links out as a horizontal scroll strip", async () => {
     // Load the group page.
     const page = await loadTemplate("group/page.html");
 
-    // Verify the five columns stop spreading past a normal phone's width.
+    // Verify the links sit in one swipeable row with a hidden scrollbar and an edge fade.
     expect(page).to.include(
-      'class="flex flex-wrap gap-2 phone:grid phone:grid-cols-[repeat(5,2.75rem)] phone:justify-between phone:gap-y-3 phone:max-w-sm"',
+      'class="flex flex-wrap gap-2 phone:flex-nowrap phone:overflow-x-auto phone:pb-1 phone:[scrollbar-width:none] phone:[&>*]:shrink-0 phone:[mask-image:linear-gradient(to_right,#000_85%,transparent)] phone:[-webkit-mask-image:linear-gradient(to_right,#000_85%,transparent)]"',
     );
   });
 

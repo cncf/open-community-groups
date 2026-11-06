@@ -15,13 +15,25 @@ import {
   renderChart,
 } from "/static/js/common/charts/stats.js";
 import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
-import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
+import { PHONE_MEDIA_QUERY, isPhoneViewport } from "/static/js/common/phone-viewport.js";
 
 const PHONE_CHART_GRID = { left: 8, right: 24, top: 56, bottom: 8, containLabel: true };
 const PHONE_MONTHLY_LABEL_TARGET = 4;
 const PHONE_VALUE_FORMAT = new Intl.NumberFormat("en", { notation: "compact" });
 const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";
 const SITE_STATS_READY_KEY = "siteStatsReady";
+
+/** Latest stats payload, kept so a phone-boundary change can re-render the charts. */
+let latestSiteStats = null;
+
+/** Media query watched to re-render when the viewport crosses the phone layout boundary. */
+let phoneViewportQuery = null;
+
+/** Whether a render is in progress, so overlapping requests coalesce instead of racing. */
+let siteStatsRendering = false;
+
+/** Whether a render was requested while one was in progress. */
+let siteStatsRenderQueued = false;
 
 /**
  * Apply public stats page legend styling without affecting dashboard charts.
@@ -161,6 +173,34 @@ const initSectionCharts = async (key, label, stats = {}, palette) => {
 };
 
 /**
+ * Re-renders the stats charts when the viewport crosses the phone layout boundary. The layout is
+ * chosen per render from `isPhoneViewport()`, so a rotation or resize across the boundary would
+ * otherwise keep the previous layout until the next full render.
+ * @returns {void}
+ */
+const handlePhoneViewportChange = () => {
+  if (!latestSiteStats || !document.querySelector(SITE_STATS_DATA_SELECTOR)) {
+    return;
+  }
+
+  void initSiteStatsCharts(latestSiteStats);
+};
+
+/**
+ * Watches the phone media query, rebinding so a single listener stays registered across reloads.
+ * @returns {void}
+ */
+const watchPhoneViewport = () => {
+  if (typeof window.matchMedia !== "function") {
+    return;
+  }
+
+  phoneViewportQuery?.removeEventListener("change", handlePhoneViewportChange);
+  phoneViewportQuery = window.matchMedia(PHONE_MEDIA_QUERY);
+  phoneViewportQuery.addEventListener("change", handlePhoneViewportChange);
+};
+
+/**
  * Render site stats charts.
  * @param {Object} stats - Site statistics payload from the server.
  * @returns {Promise<void>} Promise resolved when charts are initialized.
@@ -170,18 +210,33 @@ export const initSiteStatsCharts = async (stats) => {
     return;
   }
 
-  await loadEChartsScript();
-  const palette = getThemePalette();
+  latestSiteStats = stats;
+  watchPhoneViewport();
 
-  const sections = [
-    { key: "groups", label: "Groups" },
-    { key: "members", label: "Members" },
-    { key: "events", label: "Events" },
-    { key: "attendees", label: "Attendees" },
-  ];
+  if (siteStatsRendering) {
+    siteStatsRenderQueued = true;
+    return;
+  }
 
-  for (const section of sections) {
-    await initSectionCharts(section.key, section.label, stats, palette);
+  siteStatsRendering = true;
+  try {
+    await loadEChartsScript();
+    const palette = getThemePalette();
+    const sections = [
+      { key: "groups", label: "Groups" },
+      { key: "members", label: "Members" },
+      { key: "events", label: "Events" },
+      { key: "attendees", label: "Attendees" },
+    ];
+
+    do {
+      siteStatsRenderQueued = false;
+      for (const section of sections) {
+        await initSectionCharts(section.key, section.label, latestSiteStats, palette);
+      }
+    } while (siteStatsRenderQueued);
+  } finally {
+    siteStatsRendering = false;
   }
 };
 

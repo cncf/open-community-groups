@@ -5,6 +5,7 @@ import {
   trapModalFocus,
   unlockBodyScroll,
 } from "/static/js/common/modals/modal-lifecycle.js";
+import { bindSheetGestures } from "/static/js/common/modals/sheet-gestures.js";
 
 const BACKDROP_ID = "dashboard-menu-backdrop";
 const CLOSE_BUTTON_ID = "close-dashboard-menu";
@@ -16,6 +17,8 @@ const OPEN_BUTTON_ID = "open-dashboard-menu";
 
 // Tracks whether the drawer currently holds the shared body scroll lock.
 let drawerHoldsScrollLock = false;
+// Releases the phone bottom-sheet drag gestures while the drawer is open, when bound.
+let releaseDrawerGestures = null;
 
 /**
  * Closes the dashboard menu drawer and returns focus to the open button (mobile only).
@@ -28,6 +31,7 @@ export const closeDashboardMenuDrawer = () => {
   drawer.classList.add(DRAWER_CLOSED_CLASS);
   setElementHidden(getElementById(document, BACKDROP_ID), true);
   releaseDrawerScrollLock();
+  releaseDrawerSheetGestures();
   syncDrawerHiddenState(drawer);
   const openButton = getElementById(document, OPEN_BUTTON_ID);
   if (openButton) {
@@ -47,6 +51,7 @@ export const openDashboardMenuDrawer = () => {
   drawer.classList.remove(DRAWER_CLOSED_CLASS);
   setElementHidden(getElementById(document, BACKDROP_ID), false);
   acquireDrawerScrollLock();
+  releaseDrawerGestures = bindSheetGestures(drawer);
   syncDrawerHiddenState(drawer);
   const openButton = getElementById(document, OPEN_BUTTON_ID);
   if (openButton) {
@@ -116,6 +121,7 @@ const handleSwapDrawerCleanup = () => {
   const drawer = getElementById(document, DRAWER_ID);
   if (!drawer || drawer.classList.contains(DRAWER_CLOSED_CLASS)) {
     releaseDrawerScrollLock();
+    releaseDrawerSheetGestures();
   }
   syncDrawerHiddenState(drawer);
 };
@@ -138,11 +144,22 @@ const releaseDrawerScrollLock = () => {
 };
 
 /**
+ * Releases the phone bottom-sheet drag gestures bound while the drawer was open.
+ */
+const releaseDrawerSheetGestures = () => {
+  if (releaseDrawerGestures) {
+    releaseDrawerGestures();
+    releaseDrawerGestures = null;
+  }
+};
+
+/**
  * Resets the drawer to its closed state without moving focus. Used when history
  * navigation, page restoration, or viewport changes invalidate the open state.
  */
 const resetDrawerState = () => {
   releaseDrawerScrollLock();
+  releaseDrawerSheetGestures();
   const drawer = getElementById(document, DRAWER_ID);
   if (drawer) {
     drawer.classList.add(DRAWER_CLOSED_CLASS);

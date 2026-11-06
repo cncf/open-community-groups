@@ -4,6 +4,7 @@ import {
   closeDashboardMenuDrawer,
   openDashboardMenuDrawer,
 } from "/static/js/dashboard/menu-drawer.js";
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 describe("dashboard menu drawer", () => {
@@ -35,6 +36,20 @@ describe("dashboard menu drawer", () => {
   // Forces the drawer helpers to treat the viewport as mobile or desktop.
   const stubViewport = ({ isDesktop }) => {
     window.matchMedia = () => ({ matches: isDesktop });
+  };
+
+  // Simulates a phone bottom sheet so the drag gestures bind, keeping the desktop query false.
+  const stubPhoneSheetViewport = () => {
+    const query = { addEventListener() {}, matches: true, removeEventListener() {} };
+    window.matchMedia = (text) => (text === PHONE_MEDIA_QUERY ? query : { matches: false });
+  };
+
+  // Renders the drawer as the phone bottom sheet the gestures look for: a fixed .sheet-panel.
+  const renderSheetFixture = () => {
+    renderFixture();
+    const drawer = document.getElementById("dashboard-menu-drawer");
+    drawer.classList.add("sheet-panel");
+    drawer.style.position = "fixed";
   };
 
   it("opens from the menu button and moves focus to the close button", () => {
@@ -226,5 +241,20 @@ describe("dashboard menu drawer", () => {
     );
     expect(document.getElementById("dashboard-menu-backdrop").classList.contains("hidden")).to.equal(true);
     expect(document.body.style.overflow).to.equal("");
+  });
+
+  it("binds the bottom-sheet drag gestures while open on phone and releases them on close", () => {
+    // Render the drawer as a phone bottom sheet and open it.
+    renderSheetFixture();
+    stubPhoneSheetViewport();
+    openDashboardMenuDrawer();
+
+    // Verify the drag gestures are bound while the sheet is open.
+    const drawer = document.getElementById("dashboard-menu-drawer");
+    expect(drawer.hasAttribute("data-sheet-drag")).to.equal(true);
+
+    // Close the drawer and verify the drag gestures are released.
+    closeDashboardMenuDrawer();
+    expect(drawer.hasAttribute("data-sheet-drag")).to.equal(false);
   });
 });

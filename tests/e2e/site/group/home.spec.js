@@ -537,7 +537,7 @@ test.describe("group page - phone layout", () => {
     expect(websiteBox.y + websiteBox.height).toBeLessThanOrEqual(joinBox.y);
   });
 
-  test("social links keep their spacing on wide phones @mobile", async ({ page }) => {
+  test("social links sit in one swipeable row on phones @mobile", async ({ page }) => {
     // Load the group with two social links.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
     const links = getIntroSection(page).locator("div.md\\:hidden a");
@@ -547,15 +547,12 @@ test.describe("group page - phone layout", () => {
       await test.step(`${width}px`, async () => {
         await page.setViewportSize({ height: 375, width });
 
-        // Verify the columns stop spreading at a normal phone's spacing.
-        await expect
-          .poll(async () => {
-            const firstBox = await links.first().boundingBox();
-            const secondBox = await links.last().boundingBox();
+        const firstBox = await links.first().boundingBox();
+        const secondBox = await links.last().boundingBox();
 
-            return secondBox.x - (firstBox.x + firstBox.width);
-          })
-          .toBe(41);
+        // Verify the links share a row separated by the strip's 8px gap.
+        expect(secondBox.y).toBe(firstBox.y);
+        expect(secondBox.x - (firstBox.x + firstBox.width)).toBe(8);
       });
     }
   });

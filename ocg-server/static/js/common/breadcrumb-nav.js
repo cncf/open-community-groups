@@ -250,7 +250,7 @@ export class BreadcrumbNav extends LitWrapper {
             <div class="relative sm:hidden phone:block">
               <button
                 data-breadcrumb-trigger
-                class="flex items-center gap-2 w-full text-sm phone:min-h-11 phone:px-3"
+                class="flex items-center gap-2 w-full text-sm phone:min-h-11"
                 aria-expanded="${this._isOpen}"
                 aria-haspopup="listbox"
                 aria-controls="${this._dropdownId}"
