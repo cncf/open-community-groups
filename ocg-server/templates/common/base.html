@@ -90,19 +90,6 @@
           {% endfor -%}
         {% endif -%}
       }
-      {# Phones use the 600 and 700 shades, which a partial palette may not define. -#}
-      {% if site_settings.theme.palette.contains_key(&500) && (!site_settings.theme.palette.contains_key(&600) || !site_settings.theme.palette.contains_key(&700)) -%}
-        @media screen and (width < 48rem) and (not (pointer: fine)) {
-          :root {
-            {% if !site_settings.theme.palette.contains_key(&600) -%}
-              --color-primary-600: color-mix(in srgb, var(--color-primary-500) 65%, black);
-            {% endif -%}
-            {% if !site_settings.theme.palette.contains_key(&700) -%}
-              --color-primary-700: color-mix(in srgb, var(--color-primary-500) 55%, black);
-            {% endif -%}
-          }
-        }
-      {% endif -%}
     </style>
 
     {# End styles -#}

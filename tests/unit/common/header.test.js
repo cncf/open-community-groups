@@ -37,7 +37,7 @@ const stubPhoneQuery = (matches) => {
 };
 
 /** Renders the phone shell around the user menu. */
-const renderSheetFixture = ({ menuMounted = true } = {}) => {
+const renderSheetFixture = () => {
   const menu = `
     <button id="user-dropdown-button" type="button">User</button>
     <div id="user-dropdown" class="hidden account-sheet" style="position: fixed" role="menu">
@@ -49,6 +49,11 @@ const renderSheetFixture = ({ menuMounted = true } = {}) => {
         </li>
         <li role="none">
           <a id="stats-row" href="/stats" role="menuitem"><span class="hx-spinner"></span>Stats</a>
+        </li>
+        <li role="none">
+          <a id="dashboard-row" href="/dashboard/user" role="menuitem">
+            <span class="hx-spinner"></span>My dashboard
+          </a>
         </li>
         <li role="none">
           <a id="check-in-row" href="/dashboard/user?tab=check-in" role="menuitem">
@@ -80,10 +85,9 @@ const renderSheetFixture = ({ menuMounted = true } = {}) => {
     <div>
       <div>
         <header id="header">
-          <button id="open-site-menu" type="button" disabled>Menu</button>
           <a id="logo-link" href="/" aria-label="Go to homepage">Logo</a>
           <a id="title-link" href="/" aria-label="Go to Test Site homepage">Test Site</a>
-          ${menuMounted ? menu : ""}
+          ${menu}
         </header>
       </div>
       <section id="jumbotron"></section>
@@ -97,7 +101,6 @@ const renderSheetFixture = ({ menuMounted = true } = {}) => {
   return {
     close: document.getElementById("sheet-close"),
     dropdown: document.getElementById("user-dropdown"),
-    menuButton: document.getElementById("open-site-menu"),
     panel: document.querySelector("#user-dropdown .sheet-panel"),
     userButton: document.getElementById("user-dropdown-button"),
   };
@@ -646,66 +649,21 @@ describe("header", () => {
       expect(document.activeElement).not.to.equal(userButton);
     });
 
-    it("keeps the menu button disabled until the sheet has mounted", () => {
-      // Render the header while the user menu section is still loading.
-      stubPhoneQuery(true);
-      renderSheetFixture({ menuMounted: false });
-      const menuButton = document.getElementById("open-site-menu");
-      expect(menuButton.disabled).to.equal(true);
-
-      // Mount the user menu the way the section swap does.
-      document.getElementById("header").insertAdjacentHTML(
-        "beforeend",
-        `
-          <button id="user-dropdown-button" type="button">User</button>
-          <div id="user-dropdown" class="hidden"></div>
-        `,
-      );
-      dispatchHtmxAfterSwap(document, { target: document.getElementById("header") });
-
-      // Verify the button now opens the sheet.
-      expect(menuButton.disabled).to.equal(false);
-      menuButton.click();
-      expect(document.getElementById("user-dropdown").classList.contains("hidden")).to.equal(false);
-    });
-
-    it("adds no listener to the menu button off phones", () => {
-      // Record the element listeners added while the header initializes.
-      stubPhoneQuery(false);
-      const originalAddEventListener = EventTarget.prototype.addEventListener;
-      const targets = [];
-      EventTarget.prototype.addEventListener = function (...args) {
-        targets.push(this);
-        return originalAddEventListener.apply(this, args);
-      };
-
-      try {
-        const { menuButton } = renderSheetFixture();
-
-        // Verify only the document handler serves the button.
-        expect(menuButton.disabled).to.equal(false);
-        expect(targets).not.to.include(menuButton);
-      } finally {
-        EventTarget.prototype.addEventListener = originalAddEventListener;
-      }
-    });
-
-    it("opens from the menu button with the sheet state in place", () => {
+    it("opens with the sheet state in place", () => {
       // Render the shell on a dashboard tab.
       setLocationPath("/dashboard/user?tab=invitations");
       stubPhoneQuery(true);
-      const { close, dropdown, menuButton, panel, userButton } = renderSheetFixture();
+      const { close, dropdown, panel, userButton } = renderSheetFixture();
 
       // Open the sheet.
-      menuButton.click();
+      userButton.click();
 
       // Verify the sheet takes the page over and focus enters it.
       expect(dropdown.classList.contains("hidden")).to.equal(false);
       expect(document.body.dataset.modalOpenCount).to.equal("1");
       expect(document.body.style.overflow).to.equal("hidden");
       expect(document.activeElement).to.equal(close);
-      expect(menuButton.getAttribute("aria-expanded")).to.equal("true");
-      expect(userButton.hasAttribute("aria-expanded")).to.equal(false);
+      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
       expect(panel.hasAttribute("data-sheet-drag")).to.equal(true);
 
       // Verify everything behind the scrim is inert.
@@ -719,8 +677,24 @@ describe("header", () => {
       // Verify only the row of the current tab is marked.
       expect(document.getElementById("invitations-row").getAttribute("aria-current")).to.equal("page");
       expect(document.getElementById("check-in-row").hasAttribute("aria-current")).to.equal(false);
+      expect(document.getElementById("dashboard-row").hasAttribute("aria-current")).to.equal(false);
       expect(document.getElementById("stats-row").hasAttribute("aria-current")).to.equal(false);
       expect(dropdown.hasAttribute("aria-hidden")).to.equal(false);
+    });
+
+    it("marks the row without a tab only on the page without one", () => {
+      // Render the shell on the dashboard without a tab.
+      setLocationPath("/dashboard/user");
+      stubPhoneQuery(true);
+      const { userButton } = renderSheetFixture();
+
+      // Open the sheet.
+      userButton.click();
+
+      // Verify that row is marked and the tab rows are not.
+      expect(document.getElementById("dashboard-row").getAttribute("aria-current")).to.equal("page");
+      expect(document.getElementById("check-in-row").hasAttribute("aria-current")).to.equal(false);
+      expect(document.getElementById("invitations-row").hasAttribute("aria-current")).to.equal(false);
     });
 
     it("marks a row by pathname when the page has a query", () => {
@@ -755,10 +729,10 @@ describe("header", () => {
       ["trigger", () => document.getElementById("user-dropdown-button").click()],
     ].forEach(([name, closeSheet]) => {
       it(`closes from the ${name} and restores focus to the opener`, () => {
-        // Open the sheet from the menu button.
+        // Open the sheet.
         stubPhoneQuery(true);
-        const { dropdown, menuButton } = renderSheetFixture();
-        menuButton.click();
+        const { dropdown, userButton } = renderSheetFixture();
+        userButton.click();
 
         // Close it.
         closeSheet();
@@ -766,19 +740,8 @@ describe("header", () => {
         // Verify the sheet released everything and focus went back.
         expect(dropdown.classList.contains("hidden")).to.equal(true);
         expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
-        expect(document.activeElement).to.equal(menuButton);
+        expect(document.activeElement).to.equal(userButton);
       });
-    });
-
-    it("returns focus to the user button when it opened the sheet", () => {
-      // Open and close the sheet from the user button.
-      stubPhoneQuery(true);
-      const { close, userButton } = renderSheetFixture();
-      userButton.click();
-      close.click();
-
-      // Verify focus went back to that trigger.
-      expect(document.activeElement).to.equal(userButton);
     });
 
     it("keeps the sheet open while a spinner link loads", () => {
@@ -830,8 +793,8 @@ describe("header", () => {
         }
       };
       stubPhoneQuery(true);
-      const { dropdown, menuButton } = renderSheetFixture();
-      menuButton.click();
+      const { dropdown, userButton } = renderSheetFixture();
+      userButton.click();
 
       // Fire the close request.
       watcher.dispatchEvent(new Event("close"));
@@ -839,7 +802,7 @@ describe("header", () => {
       // Verify it closed the sheet and released the watcher.
       expect(dropdown.classList.contains("hidden")).to.equal(true);
       expect(watcher.destroyed).to.equal(true);
-      expect(document.activeElement).to.equal(menuButton);
+      expect(document.activeElement).to.equal(userButton);
     });
 
     it("releases sheet state and keeps the menu open when the query turns false", () => {
@@ -893,16 +856,15 @@ describe("header", () => {
     /**
      * Replaces the user menu the way the section refetch does. The new sheet still
      * shows at afterSwap, because HTMX keeps the old class on it until settling.
-     * @param {string} [buttonId] Id of the button the swap brings.
      * @returns {void}
      */
-    const swapUserMenu = (buttonId = "user-dropdown-button") => {
+    const swapUserMenu = () => {
       document.getElementById("user-dropdown-button").remove();
       document.getElementById("user-dropdown").remove();
       document.getElementById("header").insertAdjacentHTML(
         "beforeend",
         `
-          <button id="${buttonId}" type="button">User</button>
+          <button id="user-dropdown-button" type="button">User</button>
           <div id="user-dropdown"></div>
         `,
       );
@@ -910,45 +872,32 @@ describe("header", () => {
     };
 
     it("releases a sheet a refetch replaced before the new node settles", () => {
-      // Open the sheet from the menu button, which the refetch leaves in place.
-      const query = stubPhoneQuery(true);
-      const { menuButton } = renderSheetFixture();
-      menuButton.click();
-
-      // Replace the menu.
-      swapUserMenu();
-
-      // Verify nothing is held and focus returned to the trigger.
-      expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
-      expect(query.listeners.size).to.equal(0);
-      expect(document.activeElement).to.equal(menuButton);
-
-      // Verify the next tap reaches the page instead of closing a sheet nobody sees.
-      document.getElementById("user-dropdown").classList.add("hidden");
-      menuButton.click();
-      expect(document.getElementById("user-dropdown").classList.contains("hidden")).to.equal(false);
-    });
-
-    it("gives focus to the new button when the refetch replaced the trigger", () => {
       // Open the sheet from the user button, which the refetch replaces.
-      stubPhoneQuery(true);
+      const query = stubPhoneQuery(true);
       const { userButton } = renderSheetFixture();
       userButton.click();
 
       // Replace the menu.
       swapUserMenu();
 
-      // Verify the replacement takes focus.
+      // Verify nothing is held and the replacement takes focus.
+      const newButton = document.getElementById("user-dropdown-button");
       expect(userButton.isConnected).to.equal(false);
-      expect(document.activeElement).to.equal(document.getElementById("user-dropdown-button"));
       expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
+      expect(query.listeners.size).to.equal(0);
+      expect(document.activeElement).to.equal(newButton);
+
+      // Verify the next tap opens the sheet instead of closing one nobody sees.
+      document.getElementById("user-dropdown").classList.add("hidden");
+      newButton.click();
+      expect(document.getElementById("user-dropdown").classList.contains("hidden")).to.equal(false);
     });
 
     it("does not touch focus when a swap leaves the open sheet alone", () => {
       // Open the sheet.
       const query = stubPhoneQuery(true);
-      const { close, dropdown, menuButton } = renderSheetFixture();
-      menuButton.click();
+      const { close, dropdown, userButton } = renderSheetFixture();
+      userButton.click();
 
       // Swap something else.
       dispatchHtmxAfterSwap(document, { target: document.getElementById("main-content") });
@@ -982,10 +931,10 @@ describe("header", () => {
       it(`resets a restored open sheet from the DOM on ${name}`, () => {
         // Render a snapshot that shows an open sheet no module state knows of.
         stubPhoneQuery(true);
-        const { dropdown, menuButton } = renderSheetFixture();
+        const { dropdown, userButton } = renderSheetFixture();
         dropdown.classList.remove("hidden");
         document.getElementById("main-content").inert = true;
-        menuButton.setAttribute("aria-expanded", "true");
+        userButton.setAttribute("aria-expanded", "true");
 
         // Restore it.
         restore();

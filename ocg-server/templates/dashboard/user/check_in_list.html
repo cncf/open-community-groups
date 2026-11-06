@@ -27,9 +27,9 @@
           {% call cards::check_in_event_card(event) -%}
           <span class="custom-badge badge-warning">Pending check-in</span>
           {# Tap cue: replaces the hover outline on touch screens. -#}
-          <span class="not-phone:hidden phone:ml-auto inline-flex items-center gap-1 text-xs font-medium text-primary-600"
+          <span class="not-phone:hidden phone:ml-auto inline-flex items-center gap-1 text-xs font-medium text-primary-500"
                 aria-hidden="true">
-            <span class="svg-icon size-3.5 icon-qr-code bg-primary-600"></span>
+            <span class="svg-icon size-3.5 icon-qr-code bg-primary-500"></span>
             Show QR code
           </span>
           {% endcall -%}

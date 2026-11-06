@@ -220,29 +220,6 @@ describe("common base template", () => {
     expect(index).to.be.lessThan(htmxScriptIndex);
   });
 
-  it("derives missing palette shades only inside the phone media block", async () => {
-    const template = await loadTemplate();
-    const styleStart = template.indexOf("<style>");
-    const style = template.slice(styleStart, template.indexOf("</style>", styleStart));
-    const phoneBlockStart = style.indexOf("@media screen and (width < 48rem) and (not (pointer: fine)) {");
-
-    // Verify the block needs 500 and a missing shade.
-    expect(phoneBlockStart).to.be.greaterThan(-1);
-    expect(normalizeWhitespace(style.slice(0, phoneBlockStart))).to.include(
-      "{% if site_settings.theme.palette.contains_key(&500) && (!site_settings.theme.palette.contains_key(&600) || !site_settings.theme.palette.contains_key(&700)) -%}",
-    );
-
-    // Verify the derived shades live inside the block and read the real 500.
-    const phoneBlock = style.slice(phoneBlockStart);
-    expect(phoneBlock).to.include(
-      "--color-primary-600: color-mix(in srgb, var(--color-primary-500) 65%, black);",
-    );
-    expect(phoneBlock).to.include(
-      "--color-primary-700: color-mix(in srgb, var(--color-primary-500) 55%, black);",
-    );
-    expect(style.slice(0, phoneBlockStart)).not.to.include("color-mix");
-  });
-
   it("adds the phone header shell tokens without touching the desktop ones", async () => {
     const template = await loadTemplate();
 

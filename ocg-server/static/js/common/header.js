@@ -26,13 +26,12 @@ let userSheetTrigger = null;
 const headerNavLinkSelector = "[data-header-nav-link]";
 /** Wait before showing nav loading so quick HTMX requests can finish without flicker. */
 const headerNavLinkPendingDelayMs = 120;
-const openSiteMenuId = "open-site-menu";
 const userSheetCloseSelector = ".sheet-head button";
 // Everything behind the scrim, so screen readers cannot walk there while the sheet is open.
 const userSheetInertSelector =
   '#main-content, #dashboard-layout, footer[role="contentinfo"], #header a[aria-label$=" homepage"], ' +
   "div:has(> #header) ~ *";
-const userSheetTriggerSelector = `#user-dropdown-button, #${openSiteMenuId}`;
+const userSheetTriggerSelector = "#user-dropdown-button";
 
 /**
  * Finds the header nav link that triggered an event.
@@ -187,7 +186,8 @@ const getUserSheetFocusTargets = (dropdown) =>
 
 /**
  * Marks the sheet rows that lead to the current page. The menu is a shared section
- * that cannot know the page, so rows are matched by pathname and dashboard tab.
+ * that cannot know the page, so rows are matched by pathname and dashboard tab. A row
+ * without a tab only matches a URL without one, so it never shadows the tab rows.
  * @param {Element} dropdown - User dropdown.
  */
 const markCurrentUserSheetRow = (dropdown) => {
@@ -198,7 +198,7 @@ const markCurrentUserSheetRow = (dropdown) => {
     .forEach((link) => {
       const url = new URL(link.href);
       const tab = url.searchParams.get("tab");
-      if (url.pathname === window.location.pathname && (!tab || tab === currentTab)) {
+      if (url.pathname === window.location.pathname && tab === currentTab) {
         link.setAttribute("aria-current", "page");
       }
     });
@@ -278,11 +278,11 @@ const releaseSwappedUserSheet = () => {
 
 /**
  * Opens the dropdown as the phone account sheet.
- * @param {HTMLElement} trigger - Control that opened the sheet.
+ * @param {HTMLElement|null} trigger - Control that opened the sheet, if any.
  */
 const openUserSheet = (trigger) => {
   const dropdown = getElementById(document, "user-dropdown");
-  if (!dropdown || userSheetOpen) {
+  if (!dropdown || !trigger || userSheetOpen) {
     return;
   }
 
@@ -333,12 +333,6 @@ const ensureDocumentHandlers = () => {
 
     const trigger = closestElement(event.target, userSheetTriggerSelector);
     const clickedDropdown = dropdown.contains(event.target);
-
-    // The menu button renders only on phones, so it gets no listener of its own at other widths.
-    if (trigger?.id === openSiteMenuId) {
-      toggleDropdownVisibility(event);
-      return;
-    }
 
     if (!trigger && !clickedDropdown) {
       // Hide if the click did not originate inside the dropdown or trigger.
@@ -459,14 +453,6 @@ const toggleDropdownVisibility = (event) => {
   }
 };
 
-// Enables the phone menu button once the sheet it opens has mounted.
-const enableOpenSiteMenu = () => {
-  const menuButton = getElementById(document, openSiteMenuId);
-  if (menuButton) {
-    menuButton.disabled = false;
-  }
-};
-
 // Public initializer for the user dropdown interactions.
 export const initUserDropdown = () => {
   ensureDocumentHandlers();
@@ -484,8 +470,6 @@ export const initUserDropdown = () => {
   if (!button || !dropdown) {
     return;
   }
-
-  enableOpenSiteMenu();
 
   if (button.__ocgDropdownInitialized) {
     return;

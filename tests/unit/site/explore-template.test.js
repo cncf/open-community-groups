@@ -135,7 +135,7 @@ describe("site explore templates", () => {
     ]);
 
     // Verify the community shows, and the separators and category do not.
-    const community = "phone:block phone:truncate phone:text-primary-600";
+    const community = "phone:block phone:truncate\"";
     expect(eventCard).to.include(community);
     expect(groupCard).to.include(community);
     expect(eventCard.match(/class="px-1 hidden sm:inline phone:hidden"/g)).to.have.length(2);

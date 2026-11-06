@@ -192,26 +192,6 @@ describe("common header template", () => {
     expect(invitationsIndex).to.be.lessThan(loggedInMenu.indexOf('href="/dashboard/user?tab=groups"'));
   });
 
-  it("renders the phone menu button only where the user menu section loads", async () => {
-    // Load the header template before checking the button.
-    const template = normalizeWhitespace(await loadTemplate());
-    const button = template.slice(
-      template.indexOf('<button id="open-site-menu"'),
-      template.indexOf("{# End open menu button (phone only) -#}"),
-    );
-
-    // Verify it shares the condition of the section placeholder.
-    expect(template).to.include('{% if loads_user_menu -%} <button id="open-site-menu"');
-    expect(template).to.include('{% if loads_user_menu -%} <div hx-get="/section/user-menu"');
-
-    // Verify it stays out of desktop and waits for the sheet to mount.
-    expect(button).to.include("not-phone:hidden");
-    expect(button).to.include("phone:size-11");
-    expect(button).to.include("icon-lines");
-    expect(button).to.include('aria-label="Open menu"');
-    expect(button).to.include(" disabled>");
-  });
-
   it("shows the site title on phones when there is no logo, except where it repeats", async () => {
     // Load the header template before checking the logo fallback.
     const template = normalizeWhitespace(await loadTemplate());

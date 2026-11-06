@@ -53,3 +53,25 @@
   </div>
 {% endmacro stat_card -%}
 {# End stat card -#}
+
+{# Stats section -#}
+{# Used by the public stats page for each growth series. -#}
+{% macro stats_section(kind, title, section) -%}
+  {% let running_chart_id = "{}-running-chart"|format(kind) -%}
+  {% let monthly_chart_id = "{}-monthly-chart"|format(kind) -%}
+  <section class="space-y-6 phone:space-y-0">
+    <div class="flex flex-wrap items-center justify-between gap-4 section-strip section-strip-stone section-strip-plain phone:flex-nowrap">
+      <div class="text-lg lg:text-xl font-semibold text-stone-900">{{ title }}</div>
+      <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500 flex items-center justify-center w-[170px] phone:w-auto phone:px-3 phone:py-1.5">
+        <div class="svg-icon size-4 icon-{{ kind }} bg-stone-500 me-2"></div>
+        Total
+        <span class="ms-2 text-base font-semibold text-stone-900">{{ section.total|num_fmt }}</span>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 phone:gap-3 phone:px-3">
+      {% call analytics_chart(chart_id = running_chart_id, data = section.running_total, class = "h-[320px] phone:h-[224px] phone:min-h-0", min_points = 1, padding_class = "px-2 py-4 md:p-6") %}{% endcall -%}
+      {% call analytics_chart(chart_id = monthly_chart_id, data = section.per_month, class = "h-[320px] phone:h-[208px] phone:min-h-0", padding_class = "px-2 py-4 md:p-6") %}{% endcall -%}
+    </div>
+  </section>
+{% endmacro stats_section -%}
+{# End stats section -#}

@@ -36,6 +36,71 @@ const IMAGE_TOO_LARGE_ERROR_MESSAGE = "The selected image is larger than the 1MB
 const RASTER_ONLY_TARGETS = [IMAGE_TARGET.BADGE, IMAGE_TARGET.OPEN_GRAPH];
 const getRasterOnlyErrorMessage = (formatLabel) =>
   `${formatLabel} images are not supported for this field. Choose a PNG, JPEG or WEBP image.`;
+// Human-readable labels for accepted file formats, keyed by extension or MIME subtype.
+const ACCEPTED_FORMAT_LABELS = {
+  gif: "GIF",
+  heic: "HEIC",
+  jpeg: "JPEG",
+  jpg: "JPEG",
+  png: "PNG",
+  svg: "SVG",
+  tif: "TIFF",
+  tiff: "TIFF",
+  webp: "WEBP",
+};
+
+/**
+ * Split an `accept`-style list into trimmed, lowercased, non-empty tokens.
+ * @param {string} acceptedFormats - Comma-separated extensions and MIME types.
+ * @returns {string[]} Normalized accept tokens.
+ */
+const parseAcceptedFormats = (acceptedFormats) =>
+  acceptedFormats
+    .split(",")
+    .map((token) => token.trim().toLowerCase())
+    .filter(Boolean);
+
+/**
+ * Report whether a file satisfies an `accept`-style list of extensions and MIME types.
+ * @param {File} file - Selected or dropped file.
+ * @param {string} acceptedFormats - Comma-separated accept tokens.
+ * @returns {boolean} Whether the file matches at least one token, or the list is empty.
+ */
+const fileMatchesAcceptedFormats = (file, acceptedFormats) => {
+  const tokens = parseAcceptedFormats(acceptedFormats);
+  if (tokens.length === 0) {
+    return true;
+  }
+
+  const fileType = (file.type || "").toLowerCase();
+  const fileName = (file.name || "").toLowerCase();
+  return tokens.some((token) => {
+    if (token.startsWith(".")) {
+      return fileName.endsWith(token);
+    }
+    if (token.endsWith("/*")) {
+      return fileType.startsWith(token.slice(0, -1));
+    }
+    return fileType === token;
+  });
+};
+
+/**
+ * Build the error shown when a direct-upload file is not an accepted format.
+ * @param {string} acceptedFormats - Comma-separated accept tokens.
+ * @returns {string} Format rejection message.
+ */
+const getWrongFormatMessage = (acceptedFormats) => {
+  const labels = [];
+  for (const token of parseAcceptedFormats(acceptedFormats)) {
+    const label = ACCEPTED_FORMAT_LABELS[token.replace(/^\./, "").replace(/^image\//, "")];
+    if (label && !labels.includes(label)) {
+      labels.push(label);
+    }
+  }
+  const formatList = labels.length > 1 ? `${labels.slice(0, -1).join(", ")} or ${labels.at(-1)}` : labels[0];
+  return formatList ? `Choose a ${formatList} file.` : "Choose a file in a supported format.";
+};
 
 /**
  * ImageField renders upload controls with drag-and-drop support and a preview.
@@ -177,6 +242,20 @@ export class ImageField extends LitWrapper {
     return IMAGE_UPLOAD_ERROR_DETAILS;
   }
 
+  /** Resolve the `accept` list for the active target, matching the rendered file input. */
+  get _acceptedFormats() {
+    const explicit = this.acceptedFormats.trim();
+    if (explicit) {
+      return explicit;
+    }
+    if (this.target === IMAGE_TARGET.OPEN_GRAPH || this.target === IMAGE_TARGET.BADGE) {
+      return OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS;
+    }
+    return ImageCropper.hasRequiredSize(this.target)
+      ? CROP_IMAGE_ACCEPTED_FORMATS
+      : DEFAULT_IMAGE_ACCEPTED_FORMATS;
+  }
+
   /**
    * Render either the selected image or the placeholder markup for the kind.
    */
@@ -307,6 +386,15 @@ export class ImageField extends LitWrapper {
     }
 
     if (this.directUpload) {
+      const rejection = this._getDirectFileRejection(file);
+      if (rejection) {
+        input.value = "";
+        this._directFileName = "";
+        this._filePickerTrigger = null;
+        showErrorAlert(rejection);
+        this.requestUpdate();
+        return;
+      }
       this._directFileName = file.name;
       this._filePickerTrigger = null;
       this.requestUpdate();
@@ -325,6 +413,21 @@ export class ImageField extends LitWrapper {
       },
       focusOrigin,
     );
+  }
+
+  /**
+   * Return a user-facing reason to reject a direct-upload file, or null when it is allowed.
+   * Camera captures (JPEG or HEIC) fail here before the parent form submits, so the server
+   * never answers an unreadable upload with a plain-text error page.
+   * @param {File} file - Selected or dropped file.
+   * @returns {string|null} Rejection message, or null when the file passes.
+   */
+  _getDirectFileRejection(file) {
+    const acceptedFormats = this._acceptedFormats;
+    if (!fileMatchesAcceptedFormats(file, acceptedFormats)) {
+      return getWrongFormatMessage(acceptedFormats);
+    }
+    return null;
   }
 
   /**
@@ -455,7 +558,7 @@ export class ImageField extends LitWrapper {
   }
 
   /** Render the direct-submit drop zone used when a parent form owns the upload. */
-  _renderDirectUploadField(acceptedFormats) {
+  _renderDirectUploadField(acceptedFormats, helpText) {
     // Name the drop zone from the field label plus its visible prompt (label in name).
     return html`
       <label id=${this._labelId} for=${this._fileInputId} class="form-label">
@@ -495,6 +598,7 @@ export class ImageField extends LitWrapper {
           />
         </div>
       </div>
+      ${helpText ? html`<p class="form-legend mt-2">${helpText}</p>` : nothing}
     `;
   }
 
@@ -524,16 +628,10 @@ export class ImageField extends LitWrapper {
             ? `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${supportedFormatsText}`
             : `Images must be 360 x 360 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${supportedFormatsText}`);
     const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
-    const acceptedFormats =
-      this.acceptedFormats.trim() ||
-      (isOpenGraphTarget || isBadgeTarget
-        ? OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS
-        : requiresCropping
-          ? CROP_IMAGE_ACCEPTED_FORMATS
-          : DEFAULT_IMAGE_ACCEPTED_FORMATS);
+    const acceptedFormats = this._acceptedFormats;
 
     if (this.directUpload) {
-      return this._renderDirectUploadField(acceptedFormats);
+      return this._renderDirectUploadField(acceptedFormats, combinedHelpText);
     }
 
     // Name the preview from the field label plus its visible prompt (label in name).

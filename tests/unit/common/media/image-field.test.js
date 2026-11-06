@@ -652,6 +652,76 @@ describe("image-field", () => {
     form.remove();
   });
 
+  it("rejects a direct-upload file whose type is not accepted", async () => {
+    // Render the verification upload inside the form that owns its submission.
+    const form = document.createElement("form");
+    document.body.append(form);
+    const element = await mountLitComponent("image-field", {
+      acceptedFormats: ".png,image/png",
+      directUpload: true,
+      label: "Exported PNG",
+      name: "png",
+    });
+    form.append(element);
+    const input = element.querySelector('input[type="file"]');
+
+    // Select a camera capture, which iOS offers even when the picker filters to PNG.
+    const cameraPhoto = new DataTransfer();
+    cameraPhoto.items.add(new File(["photo"], "camera-photo.jpg", { type: "image/jpeg" }));
+    input.files = cameraPhoto.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await element.updateComplete;
+
+    // The field explains the format rule, clears the input and keeps the form empty.
+    expect(env.current.swal.calls.at(-1).icon).to.equal("error");
+    expect(env.current.swal.calls.at(-1).text).to.equal("Choose a PNG file.");
+    expect(input.files).to.have.length(0);
+    expect(input.hasAttribute("name")).to.equal(false);
+    expect(new FormData(form).has("png")).to.equal(false);
+    form.remove();
+  });
+
+  it("submits a valid direct-upload PNG", async () => {
+    // Render the verification upload inside the form that owns its submission.
+    const form = document.createElement("form");
+    document.body.append(form);
+    const element = await mountLitComponent("image-field", {
+      acceptedFormats: ".png,image/png",
+      directUpload: true,
+      label: "Exported PNG",
+      name: "png",
+    });
+    form.append(element);
+    const input = element.querySelector('input[type="file"]');
+
+    // Select an accepted PNG.
+    const accepted = new DataTransfer();
+    accepted.items.add(new File(["badge"], "exported-badge.png", { type: "image/png" }));
+    input.files = accepted.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await element.updateComplete;
+
+    // The file is kept in the submitted field without any error.
+    expect(env.current.swal.calls).to.have.length(0);
+    expect(new FormData(form).get("png").name).to.equal("exported-badge.png");
+    form.remove();
+  });
+
+  it("renders the direct-upload help text under the drop zone", async () => {
+    // Render the verification upload with its guidance copy.
+    const element = await mountLitComponent("image-field", {
+      directUpload: true,
+      helpText: "Upload the PNG downloaded from your badge.",
+      label: "Exported PNG",
+      name: "png",
+    });
+
+    // The guidance appears so people know which file to pick.
+    expect(element.querySelector(".form-legend").textContent.trim()).to.equal(
+      "Upload the PNG downloaded from your badge.",
+    );
+  });
+
   it("names the direct-upload drop zone from its label and visible prompt", async () => {
     // Render the verification upload drop zone.
     const element = await mountLitComponent("image-field", {

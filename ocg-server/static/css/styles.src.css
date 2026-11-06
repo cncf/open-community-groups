@@ -14,7 +14,7 @@
  * Redefined sm and md keep their order against wider breakpoints; redefined max-sm and
  * max-md move after them, so max-md beats sm between 640px and 767px. Do not pair max-md and
  * sm utilities for the same property. The phone variant below sorts after all of them, so it
- * is safe to pair with any of them, and new phone work uses only phone.
+ * is safe to pair with any of them.
  */
 @custom-variant sm {
   @media (width >= 40rem) {
@@ -106,11 +106,11 @@
   }
 
   .btn-primary {
-     @apply py-1.5 px-5 h-10 text-sm text-center text-white rounded-full bg-primary-500 transition-colors enabled:hover:bg-primary-700 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:enabled:active:bg-primary-700;
+     @apply py-1.5 px-5 h-10 text-sm text-center text-white rounded-full bg-primary-500 transition-colors enabled:hover:bg-primary-700 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11;
   }
 
   .btn-primary-anchor {
-    @apply py-2 px-5 inline-block text-sm text-center text-white rounded-full bg-primary-500 transition-colors hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:active:bg-primary-700 phone:inline-flex phone:items-center phone:justify-center;
+    @apply py-2 px-5 inline-block text-sm text-center text-white rounded-full bg-primary-500 transition-colors hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
   }
 
   .btn-secondary {
@@ -509,7 +509,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
  * 50-1000, drawers and sheets 1100, map modal 1200, Lit modals 1300, Swal top layer.
  */
 @utility btn-fill {
-  @apply bg-primary-600 text-white border-primary-600;
+  @apply bg-primary-500 text-white border-primary-500;
 }
 
 @keyframes sheet-up {
@@ -529,11 +529,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 @variant phone {
-  /* One azure: :root keeps the real 500 for charts, the calendar and derived shades. */
-  body {
-    --color-primary-500: var(--color-primary-600);
-  }
-
   /* Header shell */
   html {
     scroll-padding-top: 7.5rem;
@@ -642,6 +637,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     @apply size-11;
   }
 
+  /* One close glyph size for every sheet head: templates use 16, 20 or 24px for desktop. Scoped
+     to the head so chip and clear buttons inside sheet bodies keep their small glyphs. */
+  .sheet-panel :is(.sheet-grab button, #close-filters) > .icon-close {
+    @apply size-5;
+  }
+
   /* Shared with the tablet drawer, which sets top, height and its own slide. */
   #drawer-filters.sheet-panel {
     @apply top-auto z-[1100] h-auto animate-none transition-[translate] motion-reduce:transition-none;
@@ -687,7 +688,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   .account-sheet > ul {
-    @apply m-0 flex-row flex-wrap content-start gap-x-2;
+    @apply m-0 flex-row flex-wrap content-start;
   }
 
   /* min-w-0 keeps a long username truncated instead of widening the sheet. */
@@ -713,16 +714,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     @apply mt-0 border-t-0 pt-0;
   }
 
+  /* Inner padding instead of a gap keeps the top hairline continuous across both buttons. */
   .account-sheet > ul > .account-sheet-cta {
-    @apply order-1 basis-[calc(50%-0.25rem)] pb-3 ps-3;
+    @apply order-1 mt-2 basis-1/2 border-t border-stone-200 pt-3 pb-3 ps-3 pe-1;
   }
 
   .account-sheet > ul > .account-sheet-cta-fill {
-    @apply order-2 ps-0 pe-3;
+    @apply order-2 ps-1 pe-3;
   }
 
   .account-sheet li.account-sheet-cta [role="menuitem"] {
-    @apply flex min-h-11 items-center justify-center gap-2 rounded-full border border-primary-600 py-0 text-sm font-semibold text-primary-600;
+    @apply flex min-h-11 items-center justify-center gap-2 rounded-full border border-primary-500 py-0 text-sm font-semibold text-primary-500;
   }
 
   .account-sheet li.account-sheet-cta [role="menuitem"] .text-xs\/6 {
@@ -730,11 +732,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   .account-sheet li.account-sheet-cta [role="menuitem"] .svg-icon {
-    @apply bg-primary-600;
+    @apply bg-primary-500;
   }
 
   .account-sheet li.account-sheet-cta-fill [role="menuitem"] {
-    @apply bg-primary-600 text-white;
+    @apply bg-primary-500 text-white;
   }
 
   .account-sheet li.account-sheet-cta-fill [role="menuitem"] .svg-icon {
@@ -742,11 +744,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   .account-sheet [aria-current="page"] {
-    @apply font-semibold text-primary-600;
+    @apply font-semibold text-primary-500;
   }
 
   .account-sheet [aria-current="page"] .svg-icon {
-    @apply bg-primary-600;
+    @apply bg-primary-500;
   }
 
   /* Sticky bottom CTA */
@@ -862,12 +864,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   /* Links and pills */
   .pill-link {
     @apply relative min-h-0 shrink-0 overflow-visible whitespace-nowrap px-3.5 py-[5px] text-[13px]/[18px] font-normal normal-case tracking-normal after:absolute after:-inset-x-1 after:-inset-y-2;
-  }
-
-  /* The body prefix outranks the source colours, which come later in this file. */
-  body :is(.jumbotron-description, .community-description, .markdown) a,
-  .read-more-toggle {
-    color: color-mix(in srgb, var(--ocg-primary) 65%, black);
   }
 
   /* Read more */

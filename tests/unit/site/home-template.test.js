@@ -49,14 +49,19 @@ describe("site home template", () => {
     expect(page).to.match(/class="btn-primary-anchor [^"]* phone:hidden">Explore groups and events/);
   });
 
-  it("renders the carousel and its dots row only above three communities", async () => {
+  it("renders the carousel and its position row only above three communities", async () => {
     // Load the home page.
     const page = await loadTemplate("site/home/page.html");
 
     // Verify the threshold and that the row directly follows its scroller.
     expect(page).to.include("{% let carousel = communities.len() > 3 -%}");
     expect(page).to.match(
-      /{% endfor -%}\s*<\/div>\s*{% if carousel && communities\.len\(\) <= 24 -%}\s*<div class="not-phone:hidden" aria-hidden="true" data-snap-dots><\/div>/,
+      /{% endfor -%}\s*<\/div>\s*{% if carousel -%}[\s\S]*?<div class="not-phone:hidden"\s+aria-hidden="true"\s+data-snap-dots\s+data-snap-dots-max="24">/,
+    );
+
+    // Verify lists too long for one line of dots get a counter instead.
+    expect(page).to.match(
+      /data-snap-dots-max="24">\s*{% if communities\.len\(\) > 24 -%}\s*<span data-snap-counter><\/span>\s*{% endif -%}/,
     );
 
     // Verify the page loads the module that fills the row.
@@ -86,7 +91,7 @@ describe("site home template", () => {
     // Verify each card shows the name and hides only the dot.
     for (const card of cards) {
       expect(card).to.include(
-        'class="hidden text-primary-500 sm:inline phone:block phone:truncate phone:text-primary-600"',
+        'class="hidden text-primary-500 sm:inline phone:block phone:truncate"',
       );
       expect(card).to.include('class="px-1 hidden sm:inline phone:hidden"');
     }

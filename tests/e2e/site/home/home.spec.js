@@ -387,8 +387,7 @@ test.describe("site home page", () => {
       await expect(introduction.getByRole("link", { name: "Explore groups and events" })).toBeVisible();
       await expect(introduction.getByRole("searchbox", { name: "Search events" })).toBeHidden();
 
-      // Verify nothing of the phone shell shows around it.
-      await expect(page.getByRole("button", { name: "Open menu" })).toBeHidden();
+      // Verify the phone section strip does not stick.
       await expect(page.locator(".section-strip").first()).not.toHaveCSS("position", "sticky");
     });
   });

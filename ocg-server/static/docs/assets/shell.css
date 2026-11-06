@@ -193,6 +193,9 @@
 
   /* Docsify's main is a stacking context that would trap the toggle and sheet below the strip. */
   .ocg-docs-root:has(> [data-docs-strip]) main {
+    /* `clip` tames the theme's `overflow-x: hidden` without a scroll container, so iOS WebKit
+       stops trapping the fixed Contents toggle above `main` at the top of the page. */
+    overflow-x: clip;
     z-index: auto;
   }
 
@@ -368,7 +371,7 @@
     border-radius: 0;
     bottom: auto;
     box-shadow: none;
-    color: var(--color-primary-700);
+    color: var(--color-primary-500);
     display: flex;
     gap: 6px;
     height: 44px;
@@ -381,7 +384,7 @@
   }
 
   .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle:focus-visible {
-    outline: 2px solid var(--color-primary-700);
+    outline: 2px solid var(--color-primary-500);
     outline-offset: -2px;
   }
 

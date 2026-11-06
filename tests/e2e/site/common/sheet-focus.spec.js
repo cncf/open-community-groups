@@ -80,11 +80,10 @@ test.describe("sheet focus", () => {
     await navigateToPath(page, "/stats");
     const header = page.locator("#header");
     const titleLink = header.locator(`a[aria-label="Go to ${TEST_SITE_TITLE} homepage"]`);
-    const menuButton = header.getByRole("button", { name: "Open menu" });
-    await expect(menuButton).toBeEnabled();
+    const userButton = header.locator("#user-dropdown-button");
 
     // Open the sheet.
-    await menuButton.click();
+    await userButton.click();
     const userMenu = page.locator("#user-dropdown");
     await expect(userMenu).toBeVisible();
 
@@ -100,9 +99,7 @@ test.describe("sheet focus", () => {
   test("open sheets leave pinch zoom on and keep the title row for dragging @mobile", async ({ page }) => {
     // Open the account sheet.
     await navigateToPath(page, "/stats");
-    const menuButton = page.getByRole("button", { name: "Open menu" });
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    await page.locator("#user-dropdown-button").click();
     const userMenu = page.locator("#user-dropdown");
 
     // Verify the scrim and list leave zooming to the browser, and the title row does not.

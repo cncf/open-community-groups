@@ -104,8 +104,8 @@
           {# Mobile filters button -#}
           <div class="flex lg:hidden">
             <button id="open-filters"
-                    class="h-10 w-10 mr-3 inline-flex justify-center items-center bg-primary-500 text-lg rounded-full p-2 md:mr-5 hover:bg-primary-700 transition-colors phone:mr-0 phone:h-11 phone:w-auto phone:gap-1.5 phone:border phone:border-primary-600 phone:bg-white phone:px-4 phone:text-sm phone:text-primary-600 phone:hover:bg-white">
-              <div class="svg-icon h-4 w-4 bg-white icon-filter phone:bg-primary-600"></div>
+                    class="h-10 w-10 mr-3 inline-flex justify-center items-center bg-primary-500 text-lg rounded-full p-2 md:mr-5 hover:bg-primary-700 transition-colors phone:mr-0 phone:h-11 phone:w-auto phone:gap-1.5 phone:border phone:border-primary-500 phone:bg-white phone:px-4 phone:text-sm phone:text-primary-500 phone:hover:bg-white">
+              <div class="svg-icon h-4 w-4 bg-white icon-filter phone:bg-primary-500"></div>
               <span class="sr-only">Open filters{{- explore::active_filters_count(count = applied_filters.len()) -}}</span>
               <span class="not-phone:hidden" aria-hidden="true">Filters</span>
               {{ explore::active_filters_dot(count = applied_filters.len()) -}}

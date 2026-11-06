@@ -11,7 +11,7 @@
 {# Used by the phone Filters pill to show that filters apply. -#}
 {% macro active_filters_dot(count) -%}
   {% if count > 0 -%}
-    <span class="size-2 rounded-full bg-primary-600 not-phone:hidden"
+    <span class="size-2 rounded-full bg-primary-500 not-phone:hidden"
           aria-hidden="true"></span>
   {%- endif -%}
 {%- endmacro active_filters_dot -%}
@@ -26,10 +26,10 @@
           data-applied-filter-value="{{ value }}"
           aria-label="Remove filter {{ label }}"
           class="inline-flex min-h-11 max-w-full items-center">
-    <span class="inline-flex h-8 max-w-full items-center gap-1.5 rounded-lg border border-primary-600 bg-white px-2.5 text-xs text-primary-600">
+    <span class="inline-flex h-8 max-w-full items-center gap-1.5 rounded-lg border border-primary-500 bg-white px-2.5 text-xs text-primary-500">
       <span class="truncate{% if *name != "kind" && *name != "group" %}
                      capitalize{% endif %}">{{ label }}</span>
-      <span class="svg-icon size-3 shrink-0 bg-primary-600 icon-close"></span>
+      <span class="svg-icon size-3 shrink-0 bg-primary-500 icon-close"></span>
     </span>
   </button>
 {% endmacro applied_filter_chip -%}
@@ -165,15 +165,15 @@
   </button>
   <button type="button"
           aria-pressed="true"
-          class="-ms-px inline-flex h-11 items-center gap-1.5 rounded-r-lg border border-primary-600 bg-white px-3 text-sm text-primary-600 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
-    <div class="svg-icon size-4 bg-primary-600 icon-groups"></div>
+          class="-ms-px inline-flex h-11 items-center gap-1.5 rounded-r-lg border border-primary-500 bg-white px-3 text-sm text-primary-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+    <div class="svg-icon size-4 bg-primary-500 icon-groups"></div>
     Groups
   </button>
   {% when Entity::Events -%}
   <button type="button"
           aria-pressed="true"
-          class="relative inline-flex h-11 items-center gap-1.5 rounded-l-lg border border-primary-600 bg-white px-3 text-sm text-primary-600 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
-    <div class="svg-icon size-4 bg-primary-600 icon-events"></div>
+          class="relative inline-flex h-11 items-center gap-1.5 rounded-l-lg border border-primary-500 bg-white px-3 text-sm text-primary-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+    <div class="svg-icon size-4 bg-primary-500 icon-events"></div>
     Events
   </button>
   {# djlint:off #}

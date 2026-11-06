@@ -1,6 +1,5 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/header.html" as header -%}
-{% let loads_user_menu = page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::SiteStats || page_id == PageId::SiteDocs || page_id == PageId::SiteNotFound || page_id == PageId::Community || page_id == PageId::Group || page_id == PageId::Event -%}
 {% let shows_phone_title = site_settings.header_logo_url.is_none() && !path.starts_with("/dashboard") && path != "/" -%}
 
 {# Header -#}
@@ -10,19 +9,6 @@
        role="navigation"
        aria-label="Main navigation">
     <div class="flex items-center gap-x-6 phone:min-w-0 phone:gap-x-3">
-      {# Open menu button (phone only) -#}
-      {% if loads_user_menu -%}
-        <button id="open-site-menu"
-                type="button"
-                aria-controls="user-dropdown"
-                aria-label="Open menu"
-                class="not-phone:hidden group shrink-0 inline-flex justify-center items-center bg-stone-100 rounded-full p-2 hover:bg-stone-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 phone:size-11"
-                disabled>
-          <div class="svg-icon h-4 w-4 bg-stone-700 group-hover:bg-stone-900 transition-colors icon-lines"></div>
-        </button>
-      {% endif -%}
-      {# End open menu button (phone only) -#}
-
       {# Logo -#}
       {% if path != "/" %}
         <a href="/"
@@ -63,7 +49,7 @@
 
     {# Desktop user menu -#}
     <div class="flex flex-1 justify-end">
-      {% if loads_user_menu -%}
+      {% if page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::SiteStats || page_id == PageId::SiteDocs || page_id == PageId::SiteNotFound || page_id == PageId::Community || page_id == PageId::Group || page_id == PageId::Event -%}
         <div hx-get="/section/user-menu"
              hx-trigger="load"
              hx-target="this"

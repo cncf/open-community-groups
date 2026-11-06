@@ -60,14 +60,13 @@ describe("phone viewport", () => {
     expect(isPhoneViewport()).to.equal(false);
   });
 
-  it("uses the same query text as the stylesheets and the base template", async () => {
+  it("uses the same query text as the stylesheets", async () => {
     const mediaRule = `@media ${PHONE_MEDIA_QUERY} {`;
 
     // Verify the sources that repeat the query text.
     const sources = [
       "/ocg-server/static/css/styles.src.css",
       "/ocg-server/static/docs/assets/shell.css",
-      "/ocg-server/templates/common/base.html",
     ];
     for (const source of sources) {
       expect(await loadFile(source), source).to.include(mediaRule);

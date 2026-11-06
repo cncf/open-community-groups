@@ -513,9 +513,8 @@ test.describe("site header", () => {
     // Switch a phone to the desktop version.
     await countCloseWatchers(page);
     await navigateToPath(page, "/stats");
-    const { menuButton, userButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { userButton, userMenu } = getAccountSheet(page);
+    await userButton.click();
     await Promise.all([
       page.waitForEvent("load"),
       userMenu.getByRole("menuitem", { name: "Desktop version" }).click(),
@@ -536,9 +535,8 @@ test.describe("site header", () => {
     // Open the sheet with watchers counted, the control for the desktop cases.
     await countCloseWatchers(page);
     await navigateToPath(page, "/stats");
-    const { menuButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { userButton, userMenu } = getAccountSheet(page);
+    await userButton.click();
     await expect(userMenu).toBeVisible();
 
     // Verify the sheet created exactly one.
@@ -572,16 +570,10 @@ test.describe("site header", () => {
     await expect.poll(async () => (await getHeaderBar(page)).content).toBe("none");
   });
 
-  test("phone header shows the menu button and the site title @mobile", async ({ page }) => {
+  test("phone header shows the site title @mobile", async ({ page }) => {
     // Load a public page without a header logo.
     await navigateToPath(page, "/stats");
     const header = page.locator("#header");
-
-    // Verify the menu button waits for the sheet, then fills a 44px target.
-    const menuButton = header.getByRole("button", { name: "Open menu" });
-    await expect(menuButton).toBeEnabled();
-    const menuBox = await menuButton.boundingBox();
-    expect(menuBox).toMatchObject({ height: 44, width: 44 });
     await expect(header.locator("nav span.truncate")).toBeVisible();
 
     // Verify the title links home under a name that includes its visible text.
@@ -591,57 +583,52 @@ test.describe("site header", () => {
     expect((await titleLink.boundingBox()).height).toBe(44);
     await expect(header.getByRole("link", { name: "Go to homepage" })).toHaveCount(0);
 
-    // Verify the user trigger lines up with the menu button.
-    const userBox = await header.locator("#user-dropdown-button").boundingBox();
-    expect(userBox).toMatchObject({ height: 44, width: 44 });
-    expect(userBox.y).toBe(menuBox.y);
+    // Verify the user trigger fills a 44px target.
+    const userButton = header.locator("#user-dropdown-button");
+    await expect(userButton).toBeVisible();
+    expect(await userButton.boundingBox()).toMatchObject({ height: 44, width: 44 });
 
     // Verify Home does not repeat the title that sits right below it.
     await navigateToSiteHome(page);
-    await expect(menuButton).toBeEnabled();
+    await expect(userButton).toBeVisible();
     await expect(header.locator("nav span.truncate")).toHaveCount(0);
   });
 
-  test("phone header leaves the desktop shell without the button or title", async ({ page }) => {
+  test("phone header leaves the desktop shell without the title", async ({ page }) => {
     // Load a public page at a desktop width.
     await navigateToPath(page, "/stats");
     const header = page.locator("#header");
 
-    // Verify neither phone element renders.
-    await expect(header.locator("#open-site-menu")).toBeHidden();
+    // Verify the phone title does not render.
     await expect(header.locator("nav span.truncate")).toBeHidden();
   });
 
-  test("account sheet opens from either trigger and returns focus to it @mobile", async ({ page }) => {
+  test("account sheet opens from the user button and returns focus to it @mobile", async ({ page }) => {
     // Load a public page with the menu mounted.
     await navigateToPath(page, "/stats");
-    const { closeButton, menuButton, userButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
+    const { closeButton, userButton, userMenu } = getAccountSheet(page);
 
-    for (const trigger of [menuButton, userButton]) {
-      // Open the sheet and verify focus enters it.
-      await trigger.click();
-      await expect(userMenu).toBeVisible();
-      await expect(closeButton).toBeFocused();
-      await expect(trigger).toHaveAttribute("aria-expanded", "true");
-      await expect(page.locator("main#main-content")).toHaveJSProperty("inert", true);
-      await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+    // Open the sheet and verify focus enters it.
+    await userButton.click();
+    await expect(userMenu).toBeVisible();
+    await expect(closeButton).toBeFocused();
+    await expect(userButton).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("main#main-content")).toHaveJSProperty("inert", true);
+    await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
 
-      // Close it and verify focus goes back to the same trigger.
-      await closeButton.click();
-      await expect(userMenu).toBeHidden();
-      await expect(trigger).toBeFocused();
-      await expect(trigger).not.toHaveAttribute("aria-expanded", "true");
-      await expectAccountSheetReleased(page);
-    }
+    // Close it and verify focus goes back to the trigger.
+    await closeButton.click();
+    await expect(userMenu).toBeHidden();
+    await expect(userButton).toBeFocused();
+    await expect(userButton).not.toHaveAttribute("aria-expanded", "true");
+    await expectAccountSheetReleased(page);
   });
 
   test("account sheet closes from its scrim and marks the current page @mobile", async ({ page }) => {
     // Open the sheet on a page that has a row.
     await navigateToPath(page, "/stats");
-    const { menuButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { userButton, userMenu } = getAccountSheet(page);
+    await userButton.click();
 
     // Verify only the current row is marked.
     await expect(userMenu.locator('[aria-current="page"]')).toHaveCount(1);
@@ -657,9 +644,8 @@ test.describe("site header", () => {
   test("account sheet keeps Desktop version above the guest pills @mobile", async ({ page }) => {
     // Open the guest sheet.
     await navigateToPath(page, "/stats");
-    const { menuButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { userButton, userMenu } = getAccountSheet(page);
+    await userButton.click();
 
     // Verify the row order and the pills' side-by-side layout.
     const desktopVersion = await userMenu.getByRole("menuitem", { name: "Desktop version" }).boundingBox();
@@ -675,9 +661,8 @@ test.describe("site header", () => {
   test("account sheet keeps Tab inside, including Desktop version @mobile", async ({ page }) => {
     // Open the guest sheet.
     await navigateToPath(page, "/stats");
-    const { closeButton, menuButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { closeButton, userButton, userMenu } = getAccountSheet(page);
+    await userButton.click();
     await expect(closeButton).toBeFocused();
 
     // Verify Shift+Tab wraps to the last rendered row.
@@ -692,17 +677,15 @@ test.describe("site header", () => {
   test("account sheet does not return after Back then Forward @mobile", async ({ page }) => {
     // Reach a second page through a boosted row, so HTMX owns the history entry.
     await navigateToSiteHome(page);
-    const { menuButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { userButton, userMenu } = getAccountSheet(page);
+    await userButton.click();
     await userMenu.getByRole("menuitem", { name: "Stats" }).click();
     await expect(page).toHaveURL(/\/stats$/u);
     await waitForHtmxSettle(page);
     await expectAccountSheetReleased(page);
 
     // Leave the page with the sheet open, then come back.
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    await userButton.click();
     await expect(userMenu).toBeVisible();
     await page.goBack();
     await expect(page).not.toHaveURL(/\/stats$/u);
@@ -713,8 +696,7 @@ test.describe("site header", () => {
     // Verify the sheet stayed closed and can open again.
     await expect(userMenu).toBeHidden();
     await expectAccountSheetReleased(page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    await userButton.click();
     await expect(userMenu).toBeVisible();
     await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
   });
@@ -722,9 +704,8 @@ test.describe("site header", () => {
   test("account sheet releases its state at 768 and stays open as the menu @mobile", async ({ page }) => {
     // Open the sheet on a phone width.
     await navigateToPath(page, "/stats");
-    const { menuButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { userButton, userMenu } = getAccountSheet(page);
+    await userButton.click();
     await expect(userMenu).toHaveCSS("position", "fixed");
 
     // Rotate past md.
@@ -739,10 +720,9 @@ test.describe("site header", () => {
   test("a close request closes the account sheet without a history entry @mobile", async ({ page }) => {
     // Open the sheet and note the session history.
     await navigateToPath(page, "/stats");
-    const { menuButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
+    const { userButton, userMenu } = getAccountSheet(page);
     const historyLength = await page.evaluate(() => window.history.length);
-    await menuButton.click();
+    await userButton.click();
     await expect(userMenu).toBeVisible();
 
     // Reach the CloseWatcher past the sheet's own Escape handler.
@@ -750,7 +730,7 @@ test.describe("site header", () => {
 
     // Verify the sheet closed, focus returned, and history did not move.
     await expect(userMenu).toBeHidden();
-    await expect(menuButton).toBeFocused();
+    await expect(userButton).toBeFocused();
     await expectAccountSheetReleased(page);
     expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
   });
@@ -760,9 +740,8 @@ test.describe("site header", () => {
   }) => {
     // Open the sheet and find its title row.
     await navigateToPath(page, "/stats");
-    const { menuButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { userButton, userMenu } = getAccountSheet(page);
+    await userButton.click();
     const panel = userMenu.locator(".sheet-panel");
     const head = userMenu.locator(".sheet-grab");
     await expect(panel).toHaveAttribute("data-sheet-drag", "");
@@ -795,9 +774,8 @@ test.describe("site header", () => {
   test("account sheet shows no grabber without drag support @mobile", async ({ page }) => {
     // Open the sheet.
     await navigateToPath(page, "/stats");
-    const { menuButton, userMenu } = getAccountSheet(page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { userButton, userMenu } = getAccountSheet(page);
+    await userButton.click();
     const head = userMenu.locator(".sheet-grab");
     const grabberContent = () =>
       head.evaluate((element) => window.getComputedStyle(element, "::before").content);
@@ -814,9 +792,8 @@ test.describe("site header", () => {
   test("account sheet offers Invitations to signed-in phones @mobile", async ({ member1Page }) => {
     // Open the sheet with a signed-in session.
     await navigateToPath(member1Page, "/stats");
-    const { menuButton, userMenu } = getAccountSheet(member1Page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { userButton, userMenu } = getAccountSheet(member1Page);
+    await userButton.click();
 
     // Verify the row leads to the invitations tab.
     await expect(userMenu.getByRole("menuitem", { name: "Invitations" })).toHaveAttribute(
@@ -828,9 +805,8 @@ test.describe("site header", () => {
   test("account sheet truncates a long username @mobile", async ({ member1Page }) => {
     // Open the sheet with a signed-in session.
     await navigateToPath(member1Page, "/stats");
-    const { menuButton, userMenu } = getAccountSheet(member1Page);
-    await expect(menuButton).toBeEnabled();
-    await menuButton.click();
+    const { userButton, userMenu } = getAccountSheet(member1Page);
+    await userButton.click();
 
     // Lengthen the username past the sheet width.
     await userMenu
@@ -885,7 +861,7 @@ const countCloseWatchers = (page) =>
 const getCloseWatcherCount = (page) => page.evaluate(() => window.closeWatcherCount);
 
 /**
- * Finds the account sheet and its triggers.
+ * Finds the account sheet and its trigger.
  * @param {import("@playwright/test").Page} page - Page under test.
  * @returns {Record<string, import("@playwright/test").Locator>} Sheet locators.
  */
@@ -893,7 +869,6 @@ const getAccountSheet = (page) => {
   const userMenu = page.locator("#user-dropdown");
   return {
     closeButton: userMenu.getByRole("menuitem", { name: "Close menu" }),
-    menuButton: page.getByRole("button", { name: "Open menu" }),
     userButton: page.locator("#user-dropdown-button"),
     userMenu,
   };
