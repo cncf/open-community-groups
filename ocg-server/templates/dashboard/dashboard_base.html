@@ -47,9 +47,11 @@
            role="navigation"
            aria-label="Dashboard navigation"
            tabindex="-1">
-      {# Drag handle (phone bottom sheet only) -#}
-      <div class="sheet-grab hidden h-7 flex-none phone:block"></div>
-      {# End drag handle (phone bottom sheet only) -#}
+      {# Preheader (phone bottom sheet only): grab handle and title -#}
+      <div class="sheet-head sheet-grab hidden phone:flex">
+        <span aria-hidden="true">Menu</span>
+      </div>
+      {# End preheader (phone bottom sheet only) -#}
 
       {# Close menu button (mobile only) -#}
       <button id="close-dashboard-menu"
@@ -60,7 +62,7 @@
       </button>
       {# End close menu button (mobile only) -#}
 
-      <div class="sheet-body flex flex-col h-full w-full py-5 pt-14 md:pt-24 phone:h-auto phone:pt-6">
+      <div class="sheet-body flex flex-col h-full w-full py-5 pt-14 md:pt-24 phone:h-auto phone:pt-2">
         {% block menu -%}
         {% endblock menu -%}
       </div>
