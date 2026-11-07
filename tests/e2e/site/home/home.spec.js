@@ -344,19 +344,17 @@ test.describe("site home page", () => {
       await expect(page).toHaveURL(/\/explore\?entity=groups/);
     });
 
-    test("cards show the community above the group", async ({ page }) => {
+    test("cards show only the group name on mobile", async ({ page }) => {
       // Find an event card and its pre-header.
       const eventCard = page.getByRole("link").filter({ hasText: TEST_EVENT_NAMES.alpha[0] }).first();
-      const community = eventCard.locator(".card-header").getByText(TEST_COMMUNITY_TITLE);
-      const group = eventCard.locator(".card-header").getByText("Platform Ops Meetup");
+      const header = eventCard.locator(".card-header");
+      const community = header.getByText(TEST_COMMUNITY_TITLE);
+      const group = header.getByText("Platform Ops Meetup");
 
-      // Verify the community sits on its own line above the group.
-      await expect(community).toBeVisible();
-      const [communityBox, groupBox] = await Promise.all([community.boundingBox(), group.boundingBox()]);
-      expect(groupBox.y + groupBox.height).toBeGreaterThan(communityBox.y + communityBox.height);
-
-      // Verify the separator stays off phones.
-      await expect(eventCard.locator(".card-header").getByText("·")).toBeHidden();
+      // Verify the community name and its separator are hidden on phones, leaving only the group.
+      await expect(community).toBeHidden();
+      await expect(header.getByText("·")).toBeHidden();
+      await expect(group).toBeVisible();
     });
 
     test("card badges drop below the location when it would be cut short", async ({ page }) => {

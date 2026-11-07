@@ -71,18 +71,18 @@
 {# Event footer -#}
 {# Used by explore and shared event cards for date and location metadata. -#}
 {% macro event_footer(event, left_width_classes = "w-[60px] min-w-[60px]", show_ticket_price = true) -%}
-  <div class="flex items-center gap-3 md:gap-4">
-    <div class="{{ left_width_classes }} shrink-0 text-center">
+  <div class="flex items-center gap-3 md:gap-4 phone:gap-2">
+    <div class="{{ left_width_classes }} shrink-0 text-center phone:w-12 phone:min-w-12">
       {% if let Some(starts_at) = &event.starts_at -%}
         <div class="text-[0.72rem] font-bold uppercase tracking-[0.12em] text-stone-900">
           {{ starts_at.with_timezone(event.timezone).format("%b") }}
         </div>
-        <div class="mt-0.5 text-[1.7rem]/7 font-bold text-stone-900">
+        <div class="mt-0.5 text-[1.7rem]/7 font-bold text-stone-900 phone:text-[1.5rem]/7">
           {{ starts_at.with_timezone(event.timezone).format("%e")|trim }}
         </div>
       {% else -%}
         <div class="text-[0.72rem] font-bold uppercase tracking-[0.12em] text-stone-900">TBD</div>
-        <div class="mt-0.5 text-[1.7rem]/7 font-bold text-stone-900">--</div>
+        <div class="mt-0.5 text-[1.7rem]/7 font-bold text-stone-900 phone:text-[1.5rem]/7">--</div>
       {% endif -%}
     </div>
 
@@ -131,8 +131,8 @@
 {# Group footer -#}
 {# Used by community and explore group cards for location metadata. -#}
 {% macro group_footer(group, location_max_len = 32, left_width_classes = "w-[60px] min-w-[60px]") -%}
-  <div class="flex items-center gap-3 md:gap-4">
-    <div class="{{ left_width_classes }} shrink-0 text-center">
+  <div class="flex items-center gap-3 md:gap-4 phone:gap-2">
+    <div class="{{ left_width_classes }} shrink-0 text-center phone:w-12 phone:min-w-12">
       <div class="text-[0.7rem] font-bold tracking-[0.04em] text-stone-900">
         {{ group.created_at.format("%Y") }}
       </div>

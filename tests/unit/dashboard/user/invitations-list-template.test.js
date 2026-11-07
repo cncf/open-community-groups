@@ -27,10 +27,10 @@ describe("dashboard user invitations list template", () => {
     expect(communityInvitations).to.be.greaterThan(groupInvitations);
     expect(template.match(/mb-12/gu)).to.have.length(2);
     expect(template).to.include(
-      '{# Groups Invitations -#} <div class="phone:px-3{% if group_invitations.is_empty() %} phone:hidden{% endif %}">',
+      '{# Groups Invitations -#} <div class="phone:mt-6 phone:px-3{% if group_invitations.is_empty() %} phone:hidden{% endif %}">',
     );
     expect(template).to.include(
-      '{# Community Invitations -#} <div class="phone:px-3{% if community_invitations.is_empty() %} phone:hidden{% endif %}">',
+      '{# Community Invitations -#} <div class="phone:mt-6 phone:px-3{% if community_invitations.is_empty() %} phone:hidden{% endif %}">',
     );
     expect(template).not.to.include("mb-10");
     expect(template).not.to.include('class="pt-12"');

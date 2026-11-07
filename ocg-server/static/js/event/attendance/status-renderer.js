@@ -4,7 +4,6 @@ import { isSuccessfulXHR } from "/static/js/common/utils.js";
 import {
   ATTENDANCE_CONTAINER_SELECTOR,
   getAttendanceControl,
-  getAttendanceControlLabel,
   getAttendanceMeta,
 } from "/static/js/event/attendance-dom.js";
 import {
@@ -142,9 +141,9 @@ const dispatchAttendanceCheckResponse = (container, event) => {
 };
 
 /**
- * Syncs the phone action bar with the rendered controls. A disabled control gives way to
- * its reason, and past or canceled events show no bar without a refund state or an action.
- * Off phones it writes nothing.
+ * Syncs the phone action bar with the rendered controls. A disabled control keeps its
+ * button and shows its reason beside it, and past or canceled events show no bar without
+ * a refund state or an action. Off phones it writes nothing.
  * @param {HTMLElement} container - Attendance container element
  * @param {XMLHttpRequest|{responseText: string, status: number}|null|undefined} xhr - Enrollment response
  * @returns {void}
@@ -165,8 +164,9 @@ const renderPhoneBarState = (container, xhr) => {
     hasJoinLink ||
     control?.disabled === false ||
     (checkoutCancelButton !== null && !isElementHidden(checkoutCancelButton));
-  // An expired offer has no title: its label already says why.
-  const reason = !hasJoinLink && control?.disabled ? control.title || getAttendanceControlLabel(control) : "";
+  // A disabled control keeps its button; its title (when present) replaces the summary
+  // details beside it. An expired offer has none: its own label already says why.
+  const reason = !hasJoinLink && control?.disabled ? control.title : "";
   const reasonLine = getAttendanceControl(container, "bar-reason");
 
   if (reasonLine) {

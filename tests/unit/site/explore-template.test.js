@@ -137,19 +137,22 @@ describe("site explore templates", () => {
     expect(section("Next", "End next button")).to.not.include("phone:bg-white");
   });
 
-  it("keeps the community on its own line of phone cards", async () => {
+  it("shows only the group name on phone cards", async () => {
     // Load both cards.
     const [eventCard, groupCard] = await Promise.all([
       loadTemplate("site/explore/events/event_card.html"),
       loadTemplate("site/explore/groups/group_card.html"),
     ]);
 
-    // Verify the community shows, and the separators and category do not.
-    const community = 'phone:block phone:truncate"';
-    expect(eventCard).to.include(community);
-    expect(groupCard).to.include(community);
+    // Verify the community, separators, and category are hidden on phones,
+    // leaving only the group name.
+    const hiddenCommunity = 'class="hidden text-primary-500 sm:inline phone:hidden"';
+    expect(eventCard).to.include(hiddenCommunity);
+    expect(groupCard).to.include(hiddenCommunity);
     expect(eventCard.match(/class="px-1 hidden sm:inline phone:hidden"/g)).to.have.length(2);
     expect(groupCard.match(/class="px-1 hidden sm:inline phone:hidden"/g)).to.have.length(1);
     expect(eventCard).to.include('class="hidden sm:inline phone:hidden">{{ event.group_category_name }}');
+    expect(eventCard).to.include('class="phone:min-w-0 phone:truncate"');
+    expect(groupCard).to.include('class="phone:min-w-0 phone:truncate"');
   });
 });

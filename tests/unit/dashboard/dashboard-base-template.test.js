@@ -30,7 +30,7 @@ describe("dashboard base template", () => {
 
     // Verify the drawer only wraps the dashboard menu and has no log out form.
     expect(template).to.include(
-      '<div class="flex flex-col h-full w-full py-5 pt-14 md:pt-24"> {% block menu -%} {% endblock menu -%} </div>',
+      '<div class="sheet-body flex flex-col h-full w-full py-5 pt-14 md:pt-24 phone:h-auto phone:pt-2"> {% block menu -%} {% endblock menu -%} </div>',
     );
     expect(template).not.to.include('action="/log-out"');
   });
@@ -89,7 +89,7 @@ describe("dashboard base template", () => {
     );
 
     // Verify both drawer buttons reach the 44px target.
-    expect(template.match(/md:hidden phone:size-11"/gu)).to.have.length(2);
+    expect(template.match(/md:hidden[^"]*phone:size-11"/gu)).to.have.length(2);
   });
 
   it("lets dashboards declare their loaded context on the layout", async () => {

@@ -84,7 +84,7 @@ describe("dashboard user check-in template", () => {
     // Verify the panel adopts the sheet primitive, with a title row that can be dragged.
     expect(template).to.include("sheet-panel phone:h-[calc(100dvh-4rem)]");
     expect(template).to.include("sheet-head sheet-grab");
-    expect(template).to.include("phone:max-w-[max(12rem,min(100%,calc(100dvh-21rem)))]");
+    expect(template).to.include("phone:max-w-[max(12rem,min(100%,calc(100dvh-26rem)))]");
     expect(template).to.include("phone:line-clamp-2 phone:wrap-anywhere");
   });
 

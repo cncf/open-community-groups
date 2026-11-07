@@ -262,8 +262,8 @@ describe("common header template", () => {
     expect(template).to.include('<a class="text-xs/6 text-stone-500 flex items-center mt-3 phone:min-h-11" href="https://openprofile.dev"');
 
     // Verify an empty name line takes its gap with it, on phones only.
-    expect(template).to.include('text-stone-700 mb-3 phone:has-[+:empty]:mb-0">{{ user.username|assigned_or("") }}');
-    expect(template).to.include('text-xs/4 truncate phone:empty:hidden">{{ user.name|assigned_or("") }}');
+    expect(template).to.include('text-stone-700 mb-3 phone:has-[+:empty]:mb-0 phone:text-base">{{ user.username|assigned_or("") }}');
+    expect(template).to.include('text-xs/4 truncate phone:empty:hidden phone:text-sm">{{ user.name|assigned_or("") }}');
   });
 
   it("lets the dashboard header host the fixed sheet on phones", async () => {

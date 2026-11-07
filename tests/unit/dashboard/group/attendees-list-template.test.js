@@ -63,7 +63,7 @@ describe("dashboard group attendees list template", () => {
       '{% include "dashboard/group/check_in_scanner_modal.html" -%}',
     );
     expect(scannerModal).to.include('id="group-check-in-scanner-modal"');
-    expect(scannerModal).to.include('title = "Scan Attendee Codes"');
+    expect(scannerModal).to.include('>Scan Attendee Codes</h3>');
   });
 
   it("groups enrollment views and exact statuses in one selector", async () => {

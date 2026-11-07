@@ -128,6 +128,26 @@ export default {
   <head>
     <meta charset="utf-8" />
     <script type="importmap">${importMap}</script>
+    <script>
+      // Browsers emit a benign "ResizeObserver loop" notification when an observer
+      // callback mutates layout (as the agenda badge clamp does). Suppress it here,
+      // before the Mocha harness installs window.onerror, so it is not reported as
+      // an uncaught test failure. Registered first and in the capture phase, this
+      // listener stops the notification from reaching that handler.
+      window.addEventListener(
+        "error",
+        (event) => {
+          if (
+            event.message === "ResizeObserver loop completed with undelivered notifications." ||
+            event.message === "ResizeObserver loop limit exceeded"
+          ) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+          }
+        },
+        true,
+      );
+    </script>
   </head>
   <body>
     <script type="module" src="${testFrameworkImport}"></script>

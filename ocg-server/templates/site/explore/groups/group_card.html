@@ -25,14 +25,16 @@
 {% endblock title_classes %}
 
 {% block preheader -%}
-  <span>
-    <span class="hidden text-primary-500 sm:inline phone:block phone:truncate">{{ group.community_display_name }}</span>
+  <span class="phone:flex phone:min-w-0 phone:items-baseline">
+    <span class="hidden text-primary-500 sm:inline phone:hidden">{{ group.community_display_name }}</span>
     <span class="px-1 hidden sm:inline phone:hidden">·</span>
-    {% if let Some(region) = &group.region -%}
-      {{- region.name -}}
-    {% else -%}
-      {{- group.category.name -}}
-    {% endif -%}
+    <span class="phone:min-w-0 phone:truncate">
+      {%- if let Some(region) = &group.region -%}
+        {{- region.name -}}
+      {% else -%}
+        {{- group.category.name -}}
+      {% endif -%}
+    </span>
   </span>
 {%- endblock preheader %}
 

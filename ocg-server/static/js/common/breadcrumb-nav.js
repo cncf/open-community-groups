@@ -108,6 +108,25 @@ export class BreadcrumbNav extends LitWrapper {
     this._isOpen = false;
   }
 
+  /**
+   * Replaces a banner whose image fails to load with a neutral placeholder of
+   * the same aspect ratio, so the card keeps a consistent banner height instead
+   * of showing a broken image. Applies to both the mobile and desktop banners.
+   * @param {Event} event - The image error event
+   */
+  _handleBannerError(event) {
+    const img = event.target;
+    const banner = img.parentElement;
+    if (!banner) {
+      return;
+    }
+    img.style.display = "none";
+    if (banner.dataset.bannerAspect) {
+      banner.style.aspectRatio = banner.dataset.bannerAspect;
+    }
+    banner.style.background = "linear-gradient(135deg, #f5f5f4, #e7e5e4)";
+  }
+
   _getCurrentItem() {
     return this.items.find((item) => item.current) || this.items[this.items.length - 1];
   }
@@ -227,9 +246,15 @@ export class BreadcrumbNav extends LitWrapper {
             this.bannerMobileUrl
               ? html`
                   <div
-                    class="aspect-[61/12] w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg phone:block phone:aspect-[1220/192]"
+                    class="w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg phone:block"
+                    data-banner-aspect="1220 / 192"
                   >
-                    <img src="${this.bannerMobileUrl}" class="w-full h-full object-cover" alt="Banner" />
+                    <img
+                      src="${this.bannerMobileUrl}"
+                      class="block w-full h-auto"
+                      alt="Banner"
+                      @error="${this._handleBannerError}"
+                    />
                   </div>
                 `
               : ""
@@ -238,9 +263,15 @@ export class BreadcrumbNav extends LitWrapper {
             this.bannerUrl
               ? html`
                   <div
-                    class="aspect-[607/48] w-full border-b border-stone-200 hidden sm:block overflow-hidden rounded-t-lg phone:hidden"
+                    class="w-full border-b border-stone-200 hidden sm:block overflow-hidden rounded-t-lg phone:hidden"
+                    data-banner-aspect="2428 / 192"
                   >
-                    <img src="${this.bannerUrl}" class="w-full h-full object-cover" alt="Banner" />
+                    <img
+                      src="${this.bannerUrl}"
+                      class="block w-full h-auto"
+                      alt="Banner"
+                      @error="${this._handleBannerError}"
+                    />
                   </div>
                 `
               : ""

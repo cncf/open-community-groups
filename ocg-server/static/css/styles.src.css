@@ -614,7 +614,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   .sheet-head > :not(button) {
-    @apply text-base! font-semibold uppercase text-stone-500!;
+    @apply text-sm! font-semibold uppercase text-stone-500!;
   }
 
   .sheet-head button:has(> .icon-close) > .icon-close {
@@ -787,7 +787,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .cta-bar:has(
       [data-attendance-role="loading-btn"]:not(.hidden),
       [data-attendance-role="signin-btn"]:enabled:not(.hidden),
-      [data-attendance-role="attend-btn"]:enabled:not(.hidden, [data-resume-url])
+      [data-attendance-role="attend-btn"]:enabled:not(.hidden, [data-resume-url]),
+      [data-attendance-role="attend-btn"]:disabled:not(.hidden),
+      [data-attendance-role="refund-btn"]:disabled:not(.hidden)
     )
     [data-attendance-role="bar-summary"] {
     @apply block;
@@ -798,7 +800,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
       :has(
         [data-attendance-role="loading-btn"]:not(.hidden),
         [data-attendance-role="signin-btn"]:enabled:not(.hidden),
-        [data-attendance-role="attend-btn"]:enabled:not(.hidden, [data-resume-url])
+        [data-attendance-role="attend-btn"]:enabled:not(.hidden, [data-resume-url]),
+        [data-attendance-role="attend-btn"]:disabled:not(.hidden),
+        [data-attendance-role="refund-btn"]:disabled:not(.hidden)
       )
     )
     > :is(button, a, span) {
@@ -809,9 +813,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     @apply w-full;
   }
 
-  /* A disabled control gives way to its reason, and Join meeting replaces Cancel and Refund. */
-  .cta-bar[data-bar-reason] > button:disabled:not([data-attendance-role="loading-btn"]),
-  .cta-bar[data-bar-reason] > span:has(> button:disabled),
+  /* A reason replaces the summary's details, and Join meeting replaces Cancel and Refund. */
   .cta-bar[data-bar-reason] [data-attendance-role="bar-summary"] > :not([data-attendance-role="bar-reason"]),
   .cta-bar:not([data-bar-reason]) [data-attendance-role="bar-reason"],
   .cta-bar:has([data-join-link]:not(.hidden)) > [data-attendance-role="leave-btn"],
@@ -1015,24 +1017,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
       --scanner-height: 100dvh;
     }
 
-    #group-check-in-scanner-modal .modal-panel {
-      @apply h-dvh max-h-none;
+    #group-check-in-scanner-modal .sheet-panel {
+      @apply grid h-(--scanner-height) max-h-none scroll-pt-16 grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-[4rem_auto_auto_1fr_auto] overflow-y-auto overscroll-contain rounded-none;
     }
 
-    #group-check-in-scanner-modal .modal-card {
-      @apply grid h-(--scanner-height) max-h-none scroll-pt-16 grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-[4rem_auto_auto_1fr_auto] overflow-y-auto overscroll-contain;
-    }
-
-    #group-check-in-scanner-modal .modal-card > :first-child {
+    #group-check-in-scanner-modal .sheet-head {
       @apply sticky top-0 z-10 col-span-2 h-16 bg-white py-0;
     }
 
-    #group-check-in-scanner-modal .modal-body,
-    #group-check-in-scanner-modal .modal-body > :first-child {
+    #group-check-in-scanner-modal [data-group-check-in-body],
+    #group-check-in-scanner-modal [data-group-check-in-body] > :first-child {
       @apply contents;
     }
 
-    #group-check-in-scanner-modal .modal-body > :first-child > :first-child {
+    #group-check-in-scanner-modal [data-group-check-in-body] > :first-child > :first-child {
       @apply col-start-2 row-start-2 min-w-0 px-3 py-2;
     }
 
@@ -1061,27 +1059,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
       @apply inset-auto top-1/2 left-1/2 size-[min(80cqw,80cqh)] max-h-none -translate-x-1/2 -translate-y-1/2;
     }
 
-    #group-check-in-scanner-modal .modal-body > :nth-child(2) {
+    #group-check-in-scanner-modal [data-group-check-in-body] > :nth-child(2) {
       @apply col-start-2 row-start-3 mx-3 mt-0;
     }
 
-    #group-check-in-scanner-modal .modal-body > :nth-child(3) {
+    #group-check-in-scanner-modal [data-group-check-in-body] > :nth-child(3) {
       @apply col-start-2 row-start-4 mx-3 my-2 grid-cols-1 content-start gap-2;
     }
 
     #group-check-in-scanner-modal footer {
       @apply col-start-2 row-start-5 p-3;
-    }
-  }
-
-  /* From 640px the scanner stays a modal, with a margin on every side. */
-  @media (orientation: landscape) and (width >= 40rem) {
-    #group-check-in-scanner-modal {
-      --scanner-height: calc(100dvh - 1rem);
-    }
-
-    #group-check-in-scanner-modal .modal-panel {
-      @apply py-2;
     }
   }
 }

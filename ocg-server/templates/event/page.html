@@ -85,8 +85,8 @@
           {# Main flex container -#}
           <div class="grid gap-x-6 gap-y-4 md:gap-y-0 md:grid-cols-[auto_minmax(0,1fr)_auto] phone:grid-cols-[auto_minmax(0,1fr)] phone:gap-x-3.5 phone:gap-y-3">
             {# Event logo -#}
-            <div class="relative hidden md:row-span-2 md:block phone:block">
-              {{ ui::logo(logo_url = event.logo_url, classes = "size-24 md:size-28 phone:size-[72px] phone:max-[360px]:size-14 phone:border-[3px]", size = 112) -}}
+            <div class="relative hidden md:row-span-2 md:block phone:block phone:self-center">
+              {{ ui::logo(logo_url = event.logo_url, classes = "size-24 md:size-28 phone:size-14 phone:min-w-14 phone:border-[3px]", size = 112) -}}
             </div>
             {# End event logo -#}
 
@@ -96,7 +96,7 @@
                 <div class="min-w-0 flex flex-col">
                   {# Group/Category legend -#}
                   <a href="/{{ event.community.name }}/group/{{ event.group.public_slug() }}"
-                     class="text-sm font-semibold tracking-wide uppercase text-stone-400 hover:underline lg:-mt-1 md:mb-0.5 phone:text-xs phone:text-stone-500 phone:-my-3 phone:py-3"
+                     class="text-sm font-semibold tracking-wide uppercase text-stone-400 hover:underline lg:-mt-1 md:mb-0.5 phone:block phone:truncate phone:text-xs phone:text-stone-500 phone:-my-3 phone:py-3"
                      hx-boost="true"
                      hx-target="body">{{ event.group.name }}</a>
                   {# End group/category legend -#}
@@ -107,7 +107,7 @@
                       {{ event.name|demoji }}
                     </h1>
                   {% else -%}
-                    <h1 class="text-[1.05rem]/6 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0 phone:text-[1.4rem]/[1.25] phone:line-clamp-none phone:break-words">
+                    <h1 class="text-[1.05rem]/6 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0 phone:text-[1.2rem]/[1.3] phone:line-clamp-none phone:break-words">
                       {{ event.name|demoji }}
                     </h1>
                   {% endif -%}
@@ -464,7 +464,8 @@
       <div class="modal-panel p-4 max-w-2xl phone:p-0">
         <div class="modal-card sheet-panel rounded-lg">
           <div class="sheet-head sheet-grab flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t phone:py-0">
-            <h3 id="cfs-modal-title" class="text-xl font-semibold text-stone-900 phone:min-w-0 phone:truncate">Submit a proposal</h3>
+            <h3 id="cfs-modal-title"
+                class="text-xl font-semibold text-stone-900 phone:min-w-0 phone:truncate">Submit a proposal</h3>
             <button id="close-cfs-modal"
                     type="button"
                     data-modal-toggle="cfs-modal"
@@ -595,7 +596,8 @@
     <div class="modal-panel p-4 max-w-2xl phone:p-0">
       <div class="modal-card sheet-panel rounded-lg">
         <div class="sheet-head sheet-grab flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t phone:py-0">
-          <h3 id="contact-modal-title" class="text-xl font-semibold text-stone-900 phone:min-w-0 phone:truncate">Contact organizers</h3>
+          <h3 id="contact-modal-title"
+              class="text-xl font-semibold text-stone-900 phone:min-w-0 phone:truncate">Contact organizers</h3>
           <button id="close-contact-modal"
                   type="button"
                   data-modal-toggle="contact-modal"
@@ -878,7 +880,8 @@
       {% endif -%}
       {{ badges::event_badge(kind = session.kind, extra_styles = Some("ms-2 align-middle not-phone:hidden")) -}}
     </div>
-    <h3 class="md:text-lg font-semibold text-stone-900">{{ session.name|demoji }}{{ badges::event_badge(kind = session.kind, extra_styles = Some("ms-2 align-middle phone:hidden")) -}}
+    <h3 class="md:text-lg font-semibold text-stone-900">
+      {{ session.name|demoji }}{{ badges::event_badge(kind = session.kind, extra_styles = Some("ms-2 align-middle phone:hidden")) -}}
     </h3>
     {% if !session.labels.is_empty() -%}
       <div class="mt-2 mb-3 flex flex-wrap gap-1.5 min-w-0" data-badge-clamp>

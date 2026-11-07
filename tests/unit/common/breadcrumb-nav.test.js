@@ -1,10 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/breadcrumb-nav.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("breadcrumb-nav", () => {
   useMountedElementsCleanup("breadcrumb-nav");
@@ -39,12 +36,8 @@ describe("breadcrumb-nav", () => {
 
     // Assert the current label and responsive banners are rendered.
     expect(element.textContent).to.include("CNCF Madrid");
-    expect(
-      element.querySelector('img[src="/img/banner-desktop.png"]'),
-    ).to.not.equal(null);
-    expect(
-      element.querySelector('img[src="/img/banner-mobile.png"]'),
-    ).to.not.equal(null);
+    expect(element.querySelector('img[src="/img/banner-desktop.png"]')).to.not.equal(null);
+    expect(element.querySelector('img[src="/img/banner-mobile.png"]')).to.not.equal(null);
   });
 
   it("falls back to the last breadcrumb item when none is marked current", async () => {
@@ -77,9 +70,7 @@ describe("breadcrumb-nav", () => {
 
     // Non-link breadcrumbs render as plain text with the current marker.
     expect(element.querySelector("ol a")).to.equal(null);
-    expect(
-      element.querySelector('li[aria-current="page"]').textContent,
-    ).to.include("KubeCon");
+    expect(element.querySelector('li[aria-current="page"]').textContent).to.include("KubeCon");
   });
 
   it("names the dropdown listbox on phones", async () => {
@@ -92,11 +83,9 @@ describe("breadcrumb-nav", () => {
     });
 
     // Verify the listbox has an accessible name.
-    expect(
-      element
-        .querySelector("[data-breadcrumb-dropdown]")
-        .getAttribute("aria-label"),
-    ).to.equal("Breadcrumb links");
+    expect(element.querySelector("[data-breadcrumb-dropdown]").getAttribute("aria-label")).to.equal(
+      "Breadcrumb links",
+    );
   });
 
   it("leaves the dropdown listbox unnamed off phones", async () => {
@@ -109,11 +98,7 @@ describe("breadcrumb-nav", () => {
     });
 
     // Verify no attribute reaches narrow fine-pointer windows.
-    expect(
-      element
-        .querySelector("[data-breadcrumb-dropdown]")
-        .hasAttribute("aria-label"),
-    ).to.equal(false);
+    expect(element.querySelector("[data-breadcrumb-dropdown]").hasAttribute("aria-label")).to.equal(false);
   });
 
   it("hides the closed dropdown from phone focus and screen readers", async () => {
@@ -143,30 +128,69 @@ describe("breadcrumb-nav", () => {
     });
 
     // Collect the elements that swap at the phone breakpoint.
-    const mobileBanner = element.querySelector(
-      'img[src="/img/banner-mobile.png"]',
-    ).parentElement;
-    const desktopBanner = element.querySelector(
-      'img[src="/img/banner-desktop.png"]',
-    ).parentElement;
-    const dropdownBlock = element.querySelector(
-      "[data-breadcrumb-trigger]",
-    ).parentElement;
+    const mobileBanner = element.querySelector('img[src="/img/banner-mobile.png"]').parentElement;
+    const desktopBanner = element.querySelector('img[src="/img/banner-desktop.png"]').parentElement;
+    const dropdownBlock = element.querySelector("[data-breadcrumb-trigger]").parentElement;
     const desktopList = element.querySelector("nav ol");
 
     // Verify phones get the uncropped mobile banner and the dropdown at every width.
     expect(mobileBanner.classList.contains("phone:block")).to.equal(true);
-    expect(mobileBanner.classList.contains("phone:aspect-[1220/192]")).to.equal(
-      true,
-    );
     expect(desktopBanner.classList.contains("phone:hidden")).to.equal(true);
     expect(dropdownBlock.classList.contains("phone:block")).to.equal(true);
     expect(desktopList.classList.contains("phone:hidden")).to.equal(true);
 
     // Verify the existing tokens stay for non-phone widths.
-    expect(mobileBanner.classList.contains("aspect-[61/12]")).to.equal(true);
     expect(mobileBanner.classList.contains("sm:hidden")).to.equal(true);
     expect(desktopBanner.classList.contains("sm:block")).to.equal(true);
+
+    // Verify banners keep their natural aspect ratio: full width, auto height,
+    // and no forced aspect-ratio or object-cover cropping.
+    const mobileImg = mobileBanner.querySelector("img");
+    const desktopImg = desktopBanner.querySelector("img");
+    for (const banner of [mobileBanner, desktopBanner]) {
+      for (const token of banner.classList) {
+        expect(token.startsWith("aspect-[")).to.equal(false);
+      }
+    }
+    for (const img of [mobileImg, desktopImg]) {
+      expect(img.classList.contains("w-full")).to.equal(true);
+      expect(img.classList.contains("h-auto")).to.equal(true);
+      expect(img.classList.contains("object-cover")).to.equal(false);
+    }
+  });
+
+  it("shows a placeholder when a banner image fails to load", async () => {
+    // Render the breadcrumb navigation with both responsive banners.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+      bannerUrl: "/img/banner-desktop.png",
+      bannerMobileUrl: "/img/banner-mobile.png",
+    });
+
+    const mobileImg = element.querySelector('img[src="/img/banner-mobile.png"]');
+    const desktopImg = element.querySelector('img[src="/img/banner-desktop.png"]');
+
+    // Each banner fails to load, so the broken image is replaced by a
+    // placeholder that keeps the banner's aspect ratio and height.
+    for (const [img, aspect] of [
+      [mobileImg, "1220 / 192"],
+      [desktopImg, "2428 / 192"],
+    ]) {
+      const banner = img.parentElement;
+
+      // The banner is visible with no placeholder before the load failure.
+      expect(banner.style.display).to.not.equal("none");
+      expect(banner.style.aspectRatio).to.equal("");
+
+      img.dispatchEvent(new Event("error"));
+
+      // The broken image is hidden but the banner stays visible as a
+      // neutral placeholder at the banner's aspect ratio.
+      expect(img.style.display).to.equal("none");
+      expect(banner.style.display).to.not.equal("none");
+      expect(banner.style.aspectRatio.replace(/\s/g, "")).to.equal(aspect.replace(/\s/g, ""));
+      expect(banner.style.background).to.contain("linear-gradient");
+    }
   });
 
   it("closes the mobile dropdown on outside clicks and escape", async () => {

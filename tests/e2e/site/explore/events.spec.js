@@ -1435,6 +1435,24 @@ test.describe("site explore events page", () => {
     await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
   });
 
+  test("closes the Group dropdown once an option is picked @mobile", async ({ page }) => {
+    // Open the sheet with a community, which brings the Group filter.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    const sheet = await openFilterSheet(page);
+    const groupSearch = sheet.getByRole("combobox", { name: "Group filter" });
+    await groupSearch.click();
+    await expect(groupSearch).toHaveAttribute("aria-expanded", "true");
+
+    // Pick the first option.
+    const firstOption = sheet.getByRole("option").first();
+    const optionName = (await firstOption.innerText()).trim();
+    await firstOption.click();
+
+    // Verify the pick closes the dropdown and keeps the chosen group.
+    await expect(groupSearch).toHaveAttribute("aria-expanded", "false");
+    await expect(sheet.getByRole("button", { name: `Remove ${optionName}` })).toBeVisible();
+  });
+
   test("keeps the sheet's title and footer in place when a low option takes focus @mobile", async ({
     page,
   }) => {

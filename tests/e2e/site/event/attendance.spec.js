@@ -1521,7 +1521,7 @@ test.describe("event action bar @mobile", () => {
     expect(Math.round(panelBox.x + panelBox.width)).toBe(Math.round(summaryBox.x + summaryBox.width));
   });
 
-  test("an expired offer shows its label as the reason", async ({ member1Page, owned }) => {
+  test("an expired offer keeps its disabled button beside the summary", async ({ member1Page, owned }) => {
     // Record an expired organizer invitation for the member on an owned event.
     const event = owned.event({ groupId: TEST_GROUP_IDS.community1.alpha });
     setupTicketOffer({
@@ -1533,14 +1533,17 @@ test.describe("event action bar @mobile", () => {
     });
     await navigateToEvent(member1Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, event.slug);
 
-    // Verify plain text replaces the disabled button, as for every other disabled state.
-    const reason = member1Page.locator('[data-attendance-role="bar-reason"]');
-    await expect(reason).toHaveText("Ticket offer expired");
-    await expect(reason).toBeVisible();
-    await expect(getAttendButton(member1Page)).toBeHidden();
+    // Verify the disabled button stays, with no reason line because its label already says why.
+    const attend = getAttendButton(member1Page);
+    await expect(attend).toBeVisible();
+    await expect(attend).toBeDisabled();
+    await expect(attend).toContainText("Ticket offer expired");
+    await expect(getBarSummary(member1Page)).toBeVisible();
+    await expect(member1Page.locator('[data-attendance-role="bar-reason"]')).toBeHidden();
+    await expectBarAtBottom(member1Page);
   });
 
-  test("a disabled control gives way to its reason at 320", async ({ pending2Page }) => {
+  test("a disabled control keeps its button and shows its reason at 320", async ({ pending2Page }) => {
     // Load the approval event with a seeded rejected request on the narrowest phone.
     await pending2Page.setViewportSize({ width: 320, height: 640 });
     await navigateToEvent(
@@ -1550,17 +1553,19 @@ test.describe("event action bar @mobile", () => {
       TEST_APPROVAL_REQUIRED_EVENT.slug,
     );
 
-    // Verify the reason replaces the control, whole.
+    // Verify the disabled button stays on the right while its title shows beside it.
+    const attend = getAttendButton(pending2Page);
+    await expect(attend).toBeVisible();
+    await expect(attend).toBeDisabled();
+    await expect(attend).toContainText("Request rejected");
     const reason = pending2Page.locator('[data-attendance-role="bar-reason"]');
     await expect(reason).toHaveText("Your invitation request was rejected.");
     await expect(reason).toBeVisible();
-    await expect(getAttendButton(pending2Page)).toBeHidden();
     await expectBarAtBottom(pending2Page);
-    await expect.poll(() => reason.evaluate((node) => node.scrollHeight <= node.clientHeight)).toBe(true);
   });
 
-  test("the longest disabled title fits two lines at 320", async ({ page }) => {
-    // Load an event and write the longest fixed title into the reason line.
+  test("the longest disabled title keeps the bar height at 320", async ({ page }) => {
+    // Force the disabled split layout on the narrowest phone.
     await page.setViewportSize({ width: 320, height: 640 });
     await navigateToEvent(
       page,
@@ -1574,12 +1579,25 @@ test.describe("event action bar @mobile", () => {
       button.disabled = true;
       button.closest("[data-attendance-container]").toggleAttribute("data-bar-reason", true);
     });
+
+    // Measure the bar with a one-line reason first.
+    await reason.evaluate((node) => {
+      node.textContent = "Short reason.";
+    });
+    const shortHeight = (await getAttendanceContainer(page).boundingBox()).height;
+
+    // Swap in the longest fixed title.
     await reason.evaluate((node) => {
       node.textContent = "You cannot change attendance because the event has already started.";
     });
 
-    // Verify nothing is clipped.
-    expect(await reason.evaluate((node) => node.scrollHeight <= node.clientHeight)).toBe(true);
+    // Verify the reason clamps to two lines and the bar height never grows.
+    const lines = await reason.evaluate((node) => {
+      const lineHeight = parseFloat(window.getComputedStyle(node).lineHeight);
+      return Math.round(node.clientHeight / lineHeight);
+    });
+    expect(lines).toBeLessThanOrEqual(2);
+    expect((await getAttendanceContainer(page).boundingBox()).height).toBe(shortHeight);
   });
 
   test("the summary falls back to the kind when no count is known", async ({ page }) => {
@@ -1646,7 +1664,7 @@ test.describe("event action bar @mobile", () => {
     }
   });
 
-  test("a refund state shows as text in the bar", async ({ member1Page }) => {
+  test("a refund state keeps its disabled button beside the reason", async ({ member1Page }) => {
     // Load the refund-ready event with a pending request.
     await navigateToEvent(
       member1Page,
@@ -1655,11 +1673,14 @@ test.describe("event action bar @mobile", () => {
       TEST_PAYMENT_EVENT_SLUGS.refunds,
     );
 
-    // Verify the disabled control gives way to its title and the bar stays.
+    // Verify the disabled refund button stays while its title shows beside it.
+    const refund = getRefundButton(member1Page);
+    await expect(refund).toBeVisible();
+    await expect(refund).toBeDisabled();
+    await expect(refund).toContainText("Refund requested");
     const reason = member1Page.locator('[data-attendance-role="bar-reason"]');
     await expect(reason).toHaveText("Your refund request is waiting for organizer review.");
     await expect(reason).toBeVisible();
-    await expect(getRefundButton(member1Page)).toBeHidden();
     await expectBarAtBottom(member1Page);
   });
 

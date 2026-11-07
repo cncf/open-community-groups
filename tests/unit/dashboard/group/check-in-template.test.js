@@ -82,19 +82,22 @@ describe("dashboard group check-in template", () => {
       '{% import "macros/dashboard.html" as dashboard -%}',
     );
     expect(template).to.include(
-      'class="fixed inset-0 z-[1000] hidden h-full max-h-full w-full items-center justify-center overflow-x-hidden overflow-y-auto flex"',
+      'class="fixed inset-0 z-[1000] hidden items-center justify-center p-3 sm:p-6 flex"',
     );
     expect(template).to.include(
-      '<div class="modal-panel h-full max-h-full max-w-2xl p-4 sm:h-auto sm:max-h-[90vh] phone:max-sm:p-0 phone:max-sm:rounded-none">',
+      '<div class="relative z-10 flex h-[calc(100dvh-1.5rem)] w-full max-w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:h-auto sm:max-h-[calc(100dvh-3rem)] sm:max-w-2xl sheet-panel phone:h-[calc(100dvh-4rem)]">',
     );
     expect(template).to.include(
-      '<div class="modal-card h-full max-h-full rounded-lg sm:h-auto sm:max-h-[calc(90vh-2rem)] phone:max-sm:p-0 phone:max-sm:rounded-none phone:[&_button:has(>.icon-close)]:-m-1.5 phone:[&_button:has(>.icon-close)]:size-11">',
+      '<div class="flex shrink-0 items-center justify-between gap-4 border-b border-stone-200 px-5 py-4 sm:px-6 sm:py-5 sheet-head sheet-grab phone:py-0">',
     );
     expect(template).to.include(
-      '<div class="modal-body flex-1 p-4 md:p-6 phone:max-sm:flex phone:max-sm:flex-col phone:max-sm:p-0">',
+      '<h3 id="group-check-in-scanner-title" class="text-xl font-semibold text-stone-900 phone:min-w-0 phone:truncate">Scan Attendee Codes</h3>',
     );
     expect(template).to.include(
-      '{{ dashboard::modal_header(title_id = "group-check-in-scanner-title", title = "Scan Attendee Codes", close_attrs = "data-group-check-in-close") -}}',
+      '{{ dashboard::modal_close_button(attrs = "data-group-check-in-close") -}}',
+    );
+    expect(template).to.include(
+      '<div class="min-h-0 flex-1 overflow-y-auto p-4 md:p-6 phone:max-sm:flex phone:max-sm:flex-col phone:max-sm:p-0" data-group-check-in-body>',
     );
     expect(template).to.include('id="group-check-in-event-name"');
     expect(template).to.include('id="group-check-in-event-date"');
@@ -168,8 +171,9 @@ describe("dashboard group check-in template", () => {
       ),
     );
 
-    // Verify the header close grows into its padding, and both switches reach 44px.
-    expect(template).to.include("phone:[&_button:has(>.icon-close)]:size-11");
+    // Verify the close button rides the draggable sheet head (sized to 44px by the sheet
+    // styles), and both switches reach 44px.
+    expect(template).to.include("sheet-head sheet-grab");
     expect(template).to.include(
       '<label class="inline-flex cursor-pointer items-center has-[:disabled]:cursor-not-allowed phone:min-h-11">',
     );

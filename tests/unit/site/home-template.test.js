@@ -81,19 +81,19 @@ describe("site home template", () => {
     expect(page).to.include('aria-label="See all latest groups added"');
   });
 
-  it("shows the community on its own line on phones", async () => {
+  it("shows only the group name on phones", async () => {
     // Load both home cards.
     const cards = await Promise.all([
       loadTemplate("site/home/event_card.html"),
       loadTemplate("site/home/group_card.html"),
     ]);
 
-    // Verify each card shows the name and hides only the dot.
+    // Verify each card hides the community and its separator on phones,
+    // leaving only the group name.
     for (const card of cards) {
-      expect(card).to.include(
-        'class="hidden text-primary-500 sm:inline phone:block phone:truncate"',
-      );
+      expect(card).to.include('class="hidden text-primary-500 sm:inline phone:hidden"');
       expect(card).to.include('class="px-1 hidden sm:inline phone:hidden"');
+      expect(card).to.include('class="phone:min-w-0 phone:truncate"');
     }
   });
 });
