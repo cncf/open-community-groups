@@ -630,8 +630,8 @@ test.describe("community dashboard groups view", () => {
     // Verify the empty result message is shown.
     await expect(
       dashboardContent
-        .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
-        .filter({ hasText: "No groups found matching your search." })
+        .getByText("No groups found matching your search.", { exact: true })
+        .filter({ visible: true })
         .first(),
     ).toBeVisible();
     await expect(dashboardContent).not.toHaveClass(/htmx-settling/);
@@ -654,8 +654,8 @@ test.describe("community dashboard groups view", () => {
     await expect(adminCommunityPage).toHaveURL(/\/dashboard\/community\?tab=groups(?:&limit=50&offset=0)?$/);
     await expect(
       dashboardContent
-        .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
-        .filter({ hasText: "No groups found matching your search." }),
+        .getByText("No groups found matching your search.", { exact: true })
+        .filter({ visible: true }),
     ).toHaveCount(0);
     await expect(dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" })).toBeVisible();
     await expect(dashboardContent.locator("tr", { hasText: "Observability Guild" })).toBeVisible();

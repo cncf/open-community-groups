@@ -162,7 +162,7 @@
       <label for="refund-event"
              class="text-sm font-semibold text-nowrap text-stone-900">Event</label>
       <select id="refund-event"
-              class="block h-10 w-72 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500"
+              class="block h-10 w-72 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:ring-0 focus:hover:border-primary-500"
               name="event_id">
         <option value="">All events</option>
         {% for event in events -%}
@@ -175,7 +175,7 @@
       <label for="refund-view"
              class="text-sm font-semibold text-nowrap text-stone-900">Refund status</label>
       <select id="refund-view"
-              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500"
+              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:ring-0 focus:hover:border-primary-500"
               name="view">
         {% for option in [
           crate::templates::dashboard::group::refunds::RefundsView::Active,

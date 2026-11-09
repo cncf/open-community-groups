@@ -241,11 +241,11 @@ const handleSubmit = (event) => {
 };
 
 /**
- * Refreshes the user dashboard invitations section.
+ * Reloads the dashboard layout so the invitations list and the menu count refresh.
  * @returns {void}
  */
 const refreshInvitations = () => {
-  window.htmx?.trigger?.("#dashboard-content", "refresh-user-dashboard-content");
+  window.htmx?.trigger?.(document.body, "refresh-user-invitations");
 };
 
 /**

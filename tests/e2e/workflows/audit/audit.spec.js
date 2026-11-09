@@ -357,8 +357,9 @@ const expectAuditRow = async (
 ) => {
   await navigateToPath(page, path);
   const dashboardContent = page.locator("#dashboard-content");
-  const detailsCard = dashboardContent.locator(`#audit-log-details-${auditLogId}`);
-  const auditRow = detailsCard.locator("xpath=ancestor::tr[contains(@class, 'audit-log-row')]");
+  // The row filter needs a page-rooted locator, because `has` resolves it inside each row.
+  const detailsCard = page.locator(`#audit-log-details-${auditLogId}`);
+  const auditRow = dashboardContent.locator("tr.audit-log-row", { has: detailsCard });
 
   await expect(dashboardContent.getByText("Logs", { exact: true })).toBeVisible();
   await expect(detailsCard, `new ${action} audit details ${auditLogId}`).toBeAttached();

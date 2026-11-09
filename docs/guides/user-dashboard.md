@@ -302,6 +302,10 @@ This tab contains community and group team invitations plus active event
 admission offers. Event offers can come from an organizer invitation, an
 approved ticket request, or a ticket waiting list.
 
+The Invitations menu item shows how many team invitations and event offers
+are waiting for you, and the number updates after you accept, reject, claim,
+or decline one.
+
 Community and group invitation rows show the role granted after acceptance.
 Pending team invitations do not grant dashboard access.
 

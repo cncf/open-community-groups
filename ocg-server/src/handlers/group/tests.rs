@@ -490,13 +490,19 @@ fn expect_group_page_reads(
     db.expect_get_group_upcoming_events()
         .times(1)
         .withf(move |id, group_slug, event_kinds, limit| {
-            *id == community_id && group_slug == slug && *event_kinds == kinds && *limit == 9
+            *id == community_id
+                && group_slug == slug
+                && *event_kinds == kinds
+                && *limit == super::GROUP_PAGE_EVENTS_LIMIT
         })
         .returning(move |_, _, _, _| Ok(upcoming.clone()));
     db.expect_get_group_past_events()
         .times(1)
         .withf(move |id, group_slug, event_kinds, limit| {
-            *id == community_id && group_slug == slug && *event_kinds == past_kinds && *limit == 9
+            *id == community_id
+                && group_slug == slug
+                && *event_kinds == past_kinds
+                && *limit == super::GROUP_PAGE_EVENTS_LIMIT
         })
         .returning(move |_, _, _, _| Ok(past.clone()));
 }

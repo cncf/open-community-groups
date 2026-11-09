@@ -5,12 +5,15 @@ returns json as $$
     from (
         select
             ct.community_id,
+            c.display_name as community_display_name,
             c.name as community_name,
             ct.role,
+            cr.display_name as role_display_name,
 
             epoch_seconds(ct.created_at) as created_at
         from community_team ct
         join community c using (community_id)
+        join community_role cr on cr.community_role_id = ct.role
         where ct.user_id = p_user_id
           and ct.accepted = false
         order by ct.created_at desc

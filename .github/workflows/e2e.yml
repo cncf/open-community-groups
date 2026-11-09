@@ -244,7 +244,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-  # The Firefox and WebKit smoke projects on fresh isolated stacks, archived for merge-reports.
+  # The Firefox, WebKit and WebKit mobile smoke projects on fresh isolated stacks, archived for merge-reports.
   smoke:
     name: Smoke (Firefox and WebKit)
     needs:
@@ -337,7 +337,7 @@ jobs:
           OCG_E2E_PARALLEL_WORKERS: "2"
           OCG_E2E_RUN_ARCHIVE: ${{ runner.temp }}/e2e-runs/smoke
           TMPDIR: ${{ runner.temp }}
-        run: just e2e-tests-parallel --project=firefox-smoke --project=webkit-smoke
+        run: just e2e-tests-parallel --project=firefox-smoke --project=webkit-smoke --project=webkit-mobile-smoke
 
       - name: Upload run archive
         if: ${{ !cancelled() }}

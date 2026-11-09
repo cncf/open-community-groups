@@ -8,6 +8,7 @@ import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.
 import { formatMinorUnitsForDisplay } from "/static/js/dashboard/event/ticketing/currency.js";
 import {
   ATTEND_EVENT_LABEL,
+  ATTENDANCE_CHECK_FAILED_MESSAGE,
   CANCEL_ATTENDANCE_LABEL,
   CANCEL_INVITATION_REQUEST_LABEL,
   CANCELED_EVENT_TITLE,
@@ -19,6 +20,7 @@ import {
   REQUEST_INVITATION_LABEL,
   REQUEST_PENDING_LABEL,
   REQUEST_TICKET_LABEL,
+  RETRY_LABEL,
 } from "/static/js/event/attendance-copy.js";
 import {
   getAttendanceControl,
@@ -56,7 +58,7 @@ const INVITATION_PENDING_BAR_REASON = "Awaiting organizer approval.";
 const INVITATION_PENDING_TITLE = "Your invitation request is waiting for organizer review.";
 const INVITATION_REJECTED_TITLE = "Your invitation request was rejected.";
 const NO_CAPACITY_TITLE = "This event has no attendee capacity.";
-const PAST_EVENT_TITLE = "You cannot change attendance because the event has already started.";
+const PAST_EVENT_TITLE = "You cannot change attendance because the event has ended.";
 const REFUND_CLOSED_TITLE = "Refunds are no longer available for this ticket.";
 const REFUND_PENDING_BAR_REASON = "Awaiting organizer review.";
 const REFUND_PENDING_TITLE = "Your refund request is waiting for organizer review.";
@@ -237,6 +239,29 @@ export const showAdmissionOfferState = (container, meta, response) => {
       resumeUrl: offerUrl,
     }),
   );
+};
+
+/**
+ * Shows the load error and a Retry control when the registration check fails.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{attendeeMeetingAccessOpen: boolean, canceled: boolean}} meta - Attendance metadata
+ * @returns {void}
+ */
+export const showAttendanceCheckFailedState = (container, meta) => {
+  showPrimaryAttendanceState(container, meta, "retryButton", { label: RETRY_LABEL });
+  setAttendanceCheckStatus(container, ATTENDANCE_CHECK_FAILED_MESSAGE);
+};
+
+/**
+ * Shows the loading control while the registration check runs again.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {void}
+ */
+export const showAttendanceCheckLoading = (container) => {
+  const { loadingButton } = getPrimaryControls(container);
+
+  resetPrimaryControls(container);
+  setElementHidden(loadingButton, false);
 };
 
 /**
@@ -1048,6 +1073,7 @@ const resetPrimaryControls = (container) => {
     checkoutResumeButton,
     leaveButton,
     refundButton,
+    retryButton,
   } = getPrimaryControls(container);
   const refundRejectionReason = getAttendanceControl(container, "refund-rejection-reason");
   const refundRejectionTrigger = getAttendanceControl(container, "refund-rejection-trigger");
@@ -1056,11 +1082,13 @@ const resetPrimaryControls = (container) => {
   setElementHidden(actionsMenu, false);
   hideControl(loadingButton);
   hideControl(signinButton);
+  hideControl(retryButton);
   hideControl(attendButton);
   hideControl(checkoutCancelButton);
   hideControl(checkoutResumeButton);
   hideControl(leaveButton);
   hideControl(refundButton);
+  setAttendanceCheckStatus(container, "");
   if (refundRejectionReason instanceof HTMLElement) {
     refundRejectionReason.textContent = "";
     setElementHidden(refundRejectionReason, true);
@@ -1079,6 +1107,19 @@ const resetPrimaryControls = (container) => {
   }
   if (actionsMenu instanceof HTMLDetailsElement) {
     actionsMenu.open = false;
+  }
+};
+
+/**
+ * Writes the registration check status announced beside the primary control.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {string} message - Status text, or an empty string to clear it
+ * @returns {void}
+ */
+const setAttendanceCheckStatus = (container, message) => {
+  const status = getAttendanceControl(container, "check-status");
+  if (status) {
+    status.textContent = message;
   }
 };
 
@@ -1134,7 +1175,7 @@ const setRefundLoadingState = (container, isLoading) => {
  * Shows a single primary attendance control and updates meeting details.
  * @param {HTMLElement} container - Attendance container element
  * @param {object} meta - Attendance metadata
- * @param {"attendButton"|"checkoutCancelButton"|"leaveButton"|"refundButton"} controlName - Primary control key
+ * @param {"attendButton"|"checkoutCancelButton"|"leaveButton"|"refundButton"|"retryButton"} controlName - Primary control key
  * @param {object} state - Render state
  * @param {boolean} [isAttendee=false] Whether meeting access should be attendee-scoped
  */

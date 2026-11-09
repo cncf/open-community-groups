@@ -12,40 +12,6 @@ use crate::{
 };
 
 #[tokio::test]
-async fn test_list_page_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let ids = DashboardIds::new();
-    let community_invitations = vec![sample_community_invitation(community_id)];
-    let event_invitations = vec![sample_event_invitation(Uuid::new_v4())];
-    let group_invitations = vec![sample_group_invitation(Uuid::new_v4())];
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_session(&mut db, &ids);
-    db.expect_list_user_community_team_invitations()
-        .times(1)
-        .withf(move |uid| *uid == ids.user_id)
-        .returning(move |_| Ok(community_invitations.clone()));
-    db.expect_list_user_event_invitations()
-        .times(1)
-        .withf(move |uid| *uid == ids.user_id)
-        .returning(move |_| Ok(event_invitations.clone()));
-    db.expect_list_user_group_team_invitations()
-        .times(1)
-        .withf(move |uid| *uid == ids.user_id)
-        .returning(move |_| Ok(group_invitations.clone()));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db).build().await;
-    let request = get_request("/dashboard/user/invitations", ids.session_id);
-    let (parts, bytes) = send(router, request).await;
-
-    // Check response matches expectations
-    assert_html_response(&parts, &bytes, StatusCode::OK);
-}
-
-#[tokio::test]
 async fn test_accept_community_team_invitation_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

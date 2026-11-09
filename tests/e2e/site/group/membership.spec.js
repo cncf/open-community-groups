@@ -7,7 +7,13 @@ import {
   TEST_GROUP_SLUGS,
   TEST_USER_IDS,
 } from "../../seed.js";
-import { confirmAlert, navigateToGroup, waitForActionResponse } from "../../utils.js";
+import {
+  confirmAlert,
+  dismissAlert,
+  expectFocusIndicator,
+  navigateToGroup,
+  waitForActionResponse,
+} from "../../utils.js";
 
 const groupId = TEST_GROUP_IDS.community1.alpha;
 
@@ -68,6 +74,48 @@ test.describe("group membership", () => {
     await leaveGroup(member2Page);
   });
 
+  test("keyboard join and leave keep focus on the membership action @smoke", async ({
+    member2Page,
+    owned,
+  }) => {
+    // Remove the membership even if the flow fails before leaving.
+    owned.defer(() => cleanupGroupMember({ groupId, userId: TEST_USER_IDS.member2 }));
+
+    // Load the group page as a non-member.
+    await navigateToGroup(member2Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+    const joinButton = getJoinButton(member2Page);
+    const leaveButton = getLeaveButton(member2Page);
+    const popup = member2Page.locator(".swal2-popup");
+    await expect(joinButton).toBeVisible();
+
+    // Join with the keyboard and wait for the re-checked leave action.
+    await joinButton.focus();
+    await waitForActionResponse(member2Page, () => member2Page.keyboard.press("Enter"), {
+      method: "POST",
+      urlIncludes: `/group/${groupId}/join`,
+    });
+    await expect(popup).toContainText("You have successfully joined this group.");
+    await expect(leaveButton).toBeVisible();
+
+    // Dismissing the success alert with the keyboard focuses the leave action.
+    await expectFocusIndicator(leaveButton, () => member2Page.keyboard.press("Enter"));
+    await expect(popup).toBeHidden();
+
+    // Leave with the keyboard, confirming the prompt with the keyboard too.
+    await member2Page.keyboard.press("Enter");
+    await expect(popup).toContainText("Are you sure you want to leave this group?");
+    await waitForActionResponse(member2Page, () => member2Page.keyboard.press("Enter"), {
+      method: "DELETE",
+      urlIncludes: `/group/${groupId}/leave`,
+    });
+    await expect(popup).toContainText("You have successfully left this group.");
+    await expect(joinButton).toBeVisible();
+
+    // Dismissing the success alert with the keyboard focuses the join action.
+    await expectFocusIndicator(joinButton, () => member2Page.keyboard.press("Enter"));
+    await expect(popup).toBeHidden();
+  });
+
   test("failed group join restores the action for retry", async ({ member2Page }) => {
     // Load the group as a non-member before intercepting join.
     await navigateToGroup(member2Page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
@@ -99,6 +147,12 @@ test.describe("group membership", () => {
     await expect(joinButton).toBeVisible();
     await expect(getMembershipContainer(member2Page).locator("#loading-btn")).toBeHidden();
     await expect(getLeaveButton(member2Page)).toBeHidden();
+
+    // Dismissing the error returns focus to the restored join action.
+    await dismissAlert(member2Page, {
+      message: "Something went wrong joining this group. Please try again later.",
+    });
+    await expect(joinButton).toBeFocused();
   });
 
   test("failed group leave preserves membership and restores the action", async ({ member2Page, owned }) => {

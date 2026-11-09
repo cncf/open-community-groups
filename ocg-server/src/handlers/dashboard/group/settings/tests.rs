@@ -15,6 +15,7 @@ use crate::{
         AutomaticTaxReadiness, AutomaticTaxReadinessError, FiscalSponsorReadinessError,
         MockPaymentsManager,
     },
+    test_util::{element_html_with, opening_tag_with},
     types::{
         dashboard::community::groups::GroupInput,
         group::{GroupFull, GroupParentOption},
@@ -129,13 +130,7 @@ async fn test_update_page_selects_current_inactive_parent_option() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    let option_start = body
-        .find(&format!("value=\"{parent_group_id}\""))
-        .expect("parent option should render");
-    let option_end = body[option_start..]
-        .find("</option>")
-        .expect("parent option should close");
-    let option_html = &body[option_start..option_start + option_end];
+    let option_html = element_html_with(&body, &format!(r#"value="{parent_group_id}""#));
     assert!(option_html.contains("selected"));
     assert!(option_html.contains("(current, no longer selectable)"));
 }
@@ -271,7 +266,7 @@ async fn test_update_page_renders_external_payee_legal_name_for_enabled_group() 
 
     // Check the editable legal name input renders with the stored value
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    let input = external_payee_input(&body);
+    let input = opening_tag_with(&body, r#"id="external_payments_seller_display_name""#);
     assert!(input.contains("value=\"External Payee Co\""));
     assert!(!input.contains("disabled"));
 }
@@ -303,7 +298,7 @@ async fn test_update_page_keeps_external_payee_input_editable_for_delisted_enabl
     // Check the legal name stays editable while the toggle is locked on
     assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("name=\"external_payments_enabled\""));
-    let input = external_payee_input(&body);
+    let input = opening_tag_with(&body, r#"id="external_payments_seller_display_name""#);
     assert!(!input.contains("value="));
     assert!(!input.contains("disabled"));
 }
@@ -332,7 +327,7 @@ async fn test_update_page_disables_external_payee_input_for_ineligible_opted_out
 
     // Check the legal name input is disabled alongside the toggle
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    let input = external_payee_input(&body);
+    let input = opening_tag_with(&body, r#"id="external_payments_seller_display_name""#);
     assert!(input.contains("disabled"));
 }
 
@@ -359,7 +354,7 @@ async fn test_update_page_renders_external_payments_section_for_enabled_group_wi
     // Check the section renders so the missing legal name can be saved
     assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("name=\"external_payments_enabled\""));
-    let input = external_payee_input(&body);
+    let input = opening_tag_with(&body, r#"id="external_payments_seller_display_name""#);
     assert!(!input.contains("disabled"));
 }
 
@@ -1143,15 +1138,6 @@ fn expect_validate_fiscal_sponsor(
                 && automatic_tax_jurisdiction.is_none()
         })
         .return_once(move |_, _| Box::pin(async move { result }));
-}
-
-/// Returns the rendered external payee legal name input tag.
-fn external_payee_input(body: &str) -> &str {
-    let start = body
-        .find("id=\"external_payments_seller_display_name\"")
-        .expect("external payee input should render");
-    let end = body[start..].find('>').expect("external payee input should close");
-    &body[start..start + end]
 }
 
 /// Build a Stripe fiscal sponsor recipient.

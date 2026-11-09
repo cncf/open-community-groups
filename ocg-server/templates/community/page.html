@@ -156,20 +156,21 @@
 
         {# Events in-person -#}
         {% if upcoming_in_person_events.len() > 0 -%}
-          {% let in_person_link = "/explore?entity=events&community[0]=".to_owned() + &community.name -%}
+          {% let in_person_link = explore_in_person_events.to_owned() + "&community[0]=" + &community.name -%}
           {{ ui::events_list(title = "upcoming in-person events", link = &in_person_link, events = upcoming_in_person_events) -}}
         {% endif -%}
         {# End events in-person -#}
 
         {# Events online -#}
         {% if upcoming_virtual_events.len() > 0 -%}
-          {% let virtual_link = "/explore?entity=events&community[0]=".to_owned() + &community.name -%}
+          {% let virtual_link = explore_virtual_events.to_owned() + "&community[0]=" + &community.name -%}
           {{ ui::events_list(title = "upcoming virtual events", link = &virtual_link, events = upcoming_virtual_events) -}}
         {% endif -%}
         {# End events online -#}
 
         {# Latest groups added -#}
         {% if recently_added_groups.len() > 0 -%}
+          {% let latest_groups_link = explore_latest_groups.to_owned() + "&community[0]=" + &community.name -%}
           <div>
             <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12 section-strip phone:-mx-3">
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2 section-strip-title">
@@ -177,7 +178,7 @@
               </div>
               {# See all groups on desktop -#}
               <div class="hidden justify-self-end md:flex">
-                <a href="/explore?entity=groups&sort_by=name&community[0]={{ community.name }}"
+                <a href="{{ latest_groups_link }}"
                    hx-boost="true"
                    hx-target="body"
                    class="btn-secondary-anchor ms-4">Explore all groups</a>
@@ -185,7 +186,7 @@
               {# End see all groups on desktop -#}
 
               {# See all groups on phones -#}
-              <a href="/explore?entity=groups&sort_by=name&community[0]={{ community.name }}"
+              <a href="{{ latest_groups_link }}"
                  hx-boost="true"
                  hx-target="body"
                  aria-label="See all latest groups added"
@@ -202,7 +203,7 @@
               {# End groups cards -#}
               {# See all groups mobile button -#}
               <div class="flex mt-9 justify-self-center md:hidden md:mt-0 phone:hidden">
-                <a href="/explore?entity=groups&sort_by=name&community[0]={{ community.name }}"
+                <a href="{{ latest_groups_link }}"
                    hx-boost="true"
                    hx-target="body"
                    class="btn-secondary-anchor">Explore all groups</a>

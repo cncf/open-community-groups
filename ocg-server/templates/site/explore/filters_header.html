@@ -4,11 +4,10 @@
   <div class="flex items-center">
     {# Filters view mode -#}
     {# Loading spinner -#}
-    <div id="loading-filters" class="me-5 w-6 hx-spinner phone:me-0">{{ ui::spinner(size = "size-5") -}}</div>
+    <div data-loading-filters class="me-5 w-6 hx-spinner phone:me-0">{{ ui::spinner(size = "size-5") -}}</div>
     {# End loading spinner -#}
 
-    <button id="reset-filters"
-            class="btn-primary-outline btn-mini hidden lg:flex reset-filters">Reset</button>
+    <button class="btn-primary-outline btn-mini hidden lg:flex reset-filters">Reset</button>
   </div>
   {# End filters view mode -#}
 </div>

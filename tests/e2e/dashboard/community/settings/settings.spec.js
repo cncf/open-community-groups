@@ -393,7 +393,7 @@ test.describe("community dashboard settings view", () => {
       await restrictionToggle.setChecked(originalValues.restricted, {
         force: true,
       });
-      await extraLinksField.locator('button[title="Remove item"]').first().click();
+      await extraLinksField.getByRole("button", { name: "Remove item", exact: true }).first().click();
       await expect(extraLinkHiddenInput).toHaveCount(0);
       await saveSettings();
 

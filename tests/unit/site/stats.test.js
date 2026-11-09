@@ -11,6 +11,7 @@ import { getCategoryLabelInterval, getTimeSplitNumber } from "/static/js/common/
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { initializeSiteStatsFromPage, initSiteStatsCharts } from "/static/js/site/stats.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 /** Stats payload with two years of months in every section. */
 const buildStatsPayload = () => {
@@ -82,25 +83,9 @@ const toComparableOption = (option) =>
 
 describe("site stats", () => {
   const originalEcharts = globalThis.echarts;
-  const originalMatchMedia = window.matchMedia;
   let initCalls;
-  let mediaListeners;
+  let media;
   let resizeCalls;
-
-  /**
-   * Replaces matchMedia with one matching only the given queries.
-   * @param {string[]} matchingQueries Queries that match.
-   * @returns {void}
-   */
-  const mockMatchMedia = (matchingQueries) => {
-    window.matchMedia = (query) => ({
-      matches: matchingQueries.includes(query),
-      addEventListener() {
-        mediaListeners += 1;
-      },
-      removeEventListener() {},
-    });
-  };
 
   /**
    * Finds the option rendered into a chart.
@@ -112,7 +97,6 @@ describe("site stats", () => {
   beforeEach(() => {
     resetDom();
     initCalls = [];
-    mediaListeners = 0;
     resizeCalls = [];
 
     // Run the behavior under test.
@@ -137,11 +121,7 @@ describe("site stats", () => {
     document.documentElement.style.setProperty("--color-primary-500", "#0f766e");
     document.documentElement.style.setProperty("--color-primary-700", "#115e59");
     document.documentElement.style.setProperty("--color-stone-400", "#78716c");
-    window.matchMedia = () => ({
-      matches: false,
-      addEventListener() {},
-      removeEventListener() {},
-    });
+    media = stubMatchMedia();
 
     // Run the behavior under test.
     [
@@ -162,7 +142,7 @@ describe("site stats", () => {
 
   afterEach(() => {
     resetDom();
-    window.matchMedia = originalMatchMedia;
+    media.restore();
     if (originalEcharts) {
       globalThis.echarts = originalEcharts;
     } else {
@@ -256,7 +236,7 @@ describe("site stats", () => {
   ]) {
     it(`keeps today's options when the phone query is false at ${name}`, async () => {
       // Match the viewport without matching the phone query.
-      mockMatchMedia(queries);
+      queries.forEach((query) => media.setMatches(query, true));
       const stats = buildStatsPayload();
 
       // Render every section.
@@ -283,7 +263,7 @@ describe("site stats", () => {
 
   it("renders plain charts with short labels on phones", async () => {
     // Match the phone query above the old 640px label breakpoint.
-    mockMatchMedia([PHONE_MEDIA_QUERY]);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     // Render every section.
     await initSiteStatsCharts(buildStatsPayload());
@@ -314,22 +294,11 @@ describe("site stats", () => {
 
     // Verify every chart rendered and a single rotation listener was registered.
     expect(initCalls).to.have.length(8);
-    expect(mediaListeners).to.equal(1);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
+    expect(media.listeners("(max-width: 640px)").size).to.equal(0);
   });
 
   it("re-renders the charts when the viewport crosses the phone boundary", async () => {
-    let changeHandler = null;
-    let isPhone = false;
-    window.matchMedia = (query) => ({
-      matches: query === PHONE_MEDIA_QUERY ? isPhone : false,
-      addEventListener(_event, handler) {
-        if (query === PHONE_MEDIA_QUERY) {
-          changeHandler = handler;
-        }
-      },
-      removeEventListener() {},
-    });
-
     // The page always carries the stats marker, which the re-render guards on.
     const marker = document.createElement("script");
     marker.type = "application/json";
@@ -341,12 +310,12 @@ describe("site stats", () => {
     // Render in the desktop layout first: the area chart keeps its media base option and legend.
     await initSiteStatsCharts(buildStatsPayload());
     expect(latestOption("groups-running-chart")).to.have.property("baseOption");
-    expect(changeHandler).to.be.a("function");
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
 
     // Rotate into the phone layout and fire the media change.
-    isPhone = true;
-    changeHandler();
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
 
     // The charts now use the phone layout without a second rotation listener being added.
     const phoneRunning = latestOption("groups-running-chart");

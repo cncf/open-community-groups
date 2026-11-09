@@ -35,6 +35,7 @@ const handleModalOpenOnSwap = (event) => {
 /**
  * Delegates clicks for server-rendered controls with data-modal-toggle.
  * The attribute value must match the id of the modal whose visibility toggles.
+ * A modal opened this way closes with Escape and keeps Tab focus inside it.
  * @param {MouseEvent} event Click event.
  * @returns {void}
  */
@@ -49,8 +50,19 @@ const handleModalToggleClick = (event) => {
     return;
   }
 
+  // Resolve the modal named by the control
   event.preventDefault();
-  toggleModalVisibility(modalId, trigger);
+  const modal = getElementById(document, modalId);
+  if (!modal) {
+    return;
+  }
+
+  // Toggle the modal and bind its keyboard handling when it opens
+  const willOpen = isElementHidden(modal);
+  toggleModalVisibility(modal, trigger);
+  if (willOpen) {
+    bindOpenModalKeyboard(modal);
+  }
 };
 
 document.addEventListener("click", handleModalToggleClick);

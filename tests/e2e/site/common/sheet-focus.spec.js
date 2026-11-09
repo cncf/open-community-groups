@@ -1,7 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
 import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS, TEST_SITE_TITLE } from "../../seed.js";
-import { navigateToGroup, navigateToPath } from "../../utils.js";
+import { expectDialogClosed, navigateToGroup, navigateToPath } from "../../utils.js";
 
 /**
  * Presses Tab a number of times and verifies focus never leaves the dialog.
@@ -21,7 +21,9 @@ test.describe("sheet focus", () => {
   test("profile sheet takes focus, traps Tab and returns focus to the card @mobile", async ({ page }) => {
     // Open the profile from an organizer card.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
-    const organizerCard = page.getByRole("button", { name: "View E2E Organizer One's profile" });
+    const organizerCard = page.getByRole("button", { name: /^View profile:\s*E2E Organizer One\b/ });
+    await organizerCard.scrollIntoViewIfNeeded();
+    const scrollY = await page.evaluate(() => Math.round(window.scrollY));
     await organizerCard.click();
     const profileDialog = page.getByRole("dialog", { name: /^User/ });
     const closeButton = profileDialog.getByRole("button", { name: "Close modal" });
@@ -30,24 +32,22 @@ test.describe("sheet focus", () => {
     await expect(closeButton).toBeFocused();
     await expectTabStaysInside(page, profileDialog, 5);
 
-    // Close the sheet and verify focus goes back to the card.
+    // Close the sheet and verify focus goes back to the card without a scroll jump.
     await closeButton.click();
-    await expect(profileDialog).toHaveCount(0);
-    await expect(organizerCard).toBeFocused();
+    await expectDialogClosed(page, profileDialog, { opener: organizerCard, scrollY });
   });
 
   test("a tap on the backdrop returns focus to the opener @mobile", async ({ page }) => {
     // Open the profile from an organizer card.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
-    const organizerCard = page.getByRole("button", { name: "View E2E Organizer One's profile" });
+    const organizerCard = page.getByRole("button", { name: /^View profile:\s*E2E Organizer One\b/ });
     await organizerCard.click();
     const profileDialog = page.getByRole("dialog", { name: /^User/ });
     await expect(profileDialog.getByRole("button", { name: "Close modal" })).toBeFocused();
 
     // Tap the dimmed area above the sheet and verify focus outlives the mouse press.
     await page.mouse.click(20, 20);
-    await expect(profileDialog).toHaveCount(0);
-    await expect(organizerCard).toBeFocused();
+    await expectDialogClosed(page, profileDialog, { opener: organizerCard });
   });
 
   test("share sheet takes focus, traps Tab and returns focus to its trigger @mobile", async ({ page }) => {
@@ -71,8 +71,7 @@ test.describe("sheet focus", () => {
 
     // Close the sheet and verify focus goes back to the pill.
     await page.keyboard.press("Escape");
-    await expect(shareDialog).toHaveCount(0);
-    await expect(sharePill).toBeFocused();
+    await expectDialogClosed(page, shareDialog, { opener: sharePill });
   });
 
   test("account sheet makes the site title inert, but not its own Home row @mobile", async ({ page }) => {

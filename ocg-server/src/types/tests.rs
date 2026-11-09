@@ -7,33 +7,46 @@ use chrono_tz::UTC;
 use uuid::Uuid;
 
 use crate::types::{
-    community::CommunitySummary,
-    dashboard::group::{
-        event_analytics::{
-            EventAdmissionOfferCount, EventAdmissionOfferOutcome, EventAnalytics,
-            EventAnalyticsContext, EventAnalyticsMarker, EventAnalyticsMarkerKind,
-            EventAnalyticsRange, EventAudienceStats, EventCheckInStats, EventDiscountCodeUsage,
-            EventEnrollmentStats, EventInvitationRequestCounts, EventRegistrationPathCounts,
-            EventRegistrationsDailySeries, EventSurveyResponseStats, EventSurveysStats,
-            EventTicketTypeUsage, EventTicketsStats, EventTrafficStats, EventUtmCombination,
-            EventUtmDimension, EventUtmStats, EventUtmValue, EventViewsDailySeries,
-            RegistrationSeriesKind, ViewsSeriesKind,
+    community::{CommunityRole, CommunitySummary},
+    dashboard::{
+        community::team::CommunityTeamMember,
+        group::{
+            attendees::Attendee,
+            event_analytics::{
+                EventAdmissionOfferCount, EventAdmissionOfferOutcome, EventAnalytics,
+                EventAnalyticsContext, EventAnalyticsMarker, EventAnalyticsMarkerKind,
+                EventAnalyticsRange, EventAudienceStats, EventCheckInStats, EventDiscountCodeUsage,
+                EventEnrollmentStats, EventInvitationRequestCounts, EventRegistrationPathCounts,
+                EventRegistrationsDailySeries, EventSurveyResponseStats, EventSurveysStats,
+                EventTicketTypeUsage, EventTicketsStats, EventTrafficStats, EventUtmCombination,
+                EventUtmDimension, EventUtmStats, EventUtmValue, EventViewsDailySeries,
+                RegistrationSeriesKind, ViewsSeriesKind,
+            },
+            events::EventInput,
+            invitation_requests::InvitationRequest,
+            surveys::{EventSurveyFull, EventSurveySummary},
+            team::GroupTeamMember,
         },
-        events::EventInput,
-        surveys::{EventSurveyFull, EventSurveySummary},
-    },
-    dashboard::user::{
-        events::{UserEvent, UserEventRole},
-        invitations::EventInvitation,
-        surveys::{UserEventSurvey, UserEventSurveyItem},
+        user::{
+            events::{UserEvent, UserEventRole},
+            invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
+            session_proposals::{
+                SessionProposal as UserSessionProposal,
+                SessionProposalLevel as UserSessionProposalLevel,
+            },
+            submissions::CfsSubmission as UserCfsSubmission,
+            surveys::{UserEventSurvey, UserEventSurveyItem},
+        },
     },
     event::{
-        EventAdmissionOfferSource, EventAdmissionOfferStatus, EventCohostGroup,
+        CfsSessionProposal, EventAdmissionOfferSource, EventAdmissionOfferStatus, EventCohostGroup,
         EventEnrollmentState, EventEnrollmentStatus, EventFull, EventKind, EventMinimal,
         EventSummary,
     },
     event_survey::{EventSurveyAudience, EventSurveyState},
-    group::{GroupCategory, GroupMinimal, GroupRegion, GroupSummary},
+    group::{
+        GroupCategory, GroupFull, GroupMinimal, GroupRegion, GroupRole, GroupSponsor, GroupSummary,
+    },
     inbox::{
         InboxConversation, InboxConversationStatus, InboxConversationSummary, InboxEvent,
         InboxMessage, InboxMessageKind,
@@ -48,6 +61,64 @@ use crate::types::{
     user::{User, UserSearchResult, UserSummary},
     utm::EventUtmAllowlist,
 };
+
+/// Sample attendee used in dashboard group home tests.
+pub(crate) fn sample_attendee() -> Attendee {
+    let user_id = Uuid::new_v4();
+
+    Attendee {
+        can_receive_attendee_email: true,
+        checked_in: true,
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        email: "attendee@example.test".to_string(),
+        enrollment_status:
+            crate::types::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed,
+        manually_invited: false,
+        user: sample_dashboard_user_profile(
+            user_id,
+            "attendee",
+            Some("Event Attendee"),
+            Some("https://example.test/avatar.png"),
+            Some("Engineer"),
+            Some("Example"),
+        ),
+
+        admission_offer_id: None,
+        admission_offer_source: None,
+        admission_offer_status: None,
+        amount_minor: None,
+        charge_model: None,
+        checked_in_at: Some(Utc.with_ymd_and_hms(2024, 1, 1, 13, 0, 0).unwrap()),
+        completed_at: None,
+        currency_code: None,
+        discount_code: None,
+        event_purchase_id: None,
+        event_ticket_type_id: None,
+        external_payment_deadline: None,
+        external_payment_details: None,
+        external_payment_marked_by: None,
+        external_payment_reference: None,
+        externally_paid: false,
+        offer_expires_at: None,
+        refund_payment_job_id: None,
+        refund_progress: None,
+        refund_request_status: None,
+        registration_answers: None,
+        ticket_title: None,
+    }
+}
+
+/// Sample community invitation for dashboard user tests.
+pub(crate) fn sample_community_invitation(community_id: Uuid) -> CommunityTeamInvitation {
+    CommunityTeamInvitation {
+        community_display_name: "Test Community".to_string(),
+        community_id,
+        community_name: "test-community".to_string(),
+        role: CommunityRole::Admin,
+        role_display_name: "Admin".to_string(),
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+    }
+}
 
 /// Sample community summary used across tests.
 pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
@@ -64,6 +135,21 @@ pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
     }
 }
 
+/// Sample community team member entry.
+pub(crate) fn sample_community_team_member(accepted: bool) -> CommunityTeamMember {
+    CommunityTeamMember {
+        accepted,
+        role: Some(CommunityRole::Admin),
+        user_id: Uuid::new_v4(),
+        username: "team-member".to_string(),
+
+        company: Some("Example".to_string()),
+        name: Some("Team Member".to_string()),
+        photo_url: Some("https://example.test/photo.png".to_string()),
+        title: Some("Organizer".to_string()),
+    }
+}
+
 /// Sample custom notification content.
 pub(crate) fn sample_custom_notification_content(
     subject: &str,
@@ -72,6 +158,34 @@ pub(crate) fn sample_custom_notification_content(
     CustomNotificationContent {
         body: body.to_string(),
         subject: subject.to_string(),
+    }
+}
+
+/// Sample public user profile payload used by dashboard row fixtures.
+pub(crate) fn sample_dashboard_user_profile(
+    user_id: Uuid,
+    username: &str,
+    name: Option<&str>,
+    photo_url: Option<&str>,
+    title: Option<&str>,
+    company: Option<&str>,
+) -> User {
+    User {
+        user_id,
+        username: username.to_string(),
+
+        bio: None,
+        bluesky_url: None,
+        company: company.map(str::to_string),
+        facebook_url: None,
+        github_url: None,
+        linkedin_url: None,
+        name: name.map(str::to_string),
+        photo_url: photo_url.map(str::to_string),
+        provider: None,
+        title: title.map(str::to_string),
+        twitter_url: None,
+        website_url: None,
     }
 }
 
@@ -559,6 +673,42 @@ pub(crate) fn sample_group_category() -> GroupCategory {
     }
 }
 
+/// Sample full group record used in group pages.
+pub(crate) fn sample_group_full(community_id: Uuid, group_id: Uuid) -> GroupFull {
+    GroupFull {
+        active: true,
+        category: sample_group_category(),
+        community: sample_community_summary(community_id),
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+        group_id,
+        logo_url: "https://example.test/logo.png".to_string(),
+        members_count: 0,
+        name: "Test Group".to_string(),
+        organizers: Vec::new(),
+        slug: "jkm2345".to_string(),
+        sponsors: Vec::new(),
+
+        city: Some("Test City".to_string()),
+        country_code: Some("US".to_string()),
+        country_name: Some("United States".to_string()),
+        region: Some(sample_group_region()),
+        state: Some("MA".to_string()),
+        ..Default::default()
+    }
+}
+
+/// Sample group team invitation used by user dashboard tests.
+pub(crate) fn sample_group_invitation(group_id: Uuid) -> GroupTeamInvitation {
+    GroupTeamInvitation {
+        community_name: "test-community".to_string(),
+        group_id,
+        group_name: "Test Group".to_string(),
+        role: GroupRole::Admin,
+        role_display_name: "Admin".to_string(),
+        created_at: Utc.with_ymd_and_hms(2024, 1, 2, 0, 0, 0).unwrap(),
+    }
+}
+
 /// Sample minimal group used in dashboard selectors and the explore map.
 pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
     GroupMinimal {
@@ -592,6 +742,18 @@ pub(crate) fn sample_group_region() -> GroupRegion {
 
         groups_count: Some(0),
         order: Some(1),
+    }
+}
+
+/// Sample group sponsor entry.
+pub(crate) fn sample_group_sponsor() -> GroupSponsor {
+    GroupSponsor {
+        featured: true,
+        group_sponsor_id: Uuid::new_v4(),
+        logo_url: "https://example.test/logo.png".to_string(),
+        name: "Sponsor".to_string(),
+
+        website_url: Some("https://example.test".to_string()),
     }
 }
 
@@ -694,6 +856,34 @@ pub(crate) fn sample_inbox_conversation_summary(
     }
 }
 
+/// Sample invitation request used in dashboard group invitation request tests.
+pub(crate) fn sample_invitation_request() -> InvitationRequest {
+    let user_id = Uuid::new_v4();
+
+    InvitationRequest {
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        invitation_request_status: crate::types::event::EventInvitationRequestStatus::Pending,
+        requested_event_ticket_type_id: Some(Uuid::new_v4()),
+        requested_ticket_title: Some("General admission".to_string()),
+        user: sample_dashboard_user_profile(
+            user_id,
+            "requesting-user",
+            Some("Requesting User"),
+            Some("https://example.test/avatar.png"),
+            Some("Engineer"),
+            Some("Example"),
+        ),
+
+        admission_offer_id: None,
+        admission_offer_status: None,
+        offer_expires_at: None,
+        offered_event_ticket_type_id: None,
+        offered_ticket_title: None,
+        registration_answers: None,
+        reviewed_at: None,
+    }
+}
+
 /// Sample paid event payload for dashboard group event form tests.
 pub(crate) fn sample_paid_event_body() -> String {
     let event_form = sample_event_form();
@@ -713,6 +903,34 @@ pub(crate) fn sample_paid_event_body() -> String {
     )
 }
 
+/// Sample session proposal used in user session proposals tests.
+pub(crate) fn sample_session_proposal(session_proposal_id: Uuid) -> UserSessionProposal {
+    UserSessionProposal {
+        created_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
+        description: "Session about Rust".to_string(),
+        duration_minutes: 45,
+        has_submissions: false,
+        session_proposal_id,
+        session_proposal_level_id: "beginner".to_string(),
+        session_proposal_level_name: "Beginner".to_string(),
+        session_proposal_status_id: "ready-for-submission".to_string(),
+        status_name: "Ready for submission".to_string(),
+        title: "Rust 101".to_string(),
+
+        co_speaker: None,
+        linked_session_id: None,
+        updated_at: None,
+    }
+}
+
+/// Sample session proposal levels used in user session proposals tests.
+pub(crate) fn sample_session_proposal_levels() -> Vec<UserSessionProposalLevel> {
+    vec![UserSessionProposalLevel {
+        display_name: "Beginner".to_string(),
+        session_proposal_level_id: "beginner".to_string(),
+    }]
+}
+
 /// Sample site settings used across tests.
 pub(crate) fn sample_site_settings() -> SiteSettings {
     SiteSettings {
@@ -727,6 +945,32 @@ pub(crate) fn sample_site_settings() -> SiteSettings {
     }
 }
 
+/// Sample site stats for stats page tests.
+pub(crate) fn sample_site_stats() -> crate::types::site::stats::SiteStats {
+    crate::types::site::stats::SiteStats {
+        attendees: crate::types::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
+        events: crate::types::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
+        groups: crate::types::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
+        members: crate::types::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
+    }
+}
+
 /// Sample optional free-text survey question.
 pub(crate) fn sample_survey_question(question_id: Uuid) -> QuestionnaireQuestion {
     QuestionnaireQuestion {
@@ -736,6 +980,21 @@ pub(crate) fn sample_survey_question(question_id: Uuid) -> QuestionnaireQuestion
         required: false,
 
         options: vec![],
+    }
+}
+
+/// Sample team member listing entry.
+pub(crate) fn sample_team_member(accepted: bool) -> GroupTeamMember {
+    GroupTeamMember {
+        accepted,
+        role: Some(GroupRole::Admin),
+        user_id: Uuid::new_v4(),
+        username: "team-member".to_string(),
+
+        company: Some("Example".to_string()),
+        name: Some("Team Member".to_string()),
+        photo_url: Some("https://example.test/photo.png".to_string()),
+        title: Some("Organizer".to_string()),
     }
 }
 
@@ -758,6 +1017,27 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> User {
 
         name: Some("Speaker".to_string()),
         ..Default::default()
+    }
+}
+
+/// Sample CFS submission used in user dashboard tests.
+pub(crate) fn sample_user_cfs_submission(
+    cfs_submission_id: Uuid,
+    event_id: Uuid,
+    session_proposal_id: Uuid,
+) -> UserCfsSubmission {
+    UserCfsSubmission {
+        cfs_submission_id,
+        created_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
+        event: sample_event_summary(event_id),
+        labels: vec![],
+        session_proposal: sample_user_cfs_session_proposal(session_proposal_id),
+        status_id: "submitted".to_string(),
+        status_name: "Submitted".to_string(),
+
+        action_required_message: None,
+        linked_session_id: None,
+        updated_at: None,
     }
 }
 
@@ -850,5 +1130,19 @@ pub(crate) fn sample_user_summary(user_id: Uuid, username: &str) -> UserSummary 
         photo_url: None,
         provider: None,
         title: None,
+    }
+}
+
+/// Sample CFS session proposal used in user dashboard tests.
+fn sample_user_cfs_session_proposal(session_proposal_id: Uuid) -> CfsSessionProposal {
+    CfsSessionProposal {
+        session_proposal_id,
+        title: "Proposal title".to_string(),
+
+        co_speaker: Some(sample_user_summary(Uuid::new_v4(), "co-speaker")),
+        description: Some("Proposal description".to_string()),
+        duration_minutes: Some(30),
+        session_proposal_level_id: Some("beginner".to_string()),
+        session_proposal_level_name: Some("Beginner".to_string()),
     }
 }

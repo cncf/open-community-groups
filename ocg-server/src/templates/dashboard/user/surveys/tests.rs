@@ -3,12 +3,15 @@ use chrono::{TimeZone, Utc};
 use chrono_tz::America::Los_Angeles;
 use uuid::Uuid;
 
-use crate::types::{
-    dashboard::user::surveys::{UserEventSurveyItem, UserEventSurveyResponse},
-    event_survey::EventSurveyState,
-    pagination::NavigationLinks,
-    questionnaire::{QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers},
-    tests::{sample_user_event_survey, sample_user_event_survey_item},
+use crate::{
+    test_util::{element_html_with, opening_tag_with},
+    types::{
+        dashboard::user::surveys::{UserEventSurveyItem, UserEventSurveyResponse},
+        event_survey::EventSurveyState,
+        pagination::NavigationLinks,
+        questionnaire::{QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers},
+        tests::{sample_user_event_survey, sample_user_event_survey_item},
+    },
 };
 
 use super::{ListPage, SurveyModal, survey_date_label};
@@ -44,17 +47,26 @@ fn test_list_page_renders_empty_state() {
     assert!(html.contains("No surveys yet"));
     assert!(!html.contains("data-user-event-survey=\""));
 
-    // Check the list refreshes after saved answers
-    assert!(html.contains(r#"hx-get="/dashboard/user?tab=surveys&#38;offset=10""#));
-    assert!(html.contains(r#"hx-trigger="refresh-user-surveys from:body""#));
-    assert!(html.contains(r##"hx-target="#dashboard-layout""##));
-    assert!(html.contains(r##"hx-select="#dashboard-layout""##));
-
     // Check the survey modal shell is rendered closed
     assert!(html.contains(r#"id="user-event-survey-modal""#));
     assert!(html.contains(r#"id="user-event-survey-modal-content""#));
     assert!(!html.contains("data-open-on-load"));
     assert!(!html.contains("data-user-event-survey-form"));
+}
+
+#[test]
+fn test_list_page_renders_layout_refresher() {
+    // Render the list page
+    let html = sample_list_page(vec![], 0).render().unwrap();
+
+    // Check the refresher reloads the whole dashboard layout after saved answers
+    // and keeps the saved answers alert open
+    let refresher = opening_tag_with(&html, "data-user-surveys-refresh");
+    assert!(refresher.contains(r#"hx-get="/dashboard/user?tab=surveys&#38;offset=10""#));
+    assert!(refresher.contains(r#"hx-trigger="refresh-user-surveys from:body""#));
+    assert!(refresher.contains(r##"hx-target="#dashboard-layout""##));
+    assert!(refresher.contains(r##"hx-select="#dashboard-layout""##));
+    assert!(refresher.contains("data-keeps-alerts"));
 }
 
 #[test]
@@ -77,21 +89,31 @@ fn test_list_page_renders_surveys_by_state() {
     assert!(html.contains("1 - 3 of <span class=\"font-semibold\">3</span>"));
 
     // Check the status, date and action of the unanswered survey
-    let closing_row = survey_row(&html, Uuid::from_u128(1));
+    let closing_row = element_html_with(
+        &html,
+        &format!(r#"data-user-event-survey="{}""#, Uuid::from_u128(1)),
+    );
     assert!(closing_row.contains("To answer"));
     assert!(closing_row.contains("Closes Jan 10, 2099 at 10:00 AM UTC"));
     assert!(!closing_row.contains("Edit answers"));
     assert!(!closing_row.contains("View answers"));
 
     // Check the status, date and action of the answered survey
-    let answered_row = survey_row(&html, Uuid::from_u128(2));
+    let answered_row = element_html_with(
+        &html,
+        &format!(r#"data-user-event-survey="{}""#, Uuid::from_u128(2)),
+    );
     assert!(answered_row.contains("Answered"));
     assert!(answered_row.contains("No closing date"));
-    assert!(answered_row.contains(r#"aria-label="Edit answers: "#));
+    assert!(answered_row.contains(r#"aria-label="Edit answers: Session feedback""#));
     assert!(answered_row.contains(">Edit answers</button>"));
+    assert!(answered_row.contains(r#"hx-sync="closest tbody:replace""#));
 
     // Check the status, date and action of the closed survey
-    let closed_row = survey_row(&html, Uuid::from_u128(3));
+    let closed_row = element_html_with(
+        &html,
+        &format!(r#"data-user-event-survey="{}""#, Uuid::from_u128(3)),
+    );
     assert!(closed_row.contains("Closed May 4, 2025 at 8:00 AM UTC"));
     assert!(closed_row.contains("View answers"));
     assert!(!closed_row.contains("Edit answers"));
@@ -211,14 +233,4 @@ fn sample_response() -> UserEventSurveyResponse {
 
         updated_at: None,
     }
-}
-
-/// Returns the table row rendered for a survey.
-fn survey_row(html: &str, event_survey_id: Uuid) -> &str {
-    let start = html
-        .find(&format!(r#"data-user-event-survey="{event_survey_id}""#))
-        .unwrap();
-    let end = start + html[start..].find("</tr>").unwrap();
-
-    &html[start..end]
 }

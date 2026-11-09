@@ -15,12 +15,16 @@ use crate::types::{
 /// Community team invitation summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct CommunityTeamInvitation {
+    /// Human-readable display name of the community.
+    pub community_display_name: String,
     /// Community identifier.
     pub community_id: Uuid,
     /// Community name (slug).
     pub community_name: String,
     /// Role within the community.
     pub role: CommunityRole,
+    /// Human-readable display name of the role.
+    pub role_display_name: String,
 
     /// Invitation creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
@@ -123,6 +127,8 @@ pub(crate) struct GroupTeamInvitation {
     pub group_name: String,
     /// Role within the group.
     pub role: GroupRole,
+    /// Human-readable display name of the role.
+    pub role_display_name: String,
 
     /// Invitation creation time.
     #[serde(with = "chrono::serde::ts_seconds")]

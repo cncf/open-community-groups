@@ -95,7 +95,8 @@ test.describe("dashboard access and shared behavior", () => {
       });
       await expect(drawer.locator("a[hx-get]:visible")).toHaveCount(2);
       await expect(checkInLink).toHaveAttribute("hx-get", "/dashboard/user?tab=check-in");
-      await expect(drawer.getByRole("link", { name: "Invitations", exact: true })).toHaveAttribute(
+      // The name carries the pending invitations count of member1's seeded invitations.
+      await expect(drawer.getByRole("link", { name: /^Invitations( \d+ pending)?$/u })).toHaveAttribute(
         "hx-get",
         "/dashboard/user?tab=invitations",
       );
@@ -114,7 +115,7 @@ test.describe("dashboard access and shared behavior", () => {
       const invitationsDrawer = await openMobileDashboardDrawer(member1Page);
       await waitForActionResponse(
         member1Page,
-        () => invitationsDrawer.getByRole("link", { name: "Invitations", exact: true }).click(),
+        () => invitationsDrawer.getByRole("link", { name: /^Invitations( \d+ pending)?$/u }).click(),
         {
           method: "GET",
           urlEndsWith: "/dashboard/user?tab=invitations",

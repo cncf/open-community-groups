@@ -29,6 +29,9 @@ pub(crate) mod questionnaire;
 /// Global site templates.
 pub(crate) mod site;
 
+#[cfg(test)]
+mod tests;
+
 /// Enum representing unique identifiers for each page in the application.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

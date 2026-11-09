@@ -1,9 +1,8 @@
 {# Alert -#}
-{# Used by explore result partials for full-width feedback messages. -#}
+{# Used by explore result partials for full-width empty-state messages. -#}
 {% macro alert(title, content, with_reset = false) -%}
   <div class="p-10 md:p-14 phone:p-0 phone:pt-1 phone:pb-4">
-    <div class="border border-primary-300 p-10 text-sm text-stone-800 rounded-lg bg-primary-50 text-center phone:p-6"
-         role="alert">
+    <div class="border border-primary-300 p-10 text-sm text-stone-800 rounded-lg bg-primary-50 text-center phone:p-6">
       <div class="text-xl mb-6">{{ title }}</div>
       {{ content }}
       {% if with_reset -%}
@@ -40,8 +39,7 @@
 {# Placeholder -#}
 {# Used by the home page for dashed placeholder panels. -#}
 {% macro placeholder(title, content) -%}
-  <div class="border-2 border-dashed border-stone-300 p-10 text-sm text-stone-800 rounded-lg bg-stone-50 text-center"
-       role="alert">
+  <div class="border-2 border-dashed border-stone-300 p-10 text-sm text-stone-800 rounded-lg bg-stone-50 text-center">
     <div class="text-xl mb-6 text-stone-600">{{ title }}</div>
     <p class="text-stone-600">{{ content }}</p>
   </div>

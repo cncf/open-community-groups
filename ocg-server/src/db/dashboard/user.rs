@@ -63,6 +63,10 @@ pub(crate) trait DBDashboardUser {
         session_proposal: &SessionProposalInput,
     ) -> Result<Uuid>;
 
+    /// Counts the pending team invitations and active event offers in the
+    /// user's Invitations tab.
+    async fn count_user_pending_invitations(&self, user_id: Uuid) -> Result<usize>;
+
     /// Counts the open event surveys the user can answer and has not answered
     /// yet.
     async fn count_user_unanswered_event_surveys(&self, user_id: Uuid) -> Result<usize>;
@@ -359,6 +363,19 @@ where
             &[&actor_user_id, &Json(session_proposal)],
         )
         .await
+    }
+
+    /// [`DBDashboardUser::count_user_pending_invitations`].
+    #[instrument(skip(self), err)]
+    async fn count_user_pending_invitations(&self, user_id: Uuid) -> Result<usize> {
+        let count: i32 = self
+            .fetch_scalar_one(
+                "select count_user_pending_invitations($1::uuid)",
+                &[&user_id],
+            )
+            .await?;
+
+        Ok(usize::try_from(count)?)
     }
 
     /// [`DBDashboardUser::count_user_unanswered_event_surveys`].

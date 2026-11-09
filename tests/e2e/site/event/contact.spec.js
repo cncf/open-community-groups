@@ -8,7 +8,7 @@ import {
   TEST_GROUP_SLUG,
   TEST_USER_IDS,
 } from "../../seed.js";
-import { navigateToEvent } from "../../utils.js";
+import { expectDialogClosed, navigateToEvent } from "../../utils.js";
 
 test.describe("event page contact organizers modal", () => {
   test("organizer contact modal links to the group inbox", async ({ organizerGroupPage }) => {
@@ -51,8 +51,9 @@ test.describe("event page contact organizers modal", () => {
 
     // Verify Escape closes the modal and focus returns to the opener
     await page.keyboard.press("Escape");
-    await expect(modal).toBeHidden();
-    await expect(page.getByRole("button", { name: "Contact organizers" })).toBeFocused();
+    await expectDialogClosed(page, modal, {
+      opener: page.getByRole("button", { name: "Contact organizers" }),
+    });
   });
 
   test("user over the daily conversation limit gets the limit notice", async ({ member1Page }) => {

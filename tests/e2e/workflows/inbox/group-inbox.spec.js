@@ -71,7 +71,7 @@ test.describe("group inbox workflow", () => {
     // Open the conversation from the organizer inbox and check the open-count badge
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=inbox");
     const inboxMenuItem = organizerGroupPage.locator("#dashboard-menu").getByRole("link", { name: /Inbox/ });
-    await expect(inboxMenuItem).toContainText("1");
+    await expect(inboxMenuItem).toHaveAccessibleName("Inbox 1 open");
     const conversationRow = organizerGroupPage.locator("[data-inbox-conversation-row]", {
       hasText: question,
     });

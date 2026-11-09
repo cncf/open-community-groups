@@ -15,8 +15,12 @@ use crate::{
         event::{EventKind, EventSummary},
         group::GroupFull,
         site::SiteSettings,
+        user::User,
     },
 };
+
+#[cfg(test)]
+mod tests;
 
 // Pages and sections templates.
 
@@ -87,6 +91,15 @@ impl Page {
     /// Returns the preview title for the group page.
     pub(crate) fn preview_title(&self) -> String {
         self.group.name.clone()
+    }
+
+    /// Returns the organizers listed publicly, skipping those without a name.
+    pub(crate) fn public_organizers(&self) -> Vec<&User> {
+        self.group
+            .organizers
+            .iter()
+            .filter(|organizer| helpers::has_public_name(organizer.name.as_deref()))
+            .collect()
     }
 
     /// Builds the Explore link for upcoming events in this group hierarchy.

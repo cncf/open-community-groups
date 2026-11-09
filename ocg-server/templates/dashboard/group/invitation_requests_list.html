@@ -69,7 +69,7 @@
              class="text-sm font-semibold text-nowrap text-stone-900">Sort by</label>
       <select id="invitation-requests-sort"
               name="sort"
-              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
+              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
               {% if invitation_requests.is_empty() -%}
                 disabled
               {% endif -%}>
@@ -97,8 +97,11 @@
   {% if title.is_some()
     || status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All -%}
     {# Active filters -#}
-    <div class="mt-7 mb-5 flex flex-wrap items-center gap-2">
-      <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
+    <div class="mt-7 mb-5 flex flex-wrap items-center gap-2"
+         role="group"
+         aria-labelledby="invitation-requests-active-filters-label">
+      <span id="invitation-requests-active-filters-label"
+            class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
       {% if status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All -%}
         <form class="inline-flex"
               hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"

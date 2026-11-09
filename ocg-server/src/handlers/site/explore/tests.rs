@@ -16,16 +16,19 @@ use crate::{
         tests::*,
     },
     router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
+    test_util::{element_text_with, opening_tag_with},
     types::{
-        search::{EXPLORE_WIDGET_MAX_ITEMS, SearchEventsFilters, SearchGroupsFilters, ViewMode},
+        event::EventSummary,
+        payments::{EventTicketCurrentPrice, EventTicketType},
+        search::{
+            EXPLORE_WIDGET_MAX_ITEMS, SearchEventsFilters, SearchGroupsFilters, SearchGroupsOutput,
+            ViewMode,
+        },
         site::explore::{Entity, FilterOption, FiltersOptions},
     },
 };
 
 use super::{parse_events_filters, parse_groups_filters, viewer_location};
-
-/// Title class only rendered by the calendar variant of the event card.
-const CALENDAR_CARD_TITLE_CLASS: &str = "!text-[0.9rem]/[1.25rem]";
 
 #[tokio::test]
 async fn test_event_card_calendar_renders_calendar_card() {
@@ -37,7 +40,7 @@ async fn test_event_card_calendar_renders_calendar_card() {
     db.expect_get_public_event_summary()
         .times(1)
         .withf(move |id| *id == event_id)
-        .returning(move |_| Ok(Some(sample_event_summary(event_id))));
+        .returning(move |_| Ok(Some(sample_paid_event_summary(event_id))));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db).build().await;
@@ -50,14 +53,15 @@ async fn test_event_card_calendar_renders_calendar_card() {
     let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
-    // Check the calendar card is rendered with public cache headers
+    // Check the calendar card, which labels the price in a panel above the
+    // footer, is rendered with public cache headers
     assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert!(body.contains("Sample Event"));
-    assert!(body.contains(CALENDAR_CARD_TITLE_CLASS));
+    assert!(body.contains("Ticket price"));
 }
 
 #[tokio::test]
@@ -92,7 +96,7 @@ async fn test_event_card_map_renders_event_card() {
     db.expect_get_public_event_summary()
         .times(1)
         .withf(move |id| *id == event_id)
-        .returning(move |_| Ok(Some(sample_event_summary(event_id))));
+        .returning(move |_| Ok(Some(sample_paid_event_summary(event_id))));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db).build().await;
@@ -105,14 +109,16 @@ async fn test_event_card_map_renders_event_card() {
     let (parts, bytes) = send(router, request).await;
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
-    // Check the map card is rendered with public cache headers
+    // Check the map card, which shows the price as a footer badge without
+    // the panel label, is rendered with public cache headers
     assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert!(body.contains("Sample Event"));
-    assert!(!body.contains(CALENDAR_CARD_TITLE_CLASS));
+    assert!(body.contains("From USD 25.00"));
+    assert!(!body.contains("Ticket price"));
 }
 
 #[tokio::test]
@@ -552,6 +558,78 @@ async fn test_groups_results_section_map_uses_widget_data() {
 }
 
 #[tokio::test]
+async fn test_groups_results_section_pager_keeps_date_sort() {
+    // Setup identifiers and data structures
+    let group_id = Uuid::new_v4();
+
+    // Setup database mock with more results than the page size
+    let mut db = MockDB::new();
+    db.expect_search_groups()
+        .times(1)
+        .withf(|filters| filters.sort_by.as_deref() == Some("date"))
+        .returning(move |_| {
+            Ok(SearchGroupsOutput {
+                total: 3,
+                ..sample_search_groups_output(group_id)
+            })
+        });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request(
+        "GET",
+        "/explore/groups-results-section?limit=1&offset=0&sort_by=date",
+    )
+    .body(Body::empty())
+    .unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the pushed URL keeps the date sort
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let push_url = parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap();
+    assert!(push_url.contains("sort_by=date"));
+
+    // Check both Next link targets keep the date sort
+    let next_link = opening_tag_with(&body, "#paginationnext-spinner");
+    assert_eq!(next_link.matches("sort_by=date").count(), 2);
+}
+
+#[tokio::test]
+async fn test_groups_results_section_renders_page_position() {
+    // Setup identifiers and data structures
+    let group_id = Uuid::new_v4();
+
+    // Setup database mock with three pages of results
+    let mut db = MockDB::new();
+    db.expect_search_groups()
+        .times(1)
+        .withf(|filters| filters.limit == Some(1) && filters.offset == Some(1))
+        .returning(move |_| {
+            Ok(SearchGroupsOutput {
+                total: 3,
+                ..sample_search_groups_output(group_id)
+            })
+        });
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore/groups-results-section?limit=1&offset=1")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the named pager shows the position between Prev and Next
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let pager_text = element_text_with(&body, r#"aria-label="Pagination""#);
+    let prev = pager_text.find("Prev").unwrap();
+    let position = pager_text.find("Page 2 of 3").unwrap();
+    let next = pager_text.find("Next").unwrap();
+    assert!(prev < position && position < next, "{pager_text}");
+}
+
+#[tokio::test]
 async fn test_groups_results_section_success() {
     // Setup identifiers and data structures
     let group_id = Uuid::new_v4();
@@ -737,6 +815,25 @@ async fn test_page_events_invalid_filters() {
 }
 
 #[tokio::test]
+async fn test_page_events_rejects_zero_limit() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_site_settings(&mut db);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore?entity=events&limit=0")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the garde report is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body, "limit: lower than 1\n");
+}
+
+#[tokio::test]
 async fn test_page_groups_invalid_filters() {
     // Setup database mock
     let mut db = MockDB::new();
@@ -753,6 +850,25 @@ async fn test_page_groups_invalid_filters() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(body, INVALID_REQUEST_PAYLOAD);
+}
+
+#[tokio::test]
+async fn test_page_groups_rejects_zero_limit() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_site_settings(&mut db);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore?entity=groups&limit=0")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the garde report is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body, "limit: lower than 1\n");
 }
 
 #[tokio::test]
@@ -782,6 +898,34 @@ async fn test_page_success_events() {
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
+}
+
+#[tokio::test]
+async fn test_page_success_events_with_blank_ts_query() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock expecting the blank query to be dropped
+    let mut db = MockDB::new();
+    expect_site_settings(&mut db);
+    db.expect_get_filters_options()
+        .times(1)
+        .withf(|c, e| c.is_none() && e == &Some(Entity::Events))
+        .returning(|_, _| Ok(sample_filters_options()));
+    db.expect_search_events()
+        .times(1)
+        .withf(|filters| filters.ts_query.is_none())
+        .returning(move |_| Ok(sample_search_events_output(event_id)));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = request("GET", "/explore?entity=events&ts_query=%20%20")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check response matches expectations
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -1292,11 +1436,27 @@ fn sample_location_headers(latitude: &'static str, longitude: &'static str) -> H
     headers
 }
 
+/// Returns an event summary with one paid public ticket type.
+fn sample_paid_event_summary(event_id: Uuid) -> EventSummary {
+    EventSummary {
+        payment_currency_code: Some("USD".to_string()),
+        ticket_types: Some(vec![EventTicketType {
+            active: true,
+            title: "General admission".to_string(),
+
+            current_price: Some(EventTicketCurrentPrice {
+                amount_minor: 2500,
+                ..Default::default()
+            }),
+            ..Default::default()
+        }]),
+        ..sample_event_summary(event_id)
+    }
+}
+
 /// Returns whether the rendered truncation notice is hidden.
+///
+/// The `hidden` class is the state contract the explore widgets script toggles.
 fn truncation_notice_is_hidden(body: &str) -> bool {
-    let start = body
-        .find("data-explore-truncation-notice")
-        .expect("truncation notice to be rendered");
-    let tag_end = start + body[start..].find('>').expect("notice tag to be closed");
-    body[start..tag_end].contains("hidden")
+    opening_tag_with(body, "data-explore-truncation-notice").contains("hidden")
 }

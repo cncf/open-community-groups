@@ -1,3 +1,4 @@
+import { formatTimestampTimeInTz } from "/static/js/common/datetime.js";
 import { initializeOnReadyAndHtmxLoad, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
@@ -9,6 +10,7 @@ import QrScanner from "/static/vendor/js/qr-scanner.min.js";
 const ATTENDEES_REFRESH_EVENT = "refresh-event-attendees";
 const MODAL_ID = "group-check-in-scanner-modal";
 const REFRESH_ATTENDEES_ON_CLOSE_ATTRIBUTE = "data-refresh-attendees-on-close";
+const SOUND_MUTED_STORAGE_KEY = "ocg.checkInScannerMuted";
 let activeSession = null;
 
 /** Initializes group check-in card and scanner controls. */
@@ -44,6 +46,7 @@ export const initializeGroupCheckInScanner = (container = document, { historyRes
     ) {
       const muted = activeSession.controller.setMuted(mute.checked);
       setMuteState(mute, muted);
+      storeMuted(muted);
     }
   });
   root.addEventListener("keydown", (event) => {
@@ -166,8 +169,23 @@ const postCredential = async (url, credential) => {
   return body;
 };
 
-/** Renders visible and screen-reader scan feedback. */
-const renderFeedback = (element, feedback) => {
+/** Returns whether scanner sounds were muted on this device. */
+const readStoredMuted = () => {
+  try {
+    return window.localStorage?.getItem(SOUND_MUTED_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Renders visible and screen-reader scan feedback, adding the original check-in
+ * time to duplicate scans.
+ * @param {HTMLElement} element Feedback container.
+ * @param {Object} feedback Feedback emitted by the scan controller.
+ * @param {string} timezone Event IANA timezone identifier.
+ */
+const renderFeedback = (element, feedback, timezone) => {
   element.className = `absolute inset-x-4 top-4 rounded-lg border p-4 text-center shadow-lg ${
     feedback.kind === "success"
       ? "border-green-800 bg-green-100 text-green-800"
@@ -177,7 +195,8 @@ const renderFeedback = (element, feedback) => {
   }`;
   const message = document.createElement("p");
   message.className = "text-base font-normal";
-  message.textContent = feedback.message;
+  const time = feedback.kind === "neutral" ? formatTimestampTimeInTz(feedback.checkedInAt, timezone) : "";
+  message.textContent = time ? `${feedback.message} · ${time}` : feedback.message;
   element.replaceChildren(message);
   if (feedback.attendeeName) {
     const details = document.createElement("p");
@@ -263,6 +282,7 @@ const startScannerSession = async (root, trigger) => {
   const eventDate = trigger.dataset.eventDate || "Date information unavailable";
   const eventLocation = trigger.dataset.eventLocation || "Location information unavailable";
   const eventName = trigger.dataset.eventName || "Event check-in";
+  const eventTimezone = trigger.dataset.eventTimezone || "";
   const refreshAttendeesOnClose = trigger.hasAttribute(REFRESH_ATTENDEES_ON_CLOSE_ATTRIBUTE);
   const scanUrl = trigger.dataset.scanUrl || "";
   const eventDateElement = root.querySelector("#group-check-in-event-date");
@@ -275,8 +295,9 @@ const startScannerSession = async (root, trigger) => {
   if (result) result.classList.add("hidden");
   setCameraSelectPlaceholder(camera, "Finding cameras...");
   setCameraUnavailableState(root);
+  const muted = readStoredMuted();
   if (mute instanceof HTMLInputElement) mute.disabled = false;
-  setMuteState(mute, false);
+  setMuteState(mute, muted);
   setTorchAvailable(torch, false);
 
   let audio = null;
@@ -383,7 +404,7 @@ const startScannerSession = async (root, trigger) => {
     controller = createScanStateMachine({
       audio,
       eventId,
-      onFeedback: (feedback) => renderFeedback(result, feedback),
+      onFeedback: (feedback) => renderFeedback(result, feedback, eventTimezone),
       onFeedbackEnd: () => result?.classList.add("hidden"),
       onReady: () => {
         if (status) status.textContent = "Hold an attendee QR code inside the frame.";
@@ -395,6 +416,7 @@ const startScannerSession = async (root, trigger) => {
       },
       scanner,
     });
+    controller.setMuted(muted);
     session.controller = controller;
 
     if (!window.isSecureContext || !(await Scanner.hasCamera())) {
@@ -454,6 +476,15 @@ const startScannerSession = async (root, trigger) => {
       setCameraUnavailableState(root, errorMessage);
       if (status) status.textContent = cameraStatusMessage(error);
     }
+  }
+};
+
+/** Remembers the scanner sound preference on this device. */
+const storeMuted = (isMuted) => {
+  try {
+    window.localStorage?.setItem(SOUND_MUTED_STORAGE_KEY, String(isMuted));
+  } catch {
+    // Storage is optional; the toggle still applies to the open session.
   }
 };
 

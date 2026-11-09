@@ -366,8 +366,8 @@ test.describe("group dashboard attendees tab", () => {
     });
 
     const noResultsMessage = attendeesContent
-      .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
-      .filter({ hasText: "No attendees found matching your filters." });
+      .getByText("No attendees found matching your filters.", { exact: true })
+      .filter({ visible: true });
 
     // Verify the filtered empty result message is shown.
     await expect(noResultsMessage.first()).toBeVisible();
@@ -468,7 +468,7 @@ test.describe("group dashboard attendees tab", () => {
     const vipCheckedInRow = attendeesContent.locator("tr", { hasText: "E2E Member One" });
     const vipPendingRow = attendeesContent.locator("tr", { hasText: "E2E Member Two" });
     const generalCheckedInRow = attendeesContent.locator("tr", { hasText: "E2E Member Three" });
-    const activeFilters = attendeesContent.getByText("Active filters", { exact: true }).locator("xpath=..");
+    const activeFilters = attendeesContent.getByRole("group", { name: "Active filters", exact: true });
     // The closed filter menu hides its checkboxes from the accessibility tree.
     const vipFilterCheckbox = attendeesContent.locator(
       `#attendees-ticket-filter input[name="event_ticket_type_ids[]"][value="${vipTicketTypeId}"]`,

@@ -41,8 +41,9 @@ choose the needed community or group.
 the right context.
 Community Dashboard needs a selected community.
 Group Dashboard needs both a selected community and a selected group.
-On phones, the mobile layout hides the dashboard links; choose **Desktop version** from the same
-menu to make them reappear.
+On phones, the user menu shows `Scan attendees` (for group team members), `Check in`, and
+`Invitations` shortcuts instead of the dashboard links; choose **Desktop version** from the same
+menu to see the full dashboard links.
 
 ## Fixed Role Model
 
@@ -82,7 +83,7 @@ Use this order to unblock quickly:
 1. Open [User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
 2. Accept pending community/group invitations.
 3. Refresh the page (or sign out/in).
-4. Re-open your avatar menu and check for new dashboard entries.
+4. Re-open your user menu and check for new dashboard entries.
 
 If visibility still does not update, use
 [Troubleshooting](../support/troubleshooting.md).

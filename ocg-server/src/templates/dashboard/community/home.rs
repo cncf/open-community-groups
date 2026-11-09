@@ -22,6 +22,9 @@ use crate::{
     types::{community::CommunitySummary, site::SiteSettings},
 };
 
+#[cfg(test)]
+mod tests;
+
 /// Home page template for the community dashboard.
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/community/home.html")]

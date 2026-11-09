@@ -1,3 +1,5 @@
+import { expect } from "@playwright/test";
+
 import {
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAME,
@@ -6,6 +8,12 @@ import {
   TEST_GROUP_SLUG,
   TEST_SITE_TITLE,
 } from "../../seed.js";
+import { waitForPageSettled } from "../../snapshots.js";
+import { navigateToPath, routeEmptyBasemap } from "../../utils.js";
+
+// Name of the offline basemap's attribution link, rendered in every map preview.
+const BASEMAP_ATTRIBUTION_NAME = "OpenStreetMap";
+const BASEMAP_ATTRIBUTION = `<a href="https://www.openstreetmap.org/copyright">${BASEMAP_ATTRIBUTION_NAME}</a>`;
 
 // Badge pages replace the header and footer blocks with the badge header
 // (`badges/verify.html`, `badges/credential.html`).
@@ -69,7 +77,8 @@ export const PUBLIC_PAGES = [
     landmarks: DOCS_LANDMARKS,
     name: "documentation",
     path: "/docs",
-    ready: (page) => page.locator(".ocg-docs-root .content"),
+    // Docsify fetches and renders the guide outside htmx, so wait for its first heading.
+    ready: (page) => page.locator(".markdown-section h1").first(),
   },
   {
     landmarks: BADGE_LANDMARKS,
@@ -102,3 +111,23 @@ export const PUBLIC_PAGES = [
     ready: (page) => page.getByRole("heading", { name: "We could not find that page" }),
   },
 ];
+
+/**
+ * Loads a seeded public page and waits until it is final: ready, settled (htmx swaps and
+ * attendance controls) and, where a map preview renders, showing its basemap attribution.
+ * Serves an offline basemap first, so map previews never reach the tile server.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @param {(typeof PUBLIC_PAGES)[number]} publicPage - Page to load.
+ * @returns {Promise<void>}
+ */
+export const loadPublicPage = async (page, publicPage) => {
+  await routeEmptyBasemap(page, { attribution: BASEMAP_ATTRIBUTION });
+  await navigateToPath(page, publicPage.path);
+  await expect(publicPage.ready(page)).toBeVisible({ timeout: 15_000 });
+  await waitForPageSettled(page);
+
+  // Only rows with a mapped location render map previews; wait for their attribution links.
+  for (const mapPreview of await page.locator("[data-map-modal]").all()) {
+    await expect(mapPreview.getByRole("link", { name: BASEMAP_ATTRIBUTION_NAME })).toBeVisible();
+  }
+};

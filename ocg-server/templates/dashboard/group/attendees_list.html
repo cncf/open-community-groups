@@ -66,7 +66,7 @@
              class="text-sm font-semibold text-nowrap text-stone-900">Status</label>
       <select id="attendees-enrollment-status"
               name="status"
-              class="block h-10 w-52 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500">
+              class="block h-10 w-52 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:ring-0 focus:hover:border-primary-500">
         <optgroup label="VIEWS">
           <option value="current"
                   {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::Current -%}
@@ -128,7 +128,7 @@
              class="text-sm font-semibold text-nowrap text-stone-900">Sort by</label>
       <select id="attendees-sort"
               name="sort"
-              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
+              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
               {% if attendees.is_empty() -%}
                 disabled
               {% endif -%}>
@@ -156,8 +156,11 @@
 
 {% if checked_in.is_some() || event_ticket_type_ids.is_some() || title.is_some() -%}
   {# Active filters -#}
-  <div class="mt-7 mb-5 flex flex-wrap items-center gap-2">
-    <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
+  <div class="mt-7 mb-5 flex flex-wrap items-center gap-2"
+       role="group"
+       aria-labelledby="attendees-active-filters-label">
+    <span id="attendees-active-filters-label"
+          class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
     {% if let Some(active_checked_in) = checked_in -%}
       <form class="inline-flex"
             hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
@@ -234,6 +237,7 @@
                 data-event-date="{% if let Some(start_time) = &event.starts_at -%}{{ start_time.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}{% else -%}Date information unavailable{% endif -%}"
                 data-event-location="{% if event.kind.to_string() == "virtual" -%}Virtual{% else if let Some(location) = &event.location(90) -%}{{ location }}{% else -%}Venue details pending{% endif -%}"
                 data-event-name="{{ event.name }}"
+                data-event-timezone="{{ event.timezone }}"
                 data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan"
                 {% if event.canceled -%}
                   disabled title="Canceled events cannot scan attendees."

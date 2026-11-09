@@ -37,23 +37,6 @@ export class MultiSelectFilter extends MultiSelect {
   }
 
   /**
-   * Gets the listbox ID.
-   * @returns {string}
-   */
-  _listboxId() {
-    return `${this.name}-filter-listbox`;
-  }
-
-  /**
-   * Gets the ID of the option rendered at the given filtered index.
-   * @param {number} index Filtered option index
-   * @returns {string}
-   */
-  _optionId(index) {
-    return `${this.name}-filter-option-${index}`;
-  }
-
-  /**
    * Renders one selected badge.
    * @param {{value: string, name: string}} option Selected option
    * @returns {import("lit").TemplateResult}
@@ -68,6 +51,8 @@ export class MultiSelectFilter extends MultiSelect {
           type="button"
           aria-label=${`Remove ${option.name}`}
           class="text-stone-400 hover:text-stone-700 phone:inline-flex phone:size-11 phone:flex-none phone:items-center phone:justify-center"
+          data-multi-select-chip-remove
+          data-focus-key=${`chip:${option.value}`}
           @click=${(event) => this._removeSelection(option.value, event)}
         >
           <div class="svg-icon size-3.5 icon-close bg-current shrink-0"></div>
@@ -165,7 +150,7 @@ export class MultiSelectFilter extends MultiSelect {
     return html`
       <div
         data-multi-select-search
-        class="flex items-center gap-2 min-h-[38px] px-2 py-1.5 bg-white border border-stone-200 rounded-lg phone:min-h-11 phone:py-0 phone:pe-0"
+        class="flex items-center gap-2 min-h-[38px] px-2 py-1.5 bg-white border border-stone-200 rounded-lg has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-(--ocg-primary) phone:min-h-11 phone:py-0 phone:pe-0"
       >
         <div class="svg-icon size-3 icon-search bg-stone-400 shrink-0"></div>
         <input
@@ -177,6 +162,7 @@ export class MultiSelectFilter extends MultiSelect {
           aria-haspopup="listbox"
           aria-activedescendant=${this._activeOptionId()}
           aria-label=${`${this.title} filter`}
+          data-focus-key="search"
           class="flex-1 text-base md:text-[0.775rem] bg-transparent border-none focus:ring-0 focus:outline-none placeholder-stone-400 p-0 phone:min-w-0 phone:self-stretch"
           placeholder="${this.placeholder}"
           autocomplete="off"

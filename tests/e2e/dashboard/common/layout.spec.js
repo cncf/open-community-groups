@@ -10,6 +10,8 @@ import {
 } from "../../seed.js";
 import { getCommunityBanner, navigateToPath } from "../../utils.js";
 
+// Class locators here mark the element whose layout is measured, not a user-facing handle.
+
 // One entry per dashboard scope; `title` is the menu shell title the header content aligns with.
 const DASHBOARD_CHROME_CASES = [
   { fixture: "member1Page", name: "user", path: "/dashboard/user?tab=events", title: "User Dashboard" },
@@ -67,6 +69,7 @@ const GRID_CASES = [
     grid: (page) =>
       page
         .getByText("Latest groups added", { exact: true })
+        // e2e-locator-allow: the grid is the measured element and has no other handle.
         .locator("xpath=../following-sibling::div[1]/div[contains(@class,'grid')]"),
     widths: [
       { name: "below md", width: 767, columns: 1 },
@@ -80,6 +83,7 @@ const GRID_CASES = [
     grid: (page) =>
       page
         .getByText("Upcoming Events", { exact: true })
+        // e2e-locator-allow: the grid is the measured element and has no other handle.
         .locator("xpath=../following-sibling::div[contains(@class,'grid')]"),
     widths: [
       { name: "below lg", width: 1023, columns: 1 },

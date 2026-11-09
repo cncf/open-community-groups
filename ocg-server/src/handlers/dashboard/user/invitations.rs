@@ -1,10 +1,9 @@
 //! HTTP handlers to manage invitations in the user dashboard.
 
-use askama::Template;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::{Html, IntoResponse},
+    response::IntoResponse,
 };
 use axum_messages::Messages;
 use tower_sessions::Session;
@@ -24,20 +23,6 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
-
-// Pages handlers.
-
-/// Returns the invitations list page for the user dashboard.
-#[instrument(skip_all)]
-pub(crate) async fn list_page(
-    CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare list page content
-    let template = prepare_list_page(&db, user.user_id).await?;
-
-    Ok(Html(template.render()?))
-}
 
 // Actions handlers.
 

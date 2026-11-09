@@ -3,9 +3,11 @@
 - button "Search"
 - button "Search tips"
 - text: /\d+ - \d+ of \d+ results/
-- list:
-  - listitem: List
-  - listitem: Map
+- radiogroup "View":
+  - radio "List" [checked]
+  - text: List
+  - radio "Map"
+  - text: Map
 - text: Sort by
 - combobox "Sort by":
   - option "Date"

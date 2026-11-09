@@ -34,6 +34,9 @@ use super::{error::HandlerError, extractors::CommunityId};
 #[cfg(test)]
 mod tests;
 
+/// Maximum number of upcoming and past events listed on the group page.
+const GROUP_PAGE_EVENTS_LIMIT: i32 = 6;
+
 // Pages handlers.
 
 /// Handler that renders the group home page.
@@ -57,8 +60,18 @@ pub(crate) async fn page(
     let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
     let (group, past_events, upcoming_events) = tokio::try_join!(
         db.get_group_full_by_slug(community_id, &group_slug),
-        db.get_group_past_events(community_id, &group_slug, event_kinds.clone(), 9),
-        db.get_group_upcoming_events(community_id, &group_slug, event_kinds, 9)
+        db.get_group_past_events(
+            community_id,
+            &group_slug,
+            event_kinds.clone(),
+            GROUP_PAGE_EVENTS_LIMIT
+        ),
+        db.get_group_upcoming_events(
+            community_id,
+            &group_slug,
+            event_kinds,
+            GROUP_PAGE_EVENTS_LIMIT
+        )
     )?;
     let Some(mut group) = group else {
         return not_found::render(site_settings);

@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::{dashboard::group::sponsors::SponsorFeatured, tests::*},
+    test_util::opening_tag_with,
     types::{
         dashboard::{DASHBOARD_PAGINATION_LIMIT, group::sponsors::GroupSponsorsOutput},
         permissions::GroupPermission,
@@ -50,7 +51,7 @@ async fn test_add_page_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    assert!(featured_input(&body).contains("checked"));
+    assert!(opening_tag_with(&body, r#"id="featured""#).contains("checked"));
 }
 
 #[tokio::test]
@@ -297,7 +298,7 @@ async fn test_update_page_success() {
     )));
     assert!(body.contains("value=\"Sponsor\""));
     assert!(body.contains("value=\"https://example.test/logo.png\""));
-    assert!(!featured_input(&body).contains("checked"));
+    assert!(!opening_tag_with(&body, r#"id="featured""#).contains("checked"));
 }
 
 #[tokio::test]
@@ -346,13 +347,6 @@ async fn test_update_success() {
 
 /// Sponsor form with an empty name and an invalid logo URL.
 const INVALID_SPONSOR_FORM: &str = "name=&logo_url=not-a-url";
-
-/// Returns the featured checkbox tag of a rendered sponsor form.
-fn featured_input(body: &str) -> &str {
-    let start = body.find("<input id=\"featured\"").unwrap();
-    let end = start + body[start..].find('>').unwrap();
-    &body[start..end]
-}
 
 /// Returns a sponsors list output with the sample sponsor.
 fn sample_sponsors_output() -> GroupSponsorsOutput {

@@ -57,7 +57,7 @@ test.describe("team invitation workflow", () => {
       // invitation row through its unique reject button id.
       const groupRejectButton = pending1Page.locator(`#reject-group-${TEST_GROUP_IDS.community1.alpha}`);
       const groupInvitationRow = inviteeContent.locator("tr", { has: groupRejectButton });
-      await expect(groupInvitationRow).toContainText("viewer");
+      await expect(groupInvitationRow).toContainText("Viewer");
       const acceptedAuditCount = countTeamInvitationAuditLogs(acceptedAuditFilter);
       await waitForActionResponse(pending1Page, () => groupInvitationRow.getByTitle("Approve").click(), {
         method: "PUT",
@@ -125,7 +125,7 @@ test.describe("team invitation workflow", () => {
         `#reject-community-${TEST_COMMUNITY_IDS.community1}`,
       );
       const communityInvitationRow = inviteeContent.locator("tr", { has: communityRejectButton });
-      await expect(communityInvitationRow).toContainText("viewer");
+      await expect(communityInvitationRow).toContainText("Viewer");
       await communityInvitationRow.getByTitle("Reject").click();
       await waitForActionResponse(
         pending2Page,

@@ -1,7 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
 import { TEST_CFS_WINDOW_EVENTS, TEST_COMMUNITY_NAME, TEST_EVENT_IDS, TEST_GROUP_SLUGS } from "../../seed.js";
-import { navigateToEvent, waitForActionResponse } from "../../utils.js";
+import { expectDialogClosed, navigateToEvent, waitForActionResponse } from "../../utils.js";
 
 const CFS_EVENT_SLUG = "alpha-cfs-summit";
 
@@ -162,6 +162,30 @@ test.describe("event page call for speakers", () => {
     await modal.getByRole("button", { name: "Cancel" }).click();
     await expect(modal).toBeHidden();
     await expect(openModalButton).toBeVisible();
+  });
+
+  test("the proposal modal closes from its Close button and its overlay", async ({ member1Page }) => {
+    // Load the open Call for Speakers event as a member with proposals.
+    await navigateToEvent(
+      member1Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      CFS_EVENT_SLUG,
+    );
+    const openModalButton = member1Page.getByRole("button", { name: "Submit session proposal" });
+    const modal = member1Page.getByRole("dialog", { name: "Submit a proposal" });
+
+    // Open the modal and close it with its Close button.
+    await openModalButton.click();
+    await expect(modal).toBeVisible();
+    await modal.getByRole("button", { name: "Close modal", exact: true }).click();
+    await expectDialogClosed(member1Page, modal, { opener: openModalButton });
+
+    // Reopen the modal and close it by clicking the overlay outside the panel.
+    await openModalButton.click();
+    await expect(modal).toBeVisible();
+    await member1Page.locator("#overlay-cfs-modal").click({ position: { x: 5, y: 5 } });
+    await expectDialogClosed(member1Page, modal, { opener: openModalButton });
   });
 
   test("failed proposal submission preserves the selection for retry", async ({ member1Page }) => {

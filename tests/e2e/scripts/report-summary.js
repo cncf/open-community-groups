@@ -77,32 +77,37 @@ const buildSummary = (report, runs) => {
 };
 
 /**
- * Collects the failed and flaky tests of the report, sorted by test.
+ * Collects the failed and flaky tests of the report, sorted by test. Tests registered outside
+ * their spec file, such as the `testAtBothWidths` pairs whose location is the helper in
+ * `fixtures.js`, are located by the spec file alone, without a line.
  * @param {object[]} suites - Suites of the JSON report.
  * @param {string[]} titles - Titles of the enclosing describe blocks.
+ * @param {string} [specFile] - Path of the enclosing spec file, unset for the file suites.
  * @returns {{error: string, status: string, test: string}[]} Failed tests.
  */
-const collectFailures = (suites, titles = []) => {
+const collectFailures = (suites, titles = [], specFile) => {
   const failures = [];
 
   for (const suite of suites) {
     // File suites are titled with their path, which the spec location already shows.
     const suiteTitles = titles.length === 0 && suite.title === suite.file ? [] : [...titles, suite.title];
+    const suiteSpecFile = specFile ?? suite.file;
 
     for (const spec of suite.specs ?? []) {
       for (const test of spec.tests ?? []) {
         if (!FAILED_STATUSES.has(test.status)) {
           continue;
         }
+        const location = spec.file === suiteSpecFile ? `${spec.file}:${spec.line}` : suiteSpecFile;
         const name = [...suiteTitles, spec.title].join(" › ");
         failures.push({
           error: firstError(test.results ?? []),
           status: test.status,
-          test: `[${test.projectName}] ${spec.file}:${spec.line} › ${name}`,
+          test: `[${test.projectName}] ${location} › ${name}`,
         });
       }
     }
-    failures.push(...collectFailures(suite.suites ?? [], suiteTitles));
+    failures.push(...collectFailures(suite.suites ?? [], suiteTitles, suiteSpecFile));
   }
 
   return titles.length === 0 ? failures.toSorted((a, b) => a.test.localeCompare(b.test)) : failures;

@@ -77,6 +77,37 @@ describe("navigation state", () => {
     expect(document.body.style.overflow).to.equal("");
   });
 
+  it("keeps the alert open for a marked layout refresher", () => {
+    // Build a layout holding a refresher, a menu and a modal, beside an alert popup.
+    document.body.innerHTML = `
+      <div id="dashboard-layout">
+        <div data-keeps-alerts hidden></div>
+        <details data-actions-menu open><summary>Actions</summary></details>
+        <div id="layout-modal" role="dialog" aria-modal="true" aria-hidden="false"></div>
+      </div>
+      <div id="alert-popup" role="dialog" aria-modal="true" aria-hidden="false"></div>
+    `;
+    initializeNavigationState();
+
+    // Start the layout swap requested by the refresher.
+    const layout = document.getElementById("dashboard-layout");
+    layout.dispatchEvent(
+      new CustomEvent("htmx:beforeSwap", {
+        bubbles: true,
+        detail: {
+          requestConfig: { elt: document.querySelector("[data-keeps-alerts]") },
+          target: layout,
+        },
+      }),
+    );
+
+    // The action alert stays while the replaced menus and modals still close.
+    expect(swalCloseCount).to.equal(0);
+    expect(document.getElementById("alert-popup").getAttribute("aria-hidden")).to.equal("false");
+    expect(document.querySelector("[data-actions-menu]").open).to.equal(false);
+    expect(document.getElementById("layout-modal").getAttribute("aria-hidden")).to.equal("true");
+  });
+
   it("leaves overlays open for a dashboard-content refresh", () => {
     // Build an open menu beside the table and content refresh target.
     document.body.innerHTML = `

@@ -8,11 +8,13 @@ returns json as $$
             g.group_id,
             g.name as group_name,
             gt.role,
+            gr.display_name as role_display_name,
 
             epoch_seconds(gt.created_at) as created_at
         from group_team gt
         join "group" g using (group_id)
         join community c using (community_id)
+        join group_role gr on gr.group_role_id = gt.role
         where gt.user_id = p_user_id
           and gt.accepted = false
         order by gt.created_at desc

@@ -5,6 +5,9 @@ use askama::Template;
 use crate::types::dashboard::user::submissions::CfsSubmission;
 use crate::types::pagination;
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// List submissions page template.

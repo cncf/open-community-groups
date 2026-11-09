@@ -1,18 +1,10 @@
-import { expect, test } from "../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../fixtures.js";
 
 import { expectAriaSnapshot, expectPageLayout } from "../../snapshots.js";
 import { navigateToPath } from "../../utils.js";
 
 test.describe("log in page ARIA snapshots", () => {
-  test("matches the desktop log in form", async ({ page }) => {
-    // Load the log in page and check its layout.
-    const main = await openLogIn(page);
-
-    // Capture the form and the sign up link.
-    await expectAriaSnapshot(page, main, "log-in-main");
-  });
-
-  test("matches the mobile log in form @mobile", async ({ page }) => {
+  testAtBothWidths("matches the log in form", async ({ page }) => {
     // Load the log in page and check its layout.
     const main = await openLogIn(page);
 

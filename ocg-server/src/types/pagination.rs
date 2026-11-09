@@ -5,6 +5,9 @@ use std::fmt::Write as _;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+mod tests;
+
 /// Trait for types that support pagination.
 ///
 /// Provides methods to access and modify pagination parameters, used by the navigation
@@ -89,8 +92,13 @@ macro_rules! impl_pagination_and_raw_query {
 ///
 /// Provides first/last/next/previous links for navigating through paginated results.
 /// Links are only populated when applicable based on current position in the result set.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct NavigationLinks {
+    /// Current page number, starting at 1.
+    pub current_page: usize,
+    /// Total number of pages, at least 1.
+    pub total_pages: usize,
+
     /// Link to first page of results.
     pub first: Option<NavigationLink>,
     /// Link to last page of results.
@@ -99,6 +107,21 @@ pub(crate) struct NavigationLinks {
     pub next: Option<NavigationLink>,
     /// Link to previous page of results.
     pub prev: Option<NavigationLink>,
+}
+
+impl Default for NavigationLinks {
+    /// Reports the first of a single page, without links.
+    fn default() -> Self {
+        Self {
+            current_page: 1,
+            total_pages: 1,
+
+            first: None,
+            last: None,
+            next: None,
+            prev: None,
+        }
+    }
 }
 
 impl NavigationLinks {
@@ -112,10 +135,16 @@ impl NavigationLinks {
     where
         T: Serialize + Clone + ToRawQuery + Pagination,
     {
-        let mut links = NavigationLinks::default();
+        // Report the current position in the result set
+        let limit = filters.limit().expect("pagination limit to be set");
+        let (current_page, total_pages) = page_position(filters.offset(), limit, total);
+        let mut links = NavigationLinks {
+            current_page,
+            total_pages,
+            ..NavigationLinks::default()
+        };
 
         // Calculate offsets for pagination
-        let limit = filters.limit().expect("pagination limit to be set");
         let offsets = NavigationLinksOffsets::new(filters.offset(), limit, total);
         let mut filters = filters.clone();
 
@@ -257,164 +286,15 @@ fn get_url_filters_separator(url: &str) -> &str {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{NavigationLinksOffsets, Pagination, get_url_filters_separator};
-
-    const TEST_PAGINATION_LIMIT: usize = 10;
-
-    #[test]
-    fn test_clamp_offset_to_last_page_moves_offset_to_last_page() {
-        // (case, offset, total, clamped, expected offset)
-        let cases = [
-            ("empty results keep the offset", 10, 0, false, 10),
-            ("offset within results is kept", 10, 11, false, 10),
-            ("offset past a full last page moves", 20, 20, true, 10),
-            ("offset past a partial last page moves", 30, 15, true, 10),
-            ("unaligned offset moves to the page start", 12, 12, true, 10),
-        ];
-        for (case, offset, total, clamped, expected_offset) in cases {
-            let mut filters = test_filters(Some(offset));
-
-            assert_eq!(filters.clamp_offset_to_last_page(total), clamped, "{case}");
-            assert_eq!(filters.offset, Some(expected_offset), "{case}");
-        }
+/// Returns the current page and the total pages for an offset.
+fn page_position(offset: Option<usize>, limit: usize, total: usize) -> (usize, usize) {
+    // Report a single page when the limit cannot split the results
+    if limit == 0 {
+        return (1, 1);
     }
 
-    #[test]
-    fn test_navigation_links_offsets_cover_page_positions() {
-        // (case, offset, total, first, last, next, prev)
-        let cases = [
-            (
-                "first of two full pages",
-                Some(0),
-                20,
-                None,
-                Some(10),
-                Some(10),
-                None,
-            ),
-            (
-                "last of two full pages",
-                Some(10),
-                20,
-                Some(0),
-                None,
-                None,
-                Some(0),
-            ),
-            (
-                "first page with a partial last page",
-                Some(0),
-                21,
-                None,
-                Some(20),
-                Some(10),
-                None,
-            ),
-            (
-                "partial last page",
-                Some(10),
-                15,
-                Some(0),
-                None,
-                None,
-                Some(0),
-            ),
-            ("single full page", Some(0), 10, None, None, None, None),
-            ("single partial page", Some(0), 5, None, None, None, None),
-            ("no results", Some(0), 0, None, None, None, None),
-            (
-                "missing offset defaults to first page",
-                None,
-                15,
-                None,
-                Some(10),
-                Some(10),
-                None,
-            ),
-            (
-                "middle page",
-                Some(20),
-                50,
-                Some(0),
-                Some(40),
-                Some(30),
-                Some(10),
-            ),
-            (
-                "unaligned offset",
-                Some(2),
-                20,
-                Some(0),
-                Some(10),
-                Some(12),
-                Some(0),
-            ),
-            (
-                "one result past a full page",
-                Some(0),
-                11,
-                None,
-                Some(10),
-                Some(10),
-                None,
-            ),
-        ];
-
-        for (case, offset, total, first, last, next, prev) in cases {
-            assert_eq!(
-                NavigationLinksOffsets::new(offset, TEST_PAGINATION_LIMIT, total),
-                NavigationLinksOffsets {
-                    first,
-                    last,
-                    next,
-                    prev,
-                },
-                "{case}"
-            );
-        }
-    }
-
-    #[test]
-    fn test_get_url_filters_separator_matches_query_state() {
-        let cases = [
-            ("no query string", "https://example.com", "?"),
-            ("empty query string", "https://example.com?", ""),
-            (
-                "query with parameters",
-                "https://example.com?param1=value1",
-                "&",
-            ),
-            (
-                "query ending with ampersand",
-                "https://example.com?param1=value1&",
-                "",
-            ),
-        ];
-
-        for (case, url, expected) in cases {
-            assert_eq!(get_url_filters_separator(url), expected, "{case}");
-        }
-    }
-
-    // Helpers.
-
-    /// Minimal paginated filters used to exercise the `Pagination` defaults.
-    struct TestFilters {
-        /// Number of results per page.
-        limit: Option<usize>,
-        /// Pagination offset for results.
-        offset: Option<usize>,
-    }
-
-    crate::impl_pagination!(TestFilters, limit, offset);
-
-    /// Builds test filters with the default test page size and the given offset.
-    fn test_filters(offset: Option<usize>) -> TestFilters {
-        TestFilters {
-            limit: Some(TEST_PAGINATION_LIMIT),
-            offset,
-        }
-    }
+    // Clamp offsets past the end to the last page
+    let total_pages = total.div_ceil(limit).max(1);
+    let current_page = (offset.unwrap_or(0) / limit + 1).min(total_pages);
+    (current_page, total_pages)
 }

@@ -255,43 +255,141 @@ const matchesResponse = (candidate, { method, params, pathname, urlEndsWith, url
   });
 };
 
+/**
+ * Reads the alpha channel of a computed CSS colour. Covers the legacy `rgba()`/`hsla()` comma
+ * syntax and the slash syntax of modern colour functions; colours without alpha are opaque.
+ * @param {string} color - Computed colour.
+ * @returns {number} Alpha between 0 and 1.
+ */
+const getColorAlpha = (color) => {
+  const value = color.trim().toLowerCase();
+  if (value === "transparent") {
+    return 0;
+  }
+
+  const slashAlpha = value.match(/\/\s*(-?[\d.]+)(%?)\s*\)$/);
+  const legacyArgs = value.match(/^(?:rgba|hsla)\(([^()]*)\)$/)?.[1].split(",");
+  const alpha = slashAlpha
+    ? `${slashAlpha[1]}${slashAlpha[2]}`
+    : legacyArgs?.length === 4
+      ? legacyArgs[3].trim()
+      : "1";
+
+  return alpha.endsWith("%") ? Number.parseFloat(alpha) / 100 : Number.parseFloat(alpha);
+};
+
+/**
+ * Splits a computed `box-shadow` into its layers, dropping transparent layers and layers whose
+ * offsets, blur and spread are all zero, since neither draws anything.
+ * @param {string} boxShadow - Computed `box-shadow` value.
+ * @returns {string[]} Layers that draw a visible shadow.
+ */
+const getVisibleShadowLayers = (boxShadow) => {
+  if (boxShadow.trim() === "none") {
+    return [];
+  }
+
+  // Split on commas outside colour functions.
+  const layers = [];
+  let depth = 0;
+  let layer = "";
+  for (const character of boxShadow) {
+    if (character === "," && depth === 0) {
+      layers.push(layer.trim());
+      layer = "";
+      continue;
+    }
+    if (character === "(") {
+      depth += 1;
+    } else if (character === ")") {
+      depth -= 1;
+    }
+    layer += character;
+  }
+  layers.push(layer.trim());
+
+  return layers.filter((shadowLayer) => {
+    const colorFunction = shadowLayer.match(/[a-z-]+\((?:[^()]|\([^()]*\))*\)/i)?.[0];
+    const rest = colorFunction ? shadowLayer.replace(colorFunction, " ") : shadowLayer;
+    const tokens = rest.split(/\s+/).filter(Boolean);
+    const lengths = tokens.filter((token) => /^-?[\d.]+(?:e-?\d+)?[a-z]*$/i.test(token));
+    const color = colorFunction ?? tokens.find((token) => token !== "inset" && !lengths.includes(token));
+
+    return (
+      (color === undefined || getColorAlpha(color) > 0) &&
+      lengths.some((length) => Number.parseFloat(length) !== 0)
+    );
+  });
+};
+
+/**
+ * Names the focus indicator that appeared between two style reads: an outline that is visible and
+ * differs from the baseline, otherwise a visible box-shadow that differs from the baseline one.
+ * @param {{ boxShadow: string, outlineColor: string, outlineStyle: string, outlineWidth: string }}
+ * baseline - Styles read before focus.
+ * @param {{ boxShadow: string, outlineColor: string, outlineStyle: string, outlineWidth: string }}
+ * focused - Styles read after focus.
+ * @returns {"box-shadow"|"outline"|null} Indicator kind, or null when nothing visible appeared.
+ */
+const getFocusIndicatorKind = (baseline, focused) => {
+  const outlineVisible =
+    !["hidden", "none"].includes(focused.outlineStyle) &&
+    Number.parseFloat(focused.outlineWidth) > 0 &&
+    getColorAlpha(focused.outlineColor) > 0;
+  const outlineChanged = ["outlineColor", "outlineStyle", "outlineWidth"].some(
+    (property) => focused[property] !== baseline[property],
+  );
+  if (outlineVisible && outlineChanged) {
+    return "outline";
+  }
+
+  const focusedShadow = getVisibleShadowLayers(focused.boxShadow).join(", ");
+  if (focusedShadow !== "" && focusedShadow !== getVisibleShadowLayers(baseline.boxShadow).join(", ")) {
+    return "box-shadow";
+  }
+
+  return null;
+};
+
 /** Builds a fully-qualified URL. */
 export const buildE2eUrl = (path) => buildUrl(path);
 
-/** Selects a site or community stats container. */
-export const getStatsContainer = (page, pageKind, viewport) => {
-  const selector = viewport === "desktop" ? "div.hidden.lg\\:flex" : "div.grid.lg\\:hidden";
+/**
+ * Selects the desktop or mobile copy of the site or community stats strip.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @param {"community" | "site"} pageKind - Unused: both pages share one strip markup.
+ * @param {"desktop" | "mobile"} viewport - Layout copy to select.
+ * @returns {import("@playwright/test").Locator} Stats container.
+ */
+export const getStatsContainer = (page, pageKind, viewport) =>
+  page.locator(`[data-stats-layout="${viewport}"]`);
 
-  return page
-    .locator(selector)
-    .filter({ has: page.getByText("Groups", { exact: true }) })
-    .first();
-};
-
-/** Selects a stat value within a stats container. */
-export const getStatValue = (statsContainer, statLabel) => {
-  const labelElement = statsContainer.getByText(statLabel, { exact: true });
-  const statBlock = labelElement.locator("..");
-
-  return statBlock.locator(".lg\\:text-4xl");
-};
+/**
+ * Selects a stat value within a stats container. The value follows its title in
+ * `macros/stats.html`.
+ * @param {import("@playwright/test").Locator} statsContainer - Stats container.
+ * @param {string} statLabel - Exact stat title, such as "Groups".
+ * @returns {import("@playwright/test").Locator} Stat value element.
+ */
+export const getStatValue = (statsContainer, statLabel) =>
+  statsContainer.getByText(statLabel, { exact: true }).locator("xpath=following-sibling::*[1]");
 
 /** Selects a section container from its visible heading. */
 export const getSectionByHeading = (page, heading) =>
   page.getByText(heading, { exact: true }).locator("..").locator("..");
 
 /**
- * Selects a responsive link within a heading-based section. Below md, roles skip
- * hidden links, so it finds the bottom link in narrow mouse windows and the
- * heading's pill on phones.
+ * Selects a responsive link within a heading-based section. Role queries skip the
+ * `display:none` copies, so at each width it finds the one link shown: the heading
+ * link from md up, the bottom link in narrow mouse windows and the heading's pill
+ * on phones.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @param {string} heading - Exact section heading text.
+ * @param {string} linkName - Exact accessible name of the link.
+ * @returns {import("@playwright/test").Locator} Section link.
  */
-export const getSectionLink = (page, heading, linkName, viewport) => {
-  const section = getSectionByHeading(page, heading);
-
-  return viewport === "desktop"
-    ? section.locator("div.hidden.md\\:flex").getByRole("link", { name: linkName })
-    : section.getByRole("link", { name: linkName });
-};
+export const getSectionLink = (page, heading, linkName) =>
+  getSectionByHeading(page, heading).getByRole("link", { name: linkName, exact: true });
 
 /** Selects a community banner on the site home page. */
 export const getCommunityBanner = (page, displayName) => page.getByAltText(`${displayName} banner`).first();
@@ -571,6 +669,24 @@ export const expectTableColumnsAtViewport = async (
 };
 
 /**
+ * Checks that no id repeats on the page, so `for` and `aria-*` references cannot bind to a hidden
+ * copy of the same markup.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @returns {Promise<void>} Resolves once the check passes.
+ */
+export const expectNoDuplicateIds = async (page) => {
+  const duplicateIds = await page.evaluate(() => {
+    const counts = new Map();
+    for (const element of document.querySelectorAll("[id]")) {
+      counts.set(element.id, (counts.get(element.id) ?? 0) + 1);
+    }
+    return [...counts].filter(([, count]) => count > 1).map(([id]) => id);
+  });
+
+  expect(duplicateIds).toEqual([]);
+};
+
+/**
  * Reads how far the page scrolls sideways. `clientWidth` is the bound because `innerWidth` grows
  * with content wider than a phone's viewport, which would hide the overflow.
  * @param {import("@playwright/test").Page} page - Page under test.
@@ -593,6 +709,158 @@ export const sendCloseRequest = async (page) => {
     });
   });
   await page.keyboard.press("Escape");
+};
+
+/**
+ * Checks the whole close contract of a modal: it is hidden, the page scroll lock is released and,
+ * when given, focus is back on the opener and the page kept its scroll position. Assumes no other
+ * modal is still open, because the lock counter in `static/js/common/modals/modal-lifecycle.js`
+ * only releases once every tracked modal has closed. Native `<dialog>` and SweetAlert closes do not
+ * use that counter.
+ * @param {import("@playwright/test").Page} page - Page showing the dialog.
+ * @param {import("@playwright/test").Locator} dialog - Dialog that should be closed.
+ * @param {object} [options] - Optional close checks.
+ * @param {import("@playwright/test").Locator} [options.opener] - Control that should get focus back.
+ * @param {number} [options.scrollY] - Page scroll position read before the dialog opened.
+ * @returns {Promise<void>} Resolves once every check passes.
+ */
+export const expectDialogClosed = async (page, dialog, { opener, scrollY } = {}) => {
+  await expect(dialog).toBeHidden();
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => ({
+          lockCount: document.body.dataset.modalOpenCount ?? "0",
+          scrollLocked: [document.documentElement, document.body].some(
+            (element) => getComputedStyle(element).overflowY === "hidden",
+          ),
+        })),
+      { message: "page scroll is still locked after the dialog closed" },
+    )
+    .toEqual({ lockCount: "0", scrollLocked: false });
+
+  if (opener) {
+    await expect(opener).toBeFocused();
+  }
+  if (typeof scrollY === "number") {
+    await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(scrollY);
+  }
+};
+
+/**
+ * Checks that moving focus with the keyboard draws a visible focus indicator. The outline or
+ * box-shadow is compared before and after focus, so a static shadow never passes as a focus ring.
+ * The helper presses no keys itself, so it never closes menus that close on focus loss.
+ * @param {import("@playwright/test").Locator} locator - Control that receives focus; it must not
+ * be focused yet.
+ * @param {() => Promise<unknown>} focus - Moves focus with the keyboard, for example
+ * `() => page.keyboard.press("Tab")` or `ArrowRight` for roving tabs.
+ * @param {object} [options] - Optional indicator checks.
+ * @param {import("@playwright/test").Locator} [options.indicator] - Element that draws the ring,
+ * such as the label of a visually hidden input. Defaults to `locator`.
+ * @param {string} [options.outlineColor] - Any CSS colour, for example `"var(--ocg-primary)"`.
+ * When given, the indicator must be an outline of that colour.
+ * @returns {Promise<void>} Resolves once the indicator is visible.
+ */
+export const expectFocusIndicator = async (locator, focus, { indicator = locator, outlineColor } = {}) => {
+  // Read the indicator styles before focus.
+  await expect(locator).not.toBeFocused();
+  const baseline = await indicator.evaluate((element) => {
+    const style = getComputedStyle(element);
+
+    return {
+      boxShadow: style.boxShadow,
+      outlineColor: style.outlineColor,
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+    };
+  });
+
+  // Move focus with the keyboard.
+  await focus();
+  await expect(locator).toBeFocused();
+
+  // Read the focused styles and name the indicator they draw compared with the baseline.
+  const readFocusedState = async () => {
+    const focusVisible = await locator.evaluate((element) => element.matches(":focus-visible"));
+    const focused = await indicator.evaluate((element) => {
+      const style = getComputedStyle(element);
+
+      return {
+        boxShadow: style.boxShadow,
+        outlineColor: style.outlineColor,
+        outlineStyle: style.outlineStyle,
+        outlineWidth: style.outlineWidth,
+      };
+    });
+
+    return {
+      focusVisible,
+      kind: getFocusIndicatorKind(baseline, focused),
+      outlineColor: focused.outlineColor,
+    };
+  };
+
+  // Check that a visible indicator appeared.
+  await expect
+    .poll(
+      async () => {
+        const { focusVisible, kind } = await readFocusedState();
+
+        return { focusVisible, indicator: kind };
+      },
+      { message: "no visible focus indicator appeared on keyboard focus" },
+    )
+    .toEqual({ focusVisible: true, indicator: expect.stringMatching(/^(box-shadow|outline)$/) });
+  if (outlineColor === undefined) {
+    return;
+  }
+
+  // Resolve the expected outline colour where the indicator's custom properties apply.
+  const expectedOutlineColor = await indicator.evaluate((element, color) => {
+    const probe = document.createElement("span");
+    probe.hidden = true;
+    probe.style.color = color;
+    (element.parentElement ?? document.documentElement).append(probe);
+    const resolvedColor = getComputedStyle(probe).color;
+    probe.remove();
+
+    return resolvedColor;
+  }, outlineColor);
+
+  // Check that the indicator is an outline of that colour.
+  await expect
+    .poll(
+      async () => {
+        const { kind, outlineColor: focusedOutlineColor } = await readFocusedState();
+
+        return { indicator: kind, outlineColor: focusedOutlineColor };
+      },
+      { message: `focus indicator is not a ${outlineColor} outline` },
+    )
+    .toEqual({ indicator: "outline", outlineColor: expectedOutlineColor });
+};
+
+// Most key presses a focus walk may take before its target must be focused.
+const MAX_FOCUS_WALK_PRESSES = 80;
+
+/**
+ * Walks focus with the keyboard until the target is focused, so a focus check reaches a control
+ * the way a keyboard user does. Pass it as the `expectFocusIndicator` focus callback.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @param {import("@playwright/test").Locator} target - Control that should receive focus.
+ * @param {"Tab"|"Shift+Tab"} [key] - Key that moves focus.
+ * @returns {Promise<void>} Resolves once the target is focused; rejects when the walk never
+ * reaches it.
+ */
+export const pressKeyUntilFocused = async (page, target, key = "Tab") => {
+  for (let press = 0; press < MAX_FOCUS_WALK_PRESSES; press += 1) {
+    await page.keyboard.press(key);
+    if (await target.evaluate((element) => element === document.activeElement)) {
+      return;
+    }
+  }
+  throw new Error(`${key} never reached the focus target`);
 };
 
 /**
@@ -667,11 +935,12 @@ export const routeNextRequestWithQuery = async (page, urlIncludes, query) => {
 
 /** Verifies loaded forward and backward pagination while preserving the first result. */
 export const expectCurrentPaginationNavigation = async (page, resultSelector) => {
-  // Capture the first result and initial disabled boundary controls.
-  const pagination = page.locator(".pagination");
+  // Capture the first result, the page position and the disabled boundary controls.
+  const pagination = page.getByRole("group", { name: "Pagination" });
   const results = page.locator(resultSelector);
   const initialResult = (await results.first().innerText()).trim();
   await expect(initialResult).not.toEqual("");
+  await expect(pagination.getByText(/^Page 1 of \d+$/)).toBeVisible();
   await expect(pagination.getByRole("button", { name: "First" })).toBeDisabled();
   await expect(pagination.getByRole("button", { name: "Prev" })).toBeDisabled();
 
@@ -685,14 +954,11 @@ export const expectCurrentPaginationNavigation = async (page, resultSelector) =>
   const { matcher: nextMatcher, offsetParam } = await getPaginationNextMatcher(nextLink);
   await waitForActionResponse(page, () => nextLink.click(), nextMatcher);
   await expect.poll(async () => (await results.first().innerText()).trim()).not.toBe(initialResult);
+  await expect(pagination.getByText(/^Page 2 of \d+$/)).toBeVisible();
 
   // Verify both backward controls point to the first result page.
-  const firstLink = page.locator(".pagination").getByRole("link", {
-    name: "First",
-  });
-  const previousLink = page.locator(".pagination").getByRole("link", {
-    name: "Prev",
-  });
+  const firstLink = pagination.getByRole("link", { name: "First" });
+  const previousLink = pagination.getByRole("link", { name: "Prev" });
   await expect(firstLink).toHaveAttribute("href", /limit=1.*offset=0|offset=0.*limit=1/);
   await expect(firstLink).toHaveAttribute("hx-get", /limit=1.*offset=0|offset=0.*limit=1/);
   await expect(previousLink).toHaveAttribute("href", /limit=1.*offset=0|offset=0.*limit=1/);
@@ -703,6 +969,7 @@ export const expectCurrentPaginationNavigation = async (page, resultSelector) =>
     params: { [offsetParam]: "0" },
   });
   await expect.poll(async () => (await results.first().innerText()).trim()).toBe(initialResult);
+  await expect(pagination.getByText(/^Page 1 of \d+$/)).toBeVisible();
 };
 
 /** Loads a page and verifies forward and backward pagination. */

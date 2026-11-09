@@ -1,5 +1,6 @@
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
+import { isSuccessfulXHR } from "/static/js/common/utils.js";
 
 const ROOT_SELECTOR = "[data-group-badges]";
 const READY_KEY = "groupBadgesReady";
@@ -11,6 +12,7 @@ export const initializeGroupBadges = (root) => {
   }
   root.querySelectorAll("[data-artwork-form]").forEach(syncArtworkFileName);
 
+  root.addEventListener("htmx:beforeOnLoad", closeDialogOnSuccess);
   root.addEventListener("click", (event) => {
     const opener = event.target.closest?.("[data-badge-dialog-open]");
     if (opener) {
@@ -37,6 +39,14 @@ export const initializeGroupBadges = (root) => {
       }
     }
   });
+};
+
+/** Closes a badge dialog once its form succeeds so the success alert renders outside it. */
+const closeDialogOnSuccess = (event) => {
+  const dialog = event.target.closest?.("dialog[open]");
+  if (dialog && isSuccessfulXHR(event.detail?.xhr)) {
+    dialog.close();
+  }
 };
 
 /** Validate that uploaded artwork is available before submission. */

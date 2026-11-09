@@ -24,7 +24,7 @@ export const expectInboxStatusFilter = async (
   const rows = list.locator("[data-inbox-conversation-row]");
   const matchingRow = rows.filter({ hasText: matchingRowText });
   const otherRow = rows.filter({ hasText: otherRowText });
-  const activeFilters = list.getByText("Active filters", { exact: true }).locator("xpath=..");
+  const activeFilters = list.getByRole("group", { name: "Active filters", exact: true });
 
   // Open the status menu and verify its options, with every status selected
   await list.getByLabel("Status filters").click();

@@ -449,6 +449,7 @@
 {{ template "dashboard-user/accept_group_team_invitation.sql" }}
 {{ template "dashboard-user/accept_session_proposal_co_speaker_invitation.sql" }}
 {{ template "dashboard-user/add_session_proposal.sql" }}
+{{ template "dashboard-user/count_user_pending_invitations.sql" }}
 {{ template "dashboard-user/count_user_unanswered_event_surveys.sql" }}
 {{ template "dashboard-user/decline_event_admission_offer.sql" }}
 {{ template "dashboard-user/delete_session_proposal.sql" }}

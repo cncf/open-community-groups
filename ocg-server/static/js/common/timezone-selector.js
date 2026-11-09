@@ -207,7 +207,7 @@ export class TimezoneSelector extends LitWrapper {
                             <button
                               id="timezone-option-${index}"
                               type="button"
-                              class="w-full px-4 py-2 whitespace-normal min-h-10 flex items-center text-left focus:outline-none text-sm ${statusClass}"
+                              class="w-full px-4 py-2 whitespace-normal min-h-10 flex items-center text-left focus-visible:-outline-offset-2 text-sm ${statusClass}"
                               role="option"
                               aria-selected=${isSelected ? "true" : "false"}
                               ?disabled=${isItemDisabled}

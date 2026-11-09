@@ -1,4 +1,4 @@
-import { expect, test } from "../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../fixtures.js";
 
 import {
   TEST_COHOSTED_EVENT,
@@ -36,15 +36,7 @@ test.describe("event page ARIA snapshots", () => {
     await expectAriaSnapshot(page, summary, "event-summary-mobile");
   });
 
-  test("matches the desktop co-hosts list", async ({ page }) => {
-    // Load the co-hosted event and check its layout.
-    const cohosts = await openCohostedEvent(page);
-
-    // Capture the co-host links.
-    await expectAriaSnapshot(page, cohosts, "event-cohosts");
-  });
-
-  test("matches the mobile co-hosts list @mobile", async ({ page }) => {
+  testAtBothWidths("matches the co-hosts list", async ({ page }) => {
     // Load the co-hosted event and check its layout.
     const cohosts = await openCohostedEvent(page);
 

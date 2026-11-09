@@ -15,6 +15,7 @@ import {
 import {
   confirmAlert,
   dismissAlert,
+  expectDialogClosed,
   expectTableHeaders,
   navigateToPath,
   uniqueName,
@@ -458,9 +459,7 @@ test.describe("group dashboard event surveys tab", () => {
 
     // Close the modal on Escape and verify focus returns to the row that opened it.
     await page.keyboard.press("Escape");
-    await expect(secondDialog).toBeHidden();
-    await expect(firstRow).toBeFocused();
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expectDialogClosed(page, secondDialog, { opener: firstRow });
 
     // Open the second respondent with a click and close it from the footer.
     await waitForActionResponse(page, () => secondRow.click(), {
@@ -578,9 +577,7 @@ test.describe("group dashboard event surveys tab", () => {
 
       // Close the modal on Escape and verify focus returns to its opener.
       await page.keyboard.press("Escape");
-      await expect(dialog).toBeHidden();
-      await expect(viewAll).toBeFocused();
-      await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+      await expectDialogClosed(page, dialog, { opener: viewAll });
     } finally {
       cleanupEventSurveys([owned.id]);
     }

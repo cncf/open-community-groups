@@ -8,6 +8,9 @@ use crate::{
     types::{dashboard::group::PresenceFilter, event::EventSummary, pagination},
 };
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// List waitlist page template for a group's event.
@@ -44,56 +47,4 @@ pub(crate) struct ListPage {
 /// Returns a stable identifier for a waitlist row's actions menu, keyed by the person the row represents.
 pub(crate) fn waitlist_row_key(entry: &WaitlistEntry) -> String {
     format!("waitlist-{}", entry.user.user_id)
-}
-
-#[cfg(test)]
-mod tests {
-    use chrono::Utc;
-    use uuid::Uuid;
-
-    use super::waitlist_row_key;
-    use crate::types::{
-        dashboard::group::waitlist::WaitlistEntry, event::EventAdmissionOfferStatus, user::User,
-    };
-
-    fn entry(
-        user_id: Uuid,
-        admission_offer_id: Option<Uuid>,
-        status: Option<EventAdmissionOfferStatus>,
-    ) -> WaitlistEntry {
-        WaitlistEntry {
-            created_at: Utc::now(),
-            event_ticket_type_id: Uuid::nil(),
-            ticket_title: "General".to_string(),
-            user: User {
-                user_id,
-                username: "jane".to_string(),
-                ..User::default()
-            },
-            admission_offer_id,
-            admission_offer_status: status,
-            offer_expires_at: None,
-            waitlist_position: None,
-        }
-    }
-
-    #[test]
-    fn test_waitlist_row_key_is_stable_for_the_same_user() {
-        let user_id = Uuid::max();
-        let queued = entry(user_id, None, None);
-        let pending_offer = entry(
-            user_id,
-            Some(Uuid::from_u128(7)),
-            Some(EventAdmissionOfferStatus::Pending),
-        );
-        let expired_offer = entry(
-            user_id,
-            Some(Uuid::from_u128(8)),
-            Some(EventAdmissionOfferStatus::Expired),
-        );
-
-        assert_eq!(waitlist_row_key(&queued), format!("waitlist-{user_id}"));
-        assert_eq!(waitlist_row_key(&pending_offer), waitlist_row_key(&queued));
-        assert_eq!(waitlist_row_key(&expired_offer), waitlist_row_key(&queued));
-    }
 }

@@ -12,13 +12,13 @@
 - paragraph: Manage invitations to join groups.
 - article:
   - heading "Platform Ops Meetup" [level=3]
-  - text: Role viewer
+  - text: Role Viewer
   - button "Approve"
   - button "Reject"
 - text: Community Invitations
 - paragraph: Manage invitations to join communities.
 - article:
-  - heading "e2e-test-community" [level=3]
-  - text: Role viewer
+  - heading "Platform Engineering Community" [level=3]
+  - text: Role Viewer
   - button "Approve"
   - button "Reject"

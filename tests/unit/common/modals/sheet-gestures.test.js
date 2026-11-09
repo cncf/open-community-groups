@@ -12,6 +12,7 @@ import {
 } from "/static/js/common/modals/sheet-gestures.js";
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 /** Close watcher double that records its instances. */
 class FakeCloseWatcher extends EventTarget {
@@ -32,38 +33,6 @@ class FakeCloseWatcher extends EventTarget {
     this.dispatchEvent(new Event("close"));
   }
 }
-
-/**
- * Replaces matchMedia with a query whose state tests can change.
- * @param {boolean} matches Initial phone query state.
- * @returns {{listeners: Set<Function>, setMatches: (next: boolean) => void}} Query controls.
- */
-const mockPhoneQuery = (matches) => {
-  const listeners = new Set();
-  const query = {
-    addEventListener: (type, listener) => {
-      if (type === "change") {
-        listeners.add(listener);
-      }
-    },
-    matches,
-    removeEventListener: (type, listener) => {
-      if (type === "change") {
-        listeners.delete(listener);
-      }
-    },
-  };
-
-  window.matchMedia = (text) => (text === PHONE_MEDIA_QUERY ? query : { matches: false });
-
-  return {
-    listeners,
-    setMatches: (next) => {
-      query.matches = next;
-      [...listeners].forEach((listener) => listener({ matches: next }));
-    },
-  };
-};
 
 /**
  * Renders a sheet with a title row, a close button and a body control.
@@ -139,7 +108,7 @@ const firePointer = (target, type, { clientY = 0, time = 0, init = {} } = {}) =>
 describe("sheet gestures", () => {
   const originalCloseWatcher = window.CloseWatcher;
   const originalGetComputedStyle = window.getComputedStyle;
-  const originalMatchMedia = window.matchMedia;
+  let media;
 
   beforeEach(() => {
     resetDom();
@@ -150,14 +119,14 @@ describe("sheet gestures", () => {
   afterEach(() => {
     window.CloseWatcher = originalCloseWatcher;
     window.getComputedStyle = originalGetComputedStyle;
-    window.matchMedia = originalMatchMedia;
+    media?.restore();
     resetRestoredModalState(document);
     resetDom();
   });
 
   describe("false query", () => {
     it("does nothing", () => {
-      mockPhoneQuery(false);
+      media = stubMatchMedia();
       const { closeCount, grab, panel } = renderSheet();
       const addedListeners = [];
       const originalAddEventListener = document.addEventListener;
@@ -187,17 +156,17 @@ describe("sheet gestures", () => {
     });
 
     it("leaves a fixed sheet panel out of isBottomSheet", () => {
-      mockPhoneQuery(false);
+      media = stubMatchMedia();
 
       expect(isBottomSheet(renderSheet().panel)).to.equal(false);
     });
 
     it("returns the same no-op for every unbound panel", () => {
-      mockPhoneQuery(false);
+      media = stubMatchMedia();
       const first = bindSheetGestures(renderSheet().panel);
 
       // A true query without a usable panel resolves to the same no-op.
-      mockPhoneQuery(true);
+      media.setMatches(PHONE_MEDIA_QUERY, true);
       expect(bindSheetGestures(null)).to.equal(first);
       expect(bindSheetGestures(undefined)).to.equal(first);
       expect(bindSheetGestures(renderSheet("position: static").panel)).to.equal(first);
@@ -206,7 +175,7 @@ describe("sheet gestures", () => {
     });
 
     it("keeps toggleModalVisibility free of gestures", () => {
-      mockPhoneQuery(false);
+      media = stubMatchMedia();
       const { modal, panel, trigger } = renderSheetModal();
 
       // Open and verify the modal contract without any gesture state.
@@ -226,7 +195,7 @@ describe("sheet gestures", () => {
 
   describe("isBottomSheet", () => {
     it("matches fixed sheet panels and account sheets on phones", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const accountSheet = document.createElement("div");
       accountSheet.className = "account-sheet";
       accountSheet.style.position = "fixed";
@@ -237,7 +206,7 @@ describe("sheet gestures", () => {
     });
 
     it("rejects static panels, other elements and null", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const other = document.createElement("div");
       other.style.position = "fixed";
       document.body.append(other);
@@ -266,7 +235,7 @@ describe("sheet gestures", () => {
 
   describe("binding", () => {
     it("marks the panel and creates one watcher", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { panel } = renderSheet();
 
       const cleanup = bindSheetGestures(panel);
@@ -277,19 +246,19 @@ describe("sheet gestures", () => {
     });
 
     it("returns the existing cleanup when the sheet is already bound", () => {
-      const query = mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { panel } = renderSheet();
 
       const cleanup = bindSheetGestures(panel);
 
       expect(bindSheetGestures(panel)).to.equal(cleanup);
       expect(FakeCloseWatcher.instances).to.have.length(1);
-      expect(query.listeners.size).to.equal(1);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
       cleanup();
     });
 
     it("removes everything once, however many times cleanup runs", () => {
-      const query = mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { grab, panel } = renderSheet();
       const cleanup = bindSheetGestures(panel);
 
@@ -300,7 +269,7 @@ describe("sheet gestures", () => {
       cleanup();
 
       expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
-      expect(query.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
       expect(panel.hasAttribute("data-sheet-drag")).to.equal(false);
       expect(panel.style.translate).to.equal("");
       expect(panel.style.transition).to.equal("");
@@ -312,7 +281,7 @@ describe("sheet gestures", () => {
     });
 
     it("can bind again after cleanup", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { panel } = renderSheet();
 
       bindSheetGestures(panel)();
@@ -324,7 +293,7 @@ describe("sheet gestures", () => {
     });
 
     it("binds the account sheet list, not the scrim", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const wrapper = document.createElement("div");
       wrapper.className = "account-sheet";
       wrapper.style.position = "fixed";
@@ -348,7 +317,7 @@ describe("sheet gestures", () => {
 
   describe("Android Back", () => {
     it("clicks the close button on a close request", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { closeCount, panel } = renderSheet();
       const cleanup = bindSheetGestures(panel);
       const historyLength = window.history.length;
@@ -361,7 +330,7 @@ describe("sheet gestures", () => {
     });
 
     it("keeps dragging where CloseWatcher is missing", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       delete window.CloseWatcher;
       const { grab, panel } = renderSheet();
 
@@ -374,7 +343,7 @@ describe("sheet gestures", () => {
     });
 
     it("only releases a sheet swapped out while open", () => {
-      const query = mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { closeCount, panel } = renderSheet();
       bindSheetGestures(panel);
       panel.remove();
@@ -383,7 +352,7 @@ describe("sheet gestures", () => {
 
       expect(closeCount()).to.equal(0);
       expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
-      expect(query.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     });
   });
 
@@ -396,7 +365,7 @@ describe("sheet gestures", () => {
      * @returns {ReturnType<typeof renderSheet> & {cleanup: () => void}} Sheet after the drag.
      */
     const dragSheet = (distance, time, panelStyle) => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const sheet = renderSheet(panelStyle);
       const cleanup = bindSheetGestures(sheet.panel);
 
@@ -408,7 +377,7 @@ describe("sheet gestures", () => {
     };
 
     it("captures the pointer and follows it down", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { grab, panel } = renderSheet();
       const captures = [];
       grab.setPointerCapture = (pointerId) => captures.push(pointerId);
@@ -428,7 +397,7 @@ describe("sheet gestures", () => {
     });
 
     it("ignores secondary pointers, other buttons, controls and the body", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { close, grab, panel } = renderSheet();
       const body = panel.querySelector("input");
       const cleanup = bindSheetGestures(panel);
@@ -446,7 +415,7 @@ describe("sheet gestures", () => {
     });
 
     it("ignores other pointers during a drag", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { closeCount, grab, panel } = renderSheet();
       const cleanup = bindSheetGestures(panel);
 
@@ -507,7 +476,7 @@ describe("sheet gestures", () => {
     });
 
     it("snaps back when the close button does not close", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { close, grab, panel } = renderSheet();
       close.disabled = true;
       const cleanup = bindSheetGestures(panel);
@@ -523,7 +492,7 @@ describe("sheet gestures", () => {
 
     ["pointercancel", "lostpointercapture"].forEach((type) => {
       it(`snaps back on ${type}`, () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const { closeCount, grab, panel } = renderSheet();
         const cleanup = bindSheetGestures(panel);
 
@@ -541,15 +510,15 @@ describe("sheet gestures", () => {
 
   describe("release without a close", () => {
     it("releases on rotation and leaves the sheet open", () => {
-      const query = mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { close, modal, panel } = renderSheetModal();
       toggleModalVisibility(modal);
 
       // Rotate past 768px with the sheet open.
-      query.setMatches(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
 
       expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
-      expect(query.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
       expect(panel.hasAttribute("data-sheet-drag")).to.equal(false);
       expect(modal.classList.contains("hidden")).to.equal(false);
       expect(document.body.dataset.modalOpenCount).to.equal("1");
@@ -561,18 +530,18 @@ describe("sheet gestures", () => {
     });
 
     it("gives a modal opened off phones no gestures after rotating in", () => {
-      const query = mockPhoneQuery(false);
+      media = stubMatchMedia();
       const { modal, panel } = renderSheetModal();
       toggleModalVisibility(modal);
 
-      query.setMatches(true);
+      media.setMatches(PHONE_MEDIA_QUERY, true);
 
       expect(FakeCloseWatcher.instances).to.have.length(0);
       expect(panel.hasAttribute("data-sheet-drag")).to.equal(false);
     });
 
     it("strips drag state before an HTMX history snapshot", () => {
-      const query = mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { grab, panel } = renderSheet();
       bindSheetGestures(panel);
       firePointer(grab, "pointerdown", { clientY: 100 });
@@ -583,7 +552,7 @@ describe("sheet gestures", () => {
       expect(panel.hasAttribute("data-sheet-drag")).to.equal(false);
       expect(panel.style.translate).to.equal("");
       expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
-      expect(query.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     });
   });
 
@@ -635,7 +604,7 @@ describe("sheet gestures", () => {
     });
 
     it("runs the callback on a back-forward cache restore only", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { panel } = renderSheet();
       let restores = 0;
       const cleanup = bindSheetGestures(panel, { onPageRestore: () => (restores += 1) });
@@ -650,7 +619,7 @@ describe("sheet gestures", () => {
     });
 
     it("listens only for sheets that ask", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const cleanup = bindSheetGestures(renderSheet().panel);
 
       expect(pageShow.active.size).to.equal(0);
@@ -659,7 +628,7 @@ describe("sheet gestures", () => {
     });
 
     it("stops listening on cleanup", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const cleanup = bindSheetGestures(renderSheet().panel, { onPageRestore() {} });
       expect(pageShow.active.size).to.equal(1);
 
@@ -669,16 +638,16 @@ describe("sheet gestures", () => {
     });
 
     it("stops listening when the phone query turns false", () => {
-      const query = mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       bindSheetGestures(renderSheet().panel, { onPageRestore() {} });
 
-      query.setMatches(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
 
       expect(pageShow.active.size).to.equal(0);
     });
 
     it("adds no listener under a false phone query", () => {
-      mockPhoneQuery(false);
+      media = stubMatchMedia();
 
       bindSheetGestures(renderSheet().panel, { onPageRestore() {} });
 
@@ -688,7 +657,7 @@ describe("sheet gestures", () => {
 
   describe("HTMX swaps", () => {
     it("keeps gestures while the sheet stays in the page", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { panel } = renderSheet();
       bindSheetGestures(panel);
 
@@ -699,7 +668,7 @@ describe("sheet gestures", () => {
     });
 
     it("releases a sheet the swap removed, so no watcher eats the next Back", () => {
-      const query = mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { panel } = renderSheet();
       bindSheetGestures(panel);
       panel.remove();
@@ -707,13 +676,13 @@ describe("sheet gestures", () => {
       document.body.dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true }));
 
       expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
-      expect(query.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     });
   });
 
   describe("modal lifecycle", () => {
     it("binds on open and cleans up on close", () => {
-      const query = mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { modal, panel, trigger } = renderSheetModal();
 
       toggleModalVisibility(modal, trigger);
@@ -723,12 +692,12 @@ describe("sheet gestures", () => {
       toggleModalVisibility(modal);
       expect(panel.hasAttribute("data-sheet-drag")).to.equal(false);
       expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
-      expect(query.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
       expect(document.activeElement).to.equal(trigger);
     });
 
     it("binds a modal that is itself the sheet panel", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { modal, panel } = renderSheetModal();
       panel.classList.remove("sheet-panel");
       modal.classList.add("sheet-panel");
@@ -740,7 +709,7 @@ describe("sheet gestures", () => {
     });
 
     it("gives a phone modal without a sheet panel the no-op", () => {
-      const query = mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { modal, panel } = renderSheetModal();
       panel.classList.remove("sheet-panel");
 
@@ -748,11 +717,11 @@ describe("sheet gestures", () => {
       toggleModalVisibility(modal);
 
       expect(FakeCloseWatcher.instances).to.have.length(0);
-      expect(query.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     });
 
     it("closes through Back, restoring lock and focus", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { modal, trigger } = renderSheetModal();
       toggleModalVisibility(modal, trigger);
 
@@ -765,7 +734,7 @@ describe("sheet gestures", () => {
     });
 
     it("closes through a drag past the threshold", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { modal, panel } = renderSheetModal();
       const grab = panel.querySelector(".sheet-grab");
       grab.setPointerCapture = () => {};
@@ -780,7 +749,7 @@ describe("sheet gestures", () => {
     });
 
     it("keeps gestures when bindOpenModalKeyboard runs after opening", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { modal, panel } = renderSheetModal();
 
       // Open the way map-modal.js does.
@@ -797,7 +766,7 @@ describe("sheet gestures", () => {
     });
 
     it("cleans up on navigation and bfcache reset", () => {
-      const query = mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { modal, panel } = renderSheetModal();
       toggleModalVisibility(modal);
 
@@ -806,11 +775,11 @@ describe("sheet gestures", () => {
       expect(modal.classList.contains("hidden")).to.equal(true);
       expect(FakeCloseWatcher.instances[0].destroyCount).to.equal(1);
       expect(panel.hasAttribute("data-sheet-drag")).to.equal(false);
-      expect(query.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     });
 
     it("binds again when the modal reopens", () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { modal, panel } = renderSheetModal();
 
       toggleModalVisibility(modal);

@@ -286,8 +286,9 @@ server-watch:
 
 # Format and lint frontend code.
 frontend-fmt-and-lint:
-    prettier --config ocg-server/static/js/.prettierrc.yaml --write "ocg-server/static/js/**/*.js" "tests/e2e/**/*.js"
+    prettier --config ocg-server/static/js/.prettierrc.yaml --write "ocg-server/static/js/**/*.js" "ocg-server/templates/**/*.js" "tests/e2e/**/*.js"
     djlint --check --configuration ocg-server/templates/.djlintrc ocg-server/templates
+    node tests/e2e/scripts/check-locators.js
 
 # Run frontend unit tests.
 frontend-unit-tests:

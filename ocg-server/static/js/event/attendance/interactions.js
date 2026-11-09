@@ -22,6 +22,7 @@ import {
   restoreCheckoutModalControls,
 } from "/static/js/event/attendance-ticket-view.js";
 import { closeRefundModal, openRefundModal } from "/static/js/event/attendance-view.js";
+import { retryAttendanceCheck } from "/static/js/event/attendance/availability-refresh.js";
 import {
   dismissQuestionAnswers,
   isWaitlistJoinAction,
@@ -49,6 +50,13 @@ export const handleAttendanceClick = (event) => {
 
   const container = getAttendanceContainer(target);
   if (!container) {
+    return;
+  }
+
+  // A failed registration check offers Retry instead of guessing the signed-out state.
+  const retryButton = closestElement(event.target, '[data-attendance-role="retry-btn"]');
+  if (retryButton) {
+    retryAttendanceCheck(container);
     return;
   }
 

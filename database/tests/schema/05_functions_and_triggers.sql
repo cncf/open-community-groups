@@ -120,6 +120,7 @@ select set_eq(
         ('complete_payment_job_recovery(p_actor_user_id uuid, p_group_id uuid, p_payment_job_id uuid, p_provider_object_id text, p_recovery_reference text, p_recovery_note text)'),
         ('confirm_event_purchase_attendee(p_event_id uuid, p_user_id uuid, p_manually_invited boolean)'),
         ('count_group_open_inbox_conversations(p_group_id uuid)'),
+        ('count_user_pending_invitations(p_user_id uuid)'),
         ('count_user_unanswered_event_surveys(p_user_id uuid)'),
         ('deactivate_group(p_actor_user_id uuid, p_community_id uuid, p_group_id uuid)'),
         ('decline_event_admission_offer(p_actor_user_id uuid, p_admission_offer_id uuid, p_configured_provider text)'),

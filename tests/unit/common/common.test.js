@@ -5,6 +5,7 @@ import {
   convertDateToDateTimeLocalInTz,
   convertTimestampToDateTimeLocal,
   convertTimestampToDateTimeLocalInTz,
+  formatTimestampTimeInTz,
   resolveEventTimezone,
   toDateTimeLocalInTimezone,
   toUtcIsoInTimezone,
@@ -443,5 +444,31 @@ describe("common utilities", () => {
     expect(toUtcIsoInTimezone(" 2026-04-10T10:00 ", "")).to.equal("2026-04-10T10:00");
     expect(toUtcIsoInTimezone("invalid", "America/New_York")).to.equal("invalid");
     expect(toUtcIsoInTimezone("", "America/New_York")).to.equal(null);
+  });
+
+  it("formats a check-in time of day in the event timezone", () => {
+    // 2025-11-09T23:42:00Z is 6:42 PM on Nov 9 in New York.
+    const checkedInAt = 1762731720;
+    const sameDayNow = new Date("2025-11-09T15:00:00Z");
+
+    // Same-day timestamps show only the time, with an ASCII space.
+    expect(formatTimestampTimeInTz(checkedInAt, "America/New_York", sameDayNow)).to.equal("6:42 PM");
+
+    // Timestamps from another local day add the date.
+    expect(
+      formatTimestampTimeInTz(checkedInAt, "America/New_York", new Date("2025-11-10T15:00:00Z")),
+    ).to.equal("Nov 9, 6:42 PM");
+
+    // Days compare in the event timezone: 2025-11-10T01:42:00Z is still Nov 9 in New York.
+    expect(formatTimestampTimeInTz(1762738920, "America/New_York", sameDayNow)).to.equal("8:42 PM");
+
+    // Invalid timezones fall back to the browser timezone.
+    expect(formatTimestampTimeInTz(checkedInAt, "Not/A_Zone", new Date(checkedInAt * 1000))).to.match(
+      /^\d{1,2}:\d{2} [AP]M$/,
+    );
+
+    // Missing timestamps format as empty text.
+    expect(formatTimestampTimeInTz(Number.NaN, "America/New_York")).to.equal("");
+    expect(formatTimestampTimeInTz(undefined, "America/New_York")).to.equal("");
   });
 });

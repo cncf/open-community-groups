@@ -24,6 +24,7 @@
      data-profile-complete="{% if user.logged_in %} {{ user.profile_complete }} {% else %} true {% endif %}"
      data-availability-url="/{{ event.community.name }}/group/{{ event.group.public_slug() }}/event/{{ event.slug }}/availability"
      data-attendee-approval-required="{{ event.attendee_approval_required }}"
+     {% if let Some(ends_at) = &event.ends_at %}data-ends="{{ ends_at.to_rfc3339() }}"{% endif %}
      {% if let Some(starts_at) = &event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
      data-waitlist-enabled="{{ event.waitlist_enabled }}"
      data-attendee-meeting-access-open="{{ event.is_live() }}"
@@ -82,6 +83,21 @@
     {{ attendance::initial_control_content(event = event) -}}
   </button>
   {# End sign in prompt -#}
+
+  {# Registration check retry -#}
+  {# Phones show the status as the bar reason, so it only stays for screen readers there. -#}
+  <p id="attendance-check-status-{{ attendance_instance }}"
+     data-attendance-role="check-status"
+     role="status"
+     class="self-center text-sm text-stone-600 empty:sr-only md:max-xl:text-xs phone:sr-only"></p>
+  <button id="retry-btn-{{ attendance_instance }}"
+          data-attendance-role="retry-btn"
+          type="button"
+          aria-describedby="attendance-check-status-{{ attendance_instance }}"
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:px-6 phone:text-[15px] phone:shrink-0 phone:max-[360px]:px-4 phone:max-[360px]:text-sm">
+    {{ attendance::control_content(label = "Retry", icon_class = "icon-refresh") -}}
+  </button>
+  {# End registration check retry -#}
 
   {# Attend button -#}
   <span class="group/external-payment-details relative hidden has-[button:not(.hidden)]:inline-flex">
@@ -283,7 +299,7 @@
                                 Sold out
                               {% else if !event.registration_window_is_open() -%}
                                 Registration not open
-                              {% else if ticket_type.is_sellable_now() -%}
+                              {% else if ticket_type.is_sellable_now() && ticket_type.current_price.is_some() -%}
                                 Available now
                               {% else -%}
                                 Not on sale

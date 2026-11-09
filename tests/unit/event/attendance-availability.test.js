@@ -6,7 +6,9 @@ import {
   isFiniteNumberValue,
   renderAttendanceAvailability,
 } from "/static/js/event/attendance-availability.js";
+import { handleAvailabilityRefreshFailure } from "/static/js/event/attendance/availability-refresh.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("attendance availability", () => {
@@ -548,6 +550,54 @@ describe("attendance availability", () => {
     expect(container.textContent).to.not.include("Invitation-only details");
   });
 
+  describe("refresh failures", () => {
+    let attendanceChangedCount;
+    let swal;
+    const countAttendanceChanged = () => {
+      attendanceChangedCount += 1;
+    };
+
+    beforeEach(() => {
+      attendanceChangedCount = 0;
+      swal = mockSwal();
+      document.body.addEventListener(
+        "attendance-changed",
+        countAttendanceChanged,
+      );
+    });
+
+    afterEach(() => {
+      document.body.removeEventListener(
+        "attendance-changed",
+        countAttendanceChanged,
+      );
+      swal.restore();
+    });
+
+    it("alerts once when the first availability refresh fails", () => {
+      // The page load refresh fails before availability ever hydrated.
+      const container = document.createElement("div");
+      container.dataset.availabilityHydrated = "false";
+      handleAvailabilityRefreshFailure(container, { rerenderAttendance: true });
+
+      expect(container.dataset.availabilityHydrated).to.equal("true");
+      expect(swal.calls).to.have.length(1);
+      expect(swal.calls[0].icon).to.equal("error");
+      expect(attendanceChangedCount).to.equal(1);
+    });
+
+    it("does not alert again when a retried availability refresh fails", () => {
+      // A Retry refresh fails on a container that is already hydrated.
+      const container = document.createElement("div");
+      container.dataset.availabilityHydrated = "true";
+      handleAvailabilityRefreshFailure(container, { rerenderAttendance: true });
+
+      // The registration check still runs again.
+      expect(swal.calls).to.have.length(0);
+      expect(attendanceChangedCount).to.equal(1);
+    });
+  });
+
   describe("phone bar summary", () => {
     /** Renders availability over a summary line and returns its span. */
     const renderSummary = (availability) => {
@@ -604,14 +654,6 @@ describe("attendance availability", () => {
 
       expect(summary.textContent).to.equal("2 spots left");
       expect(summary.hasAttribute("data-sold-out")).to.equal(false);
-    });
-
-    it("leaves the summary empty until availability arrives", async () => {
-      // The server renders no count, so unhydrated pages show the kind.
-      const response = await fetch("/ocg-server/templates/event/attend_button.html");
-      const template = await response.text();
-
-      expect(template).to.include("<span data-availability-summary></span>");
     });
 
     it("does not touch the strict caption locators", () => {

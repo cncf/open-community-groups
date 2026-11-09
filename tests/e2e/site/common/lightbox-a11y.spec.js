@@ -1,7 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
 import { TEST_COMMUNITY_NAME, TEST_EVENT_NAME, TEST_EVENT_SLUG, TEST_GROUP_SLUG } from "../../seed.js";
-import { navigateToEvent } from "../../utils.js";
+import { expectDialogClosed, expectFocusIndicator, navigateToEvent } from "../../utils.js";
 
 /**
  * Opens the event gallery's lightbox from its first tile.
@@ -29,10 +29,10 @@ test.describe("lightbox accessibility", () => {
 
     // Close and verify the attributes go and focus returns.
     await closeButton.tap();
-    await expect(dialog).toHaveCount(0);
+    await expectDialogClosed(page, dialog, { opener: tile });
+    // opacity-0 is the lightbox script's closed-state contract; Playwright counts it as visible.
     await expect(gallery.locator(".modal")).toHaveClass(/opacity-0/);
     await expect(gallery.locator(".modal")).not.toHaveAttribute("aria-modal", /.*/);
-    await expect(tile).toBeFocused();
   });
 
   test("keeps Tab inside the lightbox and shows where focus is @mobile", async ({ page }) => {
@@ -42,9 +42,7 @@ test.describe("lightbox accessibility", () => {
 
     // Verify Tab walks the three controls and wraps, each with a visible ring.
     for (const control of [previousButton, nextButton, closeButton]) {
-      await page.keyboard.press("Tab");
-      await expect(control).toBeFocused();
-      await expect(control).toHaveCSS("box-shadow", /0px 0px 0px 2px/);
+      await expectFocusIndicator(control, () => page.keyboard.press("Tab"));
     }
 
     // Verify Shift+Tab wraps the other way.
@@ -57,8 +55,7 @@ test.describe("lightbox accessibility", () => {
 
     await page.keyboard.press("Escape");
 
-    await expect(dialog).toHaveCount(0);
-    await expect(tile).toBeFocused();
+    await expectDialogClosed(page, dialog, { opener: tile });
   });
 
   test("a tap on the backdrop returns focus to the tile @mobile", async ({ page }) => {
@@ -66,8 +63,7 @@ test.describe("lightbox accessibility", () => {
 
     // Tap the dimmed corner and verify focus outlives the mouse press.
     await page.mouse.click(20, 20);
-    await expect(dialog).toHaveCount(0);
-    await expect(tile).toBeFocused();
+    await expectDialogClosed(page, dialog, { opener: tile });
   });
 
   test("keeps the closed controls out of the Tab order and the accessibility tree @mobile", async ({
@@ -99,13 +95,15 @@ test.describe("lightbox accessibility", () => {
 
     // Verify the lightbox stays open as the plain one.
     await expect(dialog).toHaveCount(0);
+    // opacity-0 is the lightbox script's closed-state contract; Playwright counts it as visible.
     await expect(lightbox).not.toHaveClass(/opacity-0/);
     await expect(lightbox).not.toHaveAttribute("aria-modal", /.*/);
 
     // Close and verify focus returns all the same.
     await lightbox.getByRole("button", { name: "Close" }).click();
+    // opacity-0 is the lightbox script's closed-state contract; Playwright counts it as visible.
     await expect(lightbox).toHaveClass(/opacity-0/);
-    await expect(tile).toBeFocused();
+    await expectDialogClosed(page, dialog, { opener: tile });
   });
 
   test("binds the dialog again when rotated back @mobile", async ({ page }) => {
@@ -125,8 +123,7 @@ test.describe("lightbox accessibility", () => {
 
     // Close and verify nothing stays, and focus returns.
     await closeButton.tap();
-    await expect(dialog).toHaveCount(0);
+    await expectDialogClosed(page, dialog, { opener: tile });
     await expect(gallery.locator(".modal")).not.toHaveAttribute("role", /.*/);
-    await expect(tile).toBeFocused();
   });
 });

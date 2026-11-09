@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,7 +11,7 @@ const appModulesPathPrefix = "/ocg-server/static/js/";
 // Coverage reports of `--coverage` runs: the lcov report and the raw V8 coverage under raw/.
 const coverageDir = resolve(configDir, "coverage");
 const rawCoverageDir = join(coverageDir, "raw");
-const litBundlePath = "/static/vendor/js/lit-all.v3.3.3.min.js";
+const baseTemplatePath = join(repoRootDir, "ocg-server/templates/common/base.html");
 const litDevModeWarningUrl = "lit.dev/msg/dev-mode";
 const litImportSpecifiers = new Set([
   "lit",
@@ -19,6 +19,42 @@ const litImportSpecifiers = new Set([
   "lit/directives/repeat.js",
   "lit/directives/unsafe-html.js",
 ]);
+// URL path of the module that exposes the vendor bundle manifest to the tests. It sits outside the
+// served repository tree so it cannot shadow a repository file.
+const vendorBundlesModulePath = "/__ocg__/vendor-bundles.js";
+
+/**
+ * Builds the vendored bundle manifest from the base template, so a vendor upgrade only touches
+ * common/base.html. Classic vendor scripts are keyed by the file name before `.v`, and `lit` comes
+ * from the import map.
+ * @param {string} templatePath - Path of the base template.
+ * @returns {Record<string, string>} Bundle URL paths keyed by vendor name.
+ */
+const readVendorBundles = (templatePath) => {
+  const template = readFileSync(templatePath, "utf8");
+  const bundles = {};
+
+  for (const [, path, name] of template.matchAll(
+    /<script src="(\/static\/vendor\/js\/([a-z0-9-]+)\.v[\d.]+\.min\.js)">/g,
+  )) {
+    bundles[name] = path;
+  }
+
+  const importMapJson = template.match(/<script type="importmap">([\s\S]*?)<\/script>/)?.[1];
+  if (importMapJson) {
+    bundles.lit = JSON.parse(importMapJson).imports?.lit;
+  }
+
+  for (const key of ["htmx", "lit", "sweetalert2"]) {
+    if (!bundles[key]) {
+      throw new Error(`Vendor bundle "${key}" not found in ${templatePath}`);
+    }
+  }
+
+  return bundles;
+};
+
+const vendorBundles = readVendorBundles(baseTemplatePath);
 
 const litImportMapResolver = {
   name: "lit-import-map-resolver",
@@ -31,7 +67,21 @@ const litImportMapResolver = {
       return undefined;
     }
 
-    return litBundlePath;
+    return vendorBundles.lit;
+  },
+};
+
+const vendorBundlesModule = {
+  name: "vendor-bundles-module",
+  serve: (context) => {
+    if (context.path !== vendorBundlesModulePath) {
+      return undefined;
+    }
+
+    return {
+      body: `export const VENDOR_BUNDLES = Object.freeze(${JSON.stringify(vendorBundles)});`,
+      type: "js",
+    };
   },
 };
 
@@ -115,7 +165,7 @@ export default {
     !args.some((argument) => typeof argument === "string" && argument.includes(litDevModeWarningUrl)),
   hostname: "127.0.0.1",
   nodeResolve: true,
-  plugins: [litImportMapResolver],
+  plugins: [litImportMapResolver, vendorBundlesModule],
   browsers: [createChromiumLauncher()],
   // Only used with --coverage (just e2e-js-coverage).
   coverageConfig: {

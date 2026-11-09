@@ -116,14 +116,11 @@ test.describe("community dashboard analytics view", () => {
 
       // Assert the expected content is visible.
       await expect(tabButton).toBeVisible();
-      await expect(tabButton).toHaveClass(/xl:hover:border-primary-300/);
-      await expect(tabButton).toHaveClass(/xl:hover:shadow-sm/);
       await tabButton.click();
 
       // Assert the rendered attribute value.
       await expect(tabButton).toHaveAttribute("data-active", "true");
       await expect(tabButton).toHaveAttribute("aria-selected", "true");
-      await expect(tabButton).not.toHaveClass(/outline-primary-200/);
       await expect(tabContent).toBeVisible();
       await expect(tabContent.getByText(analyticsTab.label, { exact: true }).first()).toBeVisible();
       await expect(tabContent.getByText(analyticsTab.representativeText, { exact: true })).toBeVisible();

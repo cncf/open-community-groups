@@ -76,6 +76,36 @@ export const convertDateToDateTimeLocalInTz = (dateValue, timezone) => {
 };
 
 /**
+ * Formats Unix seconds as a time of day in a timezone, adding the date when it
+ * falls on a different calendar day than the reference instant.
+ * @param {number} tsSeconds Unix timestamp in seconds.
+ * @param {string} timezone IANA timezone identifier; empty or invalid values use
+ * the browser timezone.
+ * @param {Date} [now] Reference instant compared in the same timezone.
+ * @returns {string} Time such as "6:42 PM", dated time such as
+ * "Nov 8, 6:42 PM", or "" when the timestamp is not a finite number.
+ */
+export const formatTimestampTimeInTz = (tsSeconds, timezone, now = new Date()) => {
+  if (!Number.isFinite(tsSeconds)) {
+    return "";
+  }
+
+  const date = new Date(tsSeconds * 1000);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const formatter = createTimeOfDayFormatter(timezone);
+  const parts = getDateTimeParts(formatter, date);
+  const nowParts = getDateTimeParts(formatter, now);
+  // Build the time with an ASCII space; format() separates the day period with
+  // U+202F.
+  const time = `${parts.hour}:${parts.minute} ${parts.dayPeriod}`;
+  const sameDay = ["year", "month", "day"].every((type) => parts[type] === nowParts[type]);
+  return sameDay ? time : `${parts.month} ${parts.day}, ${time}`;
+};
+
+/**
  * Resolves the event timezone from the shared event form.
  * @param {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null} [timezoneField]
  * @returns {string} Trimmed IANA timezone identifier or "".
@@ -147,6 +177,44 @@ export const toUtcIsoInTimezone = (value, timezone) => {
     return trimmedValue;
   }
 };
+
+/**
+ * Creates the en-US date and time-of-day formatter, falling back to the browser
+ * timezone when the timezone is empty or invalid.
+ * @param {string} timezone IANA timezone identifier.
+ * @returns {Intl.DateTimeFormat} Formatter.
+ */
+const createTimeOfDayFormatter = (timezone) => {
+  const options = {
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  };
+  if (typeof timezone === "string" && timezone.length > 0) {
+    try {
+      return new Intl.DateTimeFormat("en-US", { ...options, timeZone: timezone });
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+    }
+  }
+  return new Intl.DateTimeFormat("en-US", options);
+};
+
+/**
+ * Maps the formatted parts of a date by part type.
+ * @param {Intl.DateTimeFormat} formatter Formatter.
+ * @param {Date} date Date instance.
+ * @returns {Object<string, string>} Part values keyed by type.
+ */
+const getDateTimeParts = (formatter, date) =>
+  Object.fromEntries(
+    formatter
+      .formatToParts(date)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
 
 /**
  * Resolves the offset between UTC and a target timezone for a given date.

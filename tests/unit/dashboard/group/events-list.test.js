@@ -47,67 +47,12 @@ const mountEventsList = ({ hasRelatedEvents = false } = {}) => {
   return document.getElementById("events-list-root");
 };
 
-const loadTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/dashboard/group/events_list.html");
-
-  expect(response.ok).to.equal(true);
-
-  return response.text();
-};
-
 describe("events list page", () => {
   const env = useDashboardTestEnv({
     path: "/dashboard/group?tab=events",
     withHtmx: true,
     withScroll: true,
     withSwal: true,
-  });
-
-  it("warns admins about cancellation refunds and unpublish retention", async () => {
-    // Load the events list template before checking destructive action copy.
-    const template = await loadTemplate();
-
-    // Verify warnings and action labels make each destructive choice explicit.
-    expect(template).to.include(
-      "Unpublish this event? Existing attendees and ticket purchases will be retained.",
-    );
-    expect(template).to.include(
-      "All attendee registrations will be canceled immediately. Full refunds for eligible paid purchases will be queued and may take time to process.",
-    );
-    expect(template).to.include(
-      "All attendee registrations will be canceled immediately. Any external payments already received must be returned by an organizer outside OCG.",
-    );
-    expect(template).to.include(
-      "Pending reservations awaiting external payment will expire and those attendees will be told not to pay. Confirmed attendees will remain registered.",
-    );
-    expect(template).to.include(
-      'data-confirm-text="{% if action == "cancel" %}Cancel event{% else %}Yes{% endif %}"',
-    );
-    expect(template).to.include(
-      'data-cancel-text="{% if action == "cancel" %}Keep event{% else %}No{% endif %}"',
-    );
-    expect(template).to.include('data-series-scope-text="Non-completed events in series"');
-  });
-
-  it("disables deletion when the event is not eligible", async () => {
-    // Load the events list template before checking disabled delete actions.
-    const template = await loadTemplate();
-
-    // Verify unavailable delete actions expose their reason in the title.
-    expect(template).to.include('action == "delete" && !event.can_delete()');
-    expect(template).to.include("event.delete_unavailable_title()");
-    expect(template).to.include('title="{{ delete_title }}"');
-  });
-
-  it("renders event action buttons as accessible disclosures", async () => {
-    // Load production event actions before checking their disclosure contract.
-    const template = await loadTemplate();
-
-    // Both upcoming and past actions expose their label, target, and collapsed state.
-    expect(template.match(/aria-label="Open actions for \{\{ event\.name \}\}"/g)).to.have.length(2);
-    expect(template.match(/aria-controls="dropdown-actions-\{\{ event\.event_id \}\}"/g)).to.have.length(2);
-    expect(template.match(/aria-expanded="false"/g)).to.have.length(2);
-    expect(template).to.not.include("dropdownDefaultButton");
   });
 
   it("toggles event action dropdowns with delegated handlers", () => {

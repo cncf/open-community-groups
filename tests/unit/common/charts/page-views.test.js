@@ -5,6 +5,7 @@ import {
   resetPageViewTracker,
   trackPageView,
 } from "/static/js/common/charts/page-views.js";
+import { VENDOR_BUNDLES } from "/__ocg__/vendor-bundles.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom, setLocationPath, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
 import { mockFetch, mockSendBeacon, mockVisibilityState } from "/tests/unit/test-utils/network.js";
@@ -272,15 +273,10 @@ describe("page views", () => {
 
 describe("page views HTMX history contract", () => {
   it("syncs the history path key used by the HTMX bundle the base template loads", async () => {
-    // Find the HTMX bundle loaded by the base template.
-    const template = await (await fetch("/ocg-server/templates/common/base.html")).text();
-    const htmxBundlePath = template.match(
-      /<script src="(\/static\/vendor\/js\/htmx\.v[\d.]+\.min\.js)">/,
-    )?.[1];
-    expect(htmxBundlePath).to.be.a("string");
+    // Load the HTMX bundle the base template uses.
+    const bundle = await (await fetch(`/ocg-server${VENDOR_BUNDLES.htmx}`)).text();
 
     // The bundle records the history path under the key the tracker syncs.
-    const bundle = await (await fetch(`/ocg-server${htmxBundlePath}`)).text();
     expect(bundle).to.include(`"${HTMX_HISTORY_PATH_STORAGE_KEY}"`);
   });
 });

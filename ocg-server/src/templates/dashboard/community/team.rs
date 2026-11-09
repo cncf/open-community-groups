@@ -5,8 +5,14 @@ use askama::Template;
 use crate::types::dashboard::community::team::CommunityTeamMember;
 use crate::{
     templates::helpers::user_initials,
-    types::{community::CommunityRoleSummary, pagination},
+    types::{
+        community::{CommunityRole, CommunityRoleSummary},
+        pagination,
+    },
 };
+
+#[cfg(test)]
+mod tests;
 
 // Pages templates.
 
@@ -29,4 +35,15 @@ pub(crate) struct ListPage {
 
     /// Pagination offset for results.
     pub offset: Option<usize>,
+}
+
+impl ListPage {
+    /// Returns the display name of a team role, falling back to its identifier.
+    pub(crate) fn role_display_name(&self, role: &CommunityRole) -> String {
+        let role_id = role.to_string();
+        self.roles
+            .iter()
+            .find(|summary| summary.community_role_id == role_id)
+            .map_or(role_id, |summary| summary.display_name.clone())
+    }
 }

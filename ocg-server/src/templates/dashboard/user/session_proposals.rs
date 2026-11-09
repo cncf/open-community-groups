@@ -11,6 +11,9 @@ use crate::{
     types::pagination,
 };
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// List session proposals page template.

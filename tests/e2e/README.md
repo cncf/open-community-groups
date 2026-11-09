@@ -46,9 +46,10 @@ clones it per worker (`ocg_tests_parallel_N_e2e`). It starts one server per
 worker on ports `9101` and up and runs Playwright with one worker per stack.
 It does not touch the `just e2e-server` database or port. `stacks.js` binds
 each worker to its stack through `OCG_E2E_STACKS`, and the preflight checks
-every stack. The Firefox and WebKit smoke projects only run when selected
-with `--project`. Playwright runs with `fullyParallel`, so the tests of one
-file may run on different workers and stacks, in any order.
+every stack. The smoke projects (`firefox-smoke`, `webkit-smoke`,
+`webkit-mobile-smoke`) only run when selected with `--project`. Playwright
+runs with `fullyParallel`, so the tests of one file may run on different
+workers and stacks, in any order.
 
 - Projects: without a `--project` argument the `chromium-deep` and
   `chromium-mobile-deep` projects run; any `--project` argument replaces that
@@ -379,6 +380,13 @@ dir, so the first run is slow.
 - `chromium-mobile-deep`: tests tagged `@mobile` on a mobile device.
 - `firefox-smoke`, `webkit-smoke`: desktop tests tagged `@smoke` on Firefox
   and WebKit (see Writing Tests).
+- `webkit-mobile-smoke`: tests tagged both `@mobile` and `@smoke` on WebKit
+  with the iPhone 12 descriptor (see Writing Tests).
+
+WebKit mobile limits: Linux WebKit with a device descriptor is not iOS
+Safari. It has no safe-area insets and no rubber-band scrolling, `dvh`
+behaves like `vh`, `navigator.maxTouchPoints` is 0 and there is no
+`CloseWatcher`. The project therefore catches engine-level breakage only.
 
 ARIA snapshot tests are regular tests of the chromium projects (see
 [ARIA Snapshots](#aria-snapshots)).
@@ -444,7 +452,9 @@ Conventions, for public pages and dashboard tabs alike:
 - Each page or dashboard tab keeps its snapshots in an `aria.spec.js` in its
   own folder (`site/<page>/`, `dashboard/<scope>/<tab>/`), with a desktop
   test and a `@mobile` test that open the page the same way and call
-  `expectPageLayout` with the regions they snapshot.
+  `expectPageLayout` with the regions they snapshot. Write such a pair
+  with `testAtBothWidths` (`fixtures.js`); its body reads `isMobile` where
+  the two widths differ.
   `site/common/aria.spec.js` covers the layout, header and footer of every
   `PUBLIC_PAGES` row at both viewports; shared dashboard chrome (header,
   menu) belongs in `dashboard/<scope>/common/aria.spec.js`.
@@ -493,8 +503,8 @@ Conventions, for public pages and dashboard tabs alike:
 - `functional`: three shards of `chromium-deep` and `chromium-mobile-deep`
   (`--shard=N/3`), ARIA snapshots included, with six workers each and
   `OCG_E2E_ROUTE_ATTRIBUTION=1`.
-- `smoke` (Smoke (Firefox and WebKit)): the `firefox-smoke` and
-  `webkit-smoke` projects with two workers.
+- `smoke` (Smoke (Firefox and WebKit)): the `firefox-smoke`, `webkit-smoke`
+  and `webkit-mobile-smoke` projects with two workers.
 - `repeat-changed-specs`: the repeat rule on pull requests (see below).
 - `merge-reports`: runs whenever a test job ran, failed shards included. It
   merges the blob reports into one HTML and JSON report (the
@@ -572,7 +582,9 @@ Take the first rule that matches:
 5. One public page goes to `site/<page>/`, and contracts shared by public
    pages go to `site/common/`. A new public page also gets a `PUBLIC_PAGES`
    row in `site/common/public-pages.js`, so the landmark, alt-text,
-   responsive and axe checks cover it.
+   responsive and axe checks cover it. Specs load `PUBLIC_PAGES` rows with
+   `loadPublicPage`, which waits for the row's ready state, settled HTMX and
+   attendance controls, and map preview attributions.
 
 Existing specs move only when a new home is created for them or when they are
 rewritten.
@@ -600,6 +612,23 @@ rewritten.
   Cleanups run last in, first out after the test, keep going when one fails
   and report every failure. Page-driven cleanups stay in `finally`, since page
   fixtures may be closed by then.
+- `testAtBothWidths(title, body)` (`fixtures.js`) registers a desktop test and
+  its `@mobile` twin with one body, which reads the `isMobile` fixture where
+  the widths differ. Playwright's built-in reporters show the helper's line in
+  `fixtures.js` as the location of both tests; the diagnostics reporter and
+  the failed tests the `merge-reports` summary lists from the JSON report name
+  the spec file without a line, and file filters, snapshot paths and route
+  attribution still use the spec file.
+- Dialog and focus assertions in `utils.js`:
+  - `expectDialogClosed(page, dialog, { opener, scrollY })` checks the whole
+    close contract: the dialog is hidden, the page scroll lock is released
+    and, when given, focus is back on the opener and the page kept the scroll
+    position read before opening. It assumes no other modal is still open.
+  - `expectFocusIndicator(locator, focus, { indicator, outlineColor })` runs
+    the `focus` callback, which moves focus with the keyboard, and checks that
+    an outline or box-shadow appeared on `indicator` (default `locator`)
+    compared with before focus. With `outlineColor`, it must be an outline of
+    that colour.
 
 ### Data Ownership and Isolation
 
@@ -663,6 +692,15 @@ rewritten.
   request id) and `reason` says why it is expected. Repeats of one violation
   are merged into one note with their count. Any violation that is not
   allowed fails the test (see `OCG_E2E_BROWSER_HEALTH`).
+- Locate elements by role, label or text first, then `toHaveCSS` where the
+  style itself is under test, then an existing hook or component class, and
+  add a `data-*` hook only when the element has no accessible handle (justify
+  it in the PR). Tailwind utility classes, `contains(@class…)` XPath and
+  `title` attributes are not locators; `scripts/check-locators.js` (run by
+  `just frontend-fmt-and-lint` and CI) rejects escaped Tailwind variants
+  (`md\\:hidden`), `contains(@class` and `[title=` selectors unless the line,
+  or the one above it, carries `// e2e-locator-allow: <reason>`. Assert a
+  class only for a JS or third-party state contract, with a comment.
 - Response waits use the `utils.js` matchers instead of raw
   `page.waitForResponse`: `waitForActionResponse` (one response, then HTMX
   settles; `settle: false` when the action navigates),
@@ -685,10 +723,16 @@ rewritten.
 
 - The `@smoke` tag (appended to the title) also runs a desktop test on
   Firefox and WebKit. Tag only flows that are repeat-safe and
-  engine-sensitive (forms, menus, HTMX swaps, modals, navigation), keep the
-  set small, and never tag `@mobile` tests. Run tagged tests
-  with `--project=firefox-smoke --project=webkit-smoke --repeat-each=2
-  --retries=0` before tagging.
+  engine-sensitive (forms, menus, HTMX swaps, modals, navigation), and keep
+  the set small. Run tagged tests with `--project=firefox-smoke
+  --project=webkit-smoke --repeat-each=2 --retries=0` before tagging.
+- A `@smoke` tag on a `@mobile` test also runs it on `webkit-mobile-smoke`
+  (not on the desktop smoke projects). Tag at most 8 engine-sensitive phone
+  flows. Never tag tests that use real touch input (`.tap()`,
+  `page.touchscreen`, or `swipeHorizontally`, which uses CDP), tests that
+  depend on `CloseWatcher` through `sendCloseRequest`, or ARIA snapshot
+  tests. Run newly tagged phone tests with `--project=webkit-mobile-smoke
+  --repeat-each=2 --retries=0` before tagging.
 - Accessibility scans use `expectNoAxeViolations(page, { scan, exclude })`
   from `axe.js` once the page is ready and HTMX has settled
   (`site/common/axe.spec.js` scans every `PUBLIC_PAGES` row and

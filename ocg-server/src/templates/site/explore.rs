@@ -26,6 +26,9 @@ use crate::{
     },
 };
 
+#[cfg(test)]
+mod tests;
+
 // Pages and sections templates.
 
 /// Template for the explore page.

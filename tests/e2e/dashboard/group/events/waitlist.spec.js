@@ -97,9 +97,9 @@ test.describe("group dashboard waitlist tab", () => {
       "#waitlist-content",
     );
     await expect(
-      waitlistContent.locator("p.text-sm.lg\\:text-md.text-stone-700:visible").filter({
-        hasText: "Enable waitlist to allow full events to add people to the queue.",
-      }),
+      waitlistContent
+        .getByText("Enable waitlist to allow full events to add people to the queue.", { exact: true })
+        .filter({ visible: true }),
     ).toBeVisible();
 
     // Reopen the event editor and verify the empty disabled waitlist has no tab.
@@ -173,8 +173,8 @@ test.describe("group dashboard waitlist tab", () => {
       "#waitlist-content",
     );
     const emptyWaitlistMessage = waitlistContent
-      .locator("p.text-sm.lg\\:text-md.text-stone-700:visible")
-      .filter({ hasText: "Waitlist entries for this event will appear here." });
+      .getByText("Waitlist entries for this event will appear here.", { exact: true })
+      .filter({ visible: true });
     await expect(emptyWaitlistMessage).toHaveCount(1);
     await expect(emptyWaitlistMessage).toBeVisible();
 
@@ -271,9 +271,9 @@ test.describe("group dashboard waitlist tab", () => {
       status: 200,
     });
 
-    const noResultsMessage = waitlistContent.locator("div.text-xl.lg\\:text-2xl.mb-4:visible").filter({
-      hasText: "No waitlist entries found matching your search.",
-    });
+    const noResultsMessage = waitlistContent
+      .getByText("No waitlist entries found matching your search.", { exact: true })
+      .filter({ visible: true });
 
     // Verify the filtered empty result message is shown.
     await expect(noResultsMessage.first()).toBeVisible();
@@ -328,7 +328,7 @@ test.describe("group dashboard waitlist tab", () => {
       },
     );
 
-    const activeFilters = waitlistContent.getByText("Active filters", { exact: true }).locator("xpath=..");
+    const activeFilters = waitlistContent.getByRole("group", { name: "Active filters", exact: true });
 
     // Verify active filter badges remain visible with the filtered row.
     await expect(activeFilters.getByText("Present", { exact: true })).toBeVisible();

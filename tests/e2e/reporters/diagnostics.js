@@ -82,12 +82,17 @@ const buildSummary = (entriesByType) => {
   return lines.join("\n");
 };
 
-/** Describes a test as `[project] file:line › describe › title`, with the file relative to the root dir. */
+/**
+ * Describes a test as `[project] file:line › describe › title`, with the spec file relative to the
+ * root dir. Tests registered outside their spec file, such as the `testAtBothWidths` pairs whose
+ * location is the helper in `fixtures.js`, are described by the spec file alone, without a line.
+ */
 const describeTest = (test, rootDir) => {
-  const [, projectName, , ...titles] = test.titlePath();
-  const file = path.relative(rootDir, test.location.file);
+  const [, projectName, specFile, ...titles] = test.titlePath();
+  const inSpecFile = path.resolve(rootDir, specFile) === test.location.file;
+  const location = inSpecFile ? `${specFile}:${test.location.line}` : specFile;
 
   const project = projectName ? `[${projectName}] ` : "";
 
-  return `${project}${file}:${test.location.line} › ${titles.join(" › ")}`;
+  return `${project}${location} › ${titles.join(" › ")}`;
 };

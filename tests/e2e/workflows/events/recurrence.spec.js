@@ -158,7 +158,7 @@ test.describe("recurring event workflows", () => {
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );
-    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).toBeVisible();
     await expect(visibleAddEventButton).toBeVisible();
 
     // Create the recurring series and wait for the POST response.

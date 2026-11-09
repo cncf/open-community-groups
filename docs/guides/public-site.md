@@ -91,9 +91,9 @@ group, and their links open the event under the owning group and community. Co-h
 subgroup does not add the event to its parent's page, and the `See all events` Explore links only
 cover events owned by the group and its subgroups.
 
-Event pages and event cards credit approved co-hosts: the event page shows a `Co-hosts` box
-linking to each co-host group, and cards show a `Co-hosted with` line. Each event is listed once
-elsewhere on the site, under the group that owns it.
+Event pages and event cards credit approved co-hosts: the event page shows a `Co-hosted with`
+section linking to each co-host group, and cards show a `Co-hosted with` line. Each event is
+listed once elsewhere on the site, under the group that owns it.
 
 ![Group page and membership controls](../screenshots/group-page.png)
 

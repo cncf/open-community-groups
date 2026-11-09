@@ -94,7 +94,6 @@ test.describe("external payment settings", () => {
       });
       await expect(enabledToggle).toBeChecked();
       await expect(enabledToggle).toBeEnabled();
-      await expect(enabledToggle).toHaveClass(/\bsr-only\b.*\bpeer\b/u);
       await expect(enabledToggle.locator("xpath=following-sibling::div[1]")).toBeVisible();
       const legalName = organizerExternalGroupPage.getByRole("textbox", { name: /^Legal Name/u });
       await expect(legalName).toHaveValue("E2E External Payee Co");
@@ -115,8 +114,6 @@ test.describe("external payment settings", () => {
       await expect(eligibilityWarning).toContainText(
         "External payments are not available for groups located in United States.",
       );
-      await expect(eligibilityWarning).toHaveClass(/border-amber-200/u);
-      await expect(eligibilityWarning).toHaveClass(/bg-amber-50/u);
 
       // A missing country explains that the location must be saved first.
       queryE2eDatabase(`

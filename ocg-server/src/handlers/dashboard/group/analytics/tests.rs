@@ -3,6 +3,7 @@ use axum::http::StatusCode;
 use crate::{
     db::mock::MockDB,
     handlers::{error::INVALID_REQUEST_PAYLOAD, tests::*},
+    test_util::opening_tag_with,
     types::permissions::GroupPermission,
 };
 
@@ -94,16 +95,7 @@ async fn test_page_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    assert!(include_subgroups_input(&body).contains("checked"));
+    assert!(opening_tag_with(&body, r#"id="include_subgroups""#).contains("checked"));
     assert!(body.contains("Co-hosted events"));
     assert!(body.contains("id=\"cohosted-events-monthly-chart\""));
-}
-
-// Helpers.
-
-/// Returns the include-subgroups checkbox markup from the rendered page.
-fn include_subgroups_input(body: &str) -> &str {
-    let start = body.find("<input id=\"include_subgroups\"").unwrap();
-    let end = start + body[start..].find('>').unwrap();
-    &body[start..end]
 }

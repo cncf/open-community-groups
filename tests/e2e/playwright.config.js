@@ -39,10 +39,12 @@ const deepUseOverrides = {
   reducedMotion: "reduce",
   timezoneId: "UTC",
 };
-// Tag that restricts a test to the mobile project.
+// Tag that restricts a test to the mobile projects.
 const mobileTestPattern = /@mobile/;
-// Tag that adds a desktop test to the Firefox and WebKit smoke projects.
+// Tag that adds a desktop test to the Firefox and WebKit smoke projects, or a mobile test to the WebKit mobile smoke project.
 const smokeTestPattern = /@smoke/;
+// Tags that put a phone test on the WebKit mobile smoke project.
+const mobileSmokeTestPattern = /(?=.*@mobile)(?=.*@smoke)/;
 
 const webServer =
   shouldStartServer && webServerCommand
@@ -96,6 +98,11 @@ export default defineConfig({
       grep: smokeTestPattern,
       grepInvert: mobileTestPattern,
       use: { ...devices["Desktop Safari"], ...deepUseOverrides },
+    },
+    {
+      name: "webkit-mobile-smoke",
+      grep: mobileSmokeTestPattern,
+      use: { ...devices["iPhone 12"], ...deepUseOverrides },
     },
     {
       name: "chromium-deep",

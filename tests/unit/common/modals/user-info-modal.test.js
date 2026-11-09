@@ -3,6 +3,7 @@ import { expect, waitUntil } from "@open-wc/testing";
 import "/static/js/common/modals/user-info-modal.js";
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 /** Close watcher double that records its instances. */
 class FakeCloseWatcher extends EventTarget {
@@ -46,7 +47,7 @@ describe("user-info-modal", () => {
 
   describe("bottom sheet", () => {
     const originalCloseWatcher = window.CloseWatcher;
-    const originalMatchMedia = window.matchMedia;
+    let media;
     let panelStyle;
 
     /**
@@ -55,11 +56,7 @@ describe("user-info-modal", () => {
      * @returns {void}
      */
     const useSheetFixture = (matches) => {
-      window.matchMedia = (text) => ({
-        addEventListener() {},
-        matches: text === PHONE_MEDIA_QUERY && matches,
-        removeEventListener() {},
-      });
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: matches });
       panelStyle = document.createElement("style");
       panelStyle.textContent = ".sheet-panel { position: fixed; }";
       document.head.append(panelStyle);
@@ -72,7 +69,7 @@ describe("user-info-modal", () => {
 
     afterEach(() => {
       panelStyle?.remove();
-      window.matchMedia = originalMatchMedia;
+      media?.restore();
 
       // Restore the original CloseWatcher after sheet tests.
       if (originalCloseWatcher) {

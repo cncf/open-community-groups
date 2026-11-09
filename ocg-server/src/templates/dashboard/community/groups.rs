@@ -7,6 +7,9 @@ use crate::types::{
     pagination,
 };
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// Add group page template.

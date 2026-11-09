@@ -181,9 +181,7 @@ describe("dashboard user invitations", () => {
         icon: "info",
         text: successMessage,
       });
-      expect(env.current.htmx.triggerCalls).to.deep.equal([
-        ["#dashboard-content", "refresh-user-dashboard-content"],
-      ]);
+      expect(env.current.htmx.triggerCalls).to.deep.equal([[document.body, "refresh-user-invitations"]]);
     });
   }
 
@@ -202,9 +200,7 @@ describe("dashboard user invitations", () => {
       icon: "info",
       text: "Your reservation is awaiting organizer confirmation. Use the payment details shown in this invitation.",
     });
-    expect(env.current.htmx.triggerCalls).to.deep.equal([
-      ["#dashboard-content", "refresh-user-dashboard-content"],
-    ]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([[document.body, "refresh-user-invitations"]]);
   });
 
   it("removes a stale offer after an expired claim", () => {
@@ -224,9 +220,7 @@ describe("dashboard user invitations", () => {
       icon: "error",
       text: "Ticket offer expired or is no longer available.",
     });
-    expect(env.current.htmx.triggerCalls).to.deep.equal([
-      ["#dashboard-content", "refresh-user-dashboard-content"],
-    ]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([[document.body, "refresh-user-invitations"]]);
   });
 
   for (const [conflict, message] of [
@@ -283,9 +277,7 @@ describe("dashboard user invitations", () => {
       icon: "info",
       text: "Your checkout has been canceled. The offer is ready to claim again.",
     });
-    expect(env.current.htmx.triggerCalls).to.deep.equal([
-      ["#dashboard-content", "refresh-user-dashboard-content"],
-    ]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([[document.body, "refresh-user-invitations"]]);
   });
 
   it("shows checkout cancellation errors once through the shared confirmation handler", () => {

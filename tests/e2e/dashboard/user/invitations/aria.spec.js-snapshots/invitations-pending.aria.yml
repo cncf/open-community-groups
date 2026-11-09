@@ -28,9 +28,9 @@
       - columnheader "Created"
       - columnheader "Actions"
   - rowgroup:
-    - row /Platform Ops Meetup viewer \d{4}-\d{2}-\d{2}/:
+    - row /Platform Ops Meetup Viewer \d{4}-\d{2}-\d{2}/:
       - cell "Platform Ops Meetup"
-      - cell "viewer"
+      - cell "Viewer"
       - cell /\d{4}-\d{2}-\d{2}/
       - cell:
         - button "Approve"
@@ -45,9 +45,9 @@
       - columnheader "Created"
       - columnheader "Actions"
   - rowgroup:
-    - row /e2e-test-community viewer \d{4}-\d{2}-\d{2}/:
-      - cell "e2e-test-community"
-      - cell "viewer"
+    - row /Platform Engineering Community Viewer \d{4}-\d{2}-\d{2}/:
+      - cell "Platform Engineering Community"
+      - cell "Viewer"
       - cell /\d{4}-\d{2}-\d{2}/
       - cell:
         - button "Approve"

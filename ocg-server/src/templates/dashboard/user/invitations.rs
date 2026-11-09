@@ -7,6 +7,9 @@ use crate::types::dashboard::user::invitations::{
     CommunityTeamInvitation, EventInvitation, GroupTeamInvitation,
 };
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// List page showing pending invitations for the user.

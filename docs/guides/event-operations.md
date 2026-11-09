@@ -662,7 +662,7 @@ This tab supports delivery-day execution. From here you can:
 
 - Review the attendee list and enrollment timing.
 - Run manual check-in.
-- Open the QR scanner from desktop with `Scan Attendee Codes`.
+- Open the QR scanner with `Scan Attendee Codes` (`Scan codes` on narrower screens).
 - Cancel confirmed attendance for future active events, queueing a full refund for Stripe paid
   tickets or confirming an out-of-band return for external paid tickets.
 - Mark external payments received once the transfer arrives.
@@ -677,12 +677,15 @@ This tab supports delivery-day execution. From here you can:
 Use [Check-In](/dashboard/group?tab=check-in ':ignore') for the primary event-day workflow. Select
 the community and group from the dashboard menu when working on mobile, then select an event, allow
 camera access, and scan each attendee's personal QR code. The scanner stays open, shows the attendee
-name and ticket, distinguishes a new check-in from a duplicate scan, and then resumes automatically.
-On desktop, the Attendees tab also offers a `Scan Attendee Codes` button that opens the same scanner in
-place and updates the attendee table when it closes if any attendees have been scanned. It requires
-check-in access and is disabled for canceled, unpublished, or past events. Use the attendees
-table toggle as the manual fallback when a camera or QR code is unavailable. In both flows, the
-person must have confirmed attendance.
+name and ticket, and then resumes automatically. A duplicate scan shows a neutral
+`Already checked in` message with the time of the original check-in in the event timezone, and adds
+the date when that check-in happened on an earlier day.
+The `Mute sounds` setting is remembered on that device the next time you open the scanner.
+The Attendees tab also offers a `Scan Attendee Codes` button (`Scan codes` on narrower screens)
+that opens the same scanner in place and updates the attendee table when it closes if any
+attendees have been scanned. It requires check-in access and is disabled for canceled,
+unpublished, or past events. Use the attendees table toggle as the manual fallback when a camera
+or QR code is unavailable. In both flows, the person must have confirmed attendance.
 
 ![Group Check-In event selection](../screenshots/dashboard-group-check-in.png)
 
@@ -1177,9 +1180,9 @@ Use the least destructive action that matches your operational goal.
 The public event page is the delivery surface of all organizer decisions: enrollment controls, logistics,
 CFS visibility, and final agenda experience. You can reach it through [Explore](/explore ':ignore').
 
-Approved co-hosts appear in a `Co-hosts` box on the event page, linking to each co-host group,
-and in a `Co-hosted with` line on event cards. Co-hosted events are also listed on each co-host
-group's page.
+Approved co-hosts appear in a `Co-hosted with` section on the event page, linking to each co-host
+group, and in a `Co-hosted with` line on event cards. Co-hosted events are also listed on each
+co-host group's page.
 
 For attendee/member perspective, see [Public Site Guide](public-site.md).
 

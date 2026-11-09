@@ -4,7 +4,8 @@ import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { initializeUserCheckIn } from "/static/js/dashboard/user/check-in.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mockPhoneMedia, mockWakeLock } from "/tests/unit/test-utils/wake-lock.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
+import { mockWakeLock } from "/tests/unit/test-utils/wake-lock.js";
 
 describe("user check-in credential modal", () => {
   beforeEach(() => resetDom());
@@ -179,7 +180,7 @@ describe("user check-in credential modal", () => {
     });
 
     const openOnPhone = async () => {
-      media = mockPhoneMedia(PHONE_MEDIA_QUERY, true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       renderFixture();
       initializeUserCheckIn();
       document.querySelector("[data-user-check-in-open]").click();
@@ -188,7 +189,7 @@ describe("user check-in credential modal", () => {
 
     it("takes no lock off phones", async () => {
       // Open the credential with the phone query false.
-      media = mockPhoneMedia(PHONE_MEDIA_QUERY, false);
+      media = stubMatchMedia();
       renderFixture();
       initializeUserCheckIn();
       document.querySelector("[data-user-check-in-open]").click();

@@ -56,15 +56,11 @@ describe("viewport mode", () => {
     resetDom();
   });
 
-  it("shares the cookie and attribute names with the base template initializer", async () => {
-    // Load the base template that applies the mode before first paint.
-    const response = await fetch("/ocg-server/templates/common/base.html");
+  it("shares the cookie and attribute names with the inline initializer script", async () => {
+    // Load the script the base template inlines to apply the mode before first paint.
+    const response = await fetch("/ocg-server/templates/common/scripts/viewport_mode_init.js");
     expect(response.ok).to.equal(true);
-    const template = await response.text();
-    const inlineScript = [...template.matchAll(/<script>([\s\S]*?)<\/script>/g)]
-      .map((match) => match[1])
-      .find((body) => body.includes(VIEWPORT_MODE_COOKIE));
-    expect(inlineScript, "viewport mode initializer").not.to.equal(undefined);
+    const inlineScript = await response.text();
 
     // Verify both files agree on the persisted cookie pair and the html attribute.
     expect(inlineScript).to.include(`"${VIEWPORT_MODE_COOKIE}=${DESKTOP_MODE}"`);

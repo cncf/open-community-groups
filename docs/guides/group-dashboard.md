@@ -23,6 +23,7 @@ Path: [/dashboard/group](/dashboard/group ':ignore')
   - [Members: Communication](#members-communication)
   - [Sponsors: Reusable Profiles](#sponsors-reusable-profiles)
   - [Events: Operations Hub](#events-operations-hub)
+  - [Check-In: Event Day](#check-in-event-day)
   - [Co-hosts: Partner Events](#co-hosts-partner-events)
   - [Inbox: Questions from Users](#inbox-questions-from-users)
   - [Badges: Portable Recognition](#badges-portable-recognition)
@@ -480,6 +481,36 @@ For complete mechanics, continue to:
 
 To understand how attendees experience the published result, see
 [Public Site Guide](public-site.md).
+
+## Check-In: Event Day
+
+[Check-In](/dashboard/group?tab=check-in ':ignore') is the event-day workspace for scanning
+attendee QR codes.
+
+It lists published, scheduled, non-canceled events whose check-in window has not closed. Events in
+progress come first, marked with an `In progress` badge, followed by upcoming events by start time.
+The window closes when the event ends or, for an event without an end time, at the end of its start
+day in the event timezone.
+
+Scanning requires Check-in `Write` access (see [Roles and Permissions](#roles-and-permissions)):
+group `admin`, `check-in-manager`, and `events-manager`, plus community `admin` and
+`groups-manager`.
+
+Select `Scan Attendee Codes` on an event card to open the scanner. It offers camera selection and a
+`Mute sounds` toggle, plus a `Torch` toggle where the device supports it. Each scan shows the
+attendee name and ticket, and tells a new check-in apart from one already made: a duplicate scan
+shows `Already checked in` with the time of the original check-in (for example
+`Already checked in · 6:42 PM`, with the date added when it was another day). The scanner then
+resumes for the next attendee. The `Mute sounds` choice is remembered on the device.
+
+On phones, open Check-In from the `Scan attendees` shortcut in the user menu or from the dashboard
+menu. Switch community or group from the dashboard menu.
+
+When a camera or QR code is unavailable, check attendees in manually: from
+[Events](/dashboard/group?tab=events ':ignore'), open the event's `Attendees` tab (on wider screens,
+or choose **Desktop version** from the user menu on a phone).
+
+For complete mechanics, see [Event Operations](event-operations.md#attendees).
 
 ## Co-hosts: Partner Events
 

@@ -13,14 +13,7 @@ import {
 } from "/static/js/site/docs/interactions.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { mockScrollTo, resetDom, setLocationPath } from "/tests/unit/test-utils/dom.js";
-import { mockPhoneMedia } from "/tests/unit/test-utils/wake-lock.js";
-
-/**
- * Replaces matchMedia with a phone query the test can flip.
- * @param {boolean} matches - Initial query state.
- * @returns {ReturnType<typeof mockPhoneMedia>} Query controls.
- */
-const stubPhoneQuery = (matches) => mockPhoneMedia(PHONE_MEDIA_QUERY, matches);
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 /**
  * Records listener types added to the given targets.
@@ -74,20 +67,19 @@ const stubCloseWatcher = () => {
 };
 
 describe("docs shell interactions", () => {
-  let originalMatchMedia;
+  let media;
   let originalPageYOffset;
   let scrollToMock;
 
   beforeEach(() => {
     resetDom();
     setLocationPath("/docs#/");
-    originalMatchMedia = window.matchMedia;
     originalPageYOffset = Object.getOwnPropertyDescriptor(window, "pageYOffset");
     scrollToMock = mockScrollTo();
   });
 
   afterEach(() => {
-    window.matchMedia = originalMatchMedia;
+    media?.restore();
     if (originalPageYOffset) {
       Object.defineProperty(window, "pageYOffset", originalPageYOffset);
     }
@@ -149,7 +141,7 @@ describe("docs shell interactions", () => {
 
   it("jumps below the header on phones", () => {
     // Phone anchors clear the 64px header and a gap of 8.
-    stubPhoneQuery(true);
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     const target = document.createElement("section");
     target.getBoundingClientRect = () => ({ top: 125 });
     Object.defineProperty(window, "pageYOffset", {
@@ -169,7 +161,7 @@ describe("docs shell interactions", () => {
 
   it("dismisses the mobile sidebar when clicking outside docs controls", () => {
     // Mobile outside clicks close the docs sidebar.
-    window.matchMedia = () => ({ matches: true });
+    media = stubMatchMedia({ "(max-width: 1024px)": true });
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <aside class="sidebar"></aside>
@@ -295,7 +287,7 @@ describe("docs shell interactions", () => {
     });
 
     it("takes the title from the page link, not its active section", () => {
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
 
       syncPhoneDocsTitle(docsRoot);
 
@@ -303,7 +295,7 @@ describe("docs shell interactions", () => {
     });
 
     it("climbs to the page when only a section is active", () => {
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       docsRoot.querySelector("li.active").classList.remove("active");
 
       syncPhoneDocsTitle(docsRoot);
@@ -312,7 +304,7 @@ describe("docs shell interactions", () => {
     });
 
     it("reads a page link wrapped in a paragraph", () => {
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       docsRoot.querySelectorAll(".active").forEach((item) => item.classList.remove("active"));
       docsRoot.querySelector("p").classList.add("active");
 
@@ -322,7 +314,7 @@ describe("docs shell interactions", () => {
     });
 
     it("keeps Docsify's title when no page link is active", () => {
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       docsRoot.querySelectorAll(".active").forEach((item) => item.classList.remove("active"));
 
       syncPhoneDocsTitle(docsRoot);
@@ -331,7 +323,7 @@ describe("docs shell interactions", () => {
     });
 
     it("keeps Docsify's title under a false query but still names the bar", () => {
-      stubPhoneQuery(false);
+      media = stubMatchMedia();
 
       syncPhoneDocsTitle(docsRoot);
 
@@ -340,7 +332,7 @@ describe("docs shell interactions", () => {
     });
 
     it("names the section and page on the bar", () => {
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
 
       syncPhoneDocsTitle(docsRoot);
 
@@ -349,7 +341,7 @@ describe("docs shell interactions", () => {
     });
 
     it("falls back to Documentation for a page outside any section", () => {
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       docsRoot.querySelectorAll(".active").forEach((item) => item.classList.remove("active"));
       docsRoot.querySelector("p").classList.add("active");
 
@@ -360,7 +352,7 @@ describe("docs shell interactions", () => {
     });
 
     it("clears the bar page when no page link is active", () => {
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       syncPhoneDocsTitle(docsRoot);
       docsRoot.querySelectorAll(".active").forEach((item) => item.classList.remove("active"));
 
@@ -415,7 +407,7 @@ describe("docs shell interactions", () => {
     it("does nothing off phones", async () => {
       // Record what the shell binds under a false query.
       const added = recordAddedListeners(window, document, docsRoot);
-      stubPhoneQuery(false);
+      media = stubMatchMedia();
       const release = setupDocsPhoneShell(docsRoot);
 
       // Verify an open sidebar creates no watcher and no listener lands anywhere.
@@ -442,34 +434,34 @@ describe("docs shell interactions", () => {
 
     it("sets the Docsify anchor offset while the query matches", () => {
       // Start on a phone.
-      const { setMatches } = stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       expect(window.$docsify.topMargin).to.equal(72);
 
       // Verify the current object is written, because Docsify reassigns it.
       window.$docsify = {};
-      setMatches(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
       expect(window.$docsify.topMargin).to.equal(0);
 
-      setMatches(true);
+      media.setMatches(PHONE_MEDIA_QUERY, true);
       expect(window.$docsify.topMargin).to.equal(72);
       release();
     });
 
     it("holds one query listener until cleanup", () => {
       // Mount under a false query, as a wide viewport does.
-      const { listeners } = stubPhoneQuery(false);
+      media = stubMatchMedia();
       const release = setupDocsPhoneShell(docsRoot);
-      expect(listeners.size).to.equal(1);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
 
       // Verify cleanup leaves nothing on the query.
       release();
-      expect(listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     });
 
     it("adds a Contents head with a working close button on phones", async () => {
       // Mount the phone shell so the head is injected into the sidebar.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
 
       // Verify the head carries a title and a labelled close button.
@@ -495,7 +487,7 @@ describe("docs shell interactions", () => {
 
     it("mounts the Contents head once and removes it on cleanup", async () => {
       // Mount the phone shell and cycle the sheet open and closed.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       await setSheetOpen(true);
       await setSheetOpen(false);
@@ -510,7 +502,7 @@ describe("docs shell interactions", () => {
 
     it("closes through the toggle on a close request", async () => {
       // Open the sheet through the toggle.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       toggle.click();
       await waitForMicrotask();
@@ -531,7 +523,7 @@ describe("docs shell interactions", () => {
 
     it("releases the watcher when the sheet closes another way", async () => {
       // Open the sheet.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       await setSheetOpen(true);
 
@@ -563,7 +555,7 @@ describe("docs shell interactions", () => {
       });
 
       it("still closes through links", async () => {
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
 
         // Verify opening the sheet does not throw and links still close it.
@@ -576,7 +568,7 @@ describe("docs shell interactions", () => {
 
       it("closes on Escape and returns focus to the toggle", async () => {
         // Open the sheet with focus inside it.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
         document.getElementById("guide-link").focus();
@@ -594,7 +586,7 @@ describe("docs shell interactions", () => {
 
       it("closes when Back moves the hash behind the sheet", async () => {
         // Open the sheet with focus inside it.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
         docsRoot.classList.add("close");
@@ -615,7 +607,7 @@ describe("docs shell interactions", () => {
       it("holds the hash listener only while the sheet is open", async () => {
         // Record what the shell binds on the window.
         const added = recordAddedListeners(window);
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         expect(added.types).not.to.include("hashchange");
 
@@ -634,7 +626,7 @@ describe("docs shell interactions", () => {
       it("holds the key listener only while the sheet is open", async () => {
         // Record what the shell binds on the document.
         const added = recordAddedListeners(document);
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         expect(added.types).not.to.include("keydown");
 
@@ -657,7 +649,7 @@ describe("docs shell interactions", () => {
 
     it("closes on a hash change where CloseWatcher exists too", async () => {
       // Browsers with the API can still go Back without a close request.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       await setSheetOpen(true);
 
@@ -672,7 +664,7 @@ describe("docs shell interactions", () => {
     it("leaves Escape to the watcher when CloseWatcher exists", async () => {
       // Record what the shell binds on the document.
       const added = recordAddedListeners(document);
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       await setSheetOpen(true);
 
@@ -685,7 +677,7 @@ describe("docs shell interactions", () => {
     describe("toggle and page state", () => {
       it("names the toggle after its visible word and restores it on release", () => {
         // Bind on a phone.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         expect(toggle.getAttribute("aria-label")).to.equal("Contents");
 
@@ -697,7 +689,7 @@ describe("docs shell interactions", () => {
         // Bind before Docsify renders, as a phone load does.
         toggle.remove();
         content.remove();
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
 
         // Render as Docsify does, ending on its ready class.
@@ -714,7 +706,7 @@ describe("docs shell interactions", () => {
 
       it("follows the sheet with aria-expanded and inert", async () => {
         // Bind with the sheet closed.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         expect(toggle.getAttribute("aria-expanded")).to.equal("false");
         expect(content.hasAttribute("inert")).to.equal(false);
@@ -731,7 +723,7 @@ describe("docs shell interactions", () => {
 
       it("clears everything on release with the sheet open", async () => {
         // Open the sheet on a phone.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
 
@@ -745,7 +737,7 @@ describe("docs shell interactions", () => {
 
       it("writes nothing more once released", async () => {
         // Release before the sheet opens.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         release();
 
@@ -759,7 +751,7 @@ describe("docs shell interactions", () => {
     describe("focus on close", () => {
       it("returns to the toggle after an outside tap from inside the sheet", async () => {
         // Open the sheet with focus inside it.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
         document.getElementById("guide-link").focus();
@@ -772,7 +764,7 @@ describe("docs shell interactions", () => {
 
       it("returns to the toggle when the tap already dropped focus", async () => {
         // Open the sheet with focus on the body, where a tap on the scrim leaves it.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
         document.activeElement.blur();
@@ -785,7 +777,7 @@ describe("docs shell interactions", () => {
 
       it("stays on a control the tap focused outside the sheet", async () => {
         // Open the sheet, then focus a header control as a tap on it does.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
         const headerControl = document.getElementById("header-control");
@@ -799,7 +791,7 @@ describe("docs shell interactions", () => {
 
       it("stays out of the way on a link that navigates", async () => {
         // Open the sheet with focus on a link to another page.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
         const guideLink = document.getElementById("guide-link");
@@ -815,7 +807,7 @@ describe("docs shell interactions", () => {
       it("returns to the toggle on a link to the current page", async () => {
         // Open the sheet on the page its link names.
         setLocationPath("/docs#/guide");
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
         const guideLink = document.getElementById("guide-link");
@@ -832,7 +824,7 @@ describe("docs shell interactions", () => {
 
     it("closes the sheet on a link tap at any phone width", async () => {
       // Open the sheet; above 600px Docsify binds no close on links.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       await setSheetOpen(true);
 
@@ -863,7 +855,7 @@ describe("docs shell interactions", () => {
       it("scrolls a row below the fold into the sheet when it opens", async () => {
         // Open the sheet on a page low in the list.
         renderRow(600);
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
 
@@ -878,7 +870,7 @@ describe("docs shell interactions", () => {
       it("leaves the scroll alone when the row is already in view", async () => {
         // Open the sheet on a page near the top of the list.
         renderRow(40);
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
 
@@ -890,7 +882,7 @@ describe("docs shell interactions", () => {
       it("scrolls once per open, not on later body class changes", async () => {
         // Open the sheet, then scroll it away as a reader would.
         renderRow(600);
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
         sheet.scrollTop = 0;
@@ -906,7 +898,7 @@ describe("docs shell interactions", () => {
       it("does nothing on pages with no current row", async () => {
         // Open the sheet with no active row, as on the overview.
         renderRow(600, "");
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const release = setupDocsPhoneShell(docsRoot);
         await setSheetOpen(true);
 
@@ -920,7 +912,7 @@ describe("docs shell interactions", () => {
       // Docsify binds this only when it loaded at 600px or less.
       const closeOnBodyClick = () => document.body.classList.remove("close");
       document.body.addEventListener("click", closeOnBodyClick);
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       await setSheetOpen(true);
 
@@ -941,7 +933,7 @@ describe("docs shell interactions", () => {
 
     it("keeps the sheet state out of history", async () => {
       // Open the sheet with the root mirror already applied.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       await setSheetOpen(true);
       docsRoot.classList.add("close");
@@ -962,7 +954,7 @@ describe("docs shell interactions", () => {
 
     it("resets on bfcache restores only", async () => {
       // Open the sheet.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       await setSheetOpen(true);
 
@@ -977,12 +969,12 @@ describe("docs shell interactions", () => {
 
     it("releases everything when the query turns false with the sheet open", async () => {
       // Open the sheet on a phone.
-      const { setMatches } = stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       await setSheetOpen(true);
 
       // Verify the rotation destroys the watcher and leaves the open state alone.
-      setMatches(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
       expect(closeWatcherStub.instances[0].destroyed).to.equal(true);
       expect(document.body.classList.contains("close")).to.equal(true);
 
@@ -992,14 +984,14 @@ describe("docs shell interactions", () => {
       expect(document.body.classList.contains("close")).to.equal(true);
 
       // Verify rotating back adopts the open sheet.
-      setMatches(true);
+      media.setMatches(PHONE_MEDIA_QUERY, true);
       expect(closeWatcherStub.instances).to.have.length(2);
       release();
     });
 
     it("tears down on cleanup", async () => {
       // Open the sheet on a phone.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const release = setupDocsPhoneShell(docsRoot);
       await setSheetOpen(true);
 

@@ -62,6 +62,7 @@ jobs:
               - 'tests/unit/**'
               - 'ocg-server/static/js/**'
               - 'ocg-server/static/js/.prettierrc.yaml'
+              - 'ocg-server/templates/**/*.js'
               - 'tests/unit/package-lock.json'
             markdown:
               - '.github/workflows/ci.yml'
@@ -113,7 +114,13 @@ jobs:
         with:
           dry: true
           prettier_version: 3.9.4
-          prettier_options: --check ocg-server/static/js/**/*.js tests/e2e/**/*.js --config ocg-server/static/js/.prettierrc.yaml
+          prettier_options: --check ocg-server/static/js/**/*.js ocg-server/templates/**/*.js tests/e2e/**/*.js --config ocg-server/static/js/.prettierrc.yaml
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Check e2e locators
+        run: node tests/e2e/scripts/check-locators.js
 
   lint-server:
     needs: changes

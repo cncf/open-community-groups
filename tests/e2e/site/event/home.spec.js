@@ -27,6 +27,8 @@ import {
 } from "./helpers.js";
 import {
   buildE2eUrl,
+  expectDialogClosed,
+  expectFocusIndicator,
   getIntroSection,
   getPageOverflow,
   navigateToEvent,
@@ -111,7 +113,8 @@ test.describe("event page", () => {
 
   test("event share action uses the canonical event title and URL", async ({ page }) => {
     // Open the event actions menu and inspect its page-specific share contract.
-    await page.locator('[data-attendance-role="actions-menu"] summary').click();
+    const actionsButton = page.locator('[data-attendance-role="actions-menu"] summary');
+    await actionsButton.click();
     const shareModal = page.locator('share-modal[trigger-variant="menu-item"]');
     const expectedEventPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}`;
     await expect(shareModal).toHaveAttribute("title", `${TEST_GROUP_NAME} · ${TEST_EVENT_NAME}`);
@@ -121,10 +124,16 @@ test.describe("event page", () => {
     await shareModal.getByRole("button", { name: "Share" }).click();
     const shareDialog = page.getByRole("dialog", { name: "Share" });
     await expect(shareDialog).toBeVisible();
+    await expect(shareDialog.getByRole("button", { name: "Close modal" })).toBeFocused();
     await expect(shareDialog.getByRole("button", { name: "Email" })).toHaveAttribute(
       "data-url",
       buildE2eUrl(expectedEventPath),
     );
+
+    // Close with Escape. The menu-item trigger hides with the closed menu, so focus returns to
+    // the menu summary.
+    await page.keyboard.press("Escape");
+    await expectDialogClosed(page, shareDialog, { opener: actionsButton });
   });
 
   test("event page sends its page-view beacon", async ({ page }) => {
@@ -368,8 +377,7 @@ test.describe("event page", () => {
 
       // Close the modal with Escape and verify focus returns to the map trigger.
       await page.keyboard.press("Escape");
-      await expect(mapModal).toBeHidden();
-      await expect(mapButton).toBeFocused();
+      await expectDialogClosed(page, mapModal, { opener: mapButton });
     });
 
     test("gallery handles broken images in thumbnails and carousel", async ({ page }) => {
@@ -383,29 +391,35 @@ test.describe("event page", () => {
       // Verify the thumbnail shows the broken-image placeholder.
       await expect(gallery).toBeVisible();
       await expect(thumbnailButton).toBeVisible();
-      await expect(thumbnailButton).toHaveClass(/relative/);
       await expect(thumbnailImage).toHaveAttribute("data-ocg-broken-image-placeholder", "true");
       await expect(thumbnailImage).toHaveAttribute("src", /\/static\/images\/icons\/broken_image\.svg$/);
-      await expect(thumbnailButton.locator('[data-ocg-broken-image-icon="true"]')).toBeVisible();
+      const thumbnailIcon = thumbnailButton.locator('[data-ocg-broken-image-icon="true"]');
+      await expect(thumbnailIcon).toBeVisible();
+
+      // Verify the absolute placeholder icon stays inside the thumbnail.
+      const [buttonBox, iconBox] = [await thumbnailButton.boundingBox(), await thumbnailIcon.boundingBox()];
+      expect(iconBox.x).toBeGreaterThanOrEqual(buttonBox.x);
+      expect(iconBox.y).toBeGreaterThanOrEqual(buttonBox.y);
+      expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(buttonBox.x + buttonBox.width);
+      expect(iconBox.y + iconBox.height).toBeLessThanOrEqual(buttonBox.y + buttonBox.height);
 
       // Open the gallery carousel from the broken thumbnail.
       await thumbnailButton.click();
 
-      // Verify the active carousel slide keeps the placeholder stable.
+      // Verify the active carousel slide keeps the placeholder stable. The placeholder hides the
+      // broken image with `invisible`, which drops it from the accessibility tree.
       const modal = gallery.locator(".modal");
-      const activeSlide = modal.locator(".z-30.translate-x-0");
+      const activeImage = modal.getByRole("img", { name: brokenImageAlt, exact: true, includeHidden: true });
+      const activeSlide = activeImage.locator("..");
+      // pointer-events-none is part of the lightbox's closed state, set by images-gallery.js.
       await expect(modal).not.toHaveClass(/pointer-events-none/);
-      await expect(activeSlide).toHaveClass(/absolute/);
-      await expect(activeSlide).not.toHaveClass(/relative/);
-      await expect(activeSlide.locator(`img[alt="${brokenImageAlt}"]`)).toHaveAttribute(
-        "data-ocg-broken-image-placeholder",
-        "true",
-      );
+      await expect(activeSlide).toHaveCSS("position", "absolute");
+      await expect(activeImage).toHaveAttribute("data-ocg-broken-image-placeholder", "true");
       await expect(activeSlide.locator('[data-ocg-broken-image-icon="true"]')).toBeVisible();
 
       // Verify navigating to the valid image shows the next slide.
       await modal.getByRole("button", { name: "Next" }).click();
-      await expect(modal.locator(".z-30.translate-x-0").locator(`img[alt="${validImageAlt}"]`)).toBeVisible();
+      await expect(modal.getByRole("img", { name: validImageAlt, exact: true })).toBeVisible();
     });
   });
 });
@@ -480,7 +494,9 @@ test.describe("event page - responsive", () => {
 
     const gallery = page.locator("images-gallery");
     const lightbox = gallery.locator(".modal");
-    const activeSlideImage = lightbox.locator(".z-30.translate-x-0 img");
+    // Inactive slides are display:none. The broken first image is `invisible`, which drops it from
+    // the accessibility tree, so take the image of the one displayed slide instead of its role.
+    const activeSlideImage = lightbox.locator("img").locator("..").filter({ visible: true }).locator("img");
     const counter = gallery.locator("[data-snap-counter]");
     const dots = gallery.locator("[data-snap-dots] .snap-dot");
     const secondTile = gallery.getByRole("button", { name: `Open Event ${TEST_EVENT_NAME} image 2` });
@@ -500,6 +516,8 @@ test.describe("event page - responsive", () => {
 
     await test.step("a tile opens the lightbox on its image", async () => {
       await secondTile.tap();
+      // opacity-0 is the lightbox's closed state set by images-gallery.js; Playwright counts
+      // opacity-0 as visible.
       await expect(lightbox).not.toHaveClass(/opacity-0/);
       await expect(activeSlideImage).toHaveAttribute("alt", `Event ${TEST_EVENT_NAME} image 2`);
     });
@@ -517,6 +535,7 @@ test.describe("event page - responsive", () => {
 
     await test.step("the close button still works", async () => {
       await lightbox.getByRole("button", { name: "Close" }).tap();
+      // opacity-0 is the lightbox's closed state set by images-gallery.js.
       await expect(lightbox).toHaveClass(/opacity-0/);
     });
   });
@@ -526,7 +545,8 @@ test.describe("event page - responsive", () => {
 
     const gallery = page.locator("images-gallery");
     const lightbox = gallery.locator(".modal");
-    const activeSlideImage = lightbox.locator(".z-30.translate-x-0 img");
+    // Inactive slides are display:none, so the only accessible image is the current one.
+    const activeSlideImage = lightbox.getByRole("img");
 
     // The seed has no single-image event, so trim the rendered gallery to one image.
     await gallery.evaluate((element) => {
@@ -536,6 +556,8 @@ test.describe("event page - responsive", () => {
 
     // A swipe leaves the only slide in place.
     await gallery.getByRole("button", { name: `Open Event ${TEST_EVENT_NAME} image 1` }).tap();
+    // opacity-0 is the lightbox's closed state set by images-gallery.js; Playwright counts
+    // opacity-0 as visible.
     await expect(lightbox).not.toHaveClass(/opacity-0/);
     await swipeHorizontally(page, 300, 100);
     await expect(activeSlideImage).toHaveCount(1);
@@ -543,7 +565,7 @@ test.describe("event page - responsive", () => {
     await expect(lightbox).not.toHaveClass(/opacity-0/);
   });
 
-  test("event page renders correctly on mobile viewport @mobile", async ({ page }) => {
+  test("event page renders correctly on mobile viewport @mobile @smoke", async ({ page }) => {
     // Load the event page for the mobile viewport.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
 
@@ -562,22 +584,21 @@ test.describe("event page - responsive", () => {
     await expect(getEventAboutSection(page)).toBeVisible();
   });
 
-  test("social links swap between mobile and desktop variants at the md breakpoint", async ({ page }) => {
+  test("social links render once at each width", async ({ page }) => {
     // Load the primary event that carries a seeded Meetup link.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
 
-    // Find the desktop and mobile social link variants.
-    const desktopMeetupLink = page.locator('div.hidden.md\\:flex a[title="Meetup"]');
-    const mobileMeetupLink = page.locator('div.md\\:hidden a[title="Meetup"]');
+    // Find the Meetup link; role queries skip the copy hidden at the current width.
+    const meetupLink = page.getByRole("link", { name: "Meetup", exact: true });
 
-    // Verify only the desktop variant shows from the md breakpoint up.
-    await expect(desktopMeetupLink).toBeVisible();
-    await expect(mobileMeetupLink).toBeHidden();
+    // Verify one Meetup link shows from the md breakpoint up.
+    await expect(meetupLink).toHaveCount(1);
+    await expect(meetupLink).toBeVisible();
 
-    // Verify only the mobile variant shows below the md breakpoint.
+    // Verify one Meetup link still shows below the md breakpoint.
     await page.setViewportSize({ width: 767, height: 900 });
-    await expect(mobileMeetupLink).toBeVisible();
-    await expect(desktopMeetupLink).toBeHidden();
+    await expect(meetupLink).toHaveCount(1);
+    await expect(meetupLink).toBeVisible();
   });
 });
 
@@ -669,8 +690,10 @@ test.describe("event page - phone layout @mobile", () => {
     // Load an event with a Meetup link and add a second link, as Luma would.
     await page.setViewportSize({ width: 320, height: 640 });
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
-    const social = page.locator('div.md\\:hidden:has(a[title="Meetup"])');
-    await social.locator('a[title="Meetup"]').evaluate((link) => link.after(link.cloneNode(true)));
+    // The link sits in the flex row of the phone social wrapper.
+    const meetup = getIntroSection(page).getByRole("link", { name: "Meetup", exact: true });
+    const social = meetup.first().locator("../..");
+    await meetup.first().evaluate((link) => link.after(link.cloneNode(true)));
 
     // Verify the links stay on the right edge of the gutter, in the meta row.
     const socialBox = await social.boundingBox();
@@ -690,35 +713,48 @@ test.describe("event page - phone layout @mobile", () => {
     // Load an event with a map at the narrowest phone and give the pill a long name.
     await page.setViewportSize({ width: 320, height: 640 });
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
-    const pill = page.locator('[class*="phone:wrap-anywhere"]:visible').first();
-    await pill.evaluate((node) => {
-      node.textContent = "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch";
-    });
+    const pill = getEventInfoSection(page, "Location")
+      .getByText(PRIMARY_EVENT_LOCATION, { exact: true })
+      .filter({ visible: true })
+      .first();
 
-    // Verify the name wraps rather than running past the pill's edge.
-    expect(await pill.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    // Verify the name wraps rather than running past the pill's edge. The text match is lost once
+    // the name changes, so measure in the same call.
+    const fits = await pill.evaluate((node) => {
+      node.textContent = "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch";
+      return node.scrollWidth <= node.clientWidth;
+    });
+    expect(fits).toBe(true);
   });
 
   test("the date card shows the large desktop date", async ({ page }) => {
     // Load a single-day event.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
     const panel = page.locator("[data-registration-window-date-panel]");
+    const { date, shortDate } = await getPrimaryEventDateParts(page);
 
     // Verify the full date replaces the short one.
-    await expect(panel.locator(".phone\\:text-2xl\\/7")).toBeVisible();
-    await expect(panel.locator(".phone\\:text-2xl\\/7")).toHaveCSS("font-size", "24px");
-    await expect(panel.locator("div.sm\\:hidden")).toBeHidden();
+    const fullDate = panel.getByText(date, { exact: true });
+    await expect(fullDate).toBeVisible();
+    await expect(fullDate).toHaveCSS("font-size", "24px");
+    const compactDate = panel.getByText(shortDate, { exact: true });
+    await expect(compactDate).toHaveCount(1);
+    await expect(compactDate).toBeHidden();
   });
 
   test("multi-day dates stack below 375 and sit side by side above it", async ({ page }) => {
     // Load a multi-day event.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_MULTI_DAY_EVENT.slug);
     const panel = page.locator("[data-registration-window-date-panel]");
-    const range = panel.locator("div.flex.items-start");
+    // The From label sits in the From column, which sits in the range row.
+    const range = panel.getByText("From", { exact: true }).locator("../..");
     const arrow = panel.getByText("→", { exact: true });
 
-    // Use dates wider than the seed's, so the fit does not depend on the month.
-    await panel.locator(".phone\\:text-lg\\/6").evaluateAll((dates) => {
+    // Use dates wider than the seed's, so the fit does not depend on the month. Only the full
+    // dates carry a four-digit year. Regex text matching does not trim the template's whitespace.
+    const fullDates = panel.getByText(/^\s*[A-Z][a-z]{2}\s+\d{1,2}, \d{4}\s*$/u);
+    await expect(fullDates).toHaveCount(2);
+    await fullDates.evaluateAll((dates) => {
       dates.forEach((date, index) => {
         date.textContent = `Nov ${28 + 2 * index}, 2026`;
       });
@@ -755,15 +791,16 @@ test.describe("event page - phone layout @mobile", () => {
 
     // Verify the long address pill shows and the map keeps its height.
     await expect(location.getByText(PRIMARY_EVENT_LOCATION, { exact: true }).first()).toBeVisible();
-    const panel = location.locator(".phone\\:h-\\[150px\\]");
+    const panel = location.locator("[data-card-panel]");
     expect((await panel.boundingBox()).height).toBe(150);
 
     // Verify the map opens as a sheet that the close button dismisses.
-    await location.getByRole("button", { name: "Open full map view" }).tap();
+    const mapButton = location.getByRole("button", { name: "Open full map view" });
+    await mapButton.tap();
     const mapSheet = page.locator("#event-map-modal");
     await expectBottomSheet(page, mapSheet);
     await mapSheet.locator(".sheet-head button").tap();
-    await expect(mapSheet).toBeHidden();
+    await expectDialogClosed(page, mapSheet, { opener: mapButton });
   });
 
   test("directions open Apple Maps on an iPhone", async ({ page }) => {
@@ -882,8 +919,8 @@ test.describe("event page - phone layout @mobile", () => {
   test("agenda tabs stay on one scrolling row at the tap size", async ({ page }) => {
     // Load a multi-day event.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_MULTI_DAY_EVENT.slug);
-    const firstTab = page.locator("button[data-day-tab]").first();
-    const tabs = page.locator("ul:has(> li > button[data-day-tab])");
+    const tabs = page.getByRole("tablist", { name: "Agenda days" });
+    const firstTab = tabs.getByRole("tab").first();
 
     // Verify the row scrolls instead of wrapping, and each tab is a 44px target.
     await expect(tabs).toHaveCSS("flex-wrap", "nowrap");
@@ -1050,43 +1087,96 @@ test.describe("event page - multi-day agenda", () => {
   });
 
   test("day tabs switch the visible agenda day", async ({ page }) => {
-    // Verify the first day tab starts active with its sessions shown.
-    const dayTabs = page.locator("button[data-day-tab]");
+    // Verify the first day tab starts selected with its sessions shown.
+    const dayTabs = page.getByRole("tablist", { name: "Agenda days" }).getByRole("tab");
+    // Hidden panels leave the accessibility tree, so this is the selected day's panel.
+    const visiblePanel = page.getByRole("tabpanel");
     await expect(dayTabs).toHaveCount(2);
-    await expect(dayTabs.first()).toHaveAttribute("data-active", "true");
-    await expect(page.getByText("Summit Kickoff")).toBeVisible();
+    await expect(dayTabs.first()).toHaveAttribute("aria-selected", "true");
+    await expect(visiblePanel.getByText("Summit Kickoff")).toBeVisible();
     await expect(page.getByText("Summit Wrap-Up")).toBeHidden();
 
     // Verify selecting the second day swaps the visible sessions.
     await dayTabs.nth(1).click();
-    await expect(dayTabs.nth(1)).toHaveAttribute("data-active", "true");
-    await expect(dayTabs.first()).toHaveAttribute("data-active", "false");
-    await expect(page.getByText("Summit Wrap-Up")).toBeVisible();
+    await expect(dayTabs.nth(1)).toHaveAttribute("aria-selected", "true");
+    await expect(dayTabs.first()).toHaveAttribute("aria-selected", "false");
+    await expect(visiblePanel.getByText("Summit Wrap-Up")).toBeVisible();
     await expect(page.getByText("Summit Kickoff")).toBeHidden();
   });
 
+  test("day tabs move with the arrow, Home and End keys", async ({ page }) => {
+    // Select the first day with the pointer so it holds focus.
+    const dayTabs = page.getByRole("tablist", { name: "Agenda days" }).getByRole("tab");
+    const firstDayTab = dayTabs.first();
+    const secondDayTab = dayTabs.nth(1);
+    // Hidden panels leave the accessibility tree, so this is the selected day's panel.
+    const visiblePanel = page.getByRole("tabpanel");
+    await firstDayTab.click();
+    await expect(firstDayTab).toBeFocused();
+
+    // Verify ArrowRight selects the next day and draws a visible focus ring on it.
+    await expectFocusIndicator(secondDayTab, () => page.keyboard.press("ArrowRight"));
+    await expect(secondDayTab).toHaveAttribute("aria-selected", "true");
+    await expect(visiblePanel.getByText("Summit Wrap-Up")).toBeVisible();
+
+    // Verify the arrow keys wrap and Home and End jump to the first and last days.
+    const steps = [
+      { key: "ArrowRight", tab: firstDayTab, session: "Summit Kickoff" },
+      { key: "ArrowLeft", tab: secondDayTab, session: "Summit Wrap-Up" },
+      { key: "Home", tab: firstDayTab, session: "Summit Kickoff" },
+      { key: "End", tab: secondDayTab, session: "Summit Wrap-Up" },
+    ];
+    for (const { key, tab, session } of steps) {
+      await page.keyboard.press(key);
+      await expect(tab, key).toBeFocused();
+      await expect(tab, key).toHaveAttribute("aria-selected", "true");
+      await expect(visiblePanel.getByText(session), key).toBeVisible();
+    }
+  });
+
+  test("day tabs still switch after returning with Back", async ({ page }) => {
+    // Select the second day, then leave through the boosted Explore header link.
+    const dayTabs = page.getByRole("tablist", { name: "Agenda days" }).getByRole("tab");
+    await dayTabs.nth(1).click();
+    await expect(dayTabs.nth(1)).toHaveAttribute("aria-selected", "true");
+    await page
+      .getByRole("navigation", { name: "Main navigation" })
+      .getByRole("link", { name: "Explore" })
+      .click();
+    await expect(page).toHaveURL(/\/explore/);
+
+    // Return with Back, which restores the HTMX snapshot with the second day still selected.
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`/event/${TEST_MULTI_DAY_EVENT.slug}$`));
+    await expect(dayTabs.nth(1)).toHaveAttribute("aria-selected", "true");
+
+    // Verify the restored tabs still switch back to the first day.
+    await dayTabs.first().click();
+    await expect(dayTabs.first()).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel").getByText("Summit Kickoff")).toBeVisible();
+    await expect(page.getByText("Summit Wrap-Up")).toBeHidden();
+  });
+
   test("day tab labels swap between long and short formats at the md breakpoint", async ({ page }) => {
-    // Target the long and short date labels of the first day tab.
-    const firstDayTab = page.locator("button[data-day-tab]").first();
-    const longLabel = firstDayTab.locator("span.hidden.md\\:inline");
-    const shortLabel = firstDayTab.locator("span.inline.md\\:hidden");
+    // Target the first day tab.
+    const firstDayTab = page.getByRole("tablist", { name: "Agenda days" }).getByRole("tab").first();
 
-    // Verify the long weekday label shows on desktop viewports.
-    await expect(longLabel).toBeVisible();
-    await expect(shortLabel).toBeHidden();
+    // Verify the tab is named by the long weekday label on desktop viewports.
+    await expect(firstDayTab).toHaveAccessibleName(/^[A-Z][a-z]+day, [A-Z][a-z]+ +\d{1,2}$/);
 
-    // Verify the compact date label replaces it below the md breakpoint.
+    // Verify the compact date label names it below the md breakpoint.
     await page.setViewportSize({ width: 767, height: 900 });
-    await expect(shortLabel).toBeVisible();
-    await expect(longLabel).toBeHidden();
+    await expect(firstDayTab).toHaveAccessibleName(/^\d{1,2} [A-Z][a-z]{2}$/);
   });
 
   test("labels filter shows sessions with any selected label", async ({ page }) => {
     // Target the labels filter, its status and the second day controls.
     const labelFilter = page.locator("label-selector#agenda-label-filter");
     const filterStatus = page.locator("[data-agenda-filter-status]");
-    const secondDayTab = page.locator("button[data-day-tab]").nth(1);
-    const secondDayPanel = page.locator('[data-day-content="day-1"]');
+    const dayTabs = page.getByRole("tablist", { name: "Agenda days" }).getByRole("tab");
+    const secondDayTab = dayTabs.nth(1);
+    // Hidden panels leave the accessibility tree, so this is the selected day's panel.
+    const secondDayPanel = page.getByRole("tabpanel");
     const emptyMessage = "No sessions match the selected labels.";
 
     // Verify selecting a first day label leaves the second day empty.
@@ -1109,7 +1199,7 @@ test.describe("event page - multi-day agenda", () => {
     await labelFilter.getByRole("button", { name: "Remove Community", exact: true }).click();
     await expect(filterStatus).toHaveText("");
     await expect(page.getByText("Summit Wrap-Up")).toBeVisible();
-    await page.locator("button[data-day-tab]").first().click();
+    await dayTabs.first().click();
     await expect(page.getByText("Summit Kickoff")).toBeVisible();
   });
 
@@ -1271,6 +1361,20 @@ const formatUtcDate = (date) =>
     year: "numeric",
   }).format(date);
 
+/**
+ * Formats a UTC date like the compact `%b %e, %y` event date, such as `Nov 5, 26`. The year is
+ * appended by hand, because `Intl` writes a two-digit year as `’26`.
+ */
+const formatUtcShortDate = (date) => {
+  const monthDay = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(date);
+
+  return `${monthDay}, ${String(date.getUTCFullYear()).slice(-2)}`;
+};
+
 /** Formats a UTC time for public event page assertions. */
 const formatUtcTime = (date) =>
   new Intl.DateTimeFormat("en-US", {
@@ -1293,6 +1397,7 @@ const getPrimaryEventDateParts = async (page) => {
 
   return {
     date: formatUtcDate(startDate),
+    shortDate: formatUtcShortDate(startDate),
     timeRange: `${formatUtcTime(startDate)} - ${formatUtcTime(endDate)} UTC`,
   };
 };

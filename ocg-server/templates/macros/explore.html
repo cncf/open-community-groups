@@ -76,17 +76,16 @@
 {# Input date -#}
 {# Used by explore filters for start and end date fields. -#}
 {% macro date_input(name, label, value) -%}
-  <div class="w-full">
-    <div class="text-xs/6 text-stone-500/75 capitalize mb-1">{{ label }}:</div>
-    <div class="relative w-[75%] phone:w-full">
+  <label class="block w-full">
+    <span class="text-xs/6 text-stone-500/75 mb-1 block">{{ label }}</span>
+    <span class="relative block w-[75%] phone:w-full">
       <input name="{{ name }}"
              validate="false"
              value="{%- if let Some(date) = &value -%} {{ date }} {%- endif -%}"
              type="date"
-             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-stone-50 transition-colors phone:h-11 phone:text-base"
-             placeholder="Date {{ label }}">
-    </div>
-  </div>
+             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-stone-50 transition-colors phone:h-11 phone:text-base">
+    </span>
+  </label>
 {% endmacro date_input -%}
 {# End input date -#}
 
@@ -118,11 +117,10 @@
       <li class="w-full">
         {# Events button -#}
         {# djlint:off #}
-        <button id="events-button"
-                hx-get='/explore/events-section'
+        <button hx-get='/explore/events-section'
                 hx-trigger="click"
                 hx-target="#entity-section"
-                hx-indicator="#loading-filters, #loading-filters-mobile"
+                hx-indicator="[data-loading-filters], #loading-filters-mobile"
                 hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
                 class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-l-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
         {# djlint:on #}
@@ -149,11 +147,10 @@
     <li class="w-full">
       {# Groups button -#}
       {# djlint:off #}
-        <button id="groups-button"
-                hx-get='/explore/groups-section'
+        <button hx-get='/explore/groups-section'
                 hx-trigger="click"
                 hx-target="#entity-section"
-                hx-indicator="#loading-filters, #loading-filters-mobile"
+                hx-indicator="[data-loading-filters], #loading-filters-mobile"
                 hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
                 class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-r-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
       {# djlint:on #}
@@ -179,7 +176,7 @@
             hx-get='/explore/events-section'
             hx-trigger="click"
             hx-target="#entity-section"
-            hx-indicator="#loading-filters, #loading-filters-mobile"
+            hx-indicator="[data-loading-filters], #loading-filters-mobile"
             hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
             class="inline-flex h-11 items-center justify-center gap-1.5 rounded-l-lg border border-stone-200 bg-white px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
     {# djlint:on #}
@@ -205,7 +202,7 @@
             hx-get='/explore/groups-section'
             hx-trigger="click"
             hx-target="#entity-section"
-            hx-indicator="#loading-filters, #loading-filters-mobile"
+            hx-indicator="[data-loading-filters], #loading-filters-mobile"
             hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
             class="-ms-px inline-flex h-11 items-center justify-center gap-1.5 rounded-r-lg border border-stone-200 bg-white px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
   {# djlint:on #}

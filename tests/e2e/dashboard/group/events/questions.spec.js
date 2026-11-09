@@ -70,11 +70,11 @@ test.describe("group dashboard event registration questions", () => {
     });
 
     // Reorder the seeded topics question above the temporary questions.
-    await getQuestionCard(organizerGroupPage, editor, "Which topics are you interested in?")
+    await getQuestionCard(editor, "Which topics are you interested in?")
       .getByRole("button", { name: "Reorder question" })
       .focus();
     await organizerGroupPage.keyboard.press("ArrowUp");
-    await getQuestionCard(organizerGroupPage, editor, "Which topics are you interested in?")
+    await getQuestionCard(editor, "Which topics are you interested in?")
       .getByRole("button", { name: "Reorder question" })
       .focus();
     await organizerGroupPage.keyboard.press("ArrowUp");
@@ -84,9 +84,7 @@ test.describe("group dashboard event registration questions", () => {
       "Accessibility needs",
       "Temporary setup note",
     ]);
-    const temporaryCard = editor.locator(".rounded-md.border.border-stone-200.bg-white", {
-      hasText: "Temporary setup note",
-    });
+    const temporaryCard = getQuestionCard(editor, "Temporary setup note");
     await temporaryCard.getByRole("button", { name: "Delete question" }).click();
     await assertQuestionOrder(organizerGroupPage, [
       "Which topics are you interested in?",
@@ -195,7 +193,11 @@ const addQuestion = async (page, question) => {
 
 /** Verifies the registration question cards appear in the expected order. */
 const assertQuestionOrder = async (page, prompts) => {
-  const cards = page.locator("questions-editor").locator(".rounded-md.border.border-stone-200.bg-white");
+  // Each card root wraps its reorder handle.
+  const cards = page
+    .locator("questions-editor")
+    .getByRole("button", { name: "Reorder question" })
+    .locator("..");
 
   await expect(cards).toHaveCount(prompts.length);
   for (let index = 0; index < prompts.length; index += 1) {
@@ -204,10 +206,5 @@ const assertQuestionOrder = async (page, prompts) => {
 };
 
 /** Returns the registration question card matching the prompt. */
-const getQuestionCard = (page, editor, prompt) =>
-  editor
-    .locator(".flex.items-start.gap-2", {
-      has: page.getByRole("button", { name: "Reorder question" }),
-      hasText: prompt,
-    })
-    .first();
+const getQuestionCard = (editor, prompt) =>
+  editor.getByRole("button", { name: "Reorder question" }).locator("..").filter({ hasText: prompt }).first();

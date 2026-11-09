@@ -43,8 +43,10 @@
 </div>
 {# End header -#}
 
-{# Reloads the dashboard layout after answers are saved, so the list and the menu badge refresh -#}
+{# Reloads the dashboard layout after answers are saved, so the list and the menu badge refresh.
+   data-keeps-alerts keeps the saved answers alert open across the reload. -#}
 <div hidden
+     data-keeps-alerts
      data-user-surveys-refresh
      hx-get="{{ refresh_url }}"
      hx-trigger="refresh-user-surveys from:body"

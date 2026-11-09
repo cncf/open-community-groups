@@ -3,8 +3,10 @@ import { expect } from "@open-wc/testing";
 import {
   initializeCommunityAnalyticsFromPage,
   initAnalyticsCharts,
+  SUMMARY_TABS_MEDIA_QUERY,
 } from "/static/js/dashboard/community/analytics.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 describe("dashboard community analytics", () => {
   const originalEcharts = globalThis.echarts;
@@ -115,18 +117,7 @@ describe("dashboard community analytics", () => {
 
   it("exposes the summary cards as tabs only at the xl breakpoint", async () => {
     // Stub the xl media query so the test controls the viewport changes.
-    const originalMatchMedia = window.matchMedia;
-    const query = {
-      listeners: new Set(),
-      matches: false,
-      addEventListener(_type, listener) {
-        this.listeners.add(listener);
-      },
-      removeEventListener(_type, listener) {
-        this.listeners.delete(listener);
-      },
-    };
-    window.matchMedia = () => query;
+    const media = stubMatchMedia({ [SUMMARY_TABS_MEDIA_QUERY]: false });
     document.body.insertAdjacentHTML(
       "afterbegin",
       `<div role="tablist" aria-label="Analytics summary" data-analytics-summary>
@@ -138,10 +129,6 @@ describe("dashboard community analytics", () => {
     );
     const summary = document.querySelector("[data-analytics-summary]");
     const [groupsCard, eventsCard] = summary.querySelectorAll("[data-analytics-tab]");
-    const changeViewport = (matches) => {
-      query.matches = matches;
-      query.listeners.forEach((listener) => listener());
-    };
 
     try {
       // Below xl the cards are plain stat cards outside the tab order.
@@ -158,7 +145,7 @@ describe("dashboard community analytics", () => {
       expect(eventsCard.hasAttribute("aria-selected")).to.equal(false);
 
       // At xl the cards become tabs that reflect the active section.
-      changeViewport(true);
+      media.setMatches(SUMMARY_TABS_MEDIA_QUERY, true);
       expect(summary.getAttribute("role")).to.equal("tablist");
       expect(eventsCard.getAttribute("role")).to.equal("tab");
       expect(eventsCard.getAttribute("aria-selected")).to.equal("true");
@@ -169,21 +156,16 @@ describe("dashboard community analytics", () => {
 
       // Removed analytics content stops following the viewport.
       summary.remove();
-      changeViewport(false);
-      expect(query.listeners.size).to.equal(0);
+      media.setMatches(SUMMARY_TABS_MEDIA_QUERY, false);
+      expect(media.listeners(SUMMARY_TABS_MEDIA_QUERY).size).to.equal(0);
     } finally {
-      window.matchMedia = originalMatchMedia;
+      media.restore();
     }
   });
 
   it("moves between the exposed tabs with the arrow, Home and End keys", async () => {
     // Stub the xl media query so the summary cards stay plain stat cards.
-    const originalMatchMedia = window.matchMedia;
-    window.matchMedia = () => ({
-      matches: false,
-      addEventListener() {},
-      removeEventListener() {},
-    });
+    const media = stubMatchMedia();
 
     // Replace the bare tab buttons with the summary cards and the tab list.
     document.querySelectorAll("body > [data-analytics-tab]").forEach((button) => button.remove());
@@ -276,7 +258,7 @@ describe("dashboard community analytics", () => {
       expect(attendeesTab.getAttribute("aria-selected")).to.equal("true");
       expect(summaryCards.map((card) => card.getAttribute("tabindex"))).to.deep.equal(["-1", "-1"]);
     } finally {
-      window.matchMedia = originalMatchMedia;
+      media.restore();
     }
   });
 

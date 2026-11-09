@@ -1,9 +1,12 @@
 use chrono::{Duration, Utc};
 
-use crate::types::{
-    dashboard::group::event_analytics::{EventAdmissionOfferCount, EventAdmissionOfferOutcome},
-    event::EventAdmissionOfferSource,
-    tests::sample_event_analytics,
+use crate::{
+    test_util::{normalize_whitespace, opening_tag_with},
+    types::{
+        dashboard::group::event_analytics::{EventAdmissionOfferCount, EventAdmissionOfferOutcome},
+        event::EventAdmissionOfferSource,
+        tests::sample_event_analytics,
+    },
 };
 
 use super::*;
@@ -149,6 +152,46 @@ fn test_offer_labels_describe_outcomes_and_sources() {
         page.offer_source_label(&EventAdmissionOfferSource::OrganizerInvitation),
         "Organizer invitation"
     );
+}
+
+#[test]
+fn test_page_links_utm_settings_only_without_tagged_views() {
+    // Setup a page without tagged views
+    let mut page = sample_page();
+    page.stats.utm.tagged_views = 0;
+
+    // Render the page
+    let html = page.render().unwrap();
+
+    // Check the settings link loads the settings tab behind the pending changes guard
+    let link = opening_tag_with(&html, r#"id="analytics-utm-settings-link""#);
+    assert!(link.contains(r#"href="/dashboard/group?tab=settings""#));
+    assert!(link.contains(r#"hx-get="/dashboard/group?tab=settings""#));
+    assert!(link.contains(r#"hx-trigger="click, confirmed""#));
+    assert!(link.contains("data-pending-changes-guard"));
+
+    // Check the link is absent once views are tagged
+    let html = sample_page().render().unwrap();
+    assert!(!html.contains("analytics-utm-settings-link"));
+}
+
+#[test]
+fn test_page_summarizes_combinations_beyond_the_top_ten() {
+    // Setup a page with combinations beyond the listed ones
+    let mut page = sample_page();
+    page.stats.utm.combinations_remainder_views = 345;
+    page.stats.utm.combinations_total_count = 13;
+    assert_eq!(page.stats.utm.combinations_remainder_count(), 12);
+
+    // Render the page
+    let text = normalize_whitespace(&page.render().unwrap());
+
+    // Check the remainder row summarizes the unlisted combinations
+    assert!(text.contains("12 more combinations · 345 views"));
+
+    // Check the row is absent when every combination is listed
+    let text = normalize_whitespace(&sample_page().render().unwrap());
+    assert!(!text.contains("more combinations"));
 }
 
 #[test]

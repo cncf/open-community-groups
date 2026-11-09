@@ -8,9 +8,11 @@ import {
   dispatchHtmxBeforeRequest,
 } from "/tests/unit/test-utils/htmx.js";
 
-// Render the component fixture.
+// Render the component fixture. The hidden rule matches the app styles, so a
+// hidden button loses focus as it does in the browser.
 const renderMembershipDom = () => {
   document.body.innerHTML = `
+    <style>.hidden { display: none; }</style>
     <div id="membership-container">
       <button id="membership-checker"></button>
       <button id="loading-btn" class="hidden">Loading</button>
@@ -27,6 +29,16 @@ const renderMembershipDom = () => {
     joinButton: document.getElementById("join-btn"),
     leaveButton: document.getElementById("leave-btn"),
   };
+};
+
+// Start a membership action from its focused button and let the browser apply
+// the hidden state, as it does while the request is in flight.
+const startFocusedAction = async (button) => {
+  button.classList.remove("hidden");
+  button.focus();
+  dispatchHtmxBeforeRequest(button);
+  button.getBoundingClientRect();
+  await waitForMicrotask();
 };
 
 describe("group membership", () => {
@@ -207,9 +219,10 @@ describe("group membership", () => {
       icon: "success",
     });
 
-    // Update fixture state before asserting the new state.
-    leaveButton.classList.add("hidden");
-    loadingButton.classList.remove("hidden");
+    // Start a second leave request that fails.
+    dispatchHtmxBeforeRequest(leaveButton);
+    expect(leaveButton.classList.contains("hidden")).to.equal(true);
+    expect(loadingButton.classList.contains("hidden")).to.equal(false);
     dispatchHtmxAfterRequest(leaveButton, {
       status: 500,
     });
@@ -221,5 +234,116 @@ describe("group membership", () => {
       text: "Something went wrong leaving this group. Please try again later.",
       icon: "error",
     });
+  });
+
+  it("focuses the leave action after a successful join and re-check", async () => {
+    // Start a join request from the focused join action.
+    const { checker, joinButton, leaveButton } = renderMembershipDom();
+    await startFocusedAction(joinButton);
+
+    // Complete the join and the membership re-check it triggers.
+    dispatchHtmxAfterRequest(joinButton);
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ is_member: true }),
+    });
+    await waitForMicrotask();
+
+    // Focus lands on the leave action that now applies.
+    expect(document.activeElement.id).to.equal(leaveButton.id);
+  });
+
+  it("focuses the join action after leaving", async () => {
+    // Start a leave request from the focused leave action.
+    const { checker, joinButton, leaveButton } = renderMembershipDom();
+    await startFocusedAction(leaveButton);
+
+    // Complete the leave and the membership re-check it triggers.
+    dispatchHtmxAfterRequest(leaveButton);
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ is_member: false }),
+    });
+    await waitForMicrotask();
+
+    // Focus lands on the join action that now applies.
+    expect(document.activeElement.id).to.equal(joinButton.id);
+  });
+
+  it("returns focus to the restored action after a failed join or leave", async () => {
+    // Fail a join request started from the focused join action.
+    const { joinButton, leaveButton } = renderMembershipDom();
+    await startFocusedAction(joinButton);
+    expect(document.activeElement.id).not.to.equal(joinButton.id);
+    dispatchHtmxAfterRequest(joinButton, { status: 500 });
+    await waitForMicrotask();
+
+    // Focus returns to the restored join action.
+    expect(document.activeElement.id).to.equal(joinButton.id);
+
+    // Fail a leave request started from the focused leave action.
+    joinButton.classList.add("hidden");
+    await startFocusedAction(leaveButton);
+    expect(document.activeElement.id).not.to.equal(leaveButton.id);
+    dispatchHtmxAfterRequest(leaveButton, { status: 500 });
+    await waitForMicrotask();
+
+    // Focus returns to the restored leave action.
+    expect(document.activeElement.id).to.equal(leaveButton.id);
+  });
+
+  it("waits for an open alert to close before moving focus", async () => {
+    // Render an open alert container that stays visible until removed.
+    const { checker, joinButton, leaveButton } = renderMembershipDom();
+    const alertContainer = document.createElement("div");
+    alertContainer.className = "swal2-container";
+    document.body.append(alertContainer);
+    globalThis.Swal.isVisible = () => alertContainer.isConnected;
+
+    // Join and re-check while the result alert is open.
+    await startFocusedAction(joinButton);
+    dispatchHtmxAfterRequest(joinButton);
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ is_member: true }),
+    });
+    await waitForMicrotask();
+
+    // Focus stays put while the alert is open.
+    expect(document.activeElement.id).not.to.equal(leaveButton.id);
+
+    // Closing the alert moves focus to the leave action.
+    alertContainer.remove();
+    await waitForMicrotask();
+    expect(document.activeElement.id).to.equal(leaveButton.id);
+  });
+
+  it("does not move focus on the initial membership check", async () => {
+    // Resolve the initial membership check without a pending action.
+    const { checker, joinButton } = renderMembershipDom();
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ is_member: false }),
+    });
+    await waitForMicrotask();
+
+    // The join action shows without taking focus.
+    expect(joinButton.classList.contains("hidden")).to.equal(false);
+    expect(document.activeElement.id).not.to.equal(joinButton.id);
+  });
+
+  it("keeps focus where the user moved it during the request", async () => {
+    // Render another control the user can move focus to.
+    const { checker, joinButton } = renderMembershipDom();
+    document.body.insertAdjacentHTML("beforeend", '<button id="other-control" type="button">Other</button>');
+    const otherControl = document.getElementById("other-control");
+
+    // Start a join request, then move focus elsewhere before it settles.
+    await startFocusedAction(joinButton);
+    otherControl.focus();
+    dispatchHtmxAfterRequest(joinButton);
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ is_member: true }),
+    });
+    await waitForMicrotask();
+
+    // Focus stays on the control the user chose.
+    expect(document.activeElement.id).to.equal(otherControl.id);
   });
 });

@@ -5,6 +5,7 @@ import {
   bindModalDismissListeners,
   closeModalBodyScroll,
   focusBottomSheet,
+  focusModal,
   isModalOverlayTarget,
   openModalBodyScroll,
   trapBottomSheetFocus,
@@ -50,7 +51,7 @@ export class ShareModal extends LitWrapper {
     this._modalContainer = null;
     this._removeDismissListeners = null;
     this._removeSheetGestures = null;
-    this._restoreSheetFocus = null;
+    this._restoreFocus = null;
   }
 
   /**
@@ -70,7 +71,7 @@ export class ShareModal extends LitWrapper {
     this._removeEventListeners();
     this._removeModalContainer();
     this._isOpen = closeModalBodyScroll(this._isOpen);
-    this._restoreSheetFocus = null;
+    this._restoreFocus = null;
   }
 
   /**
@@ -94,8 +95,8 @@ export class ShareModal extends LitWrapper {
     this._isOpen = closeModalBodyScroll(this._isOpen);
     this._removeEventListeners();
     this._removeModalContainer();
-    this._restoreSheetFocus?.();
-    this._restoreSheetFocus = null;
+    this._restoreFocus?.();
+    this._restoreFocus = null;
   }
 
   /**
@@ -148,7 +149,8 @@ export class ShareModal extends LitWrapper {
     render(this._renderModalContent(), container);
     const panel = container.querySelector(".sheet-panel");
     this._removeSheetGestures = bindSheetGestures(panel, { onPageRestore: () => this._closeModal() });
-    this._restoreSheetFocus ??= focusBottomSheet(panel, this.querySelector("button"));
+    this._restoreFocus ??=
+      focusBottomSheet(panel, this.querySelector("button")) ?? this._focusCentredModal(panel);
   }
 
   /**
@@ -163,6 +165,37 @@ export class ShareModal extends LitWrapper {
   }
 
   /**
+   * Moves focus into the centred modal, to its close button.
+   * @param {HTMLElement} panel - The modal card
+   * @returns {() => void} Callback that returns focus to the visible trigger
+   */
+  _focusCentredModal(panel) {
+    focusModal(panel);
+    return () => {
+      this._getFocusReturnTarget()?.focus();
+      // A backdrop click closes on mousedown, whose default action would clear focus again.
+      if (window.event?.type === "mousedown") {
+        window.event.preventDefault();
+      }
+    };
+  }
+
+  /**
+   * Returns the control that takes focus back when the centred modal closes: the
+   * trigger, or the summary of the menu whose closing hid the menu item trigger.
+   * @returns {HTMLElement|null} The visible focus return target
+   */
+  _getFocusReturnTarget() {
+    const trigger = this.querySelector("button");
+    if (trigger?.checkVisibility()) {
+      return trigger;
+    }
+
+    const summary = this.closest("details")?.querySelector(":scope > summary");
+    return summary?.checkVisibility() ? summary : null;
+  }
+
+  /**
    * Handles keydown events to close the modal on Escape key press, and keeps Tab
    * inside the sheet.
    * @param {KeyboardEvent} event - The keyboard event
@@ -172,7 +205,7 @@ export class ShareModal extends LitWrapper {
       event.preventDefault();
       this._closeModal();
     }
-    if (this._restoreSheetFocus) {
+    if (this._restoreFocus) {
       trapBottomSheetFocus(event, this._modalContainer?.querySelector(".sheet-panel"));
     }
   }
@@ -218,15 +251,16 @@ export class ShareModal extends LitWrapper {
 
   /**
    * Handles click on copy button.
-   * Copies the URL to clipboard and shows feedback.
+   * Copies the URL to clipboard and shows feedback. The modal closes before the
+   * alert opens, so the alert hands focus back to the trigger when dismissed.
    */
   async _handleCopyClick() {
     const url = this._getFullUrl();
 
     try {
       await navigator.clipboard.writeText(url);
-      showSuccessAlert("Link copied to clipboard!");
       this._closeModal();
+      showSuccessAlert("Link copied to clipboard!");
     } catch {
       showErrorAlert("Failed to copy link. Please try again.");
     }

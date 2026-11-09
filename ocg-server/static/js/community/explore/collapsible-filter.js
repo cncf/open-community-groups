@@ -4,6 +4,8 @@ import { FILTER_CHANGE_EVENT } from "/static/js/community/explore/filters.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
 
+const COMMUNITY_DEPENDENT_SELECTOR = "[data-community-dependent]";
+
 /**
  * Collapsible filter component for managing multiple selection options.
  * Supports both single and multiple selection modes with collapse/expand functionality.
@@ -23,7 +25,7 @@ export class CollapsibleFilter extends LitWrapper {
    * @property {'rows'|'cols'} viewType - Layout orientation for options display
    * @property {boolean} singleSelection - Whether only one option can be selected
    * @property {Array} visibleOptions - Filtered options array for current view
-   * @property {boolean} resetDependentFilters - Whether to reset other filters on selection change
+   * @property {boolean} resetDependentFilters - Clears the filters marked data-community-dependent in the parent form
    */
   static properties = {
     title: { type: String },
@@ -64,26 +66,15 @@ export class CollapsibleFilter extends LitWrapper {
   }
 
   /**
-   * Resets all dependent filter components in the parent form.
-   * Used when resetDependentFilters is enabled (e.g., for community filter).
+   * Clears the filters marked data-community-dependent in the parent form.
    * @private
    */
   _resetDependentFiltersInForm() {
     const form = this.closest("form");
     if (!form) return;
 
-    // Reset all collapsible-filter components except this one
-    form.querySelectorAll("collapsible-filter").forEach((filter) => {
-      if (filter !== this && filter.cleanSelected) {
-        filter.cleanSelected();
-      }
-    });
-
-    // Reset all multi-select-filter components
-    form.querySelectorAll("multi-select-filter").forEach((filter) => {
-      if (filter.cleanSelected) {
-        filter.cleanSelected();
-      }
+    form.querySelectorAll(COMMUNITY_DEPENDENT_SELECTOR).forEach((filter) => {
+      if (filter !== this) filter.cleanSelected?.();
     });
   }
 
@@ -233,13 +224,25 @@ export class CollapsibleFilter extends LitWrapper {
   }
 
   /**
+   * Builds the option list id, scoped to the parent form when it has an id.
+   * Explore renders the same filter in the sidebar and the phone sheet, so a
+   * name-only id would repeat and aria-controls would bind to the hidden copy.
+   * @returns {string} Option list id
+   * @private
+   */
+  _optionsId() {
+    const formId = this.closest("form")?.id;
+    return formId ? `${formId}-${this.name}-filter-options` : `${this.name}-filter-options`;
+  }
+
+  /**
    * Renders the complete collapsible filter component.
    * Includes title, collapse button, option list, and show more/less button.
    * @returns {import('lit').TemplateResult} Component template
    */
   render() {
     const canCollapse = this.options.length > this.maxVisibleItems;
-    const optionsId = `${this.name}-filter-options`;
+    const optionsId = this._optionsId();
 
     return html`<div class="px-6 py-7 pt-5 border-b border-stone-100 phone:px-3">
       <div class="flex justify-between items-center">
@@ -249,11 +252,12 @@ export class CollapsibleFilter extends LitWrapper {
             canCollapse
               ? html`<button
                   type="button"
+                  data-focus-key="collapse"
                   @click=${this._changeCollapseState}
                   aria-controls=${optionsId}
                   aria-expanded=${String(!this.isCollapsed)}
                   aria-label=${this.isCollapsed ? `Expand ${this.title}` : `Collapse ${this.title}`}
-                  class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center phone:relative phone:after:absolute phone:after:-inset-3"
+                  class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 font-medium rounded-full text-sm p-1 text-center inline-flex items-center phone:relative phone:after:absolute phone:after:-inset-3"
                 >
                   ${
                     this.isCollapsed
@@ -276,8 +280,10 @@ export class CollapsibleFilter extends LitWrapper {
         <li>
           <button
             type="button"
+            data-focus-key="any"
             @click=${this._onSelectAny}
             aria-label=${`Any ${this.title}`}
+            aria-pressed=${String(this.selected.length === 0)}
             class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none phone:min-h-11 phone:px-3 ${
               this.selected.length === 0
                 ? "border-primary-500 text-primary-500"
@@ -293,7 +299,7 @@ export class CollapsibleFilter extends LitWrapper {
           (opt) =>
             html`<li>
               <label
-                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none phone:min-h-11 phone:px-3 phone:has-[:focus-visible]:ring-2 phone:has-[:focus-visible]:ring-primary-300 ${
+                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none phone:min-h-11 phone:px-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--ocg-primary) ${
                   this.selected.includes(opt.value)
                     ? "border-primary-500 text-primary-500"
                     : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
@@ -320,12 +326,12 @@ export class CollapsibleFilter extends LitWrapper {
         canCollapse
           ? html`<div class="mt-4 -mb-1.5">
               <button
-                data-label="{{ label }}"
                 type="button"
+                data-focus-key="show-more"
                 @click=${this._changeCollapseState}
                 aria-controls=${optionsId}
                 aria-expanded=${String(!this.isCollapsed)}
-                class="text-xs/6 text-stone-500/75 hover:text-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium phone:min-h-11 phone:text-sm"
+                class="text-xs/6 text-stone-500/75 hover:text-stone-700 font-medium phone:min-h-11 phone:text-sm"
               >
                 ${this.isCollapsed ? "+ Show more" : "- Show less"}
               </button>

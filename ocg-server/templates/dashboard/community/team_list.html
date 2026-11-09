@@ -106,7 +106,7 @@
                       {% endif -%}
                     </form>
                   {% else -%}
-                    {{ badges::common_badge(content = role, extra_styles = Some("px-2.5 py-0.5")) -}}
+                    {{ badges::common_badge(content = self.role_display_name(role), extra_styles = Some("px-2.5 py-0.5")) -}}
                   {% endif -%}
                 {% endif -%}
                 {% if !member.accepted -%}

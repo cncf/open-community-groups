@@ -1,8 +1,14 @@
-import { showConfirmAlert, showSigninPrompt, handleHtmxResponse } from "/static/js/common/alerts.js";
+import {
+  showConfirmAlert,
+  showSigninPrompt,
+  handleHtmxResponse,
+  waitForAlertToClose,
+} from "/static/js/common/alerts.js";
 import {
   closestElement,
   getElementById,
   initializeOnReadyAndHtmxLoad,
+  isElementHidden,
   markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
@@ -10,6 +16,24 @@ import { isSuccessfulXHR, parseJsonText } from "/static/js/common/utils.js";
 
 const MEMBERSHIP_CONTAINER_SELECTOR = "#membership-container";
 const GROUP_ACTIONS_MENU_SELECTOR = "[data-group-actions-menu]";
+
+// Alert copy for each membership action button, keyed by button id.
+const ACTION_MESSAGES = {
+  "join-btn": {
+    errorMessage: "Something went wrong joining this group. Please try again later.",
+    successMessage: "You have successfully joined this group.",
+  },
+  "leave-btn": {
+    errorMessage: "Something went wrong leaving this group. Please try again later.",
+    successMessage: "You have successfully left this group.",
+  },
+};
+
+// Membership buttons that can receive focus once an action settles, in order.
+const ACTION_BUTTON_IDS = ["signin-btn", "join-btn", "leave-btn"];
+
+// Container dataset key marking a join or leave request whose focus is pending.
+const ACTION_PENDING_KEY = "membershipActionPending";
 
 /**
  * Returns all membership containers within a root node.
@@ -71,31 +95,24 @@ const handleMembershipCheckResponse = (event) => {
   setElementHidden(leaveButton, true);
 
   const xhr = event.detail?.xhr;
+  const response = isSuccessfulXHR(xhr) ? parseJsonText(xhr.responseText, null) : null;
 
-  if (isSuccessfulXHR(xhr)) {
-    const response = parseJsonText(xhr.responseText, null);
-    if (!response) {
-      setElementHidden(signinButton, false);
-      return;
-    }
-
-    if (response.is_member) {
-      setElementHidden(leaveButton, false);
-    } else {
-      setElementHidden(joinButton, false);
-    }
-    return;
+  let visibleButton = signinButton;
+  if (response) {
+    visibleButton = response.is_member ? leaveButton : joinButton;
   }
+  setElementHidden(visibleButton, false);
 
-  setElementHidden(signinButton, false);
+  restoreActionFocus(container);
 };
 
 /**
- * Handles join button beforeRequest state.
+ * Shows the loading state while a join or leave request is in flight and marks
+ * the container so focus returns to the membership action once it settles.
  * @param {HTMLElement} target - Event target
  */
-const handleJoinBeforeRequest = (target) => {
-  if (target.id !== "join-btn") {
+const handleActionBeforeRequest = (target) => {
+  if (!getActionMessages(target.id)) {
     return;
   }
 
@@ -107,95 +124,86 @@ const handleJoinBeforeRequest = (target) => {
 
   setElementHidden(target, true);
   setElementHidden(loadingButton, false);
+  container.dataset[ACTION_PENDING_KEY] = "true";
 };
 
 /**
- * Handles leave button beforeRequest state.
- * @param {HTMLElement} target - Event target
+ * Handles join or leave responses. Success re-checks membership, which shows
+ * and focuses the next action; failure restores and focuses the same action.
+ * @param {Event} event - htmx:afterRequest event
  */
-const handleLeaveBeforeRequest = (target) => {
-  if (target.id !== "leave-btn") {
+const handleActionAfterRequest = (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
     return;
   }
 
-  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
+  const messages = getActionMessages(target.id);
+  const container = messages ? closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR) : null;
   const loadingButton = container ? getElementById(container, "loading-btn") : null;
   if (!loadingButton) {
     return;
   }
 
-  setElementHidden(target, true);
-  setElementHidden(loadingButton, false);
+  const ok = handleHtmxResponse({ xhr: event.detail?.xhr, ...messages });
+  if (ok) {
+    document.body.dispatchEvent(new Event("membership-changed"));
+    return;
+  }
+
+  setElementHidden(loadingButton, true);
+  setElementHidden(target, false);
+  restoreActionFocus(container);
 };
 
 /**
- * Handles join button afterRequest state.
- * @param {Event} event - htmx:afterRequest event
+ * Returns the alert copy for a membership action button.
+ * @param {string} buttonId - Button id
+ * @returns {{errorMessage: string, successMessage: string}|null} Alert copy, or
+ * null when the button is not a join or leave action
  */
-const handleJoinAfterRequest = (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLElement) || target.id !== "join-btn") {
-    return;
+const getActionMessages = (buttonId) =>
+  Object.hasOwn(ACTION_MESSAGES, buttonId) ? ACTION_MESSAGES[buttonId] : null;
+
+/**
+ * Checks whether keyboard focus was lost while a membership action ran: nothing
+ * or the body is focused, or the focused element was removed or hidden.
+ * @param {HTMLElement} container - Membership container element
+ * @returns {boolean} Whether focus needs to be restored
+ */
+const isActionFocusLost = (container) => {
+  const activeElement = document.activeElement;
+  if (!activeElement || activeElement === document.body || !activeElement.isConnected) {
+    return true;
   }
 
-  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
-  if (!container) {
-    return;
-  }
-
-  const loadingButton = getElementById(container, "loading-btn");
-  const joinButton = getElementById(container, "join-btn");
-  if (!loadingButton || !joinButton) {
-    return;
-  }
-
-  const xhr = event.detail?.xhr;
-  const ok = handleHtmxResponse({
-    xhr,
-    successMessage: "You have successfully joined this group.",
-    errorMessage: "Something went wrong joining this group. Please try again later.",
-  });
-  if (ok) {
-    document.body.dispatchEvent(new Event("membership-changed"));
-  } else {
-    setElementHidden(loadingButton, true);
-    setElementHidden(joinButton, false);
-  }
+  // Firefox can keep a hidden button as the active element.
+  return container.contains(activeElement) && isElementHidden(activeElement);
 };
 
 /**
- * Handles leave button afterRequest state.
- * @param {Event} event - htmx:afterRequest event
+ * Moves focus to the visible membership action after a join or leave request
+ * settles. It waits for the result alert to close first, so the alert does not
+ * restore focus to the hidden button, and leaves focus alone when the user
+ * moved it elsewhere or no action request is pending (initial check).
+ * @param {HTMLElement} container - Membership container element
+ * @returns {Promise<void>} Promise resolved once focus is handled
  */
-const handleLeaveAfterRequest = (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLElement) || target.id !== "leave-btn") {
+const restoreActionFocus = async (container) => {
+  if (container.dataset[ACTION_PENDING_KEY] !== "true") {
+    return;
+  }
+  delete container.dataset[ACTION_PENDING_KEY];
+
+  await waitForAlertToClose();
+  if (!isActionFocusLost(container)) {
     return;
   }
 
-  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
-  if (!container) {
-    return;
-  }
-
-  const loadingButton = getElementById(container, "loading-btn");
-  const leaveButton = getElementById(container, "leave-btn");
-  if (!loadingButton || !leaveButton) {
-    return;
-  }
-
-  const xhr = event.detail?.xhr;
-  const ok = handleHtmxResponse({
-    xhr,
-    successMessage: "You have successfully left this group.",
-    errorMessage: "Something went wrong leaving this group. Please try again later.",
-  });
-  if (ok) {
-    document.body.dispatchEvent(new Event("membership-changed"));
-  } else {
-    setElementHidden(loadingButton, true);
-    setElementHidden(leaveButton, false);
-  }
+  const actionButton = ACTION_BUTTON_IDS.map((buttonId) => getElementById(container, buttonId)).find(
+    (button) => button && !isElementHidden(button),
+  );
+  actionButton?.focus();
 };
 
 /**
@@ -212,8 +220,7 @@ const handleBeforeRequest = (event) => {
     return;
   }
 
-  handleJoinBeforeRequest(target);
-  handleLeaveBeforeRequest(target);
+  handleActionBeforeRequest(target);
 };
 
 /**
@@ -222,8 +229,7 @@ const handleBeforeRequest = (event) => {
  */
 const handleAfterRequest = (event) => {
   handleMembershipCheckResponse(event);
-  handleJoinAfterRequest(event);
-  handleLeaveAfterRequest(event);
+  handleActionAfterRequest(event);
 };
 
 /**

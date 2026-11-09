@@ -25,15 +25,21 @@ select fx_user(:'user2ID');
 select fx_user(:'user3ID');
 
 -- Communities named in invitation payloads
-select fx_community(:'community1ID', jsonb_build_object('name', 'community-one'));
-select fx_community(:'community2ID', jsonb_build_object('name', 'community-two'));
+select fx_community(
+    :'community1ID',
+    jsonb_build_object('display_name', 'Community One', 'name', 'community-one')
+);
+select fx_community(
+    :'community2ID',
+    jsonb_build_object('display_name', 'Community Two', 'name', 'community-two')
+);
 
 -- Invitations
 insert into community_team (
     accepted, community_id, created_at, role, user_id
 ) values
     (false, :'community1ID', '2024-01-02 03:04:05+00', 'admin', :'user1ID'),
-    (false, :'community2ID', '2024-01-03 03:04:05+00', 'viewer', :'user1ID'),
+    (false, :'community2ID', '2024-01-03 03:04:05+00', 'groups-manager', :'user1ID'),
     (false, :'community2ID', current_timestamp, 'viewer', :'user3ID');
 
 -- ============================================================================
@@ -53,15 +59,19 @@ select results_eq(
             values ('
                 [
                     {
+                        "community_display_name": "Community Two",
                         "community_id": "%s",
                         "community_name": "community-two",
-                        "role": "viewer",
+                        "role": "groups-manager",
+                        "role_display_name": "Groups Manager",
                         "created_at": 1704251045
                     },
                     {
+                        "community_display_name": "Community One",
                         "community_id": "%s",
                         "community_name": "community-one",
                         "role": "admin",
+                        "role_display_name": "Admin",
                         "created_at": 1704164645
                     }
                 ]
@@ -100,9 +110,11 @@ select results_eq(
             values ('
                 [
                     {
+                        "community_display_name": "Community Two",
                         "community_id": "%s",
                         "community_name": "community-two",
-                        "role": "viewer",
+                        "role": "groups-manager",
+                        "role_display_name": "Groups Manager",
                         "created_at": 1704251045
                     }
                 ]

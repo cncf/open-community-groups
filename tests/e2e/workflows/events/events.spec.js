@@ -110,7 +110,7 @@ test.describe("event management workflows", () => {
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );
-    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).toBeVisible();
     await expect(visibleAddEventButton).toBeVisible();
 
     // Create the event and wait for the POST response.
@@ -915,7 +915,7 @@ test.describe("event management workflows", () => {
       await expect(organizerGroupPage.locator("#cfs_starts_at")).toBeVisible();
       await organizerGroupPage.locator("#cfs_starts_at").fill(values.cfsStartsAt);
       await organizerGroupPage.locator("#cfs_ends_at").fill(values.cfsEndsAt);
-      await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
+      await expect(organizerGroupPage.locator("#pending-changes-alert")).toBeVisible();
 
       // Submit the seeded event update and wait for the server response.
       await waitForActionResponse(
@@ -1010,7 +1010,7 @@ test.describe("event management workflows", () => {
     await organizerGroupPage.locator("#ends_at").fill("");
 
     // Verify pending changes are visible before submitting.
-    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).toBeVisible();
 
     // Submit the update to trigger the sessions warning.
     await organizerGroupPage.locator("#update-event-button").click();

@@ -1,8 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
-import { waitForPageSettled } from "../../snapshots.js";
-import { getPageOverflow, navigateToPath } from "../../utils.js";
-import { PUBLIC_PAGES } from "./public-pages.js";
+import { getPageOverflow } from "../../utils.js";
+import { loadPublicPage, PUBLIC_PAGES } from "./public-pages.js";
 
 const BREAKPOINTS = [
   { name: "mobile", width: 390 },
@@ -24,8 +23,7 @@ test.describe("public responsive layouts", () => {
   const expectResponsiveLayout = async (page, responsivePage) => {
     // Load the representative page at the narrowest supported breakpoint.
     await page.setViewportSize({ width: BREAKPOINTS[0].width, height: 900 });
-    await navigateToPath(page, responsivePage.path);
-    await expect(responsivePage.ready(page)).toBeVisible({ timeout: 15_000 });
+    await loadPublicPage(page, responsivePage);
 
     for (const breakpoint of BREAKPOINTS) {
       await test.step(`${breakpoint.name}: ${breakpoint.width}px`, async () => {
@@ -57,8 +55,7 @@ test.describe("phone sizes", () => {
       test(`${publicPage.name} fits ${size.width}px @mobile`, async ({ page }) => {
         // Load the seeded public page at the phone's own size.
         await page.setViewportSize(size);
-        await navigateToPath(page, publicPage.path);
-        await waitForPublicPage(page, publicPage);
+        await loadPublicPage(page, publicPage);
 
         // Verify the page holds its width.
         await expect.poll(() => getPageOverflow(page)).toBeLessThanOrEqual(0);
@@ -80,8 +77,7 @@ test.describe("phone sm flip", () => {
     test(`${publicPage.name} keeps its elements across the sm flip @mobile`, async ({ page }) => {
       // Load the seeded public page just below sm.
       await page.setViewportSize({ height: 360, width: 639 });
-      await navigateToPath(page, publicPage.path);
-      await waitForPublicPage(page, publicPage);
+      await loadPublicPage(page, publicPage);
       const belowSm = await waitForStableElements(page);
 
       // Verify the first sm width holds its width.
@@ -156,21 +152,6 @@ const listVisibleElements = () =>
     )
     .map((element) => `${element.tagName.toLowerCase()}#${element.id}.${element.classList.value}`)
     .sort();
-
-/**
- * Waits for a public page to finish hydrating. Docsify fetches its guide outside htmx, so the
- * documentation page also waits for the rendered guide.
- * @param {import("@playwright/test").Page} page - Page under test.
- * @param {(typeof PUBLIC_PAGES)[number]} publicPage - Page being loaded.
- * @returns {Promise<void>}
- */
-const waitForPublicPage = async (page, publicPage) => {
-  await expect(publicPage.ready(page)).toBeVisible({ timeout: 15_000 });
-  await waitForPageSettled(page);
-  if (publicPage.name === "documentation") {
-    await expect(page.locator(".markdown-section h1").first()).toBeVisible({ timeout: 15_000 });
-  }
-};
 
 /**
  * Waits until two reads of the rendered elements match.

@@ -9,7 +9,9 @@ export const LEAVE_WAITLIST_LABEL = "Leave waiting list";
 export const REQUEST_INVITATION_LABEL = "Request invitation";
 export const REQUEST_PENDING_LABEL = "Request pending";
 export const REQUEST_TICKET_LABEL = "Request ticket";
+export const RETRY_LABEL = "Retry";
 
+export const ATTENDANCE_CHECK_FAILED_MESSAGE = "Couldn't load your registration.";
 export const CANCELED_EVENT_TITLE = "This event has been canceled.";
 export const CHOOSE_TICKET_TITLE = "Choose a ticket to continue.";
-export const PAST_CHECKOUT_TITLE = "You cannot get tickets because the event has already started.";
+export const PAST_CHECKOUT_TITLE = "You cannot get tickets because the event has ended.";

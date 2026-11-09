@@ -8,6 +8,7 @@ use crate::{
     handlers::{
         auth::session_context::SELECTED_GROUP_ID_KEY, error::INVALID_REQUEST_PAYLOAD, tests::*,
     },
+    test_util::element_html_with,
     types::{
         dashboard::{DASHBOARD_PAGINATION_LIMIT, community::groups::CommunityGroupsOutput},
         group::{GroupFull, GroupParentOption},
@@ -206,13 +207,7 @@ async fn test_update_page_selects_current_inactive_parent_option() {
     // Check the current parent is selected and flagged as no longer selectable
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    let option_start = body
-        .find(&format!("value=\"{parent_group_id}\""))
-        .expect("parent option should render");
-    let option_end = body[option_start..]
-        .find("</option>")
-        .expect("parent option should close");
-    let option_html = &body[option_start..option_start + option_end];
+    let option_html = element_html_with(&body, &format!(r#"value="{parent_group_id}""#));
     assert!(option_html.contains("selected"));
     assert!(option_html.contains("(current, no longer selectable)"));
 }

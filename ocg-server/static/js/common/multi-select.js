@@ -237,6 +237,16 @@ export class MultiSelect extends LitWrapper {
   }
 
   /**
+   * Moves focus to the chip that took the removed chip's place, else to the
+   * last chip, else to the enabled search input.
+   * @param {number} index Display index of the removed chip
+   */
+  _focusAfterChipRemoval(index) {
+    const buttons = [...this.querySelectorAll("[data-multi-select-chip-remove]")];
+    (buttons[index] ?? buttons.at(-1) ?? this.querySelector('[role="combobox"]:not([disabled])'))?.focus();
+  }
+
+  /**
    * Opens the dropdown when the input gets focus.
    */
   _handleFocus() {
@@ -338,8 +348,16 @@ export class MultiSelect extends LitWrapper {
       return;
     }
 
+    // Remember where focus was, since the re-render drops the focused remove button.
+    const hadFocus = this.contains(document.activeElement);
+    const index = this._selectedOptions.findIndex((option) => option.value === value);
+
     this.selected = this.selected.filter((selectedValue) => selectedValue !== value);
     await this.updateComplete;
+    if (hadFocus && !this.contains(document.activeElement)) {
+      this._focusAfterChipRemoval(index);
+    }
+    // Dispatch after the focus move so listeners see where focus landed.
     this._dispatchSelectionChange();
   }
 
@@ -362,6 +380,7 @@ export class MultiSelect extends LitWrapper {
         <button
           type="button"
           class="inline-flex size-3 items-center justify-center rounded-full border-0 bg-transparent text-stone-700 hover:text-stone-900"
+          data-multi-select-chip-remove
           @click=${(event) => this._removeSelection(option.value, event)}
           ?disabled=${this.disabled}
           aria-label="Remove ${option.name}"

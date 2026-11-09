@@ -180,7 +180,7 @@
 
 {# Menu item -#}
 {# Used by dashboard side menus for user, community, and group navigation. -#}
-{% macro menu_item(name, icon, is_active, href, disabled = false, extra_styles = "", icon_size = "size-4", items_count = 0, compact_name = "" ) -%}
+{% macro menu_item(name, icon, is_active, href, disabled = false, extra_styles = "", icon_size = "size-4", items_count = 0, items_count_label = "", compact_name = "" ) -%}
   {% if is_active -%}
     <div class="relative bg-white border border-stone-200 px-3 rounded-lg {{ extra_styles }}">
       <a href="{{ href }}"
@@ -202,7 +202,7 @@
         </div>
         {% if items_count + 0 > 0 -%}
           <div class="text-[0.65rem]/4 font-bold text-white border border-primary-500 bg-primary-500 rounded-full px-2 pt-px ms-3">
-            {{ items_count }}
+            {{ items_count }}{% if !items_count_label.is_empty() %}<span class="sr-only"> {{ items_count_label }}</span>{% endif %}
           </div>
         {% endif -%}
       </a>
@@ -247,7 +247,7 @@
           </div>
           {% if items_count + 0 > 0 -%}
             <div class="text-[0.65rem]/4 font-bold text-white border border-primary-500 bg-primary-500 rounded-full px-2 pt-px ms-3">
-              {{ items_count }}
+              {{ items_count }}{% if !items_count_label.is_empty() %}<span class="sr-only"> {{ items_count_label }}</span>{% endif %}
             </div>
           {% endif -%}
         </a>
