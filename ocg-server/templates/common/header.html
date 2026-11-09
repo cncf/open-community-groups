@@ -205,6 +205,9 @@
                   <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
                 </div>
               </a>
+              {# Phones hide the dashboard links, so a plain label keeps their shortcuts grouped. -#}
+              <div class="title-preheader not-phone:hidden px-3 pt-2 pb-1"
+                   aria-hidden="true">Group dashboard</div>
               <ul role="group" aria-labelledby="user-menu-group-dashboard-link">
                 <li class="md:hidden pointer-fine:hidden" role="none">
                   <a href="/dashboard/group?tab=check-in"
@@ -250,6 +253,10 @@
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
+            {% if user.belongs_to_any_group_team.unwrap_or(false) -%}
+              <div class="title-preheader not-phone:hidden px-3 pt-2 pb-1"
+                   aria-hidden="true">User dashboard</div>
+            {% endif -%}
             <ul role="group" aria-labelledby="user-menu-user-dashboard-link">
               <li class="md:hidden pointer-fine:hidden" role="none">
                 <a href="/dashboard/user?tab=check-in"

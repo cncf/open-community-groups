@@ -128,7 +128,7 @@
       {# End skip navigation link -#}
     {% endblock skip_link -%}
 
-    <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}{% if path == "/log-in" || path == "/sign-up" %} phone:bg-white{% endif %}'>
+    <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}{% if path == "/log-in" || path == "/sign-up" %} phone:bg-white{% endif %} {% block shell_classes %}{% endblock shell_classes %}'>
       <div class='{%- if path == "/" -%}bg-linear-to-b from-white from-20% via-white from-80% md:from-60% lg:from-40% to-stone-900/12 to-98% lg:to-90% border-b border-stone-200{%- else if path == "/explore" -%}bg-transparent{%- endif %} phone:contents'>
         {% block header -%}
           {# Header -#}

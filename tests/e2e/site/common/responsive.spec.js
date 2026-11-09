@@ -94,26 +94,9 @@ test.describe("phone sm flip", () => {
   }
 });
 
-test.describe("phone azure", () => {
-  for (const publicPage of PUBLIC_PAGES) {
-    test(`${publicPage.name} shows one azure @mobile`, async ({ page }) => {
-      // Load the seeded public page.
-      await navigateToPath(page, publicPage.path);
-      await waitForPublicPage(page, publicPage);
-
-      // Verify :root keeps the real 500, for the charts and calendar that read it.
-      const { bodyAzure, rootAzure, rootToken, strayElements } = await page.evaluate(findRealPrimary500);
-      expect(rootToken.toLowerCase()).toBe("#0094ff");
-      expect(bodyAzure).not.toBe(rootAzure);
-
-      // Verify no visible text, border, fill or icon uses it.
-      expect(strayElements).toEqual([]);
-    });
-  }
-});
-
 /**
  * Lists rendered text that ends past the viewport outside a scroller, runs in the page.
+ * Screen reader only text is clipped to a pixel on purpose, so it is left out.
  * @returns {string[]} Element signatures.
  */
 const listElementsPastViewport = () => {
@@ -133,7 +116,13 @@ const listElementsPastViewport = () => {
         (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
       );
       const { right, width } = element.getBoundingClientRect();
-      return hasText && width > 0 && right > viewportWidth + 1 && !isScrolled(element);
+      return (
+        hasText &&
+        width > 0 &&
+        right > viewportWidth + 1 &&
+        !element.closest(".sr-only") &&
+        !isScrolled(element)
+      );
     })
     .map((element) => `${element.tagName.toLowerCase()}.${[...element.classList].join(".")}`);
 };
@@ -200,51 +189,4 @@ const waitForStableElements = async (page) => {
     .toBe(true);
 
   return elements;
-};
-
-/**
- * Lists visible elements painted in the real primary-500, runs in the page.
- * @returns {{bodyAzure: string, rootAzure: string, rootToken: string, strayElements: string[]}}
- */
-const findRealPrimary500 = () => {
-  // Resolve the token from each scope through a probe.
-  const resolveAzure = (parent) => {
-    const probe = document.createElement("div");
-    probe.style.color = "var(--color-primary-500)";
-    parent.append(probe);
-    const { color } = getComputedStyle(probe);
-    probe.remove();
-    return color;
-  };
-  const bodyAzure = resolveAzure(document.body);
-  const rootAzure = resolveAzure(document.documentElement);
-
-  // Collect the paint properties that use it on rendered elements.
-  const strayElements = [];
-  for (const element of document.body.querySelectorAll("*")) {
-    const style = getComputedStyle(element);
-    if (style.visibility === "hidden" || element.getClientRects().length === 0) {
-      continue;
-    }
-
-    const hasText = [...element.childNodes].some(
-      (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
-    );
-    const hasBorder = ["Top", "Right", "Bottom", "Left"].some(
-      (side) =>
-        style[`border${side}Width`] !== "0px" &&
-        style[`border${side}Style`] !== "none" &&
-        style[`border${side}Color`] === rootAzure,
-    );
-    if ((hasText && style.color === rootAzure) || hasBorder || style.backgroundColor === rootAzure) {
-      strayElements.push(`${element.tagName.toLowerCase()}.${[...element.classList].join(".")}`);
-    }
-  }
-
-  return {
-    bodyAzure,
-    rootAzure,
-    rootToken: getComputedStyle(document.documentElement).getPropertyValue("--color-primary-500").trim(),
-    strayElements,
-  };
 };

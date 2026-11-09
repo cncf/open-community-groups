@@ -27,10 +27,10 @@ describe("dashboard user invitations list template", () => {
     expect(communityInvitations).to.be.greaterThan(groupInvitations);
     expect(template.match(/mb-12/gu)).to.have.length(2);
     expect(template).to.include(
-      '{# Groups Invitations -#} <div class="phone:mt-6 phone:px-3{% if group_invitations.is_empty() %} phone:hidden{% endif %}">',
+      '{# Groups Invitations -#} <div class="phone:px-3 phone:pb-3{% if group_invitations.is_empty() %} phone:hidden{% endif %}">',
     );
     expect(template).to.include(
-      '{# Community Invitations -#} <div class="phone:mt-6 phone:px-3{% if community_invitations.is_empty() %} phone:hidden{% endif %}">',
+      '{# Community Invitations -#} <div class="phone:px-3 phone:pb-3{% if community_invitations.is_empty() %} phone:hidden{% endif %}">',
     );
     expect(template).not.to.include("mb-10");
     expect(template).not.to.include('class="pt-12"');
@@ -162,21 +162,23 @@ describe("dashboard user invitations list template", () => {
     expect(countOf(template, 'class="mt-10 phone:mt-0 phone:hidden"')).to.equal(3);
 
     // Each kind gets its own phone-only action-card list.
-    expect(countOf(template, 'class="not-phone:hidden space-y-3 px-3 pt-1.5 pb-4"')).to.equal(3);
+    expect(countOf(template, 'class="not-phone:hidden space-y-3 px-3 pb-4"')).to.equal(3);
     expect(template).to.include("{# Event Invitations (phone action cards) -#}");
     expect(template).to.include("{# Groups Invitations (phone action cards) -#}");
     expect(template).to.include("{# Community Invitations (phone action cards) -#}");
 
     // Section titles inset to match the cards so the page keeps a margin on phones.
     expect(template).to.include(
-      '<div class="phone:px-3 phone:pt-4"> {{ dashboard::page_title(title = "Event Invitations"',
+      '<div class="phone:px-3 phone:pt-4 phone:pb-3"> {{ dashboard::page_title(title = "Event Invitations"',
     );
-    expect(countOf(template, "phone:px-3{% if")).to.equal(2);
+    expect(countOf(template, "phone:px-3 phone:pb-3{% if")).to.equal(2);
 
     // The desktop event name still wraps, and a deep link to an offer card clears the fixed header.
     expect(countOf(template, "phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5")).to.equal(3);
     expect(template).to.include('id="event-offer-card-{{ invitation.admission_offer_id }}"');
-    expect(template).to.include("scroll-mt-14");
+    expect(template).to.include(
+      'class="phone:-scroll-mt-11 rounded-lg border border-stone-200 bg-white p-3"',
+    );
   });
 
   it("names the invitation in phone decline and reject confirmations", async () => {

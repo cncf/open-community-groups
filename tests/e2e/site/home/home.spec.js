@@ -31,7 +31,7 @@ const HOME_TEMPLATE = readFileSync(
   new URL("../../../../ocg-server/templates/site/home/page.html", import.meta.url),
   "utf8",
 );
-const [CAROUSEL_LIST_TOKENS, CAROUSEL_TILE_TOKENS] = [
+const [CAROUSEL_LIST_TOKENS, CAROUSEL_PAGE_TOKENS] = [
   ...HOME_TEMPLATE.matchAll(/{% if carousel %}(.*?){% (?:else|endif) %}/g),
 ].map(([, tokens]) => tokens);
 
@@ -198,7 +198,7 @@ test.describe("site home page", () => {
       await expect(community1Link).toHaveAttribute("href", `/${TEST_COMMUNITY_NAME}`);
     });
 
-    test("hero carries the gradient and replaces the Explore link with search", async ({ page }) => {
+    test("hero carries the gradient and keeps the desktop Explore link", async ({ page }) => {
       // Find the hero around the introduction region.
       const introduction = page.getByRole("region", { name: "Site introduction" });
       const hero = introduction.locator("../..");
@@ -208,36 +208,9 @@ test.describe("site home page", () => {
         "linear-gradient",
       );
 
-      // Verify search takes the place of the desktop link.
-      await expect(introduction.getByRole("searchbox", { name: "Search events" })).toBeVisible();
-      await expect(introduction.getByRole("button", { name: "Explore", exact: true })).toBeVisible();
-      await expect(introduction.getByRole("link", { name: "Explore groups and events" })).toBeHidden();
-    });
-
-    test("an empty tap on the Explore pill lands on Explore", async ({ page }) => {
-      // Tap the pill without typing.
-      await page.getByRole("search").getByRole("button", { name: "Explore", exact: true }).tap();
-
-      // Verify Explore loads with no empty search value.
-      await expect(page).toHaveURL(/\/explore\?/);
-      await expect(page.getByPlaceholder("Search events")).toHaveValue("");
-      const params = new URL(page.url()).searchParams;
-      expect(params.get("entity")).toBe("events");
-      expect(params.has("ts_query")).toBe(false);
-    });
-
-    test("a typed tap on the Explore pill carries the search", async ({ page }) => {
-      // Type a query and tap the pill.
-      const search = page.getByRole("search");
-      await search.getByRole("searchbox", { name: "Search events" }).fill("platform");
-      await search.getByRole("button", { name: "Explore", exact: true }).tap();
-
-      // Verify Explore receives the query and no community.
-      await expect(page).toHaveURL(/ts_query=platform/);
-      await expect(page.getByPlaceholder("Search events")).toHaveValue("platform");
-      const params = new URL(page.url()).searchParams;
-      expect(params.get("entity")).toBe("events");
-      expect([...params.keys()].filter((key) => key.startsWith("community"))).toEqual([]);
+      // Verify the desktop link stays, with no search in its place.
+      await expect(introduction.getByRole("link", { name: "Explore groups and events" })).toBeVisible();
+      await expect(introduction.getByRole("search")).toHaveCount(0);
     });
 
     test("stats box lays out as a two by two grid", async ({ page }) => {
@@ -275,16 +248,20 @@ test.describe("site home page", () => {
       await expect(page.locator("[data-snap-dots]")).toHaveCount(0);
     });
 
-    test("many communities swipe with dots that follow the scroll", async ({ page }) => {
-      // Rebuild the seeded list as the template renders five communities.
+    test("many communities swipe in pages of three with dots that follow the scroll", async ({ page }) => {
+      // Rebuild the seeded list as the template renders five communities: pages of three and two.
       await page.evaluate(
-        async ({ listTokens, tileTokens }) => {
+        async ({ listTokens, pageTokens }) => {
           const tile = document.querySelector("a[href='/e2e-second-community']");
-          const list = tile.parentElement;
+          const firstPage = tile.parentElement;
+          const list = firstPage.parentElement;
           list.classList.remove("phone:grid-cols-1");
           list.classList.add(...listTokens.split(" "));
-          list.append(...Array.from({ length: 3 }, () => tile.cloneNode(true)));
-          [...list.children].forEach((item) => item.classList.add(...tileTokens.split(" ")));
+          firstPage.append(tile.cloneNode(true));
+          const secondPage = firstPage.cloneNode(false);
+          secondPage.append(tile.cloneNode(true), tile.cloneNode(true));
+          list.append(secondPage);
+          [...list.children].forEach((item) => item.classList.add(...pageTokens.split(" ")));
           list.insertAdjacentHTML(
             "afterend",
             '<div class="not-phone:hidden" aria-hidden="true" data-snap-dots></div>',
@@ -294,12 +271,23 @@ test.describe("site home page", () => {
           const { syncSnapDots } = await import(src);
           syncSnapDots();
         },
-        { listTokens: CAROUSEL_LIST_TOKENS, tileTokens: CAROUSEL_TILE_TOKENS },
+        { listTokens: CAROUSEL_LIST_TOKENS, pageTokens: CAROUSEL_PAGE_TOKENS },
       );
 
-      // Verify a dot per community with the first active.
+      // Verify the first page stacks its three banners in one column.
+      const firstPageBanners = await page.locator("[data-snap-dots]").evaluate((row) =>
+        [...row.previousElementSibling.children[0].children].map((tile) => {
+          const { height, x, y } = tile.getBoundingClientRect();
+          return { height, x, y };
+        }),
+      );
+      expect(firstPageBanners).toHaveLength(3);
+      expect(firstPageBanners[1].x).toBe(firstPageBanners[0].x);
+      expect(firstPageBanners[2].y).toBeGreaterThan(firstPageBanners[1].y + firstPageBanners[1].height);
+
+      // Verify a dot per page with the first active.
       const dots = page.locator("[data-snap-dots] .snap-dot");
-      await expect(dots).toHaveCount(5);
+      await expect(dots).toHaveCount(2);
       await expect(dots.nth(0)).toHaveAttribute("data-active");
 
       // Verify the page itself does not scroll sideways.
@@ -310,10 +298,10 @@ test.describe("site home page", () => {
         const list = document.querySelector("[data-snap-dots]").previousElementSibling;
         list.scrollTo({
           behavior: "instant",
-          left: list.children[2].offsetLeft - list.children[0].offsetLeft,
+          left: list.children[1].offsetLeft - list.children[0].offsetLeft,
         });
       });
-      await expect(dots.nth(2)).toHaveAttribute("data-active");
+      await expect(dots.nth(1)).toHaveAttribute("data-active");
       await expect(dots.nth(0)).not.toHaveAttribute("data-active");
     });
 
@@ -381,9 +369,8 @@ test.describe("site home page", () => {
       await navigateToSiteHome(page);
       const introduction = page.getByRole("region", { name: "Site introduction" });
 
-      // Verify the desktop link is back and the phone search stays out.
+      // Verify the desktop link shows.
       await expect(introduction.getByRole("link", { name: "Explore groups and events" })).toBeVisible();
-      await expect(introduction.getByRole("searchbox", { name: "Search events" })).toBeHidden();
 
       // Verify the phone section strip does not stick.
       await expect(page.locator(".section-strip").first()).not.toHaveCSS("position", "sticky");

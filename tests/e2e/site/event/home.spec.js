@@ -844,17 +844,17 @@ test.describe("event page - phone layout @mobile", () => {
     await expect(body).toContainText(PRIMARY_EVENT_DESCRIPTION);
     await expect(toggle).toBeHidden();
 
-    // Grow it past three lines.
+    // Grow it past seven lines.
     await body.evaluate((element) => {
       element.firstElementChild.textContent = "Long event description. ".repeat(40);
     });
 
-    // Verify it clips to three lines and opens on tap.
+    // Verify it clips to seven lines and opens on tap.
     await expect(toggle).toBeVisible();
-    expect(await body.evaluate((element) => element.clientHeight)).toBe(72);
+    expect(await body.evaluate((element) => element.clientHeight)).toBe(168);
     await toggle.tap();
     await expect(about.getByRole("button", { name: "Read less" })).toHaveAttribute("aria-expanded", "true");
-    expect(await body.evaluate((element) => element.clientHeight)).toBeGreaterThan(72);
+    expect(await body.evaluate((element) => element.clientHeight)).toBeGreaterThan(168);
   });
 
   test("agenda descriptions collapse behind Read more", async ({ page }) => {
@@ -864,15 +864,15 @@ test.describe("event page - phone layout @mobile", () => {
     const body = block.locator(".read-more-body");
     const toggle = block.getByRole("button", { name: "Read more" });
 
-    // Grow one past three lines.
+    // Grow one past seven lines.
     await expect(toggle).toBeHidden();
     await body.evaluate((element) => {
       element.firstElementChild.textContent = "Long session description. ".repeat(40);
     });
 
-    // Verify it clips to three lines and opens on tap.
+    // Verify it clips to seven lines and opens on tap.
     await expect(toggle).toBeVisible();
-    expect(await body.evaluate((element) => element.clientHeight)).toBe(72);
+    expect(await body.evaluate((element) => element.clientHeight)).toBe(168);
     await toggle.tap();
     await expect(block.getByRole("button", { name: "Read less" })).toBeVisible();
   });

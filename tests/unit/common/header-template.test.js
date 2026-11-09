@@ -93,13 +93,9 @@ describe("common header template", () => {
 
     // Verify each shortcut group follows and is named by its dashboard link.
     const groupLinkIndex = indexOf('<a id="user-menu-group-dashboard-link"');
-    const groupShortcutsIndex = indexOf(
-      '</a> <ul role="group" aria-labelledby="user-menu-group-dashboard-link">',
-    );
+    const groupShortcutsIndex = indexOf('<ul role="group" aria-labelledby="user-menu-group-dashboard-link">');
     const userLinkIndex = indexOf('<a id="user-menu-user-dashboard-link"');
-    const userShortcutsIndex = indexOf(
-      '</a> <ul role="group" aria-labelledby="user-menu-user-dashboard-link">',
-    );
+    const userShortcutsIndex = indexOf('<ul role="group" aria-labelledby="user-menu-user-dashboard-link">');
     expect(indexOf('<a href="/dashboard/community"')).to.be.lessThan(groupLinkIndex);
     expect(groupLinkIndex).to.be.lessThan(groupShortcutsIndex);
     expect(groupShortcutsIndex).to.be.lessThan(userLinkIndex);
@@ -190,6 +186,25 @@ describe("common header template", () => {
     const invitationsIndex = loggedInMenu.indexOf('href="/dashboard/user?tab=invitations"');
     expect(invitationsIndex).to.be.greaterThan(loggedInMenu.indexOf('href="/dashboard/user?tab=check-in"'));
     expect(invitationsIndex).to.be.lessThan(loggedInMenu.indexOf('href="/dashboard/user?tab=groups"'));
+  });
+
+  it("labels the phone dashboard shortcuts without adding links", async () => {
+    // Load the logged-in menu.
+    const template = normalizeWhitespace(await loadTemplate());
+    const loggedInMenu = template.slice(
+      0,
+      template.indexOf("{# User dropdown menu for non-logged users -#}"),
+    );
+
+    // Verify each shortcut group gets a phone-only, decorative label before it.
+    expect(loggedInMenu).to.include(
+      '<div class="title-preheader not-phone:hidden px-3 pt-2 pb-1" aria-hidden="true">Group dashboard</div> <ul role="group" aria-labelledby="user-menu-group-dashboard-link">',
+    );
+
+    // Verify the user label only splits the list when group shortcuts exist too.
+    expect(loggedInMenu).to.include(
+      '{% if user.belongs_to_any_group_team.unwrap_or(false) -%} <div class="title-preheader not-phone:hidden px-3 pt-2 pb-1" aria-hidden="true">User dashboard</div> {% endif -%} <ul role="group" aria-labelledby="user-menu-user-dashboard-link">',
+    );
   });
 
   it("shows the site title on phones when there is no logo, except where it repeats", async () => {

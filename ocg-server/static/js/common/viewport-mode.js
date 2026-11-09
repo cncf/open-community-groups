@@ -4,7 +4,9 @@
  * The preference lives in a JavaScript-readable cookie that the inline
  * initializer in templates/common/base.html applies before first paint; the
  * server never reads it. Selecting a mode writes or clears the cookie and
- * reloads the page so the initializer runs again for the current URL.
+ * loads the current URL again so the initializer runs. A fresh navigation is
+ * used instead of a reload, because a reload restores the previous zoom and the
+ * desktop zoom-out can leave the phone layout scrolling sideways.
  */
 import { closestElement } from "/static/js/common/dom.js";
 
@@ -16,7 +18,7 @@ export const VIEWPORT_MODE_ATTRIBUTE = "data-viewport-mode";
 export const VIEWPORT_MODE_COOKIE = "ocg_viewport_mode";
 
 let clickHandlerBound = false;
-let reloadHandler = () => window.location.reload();
+let reloadHandler = () => window.location.replace(getViewportModeReloadUrl(window.location.href));
 
 /**
  * Binds the delegated click handler for `button[data-viewport-mode]` controls.
@@ -53,6 +55,19 @@ export const buildViewportModeCookie = (mode, { secure = false } = {}) => {
   }
 
   return parts.join("; ");
+};
+
+/**
+ * Returns the URL that reapplies the viewport mode. The hash is dropped because
+ * replacing a URL with only a hash scrolls to it without loading the page.
+ * @param {string} href - Current page URL.
+ * @returns {string} URL to navigate to.
+ */
+export const getViewportModeReloadUrl = (href) => {
+  const url = new URL(href);
+  url.hash = "";
+
+  return url.href;
 };
 
 /**

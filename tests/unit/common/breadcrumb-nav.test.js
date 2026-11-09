@@ -119,6 +119,36 @@ describe("breadcrumb-nav", () => {
     expect(dropdown.classList.contains("phone:invisible")).to.equal(false);
   });
 
+  it("spans the phone viewport edge to edge only when full-bleed", async () => {
+    // Render one breadcrumb boxed and one full-bleed.
+    const boxed = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+      bannerMobileUrl: "/img/banner-mobile.png",
+    });
+    const fullBleed = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+      bannerMobileUrl: "/img/banner-mobile.png",
+      fullBleed: true,
+    });
+
+    // Verify the full-bleed box drops the gutter, corners and side borders on phones.
+    const tokensOf = (element) => {
+      const container = element.querySelector(".container");
+      return [container, container.firstElementChild, element.querySelector("img").parentElement].map(
+        (node) => node.classList,
+      );
+    };
+    const [boxedContainer, boxedCard, boxedBanner] = tokensOf(boxed);
+    const [bleedContainer, bleedCard, bleedBanner] = tokensOf(fullBleed);
+    expect(boxedContainer.contains("phone:px-3")).to.equal(true);
+    expect(bleedContainer.contains("phone:px-0")).to.equal(true);
+    expect(boxedCard.contains("phone:rounded-none")).to.equal(false);
+    expect(bleedCard.contains("phone:rounded-none")).to.equal(true);
+    expect(bleedCard.contains("phone:border-x-0")).to.equal(true);
+    expect(boxedBanner.contains("phone:rounded-none")).to.equal(false);
+    expect(bleedBanner.contains("phone:rounded-none")).to.equal(true);
+  });
+
   it("uses the mobile layout tokens on phones only", async () => {
     // Render the breadcrumb navigation with both banners.
     const element = await mountLitComponent("breadcrumb-nav", {

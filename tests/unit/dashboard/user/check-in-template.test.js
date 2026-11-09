@@ -100,7 +100,7 @@ describe("dashboard user check-in template", () => {
     expect(template).not.to.include("[&>p]:hidden");
   });
 
-  it("shows the tap cue on phones only, away from assistive technology", async () => {
+  it("shows the tap cue on phones only as a decorative Scan-style button", async () => {
     // Load the Check-In template before checking the card cue.
     const template = normalizeWhitespace(await loadTemplate());
 
@@ -109,6 +109,11 @@ describe("dashboard user check-in template", () => {
     const cueStart = cue.lastIndexOf('<span class="not-phone:hidden');
     expect(cueStart).to.be.greaterThan(-1);
     expect(cue.slice(cueStart)).to.include('aria-hidden="true"');
-    expect(cue.slice(cueStart)).to.include("icon-qr-code");
+
+    // Verify it reuses the group Scan button look, pinned to the card bottom it reserves.
+    expect(cue.slice(cueStart)).to.include(
+      "btn-primary-outline-anchor btn-mini phone:absolute phone:inset-x-3 phone:bottom-3 phone:h-11 phone:text-sm",
+    );
+    expect(template).to.include('focus-visible:outline-primary-500 phone:pb-14" data-user-check-in-open');
   });
 });

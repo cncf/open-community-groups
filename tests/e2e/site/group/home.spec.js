@@ -698,20 +698,20 @@ test.describe("group page - phone layout", () => {
     // Verify the short description has nothing to expand.
     await expect(toggle).toBeHidden();
 
-    // Grow the description past three lines.
+    // Grow the description past seven lines.
     await description.evaluate((element) => {
       element.firstElementChild.textContent = "Long group description. ".repeat(40);
     });
 
-    // Verify it clips at three lines behind the toggle.
+    // Verify it clips at seven lines behind the toggle.
     await expect(toggle).toBeVisible();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(await description.evaluate((element) => element.clientHeight)).toBe(72);
+    expect(await description.evaluate((element) => element.clientHeight)).toBe(168);
 
     // Verify the toggle opens the text.
     await toggle.click();
     await expect(page.getByRole("button", { name: "Read less" })).toHaveAttribute("aria-expanded", "true");
-    expect(await description.evaluate((element) => element.clientHeight)).toBeGreaterThan(72);
+    expect(await description.evaluate((element) => element.clientHeight)).toBeGreaterThan(168);
   });
 
   test("action row and cards fit narrow phones without overflow @mobile", async ({ page }) => {

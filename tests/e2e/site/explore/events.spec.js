@@ -180,7 +180,7 @@ test.describe("site explore events page", () => {
     await expect(eventCard).toBeVisible();
 
     // Verify the full credit stays visible without a hover panel.
-    const cohostsLine = eventCard.locator("[data-cohosts-line]");
+    const cohostsLine = eventCard.locator("[data-cohosts-line]:visible");
     const cohostsCredit = `Co-hosted with ${COHOSTED_EVENT_COHOST_NAMES.join(", ")}`;
     await expect(cohostsLine).toHaveAttribute("data-cohosts-fit", "full");
     await expect(cohostsLine).toHaveAttribute("title", cohostsCredit);
@@ -198,7 +198,7 @@ test.describe("site explore events page", () => {
     await expect(eventCard).toBeVisible();
 
     // Verify the overflowing names collapse into a count while staying accessible.
-    const cohostsLine = eventCard.locator("[data-cohosts-line]");
+    const cohostsLine = eventCard.locator("[data-cohosts-line]:visible");
     await expect(cohostsLine).toHaveAttribute("data-cohosts-fit", "summary");
     await expect(cohostsLine).not.toHaveAttribute("title");
     const summary = cohostsLine.locator("[data-cohosts-summary]");

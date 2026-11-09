@@ -3,6 +3,5 @@
   - heading "E2E Test Site" [level=1]
   - paragraph: Site for E2E testing
   - text: /Groups \d+ Members \d+ Events \d+ Attendees \d+/
-  - search:
-    - searchbox "Search events"
-    - button "Explore"
+  - link "Explore groups and events":
+    - /url: /explore?entity=events

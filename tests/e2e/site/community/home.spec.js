@@ -427,32 +427,32 @@ test.describe("community home page", () => {
       await expect(description).toContainText(TEST_COMMUNITY_DESCRIPTION);
       await expect(toggle).toBeHidden();
 
-      // Grow the description past three lines.
+      // Grow the description past six lines.
       await description.evaluate((element) => {
         element.firstElementChild.textContent = "Long community description. ".repeat(40);
       });
 
-      // Verify it clips at three lines behind the toggle.
+      // Verify it clips at six lines behind the toggle.
       await expect(toggle).toBeVisible();
       await expect(toggle).toHaveAttribute("aria-expanded", "false");
-      expect(await description.evaluate((element) => element.clientHeight)).toBe(72);
+      expect(await description.evaluate((element) => element.clientHeight)).toBe(144);
       expect((await toggle.boundingBox()).height).toBeGreaterThanOrEqual(44);
 
       // Expand it, then collapse it again.
       await toggle.click();
       const collapse = page.getByRole("button", { name: "Read less" });
       await expect(collapse).toHaveAttribute("aria-expanded", "true");
-      expect(await description.evaluate((element) => element.clientHeight)).toBeGreaterThan(72);
+      expect(await description.evaluate((element) => element.clientHeight)).toBeGreaterThan(144);
       await collapse.click();
       await expect(toggle).toHaveAttribute("aria-expanded", "false");
-      expect(await description.evaluate((element) => element.clientHeight)).toBe(72);
+      expect(await description.evaluate((element) => element.clientHeight)).toBe(144);
     });
 
     test("read more fades the clipped edge and drops a leading margin", async ({ page }) => {
       const description = page.locator(".community-description");
       const toggle = page.getByRole("button", { name: "Read more" });
 
-      // Lead the description with a heading and grow it past three lines.
+      // Lead the description with a heading and grow it past six lines.
       await description.evaluate((element) => {
         element.innerHTML = `<h2>Heading</h2><p>${"Long community description. ".repeat(40)}</p>`;
       });

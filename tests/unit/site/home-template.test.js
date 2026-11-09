@@ -14,39 +14,24 @@ const loadTemplate = async (path) => {
 };
 
 describe("site home template", () => {
-  it("keeps the phone search form off desktop and free of community filters", async () => {
-    // Load the home page and isolate the search form.
-    const page = await loadTemplate("site/home/page.html");
-    const form = page.slice(page.indexOf("<form"), page.indexOf("</form>"));
-
-    // Verify the form is phone-only and drops empty values, which Explore rejects.
-    expect(form).to.include('class="relative not-phone:hidden"');
-    expect(form).to.include('action="/explore"');
-    expect(form).to.include('hx-ext="no-empty-vals"');
-    expect(form).to.include('name="ts_query"');
-    expect(form).to.include('aria-label="Search events"');
-
-    // Verify the form sends the entity but never a community.
-    expect(form).to.include('name="entity" value="events"');
-    expect(form).to.not.include("community");
-  });
-
-  it("lets card badges wrap below a location that would be cut short", async () => {
+  it("keeps card badges beside a truncating location, so the footer stays on two lines", async () => {
     // Load the shared card footer.
     const cards = await loadTemplate("macros/cards.html");
 
-    // Verify the location holds a minimum width, so the badges wrap first.
-    expect(cards).to.include(
-      '<div class="flex min-w-0 items-center gap-2 phone:flex-wrap phone:gap-y-1 phone:[&>.icon-text]:basis-32">',
-    );
+    // Verify the location row never wraps the badges onto a line of their own.
+    expect(cards).to.include('<div class="flex min-w-0 items-center gap-2">');
+    expect(cards).to.not.include("phone:[&>.icon-text]:basis-36");
   });
 
-  it("swaps the Explore link for the pill on phones only", async () => {
+  it("keeps the desktop Explore link on phones, with no hero search", async () => {
     // Load the home page.
     const page = await loadTemplate("site/home/page.html");
 
-    // Verify the desktop link stays and only phones drop it.
-    expect(page).to.match(/class="btn-primary-anchor [^"]* phone:hidden">Explore groups and events/);
+    // Verify the hero links to Explore on every device and carries no search form.
+    expect(page).to.include(
+      'class="btn-primary-anchor text-md lg:text-lg py-3 px-8 font-semibold">Explore groups and events</a>',
+    );
+    expect(page).to.not.include('role="search"');
   });
 
   it("renders the carousel and its position row only above three communities", async () => {
@@ -59,9 +44,10 @@ describe("site home template", () => {
       /{% endfor -%}\s*<\/div>\s*{% if carousel -%}[\s\S]*?<div class="not-phone:hidden"\s+aria-hidden="true"\s+data-snap-dots\s+data-snap-dots-max="24">/,
     );
 
-    // Verify lists too long for one line of dots get a counter instead.
+    // Verify banners swipe in pages of three, and lists too long for one line of dots get a counter.
+    expect(page).to.include("{% for communities_page in communities.chunks(3) -%}");
     expect(page).to.match(
-      /data-snap-dots-max="24">\s*{% if communities\.len\(\) > 24 -%}\s*<span data-snap-counter><\/span>\s*{% endif -%}/,
+      /data-snap-dots-max="24">\s*{% if communities\.len\(\) > 72 -%}\s*<span data-snap-counter><\/span>\s*{% endif -%}/,
     );
 
     // Verify the page loads the module that fills the row.

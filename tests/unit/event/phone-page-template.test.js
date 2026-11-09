@@ -119,7 +119,7 @@ describe("event page phone template", () => {
     expect(template).to.include(
       '<div class="read-more"> <div class="text-sm/6 text-stone-600 markdown mt-3 read-more-body"',
     );
-    expect(template.match(/class="read-more-toggle not-phone:hidden /g)).to.have.length(2);
+    expect(template.match(/{{ ui::read_more_toggle\(\) -}}/g)).to.have.length(2);
   });
 
   it("turns the contact and CFS modals into sheets", () => {

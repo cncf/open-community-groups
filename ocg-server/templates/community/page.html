@@ -4,6 +4,9 @@
 {% import "macros/social.html" as social -%}
 {% import "macros/ui.html" as ui -%}
 
+{# Phones drop the stone canvas so the page reads as one white surface. -#}
+{% block shell_classes %}phone:bg-white{% endblock shell_classes %}
+
 {% block head_title -%}
   <title>{{ self.preview_title() |demoji }}</title>
 {% endblock head_title -%}
@@ -46,11 +49,11 @@
   <h1 class="sr-only">{{ community.display_name }}</h1>
 
   {# Breadcrumb -#}
-  <breadcrumb-nav banner-url="{{ community.banner_url }}" banner-mobile-url="{{ community.banner_mobile_url }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ community.display_name|json }}, "icon": "community"}]'></breadcrumb-nav>
+  <breadcrumb-nav full-bleed banner-url="{{ community.banner_url }}" banner-mobile-url="{{ community.banner_mobile_url }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ community.display_name|json }}, "icon": "community"}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
-  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:pt-3 phone:pb-3">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full phone:rounded-none phone:border-x-0 phone:pb-2">
+  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:py-0">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full phone:rounded-none phone:border-0 phone:pb-2">
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-8 lg:py-12 phone:px-3 phone:pb-4 phone:gap-y-6 phone:pt-1">
         {# About this community -#}
         {% let has_social_links = community.twitter_url.is_some() || community.bluesky_url.is_some() || community.github_url.is_some() || community.linkedin_url.is_some() || community.instagram_url.is_some() || community.wechat_url.is_some() || community.youtube_url.is_some() || community.flickr_url.is_some() || community.facebook_url.is_some() || community.slack_url.is_some() -%}
@@ -62,9 +65,7 @@
             <div class="read-more">
               <div class="font-normal text-base/8 text-stone-600 community-description read-more-body phone:text-[15px]/6"
                    data-ocg-remove-broken-images>{{ community.description|md_to_html|safe }}</div>
-              <button type="button"
-                      class="read-more-toggle not-phone:hidden phone:text-[15px]/6"
-                      aria-expanded="false">Read more</button>
+              {{ ui::read_more_toggle() -}}
             </div>
           {% endif -%}
 

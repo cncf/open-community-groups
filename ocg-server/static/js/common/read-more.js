@@ -3,6 +3,9 @@ import { isPhoneViewport, PHONE_MEDIA_QUERY } from "/static/js/common/phone-view
 
 const COLLAPSED_LABEL = "Read more";
 const EXPANDED_LABEL = "Read less";
+// Taps on these keep their own action instead of expanding the text.
+const INTERACTIVE_SELECTOR = "a, button, input, label, select, summary, textarea";
+const LABEL_SELECTOR = "[data-read-more-label]";
 const READ_MORE_SELECTOR = ".read-more";
 
 /** Cleanup function of each bound block. */
@@ -32,7 +35,8 @@ export const initializeReadMore = (root = document) => {
 };
 
 /**
- * Binds one block. The observer's first callback sets `data-overflowing`.
+ * Binds one block. The observer's first callback sets `data-overflowing`. A tap
+ * on the clipped text expands it, so the fade works as part of the toggle.
  * @param {Element} block Read more block.
  * @returns {void}
  */
@@ -51,6 +55,19 @@ const bindBlock = (block) => {
   block
     .querySelector(".read-more-toggle")
     .addEventListener("click", () => setExpanded(block, !block.hasAttribute("data-expanded")), { signal });
+  body.addEventListener(
+    "click",
+    (event) => {
+      if (
+        block.hasAttribute("data-overflowing") &&
+        !block.hasAttribute("data-expanded") &&
+        !event.target.closest(INTERACTIVE_SELECTOR)
+      ) {
+        setExpanded(block, true);
+      }
+    },
+    { signal },
+  );
   body.addEventListener(
     "focusin",
     () => {
@@ -173,7 +190,7 @@ const setExpanded = (block, expanded) => {
 
   block.toggleAttribute("data-expanded", expanded);
   toggle.setAttribute("aria-expanded", String(expanded));
-  toggle.textContent = expanded ? EXPANDED_LABEL : COLLAPSED_LABEL;
+  toggle.querySelector(LABEL_SELECTOR).textContent = expanded ? EXPANDED_LABEL : COLLAPSED_LABEL;
 };
 
 window.matchMedia(PHONE_MEDIA_QUERY).addEventListener("change", handlePhoneQueryChange);

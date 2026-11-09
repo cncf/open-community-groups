@@ -14,13 +14,14 @@
       </div>
 
       <div class="min-w-0 flex-1">
-        <div class="flex min-h-[60px] flex-col phone:min-h-12
+        {# Phones reserve a two-line title, so cards keep one height, and centre the text on the logo. -#}
+        <div class="flex min-h-[60px] flex-col phone:min-h-[3.625rem] phone:justify-center
                     {% block content_stack_classes %}{% endblock %}">
           <div class="card-header phone:text-stone-500 phone:leading-4">
             {% block preheader %}{% endblock %}
           </div>
 
-          <div class="card-title !mt-0.5 !mb-0 !h-auto phone:break-words phone:min-h-[2.5rem]
+          <div class="card-title !mt-0.5 !mb-0 !h-auto phone:break-words
                       {% block title_line_clamp_classes %}!line-clamp-2{% endblock %}
                       text-[0.98rem]/[1.4rem] md:text-[1.02rem]/[1.4rem] phone:text-[0.98rem]/[1.25rem]
                       {% block title_classes %}{% endblock %}">
@@ -32,6 +33,8 @@
       </div>
     </div>
 
+    {# Phones give rows that would crowd the logo column the full card width. -#}
+    {% block below_top_row %}{% endblock %}
     {% block details %}{% endblock %}
     {% block details_spacing %}
       <div class="pb-3 md:pb-4 phone:pb-2"></div>

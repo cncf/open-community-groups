@@ -159,13 +159,7 @@
   {# End registration questions modal -#}
 
   {# Ticket modal -#}
-  {% let ticket_modal_description -%}
-    {%- if event.attendee_approval_required -%}
-      Choose the ticket tier you would like the organizers to review.
-    {%- else -%}
-      Choose a ticket tier to continue.
-    {%- endif -%}
-  {%- endlet %}
+  {% let ticket_modal_description = event.attendee_approval_required.then_some("Choose the ticket tier you would like the organizers to review.").unwrap_or("Choose a ticket tier to continue.") -%}
   <div id="ticket-modal-{{ attendance_instance }}"
        data-attendance-role="ticket-modal"
        role="dialog"
@@ -389,7 +383,8 @@
               class="phone:flex phone:min-h-0 phone:flex-col">
           <div class="modal-body sheet-body p-4 md:px-6 md:py-5 phone:p-3">
             {# The dialog's aria-describedby already reads the head copy, so this phone copy stays visual. -#}
-            <p class="mb-4 text-sm text-stone-600 not-phone:hidden" aria-hidden="true">Add a reason to help the organizers review your request.</p>
+            <p class="mb-4 text-sm text-stone-600 not-phone:hidden"
+               aria-hidden="true">Add a reason to help the organizers review your request.</p>
             <label for="refund-reason-{{ attendance_instance }}" class="form-label">Reason (optional)</label>
             <textarea id="refund-reason-{{ attendance_instance }}"
                       data-attendance-role="refund-reason-input"

@@ -163,10 +163,16 @@ test.describe("group dashboard check-in", () => {
     const line = organizerGroupPage.locator("[data-group-context]");
     await expect(line).toBeVisible();
 
-    // Verify the text comes from the pseudo-element, so no text node reaches desktop locators.
+    // Verify the names come from the pseudo-elements, so no text node reaches desktop locators.
     await expect(line).toHaveText("");
-    expect(await line.evaluate((element) => getComputedStyle(element, "::before").content)).toBe(
-      `"Group Dashboard · ${TEST_GROUP_NAMES.alpha}"`,
+    const pseudoContent = (pseudo) =>
+      line.evaluate((element, pseudo) => getComputedStyle(element, pseudo).content, pseudo);
+    expect(await pseudoContent("::before")).toBe(`"${TEST_COMMUNITY_TITLE}"`);
+    expect(await pseudoContent("::after")).toBe(`"${TEST_GROUP_NAMES.alpha}"`);
+
+    // Verify the button carries both names and its action for assistive technology.
+    await expect(line).toHaveAccessibleName(
+      `${TEST_COMMUNITY_TITLE} · ${TEST_GROUP_NAMES.alpha}, change group`,
     );
 
     // Verify the line sits above the title.
@@ -174,12 +180,15 @@ test.describe("group dashboard check-in", () => {
     const titleBounds = await organizerGroupPage.getByRole("heading", { name: "Check-In" }).boundingBox();
     expect(lineBounds.y + lineBounds.height).toBeLessThanOrEqual(titleBounds.y);
 
-    // Verify a long name wraps, so groups with a shared prefix stay apart.
+    // Verify a long name truncates on its own line instead of widening or growing the button.
     await line.evaluate((element) => {
-      element.dataset.groupContext = `Group Dashboard · ${"Cloud Native Community ".repeat(4)}Chapter`;
+      element.dataset.groupContext = `${"Cloud Native Community ".repeat(4)}Chapter`;
     });
     expect(await line.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-    expect((await line.boundingBox()).height).toBeGreaterThan(lineBounds.height);
+    expect(await line.evaluate((element) => getComputedStyle(element, "::after").textOverflow)).toBe(
+      "ellipsis",
+    );
+    expect((await line.boundingBox()).height).toBe(lineBounds.height);
   });
 
   test("event card keeps the scan button on its own line at 320px @mobile", async ({
@@ -214,18 +223,18 @@ test.describe("group dashboard check-in", () => {
   });
 
   scannerTest(
-    "scanner fills a phone and hides a single camera @mobile",
+    "scanner rises as a sheet on a phone and hides a single camera @mobile",
     async ({ checkInManagerGroupPage }) => {
       // Open the scanner on a phone with one camera.
       const { modal } = await openScanner(checkInManagerGroupPage);
       const viewport = checkInManagerGroupPage.viewportSize();
 
-      // Verify the card covers the screen and the footer Close stays.
-      expect(await modal.locator(".modal-card").boundingBox()).toEqual({
-        height: viewport.height,
+      // Verify the sheet spans the width up to 4rem from the top, and the footer Close stays.
+      expect(await modal.locator(".sheet-panel").boundingBox()).toEqual({
+        height: viewport.height - 64,
         width: viewport.width,
         x: 0,
-        y: 0,
+        y: 64,
       });
       await expect(modal.locator("footer").getByRole("button", { name: "Close", exact: true })).toBeVisible();
 
@@ -261,15 +270,18 @@ test.describe("group dashboard check-in", () => {
     expect((await select.boundingBox()).height).toBeGreaterThanOrEqual(44);
   });
 
-  scannerTest("scanner stays a modal at 640px and wider @mobile", async ({ checkInManagerGroupPage }) => {
-    // Open the scanner at a landscape width above the full-screen range.
+  scannerTest("scanner fills the screen at 640px and wider @mobile", async ({ checkInManagerGroupPage }) => {
+    // Open the scanner on a wide landscape phone.
     await checkInManagerGroupPage.setViewportSize({ height: 360, width: 700 });
     const { modal } = await openScanner(checkInManagerGroupPage);
 
-    // Verify the card keeps its modal width and leaves a margin.
-    const card = await modal.locator(".modal-card").boundingBox();
-    expect(card.width).toBeLessThan(700);
-    expect(card.x).toBeGreaterThan(0);
+    // Verify the sheet covers the screen, as in every landscape size.
+    expect(await modal.locator(".sheet-panel").boundingBox()).toEqual({
+      height: 360,
+      width: 700,
+      x: 0,
+      y: 0,
+    });
 
     // Verify the camera select stays available, as on desktop.
     await expect(modal.getByLabel("Camera")).toBeVisible();
@@ -292,7 +304,7 @@ test.describe("group dashboard check-in", () => {
             { id: "front", label: "Front camera" },
           ],
         });
-        const card = modal.locator(".modal-card");
+        const card = modal.locator(".sheet-panel");
         const video = modal.locator("[data-group-check-in-video]");
         const closeButton = modal.getByRole("button", { name: "Close modal" });
 
@@ -332,7 +344,8 @@ test.describe("group dashboard check-in", () => {
           modal.locator("label:has([data-group-check-in-mute])"),
           modal.locator("footer").getByRole("button", { name: "Close", exact: true }),
         ]) {
-          await control.scrollIntoViewIfNeeded();
+          // Scroll as the browser does; Playwright's CDP scroll stops 1px short at 667x375.
+          await control.evaluate((element) => element.scrollIntoView({ block: "nearest" }));
           await expect(control).toBeInViewport({ ratio: 1 });
           expect((await control.boundingBox()).y).toBeGreaterThanOrEqual(closeBounds.y + closeBounds.height);
           expect(await video.boundingBox()).toEqual(videoBounds);
@@ -387,12 +400,12 @@ test.describe("group dashboard check-in", () => {
       const { modal } = await openScanner(checkInManagerGroupPage);
       await checkInManagerGroupPage.setViewportSize({ height: 568, width: 320 });
 
-      // Verify the card fills the screen and the video spans it, below the event line.
-      expect(await modal.locator(".modal-card").boundingBox()).toEqual({
-        height: 568,
+      // Verify the sheet returns below the 4rem gap and the video spans it, below the event line.
+      expect(await modal.locator(".sheet-panel").boundingBox()).toEqual({
+        height: 504,
         width: 320,
         x: 0,
-        y: 0,
+        y: 64,
       });
       const video = await modal.locator("[data-group-check-in-video]").boundingBox();
       const eventName = await modal.locator("#group-check-in-event-name").boundingBox();

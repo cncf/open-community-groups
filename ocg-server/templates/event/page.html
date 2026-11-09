@@ -6,6 +6,9 @@
 {% import "macros/social.html" as social -%}
 {% import "macros/cohosts.html" as cohosts -%}
 
+{# Phones drop the stone canvas so the page reads as one white surface. -#}
+{% block shell_classes %}phone:bg-white{% endblock shell_classes %}
+
 {% block head_title -%}
   <title>{{ self.preview_title() |demoji }}</title>
 {% endblock head_title -%}
@@ -59,11 +62,11 @@
   {% let has_social_links = event.meetup_url.is_some() || event.luma_url.is_some() -%}
 
   {# Breadcrumb -#}
-  <breadcrumb-nav banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.community.banner_url) }}" banner-mobile-url="{{ event.banner_mobile_url.as_ref().or(event.group.banner_mobile_url.as_ref()).unwrap_or(&event.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.community.display_name|json }}, "href": "/{{ event.community.name }}", "icon": "community"}, {"label": {{ event.group.name|json }}, "href": "/{{ event.community.name }}/group/{{ event.group.public_slug() }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
+  <breadcrumb-nav full-bleed banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.community.banner_url) }}" banner-mobile-url="{{ event.banner_mobile_url.as_ref().or(event.group.banner_mobile_url.as_ref()).unwrap_or(&event.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.community.display_name|json }}, "href": "/{{ event.community.name }}", "icon": "community"}, {"label": {{ event.group.name|json }}, "href": "/{{ event.community.name }}/group/{{ event.group.public_slug() }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
-  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:pt-3 phone:pb-3">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-visible phone:rounded-none phone:border-x-0">
+  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:py-0">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-visible phone:rounded-none phone:border-0">
       {# Status badge -#}
       {% if event.canceled -%}
         {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
@@ -103,11 +106,11 @@
 
                   {# Event name -#}
                   {% if event.name.len() > 68 -%}
-                    <h1 class="text-[0.95rem]/5 xl:text-[1.45rem]/[1.35] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0 phone:text-lg/6 phone:line-clamp-none phone:break-words">
+                    <h1 class="text-[0.95rem]/5 xl:text-[1.45rem]/[1.35] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0 phone:text-base/[1.3] phone:line-clamp-none phone:break-words">
                       {{ event.name|demoji }}
                     </h1>
                   {% else -%}
-                    <h1 class="text-[1.05rem]/6 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0 phone:text-[1.2rem]/[1.3] phone:line-clamp-none phone:break-words">
+                    <h1 class="text-[1.05rem]/6 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0 phone:text-[1.05rem]/[1.3] phone:line-clamp-none phone:break-words">
                       {{ event.name|demoji }}
                     </h1>
                   {% endif -%}
@@ -420,7 +423,7 @@
 
 {# Call for Speakers -#}
 {% if event.cfs_is_enabled() && !event.canceled && !event.cfs_is_closed() -%}
-  <div class="pb-4">
+  <div class="pb-4 phone:pb-0">
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
       Call for Speakers
     </div>
@@ -491,16 +494,14 @@
 {% endif -%}
 
 {# Event description -#}
-<div class="pb-4">
+<div class="pb-4 phone:pb-0">
   <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
     About this event
   </div>
   <div class="read-more">
     <div class="text-stone-500 text-sm/6 markdown read-more-body phone:text-[15px]/6 phone:text-stone-600"
          data-ocg-remove-broken-images>{{ event.description|md_to_html|safe }}</div>
-    <button type="button"
-            class="read-more-toggle not-phone:hidden phone:text-[15px]/6"
-            aria-expanded="false">Read more</button>
+    {{ ui::read_more_toggle() -}}
   </div>
   {% let meeting_join_instructions = event.meeting_join_instructions -%}
   {% let meeting_join_url = event.meeting_join_url -%}
@@ -627,7 +628,7 @@
 
     {# Agenda labels filter -#}
     {% if !agenda_labels.is_empty() -%}
-      <div class="w-full md:w-1/2 pb-12 phone:pb-3">
+      <div class="w-full md:w-1/2 pb-12 phone:pb-5">
         <label-selector id="agenda-label-filter" data-agenda-filter name="" label="Filter agenda by labels" labels="{{ agenda_labels|json }}" placeholder="Filter by labels" close-on-select touch-browse>
         </label-selector>
       </div>
@@ -897,9 +898,7 @@
       <div class="read-more">
         <div class="text-sm/6 text-stone-600 markdown mt-3 read-more-body"
              data-ocg-remove-broken-images>{{ description|md_to_html|safe }}</div>
-        <button type="button"
-                class="read-more-toggle not-phone:hidden phone:text-sm/6"
-                aria-expanded="false">Read more</button>
+        {{ ui::read_more_toggle() -}}
       </div>
     {% endif -%}
     {% let has_instructions_session = session.meeting_join_instructions.is_some() -%}

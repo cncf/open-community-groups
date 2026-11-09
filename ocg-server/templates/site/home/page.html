@@ -24,35 +24,13 @@
         {# End site description -#}
 
         {# Stats -#}
-        <div class="mb-8 lg:mb-14 phone:mb-4">{% include "site/home/stats.html" %}</div>
+        <div class="mb-8 lg:mb-14">{% include "site/home/stats.html" %}</div>
         {# End stats -#}
-
-        {# Search on phones -#}
-        <form action="/explore"
-              role="search"
-              hx-boost="true"
-              hx-target="body"
-              hx-ext="no-empty-vals"
-              class="relative not-phone:hidden">
-          <input type="hidden" name="entity" value="events" />
-          <div class="svg-icon pointer-events-none absolute start-4 top-[18px] size-4 bg-stone-500 icon-magnifying-glass">
-          </div>
-          <input type="search"
-                 name="ts_query"
-                 maxlength="250"
-                 enterkeyhint="search"
-                 aria-label="Search events"
-                 placeholder="Search events"
-                 class="input-primary rounded-full h-[52px] phone:text-base ps-10 pe-28" />
-          <button type="submit"
-                  class="btn-primary absolute end-1 top-1 h-11 px-6 text-base font-semibold">Explore</button>
-        </form>
-        {# End search on phones -#}
 
         <a href="{{ explore_events }}"
            hx-boost="true"
            hx-target="body"
-           class="btn-primary-anchor text-md lg:text-lg py-3 px-8 font-semibold phone:hidden">Explore groups and events</a>
+           class="btn-primary-anchor text-md lg:text-lg py-3 px-8 font-semibold">Explore groups and events</a>
 
       </div>
     </section>
@@ -70,31 +48,35 @@
           Communities
         </div>
         {% if communities.len() > 0 -%}
-          {# Phones stack up to three banners and swipe through more. -#}
+          {# Phones stack up to three banners and swipe through more, three per page. Pages vanish from the desktop grid. -#}
           {% let carousel = communities.len() > 3 -%}
           <div class="grid grid-cols-[minmax(0,385px)] justify-start gap-6 sm:grid-cols-[repeat(2,minmax(0,385px))] sm:gap-8 lg:grid-cols-[repeat(3,minmax(0,385px))] phone:gap-3
                       {% if carousel %}phone:flex phone:-mx-3 phone:px-3 phone:scroll-px-3 phone:overflow-x-auto phone:snap-x phone:snap-mandatory phone:[scrollbar-width:none] phone:pt-0.5 phone:pb-2.5{% else %}phone:grid-cols-1{% endif %}">
-            {% for community in communities -%}
-              <a href="/{{ community.name }}"
-                 class="relative block overflow-hidden rounded-lg border border-stone-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 after:content-[''] after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:transition-shadow after:duration-200 hover:after:shadow-[inset_0_0_0_1px_var(--color-stone-300)] motion-reduce:after:transition-none
-                        {% if carousel %}phone:shrink-0 phone:snap-start phone:w-[calc(100%-3.5rem)]{% endif %}">
-                <div class="aspect-[61/12] phone:aspect-[1220/192]">
-                  <img class="w-full h-full object-cover"
-                       height="auto"
-                       width="auto"
-                       src="{{ community.banner_mobile_url }}"
-                       alt="{{ community.display_name }} banner" />
-                </div>
-              </a>
+            {% for communities_page in communities.chunks(3) -%}
+              <div class="contents
+                          {% if carousel %}phone:flex phone:w-[calc(100%-3.5rem)] phone:shrink-0 phone:snap-start phone:flex-col phone:gap-3{% endif %}">
+                {% for community in communities_page -%}
+                  <a href="/{{ community.name }}"
+                     class="relative block overflow-hidden rounded-lg border border-stone-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 after:content-[''] after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:transition-shadow after:duration-200 hover:after:shadow-[inset_0_0_0_1px_var(--color-stone-300)] motion-reduce:after:transition-none">
+                    <div class="aspect-[61/12] phone:aspect-[1220/192]">
+                      <img class="w-full h-full object-cover"
+                           height="auto"
+                           width="auto"
+                           src="{{ community.banner_mobile_url }}"
+                           alt="{{ community.display_name }} banner" />
+                    </div>
+                  </a>
+                {% endfor -%}
+              </div>
             {% endfor -%}
           </div>
           {% if carousel -%}
-            {# Dots fit one line up to 24 banners; longer lists show a counter. -#}
+            {# Dots fit one line up to 24 pages; longer lists show a counter. -#}
             <div class="not-phone:hidden"
                  aria-hidden="true"
                  data-snap-dots
                  data-snap-dots-max="24">
-              {% if communities.len() > 24 -%}
+              {% if communities.len() > 72 -%}
                 <span data-snap-counter></span>
               {% endif -%}
             </div>

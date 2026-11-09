@@ -518,6 +518,19 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 }
 
+/* No end frame: scrims fade in to their own opacity or colour. */
+@keyframes sheet-scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-scrim-color-in {
+  from {
+    background-color: transparent;
+  }
+}
+
 @keyframes tap-bar-in {
   from {
     opacity: 0;
@@ -703,6 +716,36 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     @apply pointer-events-none absolute inset-x-0 top-1.5 mx-auto h-1 w-9 rounded-full bg-stone-300;
   }
 
+  /* Sheet close: a hidden wrapper stays displayed for 200ms while its scrim fades and its panel
+     slides away. Closing wrappers ignore taps, so the fading scrim cannot reopen them. */
+  [role="dialog"]:has(.sheet-panel) {
+    @apply motion-safe:transition-[display] motion-safe:transition-discrete motion-safe:duration-200;
+  }
+
+  :is([role="dialog"]:has(.sheet-panel), .account-sheet, .sheet-scrim).hidden {
+    @apply pointer-events-none;
+  }
+
+  :is([role="dialog"], .account-sheet).hidden .sheet-panel {
+    @apply translate-y-full motion-safe:transition-[translate] motion-safe:duration-200 motion-safe:ease-in;
+  }
+
+  /* Scrims fade in on open, out on close, and with the drag: gestures set --sheet-drag from 0
+     to 1. The filter multiplies each scrim's own opacity. */
+  .modal-overlay,
+  .sheet-scrim {
+    filter: opacity(calc(1 - var(--sheet-drag, 0)));
+    transition-behavior: allow-discrete;
+    transition-duration: 200ms, 150ms, 200ms;
+    transition-property: opacity, filter, display;
+    @apply motion-safe:animate-[sheet-scrim-in_200ms_ease-out] motion-reduce:transition-none;
+  }
+
+  [role="dialog"].hidden .modal-overlay,
+  .sheet-scrim.hidden {
+    @apply opacity-0;
+  }
+
   /* Group dashboard context: community over group, with the caret centred on both lines. */
   .group-context {
     @apply mx-3 mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg border border-stone-200 bg-white px-3 py-2 text-start hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500;
@@ -722,9 +765,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     @apply col-start-2 row-span-2 row-start-1;
   }
 
-  /* Account sheet: #user-dropdown is the scrim, its list the panel. */
-  .account-sheet:not(.hidden) {
-    @apply fixed inset-0 z-[1100] w-auto rounded-none border-0 bg-stone-950/35 shadow-none touch-pinch-zoom;
+  /* Account sheet: #user-dropdown is the scrim, its list the panel. Unlike other scrims it
+     fades by colour, so its list stays opaque; the close and drag fades match .sheet-scrim. */
+  .account-sheet {
+    @apply fixed inset-0 z-[1100] w-auto rounded-none border-0 bg-stone-950/35 shadow-none touch-pinch-zoom motion-safe:animate-[sheet-scrim-color-in_200ms_ease-out] motion-safe:transition-[background-color,display] motion-safe:transition-discrete motion-safe:duration-200;
+
+    @supports (color: color-mix(in oklab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-stone-950) calc(35% * (1 - var(--sheet-drag, 0))), transparent);
+    }
+  }
+
+  .account-sheet.hidden {
+    @apply bg-transparent;
   }
 
   .account-sheet > ul {
@@ -910,9 +962,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     @apply relative min-h-0 shrink-0 overflow-visible whitespace-nowrap px-3.5 py-[5px] text-[13px]/[18px] font-normal normal-case tracking-normal after:absolute after:-inset-x-1 after:-inset-y-2;
   }
 
-  /* Read more */
+  /* Read more: the fade is the toggle. A tap on the clipped text expands it, and the neutral pill
+     floats over the fade until it moves under the expanded text. */
+  .read-more {
+    @apply relative;
+  }
+
   .read-more:not([data-expanded]) .read-more-body {
-    max-height: 6lh;
+    max-height: 7lh;
     @apply overflow-hidden;
   }
 
@@ -920,9 +977,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     @apply max-h-16;
   }
 
-  /* Headings and margins can land the clip mid-line, so the last line fades out. */
+  /* The pill covers the last line, so the fade spans two. Headings and margins can land the clip
+     mid-line, which the fade hides as well. */
   .read-more[data-overflowing]:not([data-expanded]) .read-more-body {
-    mask-image: linear-gradient(to bottom, black calc(100% - 0.75lh), transparent);
+    mask-image: linear-gradient(to bottom, black calc(100% - 2.5lh), transparent calc(100% - 0.5lh));
+    @apply cursor-pointer;
   }
 
   .read-more-body > :first-child {
@@ -930,11 +989,23 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   .read-more-toggle {
-    @apply hidden font-semibold;
+    @apply hidden items-center gap-1.5 rounded-full border border-stone-200 bg-white text-stone-700 transition-colors hover:border-stone-300 hover:bg-stone-50 focus:outline-none focus-visible:border-stone-300 focus-visible:bg-stone-50 focus-visible:ring-2 focus-visible:ring-stone-300;
   }
 
   .read-more[data-overflowing] .read-more-toggle {
-    @apply inline-flex min-h-11 items-center;
+    @apply mt-3 flex w-fit;
+  }
+
+  .read-more[data-overflowing]:not([data-expanded]) .read-more-toggle {
+    @apply absolute bottom-0 left-0 mt-0;
+  }
+
+  .read-more-toggle > .svg-icon {
+    @apply motion-safe:transition-[rotate];
+  }
+
+  .read-more[data-expanded] .read-more-toggle > .svg-icon {
+    @apply rotate-180;
   }
 
   /* Snap carousel position row. 24 dots fit one line at 320px. */

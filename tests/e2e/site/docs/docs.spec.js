@@ -230,7 +230,7 @@ test.describe("site docs page", () => {
 
     // Verify the mobile menu and overview content remain available.
     const docsRoot = page.locator(".ocg-docs-root");
-    const contentsButton = docsRoot.getByRole("button", { name: "Contents" });
+    const contentsButton = docsRoot.getByRole("button", { name: "Contents", exact: true });
     const overviewHeading = docsRoot.getByRole("heading", {
       name: "Open Community Groups Documentation",
       level: 1,
@@ -301,7 +301,9 @@ test.describe("site docs page", () => {
     expect(sheetBox.x).toBe(0);
     expect(sheetBox.width).toBe(viewport.width);
     expect(barBox.y + barBox.height).toBeCloseTo(viewport.height, 0);
-    expect(sheetBox.y + sheetBox.height).toBeCloseTo(barBox.y, 0);
+    // The bar draws above the sheet, whose last pixel tucks under the bar's top hairline.
+    expect(sheetBox.y + sheetBox.height).toBeGreaterThanOrEqual(barBox.y);
+    expect(sheetBox.y + sheetBox.height).toBeLessThanOrEqual(barBox.y + 1);
     expect(sheetBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
 
     // Verify the toggle stays on the bar's end, below the sheet.
@@ -408,7 +410,7 @@ test.describe("site docs page", () => {
     await navigateToPath(page, "/docs#/getting-started/quickstart");
     const docsRoot = page.locator(".ocg-docs-root");
     const content = docsRoot.locator(".content");
-    await expect(docsRoot.getByRole("button", { name: "Contents" })).toHaveAttribute(
+    await expect(docsRoot.getByRole("button", { name: "Contents", exact: true })).toHaveAttribute(
       "aria-expanded",
       "false",
       { timeout: 15000 },
@@ -552,7 +554,7 @@ test.describe("site docs page", () => {
   test("the bar names the page and keeps Contents level while reading @mobile", async ({ page }) => {
     // Read down a guide.
     await navigateToPath(page, "/docs#/guides/public-site");
-    const toggle = page.locator(".ocg-docs-root").getByRole("button", { name: "Contents" });
+    const toggle = page.locator(".ocg-docs-root").getByRole("button", { name: "Contents", exact: true });
     await expect(toggle).toBeVisible();
     await page.evaluate(() => window.scrollTo({ behavior: "instant", top: 600 }));
 
@@ -711,7 +713,7 @@ const sidebarGuideLink = (page, slug) =>
  */
 const openContents = async (page) => {
   const docsRoot = page.locator(".ocg-docs-root");
-  const contentsButton = docsRoot.getByRole("button", { name: "Contents" });
+  const contentsButton = docsRoot.getByRole("button", { name: "Contents", exact: true });
   const sheet = docsRoot.locator(".sidebar");
   await expect(docsRoot.getByRole("heading", { level: 1 }).first()).toBeVisible({ timeout: 15000 });
   await contentsButton.click();

@@ -9,7 +9,13 @@ import {
   setupEventInvitation,
   setupGroupTeamInvitation,
 } from "../../../data-graphs/invitations.js";
-import { TEST_COMMUNITY_IDS, TEST_COMMUNITY_TITLE, TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
+import {
+  TEST_COMMUNITY_IDS,
+  TEST_COMMUNITY_TITLE,
+  TEST_GROUP_IDS,
+  TEST_GROUP_NAMES,
+  TEST_USER_IDS,
+} from "../../../seed.js";
 import { buildE2eUrl, confirmAlert, navigateToPath, waitForActionResponse } from "../../../utils.js";
 import { getMobileNotice } from "../aria-helpers.js";
 import { openUserDashboardPath } from "../helpers.js";
@@ -258,7 +264,7 @@ test.describe("user dashboard invitations states on phones @mobile", () => {
   }) => {
     const content = emptyUserPage.locator("#dashboard-content");
     const title = (text) => content.getByText(text, { exact: true });
-    // The table renders one placeholder per breakpoint, and the first one serves phones.
+    // The desktop table renders one placeholder per breakpoint; phones hide both with the table.
     const eventPlaceholder = title("You don't have any pending event invitation.").first();
     const sharedEmptyState = title("No pending invitations");
     const helpLink = content.getByRole("link", { name: "Open documentation" });
@@ -293,12 +299,13 @@ test.describe("user dashboard invitations states on phones @mobile", () => {
       // Reload the tab with the team invitation.
       await openUserDashboardPath("/dashboard/user?tab=invitations", emptyUserPage);
 
-      // Verify the event section keeps its placeholder and only sections with rows follow.
+      // Verify the event title stays without a placeholder and only sections with cards follow.
       await expect(title("Event Invitations")).toBeVisible();
       await expect(helpLink).toBeVisible();
-      await expect(eventPlaceholder).toBeVisible();
+      await expect(eventPlaceholder).toBeHidden();
       await expect(sharedEmptyState).toHaveCount(0);
       await expect(title("Group Invitations")).toBeVisible();
+      await expect(content.locator("article", { hasText: TEST_GROUP_NAMES.alpha })).toBeVisible();
       await expect(title("Community Invitations")).toBeHidden();
     });
 
@@ -313,10 +320,10 @@ test.describe("user dashboard invitations states on phones @mobile", () => {
       // Reload the tab with the event invitation.
       await openUserDashboardPath("/dashboard/user?tab=invitations", emptyUserPage);
 
-      // Verify the rows show under the desktop title, and the empty team sections hide.
+      // Verify the cards show under the desktop title, and the empty team sections hide.
       await expect(title("Event Invitations")).toBeVisible();
       await expect(helpLink).toBeVisible();
-      await expect(content.locator("tr", { hasText: PHONE_EVENT_NAME })).toBeVisible();
+      await expect(content.locator("article", { hasText: PHONE_EVENT_NAME })).toBeVisible();
       await expect(eventPlaceholder).toHaveCount(0);
       await expect(title("Group Invitations")).toBeHidden();
       await expect(title("Community Invitations")).toBeHidden();
@@ -340,13 +347,15 @@ test.describe("user dashboard invitations states on phones @mobile", () => {
 
   test("approving a team invitation uses the labelled action", async ({ pending1Page }) => {
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
-    const groupRow = pending1Page.locator("#dashboard-content tr", { hasText: "Inactive Local Chapter" });
-    const approveButton = groupRow.getByRole("button", { name: "Approve" });
-    const rejectButton = groupRow.getByRole("button", { name: "Reject" });
+    const groupCard = pending1Page.locator("#dashboard-content article", {
+      hasText: TEST_GROUP_NAMES.beta,
+    });
+    const approveButton = groupCard.getByRole("button", { name: "Approve" });
+    const rejectButton = groupCard.getByRole("button", { name: "Reject" });
 
     try {
       // Verify both labels show at 44px, side by side, with the role label above them.
-      await expect(groupRow.getByText("Role", { exact: true })).toBeVisible();
+      await expect(groupCard.getByText("Role", { exact: true })).toBeVisible();
       await expect(approveButton).toHaveText("Approve");
       await expect(rejectButton).toHaveText("Reject");
       const approveBox = await approveButton.boundingBox();
@@ -356,9 +365,9 @@ test.describe("user dashboard invitations states on phones @mobile", () => {
       expect(rejectBox.y).toBe(approveBox.y);
       expect(rejectBox.x).toBeGreaterThan(approveBox.x + approveBox.width);
 
-      // Verify only Approve carries an outline.
-      await expect(approveButton).toHaveCSS("border-top-width", "1px");
-      await expect(rejectButton).toHaveCSS("border-top-width", "0px");
+      // Verify only Reject carries an outline.
+      await expect(approveButton).toHaveCSS("border-top-width", "0px");
+      await expect(rejectButton).toHaveCSS("border-top-width", "1px");
 
       // Approve the invitation.
       await waitForActionResponse(pending1Page, () => approveButton.click(), {
@@ -367,9 +376,9 @@ test.describe("user dashboard invitations states on phones @mobile", () => {
         urlIncludes: "/dashboard/user/invitations/group/",
       });
 
-      // Verify the row leaves the list.
+      // Verify the card leaves the list.
       await pending1Page.reload();
-      await expect(groupRow).toHaveCount(0);
+      await expect(groupCard).toHaveCount(0);
     } finally {
       // Restore the seeded invitation for later tests.
       setupGroupTeamInvitation(PENDING1_GROUP_INVITATION);
@@ -383,16 +392,18 @@ test.describe("user dashboard invitations states on phones @mobile", () => {
       table: "group_team",
     });
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending2Page);
-    const rejectButton = pending2Page.locator(`#reject-group-${TEST_GROUP_IDS.community1.alpha}`);
+    const rejectButton = pending2Page.locator(`#reject-group-card-${TEST_GROUP_IDS.community1.alpha}`);
 
     try {
-      // Tap Reject and confirm.
+      // Tap Reject and confirm the prompt that names the group.
       await expect(rejectButton).toHaveText("Reject");
       await rejectButton.click();
       await waitForActionResponse(
         pending2Page,
         () =>
-          confirmAlert(pending2Page, { message: "Are you sure you would like to reject this invitation?" }),
+          confirmAlert(pending2Page, {
+            message: `Decline your invitation to join ${TEST_GROUP_NAMES.alpha}?`,
+          }),
         {
           method: "PUT",
           urlEndsWith: "/reject",
@@ -400,7 +411,7 @@ test.describe("user dashboard invitations states on phones @mobile", () => {
         },
       );
 
-      // Verify the row leaves the list.
+      // Verify the card leaves the list.
       await pending2Page.reload();
       await expect(rejectButton).toHaveCount(0);
     } finally {

@@ -148,9 +148,11 @@ describe("co-hosts templates", () => {
     ]);
 
     // Verify the credit line and the owner preheader on co-hosted group cards.
-    expect(normalizeWhitespace(smallCard)).to.include("{{ cohosts::cohosts_line(event.cohosts) -}}");
+    expect(normalizeWhitespace(smallCard)).to.include(
+      '{{ cohosts::cohosts_line(event.cohosts, "phone:hidden") -}}',
+    );
     expect(normalizeWhitespace(exploreCard)).to.include(
-      '<div class="mt-auto min-w-0">{{ cohosts::cohosts_line(event.cohosts) -}}</div>',
+      '<div class="mt-auto min-w-0 phone:hidden">{{ cohosts::cohosts_line(event.cohosts) -}}</div>',
     );
     expect(normalizeWhitespace(exploreCard)).to.include(
       "{% if event.cohosts.is_empty() -%}line-clamp-2{% else -%}line-clamp-1{% endif -%}",
@@ -164,6 +166,12 @@ describe("co-hosts templates", () => {
       "{% block title_line_clamp_classes -%} {% if event.cohosts.is_empty() -%} !line-clamp-2 {% else -%} !line-clamp-1 phone:!line-clamp-2 {% endif -%} {% endblock title_line_clamp_classes %}";
     expect(normalizeWhitespace(smallCard)).to.include(oneLineTitle);
     expect(normalizeWhitespace(exploreCard)).to.include(oneLineTitle);
+
+    // Verify phones move the credit under the logo, across the full card width.
+    const phoneCreditRow =
+      '{% block below_top_row -%} {% if !event.cohosts.is_empty() -%} <div class="min-w-0 px-3.5 pt-3 not-phone:hidden">{{ cohosts::cohosts_line(event.cohosts, "!mt-0") -}}</div> {% endif -%} {% endblock below_top_row %}';
+    expect(normalizeWhitespace(smallCard)).to.include(phoneCreditRow);
+    expect(normalizeWhitespace(exploreCard)).to.include(phoneCreditRow);
 
     // Verify card text only reserves ribbon space on sold-out cards on phones.
     const soldOutTopRow =

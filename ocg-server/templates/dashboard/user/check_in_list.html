@@ -17,7 +17,7 @@
     {%- for event in events -%}
       {% if !event.checked_in -%}
         <button type="button"
-                class="card-hover-border relative flex h-full w-full min-w-0 max-w-full select-none flex-col overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition-all hover:border-primary-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                class="card-hover-border relative flex h-full w-full min-w-0 max-w-full select-none flex-col overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition-all hover:border-primary-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 phone:pb-14"
                 data-user-check-in-open
                 data-event-id="{{ event.event_id }}"
                 data-event-date="{{ event.starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}"
@@ -26,12 +26,9 @@
                 data-ticket-title="{{ event.ticket_title|assigned_or("") }}">
           {% call cards::check_in_event_card(event) -%}
           <span class="custom-badge badge-warning">Pending check-in</span>
-          {# Tap cue: replaces the hover outline on touch screens. -#}
-          <span class="not-phone:hidden phone:ml-auto inline-flex items-center gap-1 text-xs font-medium text-primary-500"
-                aria-hidden="true">
-            <span class="svg-icon size-3.5 icon-qr-code bg-primary-500"></span>
-            Show QR code
-          </span>
+          {# Tap cue: styled like the group Scan button, but decorative since the whole card is the button. -#}
+          <span class="not-phone:hidden btn-primary-outline-anchor btn-mini phone:absolute phone:inset-x-3 phone:bottom-3 phone:h-11 phone:text-sm"
+                aria-hidden="true">Show QR code</span>
           {% endcall -%}
         </button>
       {% endif -%}

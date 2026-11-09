@@ -4,7 +4,7 @@
 
 {% let no_invitations = event_invitations.is_empty() && group_invitations.is_empty() && community_invitations.is_empty() -%}
 
-<div class="phone:px-3 phone:pt-4">
+<div class="phone:px-3 phone:pt-4 phone:pb-3">
   {{ dashboard::page_title(title = "Event Invitations", docs_href = "/docs#/guides/user-dashboard?id=invitations-access-and-attendance",
     description = "Confirm, resume, or decline event invitations and ticket offers.") -}}
 </div>
@@ -189,11 +189,12 @@
 
 {# Event Invitations (phone action cards) -#}
 {% if !event_invitations.is_empty() -%}
-  <div class="not-phone:hidden space-y-3 px-3 pt-1.5 pb-4">
+  <div class="not-phone:hidden space-y-3 px-3 pb-4">
     {% for invitation in event_invitations -%}
       {# Invitation card -#}
+      {# Phones pad hash scrolls 7.5rem for the site header; the negative margin trims that to the dashboard header. -#}
       <article id="event-offer-card-{{ invitation.admission_offer_id }}"
-               class="scroll-mt-14 rounded-lg border border-stone-200 bg-white p-3">
+               class="phone:-scroll-mt-11 rounded-lg border border-stone-200 bg-white p-3">
         <div class="title-preheader">{{ invitation.group_name }} · {{ invitation.community_display_name }}</div>
         <h3 class="mt-0.5 line-clamp-2 text-base/6 font-semibold text-stone-900">{{ invitation.event_name }}</h3>
         {# Offer summary chips -#}
@@ -330,7 +331,7 @@
 {# End shared empty state -#}
 
 {# Groups Invitations -#}
-<div class="phone:mt-6 phone:px-3{% if group_invitations.is_empty() %}
+<div class="phone:px-3 phone:pb-3{% if group_invitations.is_empty() %}
               phone:hidden{% endif %}">
   {{ dashboard::form_title(title = "Group Invitations",
     description = "Manage invitations to join groups.") -}}
@@ -431,7 +432,7 @@
 
 {# Groups Invitations (phone action cards) -#}
 {% if !group_invitations.is_empty() -%}
-  <div class="not-phone:hidden space-y-3 px-3 pt-1.5 pb-4">
+  <div class="not-phone:hidden space-y-3 px-3 pb-4">
     {% for invitation in group_invitations -%}
       {# Invitation card -#}
       <article class="rounded-lg border border-stone-200 bg-white p-3">
@@ -474,7 +475,7 @@
 {# End Groups Invitations (phone action cards) -#}
 
 {# Community Invitations -#}
-<div class="phone:mt-6 phone:px-3{% if community_invitations.is_empty() %}
+<div class="phone:px-3 phone:pb-3{% if community_invitations.is_empty() %}
               phone:hidden{% endif %}">
   {{ dashboard::form_title(title = "Community Invitations",
     description = "Manage invitations to join communities.") -}}
@@ -575,7 +576,7 @@
 
 {# Community Invitations (phone action cards) -#}
 {% if !community_invitations.is_empty() -%}
-  <div class="not-phone:hidden space-y-3 px-3 pt-1.5 pb-4">
+  <div class="not-phone:hidden space-y-3 px-3 pb-4">
     {% for invitation in community_invitations -%}
       {# Invitation card -#}
       <article class="rounded-lg border border-stone-200 bg-white p-3">

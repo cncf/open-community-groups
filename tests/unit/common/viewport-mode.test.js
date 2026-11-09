@@ -5,6 +5,7 @@ import {
   VIEWPORT_MODE_ATTRIBUTE,
   VIEWPORT_MODE_COOKIE,
   buildViewportModeCookie,
+  getViewportModeReloadUrl,
   initViewportModeToggle,
   setViewportMode,
   setViewportModeReloadHandler,
@@ -49,7 +50,9 @@ describe("viewport mode", () => {
 
   afterEach(() => {
     cookieWrites.restore();
-    setViewportModeReloadHandler(() => window.location.reload());
+    setViewportModeReloadHandler(() =>
+      window.location.replace(getViewportModeReloadUrl(window.location.href)),
+    );
     resetDom();
   });
 
@@ -169,5 +172,15 @@ describe("viewport mode", () => {
     } finally {
       document.documentElement.removeAttribute(VIEWPORT_MODE_ATTRIBUTE);
     }
+  });
+
+  it("reloads the current URL without its hash", () => {
+    // Verify a hash is dropped, since replacing to it would only scroll.
+    expect(getViewportModeReloadUrl("https://example.com/docs?page=2#setup")).to.equal(
+      "https://example.com/docs?page=2",
+    );
+    expect(getViewportModeReloadUrl("https://example.com/explore?entity=events")).to.equal(
+      "https://example.com/explore?entity=events",
+    );
   });
 });

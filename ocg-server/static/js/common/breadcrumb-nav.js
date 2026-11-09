@@ -15,6 +15,7 @@ import { parseJsonAttribute } from "/static/js/common/utils.js";
  *   - current: boolean (optional) - Mark as current page
  * - banner-url: string (optional) - URL to banner image displayed above breadcrumb (sm+, not phones)
  * - banner-mobile-url: string (optional) - URL to mobile banner image (below sm, and on phones)
+ * - full-bleed: boolean (optional) - Spans the viewport edge to edge on phones, square and without side borders
  *
  * Example:
  * <breadcrumb-nav
@@ -33,6 +34,7 @@ export class BreadcrumbNav extends LitWrapper {
       items: { type: Array },
       bannerUrl: { type: String, attribute: "banner-url" },
       bannerMobileUrl: { type: String, attribute: "banner-mobile-url" },
+      fullBleed: { type: Boolean, attribute: "full-bleed" },
       _isOpen: { type: Boolean, state: true },
     };
   }
@@ -42,6 +44,7 @@ export class BreadcrumbNav extends LitWrapper {
     this.items = [];
     this.bannerUrl = null;
     this.bannerMobileUrl = null;
+    this.fullBleed = false;
     this._isOpen = false;
     this._dropdownId = `breadcrumb-dropdown-${Math.random().toString(36).slice(2, 9)}`;
     this._handleDocumentClick = this._handleDocumentClick.bind(this);
@@ -240,13 +243,23 @@ export class BreadcrumbNav extends LitWrapper {
     const breadcrumbCount = Math.max(nonHomeItems.length, 1);
 
     return html`
-      <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8 phone:px-3 phone:pt-3">
-        <div class="bg-white border border-stone-200 rounded-lg">
+      <div
+        class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8 ${
+          this.fullBleed ? "phone:px-0 phone:pt-0" : "phone:px-3 phone:pt-3"
+        }"
+      >
+        <div
+          class="bg-white border border-stone-200 rounded-lg ${
+            this.fullBleed ? "phone:rounded-none phone:border-x-0 phone:border-t-0" : ""
+          }"
+        >
           ${
             this.bannerMobileUrl
               ? html`
                   <div
-                    class="w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg phone:block"
+                    class="w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg phone:block ${
+                      this.fullBleed ? "phone:rounded-none" : ""
+                    }"
                     data-banner-aspect="1220 / 192"
                   >
                     <img
@@ -276,7 +289,10 @@ export class BreadcrumbNav extends LitWrapper {
                 `
               : ""
           }
-          <nav class="px-4 sm:px-6 lg:px-10 py-3 phone:px-4 phone:py-0" aria-label="Breadcrumb">
+          <nav
+            class="px-4 sm:px-6 lg:px-10 py-3 phone:py-0 ${this.fullBleed ? "phone:px-3" : "phone:px-4"}"
+            aria-label="Breadcrumb"
+          >
             <!-- Mobile breadcrumb dropdown -->
             <div class="relative sm:hidden phone:block">
               <button
@@ -299,6 +315,8 @@ export class BreadcrumbNav extends LitWrapper {
                 id="${this._dropdownId}"
                 data-breadcrumb-dropdown
                 class="origin-top transition-all duration-150 ease-out motion-reduce:transition-none absolute top-full left-0 mt-3 -mx-4 w-[calc(100%+2rem)] bg-white rounded-xl shadow-lg border border-stone-200 z-50 max-h-64 overflow-y-auto phone:mt-1 phone:z-[25] ${
+                  this.fullBleed ? "phone:-mx-3 phone:w-[calc(100%+1.5rem)]" : ""
+                } ${
                   this._isOpen
                     ? "opacity-100 scale-y-100 translate-y-0"
                     : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none phone:invisible"

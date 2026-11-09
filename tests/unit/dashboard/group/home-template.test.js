@@ -207,5 +207,10 @@ describe("dashboard group home template", () => {
     expect(template).to.include(
       'aria-controls="dashboard-menu-drawer" aria-expanded="false" data-dashboard-menu-open data-community-context="{{ current_selection.0.display_name }}" data-group-context="{{ current_selection.1.name }}"> <span class="svg-icon size-3 shrink-0 bg-stone-500 icon-caret-down" aria-hidden="true"></span> </button>',
     );
+
+    // Verify the button has a name without generated content, as axe ignores ::before and ::after.
+    expect(template).to.include(
+      'aria-label="{{ current_selection.0.display_name }} · {{ current_selection.1.name }}, change group"',
+    );
   });
 });

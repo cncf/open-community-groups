@@ -108,6 +108,16 @@ describe("group page template", () => {
     }
   });
 
+  it("closes the page with the tags, after every other section", async () => {
+    // Load the group page.
+    const page = await loadTemplate("group/page.html");
+
+    // Verify Tags follows the gallery and nothing else comes after it.
+    const tagsIndex = page.indexOf("{# Tags -#}");
+    expect(tagsIndex).to.be.greaterThan(page.indexOf("{# End photo gallery -#}"));
+    expect(page.slice(page.indexOf("{# End tags -#}"))).not.to.include("section-strip");
+  });
+
   it("turns every section title into a phone heading", async () => {
     // Load the group page.
     const page = await loadTemplate("group/page.html");
@@ -139,7 +149,7 @@ describe("group page template", () => {
 
     // Verify the body carries the line height that sizes its three-line clip.
     expect(page).to.match(
-      /<div class="read-more">\s+<div class="[^"]*read-more-body phone:text-\[15px\]\/6[^"]*"\s+data-ocg-remove-broken-images>{{ description\|md_to_html\|safe }}<\/div>\s+<button type="button"\s+class="read-more-toggle not-phone:hidden phone:text-\[15px\]\/6"\s+aria-expanded="false">Read more<\/button>/,
+      /<div class="read-more">\s+<div class="[^"]*read-more-body phone:text-\[15px\]\/6[^"]*"\s+data-ocg-remove-broken-images>{{ description\|md_to_html\|safe }}<\/div>\s+{{ ui::read_more_toggle\(\) -}}/,
     );
   });
 

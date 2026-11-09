@@ -406,32 +406,34 @@ test.describe("user dashboard invitations view — event offers", () => {
 });
 
 test.describe("user dashboard invitations view on phones @mobile", () => {
-  test("claims an offer from its labelled row action and a bottom sheet", async ({ owned, pending1Page }) => {
+  test("claims an offer from its card action and a bottom sheet", async ({ owned, pending1Page }) => {
     // Create the event invitation before claiming it; owned teardown removes it and any enrollment.
     setupEventInvitation(EVENT_INVITATION);
     owned.defer(() => cleanupEventEnrollment(EVENT_INVITATION));
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
-    const offerRow = pending1Page.locator("#dashboard-content tr", { hasText: "Upcoming Virtual Event" });
+    const offerCard = pending1Page.locator("#dashboard-content article", {
+      hasText: "Upcoming Virtual Event",
+    });
 
-    // Verify the column labels return beside their values.
-    await expect(offerRow.getByText("Offer", { exact: true })).toBeVisible();
-    await expect(offerRow.getByText("Expires", { exact: true })).toBeVisible();
+    // Verify the card summarizes the offer and when it expires.
+    await expect(offerCard.getByRole("heading", { name: "Upcoming Virtual Event" })).toBeVisible();
+    await expect(offerCard.getByText("Free RSVP", { exact: true })).toBeVisible();
+    await expect(offerCard).toContainText(/Expires [A-Z][a-z]{2} \d{1,2}, \d{4}/);
 
     // Verify the primary action is one tap away and 44px tall.
-    const claimButton = offerRow.getByRole("button", { name: "Claim offer", exact: true });
+    const claimButton = offerCard.getByRole("button", { name: "Claim offer", exact: true });
     await expect(claimButton).toBeVisible();
     expect((await claimButton.boundingBox()).height).toBeGreaterThanOrEqual(44);
 
-    // Verify the menu keeps only the remaining actions, below its 44px trigger.
-    const trigger = offerRow.getByLabel(/Open offer actions/);
-    await trigger.click();
-    await expect(offerRow.getByRole("menuitem", { name: "Decline offer", exact: true })).toBeVisible();
-    await expect(offerRow.getByRole("menuitem", { name: "Claim offer" })).toHaveCount(0);
-    const triggerBox = await trigger.boundingBox();
-    const dropdownBox = await offerRow.locator(".dropdown").boundingBox();
-    expect(triggerBox.height).toBe(44);
-    expect(dropdownBox.y).toBeGreaterThanOrEqual(triggerBox.y + triggerBox.height);
-    await trigger.click();
+    // Verify Decline sits beside it at 44px, without an actions menu.
+    const declineButton = offerCard.getByRole("button", { name: "Decline", exact: true });
+    await expect(declineButton).toBeVisible();
+    const claimBox = await claimButton.boundingBox();
+    const declineBox = await declineButton.boundingBox();
+    expect(declineBox.height).toBeGreaterThanOrEqual(44);
+    expect(declineBox.y).toBe(claimBox.y);
+    expect(declineBox.x).toBeGreaterThan(claimBox.x + claimBox.width);
+    await expect(offerCard.getByLabel(/Open offer actions/)).toHaveCount(0);
 
     // Open the claim form and verify it rests on the bottom edge, full width.
     await claimButton.click();
@@ -449,7 +451,7 @@ test.describe("user dashboard invitations view on phones @mobile", () => {
       .toBe(viewport.height);
     expect((await sheet.boundingBox()).width).toBe(viewport.width);
 
-    // Close it and verify focus returns to the row action.
+    // Close it and verify focus returns to the card action.
     await dialog.getByRole("button", { name: "Close modal" }).click();
     await expect(dialog).toBeHidden();
     await expect(claimButton).toBeFocused();
@@ -467,47 +469,48 @@ test.describe("user dashboard invitations view on phones @mobile", () => {
 
     // Verify the claimed offer leaves the list.
     await pending1Page.reload();
-    await expect(offerRow).toHaveCount(0);
+    await expect(offerCard).toHaveCount(0);
   });
 
-  test("checkout-started offers continue from the row action", async ({ pending2Page }) => {
+  test("checkout-started offers continue from the card action", async ({ pending2Page }) => {
     // Open the offer whose provider checkout has started.
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending2Page);
-    const offerRow = pending2Page.locator("#dashboard-content tr", {
+    const offerCard = pending2Page.locator("#dashboard-content article", {
       hasText: TEST_TICKETING_EVENTS.paidOffers.name,
     });
 
-    // Verify the row links to checkout and the menu keeps Cancel checkout.
-    await expect(offerRow.getByRole("link", { name: "Continue to checkout" })).toHaveAttribute(
+    // Verify the card links to checkout and the menu keeps Cancel checkout and Decline offer.
+    await expect(offerCard.getByRole("link", { name: "Continue to checkout" })).toHaveAttribute(
       "href",
       "https://example.test/checkout/paid-offer",
     );
-    await openEventOfferActions(offerRow);
-    await expect(offerRow.getByRole("menuitem", { name: "Cancel checkout" })).toBeVisible();
-    await expect(offerRow.getByRole("menuitem", { name: "Continue to checkout" })).toHaveCount(0);
+    await openEventOfferActions(offerCard);
+    await expect(offerCard.getByRole("menuitem", { name: "Cancel checkout" })).toBeVisible();
+    await expect(offerCard.getByRole("menuitem", { name: "Decline offer" })).toBeVisible();
+    await expect(offerCard.getByRole("menuitem", { name: "Continue to checkout" })).toHaveCount(0);
   });
 
   test("a deep link lands below the fixed header", async ({ member1Page }) => {
-    // Use a short viewport, so the row has to scroll into view.
+    // Use a short viewport, so the card has to scroll into view.
     await member1Page.setViewportSize({ height: 400, width: 390 });
 
-    // The seeded offers tie on created_at, so take the first row, the one with room to scroll.
+    // The seeded offers tie on created_at, so take the first card, the one with room to scroll.
     await openUserDashboardPath("/dashboard/user?tab=invitations", member1Page);
-    const firstRow = member1Page.locator('#dashboard-content tr[id^="event-offer-"]').first();
-    const rowId = await firstRow.getAttribute("id");
+    const firstCard = member1Page.locator('#dashboard-content article[id^="event-offer-card-"]').first();
+    const cardId = await firstCard.getAttribute("id");
 
     // Leave the page, so the hash is a real load.
     await member1Page.goto("about:blank");
-    await openUserDashboardPath(`/dashboard/user?tab=invitations#${rowId}`, member1Page);
+    await openUserDashboardPath(`/dashboard/user?tab=invitations#${cardId}`, member1Page);
 
-    // Verify the header does not cover the targeted row.
-    const row = member1Page.locator(`[id="${rowId}"]`);
-    await expect(row).toBeInViewport();
+    // Verify the header does not cover the targeted card.
+    const card = member1Page.locator(`[id="${cardId}"]`);
+    await expect(card).toBeInViewport();
     const headerBox = await member1Page.locator("#dashboard-header").boundingBox();
     const headerBottom = headerBox.y + headerBox.height;
-    const rowTop = (await row.boundingBox()).y;
-    expect(rowTop).toBeGreaterThanOrEqual(headerBottom);
-    expect(rowTop).toBeLessThanOrEqual(headerBottom + 24);
+    const cardTop = (await card.boundingBox()).y;
+    expect(cardTop).toBeGreaterThanOrEqual(headerBottom);
+    expect(cardTop).toBeLessThanOrEqual(headerBottom + 24);
   });
 
   test("the desktop version keeps the table and the modal", async ({ owned, pending1Page }) => {

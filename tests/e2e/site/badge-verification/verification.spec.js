@@ -23,7 +23,10 @@ test.describe("public badge verification page", () => {
       page.getByText("Enter an OCG credential URL or ID, or upload an exported PNG.", { exact: true }),
     ).toBeVisible();
     await expect(page.getByLabel("Credential URL or ID")).toHaveAttribute("autocomplete", "off");
-    await expect(page.locator('image-field[name="png"]')).toHaveAttribute("accepted-formats", "image/png");
+    await expect(page.locator('image-field[name="png"]')).toHaveAttribute(
+      "accepted-formats",
+      ".png,image/png",
+    );
 
     // Submit an empty form and verify the accessible failure state.
     await page.getByRole("button", { name: "Verify badge" }).click();

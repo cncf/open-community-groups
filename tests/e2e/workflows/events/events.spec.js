@@ -322,6 +322,9 @@ test.describe("event management workflows", () => {
     organizerGroupPage,
     owned,
   }) => {
+    // Creating, updating and deleting with uploads takes 21-29s, too close to the default budget under load.
+    test.setTimeout(60_000);
+
     const initialEventName = uniqueName("rich event");
     const updatedEventName = uniqueName("rich event updated");
 

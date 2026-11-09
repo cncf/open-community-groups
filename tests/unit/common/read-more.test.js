@@ -56,7 +56,7 @@ const renderBlock = (content) => {
     "beforeend",
     `<div class="read-more">
       <div class="read-more-body">${content}</div>
-      <button type="button" class="read-more-toggle" aria-expanded="false">Read more</button>
+      <button type="button" class="read-more-toggle" aria-expanded="false"><span data-read-more-label>Read more</span><span class="svg-icon" aria-hidden="true"></span></button>
     </div>`,
   );
   const block = document.body.lastElementChild;
@@ -169,6 +169,42 @@ describe("read-more", () => {
     expect(block.hasAttribute("data-expanded")).to.equal(false);
     expect(toggle.getAttribute("aria-expanded")).to.equal("false");
     expect(toggle.textContent).to.equal("Read more");
+
+    // Verify the label swap keeps the caret.
+    expect(toggle.querySelector(".svg-icon")).to.not.equal(null);
+  });
+
+  it("expands on a tap on clipped text but leaves links and open text alone", async () => {
+    const { block, body, toggle } = renderBlock(`<p>${LONG_TEXT}<a href="#link"><span>Link</span></a></p>`);
+    const link = body.querySelector("a");
+    link.addEventListener("click", (event) => event.preventDefault());
+
+    phoneQuery.setMatches(true);
+    await waitForOverflowing(block);
+
+    // Verify a tap on a link keeps its own action.
+    link.querySelector("span").click();
+    expect(block.hasAttribute("data-expanded")).to.equal(false);
+
+    // Verify a tap on the text opens it.
+    body.querySelector("p").click();
+    expect(block.hasAttribute("data-expanded")).to.equal(true);
+    expect(toggle.textContent).to.equal("Read less");
+
+    // Verify a tap on the open text does not close it.
+    body.querySelector("p").click();
+    expect(block.hasAttribute("data-expanded")).to.equal(true);
+  });
+
+  it("ignores taps on text with nothing clipped", async () => {
+    const { block, body } = renderBlock("<p>Short text.</p>");
+
+    phoneQuery.setMatches(true);
+    await nextFrame();
+    body.querySelector("p").click();
+
+    // Verify a block with nothing hidden has no open state.
+    expect(block.hasAttribute("data-expanded")).to.equal(false);
   });
 
   it("expands when focus lands inside clipped text", async () => {
@@ -315,7 +351,7 @@ describe("read-more", () => {
     block.setAttribute("data-expanded", "");
     block.setAttribute("data-overflowing", "");
     toggle.setAttribute("aria-expanded", "true");
-    toggle.textContent = "Read less";
+    toggle.querySelector("[data-read-more-label]").textContent = "Read less";
     document.dispatchEvent(new CustomEvent("htmx:historyRestore"));
 
     await waitUntil(() => !block.hasAttribute("data-overflowing"));

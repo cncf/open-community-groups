@@ -144,6 +144,18 @@
 {% endmacro main_loading -%}
 {# End main loading -#}
 
+{# Read more toggle -#}
+{# Used by community, group, event and session descriptions; read-more.js sets the label. -#}
+{% macro read_more_toggle() -%}
+  <button type="button"
+          class="read-more-toggle pill-link not-phone:hidden"
+          aria-expanded="false">
+    <span data-read-more-label>Read more</span>
+    <span class="svg-icon size-3 icon-caret-down bg-current" aria-hidden="true"></span>
+  </button>
+{% endmacro read_more_toggle -%}
+{# End read more toggle -#}
+
 {# Small spinner -#}
 {# Used across forms, buttons, filters, and HTMX loading states. -#}
 {% macro spinner(size = "size-6", spinner_type = "1", extra_styles = "", htmx = true) -%}

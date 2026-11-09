@@ -89,7 +89,7 @@ const expectInvitationsViews = async ({ emptyUserPage, owned }) => {
   });
 };
 
-/** Checks the layout of the phone views, whose stacked rows differ from the desktop table. */
+/** Checks the layout of the phone views, whose action cards replace the desktop table. */
 const expectPhoneInvitationsViews = async ({ emptyUserPage, owned }) => {
   // The menu is a closed drawer on phones.
   const options = { menu: false };
@@ -116,36 +116,25 @@ const expectPhoneInvitationsViews = async ({ emptyUserPage, owned }) => {
     // Load the pending invitations and check the layout.
     const content = await openUserDashboardView(emptyUserPage, "tab=invitations", options);
 
-    // Capture the stacked rows with their labels and actions; the dates follow the seed day.
+    // Capture the cards with their summaries and actions; the dates follow the seed day.
     await expectAriaSnapshot(emptyUserPage, content, "invitations-pending-mobile");
   });
 
-  const offerRow = emptyUserPage
+  // The free offer card keeps Claim and Decline as buttons, so it has no actions menu.
+  const offerCard = emptyUserPage
     .locator("#dashboard-content")
-    .getByRole("row")
+    .getByRole("article")
     .filter({ hasText: INVITED_EVENT_NAME });
 
-  await test.step("event offer actions", async () => {
-    // Open the actions menu of the event offer and check the layout.
-    const actions = offerRow.getByRole("group");
-    await actions.getByLabel(`Open offer actions for ${INVITED_EVENT_NAME}`).click();
-    await expect(actions.getByRole("menu")).toBeVisible();
-    await expectPageLayout(emptyUserPage, { regions: [actions.getByRole("menu")] });
-
-    // Capture the menu, which leaves the claim action to the row.
-    await expectAriaSnapshot(emptyUserPage, actions, "invitations-offer-actions-mobile");
-    await actions.getByLabel(`Open offer actions for ${INVITED_EVENT_NAME}`).click();
-  });
-
   await test.step("event offer claim dialog", async () => {
-    // Open the claim form from the row and check the layout.
+    // Open the claim form from the card and check the layout.
     const dialog = emptyUserPage.getByRole("dialog", { name: "Claim offer" });
-    await offerRow.getByRole("button", { name: "Claim offer", exact: true }).click();
+    await offerCard.getByRole("button", { name: "Claim offer", exact: true }).click();
     await expect(dialog).toBeVisible();
     await expectPageLayout(emptyUserPage, { regions: [dialog] });
 
-    // The sheet shares the desktop dialog's tree.
-    await expectAriaSnapshot(emptyUserPage, dialog, "invitations-claim-offer-dialog");
+    // The compact sheet head moves the event name into the offer summary.
+    await expectAriaSnapshot(emptyUserPage, dialog, "invitations-claim-offer-dialog-mobile");
     await dialog.getByRole("button", { name: "Close modal" }).click();
     await expect(dialog).toBeHidden();
   });

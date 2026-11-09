@@ -9,4 +9,5 @@
     - text: Exported PNG
     - button "Exported PNG Tap to upload":
       - paragraph: Tap to upload
+    - paragraph: Upload the PNG downloaded from your badge — not a photo.
     - button "Verify badge"

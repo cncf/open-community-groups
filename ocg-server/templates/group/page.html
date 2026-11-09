@@ -6,6 +6,9 @@
 {% import "macros/social.html" as social -%}
 {% import "macros/cohosts.html" as cohosts -%}
 
+{# Phones drop the stone canvas so the page reads as one white surface. -#}
+{% block shell_classes %}phone:bg-white{% endblock shell_classes %}
+
 {% block head_title -%}
   <title>{{ self.preview_title() |demoji }}</title>
 {% endblock head_title -%}
@@ -54,11 +57,11 @@
   {% let has_map = group.latitude.is_some() && group.longitude.is_some() -%}
 
   {# Breadcrumb -#}
-  <breadcrumb-nav banner-url="{{ group.banner_url.as_ref().unwrap_or(&group.community.banner_url) }}" banner-mobile-url="{{ group.banner_mobile_url.as_ref().unwrap_or(&group.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.community.display_name|json }}, "href": "/{{ group.community.name }}", "icon": "community"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
+  <breadcrumb-nav full-bleed banner-url="{{ group.banner_url.as_ref().unwrap_or(&group.community.banner_url) }}" banner-mobile-url="{{ group.banner_mobile_url.as_ref().unwrap_or(&group.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.community.display_name|json }}, "href": "/{{ group.community.name }}", "icon": "community"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
-  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:pt-3 phone:pb-3">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full phone:rounded-none phone:border-x-0">
+  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:py-0">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full phone:rounded-none phone:border-0">
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10 phone:px-3 phone:pb-4 phone:gap-y-5 phone:pt-3">
         {# Group header -#}
         <div role="region" aria-label="Group summary">
@@ -85,11 +88,11 @@
 
                   {# Group name -#}
                   {% if group.name.len() > 68 -%}
-                    <h1 class="text-[0.95rem]/5 xl:text-[1.45rem]/[1.35] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0 phone:text-lg/6 phone:line-clamp-none phone:break-words">
+                    <h1 class="text-[0.95rem]/5 xl:text-[1.45rem]/[1.35] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0 phone:text-base/[1.3] phone:line-clamp-none phone:break-words">
                       {{ group.name|demoji }}
                     </h1>
                   {% else -%}
-                    <h1 class="text-[1.05rem]/6 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0 phone:text-[1.2rem]/[1.3] phone:line-clamp-none phone:break-words">
+                    <h1 class="text-[1.05rem]/6 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0 phone:text-[1.05rem]/[1.3] phone:line-clamp-none phone:break-words">
                       {{ group.name|demoji }}
                     </h1>
                   {% endif -%}
@@ -305,9 +308,7 @@
     <div class="read-more">
       <div class="text-stone-500 text-sm/6 markdown read-more-body phone:text-[15px]/6 phone:text-stone-600"
            data-ocg-remove-broken-images>{{ description|md_to_html|safe }}</div>
-      <button type="button"
-              class="read-more-toggle not-phone:hidden phone:text-[15px]/6"
-              aria-expanded="false">Read more</button>
+      {{ ui::read_more_toggle() -}}
     </div>
   </div>
 {% endif -%}
@@ -352,23 +353,6 @@
   </div>
 {% endif -%}
 {# End subgroups section -#}
-
-{# Tags -#}
-{% if let Some(tags) = &group.tags -%}
-  {% if !tags.is_empty() -%}
-    <div>
-      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
-        Tags
-      </div>
-      <div class="flex flex-wrap gap-2">
-        {% for tag in tags -%}
-          <span class="inline-block max-w-full truncate px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
-        {% endfor -%}
-      </div>
-    </div>
-  {% endif -%}
-{% endif -%}
-{# End tags -#}
 
 {# Next events section -#}
 {% if !upcoming_events.is_empty() -%}
@@ -498,6 +482,23 @@
   {% endif -%}
 {% endif -%}
 {# End photo gallery -#}
+
+{# Tags -#}
+{% if let Some(tags) = &group.tags -%}
+  {% if !tags.is_empty() -%}
+    <div>
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
+        Tags
+      </div>
+      <div class="flex flex-wrap gap-2">
+        {% for tag in tags -%}
+          <span class="inline-block max-w-full truncate px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
+        {% endfor -%}
+      </div>
+    </div>
+  {% endif -%}
+{% endif -%}
+{# End tags -#}
 
 </div>
 </div>
