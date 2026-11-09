@@ -164,7 +164,7 @@ test.describe("site header", () => {
   });
 
   test("desktop version mode is toggled from the mobile user menu @mobile", async ({ page }) => {
-    // Load a public page with a query string and fragment the reload must preserve.
+    // Load a public page with a query string the reload must keep and a fragment it drops.
     await navigateToPath(page, "/explore?entity=events#main-content");
     const initialUrl = page.url();
     expect(initialUrl).toContain("?entity=events#main-content");
@@ -188,8 +188,8 @@ test.describe("site header", () => {
     // Enable the desktop version and wait for the reload it triggers.
     await Promise.all([page.waitForEvent("load"), desktopVersionItem.click()]);
 
-    // Verify the reloaded document is in desktop mode at the same URL, fragment included.
-    expect(page.url()).toBe(initialUrl);
+    // Verify the reloaded document is in desktop mode at the same URL without the fragment.
+    expect(page.url()).toBe(initialUrl.replace("#main-content", ""));
     await expect
       .poll(() => page.evaluate(() => document.documentElement.dataset.viewportMode))
       .toBe("desktop");

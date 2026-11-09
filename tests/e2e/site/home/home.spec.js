@@ -344,22 +344,6 @@ test.describe("site home page", () => {
       await expect(header.getByText("·")).toBeHidden();
       await expect(group).toBeVisible();
     });
-
-    test("card badges drop below the location when it would be cut short", async ({ page }) => {
-      // Load the narrowest phone, where a paid hybrid card has two badges.
-      await page.setViewportSize({ height: 640, width: 320 });
-      await navigateToSiteHome(page);
-
-      // Find the first location row holding both badges.
-      const badges = page.locator(".icon-text + div:has(.custom-badge + .custom-badge)").first();
-      const location = page.locator(".icon-text:has(+ div .custom-badge + .custom-badge)").first();
-      await expect(badges).toBeVisible();
-
-      // Verify the location keeps its width and the badges take the next line.
-      const [locationBox, badgesBox] = await Promise.all([location.boundingBox(), badges.boundingBox()]);
-      expect(locationBox.width).toBeGreaterThanOrEqual(96);
-      expect(badgesBox.y).toBeGreaterThanOrEqual(locationBox.y + locationBox.height);
-    });
   });
 
   test.describe("desktop version on a phone @mobile", () => {

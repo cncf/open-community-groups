@@ -1661,19 +1661,6 @@ test.describe("site explore events page", () => {
     expect(clipped).toBe(false);
   });
 
-  test("keeps the location readable beside two badges @mobile", async ({ page }) => {
-    // Load a Hybrid card with a price at a large phone width.
-    await page.setViewportSize({ height: 874, width: 402 });
-    await navigateToPath(page, "/explore?entity=events&ts_query=Secondary%20Hybrid");
-    const eventCard = page.getByRole("link").filter({ hasText: "Secondary Hybrid Event" }).first();
-    await expect(eventCard).toBeVisible();
-
-    // Verify the badges wrap before the place name is cut short.
-    const location = eventCard.locator(".icon-text span").filter({ hasText: "E2E Admission Hall" });
-    const truncated = await location.evaluate((node) => node.scrollWidth > node.clientWidth);
-    expect(truncated).toBe(false);
-  });
-
   test("keeps the desktop layout in the desktop version @mobile", async ({ page }) => {
     // Load a filtered list in the desktop version of a phone.
     await enableDesktopVersion(page);

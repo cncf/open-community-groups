@@ -427,32 +427,35 @@ test.describe("community home page", () => {
       await expect(description).toContainText(TEST_COMMUNITY_DESCRIPTION);
       await expect(toggle).toBeHidden();
 
-      // Grow the description past six lines.
+      // Grow the description past seven lines.
       await description.evaluate((element) => {
         element.firstElementChild.textContent = "Long community description. ".repeat(40);
       });
 
-      // Verify it clips at six lines behind the toggle.
+      // Verify it clips at seven lines behind the toggle, whose hit area reaches the touch minimum.
       await expect(toggle).toBeVisible();
       await expect(toggle).toHaveAttribute("aria-expanded", "false");
-      expect(await description.evaluate((element) => element.clientHeight)).toBe(144);
-      expect((await toggle.boundingBox()).height).toBeGreaterThanOrEqual(44);
+      expect(await description.evaluate((element) => element.clientHeight)).toBe(168);
+      const hitAreaHeight = await toggle.evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element, "::after").height),
+      );
+      expect(hitAreaHeight).toBeGreaterThanOrEqual(44);
 
       // Expand it, then collapse it again.
       await toggle.click();
       const collapse = page.getByRole("button", { name: "Read less" });
       await expect(collapse).toHaveAttribute("aria-expanded", "true");
-      expect(await description.evaluate((element) => element.clientHeight)).toBeGreaterThan(144);
+      expect(await description.evaluate((element) => element.clientHeight)).toBeGreaterThan(168);
       await collapse.click();
       await expect(toggle).toHaveAttribute("aria-expanded", "false");
-      expect(await description.evaluate((element) => element.clientHeight)).toBe(144);
+      expect(await description.evaluate((element) => element.clientHeight)).toBe(168);
     });
 
     test("read more fades the clipped edge and drops a leading margin", async ({ page }) => {
       const description = page.locator(".community-description");
       const toggle = page.getByRole("button", { name: "Read more" });
 
-      // Lead the description with a heading and grow it past six lines.
+      // Lead the description with a heading and grow it past seven lines.
       await description.evaluate((element) => {
         element.innerHTML = `<h2>Heading</h2><p>${"Long community description. ".repeat(40)}</p>`;
       });

@@ -587,6 +587,8 @@ test.describe("event page - phone layout @mobile", () => {
     const panel = dialog.locator(".sheet-panel");
     const close = dialog.locator(".sheet-head button");
 
+    // Wait for the sheet to open, as HTMX-loaded modals open after the swap.
+    await expect(panel).toBeVisible();
     await expect(panel).toHaveCSS("position", "fixed");
     await expect
       .poll(async () => {
