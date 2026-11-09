@@ -297,9 +297,16 @@ describe("dashboard user invitations list template", () => {
     // The modal card becomes the sheet, with a grabber on its title row and a scrolling body.
     expect(template).to.include('<div class="modal-panel p-4 max-w-3xl phone:p-0">');
     expect(template).to.include('<div class="modal-card sheet-panel rounded-lg">');
-    expect(template).to.include('<div class="sheet-grab flex items-start justify-between');
+    expect(template).to.include('<div class="sheet-head sheet-grab flex items-start justify-between');
     expect(template).to.include('class="modal-body sheet-body space-y-6 p-4 md:p-6 phone:p-3"');
-    expect(template).to.include("phone:line-clamp-2 phone:wrap-anywhere");
+
+    // The compact phone head drops the event name, so the offer summary leads with it instead.
+    expect(template).to.include(
+      '<p class="mt-1 text-sm text-stone-600 phone:hidden">{{ invitation.event_name }}</p>',
+    );
+    expect(template).to.include(
+      '<p class="mb-3 line-clamp-2 border-b border-stone-200 pb-3 text-sm font-semibold text-stone-900 wrap-anywhere not-phone:hidden"> {{ invitation.event_name }} </p>',
+    );
   });
 
   it("collects registration answers in the offer claim modal", async () => {

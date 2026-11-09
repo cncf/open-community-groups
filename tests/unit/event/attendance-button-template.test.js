@@ -234,6 +234,26 @@ describe("event attendance button template", () => {
       expect(template.match(/sheet-grab/g)).to.have.length(3);
     });
 
+    it("moves each sheet subtitle from the compact head into the body on phones", async () => {
+      // Load the three sheet heads and their bodies.
+      const template = normalizeWhitespace(await loadTemplate());
+
+      // Each title row takes the shared compact head and hides its subtitle there.
+      expect(template.match(/class="sheet-head sheet-grab flex /g)).to.have.length(3);
+      expect(template.match(/class="text-xl font-semibold text-stone-900 phone:truncate"/g)).to.have.length(3);
+      expect(template.match(/class="mt-1 text-sm text-stone-600 phone:hidden"/g)).to.have.length(3);
+
+      // The bodies repeat the copy for phones only, reusing the ticket copy and its tax note.
+      expect(template.match(/text-sm text-stone-600 not-phone:hidden/g)).to.have.length(3);
+      expect(template.match(/\{\{ ticket_modal_description \}\}/g)).to.have.length(2);
+      expect(template.match(/Tax is added at checkout\./g)).to.have.length(2);
+
+      // The refund dialog is already described by the head copy, so its phone copy stays visual.
+      expect(template).to.include(
+        '<p class="mb-4 text-sm text-stone-600 not-phone:hidden" aria-hidden="true">',
+      );
+    });
+
     it("keeps the sheet panel wrappers from blocking scrim taps", async () => {
       // A fixed sheet leaves the wrapper empty, so its padding would sit over the scrim.
       const template = await loadTemplate();

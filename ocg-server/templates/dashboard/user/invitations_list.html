@@ -631,11 +631,11 @@
            class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
       <div class="modal-panel p-4 max-w-3xl phone:p-0">
         <div class="modal-card sheet-panel rounded-lg">
-          <div class="sheet-grab flex items-start justify-between border-b border-stone-200 p-4 md:p-5 phone:gap-3 phone:pt-3 phone:pe-1.5 phone:pb-3 phone:ps-3">
+          <div class="sheet-head sheet-grab flex items-start justify-between border-b border-stone-200 p-4 md:p-5 phone:py-0">
             <div class="phone:min-w-0">
               <h3 id="event-offer-title-{{ invitation.admission_offer_id }}"
-                  class="text-xl font-semibold text-stone-900 phone:text-lg">Claim offer</h3>
-              <p class="mt-1 text-sm text-stone-600 phone:line-clamp-2 phone:wrap-anywhere">{{ invitation.event_name }}</p>
+                  class="text-xl font-semibold text-stone-900 phone:truncate">Claim offer</h3>
+              <p class="mt-1 text-sm text-stone-600 phone:hidden">{{ invitation.event_name }}</p>
             </div>
             <button data-user-event-offer-close
                     type="button"
@@ -657,8 +657,11 @@
             <input type="hidden"
                    name="event_ticket_type_id"
                    value="{{ invitation.event_ticket_type_id }}">
-
             <div class="rounded-xl border border-stone-200 bg-stone-50 p-4">
+              {# The compact phone head drops the event name, so the offer summary leads with it. -#}
+              <p class="mb-3 line-clamp-2 border-b border-stone-200 pb-3 text-sm font-semibold text-stone-900 wrap-anywhere not-phone:hidden">
+                {{ invitation.event_name }}
+              </p>
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div class="text-sm font-semibold text-stone-900">

@@ -5,8 +5,8 @@ import { navigateToPath, waitForHtmxSettle } from "../../utils.js";
 
 // Docsify's anchor scroll takes 500ms, and no event marks its end.
 const ANCHOR_SCROLL_END_MS = 700;
-// Header 64, strip 44 and a gap of 8 (`static/js/site/docs/interactions.js`).
-const PHONE_ANCHOR_OFFSET_PX = 116;
+// Header 64 and a gap of 8 (`static/js/site/docs/interactions.js`).
+const PHONE_ANCHOR_OFFSET_PX = 72;
 
 test.describe("site docs page", () => {
   test("loads the docs shell and documentation navigation", async ({ page }) => {
@@ -246,8 +246,8 @@ test.describe("site docs page", () => {
     await expect(troubleshootingLink).toBeVisible();
     await expect(troubleshootingLink).toHaveAttribute("href", "#/support/troubleshooting");
 
-    // Dismiss the sidebar through the strip, the root's only part left above the sheet.
-    await docsRoot.locator("[data-docs-strip]").click({ position: { x: 16, y: 22 } });
+    // Dismiss the sidebar through the bar, the root's only part left above the scrim.
+    await docsRoot.locator("[data-docs-bar]").click({ position: { x: 16, y: 22 } });
     await expect(page.locator("body")).not.toHaveClass(/\bclose\b/);
     await expect(docsRoot).not.toHaveClass(/\bclose\b/);
 
@@ -293,20 +293,22 @@ test.describe("site docs page", () => {
     await navigateToPath(page, "/docs#/guides/public-site");
     const { contentsButton, sheet } = await openContents(page);
 
-    // Verify the sheet rises from the bottom edge and stops under the strip.
+    // Verify the sheet rises from the bar and stops under the header.
     const viewport = page.viewportSize();
     const sheetBox = await sheet.boundingBox();
-    const stripBox = await page.locator("[data-docs-strip]").boundingBox();
+    const barBox = await page.locator("[data-docs-bar]").boundingBox();
+    const headerBox = await page.locator("#header").boundingBox();
     expect(sheetBox.x).toBe(0);
     expect(sheetBox.width).toBe(viewport.width);
-    expect(sheetBox.y + sheetBox.height).toBeCloseTo(viewport.height, 0);
-    expect(sheetBox.y).toBeGreaterThanOrEqual(stripBox.y + stripBox.height - 1);
+    expect(barBox.y + barBox.height).toBeCloseTo(viewport.height, 0);
+    expect(sheetBox.y + sheetBox.height).toBeCloseTo(barBox.y, 0);
+    expect(sheetBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
 
-    // Verify the toggle stays on the strip, above the sheet.
+    // Verify the toggle stays on the bar's end, below the sheet.
     const toggleBox = await contentsButton.boundingBox();
     expect(toggleBox.height).toBe(44);
-    expect(toggleBox.y).toBeLessThan(sheetBox.y);
-    expect(toggleBox.x + toggleBox.width).toBeCloseTo(viewport.width, 0);
+    expect(toggleBox.y).toBeGreaterThanOrEqual(sheetBox.y + sheetBox.height);
+    expect(toggleBox.x + toggleBox.width).toBeCloseTo(viewport.width - 12, 0);
 
     // Verify sub-rows sit past their parent and reach 44px.
     const parentRow = sheet.getByRole("link", { name: "Public Site", exact: true });
@@ -419,7 +421,7 @@ test.describe("site docs page", () => {
     await expect(content).toHaveAttribute("inert", "");
 
     // Verify a tap outside the sheet undoes both and returns focus to the toggle.
-    await docsRoot.locator("[data-docs-strip]").click({ position: { x: 16, y: 22 } });
+    await docsRoot.locator("[data-docs-bar]").click({ position: { x: 16, y: 22 } });
     await expect(sheet).toBeHidden();
     await expect(contentsButton).toHaveAttribute("aria-expanded", "false");
     await expect(content).not.toHaveAttribute("inert");
@@ -524,20 +526,19 @@ test.describe("site docs page", () => {
     });
   }
 
-  test("anchors land below the strip @mobile", async ({ page }) => {
+  test("anchors land below the header @mobile", async ({ page }) => {
     // Follow a sub-row on a guide once its screenshots stop moving the page.
     await navigateToPath(page, "/docs#/guides/public-site");
     const { sheet } = await openContents(page);
     await page.waitForFunction(() => [...document.images].every((image) => image.complete));
     await sheet.getByRole("link", { name: "Join Groups", exact: true }).click();
 
-    // Verify the heading lands at the offset, clear of the pinned strip.
+    // Verify the heading lands at the offset, clear of the sticky header.
     const heading = page.getByRole("heading", { name: "Join Groups", level: 2 });
-    const strip = page.locator("[data-docs-strip]");
     await expect(page).toHaveURL(/id=join-groups$/);
     await expect.poll(async () => Math.round((await heading.boundingBox()).y)).toBe(PHONE_ANCHOR_OFFSET_PX);
-    const stripBox = await strip.boundingBox();
-    expect((await heading.boundingBox()).y).toBeGreaterThanOrEqual(stripBox.y + stripBox.height);
+    const headerBox = await page.locator("#header").boundingBox();
+    expect((await heading.boundingBox()).y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
 
     // Verify a deep link clears it too; images loading later may push the heading further down.
     await page.goto("about:blank");
@@ -545,20 +546,24 @@ test.describe("site docs page", () => {
     await expect(heading).toBeVisible({ timeout: 15000 });
     await expect
       .poll(async () => (await heading.boundingBox()).y)
-      .toBeGreaterThanOrEqual(stripBox.y + stripBox.height);
+      .toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
   });
 
-  test("the strip title and Contents stay level while the strip is pinned @mobile", async ({ page }) => {
-    // Pin the strip by reading down a guide.
+  test("the bar names the page and keeps Contents level while reading @mobile", async ({ page }) => {
+    // Read down a guide.
     await navigateToPath(page, "/docs#/guides/public-site");
     const toggle = page.locator(".ocg-docs-root").getByRole("button", { name: "Contents" });
     await expect(toggle).toBeVisible();
     await page.evaluate(() => window.scrollTo({ behavior: "instant", top: 600 }));
 
-    // Verify the title and the fixed toggle share a centre line.
-    const title = page.locator("[data-docs-strip] .section-strip-title");
-    const [titleBox, toggleBox] = await Promise.all([title.boundingBox(), toggle.boundingBox()]);
-    expect(titleBox.y + titleBox.height / 2).toBe(toggleBox.y + toggleBox.height / 2);
+    // Verify the bar names the section and page.
+    await expect(page.locator("[data-docs-bar-section]")).toHaveText("Guides");
+    await expect(page.locator("[data-docs-bar-page]")).toHaveText("Public Site");
+
+    // Verify the labels and the fixed toggle share a centre line.
+    const labels = page.locator("[data-docs-bar] > div");
+    const [labelsBox, toggleBox] = await Promise.all([labels.boundingBox(), toggle.boundingBox()]);
+    expect(labelsBox.y + labelsBox.height / 2).toBe(toggleBox.y + toggleBox.height / 2);
   });
 
   test("Contents opens on the current page on a short screen @mobile", async ({ page }) => {
@@ -610,9 +615,9 @@ test.describe("site docs page", () => {
     await enableDesktopVersion(page);
     await navigateToPath(page, "/docs");
 
-    // Verify the sidebar stays beside the content, with no strip or toggle.
+    // Verify the sidebar stays beside the content, with no bar or toggle.
     await expect(page.locator(".ocg-docs-root .sidebar-nav")).toBeVisible({ timeout: 15000 });
-    await expect(page.locator("[data-docs-strip]")).toBeHidden();
+    await expect(page.locator("[data-docs-bar]")).toBeHidden();
     await expect(page.locator(".ocg-docs-root .sidebar-toggle")).toBeHidden();
   });
 });

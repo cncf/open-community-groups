@@ -1673,13 +1673,13 @@ test.describe("event action bar @mobile", () => {
       TEST_PAYMENT_EVENT_SLUGS.refunds,
     );
 
-    // Verify the disabled refund button stays while its title shows beside it.
+    // Verify the disabled refund button stays while a short reason shows beside it.
     const refund = getRefundButton(member1Page);
     await expect(refund).toBeVisible();
     await expect(refund).toBeDisabled();
     await expect(refund).toContainText("Refund requested");
     const reason = member1Page.locator('[data-attendance-role="bar-reason"]');
-    await expect(reason).toHaveText("Your refund request is waiting for organizer review.");
+    await expect(reason).toHaveText("Awaiting organizer review.");
     await expect(reason).toBeVisible();
     await expectBarAtBottom(member1Page);
   });

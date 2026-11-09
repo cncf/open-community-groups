@@ -9,6 +9,8 @@ import {
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 const PAST_TITLE = "You cannot change attendance because the event has already started.";
+const PENDING_APPROVAL_REASON = "Awaiting organizer approval.";
+const REFUND_PENDING_BAR_REASON = "Awaiting organizer review.";
 const REFUND_PENDING_TITLE = "Your refund request is waiting for organizer review.";
 const SOLD_OUT_TITLE = "This event is sold out.";
 
@@ -91,13 +93,13 @@ describe("attendance status renderer", () => {
       expect(container.hasAttribute("data-phone-bar")).to.equal(false);
     });
 
-    it("falls back to the control's label when a disabled control has no title", () => {
-      // Render a member whose latest ticket offer expired.
+    it("writes no reason for a disabled control without a title", () => {
+      // A member's expired ticket offer keeps a disabled button whose label already explains it.
       const container = renderContainer();
       renderAttendanceCheckResponse(container, enrollmentEvent({ status: "offer-expired" }));
 
-      expect(container.hasAttribute("data-bar-reason")).to.equal(true);
-      expect(getReason(container)).to.equal("Ticket offer expired");
+      expect(container.hasAttribute("data-bar-reason")).to.equal(false);
+      expect(getReason(container)).to.equal("");
     });
 
     it("writes the disabled control's title as the reason", () => {
@@ -115,6 +117,27 @@ describe("attendance status renderer", () => {
       renderAttendanceCheckResponse(container, enrollmentEvent({ status: "guest" }));
       container.dataset.remainingCapacity = "2";
       renderAttendanceCheckResponse(container, enrollmentEvent({ status: "guest" }));
+
+      expect(container.hasAttribute("data-bar-reason")).to.equal(false);
+      expect(getReason(container)).to.equal("");
+    });
+
+    it("shows the pending-approval reason beside the enabled request control", () => {
+      // An invitation request awaiting review keeps an enabled Cancel control.
+      const container = renderContainer();
+      renderAttendanceCheckResponse(container, enrollmentEvent({ status: "pending-approval" }));
+
+      const control = container.querySelector('[data-attendance-role="leave-btn"]');
+      expect(control.disabled).to.equal(false);
+      expect(container.hasAttribute("data-bar-reason")).to.equal(true);
+      expect(getReason(container)).to.equal(PENDING_APPROVAL_REASON);
+    });
+
+    it("clears the pending-approval reason once the request becomes attendance", () => {
+      // The request is approved, so the reused control now cancels attendance with no reason.
+      const container = renderContainer();
+      renderAttendanceCheckResponse(container, enrollmentEvent({ status: "pending-approval" }));
+      renderAttendanceCheckResponse(container, enrollmentEvent({ status: "attendee" }));
 
       expect(container.hasAttribute("data-bar-reason")).to.equal(false);
       expect(getReason(container)).to.equal("");
@@ -144,7 +167,11 @@ describe("attendance status renderer", () => {
       );
 
       expect(container.hasAttribute("data-phone-bar")).to.equal(false);
-      expect(getReason(container)).to.equal(REFUND_PENDING_TITLE);
+      expect(getReason(container)).to.equal(REFUND_PENDING_BAR_REASON);
+      // The long copy stays as the desktop tooltip; only the phone bar is shortened.
+      expect(container.querySelector('[data-attendance-role="refund-btn"]').title).to.equal(
+        REFUND_PENDING_TITLE,
+      );
     });
 
     it("removes the hidden state for an enabled action", () => {
@@ -267,7 +294,7 @@ describe("attendance status renderer", () => {
       listeners[0].listener({ matches: true });
 
       expect(container.hasAttribute("data-phone-bar")).to.equal(false);
-      expect(getReason(container)).to.equal(REFUND_PENDING_TITLE);
+      expect(getReason(container)).to.equal(REFUND_PENDING_BAR_REASON);
     });
 
     it("writes nothing when the query turns false", async () => {

@@ -490,7 +490,7 @@ describe("site docs shell", () => {
         expect(window.$docsify.topMargin).to.equal(0);
 
         setMatches(true);
-        expect(window.$docsify.topMargin).to.equal(116);
+        expect(window.$docsify.topMargin).to.equal(72);
         setMatches(false);
         expect(window.$docsify.topMargin).to.equal(0);
         expect(reloads).to.equal(0);
@@ -526,7 +526,7 @@ describe("site docs shell", () => {
         releaseStyles();
         await waitForMicrotask();
         await waitForAnimationFrames(3);
-        expect(window.$docsify.topMargin).to.equal(116);
+        expect(window.$docsify.topMargin).to.equal(72);
         expect(reloads).to.equal(0);
       });
 

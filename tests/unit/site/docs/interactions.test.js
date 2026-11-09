@@ -147,8 +147,8 @@ describe("docs shell interactions", () => {
     ]);
   });
 
-  it("jumps below the header and strip on phones", () => {
-    // Phone anchors clear the 64px header and the 44px strip.
+  it("jumps below the header on phones", () => {
+    // Phone anchors clear the 64px header and a gap of 8.
     stubPhoneQuery(true);
     const target = document.createElement("section");
     target.getBoundingClientRect = () => ({ top: 125 });
@@ -162,7 +162,7 @@ describe("docs shell interactions", () => {
     expect(scrollToMock.calls).to.deep.equal([
       {
         behavior: "auto",
-        top: 84,
+        top: 128,
       },
     ]);
   });
@@ -268,13 +268,22 @@ describe("docs shell interactions", () => {
           <div class="sidebar-nav">
             <ul>
               <li><p><a href="#/">Overview</a></p></li>
-              <li class="active">
-                <a href="#/guide"> Guide </a>
-                <ul class="app-sub-sidebar">
-                  <li class="active"><a href="#/guide?id=section">Section</a></li>
+              <li>
+                <p>Guides</p>
+                <ul>
+                  <li class="active">
+                    <a href="#/guide"> Guide </a>
+                    <ul class="app-sub-sidebar">
+                      <li class="active"><a href="#/guide?id=section">Section</a></li>
+                    </ul>
+                  </li>
                 </ul>
               </li>
             </ul>
+          </div>
+          <div data-docs-bar>
+            <p data-docs-bar-section>Documentation</p>
+            <p data-docs-bar-page></p>
           </div>
         </div>
       `;
@@ -321,12 +330,44 @@ describe("docs shell interactions", () => {
       expect(document.title).to.equal("- Open Community Groups");
     });
 
-    it("does nothing under a false query", () => {
+    it("keeps Docsify's title under a false query but still names the bar", () => {
       stubPhoneQuery(false);
 
       syncPhoneDocsTitle(docsRoot);
 
       expect(document.title).to.equal("- Open Community Groups");
+      expect(docsRoot.querySelector("[data-docs-bar-page]").textContent).to.equal("Guide");
+    });
+
+    it("names the section and page on the bar", () => {
+      stubPhoneQuery(true);
+
+      syncPhoneDocsTitle(docsRoot);
+
+      expect(docsRoot.querySelector("[data-docs-bar-section]").textContent).to.equal("Guides");
+      expect(docsRoot.querySelector("[data-docs-bar-page]").textContent).to.equal("Guide");
+    });
+
+    it("falls back to Documentation for a page outside any section", () => {
+      stubPhoneQuery(true);
+      docsRoot.querySelectorAll(".active").forEach((item) => item.classList.remove("active"));
+      docsRoot.querySelector("p").classList.add("active");
+
+      syncPhoneDocsTitle(docsRoot);
+
+      expect(docsRoot.querySelector("[data-docs-bar-section]").textContent).to.equal("Documentation");
+      expect(docsRoot.querySelector("[data-docs-bar-page]").textContent).to.equal("Overview");
+    });
+
+    it("clears the bar page when no page link is active", () => {
+      stubPhoneQuery(true);
+      syncPhoneDocsTitle(docsRoot);
+      docsRoot.querySelectorAll(".active").forEach((item) => item.classList.remove("active"));
+
+      syncPhoneDocsTitle(docsRoot);
+
+      expect(docsRoot.querySelector("[data-docs-bar-section]").textContent).to.equal("Documentation");
+      expect(docsRoot.querySelector("[data-docs-bar-page]").textContent).to.equal("");
     });
   });
 
@@ -403,7 +444,7 @@ describe("docs shell interactions", () => {
       // Start on a phone.
       const { setMatches } = stubPhoneQuery(true);
       const release = setupDocsPhoneShell(docsRoot);
-      expect(window.$docsify.topMargin).to.equal(116);
+      expect(window.$docsify.topMargin).to.equal(72);
 
       // Verify the current object is written, because Docsify reassigns it.
       window.$docsify = {};
@@ -411,7 +452,7 @@ describe("docs shell interactions", () => {
       expect(window.$docsify.topMargin).to.equal(0);
 
       setMatches(true);
-      expect(window.$docsify.topMargin).to.equal(116);
+      expect(window.$docsify.topMargin).to.equal(72);
       release();
     });
 

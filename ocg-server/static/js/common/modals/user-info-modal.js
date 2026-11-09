@@ -398,10 +398,10 @@ export class UserInfoModal extends LitWrapper {
             >
               <h3
                 id="user-info-modal-title"
-                class="min-w-0 flex-1 text-lg font-semibold leading-tight text-stone-900 sm:text-2xl phone:sr-only"
+                class="min-w-0 flex-1 truncate text-lg font-semibold leading-tight text-stone-900 sm:text-2xl"
               >
-                <span class="sm:hidden">User</span>
-                <span class="hidden sm:inline">User Information</span>
+                <span class="sm:hidden phone:hidden">User</span>
+                <span class="hidden sm:inline phone:inline">User Information</span>
               </h3>
               <div
                 class="flex shrink-0 items-center gap-3 sm:gap-5 sm:pe-2 phone:ms-auto phone:gap-2 phone:pe-0"

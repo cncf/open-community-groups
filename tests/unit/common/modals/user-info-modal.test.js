@@ -93,9 +93,10 @@ describe("user-info-modal", () => {
       expect(panel?.querySelector(".sheet-head.sheet-grab #user-info-modal-title")).to.not.equal(null);
       expect(panel?.querySelector(".modal-body")?.classList.contains("sheet-body")).to.equal(true);
 
-      // The title leaves the head on phones and still names the dialog.
+      // The title stays in the head on phones, in full, and names the dialog.
       const title = element.querySelector("#user-info-modal-title");
-      expect(title?.classList.contains("phone:sr-only")).to.equal(true);
+      expect(title?.classList.contains("phone:sr-only")).to.equal(false);
+      expect(title?.querySelector(".phone\\:inline")?.textContent).to.equal("User Information");
       expect(element.querySelector('[role="dialog"]')?.getAttribute("aria-labelledby")).to.equal(title?.id);
 
       // Phone sizes sit on the row, so logo-image's attributes stay as on desktop.

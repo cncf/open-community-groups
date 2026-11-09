@@ -115,11 +115,11 @@
            class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
       <div class="modal-panel p-4 max-w-6xl phone:p-0">
         <div class="modal-card sheet-panel rounded-lg">
-          <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t sheet-grab phone:ps-3 phone:pe-1.5 phone:pt-4 phone:pb-2">
-            <div>
+          <div class="sheet-head sheet-grab flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t phone:py-0">
+            <div class="phone:min-w-0">
               <h3 id="registration-questions-title-{{ attendance_instance }}"
-                  class="text-xl font-semibold text-stone-900 phone:text-lg">Registration questions</h3>
-              <p class="mt-1 text-sm text-stone-600">Answer these questions to complete your registration.</p>
+                  class="text-xl font-semibold text-stone-900 phone:truncate">Registration questions</h3>
+              <p class="mt-1 text-sm text-stone-600 phone:hidden">Answer these questions to complete your registration.</p>
             </div>
             <button data-attendance-role="registration-modal-close"
                     type="button"
@@ -130,6 +130,7 @@
           </div>
           <form data-attendance-role="registration-form"
                 class="modal-body sheet-body p-4 md:p-6 space-y-7 phone:p-3">
+            <p class="text-sm text-stone-600 not-phone:hidden">Answer these questions to complete your registration.</p>
             {% let empty_registration_answers = crate::types::questionnaire::QuestionnaireAnswers::default() -%}
             {{ question_answers::fields(questions = event.registration_questions,
               answers = Some(empty_registration_answers) ,
@@ -158,6 +159,13 @@
   {# End registration questions modal -#}
 
   {# Ticket modal -#}
+  {% let ticket_modal_description -%}
+    {%- if event.attendee_approval_required -%}
+      Choose the ticket tier you would like the organizers to review.
+    {%- else -%}
+      Choose a ticket tier to continue.
+    {%- endif -%}
+  {%- endlet %}
   <div id="ticket-modal-{{ attendance_instance }}"
        data-attendance-role="ticket-modal"
        role="dialog"
@@ -170,22 +178,18 @@
          class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
     <div class="modal-panel p-4 max-w-3xl phone:p-0">
       <div class="modal-card sheet-panel rounded-lg">
-        <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t sheet-grab phone:items-start phone:ps-3 phone:pe-1.5 phone:pt-4 phone:pb-2">
-          <div>
+        <div class="sheet-head sheet-grab flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t phone:py-0">
+          <div class="phone:min-w-0">
             <h3 id="ticket-modal-title-{{ attendance_instance }}"
-                class="text-xl font-semibold text-stone-900 phone:text-lg">
+                class="text-xl font-semibold text-stone-900 phone:truncate">
               {% if event.attendee_approval_required -%}
                 Request a ticket
               {% else -%}
                 Get a ticket
               {% endif -%}
             </h3>
-            <p class="mt-1 text-sm text-stone-600">
-              {% if event.attendee_approval_required -%}
-                Choose the ticket tier you would like the organizers to review.
-              {% else -%}
-                Choose a ticket tier to continue.
-              {% endif -%}
+            <p class="mt-1 text-sm text-stone-600 phone:hidden">
+              {{ ticket_modal_description }}
               {% if event.shows_additional_ticket_tax() -%}
                 <span class="mt-1 block font-medium text-stone-700">Tax is added at checkout.</span>
               {% endif -%}
@@ -201,6 +205,12 @@
         </div>
 
         <div class="modal-body sheet-body p-4 md:p-6 space-y-6 phone:p-3">
+          <p class="text-sm text-stone-600 not-phone:hidden">
+            {{ ticket_modal_description }}
+            {% if event.shows_additional_ticket_tax() -%}
+              <span class="mt-1 block font-medium text-stone-700">Tax is added at checkout.</span>
+            {% endif -%}
+          </p>
           {% let visible_ticket_types = event.visible_ticket_types() -%}
           <form data-attendance-role="checkout-form"
                 data-attend-url="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
@@ -357,12 +367,12 @@
          class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
     <div class="modal-panel p-4 max-w-2xl phone:p-0">
       <div class="modal-card sheet-panel rounded-lg">
-        <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t sheet-grab phone:ps-3 phone:pe-1.5 phone:pt-4 phone:pb-2">
-          <div>
+        <div class="sheet-head sheet-grab flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t phone:py-0">
+          <div class="phone:min-w-0">
             <h3 id="refund-modal-title-{{ attendance_instance }}"
-                class="text-xl font-semibold text-stone-900 phone:text-lg">Request a refund</h3>
+                class="text-xl font-semibold text-stone-900 phone:truncate">Request a refund</h3>
             <p id="refund-modal-description-{{ attendance_instance }}"
-               class="mt-1 text-sm text-stone-600">Add a reason to help the organizers review your request.</p>
+               class="mt-1 text-sm text-stone-600 phone:hidden">Add a reason to help the organizers review your request.</p>
           </div>
           <button data-attendance-role="refund-modal-close"
                   type="button"
@@ -378,6 +388,8 @@
               hx-disabled-elt="find button[type='submit']"
               class="phone:flex phone:min-h-0 phone:flex-col">
           <div class="modal-body sheet-body p-4 md:px-6 md:py-5 phone:p-3">
+            {# The dialog's aria-describedby already reads the head copy, so this phone copy stays visual. -#}
+            <p class="mb-4 text-sm text-stone-600 not-phone:hidden" aria-hidden="true">Add a reason to help the organizers review your request.</p>
             <label for="refund-reason-{{ attendance_instance }}" class="form-label">Reason (optional)</label>
             <textarea id="refund-reason-{{ attendance_instance }}"
                       data-attendance-role="refund-reason-input"

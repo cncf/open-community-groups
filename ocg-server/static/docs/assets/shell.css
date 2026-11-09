@@ -174,32 +174,27 @@
   }
 }
 
-/* Phones: same query as the phone variant. The strip gate leaves older cached HTML untouched. */
+/* Phones: same query as the phone variant. The bar gate leaves older cached HTML untouched. */
 @media screen and (width < 48rem) and (not (pointer: fine)) {
-  html:has(body.close .ocg-docs-root > [data-docs-strip]) {
+  html:has(body.close .ocg-docs-root > [data-docs-bar]) {
     overflow: hidden;
   }
 
   /* Scoped Docsify body rules set overflow here, unlayered, so the phone token alone loses. */
-  .ocg-docs-root:has(> [data-docs-strip]) {
+  .ocg-docs-root:has(> [data-docs-bar]) {
     background: var(--color-white);
     overflow: visible;
   }
 
-  /* Pins level with the fixed toggle, not at the primitive's 63px. */
-  .ocg-docs-root:has(> [data-docs-strip]) > [data-docs-strip] {
-    top: 64px;
-  }
-
-  /* Docsify's main is a stacking context that would trap the toggle and sheet below the strip. */
-  .ocg-docs-root:has(> [data-docs-strip]) main {
+  /* Docsify's main is a stacking context that would trap the toggle and sheet below the bar. */
+  .ocg-docs-root:has(> [data-docs-bar]) main {
     /* `clip` tames the theme's `overflow-x: hidden` without a scroll container, so iOS WebKit
        stops trapping the fixed Contents toggle above `main` at the top of the page. */
     overflow-x: clip;
     z-index: auto;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .content {
+  .ocg-docs-root:has(> [data-docs-bar]) .content {
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -208,7 +203,7 @@
     z-index: auto;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section {
+  .ocg-docs-root:has(> [data-docs-bar]) .markdown-section {
     font-size: 15px;
     line-height: 24px;
     margin: 0;
@@ -216,34 +211,34 @@
     padding: 20px 12px 24px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section :is(ol, p, ul) {
+  .ocg-docs-root:has(> [data-docs-bar]) .markdown-section :is(ol, p, ul) {
     line-height: 24px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section h1 {
+  .ocg-docs-root:has(> [data-docs-bar]) .markdown-section h1 {
     font-size: 24px;
     line-height: 30px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section h2 {
+  .ocg-docs-root:has(> [data-docs-bar]) .markdown-section h2 {
     font-size: 19px;
     line-height: 26px;
   }
 
   /* Long inline code would run off the page, which clips it. */
-  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section :not(pre) > code {
+  .ocg-docs-root:has(> [data-docs-bar]) .markdown-section :not(pre) > code {
     overflow-wrap: anywhere;
   }
 
   /* Tables: stacked label and value with full-bleed hairlines. */
-  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section table.ocg-mobile-card-table {
+  .ocg-docs-root:has(> [data-docs-bar]) .markdown-section table.ocg-mobile-card-table {
     border-top: 1px solid var(--color-stone-200);
     margin: 12px -12px 20px;
     max-width: none;
     width: calc(100% + 24px);
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section table.ocg-mobile-card-table tbody tr {
+  .ocg-docs-root:has(> [data-docs-bar]) .markdown-section table.ocg-mobile-card-table tbody tr {
     border: 0;
     border-bottom: 1px solid var(--color-stone-200);
     border-radius: 0;
@@ -251,11 +246,11 @@
     padding: 6px 0;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .markdown-section table.ocg-mobile-card-table tbody td {
+  .ocg-docs-root:has(> [data-docs-bar]) .markdown-section table.ocg-mobile-card-table tbody td {
     padding: 6px 12px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip])
+  .ocg-docs-root:has(> [data-docs-bar])
     .markdown-section
     table.ocg-mobile-card-table
     tbody
@@ -269,15 +264,16 @@
     text-transform: none;
   }
 
-  /* Contents sheet: Docsify's own sidebar, stopping at the strip, which stays visible above it. */
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar {
+  /* Contents sheet: Docsify's own sidebar, rising from behind the bar, which stays visible below it.
+     The header is 64px and the bar 68px plus the home indicator inset. */
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar {
     background: var(--color-white);
     border-radius: 1rem 1rem 0 0;
-    bottom: 0;
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -8px 30px color-mix(in srgb, var(--color-stone-900) 18%, transparent);
     height: auto;
     left: 0;
-    max-height: calc(100dvh - 108px);
+    max-height: calc(100dvh - 140px - env(safe-area-inset-bottom, 0px));
     overscroll-behavior: contain;
     padding: 0;
     right: 0;
@@ -288,17 +284,17 @@
       visibility 0s linear 0.2s;
     visibility: hidden;
     width: auto;
-    z-index: 1100;
+    z-index: 31;
   }
 
-  body.close .ocg-docs-root:has(> [data-docs-strip]) .sidebar {
+  body.close .ocg-docs-root:has(> [data-docs-bar]) .sidebar {
     transform: none;
     transition-delay: 0s;
     visibility: visible;
   }
 
-  /* The scrim stops at the strip, so the toggle keeps its contrast on stone. */
-  body.close .ocg-docs-root:has(> [data-docs-strip])::before {
+  /* The scrim stays under the header and the bar, so the toggle keeps closing the sheet. */
+  body.close .ocg-docs-root:has(> [data-docs-bar])::before {
     background: color-mix(in srgb, var(--color-stone-950) 35%, transparent);
     content: "";
     inset: 0;
@@ -306,13 +302,13 @@
     z-index: 20;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar > h1.app-name {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar > h1.app-name {
     display: none;
   }
 
   /* Sheet head: a sticky title and close button, so the Contents sheet closes like the app's
      other sheets instead of only through the scrim, a link, Back or Escape. */
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar .docs-sheet-head {
     align-items: center;
     background: var(--color-white);
     border-bottom: 1px solid var(--color-stone-200);
@@ -325,15 +321,15 @@
     z-index: 1;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head-title {
-    color: var(--color-stone-900);
-    font-size: 18px;
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar .docs-sheet-head-title {
+    color: var(--color-stone-500);
+    font-size: 14px;
     font-weight: 600;
-    line-height: 28px;
+    line-height: 20px;
     text-transform: uppercase;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head-close {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar .docs-sheet-head-close {
     align-items: center;
     background: transparent;
     border: 0;
@@ -347,17 +343,17 @@
     width: 44px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head-close:hover {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar .docs-sheet-head-close:hover {
     background: var(--color-stone-200);
     color: var(--color-stone-900);
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head-close:focus-visible {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar .docs-sheet-head-close:focus-visible {
     outline: 2px solid var(--color-primary-500);
     outline-offset: -2px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .docs-sheet-head-close::before {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar .docs-sheet-head-close::before {
     background-color: currentColor;
     content: "";
     height: 20px;
@@ -365,20 +361,20 @@
     width: 20px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .sidebar-nav {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar .sidebar-nav {
     padding: 4px 0 12px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar ul {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar ul {
     margin: 0;
     padding: 0;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar li {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar li {
     margin: 0;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-nav > ul > li > p {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar-nav > ul > li > p {
     color: var(--color-stone-900);
     font-size: 15px;
     line-height: 20px;
@@ -386,11 +382,11 @@
     padding: 14px 12px 2px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-nav > ul > li > p:has(> a) {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar-nav > ul > li > p:has(> a) {
     padding: 0;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-nav > ul > li > p > a {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar-nav > ul > li > p > a {
     align-items: center;
     display: flex;
     font-size: 15px;
@@ -401,7 +397,7 @@
     white-space: normal;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar ul li ul li a {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar ul li ul li a {
     align-items: center;
     border: 0;
     display: flex;
@@ -412,42 +408,48 @@
     white-space: normal;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar .app-sub-sidebar li a {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar .app-sub-sidebar li a {
     font-size: 14px;
     line-height: 20px;
     padding: 8px 12px 8px 44px;
   }
 
-  /* Toggle: fixed over the strip. The phone shell names it after this visible word. */
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle {
+  /* Toggle: an outline button on the bar's end, centred on its 44px row. The phone shell names it
+     after this visible word, which both states keep, so the open state only swaps the icon. */
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar-toggle {
     align-items: center;
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    bottom: auto;
+    background: var(--color-white);
+    border: 1px solid var(--color-primary-500);
+    border-radius: 9999px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     box-shadow: none;
     color: var(--color-primary-500);
     display: flex;
     gap: 6px;
     height: 44px;
     left: auto;
-    padding: 0 12px;
-    right: 0;
-    top: 64px;
+    padding: 0 16px;
+    right: 12px;
+    top: auto;
     width: auto;
-    z-index: 22;
+    z-index: 41;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle:focus-visible {
+  body.close .ocg-docs-root:has(> [data-docs-bar]) .sidebar-toggle {
+    background: var(--color-primary-500);
+    color: var(--color-white);
+  }
+
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar-toggle:focus-visible {
     outline: 2px solid var(--color-primary-500);
-    outline-offset: -2px;
+    outline-offset: 2px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle-button {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar-toggle-button {
     display: none;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle::before {
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar-toggle::before {
     background-color: currentColor;
     content: "";
     height: 16px;
@@ -455,15 +457,19 @@
     width: 16px;
   }
 
-  .ocg-docs-root:has(> [data-docs-strip]) .sidebar-toggle::after {
+  body.close .ocg-docs-root:has(> [data-docs-bar]) .sidebar-toggle::before {
+    mask-image: url("/static/images/icons/close.svg");
+  }
+
+  .ocg-docs-root:has(> [data-docs-bar]) .sidebar-toggle::after {
     content: "Contents";
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     line-height: 20px;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .ocg-docs-root:has(> [data-docs-strip]) .sidebar {
+    .ocg-docs-root:has(> [data-docs-bar]) .sidebar {
       transition: none;
     }
   }

@@ -128,15 +128,15 @@ test.describe("group dashboard check-in", () => {
       }),
     ).toHaveCount(0);
 
-    // Reopen the drawer and verify it reflects the newly selected group.
-    await organizerGroupPage.getByRole("button", { name: "Open dashboard menu" }).click();
-    await expect(organizerGroupPage.locator("#group-selector-button")).toContainText(TEST_GROUP_NAMES.empty);
+    // Verify the context button follows the selection.
+    const groupContext = organizerGroupPage.locator("[data-group-context]");
+    await expect(groupContext).toHaveAttribute("data-group-context", TEST_GROUP_NAMES.empty);
+    await expect(groupContext).toHaveAttribute("data-community-context", TEST_COMMUNITY_TITLE);
 
-    // Verify the context line follows the selection.
-    await expect(organizerGroupPage.locator("[data-group-context]")).toHaveAttribute(
-      "data-group-context",
-      `Group Dashboard · ${TEST_GROUP_NAMES.empty}`,
-    );
+    // Reopen the drawer from the context button and verify it reflects the newly selected group.
+    await groupContext.click();
+    await expect(groupContext).toHaveAttribute("aria-expanded", "true");
+    await expect(organizerGroupPage.locator("#group-selector-button")).toContainText(TEST_GROUP_NAMES.empty);
   });
 
   test("group selectors reach 44px in the drawer @mobile", async ({ organizerGroupPage }) => {

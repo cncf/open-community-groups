@@ -196,17 +196,16 @@ describe("dashboard group home template", () => {
     expect(fallbackWarning).to.be.lessThan(dashboardContent);
   });
 
-  it("names the group on phones through a data attribute", async () => {
-    // Load the group dashboard shell before checking the check-in context line.
+  it("names the community and group on phones through a menu button", async () => {
+    // Load the group dashboard shell before checking the check-in context button.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the line sits outside the swapped content and carries no text node of its own.
-    const line = template.indexOf('data-group-context="Group Dashboard · {{ current_selection.1.name }}"');
-    expect(line).to.be.greaterThan(-1);
-    expect(line).to.be.lessThan(template.indexOf('<div id="dashboard-content"'));
+    // Verify the button sits outside the swapped content, opens the Menu sheet and carries no text node.
+    const button = template.indexOf('<button type="button" class="group-context not-phone:hidden"');
+    expect(button).to.be.greaterThan(-1);
+    expect(button).to.be.lessThan(template.indexOf('<div id="dashboard-content"'));
     expect(template).to.include(
-      'class="title-preheader not-phone:hidden phone:whitespace-normal phone:px-3 phone:pt-4 phone:before:content-[attr(data-group-context)]"',
+      'aria-controls="dashboard-menu-drawer" aria-expanded="false" data-dashboard-menu-open data-community-context="{{ current_selection.0.display_name }}" data-group-context="{{ current_selection.1.name }}"> <span class="svg-icon size-3 shrink-0 bg-stone-500 icon-caret-down" aria-hidden="true"></span> </button>',
     );
-    expect(template).to.include('{{ current_selection.1.name }}"></div>');
   });
 });

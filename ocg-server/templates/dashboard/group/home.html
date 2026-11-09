@@ -175,9 +175,16 @@
     {% if is_inbox_fallback -%}
       {{ dashboard::permission_warning(message = "You don't have Inbox access for the selected group. If you came from an email, select the group it mentions in the group selector.") -}}
     {% endif -%}
-    {# Group context at the door. The text sits in ::before, away from desktop text locators. -#}
-    <div class="title-preheader not-phone:hidden phone:whitespace-normal phone:px-3 phone:pt-4 phone:before:content-[attr(data-group-context)]"
-         data-group-context="Group Dashboard · {{ current_selection.1.name }}"></div>
+    {# Group context at the door: opens the Menu sheet, which holds the selectors. The names sit in ::before and ::after, away from desktop text locators. -#}
+    <button type="button"
+            class="group-context not-phone:hidden"
+            aria-controls="dashboard-menu-drawer"
+            aria-expanded="false"
+            data-dashboard-menu-open
+            data-community-context="{{ current_selection.0.display_name }}"
+            data-group-context="{{ current_selection.1.name }}">
+      <span class="svg-icon size-3 shrink-0 bg-stone-500 icon-caret-down" aria-hidden="true"></span>
+    </button>
     <div id="dashboard-content"
          data-community="{{ current_selection.0.name }}"
          data-community-name="{{ current_selection.0.name }}"

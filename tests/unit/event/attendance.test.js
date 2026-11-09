@@ -1728,6 +1728,7 @@ describe("event attendance", () => {
       refundButton.querySelector("[data-attendance-label]")?.textContent,
     ).to.equal("Refund rejected");
     expect(refundButton.disabled).to.equal(true);
+    expect(refundButton.title).to.equal("Contact the organizers for help.");
     expect(refundRejectionReason.classList.contains("hidden")).to.equal(false);
     expect(refundRejectionReason.textContent).to.equal(
       "Outside policy\n<strong>Contact support</strong>",

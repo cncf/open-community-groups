@@ -80,6 +80,29 @@ describe("dashboard menu drawer", () => {
     expect(document.activeElement).to.equal(document.getElementById("open-dashboard-menu"));
   });
 
+  it("opens from a page opener and returns focus to it on close", () => {
+    // Render the drawer fixture with a second opener, as the phone group context does.
+    renderFixture();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<button id="group-context" type="button" aria-expanded="false" data-dashboard-menu-open></button>',
+    );
+    const opener = document.getElementById("group-context");
+    opener.click();
+
+    // Verify the drawer opens and every opener reports it.
+    expect(document.getElementById("dashboard-menu-drawer").classList.contains("-translate-x-full")).to.equal(
+      false,
+    );
+    expect(opener.getAttribute("aria-expanded")).to.equal("true");
+    expect(document.getElementById("open-dashboard-menu").getAttribute("aria-expanded")).to.equal("true");
+
+    // Close the drawer and verify focus returns to the page opener.
+    document.getElementById("close-dashboard-menu").click();
+    expect(opener.getAttribute("aria-expanded")).to.equal("false");
+    expect(document.activeElement).to.equal(opener);
+  });
+
   it("closes when the backdrop is clicked", () => {
     // Render the drawer fixture and open it before clicking the backdrop.
     renderFixture();

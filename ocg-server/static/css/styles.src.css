@@ -613,7 +613,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     @apply flex;
   }
 
-  .sheet-head > :not(button) {
+  /* Desktop headers that pair a title with a subtitle wrap both in a div; on phones the subtitle
+     moves into the body, so the nested title takes the same compact style. */
+  .sheet-head > :not(button),
+  .sheet-head > div > :is(h2, h3) {
     @apply text-sm! font-semibold uppercase text-stone-500!;
   }
 
@@ -649,6 +652,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   /* Shared with the tablet drawer, which sets top, height and its own slide. */
   #drawer-filters.sheet-panel {
     @apply top-auto z-[1100] h-auto animate-none transition-[translate] motion-reduce:transition-none;
+  }
+
+  /* The close button sits outside the head, absolutely positioned, so the head leaves room for it. */
+  #drawer-filters .sheet-head {
+    @apply pe-12;
   }
 
   /* Holds the sr-only filter inputs, or focusing one scrolls the panel and moves its head away. */
@@ -693,6 +701,25 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   [data-sheet-drag] .sheet-grab::before {
     content: "";
     @apply pointer-events-none absolute inset-x-0 top-1.5 mx-auto h-1 w-9 rounded-full bg-stone-300;
+  }
+
+  /* Group dashboard context: community over group, with the caret centred on both lines. */
+  .group-context {
+    @apply mx-3 mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg border border-stone-200 bg-white px-3 py-2 text-start hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500;
+  }
+
+  .group-context::before {
+    content: attr(data-community-context);
+    @apply col-start-1 row-start-1 truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-500;
+  }
+
+  .group-context::after {
+    content: attr(data-group-context);
+    @apply col-start-1 row-start-2 mt-0.5 truncate text-sm font-semibold text-stone-900;
+  }
+
+  .group-context > .svg-icon {
+    @apply col-start-2 row-span-2 row-start-1;
   }
 
   /* Account sheet: #user-dropdown is the scrim, its list the panel. */
@@ -816,6 +843,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   /* A reason replaces the summary's details, and Join meeting replaces Cancel and Refund. */
   .cta-bar[data-bar-reason] [data-attendance-role="bar-summary"] > :not([data-attendance-role="bar-reason"]),
   .cta-bar:not([data-bar-reason]) [data-attendance-role="bar-reason"],
+  .cta-bar [data-attendance-role="refund-rejection-trigger"],
+  .cta-bar [data-attendance-role="refund-rejection-tooltip"],
   .cta-bar:has([data-join-link]:not(.hidden)) > [data-attendance-role="leave-btn"],
   .cta-bar:has([data-join-link]:not(.hidden)) > span:has(> [data-attendance-role="refund-btn"]) {
     @apply hidden;

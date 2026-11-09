@@ -4,8 +4,11 @@ import { isPhoneViewport, PHONE_MEDIA_QUERY } from "/static/js/common/phone-view
 const DOCSIFY_BODY_CLASSES = ["close", "ready", "sticky"];
 const DOCSIFY_TOGGLE_NAME = "Menu";
 const DOCS_ANCHOR_SCROLL_PADDING_PX = 30;
-// Header 64, strip 44 and a gap of 8.
-const DOCS_PHONE_ANCHOR_OFFSET_PX = 116;
+const DOCS_BAR_DEFAULT_SECTION = "Documentation";
+const DOCS_BAR_PAGE_SELECTOR = "[data-docs-bar-page]";
+const DOCS_BAR_SECTION_SELECTOR = "[data-docs-bar-section]";
+// Header 64 and a gap of 8.
+const DOCS_PHONE_ANCHOR_OFFSET_PX = 72;
 const DOCS_PHONE_TOGGLE_NAME = "Contents";
 const DOCS_SHEET_HEAD_CLOSE_SELECTOR = ".docs-sheet-head-close";
 const DOCS_SHEET_HEAD_SELECTOR = ".docs-sheet-head";
@@ -137,21 +140,42 @@ export const setupDocsPhoneShell = (docsRoot) => {
 };
 
 /**
- * Restores the page title on phones: Docsify builds it from innerText, which is empty while the
- * Contents sheet is hidden.
+ * Restores the page title on phones, where Docsify builds it from the innerText of the hidden
+ * Contents sheet, and names the section and page on the phone Contents bar.
  * @param {HTMLElement} docsRoot Docs root container.
  */
 export const syncPhoneDocsTitle = (docsRoot) => {
-  if (!isPhoneViewport()) {
-    return;
-  }
-
   // Docsify moves active from the page to the section a deep link names.
   const active = docsRoot.querySelector(`${DOCS_SIDEBAR_SELECTOR} .active`);
   const pageItem = active?.closest(".app-sub-sidebar")?.parentElement ?? active;
-  const title = pageItem?.querySelector(":scope > a")?.textContent.trim();
-  if (title) {
+  const title = pageItem?.querySelector(":scope > a")?.textContent.trim() ?? "";
+  // Top-level pages such as Overview have no section heading.
+  const section = pageItem
+    ?.closest("li")
+    ?.parentElement?.closest("li")
+    ?.querySelector(":scope > p")
+    ?.textContent.trim();
+  writeDocsBarLabels(docsRoot, section || DOCS_BAR_DEFAULT_SECTION, title);
+
+  if (title && isPhoneViewport()) {
     document.title = title;
+  }
+};
+
+/**
+ * Writes the section and page names into the phone Contents bar.
+ * @param {HTMLElement} docsRoot Docs root container.
+ * @param {string} section Section name.
+ * @param {string} page Page name.
+ */
+const writeDocsBarLabels = (docsRoot, section, page) => {
+  const sectionLabel = docsRoot.querySelector(DOCS_BAR_SECTION_SELECTOR);
+  const pageLabel = docsRoot.querySelector(DOCS_BAR_PAGE_SELECTOR);
+  if (sectionLabel) {
+    sectionLabel.textContent = section;
+  }
+  if (pageLabel) {
+    pageLabel.textContent = page;
   }
 };
 

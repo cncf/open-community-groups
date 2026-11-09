@@ -6,10 +6,12 @@
   <section class="w-full ocg-docs-root relative overflow-hidden phone:overflow-visible"
            aria-label="Documentation"
            data-ocg-docs="/static/docs/index.html#/">
-    {# Phone heading; shell.css places Docsify's toggle on it and keys its phone rules to it -#}
-    <div class="section-strip section-strip-stone section-strip-plain not-phone:hidden"
-         data-docs-strip>
-      <p class="section-strip-title font-semibold text-stone-900">Documentation</p>
+    {# Phone Contents bar: shell.css pins Docsify's toggle on its end and keys its phone rules to it -#}
+    <div class="cta-bar not-phone:hidden" data-docs-bar>
+      <div class="flex min-h-11 min-w-0 flex-1 flex-col justify-center pe-32">
+        <p class="title-preheader" data-docs-bar-section>Documentation</p>
+        <p class="truncate text-sm font-semibold text-stone-900 empty:hidden" data-docs-bar-page></p>
+      </div>
     </div>
     <div id="ocg-docs-app"
          class="flex min-h-[50vh] items-center justify-center">

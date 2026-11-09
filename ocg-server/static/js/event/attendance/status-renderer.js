@@ -165,8 +165,10 @@ const renderPhoneBarState = (container, xhr) => {
     control?.disabled === false ||
     (checkoutCancelButton !== null && !isElementHidden(checkoutCancelButton));
   // A disabled control keeps its button; its title (when present) replaces the summary
-  // details beside it. An expired offer has none: its own label already says why.
-  const reason = !hasJoinLink && control?.disabled ? control.title : "";
+  // details beside it. An expired offer has none: its own label already says why. Some
+  // enabled controls (pending approval) opt in to a reason via data-bar-reason-text.
+  const explicitReason = control?.dataset?.barReasonText ?? "";
+  const reason = hasJoinLink ? "" : explicitReason || (control?.disabled ? control.title : "");
   const reasonLine = getAttendanceControl(container, "bar-reason");
 
   if (reasonLine) {
