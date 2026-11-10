@@ -234,7 +234,7 @@ where
     #[instrument(skip(self), err)]
     async fn list_timezones(&self) -> Result<Vec<String>> {
         #[cached(
-            ttl = 86400,
+            ttl_secs = 86400,
             key = "String",
             convert = r#"{ String::from("timezones") }"#,
             sync_writes = "by_key"
@@ -260,7 +260,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(timezones) = cache_probe(&INNER.0, "timezones").await {
+        if let Some(timezones) = cache_probe(&INNER, "timezones").await {
             return Ok(timezones);
         }
 
@@ -290,7 +290,7 @@ where
     #[instrument(skip(self), err)]
     async fn list_utm_mediums(&self) -> Result<Vec<String>> {
         #[cached(
-            ttl = 86400,
+            ttl_secs = 86400,
             key = "String",
             convert = r#"{ String::from("utm_mediums") }"#,
             sync_writes = "by_key"
@@ -310,7 +310,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(utm_mediums) = cache_probe(&INNER.0, "utm_mediums").await {
+        if let Some(utm_mediums) = cache_probe(&INNER, "utm_mediums").await {
             return Ok(utm_mediums);
         }
 

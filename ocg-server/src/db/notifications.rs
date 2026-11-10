@@ -360,7 +360,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment> {
         #[cached(
-            ttl = 7200,
+            ttl_secs = 7200,
             key = "Uuid",
             convert = "{ attachment_id }",
             sync_writes = "by_key"
@@ -385,7 +385,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(attachment) = cache_probe(&INNER.0, &attachment_id).await {
+        if let Some(attachment) = cache_probe(&INNER, &attachment_id).await {
             return Ok(attachment);
         }
 

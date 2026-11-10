@@ -241,7 +241,7 @@ where
     async fn get_event_utm_allowlist(&self, event_id: Uuid) -> Result<Option<EventUtmAllowlist>> {
         #[cached(
             max_size = 10_000,
-            ttl = 60,
+            ttl_secs = 60,
             key = "Uuid",
             convert = "{ event_id }",
             sync_writes = "by_key"
@@ -252,7 +252,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(allowlist) = cache_probe(&INNER.0, &event_id).await {
+        if let Some(allowlist) = cache_probe(&INNER, &event_id).await {
             return Ok(allowlist);
         }
 

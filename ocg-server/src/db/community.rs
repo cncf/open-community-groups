@@ -53,7 +53,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>> {
         #[cached(
-            ttl = 86400,
+            ttl_secs = 86400,
             key = "String",
             convert = r#"{ String::from(name) }"#,
             sync_writes = "by_key"
@@ -68,7 +68,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(community_id) = cache_probe(&INNER.0, name).await {
+        if let Some(community_id) = cache_probe(&INNER, name).await {
             return Ok(community_id);
         }
 
@@ -94,7 +94,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_community_site_stats(&self, community_id: Uuid) -> Result<CommunityStats> {
         #[cached(
-            ttl = 3600,
+            ttl_secs = 3600,
             key = "Uuid",
             convert = r#"{ community_id }"#,
             sync_writes = "by_key"
@@ -108,7 +108,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(stats) = cache_probe(&INNER.0, &community_id).await {
+        if let Some(stats) = cache_probe(&INNER, &community_id).await {
             return Ok(stats);
         }
 

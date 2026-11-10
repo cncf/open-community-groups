@@ -436,7 +436,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats> {
         #[cached(
-            ttl = 3600,
+            ttl_secs = 3600,
             key = "Uuid",
             convert = "{ community_id }",
             sync_writes = "by_key"
@@ -447,7 +447,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(stats) = cache_probe(&INNER.0, &community_id).await {
+        if let Some(stats) = cache_probe(&INNER, &community_id).await {
             return Ok(stats);
         }
 
@@ -501,7 +501,7 @@ where
     #[instrument(skip(self), err)]
     async fn list_community_roles(&self) -> Result<Vec<CommunityRoleSummary>> {
         #[cached(
-            ttl = 86400,
+            ttl_secs = 86400,
             key = "String",
             convert = r#"{ String::from("community_roles") }"#,
             sync_writes = "by_key"
@@ -511,7 +511,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(roles) = cache_probe(&INNER.0, "community_roles").await {
+        if let Some(roles) = cache_probe(&INNER, "community_roles").await {
             return Ok(roles);
         }
 

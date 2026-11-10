@@ -1402,7 +1402,7 @@ where
     ) -> Result<Option<EventAnalytics>> {
         #[cached(
             max_size = 1_000,
-            ttl = 3600,
+            ttl_secs = 3600,
             key = "(Uuid, Uuid)",
             convert = "{ (group_id, event_id) }",
             sync_writes = "by_key"
@@ -1420,7 +1420,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(analytics) = cache_probe(&INNER.0, &(group_id, event_id)).await {
+        if let Some(analytics) = cache_probe(&INNER, &(group_id, event_id)).await {
             return Ok(analytics);
         }
 
@@ -1599,7 +1599,7 @@ where
         include_subgroups: bool,
     ) -> Result<GroupDashboardStats> {
         #[cached(
-            ttl = 3600,
+            ttl_secs = 3600,
             key = "(Uuid, Uuid, bool)",
             convert = "{ (community_id, group_id, include_subgroups) }",
             sync_writes = "by_key"
@@ -1618,8 +1618,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(stats) =
-            cache_probe(&INNER.0, &(community_id, group_id, include_subgroups)).await
+        if let Some(stats) = cache_probe(&INNER, &(community_id, group_id, include_subgroups)).await
         {
             return Ok(stats);
         }
@@ -1822,7 +1821,7 @@ where
     #[instrument(skip(self), err)]
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>> {
         #[cached(
-            ttl = 86400,
+            ttl_secs = 86400,
             key = "String",
             convert = r#"{ String::from("event_kinds") }"#,
             sync_writes = "by_key"
@@ -1832,7 +1831,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(kinds) = cache_probe(&INNER.0, "event_kinds").await {
+        if let Some(kinds) = cache_probe(&INNER, "event_kinds").await {
             return Ok(kinds);
         }
 
@@ -2063,7 +2062,7 @@ where
     #[instrument(skip(self), err)]
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>> {
         #[cached(
-            ttl = 86400,
+            ttl_secs = 86400,
             key = "String",
             convert = r#"{ String::from("group_roles") }"#,
             sync_writes = "by_key"
@@ -2073,7 +2072,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(roles) = cache_probe(&INNER.0, "group_roles").await {
+        if let Some(roles) = cache_probe(&INNER, "group_roles").await {
             return Ok(roles);
         }
 
@@ -2115,7 +2114,7 @@ where
     #[instrument(skip(self), err)]
     async fn list_payment_currency_codes(&self) -> Result<Vec<String>> {
         #[cached(
-            ttl = 86400,
+            ttl_secs = 86400,
             key = "String",
             convert = r#"{ String::from("payment_currency_codes") }"#,
             sync_writes = "by_key"
@@ -2128,7 +2127,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(currency_codes) = cache_probe(&INNER.0, "payment_currency_codes").await {
+        if let Some(currency_codes) = cache_probe(&INNER, "payment_currency_codes").await {
             return Ok(currency_codes);
         }
 
@@ -2141,7 +2140,7 @@ where
     #[instrument(skip(self), err)]
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>> {
         #[cached(
-            ttl = 86400,
+            ttl_secs = 86400,
             key = "String",
             convert = r#"{ String::from("session_kinds") }"#,
             sync_writes = "by_key"
@@ -2151,7 +2150,7 @@ where
         }
 
         // Serve a fresh cached value without checking out a client
-        if let Some(kinds) = cache_probe(&INNER.0, "session_kinds").await {
+        if let Some(kinds) = cache_probe(&INNER, "session_kinds").await {
             return Ok(kinds);
         }
 
