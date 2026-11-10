@@ -5,7 +5,7 @@
 @source "static/js";
 @source "templates";
 
-/* Active while the desktop version mode is on (set by common/base.html). */
+/* Active while the desktop version mode is on (set by common/scripts/preferences_init.js). */
 @custom-variant viewport-desktop (&:where(html[data-viewport-mode="desktop"] *));
 
 /*
@@ -14,7 +14,8 @@
  * Redefined sm and md keep their order against wider breakpoints; redefined max-sm and
  * max-md move after them, so max-md beats sm between 640px and 767px. Do not pair max-md and
  * sm utilities for the same property. The phone variant below sorts after all of them, so it
- * is safe to pair with any of them.
+ * is safe to pair with any of them. The redefined dark variant keeps its built-in slot, after
+ * every min-width breakpoint and before max-sm, max-md and phone.
  */
 @custom-variant sm {
   @media (width >= 40rem) {
@@ -62,6 +63,25 @@
     @slot;
   }
 }
+/*
+ * Resolved color theme is dark (set by common/scripts/preferences_init.js). Screen only, and
+ * descendants of light islands (.plate, .ink) never match. With the pinned Tailwind v4.1.10,
+ * dark utilities sort after sm, md and the other min-width breakpoints but before max-sm,
+ * max-md and phone, so phone:bg-red-500 beats dark:bg-blue-500 on a dark phone. An element
+ * that sets one property under both uses phone:dark:, which compounds and wins.
+ */
+@custom-variant dark {
+  @media screen {
+    &:where(html[data-theme="dark"], html[data-theme="dark"] *):not(:where(.plate *, .ink *)) {
+      @slot;
+    }
+  }
+  @media screen and (prefers-color-scheme: dark) {
+    &:where(html:not([data-theme]), html:not([data-theme]) *):not(:where(.plate *, .ink *)) {
+      @slot;
+    }
+  }
+}
 
 @theme {
   --font-inter: Inter, sans-serif;
@@ -69,28 +89,162 @@
     "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
     Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol";
-
-/**
- * Keep these colors so Tailwind can build utilities using them.
- * Actual theme values come from site settings at runtime and override these defaults.
- */
-  --color-primary-50:  #EBF5FF;   /* Very light azure tint */
-  --color-primary-100: #D6EBFF;   /* Light azure tint */
-  --color-primary-200: #ADD6FF;   /* Lighter azure */
-  --color-primary-300: #6BB8FF;   /* Light-mid azure */
-  --color-primary-400: #29A3FF;   /* Azure approaching main */
-  --color-primary-500: #0094FF;   /* Azure (main brand color) */
-  --color-primary-600: #0077CC;   /* Darker azure */
-  --color-primary-700: #005999;   /* Transitioning toward navy */
-  --color-primary-800: #004880;   /* Dark blue */
-  --color-primary-900: #003778;   /* Royal Navy */
-  --color-primary-950: #002152;   /* Deepest navy */
 }
 
+/*
+ * Color tokens. Static, so every variable is emitted for getComputedStyle readers, and never
+ * inline, so utilities compile to var(--color-…) and the dark block can override them.
+ */
+/* theme-lint: tokens-start color tokens with their light values */
+@theme static {
+  /* Remapped palette shades, pointing at the light constants in @layer base. */
+  --color-stone-50: var(--ocg-light-stone-50);
+  --color-stone-100: var(--ocg-light-stone-100);
+  --color-stone-200: var(--ocg-light-stone-200);
+  --color-stone-300: var(--ocg-light-stone-300);
+  --color-stone-400: var(--ocg-light-stone-400);
+  --color-stone-500: var(--ocg-light-stone-500);
+  --color-stone-600: var(--ocg-light-stone-600);
+  --color-stone-700: var(--ocg-light-stone-700);
+  --color-stone-800: var(--ocg-light-stone-800);
+  --color-stone-900: var(--ocg-light-stone-900);
+  --color-red-50: var(--ocg-light-red-50);
+  --color-red-100: var(--ocg-light-red-100);
+  --color-red-200: var(--ocg-light-red-200);
+  --color-red-700: var(--ocg-light-red-700);
+  --color-red-800: var(--ocg-light-red-800);
+  --color-red-900: var(--ocg-light-red-900);
+  --color-orange-50: var(--ocg-light-orange-50);
+  --color-orange-200: var(--ocg-light-orange-200);
+  --color-orange-700: var(--ocg-light-orange-700);
+  --color-amber-50: var(--ocg-light-amber-50);
+  --color-amber-100: var(--ocg-light-amber-100);
+  --color-amber-200: var(--ocg-light-amber-200);
+  --color-amber-700: var(--ocg-light-amber-700);
+  --color-amber-800: var(--ocg-light-amber-800);
+  --color-amber-900: var(--ocg-light-amber-900);
+  --color-amber-950: var(--ocg-light-amber-950);
+  --color-yellow-50: var(--ocg-light-yellow-50);
+  --color-yellow-100: var(--ocg-light-yellow-100);
+  --color-yellow-200: var(--ocg-light-yellow-200);
+  --color-yellow-800: var(--ocg-light-yellow-800);
+  --color-yellow-900: var(--ocg-light-yellow-900);
+  --color-green-50: var(--ocg-light-green-50);
+  --color-green-100: var(--ocg-light-green-100);
+  --color-green-200: var(--ocg-light-green-200);
+  --color-green-800: var(--ocg-light-green-800);
+  --color-green-900: var(--ocg-light-green-900);
+  --color-emerald-50: var(--ocg-light-emerald-50);
+  --color-emerald-200: var(--ocg-light-emerald-200);
+  --color-emerald-700: var(--ocg-light-emerald-700);
+  --color-emerald-900: var(--ocg-light-emerald-900);
+  --color-emerald-950: var(--ocg-light-emerald-950);
+
+  /* Semantic tokens. */
+  --color-canvas: var(--ocg-light-stone-100);
+  --color-surface: #fff;
+  --color-raised: #fff;
+  --color-plate: #fff;
+  --color-plate-edge: var(--ocg-light-stone-300);
+  --color-ink: var(--color-stone-950);
+  --color-on-fill: #fff;
+  --color-on-primary: #fff;
+
+  /* Off-scale tokens. */
+  --color-shade: var(--ocg-light-stone-900);
+  --color-inverse: var(--ocg-light-stone-700);
+  --color-danger-fill: var(--color-red-500);
+  --color-danger-text: var(--color-red-500);
+
+  /*
+   * Numbered primary ramp. The azure values are fallbacks: the real values come from the
+   * per-site <style> block in common/base.html, which sets every --ocg-primary-light-*.
+   */
+  --color-primary-50: var(--ocg-primary-light-50, #EBF5FF);
+  --color-primary-100: var(--ocg-primary-light-100, #D6EBFF);
+  --color-primary-200: var(--ocg-primary-light-200, #ADD6FF);
+  --color-primary-300: var(--ocg-primary-light-300, #6BB8FF);
+  --color-primary-400: var(--ocg-primary-light-400, #29A3FF);
+  --color-primary-500: var(--ocg-primary-light-500, #0094FF);
+  --color-primary-600: var(--ocg-primary-light-600, #0077CC);
+  --color-primary-700: var(--ocg-primary-light-700, #005999);
+  --color-primary-800: var(--ocg-primary-light-800, #004880);
+  --color-primary-900: var(--ocg-primary-light-900, #003778);
+  --color-primary-950: var(--ocg-primary-light-950, #002152);
+
+  /* Primary roles, each mirroring the numbered shade it replaces in light. */
+  --color-primary-fill: var(--color-primary-500);
+  --color-primary-fill-strong: var(--color-primary-600);
+  --color-primary-fill-hover: var(--color-primary-700);
+  --color-primary-tint: var(--color-primary-50);
+  --color-primary-tint-strong: var(--color-primary-100);
+  --color-primary-fg: var(--color-primary-500);
+  --color-primary-fg-strong: var(--color-primary-600);
+  --color-primary-fg-hover: var(--color-primary-700);
+  --color-primary-fg-hover-strong: var(--color-primary-800);
+  --color-primary-fg-deep: var(--color-primary-900);
+  --color-primary-edge: var(--color-primary-500);
+  --color-primary-edge-muted: var(--color-primary-400);
+  --color-primary-edge-soft: var(--color-primary-300);
+  --color-primary-edge-faint: var(--color-primary-200);
+  --color-primary-halo: var(--color-primary-300);
+  --color-focus: var(--color-primary-500);
+}
+/* theme-lint: tokens-end */
+
 @layer base {
+  /* Light palette constants, copied verbatim from the compiled theme of the pinned Tailwind
+     v4.1.10. They are literals, so a Tailwind upgrade does not change these values. Nothing
+     overrides them. */
+  /* theme-lint: tokens-start light palette constants */
+  :root {
+    --ocg-light-stone-50: oklch(98.5% 0.001 106.423);
+    --ocg-light-stone-100: oklch(97% 0.001 106.424);
+    --ocg-light-stone-200: oklch(92.3% 0.003 48.717);
+    --ocg-light-stone-300: oklch(86.9% 0.005 56.366);
+    --ocg-light-stone-400: oklch(70.9% 0.01 56.259);
+    --ocg-light-stone-500: oklch(55.3% 0.013 58.071);
+    --ocg-light-stone-600: oklch(44.4% 0.011 73.639);
+    --ocg-light-stone-700: oklch(37.4% 0.01 67.558);
+    --ocg-light-stone-800: oklch(26.8% 0.007 34.298);
+    --ocg-light-stone-900: oklch(21.6% 0.006 56.043);
+    --ocg-light-red-50: oklch(97.1% 0.013 17.38);
+    --ocg-light-red-100: oklch(93.6% 0.032 17.717);
+    --ocg-light-red-200: oklch(88.5% 0.062 18.334);
+    --ocg-light-red-700: oklch(50.5% 0.213 27.518);
+    --ocg-light-red-800: oklch(44.4% 0.177 26.899);
+    --ocg-light-red-900: oklch(39.6% 0.141 25.723);
+    --ocg-light-orange-50: oklch(98% 0.016 73.684);
+    --ocg-light-orange-200: oklch(90.1% 0.076 70.697);
+    --ocg-light-orange-700: oklch(55.3% 0.195 38.402);
+    --ocg-light-amber-50: oklch(98.7% 0.022 95.277);
+    --ocg-light-amber-100: oklch(96.2% 0.059 95.617);
+    --ocg-light-amber-200: oklch(92.4% 0.12 95.746);
+    --ocg-light-amber-700: oklch(55.5% 0.163 48.998);
+    --ocg-light-amber-800: oklch(47.3% 0.137 46.201);
+    --ocg-light-amber-900: oklch(41.4% 0.112 45.904);
+    --ocg-light-amber-950: oklch(27.9% 0.077 45.635);
+    --ocg-light-yellow-50: oklch(98.7% 0.026 102.212);
+    --ocg-light-yellow-100: oklch(97.3% 0.071 103.193);
+    --ocg-light-yellow-200: oklch(94.5% 0.129 101.54);
+    --ocg-light-yellow-800: oklch(47.6% 0.114 61.907);
+    --ocg-light-yellow-900: oklch(42.1% 0.095 57.708);
+    --ocg-light-green-50: oklch(98.2% 0.018 155.826);
+    --ocg-light-green-100: oklch(96.2% 0.044 156.743);
+    --ocg-light-green-200: oklch(92.5% 0.084 155.995);
+    --ocg-light-green-800: oklch(44.8% 0.119 151.328);
+    --ocg-light-green-900: oklch(39.3% 0.095 152.535);
+    --ocg-light-emerald-50: oklch(97.9% 0.021 166.113);
+    --ocg-light-emerald-200: oklch(90.5% 0.093 164.15);
+    --ocg-light-emerald-700: oklch(50.8% 0.118 165.612);
+    --ocg-light-emerald-900: oklch(37.8% 0.077 168.94);
+    --ocg-light-emerald-950: oklch(26.2% 0.051 172.552);
+  }
+  /* theme-lint: tokens-end */
+
   /* One keyboard focus indicator; utilities may restyle or remove it per element. */
   :focus-visible {
-    outline: 2px solid var(--ocg-primary, var(--color-primary-500));
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
 
@@ -99,6 +253,211 @@
      so a focused control never matches this opt-out. */
   :where(h1, h2, h3, h4, h5, h6, p, span, div, section, article, aside, main, nav, ul, ol, dialog)[tabindex="-1"]:focus-visible {
     outline: none;
+  }
+
+  /* Dark tokens: the palette and surfaces as hex, the numbered primary ramp mirrored from the
+     light sources, and the primary roles from the per-site --ocg-primary-dark-* values that
+     templates/brand_ramp.rs emits in common/base.html. Screen only, so print keeps the light
+     tokens. The canvas, surface and raised lines must match the Rust DARK_* constants. */
+  /* theme-lint: tokens-start dark palette and brand dark roles */
+  :root {
+    @variant dark {
+      color-scheme: dark;
+      color: var(--color-stone-900);
+      background-color: var(--color-surface);
+
+      /* Remapped palette shades. */
+      --color-stone-50: #24211f;
+      --color-stone-100: #2a2724;
+      --color-stone-200: #3a3633;
+      --color-stone-300: #4e4946;
+      --color-stone-400: #9b948f;
+      --color-stone-500: #ada6a1;
+      --color-stone-600: #bcb6b2;
+      --color-stone-700: #cec9c6;
+      --color-stone-800: #dfdbd9;
+      --color-stone-900: #eeeceb;
+      --color-red-50: #311b19;
+      --color-red-100: #40201d;
+      --color-red-200: #5d2d2a;
+      --color-red-700: #fb9890;
+      --color-red-800: #ffb5ae;
+      --color-red-900: #ffcdc8;
+      --color-orange-50: #301c13;
+      --color-orange-200: #5b301c;
+      --color-orange-700: #f79e75;
+      --color-amber-50: #2c1f0e;
+      --color-amber-100: #3a250b;
+      --color-amber-200: #54360b;
+      --color-amber-700: #e8a95c;
+      --color-amber-800: #f5bf81;
+      --color-amber-900: #f9d3a9;
+      --color-amber-950: #fce3c8;
+      --color-yellow-50: #27210d;
+      --color-yellow-100: #322a08;
+      --color-yellow-200: #493c06;
+      --color-yellow-800: #dfca7d;
+      --color-yellow-900: #e9dba6;
+      --color-green-50: #152619;
+      --color-green-100: #16311d;
+      --color-green-200: #1e4729;
+      --color-green-800: #9bdda8;
+      --color-green-900: #bbe8c3;
+      --color-emerald-50: #10271d;
+      --color-emerald-200: #0e4832;
+      --color-emerald-700: #65cfa1;
+      --color-emerald-900: #b1eace;
+      --color-emerald-950: #cef2df;
+
+      /* Semantic and off-scale tokens. */
+      --color-canvas: #0b0a09;
+      --color-surface: #181514;
+      --color-raised: #201d1b;
+      --color-plate-edge: #4e4946;
+      --color-shade: #000;
+      --color-danger-fill: #e7000b;
+      --color-danger-text: #fb9890;
+
+      /* Numbered primary ramp, mirrored so 50 stays closest to the surface. */
+      --color-primary-50: var(--ocg-primary-light-950);
+      --color-primary-100: var(--ocg-primary-light-900);
+      --color-primary-200: var(--ocg-primary-light-800);
+      --color-primary-300: var(--ocg-primary-light-700);
+      --color-primary-400: var(--ocg-primary-light-600);
+      --color-primary-500: var(--ocg-primary-light-500);
+      --color-primary-600: var(--ocg-primary-light-400);
+      --color-primary-700: var(--ocg-primary-light-300);
+      --color-primary-800: var(--ocg-primary-light-200);
+      --color-primary-900: var(--ocg-primary-light-100);
+      --color-primary-950: var(--ocg-primary-light-50);
+
+      /* Primary roles. */
+      --color-primary-fill: var(--ocg-primary-dark-fill);
+      --color-primary-fill-strong: var(--ocg-primary-dark-fill-deep);
+      --color-primary-fill-hover: var(--ocg-primary-dark-fill-deep);
+      --color-primary-tint: var(--ocg-primary-dark-tint);
+      --color-primary-tint-strong: var(--ocg-primary-dark-tint-strong);
+      --color-primary-fg: var(--ocg-primary-dark-fg);
+      --color-primary-fg-strong: var(--ocg-primary-dark-fg-bright);
+      --color-primary-fg-hover: var(--ocg-primary-dark-fg-bright);
+      --color-primary-fg-hover-strong: var(--ocg-primary-dark-fg-brighter);
+      --color-primary-fg-deep: var(--ocg-primary-dark-fg-brighter);
+      --color-primary-edge: var(--ocg-primary-dark-edge);
+      --color-primary-edge-muted: var(--ocg-primary-dark-edge);
+      --color-primary-edge-soft: var(--ocg-primary-dark-edge-soft);
+      --color-primary-edge-faint: var(--ocg-primary-dark-edge-soft);
+      --color-primary-halo: var(--ocg-primary-dark-fg);
+      --color-focus: var(--ocg-primary-dark-edge);
+    }
+  }
+  /* theme-lint: tokens-end */
+
+  /* Light islands: plates (fixed white backings for third-party imagery) and ink (fixed dark
+     stages) re-declare every token the dark block overrides, except plate-edge, from light
+     sources. Each declaration matches @theme static, so the rule is a no-op in light. */
+  /* theme-lint: tokens-start light-island scope, re-declared from light sources */
+  :where(.plate, .ink) {
+    --color-stone-50: var(--ocg-light-stone-50);
+    --color-stone-100: var(--ocg-light-stone-100);
+    --color-stone-200: var(--ocg-light-stone-200);
+    --color-stone-300: var(--ocg-light-stone-300);
+    --color-stone-400: var(--ocg-light-stone-400);
+    --color-stone-500: var(--ocg-light-stone-500);
+    --color-stone-600: var(--ocg-light-stone-600);
+    --color-stone-700: var(--ocg-light-stone-700);
+    --color-stone-800: var(--ocg-light-stone-800);
+    --color-stone-900: var(--ocg-light-stone-900);
+    --color-red-50: var(--ocg-light-red-50);
+    --color-red-100: var(--ocg-light-red-100);
+    --color-red-200: var(--ocg-light-red-200);
+    --color-red-700: var(--ocg-light-red-700);
+    --color-red-800: var(--ocg-light-red-800);
+    --color-red-900: var(--ocg-light-red-900);
+    --color-orange-50: var(--ocg-light-orange-50);
+    --color-orange-200: var(--ocg-light-orange-200);
+    --color-orange-700: var(--ocg-light-orange-700);
+    --color-amber-50: var(--ocg-light-amber-50);
+    --color-amber-100: var(--ocg-light-amber-100);
+    --color-amber-200: var(--ocg-light-amber-200);
+    --color-amber-700: var(--ocg-light-amber-700);
+    --color-amber-800: var(--ocg-light-amber-800);
+    --color-amber-900: var(--ocg-light-amber-900);
+    --color-amber-950: var(--ocg-light-amber-950);
+    --color-yellow-50: var(--ocg-light-yellow-50);
+    --color-yellow-100: var(--ocg-light-yellow-100);
+    --color-yellow-200: var(--ocg-light-yellow-200);
+    --color-yellow-800: var(--ocg-light-yellow-800);
+    --color-yellow-900: var(--ocg-light-yellow-900);
+    --color-green-50: var(--ocg-light-green-50);
+    --color-green-100: var(--ocg-light-green-100);
+    --color-green-200: var(--ocg-light-green-200);
+    --color-green-800: var(--ocg-light-green-800);
+    --color-green-900: var(--ocg-light-green-900);
+    --color-emerald-50: var(--ocg-light-emerald-50);
+    --color-emerald-200: var(--ocg-light-emerald-200);
+    --color-emerald-700: var(--ocg-light-emerald-700);
+    --color-emerald-900: var(--ocg-light-emerald-900);
+    --color-emerald-950: var(--ocg-light-emerald-950);
+    --color-canvas: var(--ocg-light-stone-100);
+    --color-surface: #fff;
+    --color-raised: #fff;
+    --color-shade: var(--ocg-light-stone-900);
+    --color-danger-fill: var(--color-red-500);
+    --color-danger-text: var(--color-red-500);
+    --color-primary-50: var(--ocg-primary-light-50, #EBF5FF);
+    --color-primary-100: var(--ocg-primary-light-100, #D6EBFF);
+    --color-primary-200: var(--ocg-primary-light-200, #ADD6FF);
+    --color-primary-300: var(--ocg-primary-light-300, #6BB8FF);
+    --color-primary-400: var(--ocg-primary-light-400, #29A3FF);
+    --color-primary-500: var(--ocg-primary-light-500, #0094FF);
+    --color-primary-600: var(--ocg-primary-light-600, #0077CC);
+    --color-primary-700: var(--ocg-primary-light-700, #005999);
+    --color-primary-800: var(--ocg-primary-light-800, #004880);
+    --color-primary-900: var(--ocg-primary-light-900, #003778);
+    --color-primary-950: var(--ocg-primary-light-950, #002152);
+    --color-primary-fill: var(--color-primary-500);
+    --color-primary-fill-strong: var(--color-primary-600);
+    --color-primary-fill-hover: var(--color-primary-700);
+    --color-primary-tint: var(--color-primary-50);
+    --color-primary-tint-strong: var(--color-primary-100);
+    --color-primary-fg: var(--color-primary-500);
+    --color-primary-fg-strong: var(--color-primary-600);
+    --color-primary-fg-hover: var(--color-primary-700);
+    --color-primary-fg-hover-strong: var(--color-primary-800);
+    --color-primary-fg-deep: var(--color-primary-900);
+    --color-primary-edge: var(--color-primary-500);
+    --color-primary-edge-muted: var(--color-primary-400);
+    --color-primary-edge-soft: var(--color-primary-300);
+    --color-primary-edge-faint: var(--color-primary-200);
+    --color-primary-halo: var(--color-primary-300);
+    --color-focus: var(--color-primary-500);
+  }
+  /* theme-lint: tokens-end */
+
+  /* In dark, islands keep the light root's text color and native controls. Utilities on the
+     island element still win. */
+  /* theme-lint: tokens-start light island text and scheme in dark */
+  :where(.plate, .ink) {
+    @variant dark {
+      color: #000;
+      color-scheme: light;
+    }
+  }
+  /* theme-lint: tokens-end */
+
+  /* Print always paints light: the dark block is screen only, and !important beats the inline
+     color-scheme the pre-paint script sets. */
+  @media print {
+    :root {
+      color-scheme: light !important;
+    }
+  }
+
+  /* Live theme switch: no transitions while common/theme.js swaps the tokens. */
+  html[data-theme-switching] *,
+  html[data-theme-switching] *::before,
+  html[data-theme-switching] *::after {
+    transition: none !important;
   }
 }
 
@@ -121,19 +480,19 @@
   }
 
   .btn-primary {
-     @apply py-1.5 px-5 h-10 text-sm text-center text-white rounded-full bg-primary-500 transition-colors enabled:hover:bg-primary-700 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11;
+     @apply py-1.5 px-5 h-10 text-sm text-center text-on-primary rounded-full bg-primary-fill transition-colors enabled:hover:bg-primary-fill-hover enabled:focus:ring-4 enabled:focus:ring-primary-halo enabled:active:ring-4 enabled:active:ring-primary-halo enabled:focus:bg-primary-fill-hover enabled:focus:text-on-primary relative overflow-hidden phone:min-h-11 phone:min-w-11;
   }
 
   .btn-primary-anchor {
-    @apply py-2 px-5 inline-block text-sm text-center text-white rounded-full bg-primary-500 transition-colors hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
+    @apply py-2 px-5 inline-block text-sm text-center text-on-primary rounded-full bg-primary-fill transition-colors hover:bg-primary-fill-hover focus:ring-4 focus:ring-primary-halo active:ring-4 active:ring-primary-halo focus:bg-primary-fill-hover focus:text-on-primary relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
   }
 
   .btn-secondary {
-    @apply py-1.5 px-5 h-10 bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors enabled:hover:bg-primary-500 enabled:hover:text-white enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11;
+    @apply py-1.5 px-5 h-10 bg-surface items-center text-sm text-center text-primary-fg rounded-full border border-primary-edge transition-colors enabled:hover:bg-primary-fill enabled:hover:text-on-primary enabled:focus:ring-4 enabled:focus:ring-primary-halo enabled:active:ring-4 enabled:active:ring-primary-halo enabled:focus:bg-primary-fill-hover enabled:focus:text-on-primary relative overflow-hidden phone:min-h-11 phone:min-w-11;
   }
 
   .btn-secondary-anchor {
-    @apply py-2 px-5 inline-block bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
+    @apply py-2 px-5 inline-block bg-surface items-center text-sm text-center text-primary-fg rounded-full border border-primary-edge transition-colors hover:bg-primary-fill hover:text-on-primary focus:ring-4 focus:ring-primary-halo active:ring-4 active:ring-primary-halo focus:bg-primary-fill-hover focus:text-on-primary relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
   }
 
   .btn-tertiary {
@@ -152,19 +511,19 @@
   /* Toggle switch track, placed right after an `sr-only peer` checkbox */
   .toggle-track {
     @apply relative h-6 w-11 shrink-0 rounded-full bg-stone-200 transition-colors
-      peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300
-      peer-checked:bg-primary-500
-      after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-all after:content-['']
-      peer-checked:after:translate-x-full peer-checked:after:border-white rtl:peer-checked:after:-translate-x-full
+      peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-halo
+      peer-checked:bg-primary-fill
+      after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-on-primary after:transition-all after:content-['']
+      peer-checked:after:translate-x-full peer-checked:after:border-on-primary rtl:peer-checked:after:-translate-x-full
       peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-disabled:after:bg-stone-100;
   }
 
   .btn-primary-outline {
-    @apply enabled:cursor-pointer text-center text-primary-500 border border-primary-500 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-500 hover:enabled:border-primary-500 text-sm px-5 py-2 relative overflow-hidden phone:min-h-11 phone:min-w-11;
+    @apply enabled:cursor-pointer text-center text-primary-fg border border-primary-edge transition-colors bg-surface rounded-full hover:enabled:text-on-primary hover:enabled:bg-primary-fill hover:enabled:border-primary-edge text-sm px-5 py-2 relative overflow-hidden phone:min-h-11 phone:min-w-11;
   }
 
   .btn-primary-outline-anchor {
-    @apply cursor-pointer text-center text-primary-500 border border-primary-500 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-500 hover:border-primary-500 text-sm px-5 py-2 relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
+    @apply cursor-pointer text-center text-primary-fg border border-primary-edge bg-surface transition-colors rounded-full hover:text-on-primary hover:bg-primary-fill hover:border-primary-edge text-sm px-5 py-2 relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
   }
 
   .btn-primary-outline .svg-icon,
@@ -176,8 +535,27 @@
     @apply py-1 px-3 text-xs phone:min-h-0 phone:min-w-0;
   }
 
+  /* theme-lint: tokens-start shadow, mask or transparent edge, kept for light parity */
   .ocg-swal-popup {
     @apply py-8! px-6! rounded-lg! max-w-[calc(100%-2rem)]! md:max-w-[560px]! shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_0_20px_-2px_rgba(0,0,0,0.25)]!;
+  }
+  /* theme-lint: tokens-end */
+
+  /* SweetAlert2 reads its --swal2-* colors from :root; the popup's own declarations win in dark.
+     The edge needs !important to beat the light shadow above. */
+  .ocg-swal-popup {
+    @variant dark {
+      --swal2-background: var(--color-raised);
+      --swal2-color: var(--color-stone-700);
+      --swal2-close-button-color: var(--color-stone-400);
+      --swal2-input-background: var(--color-surface);
+      --swal2-input-border: 1px solid var(--color-stone-300);
+      --swal2-validation-message-background: var(--color-stone-100);
+      --swal2-validation-message-color: var(--color-stone-700);
+      box-shadow:
+        0 0 0 1px var(--color-stone-200),
+        0 0 20px -2px color-mix(in oklab, var(--color-shade) 60%, transparent) !important;
+    }
   }
 
   /* Bottom alerts share the bar's gutter, so no bar text shows beside them. */
@@ -226,7 +604,7 @@
   }
 
   .custom-badge.canceled {
-    @apply border-red-300 text-red-500;
+    @apply border-red-300 text-danger-text;
   }
 
   /* Badge tones, combined with `custom-badge`; never with `canceled`. The compound
@@ -278,7 +656,7 @@
   }
 
   .card-surface {
-    @apply rounded-2xl border border-stone-100 bg-white p-4 shadow-sm transition-shadow;
+    @apply rounded-2xl border border-stone-100 bg-surface p-4 shadow-sm transition-shadow;
   }
 
   .card-surface:hover {
@@ -302,7 +680,7 @@
   }
 
   .card-title {
-    @apply font-semibold text-wrap text-black line-clamp-1 text-[0.9rem] lg:line-clamp-2 lg:h-[41px] mb-2 mt-1;
+    @apply font-semibold text-wrap text-stone-900 line-clamp-1 text-[0.9rem] lg:line-clamp-2 lg:h-[41px] mb-2 mt-1;
   }
 
   .card-meta {
@@ -314,18 +692,57 @@
   }
 
   .input-primary {
-    @apply block w-full rounded-md bg-white px-3 py-1.5 text-base text-stone-900 border border-stone-200 placeholder:text-stone-500/75 focus:ring-transparent sm:text-sm/6;
+    @apply block w-full rounded-md bg-surface px-3 py-1.5 text-base text-stone-900 border border-stone-200 placeholder:text-stone-500/75 focus:ring-transparent sm:text-sm/6;
   }
 
   /* Beats the forms plugin, which hides the outline of focused controls. Fields draw it inside. */
   :where(input, select, textarea):focus-visible {
-    outline: 2px solid var(--ocg-primary, var(--color-primary-500));
+    outline: 2px solid var(--color-focus);
     outline-offset: -2px;
   }
 
   :where(input[type="checkbox"], input[type="radio"]):focus-visible {
     outline-offset: 2px;
   }
+
+  /* @tailwindcss/forms paints bare controls with literals in @layer base. These zero-specificity
+     overrides move them onto tokens; named control classes still win. Focused borders, checked
+     fills and multi-line selects stay with the plugin. File inputs are excluded, because the
+     plugin resets them later in its own layer. The chevron is the plugin's data URI with a
+     stone-500 stroke, since var() does not resolve inside it. */
+  /* theme-lint: tokens-start forms plugin base on tokens */
+  :where([type='text'],input:where(:not([type])),[type='email'],[type='url'],[type='password'],[type='number'],[type='date'],[type='datetime-local'],[type='month'],[type='search'],[type='tel'],[type='time'],[type='week'],[multiple]:not([type='file']),textarea,select) {
+    background-color: var(--color-surface);
+  }
+
+  :where([type='text'],input:where(:not([type])),[type='email'],[type='url'],[type='password'],[type='number'],[type='date'],[type='datetime-local'],[type='month'],[type='search'],[type='tel'],[type='time'],[type='week'],[multiple]:not([type='file']),textarea,select):where(:not(:focus)) {
+    border-color: var(--color-stone-500);
+  }
+
+  :where(input, textarea)::placeholder {
+    color: var(--color-stone-500);
+  }
+
+  :where(select):where(:not([multiple], [size]:not([size="1"]))) {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='oklch(55.3%25 0.013 58.071)' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  }
+
+  /* The same chevron with the dark stone-500 stroke. */
+  :where(select):where(:not([multiple], [size]:not([size="1"]))) {
+    @variant dark {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ada6a1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    }
+  }
+
+  :where([type='checkbox']:not(:checked, :indeterminate), [type='radio']:not(:checked)) {
+    background-color: var(--color-surface);
+    border-color: var(--color-stone-500);
+  }
+
+  :where(*) {
+    --tw-ring-offset-color: var(--color-surface);
+  }
+  /* theme-lint: tokens-end */
 
   .input-primary:disabled {
     @apply cursor-not-allowed border-stone-200 bg-stone-100 text-stone-500 opacity-100 placeholder:text-stone-400;
@@ -342,7 +759,7 @@
   }
 
   .select-primary {
-    @apply relative col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-stone-900 border border-stone-200 focus:ring-transparent sm:text-sm/6;
+    @apply relative col-start-1 row-start-1 w-full appearance-none rounded-md bg-surface py-1.5 pl-3 pr-8 text-base text-stone-900 border border-stone-200 focus:ring-transparent sm:text-sm/6;
   }
 
   .select-primary:disabled {
@@ -350,11 +767,11 @@
   }
 
   .radio-primary {
-    @apply size-4 text-primary-700 border border-stone-200 bg-stone-50 checked:border-primary-500 checked:bg-primary-500 cursor-pointer focus:ring-0 focus:ring-transparent;
+    @apply size-4 text-primary-fg-hover border border-stone-200 bg-stone-50 checked:border-primary-edge checked:bg-primary-fill cursor-pointer focus:ring-0 focus:ring-transparent;
   }
 
   .checkbox-primary {
-    @apply size-4 rounded-sm text-primary-700 border border-stone-200 bg-stone-50 checked:border-primary-500 checked:bg-primary-500 cursor-pointer focus:ring-0 focus:ring-transparent;
+    @apply size-4 rounded-sm text-primary-fg-hover border border-stone-200 bg-stone-50 checked:border-primary-edge checked:bg-primary-fill cursor-pointer focus:ring-0 focus:ring-transparent;
   }
 
   .asterisk {
@@ -415,11 +832,7 @@
     @apply text-stone-500;
   }
 
-  .inert-form[inert] input[type="radio"].sr-only + div .border-primary-500 {
-    opacity: 0.5;
-  }
-
-  .inert-form[inert] input[type="radio"].sr-only + div .bg-primary-500 {
+  .inert-form[inert] input[type="radio"].sr-only + div :is(.border-primary-edge, .bg-primary-fg) {
     opacity: 0.5;
   }
 
@@ -441,11 +854,66 @@
   }
 
   .modal-card {
-    @apply relative flex min-h-0 max-h-[calc(90vh-2rem)] flex-col overflow-hidden bg-white shadow;
+    @apply relative flex min-h-0 max-h-[calc(90vh-2rem)] flex-col overflow-hidden bg-raised shadow;
   }
 
   .modal-body {
     @apply min-h-0 overflow-x-hidden overflow-y-auto;
+  }
+
+  /* Shared raster placeholders (map and virtual event images) under location panels. Dimmer
+     in dark, so the bright rasters do not glow on the dark surface. */
+  .raster-placeholder {
+    @apply opacity-30;
+
+    @variant dark {
+      opacity: 0.1;
+    }
+  }
+
+  /* Edge for plates with no outline of their own, drawn outside the plate in dark only. It
+     fills Tailwind's ring slot and composes its shadow stack, so a shadow utility such as
+     hover:shadow-sm adds its shadow instead of replacing the edge. */
+  .plate-ring {
+    @variant dark {
+      --tw-ring-shadow: 0 0 0 1px var(--color-plate-edge);
+      box-shadow:
+        var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow),
+        var(--tw-ring-shadow), var(--tw-shadow);
+    }
+  }
+
+  /* Site header logo variants (common/header.html and
+     common/badge_header.html). The dark variant is screen only, so print
+     always shows the light logo. */
+  [data-site-logo] {
+    display: inline-flex;
+  }
+
+  [data-site-logo="dark"] {
+    display: none;
+  }
+
+  [data-site-logo="light"] {
+    @variant dark {
+      display: none;
+    }
+  }
+
+  [data-site-logo="dark"] {
+    @variant dark {
+      display: inline-flex;
+    }
+  }
+
+  [data-site-logo="plated"] {
+    @variant dark {
+      border-radius: 0.25rem;
+      background-color: var(--color-plate);
+      box-shadow:
+        0 0 0 4px var(--color-plate),
+        0 0 0 5px var(--color-plate-edge);
+    }
   }
 
   .featured-speakers-grid:empty {
@@ -461,10 +929,20 @@
 :root {
   /* Full Calendar */
   --fc-small-font-size: .7em;
-  --fc-event-bg-color: rgb(229, 231, 235);
-  --fc-event-border-color: rgb(209, 213, 219);
-  --fc-today-bg-color: color-mix(in oklab, var(--ocg-primary) 15%, white);
-  --fc-event-text-color: black;
+  --fc-event-bg-color: var(--color-stone-200);
+  --fc-event-border-color: var(--color-stone-300);
+  --fc-today-bg-color: color-mix(in oklab, var(--color-primary-fill) 15%, var(--color-surface));
+  --fc-event-text-color: var(--color-stone-900);
+}
+
+/* Full Calendar vendor colors in dark; this block follows the vendor :root, so it wins. */
+:root {
+  @variant dark {
+    --fc-page-bg-color: var(--color-surface);
+    --fc-border-color: var(--color-stone-200);
+    --fc-neutral-bg-color: var(--color-stone-100);
+    --fc-neutral-text-color: var(--color-stone-500);
+  }
 }
 
 .svg-icon {
@@ -524,7 +1002,7 @@ button:disabled {
  * 50-1000, drawers and sheets 1100, map modal 1200, Lit modals 1300, Swal top layer.
  */
 @utility btn-fill {
-  @apply bg-primary-500 text-white border-primary-500;
+  @apply bg-primary-fill text-on-primary border-primary-edge;
 }
 
 @keyframes sheet-up {
@@ -576,11 +1054,11 @@ button:disabled {
     height: 2px;
     background-image: linear-gradient(
       90deg,
-      var(--color-primary-500) 0%,
-      var(--color-primary-500) 36%,
+      var(--color-primary-fg) 0%,
+      var(--color-primary-fg) 36%,
       var(--color-stone-200) 50%,
-      var(--color-primary-500) 64%,
-      var(--color-primary-500) 100%
+      var(--color-primary-fg) 64%,
+      var(--color-primary-fg) 100%
     );
     background-position: 110% 0;
     background-size: 260% 100%;
@@ -597,7 +1075,7 @@ button:disabled {
 
   /* Section heading */
   .section-strip:not(.hidden) {
-    --strip-surface: var(--color-white);
+    --strip-surface: var(--color-surface);
     @apply sticky top-[63px] z-[21] mb-1.5 flex min-h-11 items-center justify-between gap-3 bg-(--strip-surface) px-3 py-1 text-[15px]/5 font-bold uppercase tracking-wide;
   }
 
@@ -612,7 +1090,7 @@ button:disabled {
   }
 
   .section-strip-stone:not(.hidden) {
-    --strip-surface: var(--color-stone-100);
+    --strip-surface: var(--color-canvas);
   }
 
   .section-strip-plain:not(.hidden) {
@@ -625,8 +1103,8 @@ button:disabled {
 
   /* Bottom sheet */
   .sheet-panel {
-    box-shadow: 0 -8px 30px color-mix(in srgb, var(--color-stone-900) 18%, transparent);
-    @apply fixed inset-x-0 bottom-0 z-[1] max-h-[calc(100dvh-4rem)] w-auto max-w-none flex-col rounded-t-2xl rounded-b-none bg-white pb-[env(safe-area-inset-bottom)] motion-safe:animate-[sheet-up_200ms_ease-out];
+    box-shadow: 0 -8px 30px color-mix(in srgb, var(--color-shade) 18%, transparent);
+    @apply fixed inset-x-0 bottom-0 z-[1] max-h-[calc(100dvh-4rem)] w-auto max-w-none flex-col rounded-t-2xl rounded-b-none bg-raised pb-[env(safe-area-inset-bottom)] motion-safe:animate-[sheet-up_200ms_ease-out];
   }
 
   .sheet-panel:not(.hidden) {
@@ -634,7 +1112,7 @@ button:disabled {
   }
 
   .sheet-head {
-    @apply sticky top-0 z-[1] h-[52px] flex-none items-center justify-between border-b border-stone-200 bg-white ps-3 pe-1.5 touch-none;
+    @apply sticky top-0 z-[1] h-[52px] flex-none items-center justify-between border-b border-stone-200 bg-raised ps-3 pe-1.5 touch-none;
   }
 
   .sheet-head:not(.hidden) {
@@ -657,7 +1135,7 @@ button:disabled {
   }
 
   .sheet-foot {
-    @apply flex-none gap-2 border-t border-stone-200 bg-white px-3 py-3;
+    @apply flex-none gap-2 border-t border-stone-200 bg-raised px-3 py-3;
   }
 
   .sheet-foot:not(.hidden) {
@@ -763,7 +1241,7 @@ button:disabled {
 
   /* Group dashboard context: community over group, with the caret centred on both lines. */
   .group-context {
-    @apply mx-3 mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg border border-stone-200 bg-white px-3 py-2 text-start hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500;
+    @apply mx-3 mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg border border-stone-200 bg-surface px-3 py-2 text-start hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge;
   }
 
   .group-context::before {
@@ -785,9 +1263,11 @@ button:disabled {
   .account-sheet {
     @apply fixed inset-0 z-[1100] w-auto rounded-none border-0 bg-stone-950/35 shadow-none touch-pinch-zoom motion-safe:animate-[sheet-scrim-color-in_200ms_ease-out] motion-safe:transition-[background-color,display] motion-safe:transition-discrete motion-safe:duration-200;
 
+    /* theme-lint: tokens-start scrim, fixed in every theme */
     @supports (color: color-mix(in oklab, red, red)) {
       background-color: color-mix(in oklab, var(--color-stone-950) calc(35% * (1 - var(--sheet-drag, 0))), transparent);
     }
+    /* theme-lint: tokens-end */
   }
 
   .account-sheet.hidden {
@@ -816,8 +1296,8 @@ button:disabled {
     @apply size-[18px];
   }
 
-  /* The reorder puts Desktop version directly under the Docs row and its hairline. */
-  .account-sheet ul:has(.account-sheet-cta) li:has(> [data-viewport-mode]) {
+  /* The reorder puts the theme row directly under the Docs row and its hairline. */
+  .account-sheet ul:has(.account-sheet-cta) li.account-sheet-theme {
     @apply mt-0 border-t-0 pt-0;
   }
 
@@ -831,7 +1311,7 @@ button:disabled {
   }
 
   .account-sheet li.account-sheet-cta [role="menuitem"] {
-    @apply flex min-h-11 items-center justify-center gap-2 rounded-full border border-primary-500 py-0 text-sm font-semibold text-primary-500;
+    @apply flex min-h-11 items-center justify-center gap-2 rounded-full border border-primary-edge py-0 text-sm font-semibold text-primary-fg;
   }
 
   .account-sheet li.account-sheet-cta [role="menuitem"] .text-xs\/6 {
@@ -839,28 +1319,28 @@ button:disabled {
   }
 
   .account-sheet li.account-sheet-cta [role="menuitem"] .svg-icon {
-    @apply bg-primary-500;
+    @apply bg-primary-fg;
   }
 
   .account-sheet li.account-sheet-cta-fill [role="menuitem"] {
-    @apply bg-primary-500 text-white;
+    @apply bg-primary-fill text-on-primary;
   }
 
   .account-sheet li.account-sheet-cta-fill [role="menuitem"] .svg-icon {
-    @apply bg-white;
+    @apply bg-on-primary;
   }
 
   .account-sheet [aria-current="page"] {
-    @apply font-semibold text-primary-500;
+    @apply font-semibold text-primary-fg;
   }
 
   .account-sheet [aria-current="page"] .svg-icon {
-    @apply bg-primary-500;
+    @apply bg-primary-fg;
   }
 
   /* Sticky bottom CTA */
   .cta-bar:not(.hidden) {
-    @apply fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-stone-200 bg-white px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))];
+    @apply fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-stone-200 bg-surface px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))];
   }
 
   body:has(.cta-bar:not(.hidden, [data-phone-bar="hidden"])) footer[role="contentinfo"] {
@@ -995,7 +1475,9 @@ button:disabled {
   /* The pill covers the last line, so the fade spans two. Headings and margins can land the clip
      mid-line, which the fade hides as well. */
   .read-more[data-overflowing]:not([data-expanded]) .read-more-body {
+    /* theme-lint: tokens-start shadow, mask or transparent edge, kept for light parity */
     mask-image: linear-gradient(to bottom, black calc(100% - 2.5lh), transparent calc(100% - 0.5lh));
+    /* theme-lint: tokens-end */
     @apply cursor-pointer;
   }
 
@@ -1004,7 +1486,7 @@ button:disabled {
   }
 
   .read-more-toggle {
-    @apply hidden items-center gap-1.5 rounded-full border border-stone-200 bg-white text-stone-700 transition-colors hover:border-stone-300 hover:bg-stone-50 focus:outline-none focus-visible:border-stone-300 focus-visible:bg-stone-50 focus-visible:ring-2 focus-visible:ring-stone-300;
+    @apply hidden items-center gap-1.5 rounded-full border border-stone-200 bg-surface text-stone-700 transition-colors hover:border-stone-300 hover:bg-stone-50 focus:outline-none focus-visible:border-stone-300 focus-visible:bg-stone-50 focus-visible:ring-2 focus-visible:ring-stone-300;
   }
 
   .read-more[data-overflowing] .read-more-toggle {
@@ -1037,7 +1519,7 @@ button:disabled {
   }
 
   .snap-dot[data-active] {
-    @apply bg-primary-500;
+    @apply bg-primary-fg;
   }
 
   /* Map attribution */
@@ -1056,7 +1538,7 @@ button:disabled {
   }
 
   .dashboard-table-stacked tr:not(.hidden) {
-    @apply grid grid-cols-2 gap-x-3 gap-y-2 border-b border-stone-200 bg-white px-3 py-3;
+    @apply grid grid-cols-2 gap-x-3 gap-y-2 border-b border-stone-200 bg-surface px-3 py-3;
   }
 
   .dashboard-table-stacked td:not(.hidden) {
@@ -1137,7 +1619,7 @@ button:disabled {
     }
 
     #group-check-in-scanner-modal .sheet-head {
-      @apply sticky top-0 z-10 col-span-2 h-16 bg-white py-0;
+      @apply sticky top-0 z-10 col-span-2 h-16 bg-raised py-0;
     }
 
     #group-check-in-scanner-modal [data-group-check-in-body],
@@ -1191,13 +1673,13 @@ button:disabled {
 
 /* Footer */
 .copyright a {
-  color: white;
+  color: var(--color-on-fill);
   font-weight: 600;
 }
 
 /* Jumbotron */
 .jumbotron-description a, .community-description a, .new-group-content a {
-  color: var(--ocg-primary);
+  color: var(--color-primary-fg);
   font-weight: 600;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -1238,7 +1720,7 @@ input:placeholder-shown {
 }
 
 .fc-col-header-cell-cushion {
-  color: rgb(75 85 99);
+  color: var(--color-stone-600);
 }
 
 .fc-event-title {
@@ -1288,18 +1770,25 @@ input:placeholder-shown {
   line-height: 1rem;
   font-weight: 500;
   margin-top: 0.5rem !important;
-  color: rgb(107, 114, 128);
+  color: var(--color-stone-500);
 }
 
 .fc-daygrid-more-link:hover {
   background-color: transparent !important;
-  color: rgb(55, 65, 81);
+  color: var(--color-stone-700);
 }
 
 /* Long "+N more" lists scroll; their cards are fixed-positioned so the scroll box does not clip them. */
 .fc .fc-more-popover .fc-popover-body {
   max-height: min(24rem, 60vh);
   overflow-y: auto;
+}
+
+/* The "+N more" popover floats over the grid, so it takes the raised surface in dark. */
+.fc-theme-standard .fc-popover {
+  @variant dark {
+    background-color: var(--color-raised);
+  }
 }
 /* End full calendar */
 
@@ -1310,11 +1799,13 @@ input:placeholder-shown {
 }
 
 .explore-popover-card-shell {
-  background-color: white;
+  background-color: var(--color-raised);
   cursor: pointer;
-  border: 1px solid rgb(209, 213, 219);
+  border: 1px solid var(--color-stone-300);
   border-radius: 0.5rem;
+  /* theme-lint: tokens-start shadow, mask or transparent edge, kept for light parity */
   box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px;
+  /* theme-lint: tokens-end */
   max-width: min(380px, calc(100vw - 2rem));
   overflow: hidden;
   width: 380px;
@@ -1349,7 +1840,9 @@ input:placeholder-shown {
 .explore-map-cluster-popup .maplibregl-popup-content {
   border: 1px solid var(--color-stone-300);
   border-radius: 0.5rem;
+  /* theme-lint: tokens-start shadow, mask or transparent edge, kept for light parity */
   box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px;
+  /* theme-lint: tokens-end */
   font-family: "Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   overflow: hidden;
   padding: 0;
@@ -1391,11 +1884,56 @@ input:placeholder-shown {
 .maplibregl-map a {
   color: inherit !important;
 }
+
+/* Vendor control and popup colors in dark. The explore tooltip keeps its transparent background
+   through its more specific rule. */
+.maplibregl-ctrl-group {
+  @variant dark {
+    background-color: var(--color-raised);
+  }
+}
+
+.maplibregl-ctrl-group:not(:empty) {
+  @variant dark {
+    box-shadow: 0 0 0 2px var(--color-stone-200);
+  }
+}
+
+.maplibregl-ctrl-group button + button {
+  @variant dark {
+    border-top-color: var(--color-stone-200);
+  }
+}
+
+.maplibregl-ctrl button:not(:disabled):hover {
+  @variant dark {
+    background-color: var(--color-stone-100);
+  }
+}
+
+/* The vendor icons are #333 data URIs, which no variable reaches. */
+.maplibregl-ctrl-icon {
+  @variant dark {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}
+
+.maplibregl-ctrl.maplibregl-ctrl-attrib {
+  @variant dark {
+    background-color: color-mix(in oklab, var(--color-surface) 50%, transparent);
+  }
+}
+
+.maplibregl-popup-content {
+  @variant dark {
+    background-color: var(--color-raised);
+  }
+}
 /* End MapLibre */
 
 /* Marker cluster */
 .map-cluster {
-  background-color: color-mix(in oklab, var(--ocg-primary) 50%, white);
+  background-color: color-mix(in oklab, var(--color-primary-fill) 50%, var(--color-surface));
   border-radius: 50%;
   cursor: pointer;
   height: 40px;
@@ -1404,9 +1942,9 @@ input:placeholder-shown {
 }
 
 .map-cluster > span {
-  background-color: var(--ocg-primary);
+  background-color: var(--color-primary-fill);
   border-radius: 50%;
-  color: white;
+  color: var(--color-on-primary);
   display: block;
   font-weight: 700;
   line-height: 30px;
@@ -1414,14 +1952,16 @@ input:placeholder-shown {
 }
 
 .map-cluster:focus-visible, .maplibregl-marker:focus-visible {
-  outline: 2px solid var(--ocg-primary);
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 /* End marker cluster */
 
 /* Tooltip */
 .tooltip-with-arrow::after {
+  /* theme-lint: tokens-start shadow, mask or transparent edge, kept for light parity */
   border: 5px solid #0000;
+  /* theme-lint: tokens-end */
   content: "";
   display: block;
   height: 0;
@@ -1440,13 +1980,13 @@ input:placeholder-shown {
 }
 
 .tooltip-with-arrow:not(.top-0)::after {
-  border-bottom: 5px solid rgb(209, 213, 219);
+  border-bottom: 5px solid var(--color-stone-300);
   bottom: auto;
   top: -4px;
 }
 
 .tooltip-with-arrow.top-0::after {
-  border-top: 5px solid rgb(209, 213, 219);
+  border-top: 5px solid var(--color-stone-300);
   bottom: -4px;
   top: auto;
 }
@@ -1470,17 +2010,17 @@ input:placeholder-shown {
   position: absolute;
   right: 0.625rem;
   width: 0;
-  border-bottom-color: rgb(231, 229, 228);
+  border-bottom-color: var(--color-stone-200);
   top: 1px;
 }
 
 .audit-log-details-card {
-  background-color: white;
-  border: 1px solid rgb(231, 229, 228);
+  background-color: var(--color-raised);
+  border: 1px solid var(--color-stone-200);
   border-radius: 0.75rem;
   box-shadow:
-    rgba(15, 23, 42, 0.08) 0 18px 38px -18px,
-    rgba(15, 23, 42, 0.12) 0 12px 20px -14px;
+    color-mix(in srgb, var(--color-shade) 8%, transparent) 0 18px 38px -18px,
+    color-mix(in srgb, var(--color-shade) 12%, transparent) 0 12px 20px -14px;
   overflow: hidden;
 }
 
@@ -1500,7 +2040,7 @@ input:placeholder-shown {
 
 .audit-log-details-popover[data-placement="top"]::after {
   border-bottom-color: transparent;
-  border-top-color: rgb(231, 229, 228);
+  border-top-color: var(--color-stone-200);
   bottom: 1px;
   top: auto;
 }
@@ -1539,6 +2079,7 @@ input:placeholder-shown {
 .icon-clock { --icon-url: url('/static/images/icons/clock.svg'); }
 .icon-close { --icon-url: url('/static/images/icons/close.svg'); }
 .icon-cohosts { --icon-url: url('/static/images/icons/cohosts.svg'); }
+.icon-contrast { --icon-url: url('/static/images/icons/contrast.svg'); }
 .icon-copy { --icon-url: url('/static/images/icons/copy.svg'); }
 .icon-csv { --icon-url: url('/static/images/icons/csv.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
@@ -1584,6 +2125,7 @@ input:placeholder-shown {
 .icon-members { --icon-url: url('/static/images/icons/members.svg'); }
 .icon-meeting { --icon-url: url('/static/images/icons/meeting.svg'); }
 .icon-mobile { --icon-url: url('/static/images/icons/mobile.svg'); }
+.icon-moon { --icon-url: url('/static/images/icons/moon.svg'); }
 .icon-next { --icon-url: url('/static/images/icons/next.svg'); }
 .icon-pencil { --icon-url: url('/static/images/icons/pencil.svg'); }
 .icon-pending-invitation { --icon-url: url('/static/images/icons/pending_invitation.svg'); }
@@ -1609,6 +2151,7 @@ input:placeholder-shown {
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
 .icon-star { --icon-url: url('/static/images/icons/star.svg'); }
 .icon-submission { --icon-url: url('/static/images/icons/submission.svg'); }
+.icon-sun { --icon-url: url('/static/images/icons/sun.svg'); }
 .icon-survey { --icon-url: url('/static/images/icons/survey.svg'); }
 .icon-tag { --icon-url: url('/static/images/icons/tag.svg'); }
 .icon-team { --icon-url: url('/static/images/icons/team.svg'); }
@@ -1713,8 +2256,8 @@ input:placeholder-shown {
 .markdown blockquote {
   margin: 1.5rem 0;
   padding: 0.5rem 1rem;
-  border-left: 3px solid #e7e5e4;
-  background-color: #f5f5f4;
+  border-left: 3px solid var(--color-stone-200);
+  background-color: var(--color-stone-100);
   font-style: italic;
 }
 
@@ -1726,12 +2269,12 @@ input:placeholder-shown {
 
 .markdown table td,
 .markdown table th {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-stone-200);
   padding: 0.5rem;
 }
 
 .markdown a {
-  color: var(--ocg-primary);
+  color: var(--color-primary-fg);
   text-decoration: none;
   word-break: break-word;
 }
@@ -1769,6 +2312,26 @@ input:placeholder-shown {
 }
 
 /* End markdown */
+
+/* Docs (static/css/docs/) */
+/* Dark values for the docs stylesheet hooks. Light falls back to each hook's literal. */
+.ocg-docs-root {
+  @variant dark {
+    --ocg-docs-accent: var(--color-primary-fg);
+    --ocg-docs-accent-strong: var(--color-primary-fg-strong);
+    --ocg-docs-edge-soft: var(--color-primary-edge-soft);
+    --ocg-docs-label: var(--color-stone-400);
+    --ocg-docs-text: var(--color-stone-800);
+    --ocg-docs-text-muted: var(--color-stone-600);
+    --ocg-docs-text-soft: var(--color-stone-500);
+    --ocg-docs-text-strong: var(--color-stone-900);
+    --ocg-docs-text-subtle: var(--color-stone-700);
+    --ocg-docs-tint: var(--color-primary-tint);
+    --ocg-docs-well: var(--color-stone-100);
+    --ocg-docs-zebra: var(--color-stone-50);
+  }
+}
+/* End docs */
 
 
 /* Scrollbar always visible */
@@ -1827,12 +2390,12 @@ input:placeholder-shown {
 }
 
 .EasyMDEContainer button {
-  color: rgb(17 24 39 / var(--tw-text-opacity, 1));
+  color: var(--color-stone-900);
 }
 
 .EasyMDEContainer .editor-toolbar button.active,
 .EasyMDEContainer .editor-toolbar button:hover {
-  background-color: white;
+  background-color: var(--color-surface);
 }
 
 .EasyMDEContainer .CodeMirror .cm-spell-error:not(.cm-url):not(.cm-comment):not(.cm-tag):not(.cm-word) {
@@ -1848,13 +2411,109 @@ input:placeholder-shown {
 }
 
 .EasyMDEContainer .editor-preview-active {
-  background-color: white;
+  background-color: var(--color-surface);
   padding: 1rem;
 }
 
 /* Hide separator when empty block of icons */
 .EasyMDEContainer .editor-toolbar .separator + .separator {
   display: none;
+}
+
+/* Vendor editor colors in dark. Rules ending in a pseudo-element hang the variant on the
+   container, because a pseudo-class after a pseudo-element is invalid. */
+.EasyMDEContainer .CodeMirror {
+  @variant dark {
+    background-color: var(--color-surface);
+    color: var(--color-stone-900);
+  }
+}
+
+.EasyMDEContainer .CodeMirror-cursor {
+  @variant dark {
+    border-left-color: var(--color-stone-900);
+  }
+}
+
+.EasyMDEContainer .CodeMirror-selected {
+  @variant dark {
+    background: var(--color-primary-tint-strong);
+  }
+}
+
+.EasyMDEContainer .CodeMirror-focused .CodeMirror-selected {
+  @variant dark {
+    background: var(--color-primary-tint-strong);
+  }
+}
+
+.EasyMDEContainer {
+  @variant dark {
+    & .CodeMirror-line::selection,
+    & .CodeMirror-line > span::selection,
+    & .CodeMirror-line > span > span::selection {
+      background: var(--color-primary-tint-strong);
+    }
+  }
+}
+
+.EasyMDEContainer .editor-toolbar i.separator {
+  @variant dark {
+    border-left-color: var(--color-stone-200);
+    border-right-color: transparent;
+  }
+}
+
+.EasyMDEContainer .editor-toolbar button.active,
+.EasyMDEContainer .editor-toolbar button:hover {
+  @variant dark {
+    border-color: var(--color-stone-300);
+  }
+}
+
+.EasyMDEContainer .editor-preview pre {
+  @variant dark {
+    background: var(--color-stone-100);
+  }
+}
+
+.EasyMDEContainer .editor-preview table td,
+.EasyMDEContainer .editor-preview table th {
+  @variant dark {
+    border-color: var(--color-stone-200);
+  }
+}
+
+.EasyMDEContainer .cm-s-easymde .cm-link,
+.EasyMDEContainer .cm-s-easymde .cm-quote,
+.EasyMDEContainer .cm-s-easymde .cm-string {
+  @variant dark {
+    color: var(--color-stone-500);
+  }
+}
+
+.EasyMDEContainer .cm-s-easymde .cm-url {
+  @variant dark {
+    color: var(--color-stone-400);
+  }
+}
+
+.EasyMDEContainer .cm-s-easymde .cm-tag {
+  @variant dark {
+    color: var(--color-green-800);
+  }
+}
+
+.EasyMDEContainer .cm-s-easymde .cm-attribute {
+  @variant dark {
+    color: var(--color-stone-600);
+  }
+}
+
+.EasyMDEContainer .cm-s-easymde .cm-comment {
+  @variant dark {
+    background-color: var(--color-stone-100);
+  }
 }
 
 /* Disabled state */
@@ -1878,26 +2537,29 @@ input:placeholder-shown {
 /* Spinner */
 
 .spinner {
-  --spinner-base: #e5e7eb;
-  --spinner-accent: var(--color-primary-500);
+  --spinner-base: var(--color-stone-200);
+  --spinner-accent: var(--color-primary-fg);
 }
 
 .spinner-variant-1 {
-  --spinner-base: #e5e7eb;
-  --spinner-accent: var(--color-primary-500);
+  --spinner-base: var(--color-stone-200);
+  --spinner-accent: var(--color-primary-fg);
 }
 
+/* theme-lint: tokens-start paints on a primary fill in both themes */
 .spinner-variant-2 {
-  --spinner-accent: var(--color-primary-300);
+  --spinner-base: var(--ocg-light-stone-200);
+  --spinner-accent: var(--ocg-primary-light-300, #6BB8FF);
 }
+/* theme-lint: tokens-end */
 
 .spinner-variant-3 {
-  --spinner-base: #ffffff;
-  --spinner-accent: var(--color-primary-500);
+  --spinner-base: var(--color-surface);
+  --spinner-accent: var(--color-primary-fg);
 }
 
 .spinner-variant-main {
-  --spinner-base: #edf2f7;
+  --spinner-base: var(--color-stone-100);
 }
 
 .spinner .spinner-base {
@@ -1940,11 +2602,11 @@ input:placeholder-shown {
   height: 2px;
   background-image: linear-gradient(
     90deg,
-    var(--color-primary-500) 0%,
-    var(--color-primary-500) 36%,
+    var(--color-primary-fg) 0%,
+    var(--color-primary-fg) 36%,
     var(--color-stone-200) 50%,
-    var(--color-primary-500) 64%,
-    var(--color-primary-500) 100%
+    var(--color-primary-fg) 64%,
+    var(--color-primary-fg) 100%
   );
   background-position: 110% 0;
   background-size: 260% 100%;
@@ -1954,7 +2616,7 @@ input:placeholder-shown {
 }
 
 .header-nav-link-pending {
-  border-color: var(--color-primary-500);
+  border-color: var(--color-primary-edge);
 }
 
 .header-nav-link-pending::after {

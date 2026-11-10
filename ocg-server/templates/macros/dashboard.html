@@ -16,7 +16,7 @@
 {# Used by dashboard table filter badges to clear a selected filter. #}
 {% macro active_table_filter_remove_button(label) -%}
   <button type="submit"
-          class="-me-1 inline-flex size-5 items-center justify-center rounded-full transition-colors hover:bg-stone-200 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500"
+          class="-me-1 inline-flex size-5 items-center justify-center rounded-full transition-colors hover:bg-stone-200 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-edge"
           aria-label="{{ label }}">
     <div class="svg-icon size-3 icon-close bg-stone-500"></div>
   </button>
@@ -182,7 +182,7 @@
 {# Used by dashboard side menus for user, community, and group navigation. -#}
 {% macro menu_item(name, icon, is_active, href, disabled = false, extra_styles = "", icon_size = "size-4", items_count = 0, items_count_label = "", compact_name = "" ) -%}
   {% if is_active -%}
-    <div class="relative bg-white border border-stone-200 px-3 rounded-lg {{ extra_styles }}">
+    <div class="relative bg-surface border border-stone-200 px-3 rounded-lg {{ extra_styles }}">
       <a href="{{ href }}"
          hx-get="{{ href }}"
          hx-indicator="#dashboard-spinner"
@@ -190,7 +190,7 @@
          class="flex items-center justify-between cursor-pointer"
          aria-current="page">
         <div class="flex items-center">
-          <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-primary-500"></div>
+          <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-primary-fg"></div>
           <div class="text-sm/8 ms-3">
             {% if compact_name.is_empty() -%}
               {{ name }}
@@ -201,12 +201,12 @@
           </div>
         </div>
         {% if items_count + 0 > 0 -%}
-          <div class="text-[0.65rem]/4 font-bold text-white border border-primary-500 bg-primary-500 rounded-full px-2 pt-px ms-3">
+          <div class="text-[0.65rem]/4 font-bold text-on-primary border border-primary-edge bg-primary-fill rounded-full px-2 pt-px ms-3">
             {{ items_count }}{% if !items_count_label.is_empty() %}<span class="sr-only"> {{ items_count_label }}</span>{% endif %}
           </div>
         {% endif -%}
       </a>
-      <div class="absolute top-0.5 -left-3 xl:-left-5 bottom-0.5 w-1 bg-primary-500 rounded-lg"></div>
+      <div class="absolute top-0.5 -left-3 xl:-left-5 bottom-0.5 w-1 bg-primary-fg rounded-lg"></div>
     </div>
   {% else -%}
     {% if disabled -%}
@@ -228,14 +228,14 @@
         </div>
       </button>
     {% else -%}
-      <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors {{ extra_styles }}">
+      <div class="rounded-md px-3 border border-transparent hover:bg-surface hover:border-stone-200 transition-colors {{ extra_styles }}">
         <a href="{{ href }}"
            hx-get="{{ href }}"
            hx-indicator="#dashboard-spinner"
            hx-push-url="true"
            class="flex items-center justify-between cursor-pointer">
           <div class="flex items-center">
-            <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-primary-500"></div>
+            <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-primary-fg"></div>
             <div class="text-sm/8 ms-3">
               {% if compact_name.is_empty() -%}
                 {{ name }}
@@ -246,7 +246,7 @@
             </div>
           </div>
           {% if items_count + 0 > 0 -%}
-            <div class="text-[0.65rem]/4 font-bold text-white border border-primary-500 bg-primary-500 rounded-full px-2 pt-px ms-3">
+            <div class="text-[0.65rem]/4 font-bold text-on-primary border border-primary-edge bg-primary-fill rounded-full px-2 pt-px ms-3">
               {{ items_count }}{% if !items_count_label.is_empty() %}<span class="sr-only"> {{ items_count_label }}</span>{% endif %}
             </div>
           {% endif -%}
@@ -269,8 +269,8 @@
    desktop version option in the user menu. Fine pointers keep the md layout instead (see the
    md variant in styles.src.css). -#}
 {% macro mobile_notice(extra_styles = "") -%}
-  <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden {{ extra_styles }}">
-    <div class="max-w-md rounded-lg border-4 border-dashed border-primary-600 bg-stone-100 p-8 text-center text-stone-800">
+  <div class="fixed inset-0 z-10 flex items-center justify-center bg-canvas px-6 pt-16 md:hidden {{ extra_styles }}">
+    <div class="max-w-md rounded-lg border-4 border-dashed border-primary-fg-strong bg-canvas p-8 text-center text-stone-800">
       <p class="text-xl font-medium">This dashboard is not optimized yet for mobile devices</p>
       <p class="hidden pointer-coarse:block text-sm text-stone-600 mt-4">
         If you prefer, you can load the desktop version from the user menu at the top right. It is
@@ -323,9 +323,9 @@
          target="_blank"
          rel="noopener noreferrer"
          hx-boost="false"
-         class="group inline-flex size-7 shrink-0 self-center items-center justify-center rounded-full border border-primary-500 bg-white transition-colors hover:bg-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-300"
+         class="group inline-flex size-7 shrink-0 self-center items-center justify-center rounded-full border border-primary-edge bg-surface transition-colors hover:bg-primary-fill focus:outline-none focus:ring-4 focus:ring-primary-halo"
          aria-label="{% if docs_aria_label.is_empty() -%} Open documentation {% else -%} {{ docs_aria_label }} {% endif -%}">
-        <div class="svg-icon size-4 icon-question bg-primary-500 transition-colors group-hover:bg-white"></div>
+        <div class="svg-icon size-4 icon-question bg-primary-fg transition-colors group-hover:bg-on-primary"></div>
       </a>
     </div>
     {% if !description.is_empty() || !description_html.is_empty() || !id.is_empty() -%}
@@ -471,7 +471,7 @@
 {% macro table_filter_menu(id, label, is_active, extra_classes = "", dropdown_classes = "start-0") -%}
   <details class="group relative inline-block text-left {{ extra_classes }}"
            data-table-filter-menu>
-    <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-1 font-semibold transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 group-open:bg-white group-open:text-stone-900 [&::-webkit-details-marker]:hidden"
+    <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-1 font-semibold transition-colors hover:bg-surface hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge group-open:bg-surface group-open:text-stone-900 [&::-webkit-details-marker]:hidden"
              aria-label="{{ label }} filters"
              aria-controls="{{ id }}">
       <span class="whitespace-nowrap">{{ label }}</span>
@@ -479,7 +479,7 @@
       </div>
     </summary>
     <div id="{{ id }}"
-         class="dropdown absolute {{ dropdown_classes }} top-full z-20 mt-2 w-64 rounded-lg border border-stone-200 bg-white text-left text-sm font-normal normal-case text-stone-700 shadow">
+         class="dropdown absolute {{ dropdown_classes }} top-full z-20 mt-2 w-64 rounded-lg border border-stone-200 bg-raised text-left text-sm font-normal normal-case text-stone-700 shadow">
       {{ caller() }}
     </div>
   </details>
@@ -499,18 +499,18 @@
           {% endif -%}
           class="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
                  {% if is_active -%}
-                   bg-primary-50 text-primary-700
+                   bg-primary-tint text-primary-fg-hover
                  {% endif -%}"
           aria-pressed="{% if is_active -%} true{%- else -%}false{%- endif -%}">
     <span class="flex size-4 shrink-0 items-center justify-center rounded-full border
                  {% if is_active -%}
-                   border-primary-500
+                   border-primary-edge
                  {% else -%}
                    border-stone-300
                  {% endif -%}"
           aria-hidden="true">
       {% if is_active -%}
-        <span class="size-2 rounded-full bg-primary-500"></span>
+        <span class="size-2 rounded-full bg-primary-fg"></span>
       {% endif -%}
     </span>
     <span>{{ label }}</span>
@@ -527,12 +527,12 @@
   {% let dot -%}{% if dot_tone.is_empty() %}{{ tone }}{% else %}{{ dot_tone }}{% endif %}{%- endlet -%}
   <span class="group/tooltip-trigger relative inline-flex shrink-0">
     <button type="button"
-            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 phone:before:-inset-y-[13px]"
+            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge phone:before:-inset-y-[13px]"
             {% if !aria_label.is_empty() %}aria-label="{{ aria_label }}"{% endif %}
             aria-describedby="{{ tooltip_id }}">
       <span class="custom-badge badge-{{ tone }}"
             {% if currency %}data-localized-currency{% endif %}>{{ label }}</span>
-      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
+      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-surface
                    {% if dot == "danger" %}bg-red-800{% else if dot == "success" %}bg-green-800{% else if dot == "warning" %}bg-amber-800{% else if dot == "pending" %}bg-yellow-800{% else %}bg-stone-500{% endif %}"
             aria-hidden="true"></span>
     </button>
@@ -562,7 +562,7 @@
   <span id="{{ id }}"
         role="tooltip"
         data-tooltip-panel
-        class="pointer-events-auto invisible absolute bottom-full z-20 mb-1 {{ width_classes }} max-w-[calc(100vw-2rem)] {{ alignment_classes }} break-words whitespace-normal rounded-lg border border-stone-200 bg-white text-left text-xs font-normal leading-5 text-stone-700 opacity-0 shadow-lg transition-opacity {{ visibility_classes }}">
+        class="pointer-events-auto invisible absolute bottom-full z-20 mb-1 {{ width_classes }} max-w-[calc(100vw-2rem)] {{ alignment_classes }} break-words whitespace-normal rounded-lg border border-stone-200 bg-raised text-left text-xs font-normal leading-5 text-stone-700 opacity-0 shadow-lg transition-opacity {{ visibility_classes }}">
     <span class="block border-b border-stone-200 bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-900">
       {{ title }}
     </span>
@@ -575,7 +575,7 @@
 {# Used by dashboard attendee, waitlist, and invitation request rows. #}
 {% macro user_profile_modal_trigger(user, placeholder) -%}
   <button type="button"
-          class="group flex w-full min-w-0 items-center space-x-5 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          class="group flex w-full min-w-0 items-center space-x-5 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge"
           data-user-profile-modal
           data-user-profile='{{ user|json }}'
           aria-label="View profile for {{ user.name.as_deref() |assigned_or(user.username) }}">

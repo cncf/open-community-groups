@@ -1,7 +1,14 @@
-import { expect, test } from "../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../fixtures.js";
 
 import { TEST_COMMUNITY_NAME, TEST_EVENT_NAME, TEST_EVENT_SLUG, TEST_GROUP_SLUG } from "../../seed.js";
-import { expectDialogClosed, expectFocusIndicator, navigateToEvent } from "../../utils.js";
+import {
+  expectDarkTheme,
+  expectDialogClosed,
+  expectFocusIndicator,
+  navigateToEvent,
+  resolveCssColor,
+  useTheme,
+} from "../../utils.js";
 
 /**
  * Opens the event gallery's lightbox from its first tile.
@@ -19,7 +26,62 @@ const openLightbox = async (page) => {
   return { closeButton: dialog.getByRole("button", { name: "Close" }), dialog, gallery, tile };
 };
 
+/**
+ * Opens the event gallery's lightbox at any width and reads its chrome and slide frame colors.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @returns {Promise<object>} Viewer colors, and stone-900 as the viewer resolves it.
+ */
+const readViewerColors = async (page) => {
+  // Open the lightbox on the second image, which loads (the first is a broken fixture), and move
+  // the pointer off its controls.
+  await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+  const gallery = page.locator("images-gallery");
+  await gallery.getByRole("button", { name: `Open Event ${TEST_EVENT_NAME} image 2` }).click();
+  const lightbox = gallery.locator(".modal");
+  // opacity-0 is the lightbox script's closed-state contract; Playwright counts it as visible.
+  await expect(lightbox).not.toHaveClass(/opacity-0/);
+  const slide = lightbox.getByRole("img", { name: `Event ${TEST_EVENT_NAME} image 2`, exact: true });
+  await expect(slide).toBeVisible();
+  await page.mouse.move(0, 0);
+
+  // Read the pills, the icons and the slide frame.
+  const colors = await lightbox.evaluate((element) => {
+    const background = (selector) => getComputedStyle(element.querySelector(selector)).backgroundColor;
+    const title = getComputedStyle(element.querySelector(".modal-content > div"));
+    const frame = getComputedStyle(element.querySelector(".modal-content .z-30 img"));
+
+    return {
+      closeIcon: background(".icon-close"),
+      closePill: background(".modal-close"),
+      frame: { background: frame.backgroundColor, border: frame.borderTopColor },
+      nextIcon: background(".icon-next"),
+      nextPill: getComputedStyle(element.querySelector(".icon-next").parentElement).backgroundColor,
+      prevIcon: background(".icon-prev"),
+      prevPill: getComputedStyle(element.querySelector(".icon-prev").parentElement).backgroundColor,
+      title: { background: title.backgroundColor, color: title.color },
+    };
+  });
+
+  return {
+    colors,
+    stone900: await resolveCssColor(lightbox.locator(".icon-prev"), "var(--color-stone-900)"),
+  };
+};
+
 test.describe("lightbox accessibility", () => {
+  testAtBothWidths("keeps the viewer chrome and slide frame light in stored dark", async ({ page }) => {
+    // Read the viewer colors in light, then in stored dark.
+    const light = await readViewerColors(page);
+    await useTheme(page, { stored: "dark" });
+    const dark = await readViewerColors(page);
+    await expectDarkTheme(page);
+
+    // Verify the arrow icons paint stone-900 and the viewer island keeps every light color.
+    expect(light.colors.prevIcon).toBe(light.stone900);
+    expect(light.colors.nextIcon).toBe(light.stone900);
+    expect(dark).toEqual(light);
+  });
+
   test("opens as a dialog with focus on Close and closes back to the tile @mobile", async ({ page }) => {
     const { closeButton, dialog, gallery, tile } = await openLightbox(page);
 

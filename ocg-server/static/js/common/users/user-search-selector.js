@@ -224,7 +224,7 @@ export class UserSearchSelector extends LitWrapper {
           <tbody>
             ${
               this.selectedUsers.length === 0
-                ? html`<tr class="border-b border-stone-200 bg-white">
+                ? html`<tr class="border-b border-stone-200 bg-surface">
                     <td class="px-8 py-12 text-center text-stone-500" colspan=${hasActions ? 2 : 1}>
                       ${copy.emptyState}
                     </td>
@@ -234,7 +234,7 @@ export class UserSearchSelector extends LitWrapper {
                     (user) => user.user_id || user.username,
                     (user) => {
                       return html`
-                        <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
+                        <tr class="border-b border-stone-200 odd:bg-surface even:bg-stone-50/50">
                           <td class="max-w-0 px-3 xl:px-5 py-4">${renderContributorIdentity(user)}</td>
                           ${
                             hasActions

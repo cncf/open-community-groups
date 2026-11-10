@@ -1,0 +1,17 @@
+- /children: deep-equal
+- menu:
+  - menuitem "Close menu"
+  - text: e2e-member-1 E2E Member One
+  - menuitem "Home"
+  - menuitem "Explore"
+  - menuitem "Stats"
+  - menuitem "Docs"
+  - group "User dashboard Loading...":
+    - menuitem "Check in"
+    - menuitem "Invitations"
+  - group "Theme":
+    - menuitemradio "Light"
+    - menuitemradio "Dark"
+    - menuitemradio "System" [checked]
+  - menuitem "Desktop version"
+  - menuitem "Log out"

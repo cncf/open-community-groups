@@ -16,23 +16,23 @@ const CROPPER_TEMPLATE = `
     <cropper-image scalable translatable></cropper-image>
     <cropper-shade hidden></cropper-shade>
     <cropper-handle action="move" plain></cropper-handle>
-    <cropper-selection outlined precise theme-color="var(--color-primary-500)">
+    <cropper-selection outlined precise theme-color="var(--color-primary-edge)">
       <cropper-grid covered></cropper-grid>
       <cropper-crosshair centered></cropper-crosshair>
       <span
-        class="pointer-events-none absolute left-0 top-0 size-[10px] border-l-2 border-t-2 border-primary-500"
+        class="pointer-events-none absolute left-0 top-0 size-[10px] border-l-2 border-t-2 border-primary-edge"
         data-cropper-corner
       ></span>
       <span
-        class="pointer-events-none absolute right-0 top-0 size-[10px] border-r-2 border-t-2 border-primary-500"
+        class="pointer-events-none absolute right-0 top-0 size-[10px] border-r-2 border-t-2 border-primary-edge"
         data-cropper-corner
       ></span>
       <span
-        class="pointer-events-none absolute bottom-0 left-0 size-[10px] border-b-2 border-l-2 border-primary-500"
+        class="pointer-events-none absolute bottom-0 left-0 size-[10px] border-b-2 border-l-2 border-primary-edge"
         data-cropper-corner
       ></span>
       <span
-        class="pointer-events-none absolute bottom-0 right-0 size-[10px] border-b-2 border-r-2 border-primary-500"
+        class="pointer-events-none absolute bottom-0 right-0 size-[10px] border-b-2 border-r-2 border-primary-edge"
         data-cropper-corner
       ></span>
     </cropper-selection>
@@ -851,19 +851,19 @@ export class ImageCropper extends LitWrapper {
                 <p class="leading-6">
                   Animation is not preserved. Drag the image to position it. Use the arrow keys to move and
                   <kbd
-                    class="mx-1 inline-flex min-w-6 items-center justify-center rounded-md border border-stone-300 bg-white px-1.5 py-0.5 font-sans text-xs font-semibold leading-4 text-stone-700 shadow-sm"
+                    class="mx-1 inline-flex min-w-6 items-center justify-center rounded-md border border-stone-300 bg-surface px-1.5 py-0.5 font-sans text-xs font-semibold leading-4 text-stone-700 shadow-sm"
                     >+</kbd
                   >
                   /
                   <kbd
-                    class="mx-1 inline-flex min-w-6 items-center justify-center rounded-md border border-stone-300 bg-white px-1.5 py-0.5 font-sans text-xs font-semibold leading-4 text-stone-700 shadow-sm"
+                    class="mx-1 inline-flex min-w-6 items-center justify-center rounded-md border border-stone-300 bg-surface px-1.5 py-0.5 font-sans text-xs font-semibold leading-4 text-stone-700 shadow-sm"
                     >−</kbd
                   >
                   to zoom.
                 </p>
               </div>
               <div
-                class="relative h-[500px] md:h-[600px] w-full overflow-hidden rounded-lg bg-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-stone-400"
+                class="ink relative h-[500px] md:h-[600px] w-full overflow-hidden rounded-lg bg-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-stone-400"
                 role="application"
                 tabindex="0"
                 aria-label="Image crop area"
@@ -883,10 +883,10 @@ export class ImageCropper extends LitWrapper {
                 ${
                   isLoading
                     ? html`
-                        <div class="absolute inset-0 z-20 flex items-center justify-center bg-white/75">
+                        <div class="absolute inset-0 z-20 flex items-center justify-center bg-surface/75">
                           <svg-spinner
                             size="size-8"
-                            background-color="var(--color-primary-100)"
+                            background-color="var(--color-primary-tint-strong)"
                             label="Loading image editor..."
                           ></svg-spinner>
                         </div>
@@ -894,7 +894,7 @@ export class ImageCropper extends LitWrapper {
                     : nothing
                 }
                 <div
-                  class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center rounded-full border border-stone-200 bg-white p-1 shadow-md"
+                  class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center rounded-full border border-stone-200 bg-surface p-1 shadow-md"
                   role="group"
                   aria-label="Image zoom"
                 >

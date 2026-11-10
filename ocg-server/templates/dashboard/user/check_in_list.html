@@ -17,7 +17,7 @@
     {%- for event in events -%}
       {% if !event.checked_in -%}
         <button type="button"
-                class="card-hover-border relative flex h-full w-full min-w-0 max-w-full select-none flex-col overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition-all hover:border-primary-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 phone:pb-14"
+                class="card-hover-border relative flex h-full w-full min-w-0 max-w-full select-none flex-col overflow-hidden rounded-lg border border-stone-200 bg-surface text-left transition-all hover:border-primary-edge-soft hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge phone:pb-14"
                 data-user-check-in-open
                 data-event-id="{{ event.event_id }}"
                 data-event-date="{{ event.starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}"
@@ -53,7 +53,7 @@
             data-user-check-in-close
             tabindex="-1"
             aria-label="Close check-in code"></button>
-    <div class="relative z-10 flex h-[calc(100dvh-1.5rem)] w-full max-w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:h-auto sm:max-h-[calc(100dvh-3rem)] sm:max-w-md sheet-panel phone:h-[calc(100dvh-4rem)]"
+    <div class="relative z-10 flex h-[calc(100dvh-1.5rem)] w-full max-w-full flex-col overflow-hidden rounded-xl bg-raised shadow-xl sm:h-auto sm:max-h-[calc(100dvh-3rem)] sm:max-w-md sheet-panel phone:h-[calc(100dvh-4rem)]"
          data-user-check-in-panel>
       <div class="flex shrink-0 items-center justify-between gap-4 border-b border-stone-200 px-5 py-4 sm:px-6 sm:py-5 sheet-head sheet-grab phone:py-0">
         <h2 id="user-check-in-modal-title"
@@ -64,7 +64,7 @@
       <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 phone:p-0"
            data-user-check-in-body>
         <div class="flex min-h-full sm:block sm:min-h-0 phone:flex phone:min-h-full">
-          <div class="my-auto w-full overflow-hidden rounded-xl border border-stone-200 bg-white sm:my-0 phone:my-0 phone:flex phone:w-full phone:flex-col phone:rounded-none phone:border-0"
+          <div class="my-auto w-full overflow-hidden rounded-xl border border-stone-200 bg-raised sm:my-0 phone:my-0 phone:flex phone:w-full phone:flex-col phone:rounded-none phone:border-0"
                data-user-check-in-credential>
             <div class="p-4 sm:p-5 phone:p-3">
               <h3 id="user-check-in-event-name"
@@ -92,7 +92,7 @@
                    class="text-center text-sm text-stone-600"
                    role="status">Loading QR code…</div>
               <img id="user-check-in-qr-image"
-                   class="mx-auto hidden aspect-square w-full max-w-72 phone:max-w-[max(12rem,min(100%,calc(100dvh-26rem)))]"
+                   class="plate-ring mx-auto hidden aspect-square w-full max-w-72 phone:max-w-[max(12rem,min(100%,calc(100dvh-26rem)))]"
                    width="500"
                    height="500"
                    alt=""

@@ -72,7 +72,7 @@ describe("session-card", () => {
     expect(element.textContent).to.include("Opening Keynote");
     expect(element.textContent).to.include("Talk · Main Hall");
     expect(element.textContent).to.include("+1");
-    expect(element.firstElementChild.classList.contains("hover:border-primary-300")).to.equal(true);
+    expect(element.firstElementChild.classList.contains("hover:border-primary-edge-soft")).to.equal(true);
     expect(element.firstElementChild.classList.contains("hover:shadow-sm")).to.equal(true);
     expect(events).to.deep.equal(["edit", "delete"]);
   });
@@ -85,7 +85,7 @@ describe("session-card", () => {
     });
 
     // Disabled cards and actions do not expose interactive rollover styles.
-    expect(element.firstElementChild.classList.contains("hover:border-primary-300")).to.equal(false);
+    expect(element.firstElementChild.classList.contains("hover:border-primary-edge-soft")).to.equal(false);
     expect(element.firstElementChild.classList.contains("hover:shadow-sm")).to.equal(false);
     expect(Array.from(element.querySelectorAll("button")).every((button) => button.disabled)).to.equal(true);
   });
@@ -139,7 +139,7 @@ describe("session-card", () => {
     });
 
     // The time bar stretches instead of using a fixed height.
-    const bar = element.querySelector(".bg-primary-300");
+    const bar = element.querySelector(".bg-primary-edge-soft");
     expect(bar.classList.contains("self-stretch")).to.equal(true);
     expect(bar.classList.contains("h-10")).to.equal(false);
   });

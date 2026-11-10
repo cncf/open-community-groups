@@ -4,7 +4,7 @@
 {% block skip_link -%}
   {# Skip navigation link -#}
   <a href="#dashboard-main-content"
-     class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-md focus:shadow-lg">
+     class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-fill-strong focus:text-on-primary focus:rounded-md focus:shadow-lg">
     Skip to main content
   </a>
   {# End skip navigation link -#}
@@ -13,14 +13,14 @@
 {% block header -%}
   {# Header -#}
   <div id="dashboard-header"
-       class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-16 md:h-20 drop-shadow-sm flex items-center justify-between gap-3 px-3 xl:px-5 phone:filter-none phone:has-[#user-dropdown:not(.hidden)]:z-[1100]">
+       class="bg-surface fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-16 md:h-20 drop-shadow-sm flex items-center justify-between gap-3 px-3 xl:px-5 phone:filter-none phone:has-[#user-dropdown:not(.hidden)]:z-[1100]">
     {% block mobile_menu_button -%}
       {# Open menu button (mobile only) -#}
       <button id="open-dashboard-menu"
               type="button"
               aria-controls="dashboard-menu-drawer"
               aria-expanded="false"
-              class="group h-10 w-10 shrink-0 inline-flex justify-center items-center bg-stone-100 rounded-full p-2 hover:bg-stone-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 md:hidden phone:size-11">
+              class="group h-10 w-10 shrink-0 inline-flex justify-center items-center bg-stone-100 rounded-full p-2 hover:bg-stone-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-edge focus-visible:ring-offset-2 md:hidden phone:size-11">
         <div class="svg-icon h-4 w-4 bg-stone-700 group-hover:bg-stone-900 transition-colors icon-lines"></div>
         <span class="sr-only">Open dashboard menu</span>
       </button>
@@ -43,7 +43,7 @@
        {% endblock dashboard_context_attributes -%}>
     {# Sticky menu -#}
     <aside id="dashboard-menu-drawer"
-           class="sheet-panel fixed top-0 left-0 z-[1100] h-dvh w-80 shrink-0 -translate-x-full bg-stone-100 border-r border-stone-200 shadow-lg transition-transform md:sticky md:left-auto md:z-auto md:w-[225px] md:translate-x-0 md:bg-transparent md:border-r-0 md:shadow-none 2xl:w-[300px]"
+           class="sheet-panel fixed top-0 left-0 z-[1100] h-dvh w-80 shrink-0 -translate-x-full bg-canvas border-r border-stone-200 shadow-lg transition-transform md:sticky md:left-auto md:z-auto md:w-[225px] md:translate-x-0 md:bg-transparent md:border-r-0 md:shadow-none 2xl:w-[300px]"
            role="navigation"
            aria-label="Dashboard navigation"
            tabindex="-1">
@@ -56,7 +56,7 @@
       {# Close menu button (mobile only) -#}
       <button id="close-dashboard-menu"
               type="button"
-              class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm w-8 h-8 absolute top-4 end-2.5 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 md:hidden phone:top-1 phone:end-1 phone:size-11">
+              class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm w-8 h-8 absolute top-4 end-2.5 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-edge focus-visible:ring-offset-2 md:hidden phone:top-1 phone:end-1 phone:size-11">
         <div class="svg-icon h-4 w-4 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
         <span class="sr-only">Close menu</span>
       </button>
@@ -75,7 +75,7 @@
     {# End menu drawer backdrop (mobile only) -#}
 
     <main id="dashboard-main-content"
-          class="relative mt-20 min-w-0 flex-1 rounded-lg border border-stone-200 bg-white md:m-5 md:ms-0 md:mt-[6.25rem] phone:mt-16 phone:rounded-none phone:border-0
+          class="relative mt-20 min-w-0 flex-1 rounded-lg border border-stone-200 bg-surface md:m-5 md:ms-0 md:mt-[6.25rem] phone:mt-16 phone:rounded-none phone:border-0
                  {% block dashboard_main_classes -%}hidden md:block{% endblock dashboard_main_classes -%}"
           role="main">
       {% block dashboard_main -%}

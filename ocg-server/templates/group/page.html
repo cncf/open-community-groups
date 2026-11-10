@@ -7,7 +7,7 @@
 {% import "macros/cohosts.html" as cohosts -%}
 
 {# Phones drop the stone canvas so the page reads as one white surface. -#}
-{% block shell_classes %}phone:bg-white{% endblock shell_classes %}
+{% block shell_classes %}phone:bg-surface{% endblock shell_classes %}
 
 {% block head_title -%}
   <title>{{ self.preview_title() |demoji }}</title>
@@ -61,7 +61,7 @@
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:py-0">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full phone:rounded-none phone:border-0">
+    <div class="bg-surface border border-stone-200 rounded-lg flex flex-col w-full phone:rounded-none phone:border-0">
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10 phone:px-3 phone:pb-4 phone:gap-y-5 phone:pt-3">
         {# Group header -#}
         <div role="region" aria-label="Group summary">
@@ -149,7 +149,7 @@
                          title="More actions">
                   <div class="svg-icon size-4 icon-vertical-dots"></div>
                 </summary>
-                <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
+                <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-raised py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
                   <share-modal trigger-variant="menu-item" title="{{ group.name }}" url="/{{ group.community.name }}/group/{{ group.public_slug() }}">
                   </share-modal>
                 </div>
@@ -170,7 +170,7 @@
         <div class="py-4 phone:py-0">
           <div class="grid md:grid-cols-2 gap-5 sm:gap-8 md:gap-5 lg:gap-8 phone:grid-cols-1 phone:gap-3">
             {# Next event section -#}
-            <div class="border border-stone-200 rounded-lg flex flex-col bg-white"
+            <div class="border border-stone-200 rounded-lg flex flex-col bg-surface"
                  data-group-summary-card="next-event">
               <div class="flex flex-col p-4 h-full phone:p-3">
                 {% let next_event = upcoming_events.first() -%}
@@ -184,7 +184,7 @@
                   {% endif -%}
                 </div>
 
-                <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400 min-h-[108px] grow phone:min-h-0 phone:p-3"
+                <div class="rounded-lg border border-dashed border-stone-200 bg-surface p-4 text-stone-400 min-h-[108px] grow phone:min-h-0 phone:p-3"
                      data-card-panel>
                   {% if let Some(next_event_card) = &next_event -%}
                     {% if let Some(starts_at) = &next_event_card.event.starts_at -%}
@@ -255,7 +255,7 @@
 {# End next event section -#}
 
 {# Location and map section -#}
-<div class="border border-stone-200 rounded-lg flex flex-col bg-white
+<div class="border border-stone-200 rounded-lg flex flex-col bg-surface
             {% if !has_map %}phone:hidden{% endif %}"
      data-group-summary-card="location">
   {# Location details -#}
@@ -263,7 +263,7 @@
     <div class="flex items-center justify-between mb-4 min-h-[25px] phone:mb-2">
       <div class="text-base/3 uppercase font-semibold text-stone-400 phone:text-[13px]/4 phone:tracking-wide phone:text-stone-500">Location</div>
     </div>
-    <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-[108px] phone:h-[150px]"
+    <div class="relative rounded-lg border border-dashed border-stone-200 bg-surface overflow-hidden grow min-h-[108px] phone:h-[150px]"
          data-card-panel>
       {% if let Some(lat) = &group.latitude %}
         {% if let Some(lng) = &group.longitude %}
@@ -272,7 +272,7 @@
           {{ maps::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, small_overlay_text = location_text_small, modal_title = group.name|demoji) -}}
         {% else -%}
           <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-            <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+            <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat raster-placeholder">
             </div>
             <div class="relative flex w-full items-center justify-center">
               <div class="text-xl font-semibold text-stone-700">Location not provided</div>
@@ -281,7 +281,7 @@
         {% endif -%}
       {% else -%}
         <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat raster-placeholder">
           </div>
           <div class="relative flex w-full items-center justify-center">
             <div class="text-xl font-semibold text-stone-700">Location not provided</div>
@@ -329,7 +329,7 @@
       <a href="/{{ parent.community_name }}/group/{{ parent.public_slug() }}"
          hx-boost="true"
          hx-target="body"
-         class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-sm">
+         class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-surface p-4 transition hover:border-primary-edge-soft hover:shadow-sm">
         {{ ui::logo(logo_url = parent.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
         <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ parent.name|demoji }}</span>
       </a>
@@ -349,7 +349,7 @@
         <a href="/{{ subgroup.community_name }}/group/{{ subgroup.public_slug() }}"
            hx-boost="true"
            hx-target="body"
-           class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-sm">
+           class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-surface p-4 transition hover:border-primary-edge-soft hover:shadow-sm">
           {{ ui::logo(logo_url = subgroup.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
           <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ subgroup.name|demoji }}</span>
         </a>

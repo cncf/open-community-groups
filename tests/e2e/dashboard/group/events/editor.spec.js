@@ -1118,6 +1118,13 @@ test.describe("group dashboard event editor", () => {
       const nameInput = eventPage.locator("#name");
       await nameInput.focus();
       await expect(nameInput).not.toBeFocused();
+
+      // Verify the inert-form rule dims the selected meeting mode card ring and dot.
+      const selectedModeCard = eventPage.locator(
+        '#online-event-details label:has(input[type="radio"]:checked)',
+      );
+      await expect(selectedModeCard.locator(".border-primary-edge")).toHaveCSS("opacity", "0.5");
+      await expect(selectedModeCard.locator(".bg-primary-fg")).toHaveCSS("opacity", "0.5");
     });
   }
 

@@ -38,10 +38,13 @@ import {
 import {
   buildE2eUrl,
   confirmAlert,
+  expectDarkTheme,
   expectDialogClosed,
   navigateToEvent,
   navigateToPath,
+  resolveCssColor,
   sendCloseRequest,
+  useTheme,
   waitForActionResponse,
 } from "../../utils.js";
 
@@ -50,8 +53,6 @@ const ATTENDANCE_CHECK_FAILED_MESSAGE = "Couldn't load your registration.";
 const OWNED_CHECKOUT_CANCEL_URL = "https://example.test/checkout/e2e-owned-cancel";
 
 const OWNED_CHECKOUT_RESUME_URL = "https://example.test/checkout/e2e-owned-resume";
-
-const WHITE = "rgb(255, 255, 255)";
 
 const EVENT_REFUND_REQUESTED_RECIPIENT_IDS = [
   TEST_USER_IDS.admin1,
@@ -1444,9 +1445,33 @@ test.describe("event action bar @mobile", () => {
     await expect(getBarSummary(page)).toContainText(/\d+ spots? left · [A-Z][a-z]{2} +\d+/, {
       useInnerText: true,
     });
-    expect(await getBackgroundColor(signInButton)).not.toBe(WHITE);
+    expect(await getBackgroundColor(signInButton)).not.toBe(await getSurfaceColor(signInButton));
     expect((await signInButton.boundingBox()).height).toBe(44);
     await expect(page.getByRole("button", { name: "More actions" })).toBeHidden();
+  });
+
+  test("a signed-out visitor sees the summary beside one filled action in dark", async ({ page }) => {
+    // Load an open event with capacity in the dark theme.
+    await useTheme(page, { stored: "dark" });
+    await navigateToEvent(
+      page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+    await expectDarkTheme(page);
+    const signInButton = getSignInButton(page);
+    await expect(signInButton).toBeVisible();
+
+    // Verify the bar keeps the summary and a filled action on a dark surface.
+    await expectBarAtBottom(page);
+    await expect(getBarSummary(page)).toContainText(/\d+ spots? left · [A-Z][a-z]{2} +\d+/, {
+      useInnerText: true,
+    });
+    const surface = await getSurfaceColor(signInButton);
+    expect(surface).not.toBe("rgb(255, 255, 255)");
+    expect(await getBackgroundColor(signInButton)).not.toBe(surface);
+    expect((await signInButton.boundingBox()).height).toBe(44);
   });
 
   test("a signed-out tap shows a bottom alert with a Log in button and no timer", async ({ page }) => {
@@ -1516,7 +1541,7 @@ test.describe("event action bar @mobile", () => {
     );
     await waitForAttendanceState(member2Page);
     const attendButton = getAttendButton(member2Page);
-    expect(await getBackgroundColor(attendButton)).not.toBe(WHITE);
+    expect(await getBackgroundColor(attendButton)).not.toBe(await getSurfaceColor(attendButton));
     await waitForActionResponse(member2Page, () => attendButton.click(), {
       method: "POST",
       urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/attend`,
@@ -1526,7 +1551,7 @@ test.describe("event action bar @mobile", () => {
     const leaveButton = getLeaveButton(member2Page);
     await expect(leaveButton).toBeVisible();
     await dismissProfileCompletionPrompt(member2Page);
-    expect(await getBackgroundColor(leaveButton)).toBe(WHITE);
+    expect(await getBackgroundColor(leaveButton)).toBe(await getSurfaceColor(leaveButton));
     await expectFullWidth(member2Page, leaveButton);
     await expect(getBarSummary(member2Page)).toBeHidden();
   });
@@ -1556,7 +1581,7 @@ test.describe("event action bar @mobile", () => {
     // Verify the filled action and the menu share the bar, without the summary.
     const attendButton = getAttendButton(emptyUserPage);
     await expect(attendButton).toContainText("Continue to checkout");
-    expect(await getBackgroundColor(attendButton)).not.toBe(WHITE);
+    expect(await getBackgroundColor(attendButton)).not.toBe(await getSurfaceColor(attendButton));
     await expect(getBarSummary(emptyUserPage)).toBeHidden();
 
     // Verify the menu opens upward, with nothing the page already offers.
@@ -1751,7 +1776,7 @@ test.describe("event action bar @mobile", () => {
     // Verify the filled link fills the bar on its own.
     const joinLink = getAttendanceContainer(pending2Page).locator("[data-join-link]");
     await expect(joinLink).toBeVisible();
-    expect(await getBackgroundColor(joinLink)).not.toBe(WHITE);
+    expect(await getBackgroundColor(joinLink)).not.toBe(await getSurfaceColor(joinLink));
     await expectFullWidth(pending2Page, joinLink);
     await expect(getLeaveButton(pending2Page)).toBeHidden();
     await expect(getRefundButton(pending2Page)).toBeHidden();
@@ -1818,6 +1843,9 @@ const getBarSummary = (page) => page.locator('[data-attendance-role="bar-summary
 
 /** Returns the sign-in action shown to anonymous users. */
 const getSignInButton = (page) => page.locator('[data-attendance-role="signin-btn"]');
+
+/** Returns the surface color resolved where a control's color tokens apply. */
+const getSurfaceColor = (control) => resolveCssColor(control, "var(--color-surface)");
 
 /** Returns the ticket type card matching a tier title inside the ticket modal. */
 const getTicketTypeCard = (ticketModal, title) =>

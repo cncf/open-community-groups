@@ -14,12 +14,12 @@
             type="button"
             class="btn-primary inline-flex items-center gap-2 px-4">
       <span class="inline-flex items-center justify-center">
-        <div class="svg-icon size-4 bg-white icon-filter"></div>
+        <div class="svg-icon size-4 bg-on-primary icon-filter"></div>
       </span>
       <span>Filters</span>
     </button>
     <span id="audit-log-filters-active-indicator"
-          class="hidden absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-white bg-primary-700"></span>
+          class="hidden absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-surface bg-primary-fg-hover"></span>
   </div>
 </div>
 {# End header -#}
@@ -49,7 +49,7 @@
     <tbody role="rowgroup">
       {% if logs.is_empty() -%}
         {# Empty state -#}
-        <tr class="bg-white border-b border-stone-200">
+        <tr class="bg-surface border-b border-stone-200">
           {% if show_actor -%}
             <td class="lg:hidden px-8 py-12 text-center" colspan="3">
               {% include "dashboard/placeholders/audit_logs_table.html" -%}
@@ -72,7 +72,7 @@
       {% else -%}
         {% for log in logs -%}
           {# Log row -#}
-          <tr class="audit-log-row odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+          <tr class="audit-log-row odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
             {# Action -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="font-medium text-stone-900 wrap-break-word">{{ log.action_label }}</div>
@@ -111,7 +111,7 @@
                         aria-controls="{{ log.details_popover_id }}"
                         aria-expanded="false"
                         aria-label="View log details"
-                        class="inline-flex size-7 items-center justify-center rounded-full border border-stone-200 bg-white transition-colors hover:border-stone-300 hover:bg-stone-50 focus-visible:border-stone-300 focus-visible:bg-stone-50">
+                        class="inline-flex size-7 items-center justify-center rounded-full border border-stone-200 bg-surface transition-colors hover:border-stone-300 hover:bg-stone-50 focus-visible:border-stone-300 focus-visible:bg-stone-50">
                   <div class="svg-icon size-2.5 icon-info bg-stone-500"></div>
                 </button>
                 <div id="{{ log.details_popover_id }}"
@@ -147,7 +147,7 @@
                           </div>
                           {# Filter lists, like hundreds of selected groups, scroll on their own. -#}
                           {% if detail.key_label == "Groups" || detail.key_label == "Group Categories" || detail.key_label == "Regions" || detail.key_label == "Roles" -%}
-                            <div class="scrollbar-visible max-h-40 min-w-0 wrap-break-word overscroll-contain pe-1 text-sm/5 font-medium text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                            <div class="scrollbar-visible max-h-40 min-w-0 wrap-break-word overscroll-contain pe-1 text-sm/5 font-medium text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge"
                                  role="region"
                                  tabindex="0"
                                  aria-label="{{ detail.key_label }}">{{ detail.value }}</div>

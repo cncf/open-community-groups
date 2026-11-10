@@ -3,7 +3,7 @@
 {% block content -%}
   <div class="flex items-center justify-center w-full">
     <div class="container max-w-md m-auto px-4 py-8 md:px-6 md:py-12">
-      <div class="bg-white p-8 md:p-10 border border-stone-200 rounded-lg shadow-sm phone:p-0 phone:border-0 phone:rounded-none phone:shadow-none phone:bg-transparent">
+      <div class="bg-surface p-8 md:p-10 border border-stone-200 rounded-lg shadow-sm phone:p-0 phone:border-0 phone:rounded-none phone:shadow-none phone:bg-transparent">
         {# Header -#}
         <div class="mb-8">
           <h1 id="login-form-title" class="text-2xl font-bold text-stone-900 mb-2">Log In</h1>
@@ -16,7 +16,7 @@
             <div class="w-full">
               <a href="/log-in/oauth2/github{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
                  class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
-                <div class="svg-icon size-4 icon-github group-hover:bg-white transition-colors"></div>
+                <div class="svg-icon size-4 icon-github group-hover:bg-on-primary transition-colors"></div>
                 <span>GitHub</span>
               </a>
             </div>
@@ -28,7 +28,7 @@
             <div class="w-full">
               <a href="/log-in/oidc/linuxfoundation{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
                  class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
-                <div class="svg-icon size-4 icon-lfx group-hover:bg-white transition-colors"></div>
+                <div class="svg-icon size-4 icon-lfx group-hover:bg-on-primary transition-colors"></div>
                 <span>Linux Foundation SSO</span>
               </a>
             </div>
@@ -41,7 +41,7 @@
           {% if login.linuxfoundation || login.github -%}
             <div class="inline-flex items-center justify-center w-full relative mb-6">
               <hr class="w-full h-px bg-stone-200 border-0">
-              <div class="absolute px-3 bg-white text-xs text-stone-500 uppercase tracking-wide">OR</div>
+              <div class="absolute px-3 bg-surface text-xs text-stone-500 uppercase tracking-wide">OR</div>
             </div>
           {% endif -%}
 
@@ -104,7 +104,7 @@
         <div class="mt-6 text-center text-sm text-stone-600">
           Don't have an account?
           <a href="/sign-up{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
-             class="text-primary-500 hover:text-primary-700 font-medium transition-colors">Sign up</a>
+             class="text-primary-fg hover:text-primary-fg-hover font-medium transition-colors">Sign up</a>
         </div>
         {# End sign up link -#}
 

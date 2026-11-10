@@ -6,6 +6,7 @@ import {
 } from "/static/js/common/deployment-version.js";
 
 const DEFAULT_VIEWPORT_CONTENT = "width=device-width, initial-scale=1.0";
+const EXPIRED_VIEWPORT_MODE_COOKIE = "ocg_viewport_mode=; Path=/; Max-Age=0; SameSite=Lax";
 
 /**
  * Loads an inline head script that the base template includes verbatim.
@@ -21,22 +22,78 @@ const loadInlineScript = async (fileName) => {
 };
 
 /**
- * Runs the inline initializer inside an isolated same-origin frame whose cookie jar is
- * replaced with the given `document.cookie` value, then returns the resulting state.
+ * Runs the inline preferences initializer inside an isolated same-origin frame with stubbed cookie,
+ * storage and media query globals, then returns the resulting state.
+ * @param {string} scriptBody - Initializer source.
+ * @param {object} [options] - Frame globals.
+ * @param {string} [options.cookie] - Value `document.cookie` returns.
+ * @param {boolean} [options.prefersDark] - Whether the OS color scheme query matches dark.
+ * @param {object} [options.storage] - Fake `localStorage`.
+ * @param {Record<string, string>} [options.storage.entries] - Initially stored values.
+ * @param {"getter"|"setItem"|null} [options.storage.failure] - Storage access that throws.
+ * @returns {object} Root attributes, viewport metas, recorded writes, errors and theme-color metas.
  */
-const runViewportModeScript = (scriptBody, cookie) => {
+const runPreferencesScript = (scriptBody, { cookie = "", prefersDark = false, storage = {} } = {}) => {
   // Create an isolated frame with a default viewport meta.
   const frame = document.createElement("iframe");
   document.body.append(frame);
   const frameDocument = frame.contentDocument;
+  const frameWindow = frame.contentWindow;
   frameDocument.open();
   frameDocument.write(
     `<!DOCTYPE html><html><head><meta name="viewport" content="${DEFAULT_VIEWPORT_CONTENT}" /></head><body></body></html>`,
   );
   frameDocument.close();
 
-  // Control what the initializer reads from document.cookie.
-  Object.defineProperty(frameDocument, "cookie", { configurable: true, get: () => cookie });
+  // Control what the initializer reads from document.cookie and record its writes.
+  const cookieWrites = [];
+  Object.defineProperty(frameDocument, "cookie", {
+    configurable: true,
+    get: () => cookie,
+    set: (value) => {
+      cookieWrites.push(value);
+    },
+  });
+
+  // Replace the frame storage, shared with the test page origin, with a recording fake.
+  const { entries = {}, failure = null } = storage;
+  const storedValues = new Map(Object.entries(entries));
+  const storageWrites = [];
+  const fakeStorage = {
+    getItem: (key) => (storedValues.has(key) ? storedValues.get(key) : null),
+    removeItem: (key) => {
+      storageWrites.push([key, null]);
+      storedValues.delete(key);
+    },
+    setItem: (key, value) => {
+      if (failure === "setItem") {
+        throw new DOMException("Storage is full", "QuotaExceededError");
+      }
+      storageWrites.push([key, value]);
+      storedValues.set(key, value);
+    },
+  };
+  Object.defineProperty(frameWindow, "localStorage", {
+    configurable: true,
+    get: () => {
+      if (failure === "getter") {
+        throw new DOMException("Storage is blocked", "SecurityError");
+      }
+      return fakeStorage;
+    },
+  });
+
+  // Answer the OS color scheme query inside the frame.
+  frameWindow.matchMedia = (query) => ({
+    matches: prefersDark && query === "(prefers-color-scheme: dark)",
+    media: query,
+  });
+
+  // Collect uncaught errors raised inside the frame.
+  const errors = [];
+  frameWindow.onerror = (message) => {
+    errors.push(String(message));
+  };
 
   // Insert the source as a real classic script so it runs synchronously.
   const script = frameDocument.createElement("script");
@@ -44,16 +101,41 @@ const runViewportModeScript = (scriptBody, cookie) => {
   frameDocument.head.append(script);
 
   // Capture the resulting state before removing the frame.
+  const root = frameDocument.documentElement;
   const result = {
-    viewportMode: frameDocument.documentElement.getAttribute("data-viewport-mode"),
+    colorScheme: root.style.colorScheme,
+    cookieWrites,
+    errors,
+    storageWrites,
+    theme: root.getAttribute("data-theme"),
+    themeColorMetaCount: frameDocument.querySelectorAll('meta[name="theme-color"]').length,
     viewportMetaContents: [...frameDocument.querySelectorAll('meta[name="viewport"]')].map((meta) =>
       meta.getAttribute("content"),
     ),
+    viewportMode: root.getAttribute("data-viewport-mode"),
   };
   frame.remove();
 
   return result;
 };
+
+/**
+ * Builds the expected initializer state: light theme, default layout, no writes, no errors and no
+ * theme-color metas, with the given overrides.
+ * @param {object} [overrides] - Expected values that differ from the defaults.
+ * @returns {object} Expected state.
+ */
+const expectedPreferencesState = (overrides = {}) => ({
+  colorScheme: "light",
+  cookieWrites: [],
+  errors: [],
+  storageWrites: [],
+  theme: "light",
+  themeColorMetaCount: 0,
+  viewportMetaContents: [DEFAULT_VIEWPORT_CONTENT],
+  viewportMode: null,
+  ...overrides,
+});
 
 /**
  * Runs the inline deployment refresh cleanup against stubbed browser globals for
@@ -76,37 +158,113 @@ const runDeploymentRefreshScript = (scriptBody, href) => {
 };
 
 describe("common inline head scripts", () => {
-  it("forces the desktop layout viewport only when the exact cookie pair is present", async () => {
-    // Load the initializer source.
-    const body = await loadInlineScript("viewport_mode_init.js");
+  it("contains no Askama delimiters in any included head script", async () => {
+    // Verify every file the base template includes is free of Askama delimiters.
+    const includedFiles = ["deployment_refresh_cleanup.js", "preferences_init.js"];
+    for (const fileName of includedFiles) {
+      const body = await loadInlineScript(fileName);
+      ["{{", "{%", "{#"].forEach((delimiter) => {
+        expect(body.includes(delimiter), `${fileName} ${delimiter}`).to.equal(false);
+      });
+    }
+  });
 
-    // Verify the exact cookie switches the document to desktop mode.
+  it("resolves the color theme from storage or the OS without writing storage", async () => {
+    // Load the initializer source.
+    const body = await loadInlineScript("preferences_init.js");
+
+    // Verify stored light and dark win and anything else follows the OS.
+    const storedThemes = [
+      [undefined, null],
+      ["light", "light"],
+      ["dark", "dark"],
+      ["system", null],
+      ["garbage", null],
+    ];
+    storedThemes.forEach(([stored, storedTheme]) => {
+      [false, true].forEach((prefersDark) => {
+        const entries = stored === undefined ? {} : { ocg_theme: stored };
+        const theme = storedTheme ?? (prefersDark ? "dark" : "light");
+        expect(
+          runPreferencesScript(body, { prefersDark, storage: { entries } }),
+          `stored ${stored}, OS dark ${prefersDark}`,
+        ).to.deep.equal(expectedPreferencesState({ colorScheme: theme, theme }));
+      });
+    });
+
+    // Verify blocked storage falls back to the OS without escaping errors.
+    [false, true].forEach((prefersDark) => {
+      const theme = prefersDark ? "dark" : "light";
+      expect(
+        runPreferencesScript(body, {
+          prefersDark,
+          storage: { entries: { ocg_theme: "light" }, failure: "getter" },
+        }),
+        `blocked storage, OS dark ${prefersDark}`,
+      ).to.deep.equal(expectedPreferencesState({ colorScheme: theme, theme }));
+    });
+  });
+
+  it("applies the stored desktop version without touching cookies", async () => {
+    // Load the initializer source.
+    const body = await loadInlineScript("preferences_init.js");
+
+    // Verify the stored desktop mode forces the desktop layout viewport.
+    expect(
+      runPreferencesScript(body, { storage: { entries: { ocg_viewport_mode: "desktop" } } }),
+    ).to.deep.equal(
+      expectedPreferencesState({ viewportMetaContents: ["width=1280"], viewportMode: "desktop" }),
+    );
+  });
+
+  it("migrates the legacy desktop cookie to storage and always expires it", async () => {
+    // Load the initializer source.
+    const body = await loadInlineScript("preferences_init.js");
+
+    // Verify the legacy desktop cookie applies desktop, writes storage and expires once.
     const desktopCookies = [
       "ocg_viewport_mode=desktop",
       "  ocg_viewport_mode=desktop  ",
       "theme=light; ocg_viewport_mode=desktop; session=abc",
     ];
     desktopCookies.forEach((cookie) => {
-      expect(runViewportModeScript(body, cookie), cookie).to.deep.equal({
-        viewportMode: "desktop",
-        viewportMetaContents: ["width=1280"],
-      });
+      expect(runPreferencesScript(body, { cookie }), cookie).to.deep.equal(
+        expectedPreferencesState({
+          cookieWrites: [EXPIRED_VIEWPORT_MODE_COOKIE],
+          storageWrites: [["ocg_viewport_mode", "desktop"]],
+          viewportMetaContents: ["width=1280"],
+          viewportMode: "desktop",
+        }),
+      );
     });
 
-    // Verify missing, misleading, and unknown values keep the responsive layout.
-    const defaultCookies = [
-      "",
-      "theme=light; session=abc",
-      "xocg_viewport_mode=desktop",
+    // Verify a failed storage write still applies desktop for this load and expires the cookie.
+    expect(
+      runPreferencesScript(body, { cookie: "ocg_viewport_mode=desktop", storage: { failure: "setItem" } }),
+    ).to.deep.equal(
+      expectedPreferencesState({
+        cookieWrites: [EXPIRED_VIEWPORT_MODE_COOKIE],
+        viewportMetaContents: ["width=1280"],
+        viewportMode: "desktop",
+      }),
+    );
+
+    // Verify other values of the exact cookie name keep the default layout and still expire it.
+    const otherValueCookies = [
       "ocg_viewport_mode=desktops",
       "ocg_viewport_mode=mobile",
       "ocg_viewport_mode=",
     ];
-    defaultCookies.forEach((cookie) => {
-      expect(runViewportModeScript(body, cookie), cookie).to.deep.equal({
-        viewportMode: null,
-        viewportMetaContents: [DEFAULT_VIEWPORT_CONTENT],
-      });
+    otherValueCookies.forEach((cookie) => {
+      expect(runPreferencesScript(body, { cookie }), cookie).to.deep.equal(
+        expectedPreferencesState({ cookieWrites: [EXPIRED_VIEWPORT_MODE_COOKIE] }),
+      );
+    });
+
+    // Verify missing and look-alike cookies are left alone.
+    const unrelatedCookies = ["", "theme=light; session=abc", "xocg_viewport_mode=desktop"];
+    unrelatedCookies.forEach((cookie) => {
+      expect(runPreferencesScript(body, { cookie }), cookie).to.deep.equal(expectedPreferencesState());
     });
   });
 

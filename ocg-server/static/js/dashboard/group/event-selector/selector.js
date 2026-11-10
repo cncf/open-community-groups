@@ -573,7 +573,7 @@ class EventSelector extends LitWrapper {
           id="dropdown-events"
           class="${
             this._isOpen ? "" : "hidden"
-          } absolute top-14 start-0 w-full z-10 bg-white rounded-lg shadow-sm border border-stone-200"
+          } absolute top-14 start-0 w-full z-10 bg-raised rounded-lg shadow-sm border border-stone-200"
         >
           <div class="p-3 border-b border-stone-200">
             <div class="relative">

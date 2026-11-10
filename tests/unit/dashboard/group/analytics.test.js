@@ -4,6 +4,11 @@ import {
   initializeGroupAnalyticsFromPage,
   initAnalyticsCharts,
 } from "/static/js/dashboard/group/analytics.js";
+import {
+  THEME_CHANGE_EVENT,
+  THEME_STORAGE_KEY,
+} from "/static/js/common/theme.js";
+import { waitForFrameThenTask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 describe("dashboard group analytics", () => {
@@ -103,8 +108,10 @@ describe("dashboard group analytics", () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     resetDom();
+    localStorage.removeItem(THEME_STORAGE_KEY);
+    await waitForFrameThenTask();
     if (originalEcharts) {
       globalThis.echarts = originalEcharts;
     } else {
@@ -185,5 +192,76 @@ describe("dashboard group analytics", () => {
     // Verify the swapped marker initializes the analytics charts.
     expect(setOptionCalls).to.have.length(14);
     expect(marker.dataset.groupAnalyticsReady).to.equal("true");
+  });
+
+  it("replaces every chart with the new palette on a color theme change", async () => {
+    // Record every chart instance with the theme and option it rendered.
+    const charts = [];
+    globalThis.echarts = {
+      getInstanceByDom() {
+        return null;
+      },
+      init(element, theme) {
+        const chart = {
+          disposed: false,
+          element,
+          option: null,
+          theme,
+          dispose() {
+            this.disposed = true;
+          },
+          isDisposed() {
+            return this.disposed;
+          },
+          resize() {},
+          setOption(option) {
+            this.option = option;
+          },
+        };
+        charts.push(chart);
+        return chart;
+      },
+      registerTheme() {},
+    };
+
+    // Render the page payload under the light theme.
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
+    const marker = document.createElement("script");
+    marker.type = "application/json";
+    marker.dataset.groupAnalytics = "";
+    marker.textContent = JSON.stringify(getGroupAnalyticsPayload());
+    document.body.append(marker);
+    await initializeGroupAnalyticsFromPage();
+    expect(charts).to.have.length(14);
+
+    // Switch to a dark palette and announce the dark theme.
+    document.documentElement.style.setProperty(
+      "--color-primary-500",
+      "#a855f7",
+    );
+    document.documentElement.style.setProperty(
+      "--color-primary-700",
+      "#7e22ce",
+    );
+    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    document.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT));
+    await waitForFrameThenTask();
+
+    // Assert every light chart was disposed and replaced once.
+    const liveCharts = charts.filter((chart) => !chart.disposed);
+    expect(charts).to.have.length(28);
+    expect(charts.slice(0, 14).every((chart) => chart.disposed)).to.equal(true);
+    expect(liveCharts).to.have.length(14);
+    expect(new Set(liveCharts.map((chart) => chart.element.id)).size).to.equal(
+      14,
+    );
+
+    // Assert the new charts use the dark theme and only the new palette.
+    liveCharts.forEach((chart) => {
+      const option = JSON.stringify(chart.option);
+      expect(chart.theme).to.equal("ocg-dark");
+      expect(option).to.match(/#a855f7|#7e22ce/);
+      expect(option).to.not.match(/#0f766e|#115e59/);
+    });
   });
 });

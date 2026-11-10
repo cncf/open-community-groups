@@ -8,10 +8,39 @@ import {
   initializeChartsFromJsonMarker,
   renderChart,
 } from "/static/js/common/charts/stats.js";
+import { THEME_CHANGE_EVENT, THEME_STORAGE_KEY } from "/static/js/common/theme.js";
+import { waitForFrameThenTask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 // Set up the test fixture.
 const waitForDelay = (delay = 0) => new Promise((resolve) => setTimeout(resolve, delay));
+
+/**
+ * Stores a color theme and announces the change, as `theme.js` does.
+ * @param {"light"|"dark"} theme - Color theme to apply.
+ */
+const changeTheme = (theme) => {
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+  document.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: { theme } }));
+};
+
+/**
+ * Builds a stats marker configuration recording every initializer run.
+ * @param {string} selector - JSON marker selector.
+ * @param {Array<Object>} runs - Initializer runs, with the marker and the context.
+ * @param {Function} [wait] - Awaited inside each run before it records it.
+ * @returns {Object} Initialization configuration.
+ */
+const buildRecordingConfig = (selector, runs, wait = async () => {}) => ({
+  selector,
+  readyKey: "statsReady",
+  initialize: async (stats, context) => {
+    await wait();
+    runs.push({ marker: context.marker, retheme: context.retheme, stats });
+  },
+  parseErrorMessage: "Failed to parse stats:",
+  initErrorMessage: "Failed to initialize stats:",
+});
 
 /** Resize observer stub recording observed elements and triggering callbacks on demand. */
 class ResizeObserverStub {
@@ -81,9 +110,11 @@ describe("stats utilities", () => {
     globalThis.echarts = createEchartsStub(charts);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     disposeChartsWithin(document.body);
     resetDom();
+    localStorage.removeItem(THEME_STORAGE_KEY);
+    await waitForFrameThenTask();
     if (originalEcharts) {
       globalThis.echarts = originalEcharts;
     } else {
@@ -304,5 +335,119 @@ describe("stats utilities", () => {
     // Assert restored markers can hydrate charts again.
     expect(initializedStats).to.deep.equal([{ total: 2 }]);
     expect(document.querySelector("[data-stats]").dataset.statsReady).to.equal("true");
+  });
+
+  it("re-renders only connected markers rendered under the other color theme", async () => {
+    // Render one marker under the light theme and another under the dark theme.
+    document.body.innerHTML = `
+      <section id="light-stats"><script type="application/json" data-light-stats>{"total": 1}</script></section>
+      <section id="dark-stats"><script type="application/json" data-dark-stats>{"total": 2}</script></section>
+    `;
+    const runs = [];
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
+    await initializeChartsFromJsonMarker(buildRecordingConfig("[data-light-stats]", runs));
+    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    await initializeChartsFromJsonMarker(buildRecordingConfig("[data-dark-stats]", runs));
+    expect(runs.map(({ retheme }) => retheme)).to.deep.equal([false, false]);
+
+    // Announce the dark theme.
+    changeTheme("dark");
+    await waitForFrameThenTask();
+
+    // Assert only the light marker re-rendered, past its ready flag and as a re-theme.
+    const lightMarker = document.querySelector("[data-light-stats]");
+    expect(runs).to.have.length(3);
+    expect(runs[2]).to.deep.equal({ marker: lightMarker, retheme: true, stats: { total: 1 } });
+
+    // Assert a later change back to light re-renders both markers once.
+    changeTheme("light");
+    await waitForFrameThenTask();
+    expect(runs.slice(3).map(({ marker }) => marker)).to.have.members([
+      lightMarker,
+      document.querySelector("[data-dark-stats]"),
+    ]);
+  });
+
+  it("coalesces color theme changes in one frame into one re-render", async () => {
+    // Render a marker under the light theme.
+    document.body.innerHTML = `<script type="application/json" data-stats>{"total": 1}</script>`;
+    const runs = [];
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
+    await initializeChartsFromJsonMarker(buildRecordingConfig("[data-stats]", runs));
+
+    // Announce two changes before the next frame, counting the frames requested.
+    const originalRequestAnimationFrame = window.requestAnimationFrame;
+    let frameRequests = 0;
+    window.requestAnimationFrame = (callback) => {
+      frameRequests += 1;
+      return originalRequestAnimationFrame.call(window, callback);
+    };
+    try {
+      changeTheme("dark");
+      changeTheme("dark");
+    } finally {
+      window.requestAnimationFrame = originalRequestAnimationFrame;
+    }
+    await waitForFrameThenTask();
+    await waitForFrameThenTask();
+
+    // Assert one frame re-rendered the marker once.
+    expect(frameRequests).to.equal(1);
+    expect(runs.map(({ retheme }) => retheme)).to.deep.equal([false, true]);
+  });
+
+  it("applies a color theme change that lands during a run once the run ends", async () => {
+    // Start a run under the light theme that waits for the test to finish it.
+    document.body.innerHTML = `<script type="application/json" data-stats>{"total": 1}</script>`;
+    const runs = [];
+    let finishRun = () => {};
+    let holdRuns = true;
+    const wait = () => (holdRuns ? new Promise((resolve) => (finishRun = resolve)) : Promise.resolve());
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
+    const pending = initializeChartsFromJsonMarker(buildRecordingConfig("[data-stats]", runs, wait));
+    await waitForDelay();
+
+    // Announce the dark theme while the run is in flight.
+    changeTheme("dark");
+    await waitForFrameThenTask();
+    expect(runs).to.have.length(0);
+
+    // Finish the run and let the next frame re-render it.
+    holdRuns = false;
+    finishRun();
+    await pending;
+    await waitForFrameThenTask();
+    await waitForFrameThenTask();
+
+    // Assert the change was applied once after the run ended.
+    expect(runs.map(({ retheme }) => retheme)).to.deep.equal([false, true]);
+  });
+
+  it("drops markers cleaned up by htmx or detached from the document", async () => {
+    // Render two markers under the light theme.
+    document.body.innerHTML = `
+      <section id="cleaned-stats"><script type="application/json" data-cleaned-stats>{"total": 1}</script></section>
+      <section id="detached-stats"><script type="application/json" data-detached-stats>{"total": 2}</script></section>
+    `;
+    const runs = [];
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
+    await initializeChartsFromJsonMarker(buildRecordingConfig("[data-cleaned-stats]", runs));
+    await initializeChartsFromJsonMarker(buildRecordingConfig("[data-detached-stats]", runs));
+
+    // Clean up the first section through htmx and detach the second one.
+    const cleanedSection = document.getElementById("cleaned-stats");
+    cleanedSection.dispatchEvent(new CustomEvent("htmx:beforeCleanupElement", { bubbles: true }));
+    const detachedSection = document.getElementById("detached-stats");
+    detachedSection.remove();
+    changeTheme("dark");
+    await waitForFrameThenTask();
+
+    // Reattach the detached section and announce another change.
+    document.body.append(detachedSection);
+    changeTheme("dark");
+    await waitForFrameThenTask();
+
+    // Assert neither marker re-rendered.
+    expect(runs.map(({ retheme }) => retheme)).to.deep.equal([false, false]);
   });
 });

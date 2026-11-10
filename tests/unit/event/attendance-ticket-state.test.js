@@ -127,7 +127,7 @@ describe("attendance ticket state", () => {
         />
         <div
           data-attendance-role="ticket-type-card-body"
-          class="bg-white cursor-pointer hover:border-primary-300 hover:shadow-sm"
+          class="bg-surface cursor-pointer hover:border-primary-edge-soft hover:shadow-sm"
         ></div>
         <span data-attendance-role="ticket-type-status-dot" class="bg-green-500"></span>
         <span data-attendance-role="ticket-type-status-label">Available now</span>

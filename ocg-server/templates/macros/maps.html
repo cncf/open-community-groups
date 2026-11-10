@@ -15,15 +15,15 @@
   {# Covers the preview below the map controls, so the attribution links stay outside the button. -#}
   <button id="{{ base_id }}-map-trigger"
           type="button"
-          class="absolute inset-0 z-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+          class="absolute inset-0 z-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-edge"
           aria-label="Open full map view"></button>
   {% if let Some(text) = &overlay_text -%}
-    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block phone:block phone:max-w-[calc(100%-1rem)] phone:rounded-lg phone:whitespace-normal phone:wrap-anywhere">
+    <div class="absolute bottom-2 left-2 bg-surface/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block phone:block phone:max-w-[calc(100%-1rem)] phone:rounded-lg phone:whitespace-normal phone:wrap-anywhere">
       {{ text }}
     </div>
   {% endif -%}
   {% if let Some(text) = &small_overlay_text -%}
-    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none block sm:hidden md:block xl:hidden phone:hidden">
+    <div class="absolute bottom-2 left-2 bg-surface/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none block sm:hidden md:block xl:hidden phone:hidden">
       {{ text }}
     </div>
   {% endif -%}
@@ -54,12 +54,12 @@
                  class="w-full h-[500px] md:h-[600px] rounded-lg overflow-hidden border border-stone-200 phone:h-[60dvh]">
             </div>
             {% if let Some(text) = &overlay_text -%}
-              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block phone:block phone:max-w-[calc(100%-1rem)] phone:rounded-lg phone:whitespace-normal phone:wrap-anywhere">
+              <div class="absolute bottom-2 left-2 bg-surface/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block phone:block phone:max-w-[calc(100%-1rem)] phone:rounded-lg phone:whitespace-normal phone:wrap-anywhere">
                 {{ text }}
               </div>
             {% endif -%}
             {% if let Some(text) = &small_overlay_text -%}
-              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none md:block xl:hidden phone:hidden">
+              <div class="absolute bottom-2 left-2 bg-surface/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none md:block xl:hidden phone:hidden">
                 {{ text }}
               </div>
             {% endif -%}

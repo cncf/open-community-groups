@@ -471,7 +471,7 @@ export class LabelsEditor extends LitWrapper {
                             <div
                               id=${popoverId}
                               data-color-popover-row-id=${rowId}
-                              class="absolute top-full right-0 z-50 mt-2 w-[220px] rounded-xl border border-stone-200 bg-white p-2 shadow-lg"
+                              class="absolute top-full right-0 z-50 mt-2 w-[220px] rounded-xl border border-stone-200 bg-raised p-2 shadow-lg"
                               role="listbox"
                               aria-label="Label colors"
                             >

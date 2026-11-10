@@ -19,7 +19,7 @@
   <section class="mx-auto w-full max-w-3xl px-4 py-10 lg:py-16 phone:p-3"
            aria-labelledby="verify-title">
     <div class="w-full phone:flex phone:flex-col-reverse">
-      <form class="space-y-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm md:p-8 phone:p-4"
+      <form class="space-y-6 rounded-xl border border-stone-200 bg-surface p-6 shadow-sm md:p-8 phone:p-4"
             method="post"
             enctype="multipart/form-data"
             aria-labelledby="verify-title">
@@ -55,7 +55,7 @@
                role="alert">{{ error }}</div>
         {% endif -%}
         {% if let Some(result) = &verified -%}
-          <article class="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+          <article class="overflow-hidden rounded-xl border border-stone-200 bg-surface shadow-sm">
             <div class="flex items-center gap-3 px-6 py-4 phone:px-4 phone:py-3
                         {% if result.revoked %}
                           bg-red-50 text-red-800
@@ -67,19 +67,19 @@
               {% if result.revoked -%}
                 <div class="flex size-5 items-center justify-center rounded-full bg-red-600"
                      aria-hidden="true">
-                  <div class="svg-icon size-3 icon-close bg-white"></div>
+                  <div class="svg-icon size-3 icon-close bg-on-fill"></div>
                 </div>
                 <p class="text-sm font-semibold">Credential revoked</p>
               {% else if result.superseded -%}
                 <div class="flex size-5 items-center justify-center rounded-full bg-amber-500"
                      aria-hidden="true">
-                  <div class="svg-icon size-3 icon-warning bg-white"></div>
+                  <div class="svg-icon size-3 icon-warning bg-on-fill"></div>
                 </div>
                 <p class="text-sm font-semibold">Authentic but superseded by a newer export</p>
               {% else -%}
                 <div class="flex size-5 items-center justify-center rounded-full bg-green-600"
                      aria-hidden="true">
-                  <div class="svg-icon size-3 icon-check bg-white"></div>
+                  <div class="svg-icon size-3 icon-check bg-on-fill"></div>
                 </div>
                 <p class="text-sm font-semibold">Valid and active</p>
               {% endif -%}
@@ -107,7 +107,7 @@
                   <div class="contents phone:block">
                     <dt class="font-medium text-stone-500">Issuer</dt>
                     <dd class="break-all phone:mt-0.5">
-                      <a class="font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                      <a class="font-medium text-primary-fg-strong hover:text-primary-fg-hover hover:underline"
                          href="{{ result.issuer|safe_href }}">{{ result.issuer }}</a>
                     </dd>
                   </div>

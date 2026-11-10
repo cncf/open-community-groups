@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "../../../fixtures.js";
 import { queryE2eDatabase, queryE2eDatabaseRows } from "../../../database.js";
 import { TEST_GROUP_IDS } from "../../../seed.js";
-import { dismissAlert, navigateToPath, waitForActionResponse } from "../../../utils.js";
+import {
+  dismissAlert,
+  expectDarkTheme,
+  navigateToPath,
+  resolveCssColor,
+  useTheme,
+  waitForActionResponse,
+} from "../../../utils.js";
 import { TEST_UPLOAD_ASSET_PATHS, uploadImageField, waitForImageUpload } from "../../form-helpers.js";
 
 const ARTWORK_PATH = "/dashboard/group?tab=artwork";
@@ -245,6 +252,19 @@ test.describe("group badge artwork", () => {
     expect(uploadMetadata).toEqual([{ name: "artwork-source-cropped.webp", type: "image/webp" }]);
   });
 
+  test("crop stage keeps its light colors in stored dark", async ({ organizerGroupPage }) => {
+    // Read the crop editor colors in light, then in stored dark.
+    const light = await readCropperColors(organizerGroupPage);
+    await useTheme(organizerGroupPage, { stored: "dark" });
+    const dark = await readCropperColors(organizerGroupPage);
+    await expectDarkTheme(organizerGroupPage);
+
+    // Verify the stage and its zoom pill kept their colors while the key chips follow dark.
+    expect(dark.stage).toEqual(light.stage);
+    expect(dark.chip).toBe(dark.surface);
+    expect(dark.chip).not.toBe(light.chip);
+  });
+
   test("artwork uploads reject SVG and GIF sources before uploading", async ({ organizerGroupPage }) => {
     // Load the artwork field and track upload requests.
     await navigateToPath(organizerGroupPage, ARTWORK_PATH);
@@ -338,4 +358,44 @@ const restoreBadgeArtwork = ({ badgeArtworkId, createdAt, fileName, groupId }) =
     )
     on conflict do nothing;
   `);
+};
+
+/**
+ * Opens the crop editor for a non-square artwork source and reads its stage colors.
+ * @param {import("@playwright/test").Page} page - Organizer page.
+ * @returns {Promise<{ chip: string, stage: object, surface: string }>} Key chip background, stage
+ * colors and the surface token beside the chips.
+ */
+const readCropperColors = async (page) => {
+  // Select a source that needs cropping and wait for the editor to be ready.
+  await navigateToPath(page, ARTWORK_PATH);
+  const cropper = page.locator('image-field[name="badge_artwork_url"] image-cropper');
+  await page
+    .locator('image-field[name="badge_artwork_url"] input[type="file"]')
+    .setInputFiles(TEST_UPLOAD_ASSET_PATHS.badgeArtworkSource);
+  const dialog = cropper.getByRole("dialog", { name: "Crop Upload artwork" });
+  await expect(dialog.getByRole("button", { name: "Apply crop" })).toBeEnabled();
+
+  // Read the stage, its zoom pill and a selection corner, then the first key chip and its surface.
+  const colors = await dialog.evaluate((element) => {
+    const stage = getComputedStyle(element.querySelector("[data-image-cropper-stage]"));
+    const zoom = getComputedStyle(element.querySelector('[role="group"][aria-label="Image zoom"]'));
+    const corner = getComputedStyle(element.querySelector("[data-cropper-corner]"));
+
+    return {
+      chip: getComputedStyle(element.querySelector("kbd")).backgroundColor,
+      stage: {
+        background: stage.backgroundColor,
+        corner: corner.borderTopColor,
+        zoom: { background: zoom.backgroundColor, border: zoom.borderTopColor },
+      },
+    };
+  });
+  const surface = await resolveCssColor(dialog.locator("kbd").first(), "var(--color-surface)");
+
+  // Cancel the edit so nothing is uploaded.
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
+
+  return { ...colors, surface };
 };

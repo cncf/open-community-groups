@@ -1,0 +1,14 @@
+- /children: deep-equal
+- menu:
+  - menuitem "Close menu"
+  - menuitem "Home"
+  - menuitem "Explore"
+  - menuitem "Stats"
+  - menuitem "Docs"
+  - menuitem "Sign up"
+  - menuitem "Log in"
+  - group "Theme":
+    - menuitemradio "Light"
+    - menuitemradio "Dark"
+    - menuitemradio "System" [checked]
+  - menuitem "Desktop version"

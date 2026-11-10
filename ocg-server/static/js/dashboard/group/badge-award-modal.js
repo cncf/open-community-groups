@@ -366,7 +366,7 @@ export class BadgeAwardModal extends LitWrapper {
                 }}
               />
               <span
-                class="grid grid-cols-[3.5rem_1fr] items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 pr-12 transition hover:border-primary-300 hover:shadow-sm peer-checked:border-primary-400 peer-checked:ring-2 peer-checked:ring-primary-200 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2"
+                class="grid grid-cols-[3.5rem_1fr] items-center gap-3 rounded-xl border border-stone-200 bg-surface p-3 pr-12 transition hover:border-primary-edge-soft hover:shadow-sm peer-checked:border-primary-edge-muted peer-checked:ring-2 peer-checked:ring-primary-edge-faint peer-focus-visible:ring-2 peer-focus-visible:ring-primary-edge peer-focus-visible:ring-offset-2"
               >
                 <img
                   class="size-14 rounded-md object-cover"
@@ -380,11 +380,11 @@ export class BadgeAwardModal extends LitWrapper {
                 </span>
               </span>
               <span
-                class="pointer-events-none absolute right-2 top-2 size-6 rounded-full border-2 border-stone-300 bg-white peer-checked:border-primary-500"
+                class="pointer-events-none absolute right-2 top-2 size-6 rounded-full border-2 border-stone-300 bg-surface peer-checked:border-primary-edge"
                 aria-hidden="true"
               ></span>
               <span
-                class="pointer-events-none absolute right-3.5 top-3.5 hidden size-3 rounded-full bg-primary-500 peer-checked:block"
+                class="pointer-events-none absolute right-3.5 top-3.5 hidden size-3 rounded-full bg-primary-fg peer-checked:block"
                 aria-hidden="true"
               ></span>
             </label>

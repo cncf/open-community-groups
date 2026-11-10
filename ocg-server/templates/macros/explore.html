@@ -11,7 +11,7 @@
 {# Used by the phone Filters pill to show that filters apply. -#}
 {% macro active_filters_dot(count) -%}
   {% if count > 0 -%}
-    <span class="size-2 rounded-full bg-primary-500 not-phone:hidden"
+    <span class="size-2 rounded-full bg-primary-fg not-phone:hidden"
           aria-hidden="true"></span>
   {%- endif -%}
 {%- endmacro active_filters_dot -%}
@@ -26,10 +26,10 @@
           data-applied-filter-value="{{ value }}"
           aria-label="Remove filter {{ label }}"
           class="inline-flex min-h-11 min-w-0 max-w-full items-center">
-    <span class="inline-flex h-8 max-w-full items-center gap-1.5 rounded-lg border border-primary-500 bg-white px-2.5 text-xs text-primary-500">
+    <span class="inline-flex h-8 max-w-full items-center gap-1.5 rounded-lg border border-primary-edge bg-surface px-2.5 text-xs text-primary-fg">
       <span class="truncate{% if *name != "kind" && *name != "group" %}
                      capitalize{% endif %}">{{ label }}</span>
-      <span class="svg-icon size-3 shrink-0 bg-primary-500 icon-close"></span>
+      <span class="svg-icon size-3 shrink-0 bg-primary-fg icon-close"></span>
     </span>
   </button>
 {% endmacro applied_filter_chip -%}
@@ -41,11 +41,11 @@
 {% macro applied_filters(chips) -%}
   {% if !chips.is_empty() -%}
     <div data-applied-filters
-         class="mx-3 mb-3 rounded-xl border border-stone-200 bg-white not-phone:hidden">
+         class="mx-3 mb-3 rounded-xl border border-stone-200 bg-surface not-phone:hidden">
       <div class="flex items-center justify-between gap-3 border-b border-stone-100 ps-3 pe-1">
         <p class="text-xs font-semibold uppercase tracking-wider text-stone-500">Active filters</p>
         <button type="button"
-                class="reset-filters inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-primary-500 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300">
+                class="reset-filters inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-primary-fg hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-halo">
           Reset
         </button>
       </div>
@@ -65,7 +65,7 @@
                 hidden
                 class="inline-flex min-h-11 shrink-0 items-center">
           <span data-applied-filters-toggle-label
-                class="inline-flex h-8 items-center rounded-lg border border-dashed border-stone-300 bg-white px-2.5 text-xs font-medium text-stone-700"></span>
+                class="inline-flex h-8 items-center rounded-lg border border-dashed border-stone-300 bg-surface px-2.5 text-xs font-medium text-stone-700"></span>
         </button>
       </div>
     </div>
@@ -83,7 +83,7 @@
              validate="false"
              value="{%- if let Some(date) = &value -%} {{ date }} {%- endif -%}"
              type="date"
-             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-stone-50 transition-colors phone:h-11 phone:text-base">
+             class="inline-flex bg-surface border border-stone-200 text-[0.775rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-edge w-full px-2 py-1.5 hover:bg-stone-50 transition-colors phone:h-11 phone:text-base">
     </span>
   </label>
 {% endmacro date_input -%}
@@ -122,7 +122,7 @@
                 hx-target="#entity-section"
                 hx-indicator="[data-loading-filters], #loading-filters-mobile"
                 hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
-                class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-l-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
+                class="inline-flex items-center justify-between w-full p-3 bg-surface border border-stone-200 rounded-l-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
         {# djlint:on #}
         {{ entity_content(kind = "events", title = "Events", icon_styles = Some("bg-stone-500")) -}}
       </button>
@@ -130,8 +130,8 @@
     </li>
     <li class="w-full">
       {# Selected entity: groups -#}
-      <div class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-r-lg text-primary-500 border-primary-500">
-        {{ entity_content(kind = "groups", title = "Groups", styles = Some("select-none") , icon_styles = Some("bg-primary-500")) -}}
+      <div class="inline-flex items-center justify-between w-full p-3 bg-surface border rounded-r-lg text-primary-fg border-primary-edge">
+        {{ entity_content(kind = "groups", title = "Groups", styles = Some("select-none") , icon_styles = Some("bg-primary-fg")) -}}
       </div>
       {# End selected entity: groups -#}
     </li>
@@ -139,8 +139,8 @@
     {% when Entity::Events -%}
     <li class="w-full">
       {# Selected entity: events -#}
-      <div class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-l-lg text-primary-500 border-primary-500">
-        {{ entity_content(kind = "events", title = "Events", styles = Some("select-none") , icon_styles = Some("bg-primary-500")) -}}
+      <div class="inline-flex items-center justify-between w-full p-3 bg-surface border rounded-l-lg text-primary-fg border-primary-edge">
+        {{ entity_content(kind = "events", title = "Events", styles = Some("select-none") , icon_styles = Some("bg-primary-fg")) -}}
       </div>
       {# End selected entity: events -#}
     </li>
@@ -152,7 +152,7 @@
                 hx-target="#entity-section"
                 hx-indicator="[data-loading-filters], #loading-filters-mobile"
                 hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
-                class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-r-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
+                class="inline-flex items-center justify-between w-full p-3 bg-surface border border-stone-200 rounded-r-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
       {# djlint:on #}
       {{ entity_content(kind = "groups", title = "Groups", icon_styles = Some("bg-stone-500")) -}}
     </button>
@@ -178,22 +178,22 @@
             hx-target="#entity-section"
             hx-indicator="[data-loading-filters], #loading-filters-mobile"
             hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
-            class="inline-flex h-11 items-center justify-center gap-1.5 rounded-l-lg border border-stone-200 bg-white px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+            class="inline-flex h-11 items-center justify-center gap-1.5 rounded-l-lg border border-stone-200 bg-surface px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-halo">
     {# djlint:on #}
     <div class="svg-icon size-4 bg-stone-500 icon-events"></div>
     Events
   </button>
   <button type="button"
           aria-pressed="true"
-          class="-ms-px inline-flex h-11 items-center justify-center gap-1.5 rounded-r-lg border border-primary-500 bg-white px-3 text-sm text-primary-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
-    <div class="svg-icon size-4 bg-primary-500 icon-groups"></div>
+          class="-ms-px inline-flex h-11 items-center justify-center gap-1.5 rounded-r-lg border border-primary-edge bg-surface px-3 text-sm text-primary-fg phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-halo">
+    <div class="svg-icon size-4 bg-primary-fg icon-groups"></div>
     Groups
   </button>
   {% when Entity::Events -%}
   <button type="button"
           aria-pressed="true"
-          class="relative inline-flex h-11 items-center justify-center gap-1.5 rounded-l-lg border border-primary-500 bg-white px-3 text-sm text-primary-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
-    <div class="svg-icon size-4 bg-primary-500 icon-events"></div>
+          class="relative inline-flex h-11 items-center justify-center gap-1.5 rounded-l-lg border border-primary-edge bg-surface px-3 text-sm text-primary-fg phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-halo">
+    <div class="svg-icon size-4 bg-primary-fg icon-events"></div>
     Events
   </button>
   {# djlint:off #}
@@ -204,7 +204,7 @@
             hx-target="#entity-section"
             hx-indicator="[data-loading-filters], #loading-filters-mobile"
             hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
-            class="-ms-px inline-flex h-11 items-center justify-center gap-1.5 rounded-r-lg border border-stone-200 bg-white px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300">
+            class="-ms-px inline-flex h-11 items-center justify-center gap-1.5 rounded-r-lg border border-stone-200 bg-surface px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-halo">
   {# djlint:on #}
   <div class="svg-icon size-4 bg-stone-500 icon-groups"></div>
   Groups

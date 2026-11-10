@@ -18,6 +18,7 @@ import {
   waitForAlertToClose,
 } from "/static/js/common/alerts.js";
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
+import { THEME_CHANGE_EVENT } from "/static/js/common/theme.js";
 import { VENDOR_BUNDLES } from "/__ocg__/vendor-bundles.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
@@ -527,6 +528,80 @@ describe("alerts", () => {
     expect(options.customClass.cancelButton).to.equal("btn-primary-outline ocg-swal-button");
   });
 
+  it("pins the light vendor theme and the foreground icon color", () => {
+    // Collect the shared options off phones.
+    const options = getCommonAlertOptions();
+
+    // Assert the vendor palette stays light and the icon takes the foreground role.
+    expect(options.position).to.equal("top-end");
+    expect(options.theme).to.equal("light");
+    expect(options.iconColor).to.equal("var(--color-primary-fg)");
+  });
+
+  describe("on a color theme change", () => {
+    let popup;
+    let swal;
+
+    beforeEach(() => {
+      // Render a success popup whose masks carry the light background SweetAlert2 copied.
+      swal = globalThis.Swal;
+      popup = document.createElement("div");
+      popup.className = "swal2-popup ocg-swal-popup";
+      popup.style.backgroundColor = "rgb(32, 29, 27)";
+      popup.innerHTML = `
+        <div class="swal2-icon swal2-success">
+          <div class="swal2-success-circular-line-left" style="background-color: rgb(255, 255, 255)"></div>
+          <div class="swal2-success-ring"></div>
+          <div class="swal2-success-fix" style="background-color: rgb(255, 255, 255)"></div>
+          <div class="swal2-success-circular-line-right" style="background-color: rgb(255, 255, 255)"></div>
+        </div>
+      `;
+      document.body.append(popup);
+    });
+
+    afterEach(() => {
+      popup.remove();
+      globalThis.Swal = swal;
+    });
+
+    /** Reads the inline background of every success icon mask. */
+    const getMaskBackgrounds = () =>
+      [...popup.querySelectorAll("[class^=swal2-success-circular-line], .swal2-success-fix")].map(
+        (mask) => mask.style.backgroundColor,
+      );
+
+    it("re-copies the popup background onto the success icon masks of a visible alert", () => {
+      // Show the popup and switch the color theme.
+      globalThis.Swal = { getPopup: () => popup, isVisible: () => true };
+      document.dispatchEvent(
+        new CustomEvent(THEME_CHANGE_EVENT, {
+          detail: { preference: "dark", previousTheme: "light", theme: "dark" },
+        }),
+      );
+
+      // Assert every mask takes the new popup background and the ring keeps its own color.
+      expect(getMaskBackgrounds()).to.deep.equal(["rgb(32, 29, 27)", "rgb(32, 29, 27)", "rgb(32, 29, 27)"]);
+      expect(popup.querySelector(".swal2-success-ring").style.backgroundColor).to.equal("");
+    });
+
+    it("leaves the masks alone without a visible alert", () => {
+      // Switch the color theme while the popup is hidden.
+      globalThis.Swal = { getPopup: () => popup, isVisible: () => false };
+      document.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT));
+
+      // Switch it again with a SweetAlert2 global that exposes no visibility check.
+      globalThis.Swal = { fire: async () => ({}) };
+      document.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT));
+
+      // Assert the masks keep the background SweetAlert2 copied.
+      expect(getMaskBackgrounds()).to.deep.equal([
+        "rgb(255, 255, 255)",
+        "rgb(255, 255, 255)",
+        "rgb(255, 255, 255)",
+      ]);
+    });
+  });
+
   it("uses shared alert layout for recurring series confirmations", async () => {
     // Mock the recurring-series choice in SweetAlert.
     env.current.swal.setNextResult({ isConfirmed: false, isDenied: true });
@@ -635,7 +710,11 @@ describe("alerts", () => {
       showInfoAlert("Heads up");
 
       // Assert only the position differs from desktop.
-      expect(getCommonAlertOptions().position).to.equal("bottom");
+      expect(getCommonAlertOptions()).to.include({
+        iconColor: "var(--color-primary-fg)",
+        position: "bottom",
+        theme: "light",
+      });
       expect(env.current.swal.calls[0]).to.include({ position: "bottom", timer: 5000 });
       expect(env.current.swal.calls[1]).to.include({ position: "bottom", timer: 10000 });
     });

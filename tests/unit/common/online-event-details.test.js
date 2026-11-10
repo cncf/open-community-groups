@@ -73,7 +73,7 @@ describe("online-event-details", () => {
 
     // The unselected selectable card uses the shared border and shadow rollover.
     expect(automaticModeInput.disabled).to.equal(false);
-    expect(automaticModeCard.classList.contains("hover:border-primary-300")).to.equal(true);
+    expect(automaticModeCard.classList.contains("hover:border-primary-edge-soft")).to.equal(true);
     expect(automaticModeCard.classList.contains("hover:shadow-sm")).to.equal(true);
   });
 

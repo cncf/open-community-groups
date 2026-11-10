@@ -1,7 +1,11 @@
 import { expect } from "@open-wc/testing";
 
 import { LocationMapPreview } from "/static/js/common/location/map-preview.js";
-import { loadMap } from "/static/js/common/location/maplibre.js";
+import {
+  getMapStyleUrl,
+  loadMap,
+} from "/static/js/common/location/maplibre.js";
+import { THEME_STORAGE_KEY } from "/static/js/common/theme.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
@@ -20,10 +24,11 @@ describe("location map preview", () => {
   let swal;
 
   beforeEach(() => {
-    // Create the preview container and replace the browser map library.
+    // Create the preview container, replace the browser map library and start in light.
     resetDom();
     mapLibre = mockMapLibre();
     swal = mockSwal();
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
     document.body.innerHTML = '<div id="location-map"></div>';
     preview = new LocationMapPreview("location-map");
   });
@@ -33,6 +38,7 @@ describe("location map preview", () => {
     preview.destroy();
     mapLibre.restore();
     swal.restore();
+    localStorage.removeItem(THEME_STORAGE_KEY);
     document.head
       .querySelector('script[src*="maplibre-gl.v5.24.0.min.js"]')
       ?.remove();
@@ -56,6 +62,18 @@ describe("location map preview", () => {
       center: [-3.7038, 40.4168],
       zoom: 13,
     });
+  });
+
+  it("loads the basemap style of the resolved color theme", async () => {
+    // Load the preview with Dark stored.
+    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    await preview.sync(LOCATION);
+
+    // Verify the style comes from the shared color theme mapping.
+    expect(mapLibre.maps[0].options.style).to.equal(getMapStyleUrl("dark"));
+    expect(mapLibre.maps[0].options.style).not.to.equal(
+      getMapStyleUrl("light"),
+    );
   });
 
   it("discards a map initialization when the location is cleared while loading", async () => {

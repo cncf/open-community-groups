@@ -221,7 +221,6 @@ export const initSiteStatsCharts = async (stats) => {
   siteStatsRendering = true;
   try {
     await loadEChartsScript();
-    const palette = getThemePalette();
     const sections = [
       { key: "groups", label: "Groups" },
       { key: "members", label: "Members" },
@@ -231,6 +230,7 @@ export const initSiteStatsCharts = async (stats) => {
 
     do {
       siteStatsRenderQueued = false;
+      const palette = getThemePalette();
       for (const section of sections) {
         await initSectionCharts(section.key, section.label, latestSiteStats, palette);
       }

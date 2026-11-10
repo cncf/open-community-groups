@@ -1,5 +1,11 @@
-import { expect, test } from "../../fixtures.js";
-import { navigateToPath } from "../../utils.js";
+import { expect, test, testAtBothWidths } from "../../fixtures.js";
+import {
+  navigateToPath,
+  pickThemeFromAccountMenu,
+  readTooltipBackground,
+  resolveCssColor,
+  useTheme,
+} from "../../utils.js";
 
 const PUBLIC_STATS_CHART_IDS = [
   "groups-running-chart",
@@ -158,6 +164,43 @@ test.describe("site stats page", () => {
     expect(totalBox.y + totalBox.height).toBeLessThanOrEqual(headingBox.y + headingBox.height);
     expect(totalBox.x + totalBox.width).toBeCloseTo(headingBox.width - 12, 0);
   });
+
+  testAtBothWidths("re-renders charts on a live color theme switch", async ({ isMobile, page }) => {
+    // Load the public stats page in light and find a rendered chart.
+    await navigateToPath(page, "/stats");
+    const chart = await findRenderedChart(page);
+    const lightInstance = await chart.getAttribute("_echarts_instance_");
+    const lightSurface = await resolveCssColor(chart, "var(--color-surface)");
+    expect(await readTooltipBackground(chart)).toBe(lightSurface);
+
+    // Pick Dark and verify the chart is a new instance with the dark surface tooltip.
+    await pickThemeFromAccountMenu(page, "dark");
+    await expect(chart).not.toHaveAttribute("_echarts_instance_", lightInstance);
+    const darkInstance = await chart.getAttribute("_echarts_instance_");
+    const darkSurface = await resolveCssColor(chart, "var(--color-surface)");
+    expect(darkSurface).not.toBe(lightSurface);
+    await expect.poll(() => readTooltipBackground(chart)).toBe(darkSurface);
+    expect(await readLegendShown(chart)).toBe(!isMobile);
+
+    // Pick Light and verify the chart re-renders with the light surface tooltip again.
+    await pickThemeFromAccountMenu(page, "light");
+    await expect(chart).not.toHaveAttribute("_echarts_instance_", darkInstance);
+    await expect.poll(() => readTooltipBackground(chart)).toBe(lightSurface);
+    expect(await readLegendShown(chart)).toBe(!isMobile);
+  });
+
+  testAtBothWidths("renders charts with the dark surface tooltip on a dark load", async ({ page }) => {
+    // Load the public stats page in stored dark.
+    await useTheme(page, { stored: "dark" });
+    await navigateToPath(page, "/stats");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+    // Verify a rendered chart's tooltip paints the dark surface.
+    const chart = await findRenderedChart(page);
+    const darkSurface = await resolveCssColor(chart, "var(--color-surface)");
+    expect(darkSurface).not.toBe(await resolveCssColor(chart, "#fff"));
+    expect(await readTooltipBackground(chart)).toBe(darkSurface);
+  });
 });
 
 /** Returns the stats section named by its level-2 heading. */
@@ -165,6 +208,25 @@ const statsSection = (page, mainContent, title) =>
   mainContent.locator("section").filter({
     has: page.getByRole("heading", { level: 2, name: title, exact: true }),
   });
+
+/**
+ * Finds the first rendered stats chart, by id so it survives re-renders.
+ * @param {import("@playwright/test").Page} page - Stats page.
+ * @returns {Promise<import("@playwright/test").Locator>} Rendered chart container.
+ */
+const findRenderedChart = async (page) => {
+  const renderedChart = page.locator("#main-content [_echarts_instance_]").first();
+  await expect(renderedChart).toBeVisible();
+  return page.locator(`#${await renderedChart.getAttribute("id")}`);
+};
+
+/**
+ * Reads whether a chart shows its legend.
+ * @param {import("@playwright/test").Locator} chart - Rendered chart container.
+ * @returns {Promise<boolean>} Whether the legend shows.
+ */
+const readLegendShown = (chart) =>
+  chart.evaluate((element) => window.echarts.getInstanceByDom(element).getOption().legend[0].show !== false);
 
 /** Waits for a stats chart or its empty state to settle. */
 const expectChartSettled = async (page, selector) => {

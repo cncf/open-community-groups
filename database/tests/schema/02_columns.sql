@@ -1115,6 +1115,7 @@ select columns_are('site', array[
     'copyright_notice',
     'favicon_url',
     'footer_logo_url',
+    'header_logo_dark_url',
     'header_logo_url',
     'og_image_url'
 ]);

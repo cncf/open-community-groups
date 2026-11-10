@@ -17,7 +17,7 @@
               hx-target="#dashboard-content"
               hx-swap="innerHTML show:window:top"
               hx-indicator="#dashboard-spinner"
-              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-full sm:w-40">
+              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-fg data-[active=true]:border-primary-edge text-nowrap w-full sm:w-40">
         Upcoming events
       </button>
     </li>
@@ -29,7 +29,7 @@
               hx-target="#dashboard-content"
               hx-swap="innerHTML show:window:top"
               hx-indicator="#dashboard-spinner"
-              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-full sm:w-40">
+              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-fg data-[active=true]:border-primary-edge text-nowrap w-full sm:w-40">
         Past events
       </button>
     </li>
@@ -87,7 +87,7 @@
       <tbody id="upcoming-events-list" role="rowgroup">
         {% if events.upcoming.events.is_empty() -%}
           {# Empty state -#}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-surface border-b border-stone-200">
             {# Mobile: 3 columns (Name, Status, Actions) -#}
             <td class="xl:hidden px-8 py-20 text-center" colspan="3">
               {% include "dashboard/placeholders/group_events_table.html" -%}
@@ -104,7 +104,7 @@
         {% else -%}
           {% for event in events.upcoming.events -%}
             {# Event row -#}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
               <th scope="row"
                   class="px-3 xl:px-5 py-4 font-medium text-stone-900 w-full max-w-0">
                 <div class="flex items-center">
@@ -270,7 +270,7 @@
                     {# Dropdown actions -#}
                     <div id="dropdown-actions-{{ event.event_id }}"
                          data-event-actions-dropdown
-                         class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+                         class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-raised divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                       <ul class="py-2 text-sm text-stone-700">
                         {# Publish/unpublish button -#}
                         {% if event.published && !event.canceled -%}
@@ -390,7 +390,7 @@
       <tbody id="past-events-list" role="rowgroup">
         {% if events.past.events.is_empty() -%}
           {# Empty state -#}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-surface border-b border-stone-200">
             {# Mobile: 3 columns (Name, Status, Actions) -#}
             <td class="xl:hidden px-8 py-20 text-center" colspan="3">
               {% include "dashboard/placeholders/events_past.html" -%}
@@ -407,7 +407,7 @@
         {% else -%}
           {% for event in events.past.events -%}
             {# Event row -#}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
               <th scope="row"
                   class="px-3 xl:px-5 py-4 font-medium text-stone-900 w-full max-w-0">
                 <div class="flex items-center">
@@ -573,7 +573,7 @@
                     {# Dropdown actions -#}
                     <div id="dropdown-actions-{{ event.event_id }}"
                          data-event-actions-dropdown
-                         class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+                         class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-raised divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                       <ul class="py-2 text-sm text-stone-700">
                         {{ event_scoped_action(event = event,
                           can_manage_events = can_manage_events,

@@ -38,6 +38,9 @@ pub(crate) async fn qr_code(
     let credential = format_credential(event_id, check_in_code);
     let code = qrcode::QrCode::new(credential.as_bytes())
         .map_err(|err| anyhow::anyhow!("failed to generate attendee check-in QR code: {err}"))?;
+
+    // Paint a white background into the SVG so the code stays black on white in
+    // every theme, as scanners need that contrast
     let svg = code
         .render()
         .min_dimensions(500, 500)

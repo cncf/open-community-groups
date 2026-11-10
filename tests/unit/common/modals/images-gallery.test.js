@@ -183,14 +183,14 @@ describe("images-gallery", () => {
     // Inline gallery image containers keep relative positioning.
     expect(thumbnailButton?.classList.contains("relative")).to.equal(true);
     expect(thumbnailButton?.classList.contains("overflow-hidden")).to.equal(true);
-    expect(thumbnailButton?.classList.contains("bg-white")).to.equal(true);
-    expect(thumbnailButton?.classList.contains("hover:outline-primary-300")).to.equal(true);
+    expect(thumbnailButton?.classList.contains("bg-plate")).to.equal(true);
+    expect(thumbnailButton?.classList.contains("hover:outline-primary-edge-soft")).to.equal(true);
     expect(thumbnailButton?.classList.contains("hover:shadow-sm")).to.equal(true);
     expect(mobileImage?.parentElement?.classList.contains("relative")).to.equal(
       true,
     );
     expect(mobileImage?.parentElement?.classList.contains("overflow-hidden")).to.equal(true);
-    expect(mobileImage?.parentElement?.classList.contains("bg-white")).to.equal(true);
+    expect(mobileImage?.parentElement?.classList.contains("bg-plate")).to.equal(true);
 
     // Phones show the button tile and drop the static one.
     expect(thumbnailButton?.parentElement?.classList.contains("phone:block")).to.equal(true);
@@ -736,13 +736,26 @@ describe("images-gallery", () => {
     expect(controls).to.have.length(4);
     controls.forEach((control) => {
       expect(control.classList.contains("focus-visible:ring-2")).to.equal(true);
-      expect(control.classList.contains("focus-visible:ring-primary-300")).to.equal(true);
+      expect(control.classList.contains("focus-visible:ring-primary-halo")).to.equal(true);
       expect(control.classList.contains("phone:focus-visible:ring-2")).to.equal(false);
     });
 
     // Verify the lightbox controls drop the global outline so only the ring shows.
     controls.slice(1).forEach((control) => {
       expect(control.classList.contains("focus-visible:outline-none")).to.equal(true);
+    });
+  });
+
+  it("paints the prev and next icons stone-900 inside the ink viewer", async () => {
+    const element = await mountLitComponent("images-gallery", { images: IMAGES });
+
+    // The viewer is a light island, and the arrow icons sit on their stone-200 pills.
+    expect(element.querySelector(".modal-container")?.classList.contains("ink")).to.equal(true);
+    const icons = [element.querySelector(".icon-prev"), element.querySelector(".icon-next")];
+    icons.forEach((icon) => {
+      expect(icon?.classList.contains("bg-stone-900")).to.equal(true);
+      expect(icon?.classList.contains("bg-stone-950")).to.equal(false);
+      expect(icon?.parentElement?.classList.contains("bg-stone-200/75")).to.equal(true);
     });
   });
 });

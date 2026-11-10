@@ -76,7 +76,7 @@ class AttendanceTicketCard extends LitWrapper {
         />
         <div
           data-attendance-role="ticket-type-card-body"
-          class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200 group-has-[input:focus-visible]:border-primary-500 group-has-[input:focus-visible]:ring-2 group-has-[input:focus-visible]:ring-primary-200 ${cardStateClasses}"
+          class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-edge-muted group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-edge-faint group-has-[input:focus-visible]:border-primary-edge group-has-[input:focus-visible]:ring-2 group-has-[input:focus-visible]:ring-primary-edge-faint ${cardStateClasses}"
         >
           <div class="grid grid-cols-[1.25rem] items-start gap-x-2.5 gap-y-2">
             <span
@@ -85,10 +85,10 @@ class AttendanceTicketCard extends LitWrapper {
               class="row-start-1 inline-flex h-5 w-5 shrink-0 items-center self-center"
             >
               <span
-                class="relative flex h-5 w-5 items-center justify-center rounded-full border border-stone-300 transition-colors group-has-[input:checked]:border-primary-500"
+                class="relative flex h-5 w-5 items-center justify-center rounded-full border border-stone-300 transition-colors group-has-[input:checked]:border-primary-edge"
               >
                 <span
-                  class="hidden h-2.5 w-2.5 rounded-full bg-primary-500 group-has-[input:checked]:block"
+                  class="hidden h-2.5 w-2.5 rounded-full bg-primary-fg group-has-[input:checked]:block"
                 ></span>
               </span>
             </span>

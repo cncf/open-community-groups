@@ -519,7 +519,7 @@ export class UserSearchField extends LitWrapper {
             ? html`
                 <div
                   data-user-search-dropdown
-                  class="absolute left-0 right-0 top-10 mt-1 max-h-80 overflow-y-auto bg-white rounded-lg shadow-lg border border-stone-200 z-10"
+                  class="absolute left-0 right-0 top-10 mt-1 max-h-80 overflow-y-auto bg-raised rounded-lg shadow-lg border border-stone-200 z-10"
                 >
                   ${this._renderDropdownContent()}
                 </div>

@@ -1,4 +1,4 @@
-import { expect, test } from "../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../fixtures.js";
 import { queryE2eDatabase, sqlUuid } from "../../database.js";
 import {
   TEST_CANCELED_PUBLIC_EVENT,
@@ -26,15 +26,20 @@ import {
   waitForAttendanceState,
 } from "./helpers.js";
 import {
+  BASEMAP_STYLE_URLS,
   buildE2eUrl,
+  expectDarkTheme,
   expectDialogClosed,
   expectFocusIndicator,
   getIntroSection,
   getPageOverflow,
   navigateToEvent,
   navigateToPath,
+  resolveCssColor,
   routeEmptyBasemap,
   swipeHorizontally,
+  trackBasemapStyleRequests,
+  useTheme,
   waitForResponseMatching,
 } from "../../utils.js";
 import { selectLabels } from "../../dashboard/group/events/event-form-helpers.js";
@@ -421,6 +426,33 @@ test.describe("event page", () => {
       await modal.getByRole("button", { name: "Next" }).click();
       await expect(modal.getByRole("img", { name: validImageAlt, exact: true })).toBeVisible();
     });
+  });
+});
+
+test.describe("event page - dark color theme", () => {
+  testAtBothWidths("location map modal loads the dark basemap with raised controls", async ({ page }) => {
+    // Store Dark and record basemap style requests while keeping the real map runtime offline.
+    await useTheme(page, { stored: "dark" });
+    await routeEmptyBasemap(page);
+    const styleRequests = trackBasemapStyleRequests(page);
+
+    // Load the event and open its full map.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_EVENT_SLUG);
+    await expectDarkTheme(page);
+    await getEventInfoSection(page, "Location").getByRole("button", { name: "Open full map view" }).click();
+    const modalMap = page.locator("#event-map-modal-map");
+    await expect(page.locator("#event-map-modal")).toBeVisible();
+    await expect(modalMap).toHaveClass(/maplibregl-map/);
+
+    // Verify the preview and the modal map request only the dark style.
+    await expect.poll(() => styleRequests).toEqual([BASEMAP_STYLE_URLS.dark, BASEMAP_STYLE_URLS.dark]);
+
+    // Verify the zoom control group paints the raised token instead of the vendor white.
+    const controlGroup = modalMap.locator(".maplibregl-ctrl-group");
+    await expect(controlGroup).toBeVisible();
+    const raised = await resolveCssColor(controlGroup, "var(--color-raised)");
+    expect(raised).not.toBe("rgb(255, 255, 255)");
+    await expect(controlGroup).toHaveCSS("background-color", raised);
   });
 });
 

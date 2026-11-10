@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 pub(crate) mod auth;
 /// Public Open Badges templates.
 pub(crate) mod badges;
+/// Brand color ramp for the base layout.
+pub(crate) mod brand_ramp;
 /// Community site templates.
 pub(crate) mod community;
 /// Dashboard templates.

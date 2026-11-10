@@ -9,7 +9,7 @@
   {% let last_spinner_id = spinner_id_prefix.to_string() + "last-spinner" -%}
   {# Pagination -#}
   <div class="pagination flex items-end justify-center py-8">
-    <div class="inline-flex phone:rounded-full phone:bg-white"
+    <div class="inline-flex phone:rounded-full phone:bg-surface"
          role="group"
          aria-label="Pagination">
       {# First button -#}
@@ -19,9 +19,9 @@
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
            hx-indicator="#{{ first_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
-           class="group relative overflow-hidden cursor-pointer inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:bg-primary-500 focus:text-white max-sm:hidden phone:hidden">
+           class="group relative overflow-hidden cursor-pointer inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-primary-fg bg-transparent border border-primary-edge rounded-s-full hover:bg-primary-fill hover:text-on-primary transition-colors focus:z-10 focus:bg-primary-fill focus:text-on-primary max-sm:hidden phone:hidden">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
-            <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-left-double">
+            <div class="svg-icon me-2 h-5 w-5 bg-primary-fg group-hover:bg-on-primary transition-colors icon-arrow-left-double">
             </div>
             First
           </span>
@@ -44,9 +44,9 @@
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
            hx-indicator="#{{ prev_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
-           class="group relative overflow-hidden cursor-pointer inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-e border-primary-500 hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:bg-primary-500 focus:text-white max-sm:rounded-s-full max-sm:border-s phone:min-h-11 phone:rounded-s-full phone:border-s">
+           class="group relative overflow-hidden cursor-pointer inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-primary-fg bg-transparent border-t border-b border-e border-primary-edge hover:bg-primary-fill hover:text-on-primary transition-colors focus:z-10 focus:bg-primary-fill focus:text-on-primary max-sm:rounded-s-full max-sm:border-s phone:min-h-11 phone:rounded-s-full phone:border-s">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
-            <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-left">
+            <div class="svg-icon me-2 h-5 w-5 bg-primary-fg group-hover:bg-on-primary transition-colors icon-arrow-left">
             </div>
             Prev
           </span>
@@ -73,10 +73,10 @@
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
            hx-indicator="#{{ next_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
-           class="group relative overflow-hidden cursor-pointer inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-s border-primary-500 hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:bg-primary-500 focus:text-white max-sm:rounded-e-full max-sm:border-e phone:min-h-11 phone:rounded-e-full phone:border-e">
+           class="group relative overflow-hidden cursor-pointer inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-primary-fg bg-transparent border-t border-b border-s border-primary-edge hover:bg-primary-fill hover:text-on-primary transition-colors focus:z-10 focus:bg-primary-fill focus:text-on-primary max-sm:rounded-e-full max-sm:border-e phone:min-h-11 phone:rounded-e-full phone:border-e">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
             Next
-            <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-right">
+            <div class="svg-icon ms-2 h-5 w-5 bg-primary-fg group-hover:bg-on-primary transition-colors icon-arrow-right">
             </div>
           </span>
           {{ ui::btn_spinner(id = next_spinner_id, size = "size-4") -}}
@@ -98,10 +98,10 @@
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
            hx-indicator="#{{ last_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
-           class="group relative overflow-hidden cursor-pointer inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:bg-primary-500 focus:text-white max-sm:hidden phone:hidden">
+           class="group relative overflow-hidden cursor-pointer inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-primary-fg bg-transparent border border-primary-edge rounded-e-full hover:bg-primary-fill hover:text-on-primary transition-colors focus:z-10 focus:bg-primary-fill focus:text-on-primary max-sm:hidden phone:hidden">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
             Last
-            <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-right-double">
+            <div class="svg-icon ms-2 h-5 w-5 bg-primary-fg group-hover:bg-on-primary transition-colors icon-arrow-right-double">
             </div>
           </span>
           {{ ui::btn_spinner(id = last_spinner_id, size = "size-4") -}}

@@ -38,7 +38,7 @@
       </thead>
       <tbody>
         {% if events.is_empty() -%}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-surface border-b border-stone-200">
             <td colspan="3" class="xl:hidden px-8 py-14 text-center">
               {% include "dashboard/placeholders/group_cohosts_table.html" -%}
             </td>
@@ -52,7 +52,7 @@
           </tr>
         {% else -%}
           {% for event in events -%}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
+            <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200 align-middle">
               <th scope="row"
                   class="px-3 py-4 font-medium text-stone-900 w-full max-w-0 xl:px-5">
                 <div class="flex min-w-0 items-center gap-3">
@@ -108,7 +108,7 @@
                              title="Open co-host actions">
                       <span class="svg-icon size-4 icon-vertical-dots" aria-hidden="true"></span>
                     </summary>
-                    <div class="dropdown absolute end-0 top-8 z-10 w-[210px] rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                    <div class="dropdown absolute end-0 top-8 z-10 w-[210px] rounded-lg border border-stone-200 bg-raised py-1 shadow-lg">
                       <ul class="text-sm text-stone-700">
                         {% if event.can_respond() -%}
                           {{ cohost_action(invitation_id = event.invitation_id, action = "approve", icon = "icon-check", label = "Approve") -}}

@@ -45,7 +45,7 @@
     <tbody>
       {% if purchases.is_empty() -%}
         {# Empty state -#}
-        <tr class="bg-white border-b border-stone-200">
+        <tr class="bg-surface border-b border-stone-200">
           <td class="px-8 py-20 text-center lg:hidden" colspan="3">
             {% include "dashboard/placeholders/user_purchases_table.html" -%}
           </td>
@@ -58,7 +58,7 @@
         {# End empty state -#}
       {% else -%}
         {% for purchase in purchases -%}
-          <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
+          <tr class="border-b border-stone-200 odd:bg-surface even:bg-stone-50/50">
             <th scope="row"
                 class="min-w-[180px] px-3 py-4 font-medium text-stone-900 xl:w-full xl:max-w-0 xl:px-5 2xl:w-auto 2xl:max-w-none">
               <div class="title-preheader max-w-48 2xl:max-w-xs">{{ purchase.group_name }}</div>
@@ -107,7 +107,7 @@
                          title="Open document actions">
                   <span class="svg-icon size-4 icon-vertical-dots" aria-hidden="true"></span>
                 </summary>
-                <div class="dropdown absolute end-0 top-8 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                <div class="dropdown absolute end-0 top-8 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-raised py-1 shadow-lg">
                   <ul class="text-sm text-stone-700" role="menu">
                     {% if purchase.externally_managed -%}
                       <li>

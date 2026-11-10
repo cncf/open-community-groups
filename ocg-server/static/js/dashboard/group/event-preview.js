@@ -410,7 +410,7 @@ const createEventPreviewSocialLink = ({ iconName, platformName, url }) => {
   anchor.title = platformName;
 
   const icon = document.createElement("div");
-  icon.className = `svg-icon size-4 bg-primary-500 transition-colors group-hover:bg-white icon-${iconName}`;
+  icon.className = `svg-icon size-4 bg-primary-fg transition-colors group-hover:bg-on-primary icon-${iconName}`;
   anchor.append(icon);
 
   return anchor;

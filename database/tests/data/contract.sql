@@ -13,6 +13,7 @@ insert into site (
     copyright_notice,
     favicon_url,
     footer_logo_url,
+    header_logo_dark_url,
     header_logo_url,
     og_image_url
 ) values (
@@ -23,6 +24,7 @@ insert into site (
     'Copyright Contract Site',
     'https://example.com/favicon.ico',
     'https://example.com/footer-logo.png',
+    'https://example.com/header-logo-dark.png',
     'https://example.com/header-logo.png',
     'https://example.com/site-og-image.png'
 );

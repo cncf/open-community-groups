@@ -25,11 +25,48 @@
        target="{{ target }}"
      {% endif -%}
      data-header-nav-link
-     class="header-nav-link mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 transition-colors
+     class="header-nav-link mx-3 pb-1 border-0 border-primary-edge text-base font-semibold tracking-widest text-primary-fg uppercase border-b-2 transition-colors
             {% if current_path == href || current_path == path -%}
-              border-primary-500{%- else -%}border-transparent hover:border-primary-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
+              border-primary-edge{%- else -%}border-transparent hover:border-primary-edge-soft{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
 {% endmacro link -%}
 {# End link -#}
+
+{# Theme choice -#}
+{# Used by the theme choice items for one segment of the color theme control. The server always
+   checks System; static JS syncs the stored choice. The icon shows only in the phone sheet. -#}
+{% macro theme_choice(value, label, icon) -%}
+  <li role="none">
+    <button type="button"
+            role="menuitemradio"
+            aria-checked="{% if value == "system" %}true{% else %}false{% endif %}"
+            data-ocg-theme-choice="{{ value }}"
+            class="group flex min-h-11 w-full cursor-pointer items-center justify-center gap-1 rounded-full px-0.5 text-xs/6 text-stone-700 transition-colors motion-reduce:transition-none hover:text-stone-900 aria-checked:bg-surface aria-checked:font-semibold aria-checked:text-stone-900 aria-checked:shadow-sm aria-checked:ring-1 aria-checked:ring-stone-200 phone:text-sm">
+      <span class="svg-icon hidden size-4 shrink-0 {{ icon }} bg-stone-600 group-aria-checked:bg-stone-900 phone:block phone:size-[18px]"></span>
+      <span>{{ label }}</span>
+    </button>
+  </li>
+{% endmacro theme_choice -%}
+{# End theme choice -#}
+
+{# Theme choice items -#}
+{# Used by the header user menu to pick the color theme: Light, Dark or System. The row sits
+   directly above the viewport mode items and is always visible. -#}
+{% macro theme_choice_items() -%}
+  <li class="account-sheet-theme border-t border-stone-200 mt-2 pt-2 px-4 pb-2 phone:px-3"
+      role="none">
+    <div id="user-menu-theme-label"
+         class="title-preheader pb-1"
+         aria-hidden="true">Theme</div>
+    <ul role="group"
+        aria-labelledby="user-menu-theme-label"
+        class="grid grid-cols-3 gap-1 rounded-full bg-stone-100 p-1">
+      {{ theme_choice(value = "light", label = "Light", icon = "icon-sun") -}}
+      {{ theme_choice(value = "dark", label = "Dark", icon = "icon-moon") -}}
+      {{ theme_choice(value = "system", label = "System", icon = "icon-contrast") -}}
+    </ul>
+  </li>
+{% endmacro theme_choice_items -%}
+{# End theme choice items -#}
 
 {# Viewport mode items -#}
 {# Used by the header user menu to switch between the responsive layout and the desktop version.

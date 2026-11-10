@@ -1,5 +1,5 @@
 import { expect, test } from "../../../fixtures.js";
-import { navigateToPath } from "../../../utils.js";
+import { navigateToPath, pickThemeFromAccountMenu } from "../../../utils.js";
 
 const ANALYTICS_TABS = [
   {
@@ -131,6 +131,36 @@ test.describe("community dashboard analytics view", () => {
         await expectChartRendered(tabContent, chartId);
       }
     }
+  });
+
+  test("live theme switch keeps the selected analytics tab and re-renders its charts", async ({
+    adminCommunityPage,
+  }) => {
+    // Load the community analytics dashboard and select a non-default tab.
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=analytics");
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    const eventsTab = dashboardContent.locator('button[data-analytics-tab="events"]').first();
+    const eventsContent = dashboardContent.locator('[data-analytics-content="events"]');
+    await eventsTab.click();
+    await expect(eventsTab).toHaveAttribute("aria-selected", "true");
+    await expectChartRendered(eventsContent, "events-running-chart");
+
+    // Capture the rendered chart instance.
+    const chart = eventsContent.locator("#events-running-chart");
+    await expect(chart).toHaveAttribute("_echarts_instance_", /.+/);
+    const initialInstance = await chart.getAttribute("_echarts_instance_");
+
+    // Pick Dark from the account menu without leaving the page.
+    await pickThemeFromAccountMenu(adminCommunityPage, "dark");
+
+    // Verify the selected tab stays selected and its charts re-render.
+    await expect(eventsTab).toHaveAttribute("data-active", "true");
+    await expect(eventsTab).toHaveAttribute("aria-selected", "true");
+    await expect(eventsContent).toBeVisible();
+    await expect(dashboardContent.locator('[data-analytics-content="groups"]')).toBeHidden();
+    await expect(chart).not.toHaveAttribute("_echarts_instance_", initialInstance);
+    await expect(chart).toHaveAttribute("_echarts_instance_", /.+/);
+    await expectChartRendered(eventsContent, "events-running-chart");
   });
 
   test("tablet analytics tabs expose every section", async ({ adminCommunityPage }) => {

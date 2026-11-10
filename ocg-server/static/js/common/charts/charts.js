@@ -1,4 +1,5 @@
 import { getElementById, loadScriptOnce } from "/static/js/common/dom.js";
+import { getResolvedTheme } from "/static/js/common/theme.js";
 import { escapeHtml } from "/static/js/common/trusted-html.js";
 
 /**
@@ -105,9 +106,40 @@ export const loadEChartsScript = () => {
   });
 };
 
+/** ECharts theme registered for charts rendered under the dark color theme. */
+const DARK_CHART_THEME = "ocg-dark";
 const ECHARTS_COLOR_PATTERN = /^(#|rgba?\(|hsla?\()/i;
+const HEX_COLOR_PATTERN = /^#([\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i;
+const RGB_COLOR_PATTERN = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i;
 const chartColorCache = new Map();
 let chartColorContext = null;
+
+/**
+ * Serialise sRGB channels in the format ECharts parses.
+ * @param {number} red - Red channel, 0 to 255.
+ * @param {number} green - Green channel, 0 to 255.
+ * @param {number} blue - Blue channel, 0 to 255.
+ * @param {number} [alpha] - Opacity, 0 to 1. Opaque colors omit it.
+ * @returns {string} Comma-separated `rgb` color, or `rgba` with the opacity.
+ */
+const formatChartColor = (red, green, blue, alpha) =>
+  alpha === undefined ? `rgb(${red}, ${green}, ${blue})` : `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+
+/**
+ * Read the sRGB channels of a color in a format ECharts parses.
+ * @param {string} value - Hex, `rgb` or `rgba` color.
+ * @returns {Array<number>|null} Red, green and blue channels, or null for other formats.
+ */
+const parseChartColorChannels = (value) => {
+  const hex = HEX_COLOR_PATTERN.exec(value)?.[1];
+  if (hex) {
+    const digits = hex.length <= 4 ? Array.from(hex, (digit) => digit + digit).join("") : hex;
+    return [0, 2, 4].map((start) => Number.parseInt(digits.slice(start, start + 2), 16));
+  }
+
+  const channels = RGB_COLOR_PATTERN.exec(value);
+  return channels ? channels.slice(1, 4).map(Number) : null;
+};
 
 /**
  * Convert a CSS color into a format ECharts can parse. ECharts derives hover
@@ -141,10 +173,21 @@ export const toChartColor = (value) => {
   const [red, green, blue, alpha] = chartColorContext.getImageData(0, 0, 1, 1).data;
   const color =
     alpha === 255
-      ? `rgb(${red}, ${green}, ${blue})`
-      : `rgba(${red}, ${green}, ${blue}, ${Number((alpha / 255).toFixed(3))})`;
+      ? formatChartColor(red, green, blue)
+      : formatChartColor(red, green, blue, Number((alpha / 255).toFixed(3)));
   chartColorCache.set(value, color);
   return color;
+};
+
+/**
+ * Set the opacity of a color returned by `toChartColor` or the chart color readers.
+ * @param {string} color - Hex (`#rgb` or `#rrggbb`), `rgb` or `rgba` color.
+ * @param {number} alpha - Opacity, 0 to 1.
+ * @returns {string} Comma-separated `rgba` color, or the original value for other formats.
+ */
+export const withAlpha = (color, alpha) => {
+  const channels = parseChartColorChannels(color || "");
+  return channels ? formatChartColor(...channels, alpha) : color;
 };
 
 /**
@@ -384,7 +427,7 @@ const getChartTooltipColors = () => {
   const styles = getComputedStyle(document.documentElement);
 
   return {
-    background: readChartColor(styles, "--color-white"),
+    background: readChartColor(styles, "--color-surface"),
     border: readChartColor(styles, "--color-stone-200"),
     text: readChartColor(styles, "--color-stone-700"),
   };
@@ -401,7 +444,40 @@ export const getChartUiColors = () => {
     text: readChartColor(styles, "--color-stone-700"),
     muted: readChartColor(styles, "--color-stone-400"),
     soft: readChartColor(styles, "--color-stone-300"),
-    surface: readChartColor(styles, "--color-white"),
+    surface: readChartColor(styles, "--color-surface"),
+  };
+};
+
+/**
+ * Build the ECharts theme of charts rendered under the dark color theme. Light
+ * charts keep the ECharts defaults, so only dark charts use it.
+ * @returns {Object} ECharts theme.
+ */
+export const getChartTheme = () => {
+  const gridLineColor = getChartGridLineColor();
+  const tooltipColors = getChartTooltipColors();
+  const uiColors = getChartUiColors();
+  const getAxisTheme = () => ({
+    axisLabel: { color: uiColors.muted },
+    axisLine: { lineStyle: { color: uiColors.soft } },
+    axisTick: { lineStyle: { color: uiColors.soft } },
+    splitLine: { lineStyle: { color: gridLineColor } },
+  });
+
+  return {
+    backgroundColor: "transparent",
+    categoryAxis: getAxisTheme(),
+    darkMode: true,
+    legend: { inactiveColor: uiColors.soft, textStyle: { color: uiColors.text } },
+    logAxis: getAxisTheme(),
+    textStyle: { color: uiColors.text },
+    timeAxis: getAxisTheme(),
+    tooltip: {
+      backgroundColor: tooltipColors.background,
+      borderColor: tooltipColors.border,
+      textStyle: { color: tooltipColors.text },
+    },
+    valueAxis: getAxisTheme(),
   };
 };
 
@@ -553,7 +629,14 @@ export const initChart = (elementId, option) => {
   }
 
   el.replaceChildren();
-  const chart = echarts.init(el);
+  let chart;
+  if (getResolvedTheme() === "dark") {
+    // Registering on every dark init re-reads the tokens at render time
+    echarts.registerTheme(DARK_CHART_THEME, getChartTheme());
+    chart = echarts.init(el, DARK_CHART_THEME);
+  } else {
+    chart = echarts.init(el);
+  }
   chart.setOption(option);
   return chart;
 };
@@ -615,7 +698,7 @@ export const createAreaChart = (title, name, data, palette, options = {}) => {
               y2: 1,
               colorStops: [
                 { offset: 0, color: palette[500] },
-                { offset: 1, color: "rgba(255, 255, 255, 0)" },
+                { offset: 1, color: withAlpha(getChartUiColors().surface, 0) },
               ],
             },
           },

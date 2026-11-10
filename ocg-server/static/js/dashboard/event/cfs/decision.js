@@ -33,7 +33,7 @@ const renderStatusBoxes = ({ onStatusCheckChange, statusId: selectedStatusId, st
               ?disabled=${isDisabled}
             />
             <div
-              class="rounded-lg border p-3 transition bg-white ${
+              class="rounded-lg border p-3 transition bg-surface ${
                 isSelected ? `${color.border} ${color.ring}` : "border-stone-200"
               }"
             >

@@ -38,7 +38,7 @@
                   <div class="text-sm font-semibold">Missing or incomplete details</div>
                   <div class="mt-2 flex flex-wrap gap-2">
                     {% for field in event.missing_fields -%}
-                      <span class="custom-badge border-amber-200 bg-white px-2.5 py-0.5 text-amber-900">{{ field }}</span>
+                      <span class="custom-badge border-amber-200 bg-surface px-2.5 py-0.5 text-amber-900">{{ field }}</span>
                     {% endfor -%}
                   </div>
                 </div>
@@ -54,7 +54,7 @@
 
         {# Preview content -#}
         <div class="relative container mx-auto flex h-full max-w-[90rem] grow p-4 sm:p-6 lg:p-8">
-          <div class="relative flex w-full flex-col overflow-visible rounded-lg border border-stone-200 bg-white">
+          <div class="relative flex w-full flex-col overflow-visible rounded-lg border border-stone-200 bg-surface">
             <div class="flex flex-col gap-y-8 px-4 py-5 sm:px-6 sm:py-6 lg:gap-y-12 lg:px-10 lg:py-10">
               {# Event header -#}
               <header>
@@ -65,7 +65,7 @@
                     {% if let Some(logo_url) = &event.logo_url -%}
                       {{ ui::logo(logo_url = logo_url, classes = "size-24 md:size-28", size = 112) -}}
                     {% else -%}
-                      <div class="flex size-24 items-center justify-center rounded-lg border border-stone-200 bg-white px-3 text-center text-xs font-medium text-stone-500 md:size-28">
+                      <div class="flex size-24 items-center justify-center rounded-lg border border-stone-200 bg-surface px-3 text-center text-xs font-medium text-stone-500 md:size-28">
                         Missing logo
                       </div>
                     {% endif -%}
@@ -156,17 +156,17 @@
               {# Event date and location -#}
               <section class="space-y-5 py-4">
                 {% if !event.cohosts.is_empty() -%}
-                  <div class="rounded-lg border border-stone-200 bg-white p-4">
+                  <div class="rounded-lg border border-stone-200 bg-surface p-4">
                     <div class="mb-4 flex min-h-[25px] items-center justify-between">
                       <div class="text-base/3 font-semibold uppercase text-stone-400">Co-hosts</div>
                     </div>
                     <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                       {% for cohost in event.cohosts -%}
-                        <div class="flex min-w-0 items-center gap-3 rounded-lg border border-dashed border-stone-200 bg-white p-3">
+                        <div class="flex min-w-0 items-center gap-3 rounded-lg border border-dashed border-stone-200 bg-surface p-3">
                           {% if let Some(logo_url) = &cohost.logo_url -%}
                             {{ ui::logo(logo_url = logo_url, classes = "size-12 shrink-0", size = 48) -}}
                           {% else -%}
-                            <div class="flex size-12 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white">
+                            <div class="flex size-12 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-surface">
                               <div class="svg-icon size-5 bg-stone-400 icon-groups" aria-hidden="true"></div>
                             </div>
                           {% endif -%}
@@ -186,12 +186,12 @@
                 {% endif -%}
                 <div class="grid gap-5 sm:gap-8 md:grid-cols-2 md:gap-5 lg:gap-8">
                   {# Event date -#}
-                  <div class="h-full rounded-lg border border-stone-200 bg-white">
+                  <div class="h-full rounded-lg border border-stone-200 bg-surface">
                     <div class="flex h-full flex-col p-4">
                       <div class="mb-4 flex min-h-[25px] items-center justify-between">
                         <div class="text-base/3 font-semibold uppercase text-stone-400">Event date</div>
                       </div>
-                      <div class="grow rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400">
+                      <div class="grow rounded-lg border border-dashed border-stone-200 bg-surface p-4 text-stone-400">
                         <div class="text-xl font-semibold text-stone-800 xl:text-3xl">{{ event.date_label() }}</div>
                         <div class="mt-2 text-base text-stone-600">{{ event.time_label() }}</div>
                       </div>
@@ -200,24 +200,24 @@
                   {# End event date -#}
 
                   {# Location -#}
-                  <div class="flex h-full flex-col rounded-lg border border-stone-200 bg-white p-4">
+                  <div class="flex h-full flex-col rounded-lg border border-stone-200 bg-surface p-4">
                     <div class="mb-4 flex min-h-[25px] items-center justify-between">
                       <div class="text-base/3 font-semibold uppercase text-stone-400">Location</div>
                     </div>
-                    <div class="relative min-h-[108px] grow overflow-hidden rounded-lg border border-dashed border-stone-200 bg-white">
+                    <div class="relative min-h-[108px] grow overflow-hidden rounded-lg border border-dashed border-stone-200 bg-surface">
                       {% if event.has_venue_component() -%}
                         <div class="relative h-full min-h-[108px] w-full"
                              data-event-preview-location-map>
-                          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30"
+                          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat raster-placeholder"
                                data-event-preview-location-map-fallback></div>
                           <div id="event-preview-location-map"
                                class="absolute inset-0 hidden h-full min-h-[108px] w-full"
                                data-event-preview-location-map-canvas></div>
                           {% if let Some(venue_label) = &event.venue_label -%}
-                            <div class="absolute bottom-2 left-2 z-10 hidden rounded-full bg-white/80 px-1.5 py-1 text-xs text-stone-700 pointer-events-none sm:block md:hidden xl:block">
+                            <div class="absolute bottom-2 left-2 z-10 hidden rounded-full bg-surface/80 px-1.5 py-1 text-xs text-stone-700 pointer-events-none sm:block md:hidden xl:block">
                               {{ venue_label }}
                             </div>
-                            <div class="absolute bottom-2 left-2 z-10 block rounded-full bg-white/80 px-1.5 py-1 text-xs text-stone-700 pointer-events-none sm:hidden md:block md:px-3 xl:hidden">
+                            <div class="absolute bottom-2 left-2 z-10 block rounded-full bg-surface/80 px-1.5 py-1 text-xs text-stone-700 pointer-events-none sm:hidden md:block md:px-3 xl:hidden">
                               {{ venue_label }}
                             </div>
                           {% else -%}
@@ -229,7 +229,7 @@
                         </div>
                       {% else if event.has_online_component() -%}
                         <div class="relative flex min-h-[108px] w-full items-center justify-center p-4 text-center">
-                          <div class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+                          <div class="absolute inset-0 bg-cover bg-center bg-no-repeat raster-placeholder"
                                style="background-image: url('/static/images/virtual_event.png')"></div>
                           <div class="relative flex w-full items-center justify-center">
                             <div class="text-xl font-semibold text-stone-700">Virtual event</div>
@@ -237,7 +237,7 @@
                         </div>
                       {% else -%}
                         <div class="relative flex min-h-[108px] w-full items-center justify-center p-4 text-center">
-                          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+                          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat raster-placeholder">
                           </div>
                           <div class="relative flex w-full items-center justify-center">
                             <div class="text-xl font-semibold text-stone-700">Location not provided</div>
@@ -329,7 +329,7 @@
                   <ol class="relative border-s border-stone-200">
                     {% for session in event.sessions -%}
                       <li class="{% if !loop.last %}mb-5 {% endif %}ms-4">
-                        <div class="absolute -start-1.5 mt-1 size-3 rounded-full border border-white bg-stone-300"></div>
+                        <div class="absolute -start-1.5 mt-1 size-3 rounded-full border border-surface bg-stone-300"></div>
                         <div class="mb-2 text-sm text-stone-500/75">{{ session.time_label }}</div>
                         <div class="flex flex-col items-start gap-2 sm:flex-row">
                           <h3 class="font-semibold text-stone-900 md:text-lg">{{ session.name_label() }}</h3>
@@ -449,8 +449,8 @@
                           {% if let Some(logo_url) = &sponsor.logo_url -%}
                             {{ badges::sponsor_badge(name = sponsor.name_label() , logo_url = logo_url, website_url = sponsor.website_url, level = sponsor.level_label(), with_level = true) -}}
                           {% else -%}
-                            <div class="inline-flex w-full items-center gap-3 rounded-xl border border-stone-200 bg-white p-4">
-                              <div class="flex size-15 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white md:size-18">
+                            <div class="inline-flex w-full items-center gap-3 rounded-xl border border-stone-200 bg-surface p-4">
+                              <div class="flex size-15 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-surface md:size-18">
                                 <div class="svg-icon size-6 bg-amber-500 icon-handshake"></div>
                               </div>
                               <div class="min-w-0 leading-tight">

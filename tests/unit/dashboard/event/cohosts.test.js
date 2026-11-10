@@ -436,6 +436,14 @@ describe("event co-hosts selector", () => {
       const images = [...element.querySelectorAll("img")];
       expect(images).to.have.length(2);
       expect(images.map((image) => image.getAttribute("alt"))).to.deep.equal(["", ""]);
+
+      // Verify each logo sits on a white plate, a light island with a dark edge.
+      images.forEach((image) => {
+        const frame = image.parentElement;
+        expect(frame.classList.contains("plate")).to.equal(true);
+        expect(frame.classList.contains("plate-ring")).to.equal(true);
+        expect(frame.classList.contains("bg-plate")).to.equal(true);
+      });
     } finally {
       fetchMock.restore();
     }
@@ -592,6 +600,6 @@ describe("event co-hosts selector", () => {
     expect(community.textContent.trim()).to.equal("Distributed AI Forum");
     expect(community.classList.contains("title-preheader")).to.equal(true);
     expect(name.textContent.trim()).to.equal("Distributed AI Atlanta");
-    expect([...name.classList]).to.include.members(["font-semibold", "text-black", "truncate"]);
+    expect([...name.classList]).to.include.members(["font-semibold", "text-stone-900", "truncate"]);
   });
 });

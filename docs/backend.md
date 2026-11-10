@@ -295,6 +295,14 @@ when the skipped argument is a batch.
 Pure domain logic (recurrence expansion, eligibility predicates) lives in
 `services/` or `types/`, not under `handlers/`.
 
+## Viewer preferences
+
+Presentation-only viewer preferences (the color theme and the desktop
+version) live in browser storage. The inline pre-paint script and static
+JavaScript apply them. They never reach a handler, a template, a cookie or a
+request header the server reads, so a page renders the same bytes for every
+viewer and its cache headers never vary by preference.
+
 ## Test layering
 
 Each behavior is proven at the cheapest layer able to prove it. The mock

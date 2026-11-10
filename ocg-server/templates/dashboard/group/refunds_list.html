@@ -42,7 +42,7 @@
       </thead>
       <tbody>
         {% for recovery in financial_recoveries -%}
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle"
+          <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200 align-middle"
               data-financial-work-kind="{{ recovery.kind }}">
             <td class="w-2/5 max-w-0 px-3 py-4 xl:px-5">
               <div class="truncate font-medium text-stone-900">{{ recovery.name.as_deref() |assigned_or(recovery.username) }}</div>
@@ -79,7 +79,7 @@
                          title="Open financial recovery actions">
                   <span class="svg-icon size-4 icon-vertical-dots" aria-hidden="true"></span>
                 </summary>
-                <div class="dropdown absolute end-0 top-8 z-10 w-[230px] rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                <div class="dropdown absolute end-0 top-8 z-10 w-[230px] rounded-lg border border-stone-200 bg-raised py-1 shadow-lg">
                   <ul class="text-sm text-stone-700">
                     <li>
                       <form hx-put="/dashboard/group/payment-jobs/{{ recovery.payment_job_id }}/retry"
@@ -162,7 +162,7 @@
       <label for="refund-event"
              class="text-sm font-semibold text-nowrap text-stone-900">Event</label>
       <select id="refund-event"
-              class="block h-10 w-72 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:ring-0 focus:hover:border-primary-500"
+              class="block h-10 w-72 rounded-md border border-stone-200 bg-surface px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-edge focus:border-stone-200 focus:ring-0 focus:hover:border-primary-edge"
               name="event_id">
         <option value="">All events</option>
         {% for event in events -%}
@@ -175,7 +175,7 @@
       <label for="refund-view"
              class="text-sm font-semibold text-nowrap text-stone-900">Refund status</label>
       <select id="refund-view"
-              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:ring-0 focus:hover:border-primary-500"
+              class="block h-10 w-40 rounded-md border border-stone-200 bg-surface px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-edge focus:border-stone-200 focus:ring-0 focus:hover:border-primary-edge"
               name="view">
         {% for option in [
           crate::templates::dashboard::group::refunds::RefundsView::Active,
@@ -225,7 +225,7 @@
       <tbody>
         {% if refunds.is_empty() -%}
           {# Empty state -#}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-surface border-b border-stone-200">
             <td colspan="3" class="xl:hidden px-8 py-14 text-center">
               {% include "dashboard/placeholders/group_refunds_table.html" -%}
             </td>
@@ -240,7 +240,7 @@
           {# End empty state -#}
         {% else -%}
           {% for refund in refunds -%}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
+            <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200 align-middle">
               <td class="w-[40%] max-w-0 px-3 py-4 xl:w-auto xl:max-w-64 xl:px-5">
                 <div class="flex items-center gap-3">
                   <logo-image {% if let Some(photo_url) = &refund.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-9" placeholder="{{ self::user_initials(refund.name.as_deref() , refund.username.as_str()) }}">
@@ -345,7 +345,7 @@
                            title="Open refund actions">
                     <div class="svg-icon size-4 icon-vertical-dots"></div>
                   </summary>
-                  <div class="dropdown absolute end-0 top-8 z-10 w-[210px] rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                  <div class="dropdown absolute end-0 top-8 z-10 w-[210px] rounded-lg border border-stone-200 bg-raised py-1 shadow-lg">
                     <ul class="text-sm text-stone-700">
                       {% if refund.can_approve() -%}
                         <li>

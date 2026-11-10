@@ -1,8 +1,10 @@
 import { expect } from "@open-wc/testing";
 
+import { THEME_CHANGE_EVENT, THEME_STORAGE_KEY } from "/static/js/common/theme.js";
 import { Map as ExploreMap } from "/static/js/community/explore/map.js";
 import {
   createDeferred,
+  waitForAnimationFrames,
   waitForMicrotask,
 } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
@@ -37,6 +39,9 @@ const EVENT = {
 };
 const RESULTS_ERROR_MESSAGE =
   "Something went wrong loading results. Please try again later.";
+const BRIGHT_STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
+const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
+const LOCATIONS_SOURCE_ID = "explore-locations";
 
 /** Builds a successful search or card response. */
 const okResponse = ({ body = {}, html = "" } = {}) => ({
@@ -63,10 +68,11 @@ describe("community explore map", () => {
   let windowTimers;
 
   beforeEach(() => {
-    // Create the map fixture and mock browser integrations.
+    // Create the map fixture and mock browser integrations, starting in light.
     resetDom();
     ExploreMap._instance = null;
     mapLibre = mockMapLibre();
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
     swal = mockSwal();
     fetchMock = mockFetch({ impl: async () => statusResponse(404) });
     clickedUrls = [];
@@ -90,6 +96,7 @@ describe("community explore map", () => {
   afterEach(() => {
     // Release map resources and restore the browser globals.
     mapLibre.restore();
+    localStorage.removeItem(THEME_STORAGE_KEY);
     swal.restore();
     fetchMock.restore();
     windowTimers?.restore();
@@ -126,6 +133,15 @@ describe("community explore map", () => {
     return responses;
   };
 
+  // Stores a color theme choice and announces it, as theme.js does after a switch.
+  const switchTheme = async (theme) => {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    document.dispatchEvent(
+      new CustomEvent(THEME_CHANGE_EVENT, { detail: { theme } }),
+    );
+    await waitForAnimationFrames(2);
+  };
+
   const getNotice = () => {
     const notice = document.querySelector("[data-explore-truncation-notice]");
     return {
@@ -151,9 +167,7 @@ describe("community explore map", () => {
     // Verify the map style, controls, and clustered source.
     const map = mapLibre.maps[0];
     map.emit("load").emit("render");
-    expect(map.options.style).to.equal(
-      "https://tiles.openfreemap.org/styles/bright",
-    );
+    expect(map.options.style).to.equal(BRIGHT_STYLE_URL);
     expect(map.options.minZoom).to.equal(2);
     expect(map.controls.map((control) => control.position)).to.deep.equal([
       "top-right",
@@ -166,6 +180,103 @@ describe("community explore map", () => {
     expect(
       document.getElementById("main-loading-map").classList.contains("hidden"),
     ).to.equal(true);
+  });
+
+  it("loads the dark basemap under the dark color theme", async () => {
+    // Initialize the map with Dark stored.
+    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    const { map } = await initializeMap();
+
+    // Verify the first paint requests the dark style.
+    expect(map.options.style).to.equal(DARK_STYLE_URL);
+  });
+
+  it("keeps the clustered locations and their pins across a color theme switch", async () => {
+    // Render two located groups, then switch to dark.
+    const { map, source } = await initializeMap("groups", {
+      groups: [GROUP, SECOND_GROUP],
+    });
+    const features = structuredClone(source.data.features);
+    const pins = [...document.querySelectorAll(".maplibregl-marker")];
+    expect(pins).to.have.length(2);
+    await switchTheme("dark");
+
+    // Verify the style swap carried the clustered source with its data and its layer.
+    expect(map.setStyleCalls.map(({ url }) => url)).to.deep.equal([
+      DARK_STYLE_URL,
+    ]);
+    const nextSource = map.getSource(LOCATIONS_SOURCE_ID);
+    expect(nextSource).to.include({
+      cluster: true,
+      clusterMaxZoom: source.clusterMaxZoom,
+      clusterRadius: source.clusterRadius,
+      maxzoom: source.maxzoom,
+      type: "geojson",
+    });
+    expect(nextSource.clusterProperties).to.deep.equal(
+      source.clusterProperties,
+    );
+    expect(nextSource.data.features).to.deep.equal(features);
+    expect(
+      map.layers.filter((layer) => layer.id === LOCATIONS_SOURCE_ID),
+    ).to.deep.equal([
+      {
+        id: LOCATIONS_SOURCE_ID,
+        paint: { "circle-opacity": 0, "circle-radius": 1 },
+        source: LOCATIONS_SOURCE_ID,
+        type: "circle",
+      },
+    ]);
+
+    // Verify the next render keeps the same pins.
+    map.emit("render");
+    expect([...document.querySelectorAll(".maplibregl-marker")]).to.deep.equal(
+      pins,
+    );
+
+    // Switch back to light and verify the source survives again.
+    await switchTheme("light");
+    expect(map.setStyleCalls.map(({ url }) => url)).to.deep.equal([
+      DARK_STYLE_URL,
+      BRIGHT_STYLE_URL,
+    ]);
+    expect(map.getSource(LOCATIONS_SOURCE_ID).data.features).to.deep.equal(
+      features,
+    );
+  });
+
+  it("adds the locations source once when the color theme switches before the map loads", async () => {
+    // Create the map and switch to dark before its first style loads.
+    const controller = new ExploreMap("groups", { groups: [GROUP] });
+    await waitForMicrotask();
+    await controller.setupPromise;
+    const map = mapLibre.maps.at(-1);
+    await switchTheme("dark");
+    expect(map.setStyleCalls.map(({ url }) => url)).to.deep.equal([
+      DARK_STYLE_URL,
+    ]);
+    expect(map.getSource(LOCATIONS_SOURCE_ID)).not.to.exist;
+
+    // Load the map and verify the load handler adds the source and layer once.
+    map.emit("load").emit("render");
+    expect(Object.keys(map.sources)).to.deep.equal([LOCATIONS_SOURCE_ID]);
+    expect(
+      map.layers.filter((layer) => layer.id === LOCATIONS_SOURCE_ID),
+    ).to.have.length(1);
+    expect(document.querySelector(".marker-malaga-js")).not.to.equal(null);
+  });
+
+  it("paints location pins with the primary foreground roles", async () => {
+    // Render one located group.
+    await initializeMap();
+
+    // Verify the pin follows the color theme through its foreground roles.
+    const pin = document.querySelector(".marker-malaga-js > .svg-icon");
+    expect([...pin.classList]).to.include.members([
+      "bg-primary-fg",
+      "hover:bg-primary-fg-deep",
+    ]);
+    expect(pin.className).not.to.match(/primary-(500|900)/);
   });
 
   it("sets the result bounds before the map loads without a later camera jump", async () => {
@@ -435,6 +546,9 @@ describe("community explore map", () => {
     expect(popup.textContent).to.include("2 groups at this location");
     const closeButton = popup.querySelector("button");
     expect(closeButton.textContent).to.equal("Close");
+    expect(
+      closeButton.classList.contains("focus-visible:outline-primary-edge"),
+    ).to.equal(true);
     closeButton.focus();
     closeButton.click();
     expect(document.querySelector(".maplibregl-popup")).to.equal(null);

@@ -3,7 +3,14 @@ import { queryCount, restoreRow, snapshotRow, sqlUuid, withRowRestore } from "..
 
 import { fillMarkdownEditor, fillMultipleInputs } from "../../form-helpers.js";
 import { TEST_GROUP_IDS, TEST_PAYMENT_GROUP_RECIPIENT } from "../../../seed.js";
-import { navigateToPath, waitForActionResponse } from "../../../utils.js";
+import {
+  expectDarkTheme,
+  navigateToPath,
+  pickThemeFromAccountMenu,
+  resolveCssColor,
+  useTheme,
+  waitForActionResponse,
+} from "../../../utils.js";
 
 // Group settings page used by the UTM scenarios.
 const SETTINGS_PATH = "/dashboard/group?tab=settings";
@@ -343,6 +350,38 @@ test.describe("group dashboard settings view", () => {
     });
   });
 
+  test("description editor follows the dark theme and keeps typed text across a live toggle", async ({
+    organizerGroupPage,
+  }) => {
+    // Load group settings in the dark theme.
+    await useTheme(organizerGroupPage, { stored: "dark" });
+    await navigateToPath(organizerGroupPage, SETTINGS_PATH);
+    await expectDarkTheme(organizerGroupPage);
+    const editor = organizerGroupPage.locator("markdown-editor#description .CodeMirror");
+    await expect(editor).toBeVisible();
+
+    // Verify the editor paints the dark surface with the dark stone-900 text.
+    const darkSurface = await resolveCssColor(editor, "var(--color-surface)");
+    expect(darkSurface).not.toBe("rgb(255, 255, 255)");
+    await expect(editor).toHaveCSS("background-color", darkSurface);
+    await expect(editor).toHaveCSS("color", await resolveCssColor(editor, "var(--color-stone-900)"));
+
+    // Type at the end of the description.
+    await editor.click();
+    await organizerGroupPage.keyboard.press("ControlOrMeta+End");
+    await organizerGroupPage.keyboard.type(" Typed before the theme switch.");
+    const typedValue = await readMarkdownEditorValue(editor);
+    expect(typedValue).toContain("Typed before the theme switch.");
+
+    // Switch to the light theme from the account menu.
+    await pickThemeFromAccountMenu(organizerGroupPage, "light");
+
+    // Verify the same editor returns to the vendor light colors and keeps the typed text.
+    await expect(editor).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    await expect(editor).toHaveCSS("color", "rgb(0, 0, 0)");
+    expect(await readMarkdownEditorValue(editor)).toBe(typedValue);
+  });
+
   test("viewer sees read-only controls on group settings", async ({ groupViewerPage }) => {
     // Load the group settings tab as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=settings");
@@ -491,6 +530,13 @@ const getSubmittedUtmInputs = (page, fieldName) =>
  * @returns {import("@playwright/test").Locator} UTM list component.
  */
 const getUtmInputs = (page, fieldName) => page.locator(`multiple-inputs[field-name="${fieldName}"]`);
+
+/**
+ * Reads the value of a markdown editor from its CodeMirror instance.
+ * @param {import("@playwright/test").Locator} editor - Editor `.CodeMirror` element.
+ * @returns {Promise<string>} Current editor value.
+ */
+const readMarkdownEditorValue = (editor) => editor.evaluate((element) => element.CodeMirror.getValue());
 
 /**
  * Submits the group settings form and waits for a successful update.

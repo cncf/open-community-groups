@@ -240,7 +240,7 @@ class SessionCard extends LitWrapper {
       <span class="group/labels-more relative inline-flex shrink-0" data-session-labels-more>
         <button
           type="button"
-          class="relative cursor-help rounded-full border border-stone-200 bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-nowrap text-stone-700 before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          class="relative cursor-help rounded-full border border-stone-200 bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-nowrap text-stone-700 before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge"
           aria-describedby=${this._labelsTooltipId}
         >
           ${counterContent}
@@ -249,7 +249,7 @@ class SessionCard extends LitWrapper {
           id=${this._labelsTooltipId}
           role="tooltip"
           data-tooltip-panel
-          class="pointer-events-auto invisible absolute bottom-full start-0 z-20 mb-1 w-64 max-w-[calc(100vw-2rem)] whitespace-normal rounded-lg border border-stone-200 bg-white p-3 text-start opacity-0 shadow-lg transition-opacity group-hover/labels-more:visible group-hover/labels-more:opacity-100 group-focus-within/labels-more:visible group-focus-within/labels-more:opacity-100"
+          class="pointer-events-auto invisible absolute bottom-full start-0 z-20 mb-1 w-64 max-w-[calc(100vw-2rem)] whitespace-normal rounded-lg border border-stone-200 bg-raised p-3 text-start opacity-0 shadow-lg transition-opacity group-hover/labels-more:visible group-hover/labels-more:opacity-100 group-focus-within/labels-more:visible group-focus-within/labels-more:opacity-100"
         >
           <span class="flex flex-wrap gap-1.5">
             ${labels.map(
@@ -317,8 +317,8 @@ class SessionCard extends LitWrapper {
 
     return html`
       <div
-        class="flex w-full min-w-0 items-center gap-4 p-4 border border-stone-200 rounded-lg bg-white transition-all overflow-hidden ${
-          this.disabled ? "" : "hover:border-primary-300 hover:shadow-sm"
+        class="flex w-full min-w-0 items-center gap-4 p-4 border border-stone-200 rounded-lg bg-surface transition-all overflow-hidden ${
+          this.disabled ? "" : "hover:border-primary-edge-soft hover:shadow-sm"
         }"
       >
         <div class="flex items-center gap-3 self-stretch shrink-0">
@@ -326,7 +326,7 @@ class SessionCard extends LitWrapper {
             <div class="text-sm font-medium text-stone-700">${startTime || "--:--"}</div>
             <div class="text-sm text-stone-400">${endTime || html`&nbsp;`}</div>
           </div>
-          <div class="w-0.5 min-h-10 self-stretch bg-primary-300 rounded-full"></div>
+          <div class="w-0.5 min-h-10 self-stretch bg-primary-edge-soft rounded-full"></div>
         </div>
 
         <div

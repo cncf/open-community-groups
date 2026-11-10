@@ -41,12 +41,12 @@
     <tbody id="regions-list">
       {% if regions.is_empty() -%}
         {# Empty state -#}
-        <tr class="bg-white border-b border-stone-200 xl:hidden">
+        <tr class="bg-surface border-b border-stone-200 xl:hidden">
           <td class="px-8 py-12 text-center text-stone-500" colspan="2">
             {% include "dashboard/placeholders/community_regions_table.html" -%}
           </td>
         </tr>
-        <tr class="hidden xl:table-row bg-white border-b border-stone-200">
+        <tr class="hidden xl:table-row bg-surface border-b border-stone-200">
           <td class="px-8 py-12 text-center text-stone-500" colspan="3">
             {% include "dashboard/placeholders/community_regions_table.html" -%}
           </td>
@@ -56,7 +56,7 @@
         {% for region in regions -%}
           {% let groups_count = region.groups_count.unwrap_or(0) -%}
           {# Region row -#}
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+          <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
             {# Region -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="font-medium text-stone-900">{{ region.name }}</div>

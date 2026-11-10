@@ -12,13 +12,13 @@
             hx-target="#surveys-content"
             hx-swap="innerHTML show:window:top"
             hx-indicator="#dashboard-spinner"
-            class="inline-flex items-center gap-2 text-sm font-medium text-primary-500 hover:text-primary-700">
+            class="inline-flex items-center gap-2 text-sm font-medium text-primary-fg hover:text-primary-fg-hover">
       <div class="svg-icon size-4 icon-arrow-left bg-current" aria-hidden="true"></div>
       <span>Back to surveys</span>
     </button>
 
     {# Survey summary, styled like the inbox conversation header -#}
-    <header class="rounded-lg border border-stone-200 bg-white">
+    <header class="rounded-lg border border-stone-200 bg-surface">
       <div class="px-4 py-3 lg:px-6 lg:py-5">
         <div class="text-sm font-semibold uppercase tracking-wide text-stone-500">Survey results</div>
         <h2 class="mt-1 break-words text-lg font-semibold leading-tight text-stone-900 lg:text-xl xl:text-2xl">
@@ -64,7 +64,7 @@
                 hx-swap="innerHTML show:window:top"
                 hx-indicator="#dashboard-spinner"
                 aria-pressed="{% if view == "summary" %}true{% else %}false{% endif %}"
-                class="relative inline-flex w-[90px] items-center justify-center rounded-s-md border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 xl:w-[115px]">Summary</button>
+                class="relative inline-flex w-[90px] items-center justify-center rounded-s-md border border-stone-200 bg-surface px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-edge aria-pressed:text-primary-fg xl:w-[115px]">Summary</button>
         <button id="event-survey-individual-view"
                 type="button"
                 hx-get="{{ survey_url }}/responses"
@@ -72,7 +72,7 @@
                 hx-swap="innerHTML show:window:top"
                 hx-indicator="#dashboard-spinner"
                 aria-pressed="{% if view == "individual" %}true{% else %}false{% endif %}"
-                class="relative -ms-px inline-flex w-[90px] items-center justify-center rounded-e-md border border-stone-200 bg-white px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-500 aria-pressed:text-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white xl:w-[115px]"
+                class="relative -ms-px inline-flex w-[90px] items-center justify-center rounded-e-md border border-stone-200 bg-surface px-2 py-1 text-[0.775rem] text-stone-500 cursor-pointer select-none transition-colors hover:bg-stone-50 not-aria-pressed:hover:text-stone-600 focus-visible:z-20 aria-pressed:z-10 aria-pressed:border-primary-edge aria-pressed:text-primary-fg disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface xl:w-[115px]"
                 {% if survey.anonymous -%}
                   disabled aria-describedby="event-survey-individual-view-note"
                 {% endif -%}>Individual</button>

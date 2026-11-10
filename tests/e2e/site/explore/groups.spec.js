@@ -2,10 +2,15 @@ import { expect, test, testAtBothWidths } from "../../fixtures.js";
 
 import { TEST_COMMUNITY_NAME, TEST_GROUP_NAMES, TEST_GROUP_SLUGS } from "../../seed.js";
 import {
+  BASEMAP_STYLE_URLS,
+  expectDarkTheme,
   expectNoDuplicateIds,
   expectPaginationNavigation,
   navigateToPath,
+  pickThemeFromAccountMenu,
   routeEmptyBasemap,
+  trackBasemapStyleRequests,
+  useTheme,
   waitForActionResponse,
 } from "../../utils.js";
 
@@ -278,6 +283,54 @@ test.describe("site explore groups page", () => {
       [TEST_GROUP_SLUGS.community1.externalPayments, TEST_GROUP_SLUGS.community1.gamma].sort(),
     );
     expect(searchData.truncated).toBe(false);
+    await expect(externalPaymentsMarker).toBeVisible();
+    await expect(gammaMarker).toBeVisible();
+  });
+
+  test("swaps the basemap with the color theme and keeps every map location", async ({ page }) => {
+    // Store Dark and record basemap style requests while keeping the real map runtime offline.
+    await useTheme(page, { stored: "dark" });
+    await routeEmptyBasemap(page);
+    const styleRequests = trackBasemapStyleRequests(page);
+
+    // Load the map and verify it draws both located groups on the dark style only.
+    await navigateToPath(page, `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}&view_mode=map`);
+    await expectDarkTheme(page);
+    const markers = page.locator("#map-box .maplibregl-marker");
+    const externalPaymentsMarker = page.locator(
+      `.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.externalPayments}`,
+    );
+    const gammaMarker = page.locator(`.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.gamma}`);
+    await expect(externalPaymentsMarker).toBeVisible();
+    await expect(gammaMarker).toBeVisible();
+    const markerCount = await markers.count();
+    expect(styleRequests).toEqual([BASEMAP_STYLE_URLS.dark]);
+
+    // Switch to Light and verify the map requests the bright style and keeps its pins.
+    await Promise.all([
+      page.waitForResponse(BASEMAP_STYLE_URLS.light),
+      pickThemeFromAccountMenu(page, "light"),
+    ]);
+    expect(styleRequests).toEqual([BASEMAP_STYLE_URLS.dark, BASEMAP_STYLE_URLS.light]);
+    await expect(markers).toHaveCount(markerCount);
+    await expect(externalPaymentsMarker).toBeVisible();
+    await expect(gammaMarker).toBeVisible();
+
+    // Zoom out and verify the carried locations source redraws every pin from the new results.
+    await markers.evaluateAll((elements) =>
+      elements.forEach((element) => {
+        element.dataset.e2eBeforeSwitch = "true";
+      }),
+    );
+    await waitForActionResponse(page, () => page.getByRole("button", { name: "Zoom out" }).click(), {
+      method: "GET",
+      pathname: "/explore/groups/search",
+      status: 200,
+    });
+    await expect(
+      page.locator('#map-box .maplibregl-marker:not([data-e2e-before-switch="true"])'),
+    ).toHaveCount(markerCount);
+    await expect(markers).toHaveCount(markerCount);
     await expect(externalPaymentsMarker).toBeVisible();
     await expect(gammaMarker).toBeVisible();
   });

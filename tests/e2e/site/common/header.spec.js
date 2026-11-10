@@ -9,15 +9,27 @@ import {
   TEST_USER_CREDENTIALS,
 } from "../../seed.js";
 import {
+  buildE2eUrl,
+  expectDarkTheme,
   expectDialogClosed,
   navigateToEvent,
   navigateToGroup,
   navigateToPath,
   navigateToSiteHome,
+  resolveCssColor,
   routeEmptyBasemap,
   sendCloseRequest,
+  useTheme,
   waitForHtmxSettle,
 } from "../../utils.js";
+import { clickInDesktopMode, getAccountSheet } from "./helpers.js";
+
+// Accessible names of the theme choices, in their rendered order.
+const THEME_CHOICE_NAMES = ["Light", "Dark", "System"];
+// Smallest touch target height, in CSS pixels.
+const TOUCH_TARGET_MIN_HEIGHT_PX = 44;
+// Storage key and legacy cookie name of the desktop version preference.
+const VIEWPORT_MODE_KEY = "ocg_viewport_mode";
 
 test.describe("site header", () => {
   test("desktop navigation links point to the expected public pages", async ({ page }) => {
@@ -234,7 +246,7 @@ test.describe("site header", () => {
       .poll(() => page.evaluate(() => document.documentElement.dataset.viewportMode))
       .toBe("desktop");
     expect(await page.evaluate(() => window.innerWidth)).toBe(1280);
-    expect(await page.evaluate(() => document.cookie)).toContain("ocg_viewport_mode=desktop");
+    expect(await readViewportModePreference(page)).toEqual({ cookieSet: false, stored: "desktop" });
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", "width=1280");
 
     // Verify the menu now offers only the mobile version entry.
@@ -260,15 +272,40 @@ test.describe("site header", () => {
     await expect(mobileVersionItem).toBeVisible();
     await Promise.all([page.waitForEvent("load"), clickInDesktopMode(mobileVersionItem)]);
 
-    // Verify the responsive layout is restored and the cookie is gone.
+    // Verify the responsive layout is restored and the stored preference is gone.
     await expect
       .poll(() => page.evaluate(() => document.documentElement.hasAttribute("data-viewport-mode")))
       .toBe(false);
     expect(await page.evaluate(() => window.innerWidth)).toBeLessThan(1024);
-    expect(await page.evaluate(() => document.cookie)).not.toContain("ocg_viewport_mode");
+    expect(await readViewportModePreference(page)).toEqual({ cookieSet: false, stored: null });
     await userMenuButton.click();
     await expect(desktopVersionItem).toBeVisible();
     await expect(mobileVersionItem).toBeHidden();
+  });
+
+  test("legacy desktop version cookie migrates to browser storage @mobile", async ({ page }) => {
+    // Seed the cookie the user menu set before the preference moved to browser storage.
+    await page.context().addCookies([{ name: VIEWPORT_MODE_KEY, url: buildE2eUrl("/"), value: "desktop" }]);
+
+    // Load a public page, so the pre-paint script migrates the cookie.
+    await navigateToSiteHome(page);
+
+    // Verify desktop mode applies, storage holds it and the cookie is expired.
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.dataset.viewportMode))
+      .toBe("desktop");
+    expect(await page.evaluate(() => window.innerWidth)).toBe(1280);
+    expect(await readViewportModePreference(page)).toEqual({ cookieSet: false, stored: "desktop" });
+    const cookieNames = (await page.context().cookies()).map(({ name }) => name);
+    expect(cookieNames).not.toContain(VIEWPORT_MODE_KEY);
+
+    // Reload and verify storage alone keeps desktop mode.
+    await page.reload();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.dataset.viewportMode))
+      .toBe("desktop");
+    expect(await page.evaluate(() => window.innerWidth)).toBe(1280);
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", "width=1280");
   });
 
   test("desktop version entry follows the xl breakpoint on touch devices @mobile", async ({ page }) => {
@@ -304,6 +341,29 @@ test.describe("site header", () => {
       await expect(userMenu.getByRole("menuitem", { name: "Mobile version" })).toBeHidden();
       await page.keyboard.press("Escape");
       await expect(userMenu).toBeHidden();
+    }
+  });
+
+  test("theme choices fit the anchored user menu", async ({ page }) => {
+    // Load the public shell and open the guest menu.
+    await navigateToSiteHome(page);
+    const userMenu = page.locator("#user-dropdown");
+    await page.locator("#user-dropdown-button").click();
+    await expect(userMenu).toBeVisible();
+    const themeGroup = userMenu.getByRole("group", { name: "Theme" });
+    await expect(themeGroup).toBeVisible();
+
+    // Verify each label fits its segment and each segment keeps a touch target height.
+    for (const name of THEME_CHOICE_NAMES) {
+      const choice = themeGroup.getByRole("menuitemradio", { exact: true, name });
+      await expect(choice).toBeVisible();
+      const { clientWidth, height, scrollWidth } = await choice.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        height: element.getBoundingClientRect().height,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(scrollWidth, `${name} fits its segment`).toBeLessThanOrEqual(clientWidth);
+      expect(height, `${name} is a touch target`).toBeGreaterThanOrEqual(TOUCH_TARGET_MIN_HEIGHT_PX);
     }
   });
 
@@ -487,10 +547,29 @@ test.describe("site header", () => {
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
     // Verify the header holds the top edge on an opaque surface.
-    const box = await page.locator("#header").boundingBox();
+    const header = page.locator("#header");
+    const box = await header.boundingBox();
     expect(box.y).toBe(0);
     expect(box.height).toBe(64);
-    await expect(page.locator("#header")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    await expect(header).toHaveCSS("background-color", await resolveCssColor(header, "var(--color-surface)"));
+  });
+
+  test("phone header keeps an opaque surface in dark @mobile", async ({ page }) => {
+    // Load a long public page in the dark theme and scroll well past the header.
+    await useTheme(page, { stored: "dark" });
+    await navigateToPath(page, "/stats");
+    await expectDarkTheme(page);
+    await page.evaluate(() => window.scrollTo(0, 900));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+    // Verify the header holds the top edge on the dark surface.
+    const header = page.locator("#header");
+    const box = await header.boundingBox();
+    expect(box.y).toBe(0);
+    expect(box.height).toBe(64);
+    const surface = await resolveCssColor(header, "var(--color-surface)");
+    expect(surface).not.toBe("rgb(255, 255, 255)");
+    await expect(header).toHaveCSS("background-color", surface);
   });
 
   test("phone section heading pins directly under the header @mobile", async ({ page }) => {
@@ -722,14 +801,23 @@ test.describe("site header", () => {
     await userButton.click();
 
     // Verify the row order and the pills' side-by-side layout.
+    const themeGroup = userMenu.getByRole("group", { name: "Theme" });
+    const theme = await themeGroup.boundingBox();
     const desktopVersion = await userMenu.getByRole("menuitem", { name: "Desktop version" }).boundingBox();
     const logIn = await userMenu.getByRole("menuitem", { name: "Log in" }).boundingBox();
     const signUp = await userMenu.getByRole("menuitem", { name: "Sign up" }).boundingBox();
+    expect(theme.y).toBeLessThan(desktopVersion.y);
     expect(desktopVersion.y).toBeLessThan(logIn.y);
     expect(logIn.x).toBeLessThan(signUp.x);
     expect(logIn.y).toBe(signUp.y);
     expect(logIn.height).toBe(44);
     expect(signUp.height).toBe(44);
+
+    // Verify each theme choice keeps a touch target height.
+    for (const name of THEME_CHOICE_NAMES) {
+      const choice = await themeGroup.getByRole("menuitemradio", { exact: true, name }).boundingBox();
+      expect(choice.height, `${name} is a touch target`).toBeGreaterThanOrEqual(TOUCH_TARGET_MIN_HEIGHT_PX);
+    }
   });
 
   test("account sheet keeps Tab inside, including Desktop version @mobile", async ({ page }) => {
@@ -739,11 +827,17 @@ test.describe("site header", () => {
     await userButton.click();
     await expect(closeButton).toBeFocused();
 
-    // Verify Shift+Tab wraps to the last rendered row.
+    // Verify Shift+Tab wraps to the last rendered row, then reaches the theme choices above it.
+    const desktopVersion = userMenu.getByRole("menuitem", { name: "Desktop version" });
+    const themeGroup = userMenu.getByRole("group", { name: "Theme" });
     await page.keyboard.press("Shift+Tab");
-    await expect(userMenu.getByRole("menuitem", { name: "Desktop version" })).toBeFocused();
+    await expect(desktopVersion).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(themeGroup.getByRole("menuitemradio", { exact: true, name: "System" })).toBeFocused();
 
-    // Verify Tab wraps back to the close button.
+    // Verify Tab walks back down and wraps to the close button.
+    await page.keyboard.press("Tab");
+    await expect(desktopVersion).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(closeButton).toBeFocused();
   });
@@ -927,18 +1021,19 @@ const countCloseWatchers = (page) =>
 const getCloseWatcherCount = (page) => page.evaluate(() => window.closeWatcherCount);
 
 /**
- * Finds the account sheet and its trigger.
+ * Reads where the desktop version preference lives on the current page.
  * @param {import("@playwright/test").Page} page - Page under test.
- * @returns {Record<string, import("@playwright/test").Locator>} Sheet locators.
+ * @returns {Promise<{ cookieSet: boolean, stored: string | null }>} Whether `document.cookie`
+ * mentions the legacy cookie, and the stored value (`null` when absent).
  */
-const getAccountSheet = (page) => {
-  const userMenu = page.locator("#user-dropdown");
-  return {
-    closeButton: userMenu.getByRole("menuitem", { name: "Close menu" }),
-    userButton: page.locator("#user-dropdown-button"),
-    userMenu,
-  };
-};
+const readViewportModePreference = (page) =>
+  page.evaluate(
+    (key) => ({
+      cookieSet: document.cookie.includes(key),
+      stored: localStorage.getItem(key),
+    }),
+    VIEWPORT_MODE_KEY,
+  );
 
 /**
  * Verifies the account sheet holds nothing on the page.
@@ -958,10 +1053,3 @@ const expectAccountSheetReleased = async (page, { closed = true, opener } = {}) 
   await expect(page.locator("[inert]:not(#dashboard-menu-drawer)")).toHaveCount(0);
   await expect(page.locator("#user-dropdown [data-sheet-drag]")).toHaveCount(0);
 };
-
-/**
- * Clicks a control through a DOM event instead of emulated pointer input. In desktop version
- * mode the 1280px layout viewport exceeds the mobile visual viewport, and Chromium's emulated
- * pointer coordinates no longer map onto elements outside the visible area.
- */
-const clickInDesktopMode = (locator) => locator.dispatchEvent("click");

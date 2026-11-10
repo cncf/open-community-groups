@@ -64,7 +64,7 @@ describe("phone viewport", () => {
     // Verify the sources that repeat the query text.
     const sources = [
       "/ocg-server/static/css/styles.src.css",
-      "/ocg-server/static/docs/assets/shell.css",
+      "/ocg-server/static/css/docs/shell.css",
     ];
     for (const source of sources) {
       expect(await loadFile(source), source).to.include(mediaRule);

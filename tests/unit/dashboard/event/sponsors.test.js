@@ -37,6 +37,22 @@ describe("sponsors-section", () => {
     ]);
   });
 
+  it("renders the selected sponsor logo on a white plate", async () => {
+    // Render one selected sponsor.
+    const element = await mountLitComponent("sponsors-section", {
+      sponsors,
+      selectedSponsors: ["sponsor-2"],
+    });
+
+    // Verify the logo frame is a light island with a dark edge.
+    const logos = [...element.querySelectorAll('img[alt="Beta Compute logo"]')];
+    expect(logos).to.have.length(1);
+    const frame = logos[0].parentElement;
+    expect(frame.classList.contains("plate")).to.equal(true);
+    expect(frame.classList.contains("plate-ring")).to.equal(true);
+    expect(frame.classList.contains("bg-plate")).to.equal(true);
+  });
+
   it("filters sponsors and opens the level modal from keyboard selection", async () => {
     // Call mount lit component.
     const element = await mountLitComponent("sponsors-section", {

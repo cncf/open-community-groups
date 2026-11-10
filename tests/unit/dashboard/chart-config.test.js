@@ -3,6 +3,7 @@ import { expect } from "@open-wc/testing";
 import {
   buildRecentBarSeries,
   buildStackedMonthlySeries,
+  createAreaChart,
   createHorizontalBarChart,
   createPieChart,
   createStackedAreaChart,
@@ -13,15 +14,20 @@ import {
   getDailyLineSymbolConfig,
   getDayMarkersConfig,
   getChartGridLineColor,
+  getChartTheme,
   getChartTitleConfig,
+  getChartUiColors,
   getItemTooltipConfig,
   getValueAxisConfig,
   getVerticalBarCategoryAxisConfig,
   getVerticalBarSeriesStyle,
   hasActivity,
+  initChart,
   toCategorySeries,
   toChartColor,
+  withAlpha,
 } from "/static/js/common/charts/charts.js";
+import { THEME_STORAGE_KEY } from "/static/js/common/theme.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 const palette = {
@@ -38,13 +44,62 @@ const palette = {
   950: "#042f2e",
 };
 
+/**
+ * Sets the chart token colors on the root element.
+ * @param {Object<string, string>} colors - Colors keyed by CSS custom property name.
+ */
+const setChartTokens = (colors) => {
+  Object.entries(colors).forEach(([name, value]) => document.documentElement.style.setProperty(name, value));
+};
+
+/** Dark token values of the chart readers. */
+const DARK_CHART_TOKENS = {
+  "--color-stone-100": "#292524",
+  "--color-stone-200": "#44403c",
+  "--color-stone-300": "#57534e",
+  "--color-stone-400": "#a8a29e",
+  "--color-stone-700": "#e7e5e4",
+  "--color-surface": "#181514",
+};
+
+/**
+ * Creates an ECharts stub recording theme registrations and chart inits.
+ * @returns {{echarts: Object, initCalls: Array<Array>, registerThemeCalls: Array<Array>}} Stub and calls.
+ */
+const createEchartsThemeStub = () => {
+  const initCalls = [];
+  const registerThemeCalls = [];
+
+  return {
+    echarts: {
+      init(...args) {
+        initCalls.push(args);
+        return { setOption() {} };
+      },
+      registerTheme(...args) {
+        registerThemeCalls.push(args);
+      },
+    },
+    initCalls,
+    registerThemeCalls,
+  };
+};
+
 describe("dashboard chart config helpers", () => {
+  const originalEcharts = globalThis.echarts;
+
   beforeEach(() => {
     resetDom();
   });
 
   afterEach(() => {
     resetDom();
+    localStorage.removeItem(THEME_STORAGE_KEY);
+    if (originalEcharts) {
+      globalThis.echarts = originalEcharts;
+    } else {
+      delete globalThis.echarts;
+    }
   });
 
   it("builds monthly bar series without reserving empty periods", () => {
@@ -115,7 +170,9 @@ describe("dashboard chart config helpers", () => {
     document.documentElement.style.setProperty("--color-stone-100", "#f5f5f4");
     document.documentElement.style.setProperty("--color-stone-200", "#e7e5e4");
     document.documentElement.style.setProperty("--color-stone-700", "#44403c");
-    document.documentElement.style.setProperty("--color-white", "#ffffff");
+    document.documentElement.style.setProperty("--color-surface", "#ffffff");
+    // A leftover white read would fail the expectations below.
+    document.documentElement.style.setProperty("--color-white", "#000000");
 
     // Assert the chart grid line color.
     expect(getChartGridLineColor()).to.equal("#f5f5f4");
@@ -137,6 +194,9 @@ describe("dashboard chart config helpers", () => {
       borderWidth: 1,
       textStyle: { color: "#44403c" },
     });
+
+    // Assert the chart surface color.
+    expect(getChartUiColors().surface).to.equal("#ffffff");
   });
 
   it("converts css colors that echarts cannot parse into rgb", () => {
@@ -150,6 +210,95 @@ describe("dashboard chart config helpers", () => {
     expect(getChartGridLineColor()).to.match(/^rgb\(\d+, \d+, \d+\)$/);
     expect(toChartColor("oklch(0% 0 0)")).to.equal("rgb(0, 0, 0)");
     expect(toChartColor("oklch(100% 0 0 / 50%)")).to.match(/^rgba\(\d+, \d+, \d+, 0\.5\d*\)$/);
+  });
+
+  it("sets the opacity of hex and rgb chart colors", () => {
+    // Assert short and long hex colors become rgba with the opacity.
+    expect(withAlpha("#fff", 0)).to.equal("rgba(255, 255, 255, 0)");
+    expect(withAlpha("#0094ff", 0.5)).to.equal("rgba(0, 148, 255, 0.5)");
+
+    // Assert canvas read-back colors keep their channels and take the new opacity.
+    expect(withAlpha("rgb(24, 21, 20)", 0)).to.equal("rgba(24, 21, 20, 0)");
+    expect(withAlpha("rgba(1, 2, 3, 0.5)", 0.25)).to.equal("rgba(1, 2, 3, 0.25)");
+
+    // Assert unset and unsupported colors are returned as they are.
+    expect(withAlpha("", 0)).to.equal("");
+    expect(withAlpha("hsl(0 0% 100%)", 0)).to.equal("hsl(0 0% 100%)");
+  });
+
+  it("fades the area chart into the transparent surface", () => {
+    // Build an area chart over the light surface.
+    const data = [
+      [1, 1],
+      [2, 2],
+    ];
+    const getEndStop = () =>
+      createAreaChart("Members over time", "Members", data, palette).baseOption.series[0].areaStyle.color
+        .colorStops[1];
+    document.documentElement.style.setProperty("--color-surface", "#fff");
+
+    // Assert the light end stop keeps the exact white transparent string.
+    expect(getEndStop()).to.deep.equal({ offset: 1, color: "rgba(255, 255, 255, 0)" });
+
+    // Assert a dark surface ends the fade in its own transparent color.
+    document.documentElement.style.setProperty("--color-surface", "#181514");
+    expect(getEndStop()).to.deep.equal({ offset: 1, color: "rgba(24, 21, 20, 0)" });
+  });
+
+  it("builds the dark chart theme from the chart token readers", () => {
+    // Set the dark token values the readers return.
+    setChartTokens(DARK_CHART_TOKENS);
+    const axisTheme = {
+      axisLabel: { color: "#a8a29e" },
+      axisLine: { lineStyle: { color: "#57534e" } },
+      axisTick: { lineStyle: { color: "#57534e" } },
+      splitLine: { lineStyle: { color: "#292524" } },
+    };
+
+    // Assert every field maps to its token reader.
+    expect(getChartTheme()).to.deep.equal({
+      backgroundColor: "transparent",
+      categoryAxis: axisTheme,
+      darkMode: true,
+      legend: { inactiveColor: "#57534e", textStyle: { color: "#e7e5e4" } },
+      logAxis: axisTheme,
+      textStyle: { color: "#e7e5e4" },
+      timeAxis: axisTheme,
+      tooltip: {
+        backgroundColor: "#181514",
+        borderColor: "#44403c",
+        textStyle: { color: "#e7e5e4" },
+      },
+      valueAxis: axisTheme,
+    });
+  });
+
+  it("initializes light charts with the ECharts defaults", () => {
+    // Render a chart under the light color theme.
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
+    document.body.innerHTML = `<div id="light-chart"></div>`;
+    const stub = createEchartsThemeStub();
+    globalThis.echarts = stub.echarts;
+    initChart("light-chart", {});
+
+    // Assert the chart uses one init argument and no registered theme.
+    expect(stub.initCalls).to.have.length(1);
+    expect(stub.initCalls[0]).to.deep.equal([document.getElementById("light-chart")]);
+    expect(stub.registerThemeCalls).to.deep.equal([]);
+  });
+
+  it("initializes dark charts with the registered dark theme", () => {
+    // Render a chart under the dark color theme.
+    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    setChartTokens(DARK_CHART_TOKENS);
+    document.body.innerHTML = `<div id="dark-chart"></div>`;
+    const stub = createEchartsThemeStub();
+    globalThis.echarts = stub.echarts;
+    initChart("dark-chart", {});
+
+    // Assert the dark theme is registered from the tokens and used by the chart.
+    expect(stub.registerThemeCalls).to.deep.equal([["ocg-dark", getChartTheme()]]);
+    expect(stub.initCalls).to.deep.equal([[document.getElementById("dark-chart"), "ocg-dark"]]);
   });
 
   it("builds title and value axis configs", () => {

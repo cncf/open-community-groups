@@ -7,7 +7,7 @@
 {% import "macros/cohosts.html" as cohosts -%}
 
 {# Phones drop the stone canvas so the page reads as one white surface. -#}
-{% block shell_classes %}phone:bg-white{% endblock shell_classes %}
+{% block shell_classes %}phone:bg-surface{% endblock shell_classes %}
 
 {% block head_title -%}
   <title>{{ self.preview_title() |demoji }}</title>
@@ -66,7 +66,7 @@
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:py-0">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-visible phone:rounded-none phone:border-0">
+    <div class="bg-surface border border-stone-200 rounded-lg flex flex-col w-full relative overflow-visible phone:rounded-none phone:border-0">
       {# Status badge -#}
       {% if event.canceled -%}
         {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
@@ -247,14 +247,14 @@
         <div class="py-4 phone:py-0">
           <div class="grid grid-cols-1 gap-5 sm:gap-8 md:grid-cols-2 md:gap-5 lg:gap-8 phone:gap-3">
             {# Event date -#}
-            <div class="border border-stone-200 rounded-lg h-full bg-white">
+            <div class="border border-stone-200 rounded-lg h-full bg-surface">
               <div class="p-4 h-full flex flex-col phone:p-3">
                 {% let registration_window_message = event.registration_window_message() -%}
                 <div class="flex items-center justify-between mb-4 min-h-[25px]">
                   <div class="text-base/3 uppercase font-semibold text-stone-400 phone:text-[13px]/4 phone:tracking-wide phone:text-stone-500">Event date</div>
                 </div>
                 <div data-registration-window-date-panel
-                     class="relative flex min-h-[144px] grow flex-col rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400 phone:min-h-0 phone:p-3
+                     class="relative flex min-h-[144px] grow flex-col rounded-lg border border-dashed border-stone-200 bg-surface p-4 text-stone-400 phone:min-h-0 phone:p-3
                             {% if registration_window_message.is_none() -%}
                               justify-center
                             {% endif -%}">
@@ -333,7 +333,7 @@
 {# End event date -#}
 {# Location -#}
 {% let has_location_details = event.directions_url().is_some() -%}
-<div class="border border-stone-200 rounded-lg p-4 bg-white h-full flex flex-col phone:p-3
+<div class="border border-stone-200 rounded-lg p-4 bg-surface h-full flex flex-col phone:p-3
             {% if !has_location_details %}phone:hidden{% endif %}">
   <div class="flex items-center justify-between mb-4 min-h-[25px]">
     <div class="text-base/3 uppercase font-semibold text-stone-400 phone:text-[13px]/4 phone:tracking-wide phone:text-stone-500">Location</div>
@@ -346,7 +346,7 @@
     {% endif -%}
   </div>
   <div data-card-panel
-       class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-[108px] phone:h-[150px] phone:min-h-[150px]">
+       class="relative rounded-lg border border-dashed border-stone-200 bg-surface overflow-hidden grow min-h-[108px] phone:h-[150px] phone:min-h-[150px]">
     {% if event.kind != EventKind::Virtual %}
       {% if event.latitude.is_some() && event.longitude.is_some() %}
         {# Use event-specific location #}
@@ -358,28 +358,28 @@
         {% let location_text_small = self.event.location(35) -%}
         {% if location_text.is_some() %}
           <div class="relative h-full w-full">
-            <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+            <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat raster-placeholder">
             </div>
             {% if let Some(text) = &location_text %}
-              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block phone:block phone:max-w-[calc(100%-1rem)] phone:rounded-lg phone:whitespace-normal phone:wrap-anywhere">
+              <div class="absolute bottom-2 left-2 bg-surface/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block phone:block phone:max-w-[calc(100%-1rem)] phone:rounded-lg phone:whitespace-normal phone:wrap-anywhere">
                 {{ text }}
               </div>
             {% endif %}
             {% if let Some(text) = &location_text_small %}
-              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none block sm:hidden md:block xl:hidden phone:hidden">
+              <div class="absolute bottom-2 left-2 bg-surface/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none block sm:hidden md:block xl:hidden phone:hidden">
                 {{ text }}
               </div>
             {% endif %}
           </div>
         {% else -%}
           <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-            <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+            <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat raster-placeholder">
             </div>
             <div class="relative flex w-full items-center justify-center phone:hidden">
               <div class="text-xl font-semibold text-stone-700 text-center">Location not provided</div>
             </div>
             {% if let Some(text) = self.event.location(usize::MAX) %}
-              <div class="not-phone:hidden absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs text-left px-1.5 py-1 z-10 pointer-events-none phone:max-w-[calc(100%-1rem)] phone:rounded-lg phone:whitespace-normal phone:wrap-anywhere phone:line-clamp-6 phone:border-b-4 phone:border-transparent phone:pb-0">
+              <div class="not-phone:hidden absolute bottom-2 left-2 bg-surface/80 text-stone-700 text-xs text-left px-1.5 py-1 z-10 pointer-events-none phone:max-w-[calc(100%-1rem)] phone:rounded-lg phone:whitespace-normal phone:wrap-anywhere phone:line-clamp-6 phone:border-b-4 phone:border-transparent phone:pb-0">
                 {{ text }}
               </div>
             {% endif %}
@@ -388,7 +388,7 @@
       {% endif -%}
     {% else -%}
       <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-        <div class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+        <div class="absolute inset-0 bg-cover bg-center bg-no-repeat raster-placeholder"
              style="background-image: url('/static/images/virtual_event.png')"></div>
         <div class="relative flex w-full items-center justify-center">
           <div class="text-xl font-semibold text-stone-700 text-center">Virtual event</div>
@@ -664,7 +664,7 @@
                   tabindex="{%- if loop.first -%}0{%- else -%}-1{%- endif -%}"
                   data-day-tab
                   data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
-                  class="cursor-pointer inline-flex items-center justify-center p-2 pt-0 sm:p-3 sm:pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap phone:min-h-11">
+                  class="cursor-pointer inline-flex items-center justify-center p-2 pt-0 sm:p-3 sm:pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-fg data-[active=true]:border-primary-edge text-nowrap phone:min-h-11">
             <span class="hidden md:inline">{{ day.0.format("%A, %B %e") }}</span>
             <span class="inline md:hidden">{{ day.0.format("%e %b") }}</span>
           </button>
@@ -820,7 +820,7 @@
   <li class="ms-4"
       data-agenda-session
       data-label-ids="{% for label in session.labels %}{% if !loop.first %} {% endif %}{{ label.event_label_id }}{% endfor %}">
-    <div class="absolute size-3 bg-stone-300 rounded-full mt-1 -start-1.5 border border-white"></div>
+    <div class="absolute size-3 bg-stone-300 rounded-full mt-1 -start-1.5 border border-surface"></div>
     <div class="mb-2 text-sm text-stone-500/75 phone:mb-1 phone:text-[13px] phone:text-stone-600">
       {% if let Some(ends_at) = &session.ends_at -%}
         {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }} - {{ ends_at.with_timezone(event.timezone).format("%l:%M %p %Z") }}

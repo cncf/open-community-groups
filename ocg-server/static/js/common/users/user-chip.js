@@ -66,9 +66,11 @@ export class UserChip extends LitWrapper {
     const initials = computeUserInitials(name, username, 2);
     // The avatar's phone size sits here, because logo-image's size attribute is desktop-visible.
     const cardSize = this.featured ? "px-5 py-4 md:py-5" : "px-4 py-3 phone:[&>logo-image>div]:size-12";
-    const borderState = this.featured ? "border-amber-200 bg-amber-50/50" : "border-stone-200 bg-white";
+    const borderState = this.featured ? "border-amber-200 bg-amber-50/50" : "border-stone-200 bg-surface";
     // Only clickable cards react to a press.
-    const pressState = this.featured ? "phone:active:border-amber-500" : "phone:active:border-primary-300";
+    const pressState = this.featured
+      ? "phone:active:border-amber-500"
+      : "phone:active:border-primary-edge-soft";
     const avatarSize = this.featured ? "size-18 md:size-22" : "size-15 md:size-18";
     const nameSize = this.featured ? "text-lg md:text-xl" : "text-base";
     const jobSize = this.featured ? "text-sm md:text-base" : "text-[0.8rem]";
@@ -80,7 +82,7 @@ export class UserChip extends LitWrapper {
             ? "bg-amber-50/50 border border-amber-200 text-amber-800"
             : "bg-stone-100 border border-stone-200 text-stone-700"
         }`,
-        `cursor-pointer ${this.featured ? "hover:border-amber-400" : "hover:border-primary-300"} hover:shadow-sm transition-all`,
+        `cursor-pointer ${this.featured ? "hover:border-amber-400" : "hover:border-primary-edge-soft"} hover:shadow-sm transition-all`,
         html`
           <logo-image
             aria-hidden="true"
@@ -99,7 +101,7 @@ export class UserChip extends LitWrapper {
 
     return this._renderWrapper(
       `relative flex items-center gap-4 rounded-lg border ${cardSize} ${borderState} w-full phone:min-h-16 phone:gap-3 phone:px-3 phone:py-2.5`,
-      `cursor-pointer ${this.featured ? "hover:border-amber-500" : "hover:border-primary-300"} ${pressState} hover:shadow-sm transition-all`,
+      `cursor-pointer ${this.featured ? "hover:border-amber-500" : "hover:border-primary-edge-soft"} ${pressState} hover:shadow-sm transition-all`,
       html`
         <logo-image
           aria-hidden="true"

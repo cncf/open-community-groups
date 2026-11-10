@@ -5,7 +5,7 @@ import { expectFocusIndicator, navigateToPath, pressKeyUntilFocused } from "../.
 import { openAttendeesTab } from "../group/events/attendees-helpers.js";
 
 // Outline colour of the site-primary focus indicator.
-const PRIMARY_OUTLINE = "var(--ocg-primary)";
+const PRIMARY_OUTLINE = "var(--color-focus)";
 
 test.describe("dashboard focus indicator", () => {
   test("shows the focus outline on dashboard fields, checkboxes and outline buttons", async ({

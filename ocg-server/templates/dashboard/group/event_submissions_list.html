@@ -41,10 +41,10 @@
       </div>
       <div class="flex items-center justify-end gap-2 whitespace-nowrap md:ms-auto">
         <label for="submissions-sort"
-               class="font-semibold text-[0.775rem] text-nowrap text-black leading-6">Sort by</label>
+               class="font-semibold text-[0.775rem] text-nowrap text-stone-900 leading-6">Sort by</label>
         <select id="submissions-sort"
                 name="sort"
-                class="block w-56 px-3 text-sm h-[42px] text-stone-900 bg-white border border-stone-200 rounded-full focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
+                class="block w-56 px-3 text-sm h-[42px] text-stone-900 bg-surface border border-stone-200 rounded-full focus:ring-0 focus:border-stone-200 hover:border-primary-edge focus:hover:border-primary-edge transition-colors">
           <option value="created-desc"
                   {% if sort == "created-desc" %}selected{% endif %}>Submitted (newest)</option>
           <option value="created-asc"
@@ -98,7 +98,7 @@
       <tbody>
         {% if submissions.is_empty() -%}
           {# Empty state -#}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-surface border-b border-stone-200">
             <td class="xl:hidden px-8 py-16 text-center" colspan="3">
               {% include "dashboard/placeholders/group_event_submissions_table.html" -%}
             </td>
@@ -112,7 +112,7 @@
         {% else -%}
           {% for submission in submissions -%}
             {# Submission row -#}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
               {# Speaker -#}
               <td class="px-3 xl:px-5 py-4">
                 <div class="flex items-center space-x-3">

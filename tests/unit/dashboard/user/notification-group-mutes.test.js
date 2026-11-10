@@ -148,6 +148,15 @@ describe("notification group mutes", () => {
       expect(withoutLogo.querySelector("img")).to.equal(null);
       expect(withoutLogo.querySelector(".icon-broken-image")).to.not.equal(null);
 
+      // Both frames are light islands: a white plate behind a logo, the placeholder tint without one.
+      const logoFrame = withLogo.querySelector("img").parentElement;
+      const placeholderFrame = withoutLogo.querySelector(".icon-broken-image").parentElement;
+      expect(logoFrame.classList.contains("plate")).to.equal(true);
+      expect(logoFrame.classList.contains("bg-plate")).to.equal(true);
+      expect(placeholderFrame.classList.contains("plate")).to.equal(true);
+      expect(placeholderFrame.classList.contains("bg-stone-50")).to.equal(true);
+      expect(placeholderFrame.classList.contains("bg-plate")).to.equal(false);
+
       // The community label precedes the group name.
       const labels = [...withLogo.querySelectorAll(".title-preheader, .truncate")].map((label) =>
         label.textContent.trim(),

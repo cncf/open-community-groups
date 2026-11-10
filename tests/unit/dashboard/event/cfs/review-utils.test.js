@@ -68,7 +68,7 @@ describe("cfs submissions review utils", () => {
     expect(getStatusColor("rejected").dot).to.equal("bg-red-600");
     expect(getStatusColor("information-requested").dot).to.equal("bg-orange-600");
     expect(getStatusColor("approved").dot).to.equal("bg-emerald-600");
-    expect(getStatusColor("not-reviewed").dot).to.equal("bg-primary-500");
+    expect(getStatusColor("not-reviewed").dot).to.equal("bg-primary-fg");
   });
 
   it("parses review attribute lists only when values are not loaded", () => {

@@ -374,6 +374,7 @@ select set_eq(
         ('site', 'site_description_check'),
         ('site', 'site_favicon_url_check'),
         ('site', 'site_footer_logo_url_check'),
+        ('site', 'site_header_logo_dark_url_check'),
         ('site', 'site_header_logo_url_check'),
         ('site', 'site_og_image_url_check'),
         ('site', 'site_title_check'),

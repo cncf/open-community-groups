@@ -136,6 +136,10 @@ async fn db_contracts_get_site_settings_deserializes() -> Result<()> {
         settings.copyright_notice.as_deref(),
         Some("Copyright Contract Site")
     );
+    assert_eq!(
+        settings.header_logo_dark_url.as_deref(),
+        Some("https://example.com/header-logo-dark.png")
+    );
     assert_eq!(settings.site_id, site_id());
     assert_eq!(
         settings.theme.palette.get(&50).map(String::as_str),

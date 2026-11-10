@@ -1,0 +1,79 @@
+[
+  {
+    "file": "ocg-server/static/js/common/charts/charts.js",
+    "rule": "numbered-primary",
+    "match": "--color-primary-<N>",
+    "count": 11,
+    "reason": "ECharts palette reads the numbered ramp"
+  },
+  {
+    "file": "ocg-server/static/js/common/charts/charts.js",
+    "rule": "color-literal",
+    "match": "rgb(${red}, ${green}, ${blue})",
+    "count": 1,
+    "reason": "serialises colors already read from tokens into a format ECharts parses"
+  },
+  {
+    "file": "ocg-server/static/js/common/charts/charts.js",
+    "rule": "color-literal",
+    "match": "rgba(${red}, ${green}, ${blue}, ${alpha})",
+    "count": 1,
+    "reason": "serialises colors already read from tokens into a format ECharts parses"
+  },
+  {
+    "file": "ocg-server/templates/macros/ui.html",
+    "rule": "arbitrary-color",
+    "match": "shadow-[0_0_28px_rgb(0_0_0_/_0.22)]",
+    "count": 1,
+    "reason": "black-alpha shadow, theme-independent"
+  },
+  {
+    "file": "ocg-server/static/js/common/media/image-field.js",
+    "rule": "dark-variant",
+    "match": "dark:bg-plate",
+    "count": 1,
+    "reason": "logo preview shows the public plate in dark only"
+  },
+  {
+    "file": "ocg-server/templates/common/base.html",
+    "rule": "color-literal",
+    "match": "#181514",
+    "count": 1,
+    "reason": "critical-style fallback, held equal to the dark surface by the base layout and brand ramp Rust tests"
+  },
+  {
+    "file": "ocg-server/templates/common/footer.html",
+    "rule": "dark-variant",
+    "match": "dark:border-t",
+    "count": 1,
+    "reason": "footer edge against the dark canvas"
+  },
+  {
+    "file": "ocg-server/templates/common/footer.html",
+    "rule": "dark-variant",
+    "match": "dark:border-plate-edge",
+    "count": 1,
+    "reason": "footer edge against the dark canvas"
+  },
+  {
+    "file": "ocg-server/static/js/common/labels-editor.js",
+    "rule": "raw-white-black",
+    "match": "bg-black",
+    "count": 1,
+    "reason": "check mark on a user-chosen label color"
+  },
+  {
+    "file": "ocg-server/static/js/dashboard/event/sponsors.js",
+    "rule": "raw-white-black",
+    "match": "bg-black/30",
+    "count": 1,
+    "reason": "modal scrim, theme-independent"
+  },
+  {
+    "file": "ocg-server/templates/dashboard/group/check_in_scanner_modal.html",
+    "rule": "dark-variant",
+    "match": "dark:border-plate-edge",
+    "count": 1,
+    "reason": "scanner camera box edge, its ink root re-declares light stone tokens"
+  }
+]

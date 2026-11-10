@@ -42,7 +42,7 @@
       <tbody>
         {% if event_invitations.is_empty() -%}
           {# Empty state -#}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-surface border-b border-stone-200">
             <td class="lg:hidden px-8 py-12 text-center" colspan="4">
               {% include "dashboard/placeholders/user_event_invitations_table.html" -%}
             </td>
@@ -55,11 +55,11 @@
           {% for invitation in event_invitations -%}
             {# Invitation row -#}
             <tr id="event-offer-{{ invitation.admission_offer_id }}"
-                class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 scroll-mt-4 phone:-scroll-mt-11">
+                class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200 scroll-mt-4 phone:-scroll-mt-11">
               {# Event -#}
               <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
                 <div class="title-preheader">{{ invitation.group_name }} · {{ invitation.community_display_name }}</div>
-                <div class="mt-0.5 max-w-full text-black truncate phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5">{{ invitation.event_name }}</div>
+                <div class="mt-0.5 max-w-full text-stone-900 truncate phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5">{{ invitation.event_name }}</div>
                 <div class="mt-0.5 truncate text-xs font-normal text-stone-500 lg:hidden">
                   {% if let Some(starts_at) = &invitation.starts_at -%}
                     Starts {{ starts_at.with_timezone(invitation.timezone).format(DATE_FORMAT_2) }}
@@ -139,7 +139,7 @@
                        title="Open offer actions">
                 <div class="svg-icon size-4 icon-vertical-dots"></div>
               </summary>
-              <div class="dropdown absolute end-0 top-8 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+              <div class="dropdown absolute end-0 top-8 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-raised py-1 shadow-lg">
                 <ul class="text-sm text-stone-700" role="menu">
                   <li class="phone:hidden">
                     {{ event_offer_primary_action(invitation = invitation,
@@ -206,7 +206,7 @@
       {# Invitation card -#}
       {# Phones pad hash scrolls 7.5rem for the site header; the negative margin trims that to the dashboard header. -#}
       <article id="event-offer-card-{{ invitation.admission_offer_id }}"
-               class="phone:-scroll-mt-11 rounded-lg border border-stone-200 bg-white p-3">
+               class="phone:-scroll-mt-11 rounded-lg border border-stone-200 bg-surface p-3">
         <div class="title-preheader">{{ invitation.group_name }} · {{ invitation.community_display_name }}</div>
         <h3 class="mt-0.5 line-clamp-2 text-base/6 font-semibold text-stone-900">{{ invitation.event_name }}</h3>
         {# Offer summary chips -#}
@@ -274,7 +274,7 @@
                        title="Open offer actions">
                 <div class="svg-icon size-4 icon-vertical-dots"></div>
               </summary>
-              <div class="dropdown absolute end-0 top-12 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+              <div class="dropdown absolute end-0 top-12 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-raised py-1 shadow-lg">
                 <ul class="text-sm text-stone-700" role="menu">
                   <li>
                     <button id="cancel-event-offer-checkout-card-{{ invitation.admission_offer_id }}"
@@ -368,7 +368,7 @@
       <tbody>
         {% if group_invitations.is_empty() -%}
           {# Empty state -#}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-surface border-b border-stone-200">
             {# No invitations -#}
             <td class="lg:hidden px-8 py-12 text-center" colspan="3">
               {% include "dashboard/placeholders/user_group_invitations_table.html" -%}
@@ -382,10 +382,10 @@
         {% else -%}
           {% for invitation in group_invitations -%}
             {# Invitation row -#}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
               {# Group -#}
               <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
-                <div class="max-w-full text-black truncate phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5">{{ invitation.group_name }}</div>
+                <div class="max-w-full text-stone-900 truncate phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5">{{ invitation.group_name }}</div>
                 <div class="mt-0.5 text-xs font-normal text-stone-500 lg:hidden">
                   Created {{ invitation.created_at.format(DATE_FORMAT_2) }}
                 </div>
@@ -407,7 +407,7 @@
                     <button hx-put="/dashboard/user/invitations/group/{{ invitation.group_id }}/accept"
                             hx-indicator="#dashboard-spinner"
                             hx-disabled-elt="this"
-                            class="btn-tertiary p-2 phone:flex phone:w-full phone:items-center phone:justify-center phone:gap-2 phone:border phone:border-primary-500 phone:text-primary-500 phone:disabled:opacity-50"
+                            class="btn-tertiary p-2 phone:flex phone:w-full phone:items-center phone:justify-center phone:gap-2 phone:border phone:border-primary-edge phone:text-primary-fg phone:disabled:opacity-50"
                             title="Approve">
                       <div class="svg-icon size-3 md:size-4 icon-check phone:size-4 phone:bg-current"></div>
                       <span class="not-phone:hidden">Approve</span>
@@ -447,7 +447,7 @@
   <div class="not-phone:hidden space-y-3 px-3 pb-4">
     {% for invitation in group_invitations -%}
       {# Invitation card -#}
-      <article class="rounded-lg border border-stone-200 bg-white p-3">
+      <article class="rounded-lg border border-stone-200 bg-surface p-3">
         <div class="min-w-0">
           <h3 class="flex items-start gap-1.5 break-words text-[15px]/5 font-semibold text-stone-900">
             <span class="svg-icon mt-0.5 size-4 shrink-0 bg-stone-400 icon-groups"
@@ -512,7 +512,7 @@
       <tbody>
         {% if community_invitations.is_empty() -%}
           {# Empty state -#}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-surface border-b border-stone-200">
             {# No invitations -#}
             <td class="lg:hidden px-8 py-12 text-center" colspan="3">
               {% include "dashboard/placeholders/user_community_invitations_table.html" -%}
@@ -526,10 +526,10 @@
         {% else -%}
           {% for invitation in community_invitations -%}
             {# Invitation row -#}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
               {# Community -#}
               <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
-                <div class="max-w-full text-black truncate phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5">{{ invitation.community_display_name }}</div>
+                <div class="max-w-full text-stone-900 truncate phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5">{{ invitation.community_display_name }}</div>
                 <div class="mt-0.5 text-xs font-normal text-stone-500 lg:hidden">
                   Created {{ invitation.created_at.format(DATE_FORMAT_2) }}
                 </div>
@@ -551,7 +551,7 @@
                     <button hx-put="/dashboard/user/invitations/community/{{ invitation.community_id }}/accept"
                             hx-indicator="#dashboard-spinner"
                             hx-disabled-elt="this"
-                            class="btn-tertiary p-2 phone:flex phone:w-full phone:items-center phone:justify-center phone:gap-2 phone:border phone:border-primary-500 phone:text-primary-500 phone:disabled:opacity-50"
+                            class="btn-tertiary p-2 phone:flex phone:w-full phone:items-center phone:justify-center phone:gap-2 phone:border phone:border-primary-edge phone:text-primary-fg phone:disabled:opacity-50"
                             title="Approve">
                       <div class="svg-icon size-3 md:size-4 icon-check phone:size-4 phone:bg-current"></div>
                       <span class="not-phone:hidden">Approve</span>
@@ -591,7 +591,7 @@
   <div class="not-phone:hidden space-y-3 px-3 pb-4">
     {% for invitation in community_invitations -%}
       {# Invitation card -#}
-      <article class="rounded-lg border border-stone-200 bg-white p-3">
+      <article class="rounded-lg border border-stone-200 bg-surface p-3">
         <div class="min-w-0">
           <h3 class="flex items-start gap-1.5 break-words text-[15px]/5 font-semibold text-stone-900">
             <span class="svg-icon mt-0.5 size-4 shrink-0 bg-stone-400 icon-community"

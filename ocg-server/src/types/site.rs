@@ -41,6 +41,11 @@ pub struct SiteSettings {
     pub favicon_url: Option<String>,
     /// URL to the logo image shown in the page footer.
     pub footer_logo_url: Option<String>,
+    /// URL to the logo image shown in dark mode in the header logo slot, at
+    /// the same size as `header_logo_url`. Without it, dark mode shows the
+    /// light logo on a white plate. On its own, without `header_logo_url`, it
+    /// is ignored.
+    pub header_logo_dark_url: Option<String>,
     /// URL to the logo image shown in the page header.
     pub header_logo_url: Option<String>,
     /// URL to the Open Graph image used for link previews.

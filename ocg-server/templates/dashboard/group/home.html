@@ -99,13 +99,13 @@
           {{ dashboard::menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/group?tab=inbox", items_count = inbox_open_count, items_count_label = "open") -}}
           {# End inbox -#}
         {% endif -%}
-        <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors">
+        <div class="rounded-md px-3 border border-transparent hover:bg-surface hover:border-stone-200 transition-colors">
           <a href="{{ group_public_url }}"
              target="_blank"
              rel="noopener noreferrer"
              class="flex items-center justify-between cursor-pointer">
             <div class="flex items-center">
-              <div class="svg-icon size-4 icon-eye bg-primary-500"></div>
+              <div class="svg-icon size-4 icon-eye bg-primary-fg"></div>
               <div class="text-sm/8 ms-3">Group public site</div>
               <div class="svg-icon size-2.5 icon-external-link bg-stone-700 ms-2"></div>
             </div>

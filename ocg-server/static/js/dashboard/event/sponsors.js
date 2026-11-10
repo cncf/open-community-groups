@@ -259,7 +259,7 @@ export class SponsorsSection extends LitWrapper {
         @mouseover=${() => (this.activeIndex = index)}
       >
         <div
-          class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
+          class="plate plate-ring relative flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-plate border border-stone-200 overflow-hidden"
         >
           <img
             src=${option.logo_url}
@@ -367,7 +367,7 @@ export class SponsorsSection extends LitWrapper {
             data-sponsor-search-dropdown
             class="${
               this.disabled || !this.visibleDropdown ? "hidden" : ""
-            } absolute z-10 start-0 end-0 mt-1 max-h-80 overflow-y-auto bg-white rounded-lg shadow border border-stone-200"
+            } absolute z-10 start-0 end-0 mt-1 max-h-80 overflow-y-auto bg-raised rounded-lg shadow border border-stone-200"
           >
             ${
               this.visibleOptions && this.visibleOptions.length > 0
@@ -385,10 +385,10 @@ export class SponsorsSection extends LitWrapper {
                 ${this.selectedSponsors.map(
                   (s, i) =>
                     html`<div
-                        class="inline-flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full"
+                        class="inline-flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-surface p-4 w-full"
                       >
                         <div
-                          class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
+                          class="plate plate-ring relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-plate border border-stone-200 overflow-hidden"
                         >
                           <img
                             src=${s.logo_url}
@@ -410,7 +410,7 @@ export class SponsorsSection extends LitWrapper {
                         </div>
                         <button
                           type="button"
-                          class="p-1 rounded-full hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                          class="p-1 rounded-full hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-edge"
                           aria-label="Remove ${s.name}"
                           title="Remove"
                           @click=${() => this._onRemove(s.group_sponsor_id)}
@@ -435,12 +435,12 @@ export class SponsorsSection extends LitWrapper {
                 <div class="fixed inset-0 z-20 flex items-center justify-center">
                   <div class="absolute inset-0 bg-black/30" @click=${() => this._closeLevelModal()}></div>
                   <div
-                    class="relative bg-white rounded-lg shadow-xl border border-stone-200 w-[90%] max-w-md p-6"
+                    class="relative bg-raised rounded-lg shadow-xl border border-stone-200 w-[90%] max-w-md p-6"
                   >
                     <div class="text-lg font-semibold text-stone-900 mb-4">Add sponsor level</div>
                     <div class="flex items-center gap-3 mb-4">
                       <div
-                        class="relative flex items-center justify-center size-10 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
+                        class="plate plate-ring relative flex items-center justify-center size-10 shrink-0 rounded-lg bg-plate border border-stone-200 overflow-hidden"
                       >
                         <img
                           src=${this.pendingSponsor?.logo_url || ""}

@@ -6,7 +6,7 @@ use axum::{
     extract::Query,
     http::{
         HeaderValue, StatusCode,
-        header::{LOCATION, SET_COOKIE},
+        header::{CACHE_CONTROL, COOKIE, LOCATION, SET_COOKIE},
     },
     response::IntoResponse,
 };
@@ -31,7 +31,9 @@ use crate::{
         extractors::{OAuth2, Oidc},
         tests::*,
     },
+    router::CACHE_CONTROL_PRIVATE_NO_STORE,
     services::notifications::MockNotificationsManager,
+    test_util::{element_html_with, opening_tag_with},
 };
 
 use super::*;
@@ -107,6 +109,38 @@ async fn test_sign_up_page_redirects_when_authenticated() {
 }
 
 #[tokio::test]
+async fn test_user_menu_section_guest_success_ignores_theme_cookie() {
+    // Setup router without database expectations, since a guest loads no session
+    let router = TestRouterBuilder::new(MockDB::new()).build().await;
+
+    // Send the guest request without and with a color theme cookie
+    let request_plain = request("GET", "/section/user-menu").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router.clone(), request_plain).await;
+    let request_with_cookie = request("GET", "/section/user-menu")
+        .header(COOKIE, "ocg_theme=dark")
+        .body(Body::empty())
+        .unwrap();
+    let (cookie_parts, cookie_bytes) = send(router, request_with_cookie).await;
+
+    // Check the guest response is private and renders the theme group with System checked
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE))
+    );
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(
+        opening_tag_with(&body, r#"id="user-dropdown-button""#)
+            .contains(r#"data-logged-in="false""#)
+    );
+    assert_theme_group_checks_system(&body);
+
+    // Check the cookie leaves the response unchanged
+    assert_html_response(&cookie_parts, &cookie_bytes, StatusCode::OK);
+    assert_eq!(cookie_bytes, bytes);
+}
+
+#[tokio::test]
 async fn test_user_menu_section_success() {
     // Setup identifiers and database mock
     let ids = DashboardIds::new();
@@ -119,6 +153,18 @@ async fn test_user_menu_section_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE))
+    );
+
+    // Check the member menu renders the theme group with System checked
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(
+        opening_tag_with(&body, r#"id="user-dropdown-button""#)
+            .contains(r#"data-logged-in="true""#)
+    );
+    assert_theme_group_checks_system(&body);
 }
 
 // Log in and log out.
@@ -1691,6 +1737,21 @@ fn session_record_with_values(session_id: session::Id, values: &[(&str, &str)]) 
         session_record.data.insert((*key).to_string(), json!(value));
     }
     session_record
+}
+
+/// Asserts the menu renders the color theme group with only System checked.
+fn assert_theme_group_checks_system(body: &str) {
+    let group = element_html_with(body, r#"aria-labelledby="user-menu-theme-label""#);
+    assert!(opening_tag_with(group, r#"role="group""#).contains("user-menu-theme-label"));
+    assert_eq!(group.matches(r#"role="menuitemradio""#).count(), 3);
+    assert_eq!(group.matches(r#"aria-checked="true""#).count(), 1);
+    for (value, checked) in [("light", "false"), ("dark", "false"), ("system", "true")] {
+        let choice = opening_tag_with(group, &format!(r#"data-ocg-theme-choice="{value}""#));
+        assert!(
+            choice.contains(&format!(r#"aria-checked="{checked}""#)),
+            "{value}"
+        );
+    }
 }
 
 /// Builds an in-memory callback session holding the expected csrf state.

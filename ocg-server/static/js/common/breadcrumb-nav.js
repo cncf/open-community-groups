@@ -127,7 +127,7 @@ export class BreadcrumbNav extends LitWrapper {
     if (banner.dataset.bannerAspect) {
       banner.style.aspectRatio = banner.dataset.bannerAspect;
     }
-    banner.style.background = "linear-gradient(135deg, #f5f5f4, #e7e5e4)";
+    banner.style.background = "linear-gradient(135deg, var(--color-stone-100), var(--color-stone-200))";
   }
 
   _getCurrentItem() {
@@ -249,7 +249,7 @@ export class BreadcrumbNav extends LitWrapper {
         }"
       >
         <div
-          class="bg-white border border-stone-200 rounded-lg ${
+          class="bg-surface border border-stone-200 rounded-lg ${
             this.fullBleed ? "phone:rounded-none phone:border-x-0 phone:border-t-0" : ""
           }"
         >
@@ -314,7 +314,7 @@ export class BreadcrumbNav extends LitWrapper {
               <div
                 id="${this._dropdownId}"
                 data-breadcrumb-dropdown
-                class="origin-top transition-all duration-150 ease-out motion-reduce:transition-none absolute top-full left-0 mt-3 -mx-4 w-[calc(100%+2rem)] bg-white rounded-xl shadow-lg border border-stone-200 z-50 max-h-64 overflow-y-auto phone:mt-1 phone:z-[25] ${
+                class="origin-top transition-all duration-150 ease-out motion-reduce:transition-none absolute top-full left-0 mt-3 -mx-4 w-[calc(100%+2rem)] bg-raised rounded-xl shadow-lg border border-stone-200 z-50 max-h-64 overflow-y-auto phone:mt-1 phone:z-[25] ${
                   this.fullBleed ? "phone:-mx-3 phone:w-[calc(100%+1.5rem)]" : ""
                 } ${
                   this._isOpen

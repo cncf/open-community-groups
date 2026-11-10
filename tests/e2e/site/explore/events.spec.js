@@ -17,13 +17,17 @@ import {
 import { enableDesktopVersion, expectPageLayout } from "../../snapshots.js";
 import {
   buildE2eUrl,
+  expectDarkTheme,
   expectDialogClosed,
   expectFocusIndicator,
   expectNoDuplicateIds,
   expectPaginationNavigation,
   futureDate,
   navigateToPath,
+  pickThemeFromAccountMenu,
+  resolveCssColor,
   uniqueName,
+  useTheme,
   waitForActionResponse,
 } from "../../utils.js";
 
@@ -74,6 +78,27 @@ const openFilterSheet = async (page) => {
   await expect(page.getByRole("dialog", { name: "Filters" })).toBeVisible();
   return sheet;
 };
+
+/**
+ * Reads the painted fill and edge of a calendar event.
+ * @param {import("@playwright/test").Locator} calendarEvent - Calendar event element.
+ * @returns {Promise<{ backgroundColor: string, borderColor: string }>} Computed colors.
+ */
+const readCalendarEventColors = (calendarEvent) =>
+  calendarEvent.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { backgroundColor: style.backgroundColor, borderColor: style.borderTopColor };
+  });
+
+/**
+ * Resolves the primary roles upcoming calendar events paint, in the current color theme.
+ * @param {import("@playwright/test").Locator} calendarEvent - Calendar event element.
+ * @returns {Promise<{ backgroundColor: string, borderColor: string }>} Resolved role colors.
+ */
+const resolveUpcomingEventColors = async (calendarEvent) => ({
+  backgroundColor: await resolveCssColor(calendarEvent, "var(--color-primary-tint)"),
+  borderColor: await resolveCssColor(calendarEvent, "var(--color-primary-edge-faint)"),
+});
 
 /** Records the URL of every HTMX section request sent from now on. */
 const trackSectionRequests = (page, pathname) => {
@@ -499,7 +524,7 @@ test.describe("site explore events page", () => {
           status: 200,
         });
       },
-      { indicator: page.locator('label[for="calendar"]'), outlineColor: "var(--ocg-primary)" },
+      { indicator: page.locator('label[for="calendar"]'), outlineColor: "var(--color-focus)" },
     );
 
     // Verify the re-rendered Calendar radio is checked and keeps focus.
@@ -650,6 +675,48 @@ test.describe("site explore events page", () => {
     await expect(page.locator("#calendar-box")).toBeVisible();
     await expect(page.locator(".no-results-filtered:not(.hidden)")).toBeVisible();
     await expect(page.locator(".no-results-default:not(.hidden)")).toHaveCount(0);
+  });
+
+  test("paints the calendar on the dark surface and restyles its events in place on a switch", async ({
+    page,
+  }) => {
+    // Store Dark and load the month of the seeded upcoming calendar event.
+    await useTheme(page, { stored: "dark" });
+    await navigateToPath(
+      page,
+      buildCalendarPath(TEST_CALENDAR_EVENTS.nextMonth, addMonths(getSeedMonthStart(), 1)),
+    );
+    await expectDarkTheme(page);
+    const calendarBox = page.locator("#calendar-box");
+    const upcomingEvent = page
+      .locator(".fc-daygrid-event")
+      .filter({ hasText: TEST_CALENDAR_EVENTS.nextMonth.name })
+      .first();
+    await expect(upcomingEvent).toBeVisible();
+
+    // Verify FullCalendar's page background is the dark surface, not its white default.
+    const darkSurface = await resolveCssColor(calendarBox, "var(--color-surface)");
+    expect(darkSurface).not.toBe("rgb(255, 255, 255)");
+    expect(await resolveCssColor(calendarBox, "var(--fc-page-bg-color)")).toBe(darkSurface);
+
+    // Verify the upcoming event paints the dark primary roles, then mark its element.
+    const darkEventColors = await resolveUpcomingEventColors(upcomingEvent);
+    await expect.poll(() => readCalendarEventColors(upcomingEvent)).toEqual(darkEventColors);
+    await upcomingEvent.evaluate((element) => {
+      element.dataset.e2eBeforeSwitch = "true";
+    });
+
+    // Switch to Light and verify the same element now paints the light primary roles.
+    await pickThemeFromAccountMenu(page, "light");
+    const markedEvent = page.locator('.fc-daygrid-event[data-e2e-before-switch="true"]');
+    await expect(markedEvent).toHaveCount(1);
+    await expect(markedEvent).toContainText(TEST_CALENDAR_EVENTS.nextMonth.name);
+    const lightEventColors = await resolveUpcomingEventColors(markedEvent);
+    expect(lightEventColors).not.toEqual(darkEventColors);
+    await expect.poll(() => readCalendarEventColors(markedEvent)).toEqual(lightEventColors);
+    expect(await resolveCssColor(calendarBox, "var(--fc-page-bg-color)")).toBe(
+      await resolveCssColor(calendarBox, "var(--color-surface)"),
+    );
   });
 
   test("hides the empty state after navigating from an empty month to one with events", async ({ page }) => {
@@ -1474,7 +1541,7 @@ test.describe("site explore events page", () => {
     // Verify the label shows the focus its clipped checkbox cannot.
     await expectFocusIndicator(checkbox, () => checkbox.focus(), {
       indicator: option,
-      outlineColor: "var(--ocg-primary)",
+      outlineColor: "var(--color-focus)",
     });
   });
 

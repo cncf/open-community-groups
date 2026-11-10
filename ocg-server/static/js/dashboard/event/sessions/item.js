@@ -506,26 +506,26 @@ class SessionItem extends LitWrapper {
                       ?disabled=${this.disabled}
                     />
                     <div
-                      class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${
+                      class="h-full rounded-xl border transition bg-surface p-4 md:p-5 flex ${
                         this.inputMode === "cfs"
-                          ? "border-primary-400 ring-2 ring-primary-200"
+                          ? "border-primary-edge-muted ring-2 ring-primary-edge-faint"
                           : "border-stone-200"
                       } ${
                         this.disabled
                           ? "opacity-60 cursor-not-allowed"
-                          : "hover:border-primary-300 hover:shadow-sm"
+                          : "hover:border-primary-edge-soft hover:shadow-sm"
                       }"
                     >
                       <div class="flex items-start gap-3">
                         <span class="mt-1 inline-flex">
                           <span
                             class="relative flex h-5 w-5 items-center justify-center rounded-full border ${
-                              this.inputMode === "cfs" ? "border-primary-500" : "border-stone-300"
+                              this.inputMode === "cfs" ? "border-primary-edge" : "border-stone-300"
                             }"
                           >
                             ${
                               this.inputMode === "cfs"
-                                ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>`
+                                ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-fg"></span>`
                                 : ""
                             }
                           </span>
@@ -550,26 +550,26 @@ class SessionItem extends LitWrapper {
                       ?disabled=${this.disabled}
                     />
                     <div
-                      class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${
+                      class="h-full rounded-xl border transition bg-surface p-4 md:p-5 flex ${
                         this.inputMode === "manual"
-                          ? "border-primary-400 ring-2 ring-primary-200"
+                          ? "border-primary-edge-muted ring-2 ring-primary-edge-faint"
                           : "border-stone-200"
                       } ${
                         this.disabled
                           ? "opacity-60 cursor-not-allowed"
-                          : "hover:border-primary-300 hover:shadow-sm"
+                          : "hover:border-primary-edge-soft hover:shadow-sm"
                       }"
                     >
                       <div class="flex items-start gap-3">
                         <span class="mt-1 inline-flex">
                           <span
                             class="relative flex h-5 w-5 items-center justify-center rounded-full border ${
-                              this.inputMode === "manual" ? "border-primary-500" : "border-stone-300"
+                              this.inputMode === "manual" ? "border-primary-edge" : "border-stone-300"
                             }"
                           >
                             ${
                               this.inputMode === "manual"
-                                ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>`
+                                ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-fg"></span>`
                                 : ""
                             }
                           </span>

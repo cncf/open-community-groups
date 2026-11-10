@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import { initializeMapModals } from "/static/js/common/modals/map-modal.js";
 import { resetRestoredModalState } from "/static/js/common/modals/modal-lifecycle.js";
+import { THEME_STORAGE_KEY } from "/static/js/common/theme.js";
 import {
   waitForAnimationFrames,
   waitForMicrotask,
@@ -9,6 +10,9 @@ import {
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mockMapLibre } from "/tests/unit/test-utils/maps.js";
+
+const BRIGHT_STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
+const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
 
 describe("map modal", () => {
   let mapLibre;
@@ -18,6 +22,7 @@ describe("map modal", () => {
     resetDom();
     mapLibre = mockMapLibre();
     swal = mockSwal();
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
 
     // Build the DOM fixture with a declarative map modal.
     document.body.innerHTML = `
@@ -52,6 +57,7 @@ describe("map modal", () => {
     resetRestoredModalState(document);
     mapLibre.restore();
     swal.restore();
+    localStorage.removeItem(THEME_STORAGE_KEY);
     resetDom();
   });
 
@@ -72,9 +78,10 @@ describe("map modal", () => {
     ).to.equal(false);
 
     expect(mapLibre.maps[0].options).to.include({
-      style: "https://tiles.openfreemap.org/styles/bright",
+      style: BRIGHT_STYLE_URL,
       interactive: false,
     });
+    expect(mapLibre.maps[1].options.style).to.equal(BRIGHT_STYLE_URL);
     expect(mapLibre.maps[0].options.center).to.deep.equal([-4.4214, 36.7213]);
     expect(mapLibre.maps[1].options.interactive).to.equal(true);
     expect(mapLibre.maps[1].keyboard.rotationDisabled).to.equal(true);
@@ -116,6 +123,21 @@ describe("map modal", () => {
       );
     expect(mapLibre.maps[0].removed).to.equal(true);
     expect(mapLibre.maps[1].removed).not.to.equal(true);
+  });
+
+  it("loads the preview and modal maps with the dark basemap under the dark color theme", async () => {
+    // Initialize the preview and open the modal with Dark stored.
+    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    initializeMapModals();
+    await waitForMicrotask();
+    document.getElementById("event-map-trigger").click();
+    await waitForAnimationFrames(2);
+
+    // Verify both maps request the dark style.
+    expect(mapLibre.maps.map((map) => map.options.style)).to.deep.equal([
+      DARK_STYLE_URL,
+      DARK_STYLE_URL,
+    ]);
   });
 
   it("reports preview failures and retries a modal after initialization fails", async () => {

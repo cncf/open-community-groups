@@ -51,10 +51,6 @@ const POPOVER_TOP_CLASSES = "top-0 -translate-y-full pb-1.5";
 const RIGHT_ALIGNED_COLUMN_THRESHOLD = 3;
 const TOP_ALIGNED_ROW_THRESHOLD = 3;
 const TRUNCATION_NOTICE_SELECTOR = "[data-explore-truncation-notice]";
-const UPCOMING_COLOR_VARIABLES = {
-  background: "--color-primary-50",
-  border: "--color-primary-200",
-};
 
 /**
  * FullCalendar-backed community explore calendar controller.
@@ -93,8 +89,7 @@ export class Calendar {
    * @param {Array} events - Array of event objects to add to the calendar
    */
   addEvents(events) {
-    const colors = getCalendarColors();
-    const formattedEvents = events.map((event) => formatCalendarEvent(event, colors)).filter(Boolean);
+    const formattedEvents = events.map((event) => formatCalendarEvent(event)).filter(Boolean);
 
     // Replace the previous events
     this.fullCalendar.removeAllEvents();
@@ -451,10 +446,9 @@ const dismissCardOnScroll = (controller) => {
 /**
  * Formats one event for FullCalendar.
  * @param {object} event - Minimal explore event
- * @param {object} colors - Calendar color tokens
  * @returns {object|undefined} FullCalendar event data
  */
-const formatCalendarEvent = (event, colors) => {
+const formatCalendarEvent = (event) => {
   if (!event.starts_at) {
     return undefined;
   }
@@ -469,23 +463,17 @@ const formatCalendarEvent = (event, colors) => {
     end: endDate.toISOString(),
     url: getExploreItemUrl("events", event),
     className: `cursor-pointer ${isPast ? "opacity-40" : ""}`,
-    // Past events keep the default colors, dimmed by their opacity
-    ...(isPast ? {} : { backgroundColor: colors.upcomingBg, borderColor: colors.upcomingBorder }),
+    // Past events keep the default colors, dimmed by their opacity. Upcoming events read the primary
+    // roles in the page, so they follow a live color theme switch without re-rendering.
+    ...(isPast
+      ? {}
+      : {
+          backgroundColor: "var(--color-primary-tint)",
+          borderColor: "var(--color-primary-edge-faint)",
+        }),
     extendedProps: {
       event,
     },
-  };
-};
-
-/**
- * Reads primary colors used by upcoming calendar events.
- * @returns {object} Calendar color tokens
- */
-const getCalendarColors = () => {
-  const styles = getComputedStyle(document.documentElement);
-  return {
-    upcomingBg: styles.getPropertyValue(UPCOMING_COLOR_VARIABLES.background).trim(),
-    upcomingBorder: styles.getPropertyValue(UPCOMING_COLOR_VARIABLES.border).trim(),
   };
 };
 

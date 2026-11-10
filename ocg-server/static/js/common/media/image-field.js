@@ -270,15 +270,17 @@ export class ImageField extends LitWrapper {
     }
 
     if (this._hasImage) {
+      // Logo previews show the public white plate in dark mode.
+      const plateClass = this.imageKind === IMAGE_KIND.LOGO ? " plate plate-ring dark:bg-plate" : "";
       return html`
         <img
           src=${this._previewUrl}
           alt="Image preview"
-          class=${
+          class=${`${
             isWide
               ? "h-full w-full object-contain rounded p-1"
               : "max-h-[86px] max-w-[86px] object-contain mx-auto"
-          }
+          }${plateClass}`}
           loading="lazy"
         />
         <span id=${this._promptId} class="sr-only">Change image</span>
@@ -566,8 +568,8 @@ export class ImageField extends LitWrapper {
       </label>
       <div class="mt-2">
         <div
-          class="relative flex min-h-24 cursor-pointer items-center gap-4 rounded-lg border border-dashed border-stone-300 px-6 text-stone-600 transition-colors hover:border-primary-500 ${
-            this._isDragActive ? "border-primary-500 bg-primary-50" : ""
+          class="relative flex min-h-24 cursor-pointer items-center gap-4 rounded-lg border border-dashed border-stone-300 px-6 text-stone-600 transition-colors hover:border-primary-edge ${
+            this._isDragActive ? "border-primary-edge bg-primary-tint" : ""
           }"
           role="button"
           tabindex="0"
@@ -580,8 +582,8 @@ export class ImageField extends LitWrapper {
         >
           <div class="svg-icon size-8 shrink-0 icon-image bg-stone-400" aria-hidden="true"></div>
           <p id=${this._promptId} class="text-sm phone:wrap-anywhere">
-            <span class="font-semibold text-primary-600 phone:hidden">Click to upload</span>
-            <span class="font-semibold text-primary-600 not-phone:hidden">Tap to upload</span>
+            <span class="font-semibold text-primary-fg-strong phone:hidden">Click to upload</span>
+            <span class="font-semibold text-primary-fg-strong not-phone:hidden">Tap to upload</span>
             ${
               this._directFileName
                 ? html`<span> ${this._directFileName}</span>`
@@ -644,7 +646,7 @@ export class ImageField extends LitWrapper {
           class="relative ${
             isWide ? "w-full sm:max-w-md h-24" : "size-24"
           } min-w-24 flex items-center justify-center bg-stone-200/50 rounded-lg border border-dashed border-stone-300 overflow-hidden ${
-            this._isDragActive && !this._isPending ? "ring-2 ring-primary-300" : ""
+            this._isDragActive && !this._isPending ? "ring-2 ring-primary-halo" : ""
           } cursor-pointer ${this.previewBgClass ? ` ${this.previewBgClass}` : ""}"
           role="button"
           tabindex="0"
@@ -659,14 +661,14 @@ export class ImageField extends LitWrapper {
           @drop=${this._handleDrop}
         >
           <div
-            class="absolute inset-0 flex items-center justify-center bg-white/50 z-10 ${
+            class="absolute inset-0 flex items-center justify-center bg-surface/50 z-10 ${
               this._showsBusyOverlay ? "opacity-100" : "opacity-0 pointer-events-none"
             } transition-opacity duration-200"
             aria-hidden=${this._showsBusyOverlay ? "false" : "true"}
           >
             <svg-spinner
               size="size-8"
-              background-color="var(--color-primary-100)"
+              background-color="var(--color-primary-tint-strong)"
               label=${this._isUploading ? "Uploading..." : "Preparing image..."}
             ></svg-spinner>
           </div>

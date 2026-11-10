@@ -278,7 +278,7 @@ export class NotificationGroupMutes extends LitWrapper {
     return html`
       <div
         data-group-mute-dropdown
-        class="absolute start-0 end-0 z-10 mt-1 max-h-72 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow ${
+        class="absolute start-0 end-0 z-10 mt-1 max-h-72 overflow-y-auto rounded-lg border border-stone-200 bg-raised shadow ${
           this._combobox.isOpen ? "" : "hidden"
         }"
       >
@@ -540,8 +540,8 @@ const handleUnmuteBeforeOnLoad = (event) => {
  */
 const renderGroupLogo = (group) => html`
   <span
-    class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[5px] border-white outline outline-1 outline-stone-300 ${
-      group.logo_url ? "bg-white" : "bg-stone-50"
+    class="plate flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[5px] border-plate outline outline-1 outline-plate-edge ${
+      group.logo_url ? "bg-plate" : "bg-stone-50"
     }"
   >
     ${

@@ -28,10 +28,10 @@
         {% else -%}
           groups)
         {% endif -%}
-        <span class="ms-1 font-medium text-primary-500 group-open:hidden">Show groups</span>
-        <span class="ms-1 hidden font-medium text-primary-500 group-open:inline">Hide groups</span>
+        <span class="ms-1 font-medium text-primary-fg group-open:hidden">Show groups</span>
+        <span class="ms-1 hidden font-medium text-primary-fg group-open:inline">Hide groups</span>
       </summary>
-      <ul class="scrollbar-visible mt-3 max-h-72 divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+      <ul class="scrollbar-visible mt-3 max-h-72 divide-y divide-stone-200 rounded-lg border border-stone-200 bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge"
           tabindex="0"
           aria-label="Matching groups">
         {% for group in summary.groups -%}
@@ -75,7 +75,7 @@
           no matching team members and won't receive the email:
         {% endif -%}
       </p>
-      <ul class="scrollbar-visible mt-2 max-h-40 list-disc space-y-1 ps-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+      <ul class="scrollbar-visible mt-2 max-h-40 list-disc space-y-1 ps-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge"
           tabindex="0"
           aria-labelledby="community-contact-unmatched-groups-title">
         {% for group in summary.unmatched_groups -%}

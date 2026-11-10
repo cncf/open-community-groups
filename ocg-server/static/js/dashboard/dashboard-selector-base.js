@@ -238,7 +238,7 @@ export class DashboardSelectorBase extends LitWrapper {
    */
   _getOptionStatusClass(isDisabled, isActive) {
     if (isDisabled) {
-      return "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
+      return "cursor-not-allowed bg-primary-tint text-primary-fg-strong font-semibold opacity-100!";
     }
     if (isActive) {
       return "cursor-pointer text-stone-900 bg-stone-50";
@@ -292,7 +292,7 @@ export class DashboardSelectorBase extends LitWrapper {
         </button>
 
         <div
-          class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 phone:top-[60px] ${
+          class="absolute top-14 left-0 right-0 z-10 bg-raised rounded-lg shadow-sm border border-stone-200 phone:top-[60px] ${
             this._combobox.isOpen ? "" : "hidden"
           }"
         >

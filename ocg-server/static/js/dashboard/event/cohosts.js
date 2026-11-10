@@ -341,7 +341,7 @@ export class CohostsSelector extends LitWrapper {
         </div>
 
         <div
-          class="absolute start-0 end-0 z-10 mt-1 rounded-lg border border-stone-200 bg-white shadow ${
+          class="absolute start-0 end-0 z-10 mt-1 rounded-lg border border-stone-200 bg-raised shadow ${
             this._combobox.isOpen ? "" : "hidden"
           }"
         >
@@ -466,11 +466,11 @@ export class CohostsSelector extends LitWrapper {
       <div class="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
         ${this.selectedCohosts.map(
           (cohost) => html`
-            <div class="flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-white p-4">
+            <div class="flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-surface p-4">
               ${this._renderLogo(cohost, "size-15 md:size-18", "size-13 md:size-16")}
               <div class="min-w-0 flex-1">
                 <div class="title-preheader">${cohost.community_display_name}</div>
-                <div class="mt-0.5 truncate text-sm/5 font-semibold text-black">${cohost.name}</div>
+                <div class="mt-0.5 truncate text-sm/5 font-semibold text-stone-900">${cohost.name}</div>
                 <div class="mt-2 flex flex-wrap gap-1.5">${this._renderStatusPills(cohost)}</div>
               </div>
               ${
@@ -479,7 +479,7 @@ export class CohostsSelector extends LitWrapper {
                   : html`
                       <button
                         type="button"
-                        class="rounded-full p-1 hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                        class="rounded-full p-1 hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-edge"
                         aria-label="Remove ${cohost.name}"
                         data-cohost-remove
                         title="Remove"
@@ -506,7 +506,7 @@ export class CohostsSelector extends LitWrapper {
   _renderLogo(group, wrapperSize, imageSize) {
     return html`
       <div
-        class="relative flex ${wrapperSize} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-stone-200 bg-white"
+        class="plate plate-ring relative flex ${wrapperSize} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-stone-200 bg-plate"
       >
         ${
           group.logo_url

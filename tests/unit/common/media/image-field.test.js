@@ -787,6 +787,24 @@ describe("image-field", () => {
     expect(readNameParts()).to.deep.equal(["Logo", "Change image"]);
   });
 
+  it("puts only logo previews on the public plate", async () => {
+    // Render a preview image for each image kind.
+    const plateClasses = ["plate", "plate-ring", "dark:bg-plate"];
+    const readPlateClasses = async (imageKind) => {
+      const element = await mountLitComponent("image-field", {
+        imageKind,
+        value: "https://example.com/image.png",
+      });
+      const preview = element.querySelector('img[alt="Image preview"]');
+      return plateClasses.filter((className) => preview.classList.contains(className));
+    };
+
+    // Logo previews carry the plate classes, avatar and banner previews none.
+    expect(await readPlateClasses("logo")).to.deep.equal(plateClasses);
+    expect(await readPlateClasses("avatar")).to.deep.equal([]);
+    expect(await readPlateClasses("banner")).to.deep.equal([]);
+  });
+
   it("does not give direct-upload-only file inputs an empty name", async () => {
     // Render an image field that uploads through its component endpoint.
     const element = await mountLitComponent("image-field", {

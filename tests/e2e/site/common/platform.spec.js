@@ -34,6 +34,25 @@ const PUBLIC_PAGE_PATHS = [
   `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alpha[0]}`,
 ];
 
+// Vary of public shared-cache pages (PUBLIC_SHARED_CACHE_VARY in router.rs).
+const PUBLIC_SHARED_CACHE_VARY = "x-ocg-commit-sha, hx-request, x-ocg-fetch";
+// Credential pages also vary by Accept (CREDENTIAL_CACHE_VARY in handlers/badges.rs).
+const CREDENTIAL_CACHE_VARY = `${PUBLIC_SHARED_CACHE_VARY}, accept`;
+// The <html> start tag every viewer gets; the color theme and desktop version never reach it.
+const HTML_START_TAG = '<html lang="en" class="h-full min-h-screen">';
+
+// Seeded badge credential (public-pages.js) and a path no route serves.
+const BADGE_CREDENTIAL_PATH = "/badges/credentials/dadadada-dada-dada-dada-dadadadada02";
+const NOT_FOUND_PATH = "/missing-public-page";
+
+// Public shared-cache pages checked against viewer preference signals.
+const PREFERENCE_PAGE_PATHS = [...PUBLIC_PAGE_PATHS, "/explore", "/stats", "/docs"];
+// Presentation-only viewer preferences a browser could send; the server must ignore them.
+const VIEWER_PREFERENCE_HEADERS = {
+  Cookie: "ocg_theme=dark; ocg_viewport_mode=desktop",
+  "Sec-CH-Prefers-Color-Scheme": "dark",
+};
+
 // Redirector mappings seeded as legacy URLs in 20_groups.sql and 30_events.sql.
 const SEEDED_REDIRECTS = [
   {
@@ -252,18 +271,92 @@ test.describe("public pages with a session cookie", () => {
   });
 });
 
-/** Asserts a public page answers with an anonymous, cookie-free shared-cache response. */
-const expectAnonymousPublicPage = async (request, path) => {
-  const response = await request.get(buildE2eUrl(path), { maxRedirects: 0 });
-  const headers = response.headers();
+test.describe("viewer preference signals do not reach shared-cache pages", () => {
+  test("public pages ignore the color theme and desktop version signals", async ({ request }) => {
+    for (const path of PREFERENCE_PAGE_PATHS) {
+      await test.step(path, async () => {
+        // Send the preference cookies and the color scheme client hint.
+        const headers = await expectAnonymousPublicPage(request, path, VIEWER_PREFERENCE_HEADERS);
+
+        // Verify the server does not ask for client hints either.
+        expect(headers["accept-ch"]).toBeUndefined();
+        expect(headers["critical-ch"]).toBeUndefined();
+      });
+    }
+  });
+
+  test("the not found page ignores viewer preference signals", async ({ request }) => {
+    // Request a missing page with the preference signals.
+    const response = await request.get(buildE2eUrl(NOT_FOUND_PATH), {
+      headers: VIEWER_PREFERENCE_HEADERS,
+      maxRedirects: 0,
+    });
+    const headers = response.headers();
+
+    // Verify the shared-cache 404 stays the same for every viewer.
+    expect(response.status()).toBe(404);
+    expect(headers["cache-control"]).toMatch(/^public\b/);
+    expect(headers.vary).toBe(PUBLIC_SHARED_CACHE_VARY);
+    expect(headers["set-cookie"]).toBeUndefined();
+    expect(getHtmlStartTag(await response.text())).toBe(HTML_START_TAG);
+  });
+
+  test("badge pages ignore viewer preference signals", async ({ request }) => {
+    // Request the shared-cache credential page with the preference signals.
+    const credential = await request.get(buildE2eUrl(BADGE_CREDENTIAL_PATH), {
+      headers: VIEWER_PREFERENCE_HEADERS,
+      maxRedirects: 0,
+    });
+    const credentialHeaders = credential.headers();
+
+    // Verify it keeps its own Vary, sets no cookie and renders the shared start tag.
+    expect(credential.status()).toBe(200);
+    expect(credentialHeaders["cache-control"]).toMatch(/^public\b/);
+    expect(credentialHeaders.vary).toBe(CREDENTIAL_CACHE_VARY);
+    expect(credentialHeaders["set-cookie"]).toBeUndefined();
+    expect(getHtmlStartTag(await credential.text())).toBe(HTML_START_TAG);
+
+    // Verify the no-store verification form renders the shared start tag too.
+    const verify = await request.get(buildE2eUrl("/badges/verify"), {
+      headers: VIEWER_PREFERENCE_HEADERS,
+      maxRedirects: 0,
+    });
+    expect(verify.status()).toBe(200);
+    expect(getHtmlStartTag(await verify.text())).toBe(HTML_START_TAG);
+  });
+});
+
+/**
+ * Asserts a public page answers with an anonymous, cookie-free shared-cache response whose
+ * `<html>` start tag is the same for every viewer.
+ * @param {import("@playwright/test").APIRequestContext} request - Request context to send with.
+ * @param {string} path - Public page path.
+ * @param {Record<string, string>} [headers] - Extra request headers.
+ * @returns {Promise<Record<string, string>>} Response headers.
+ */
+const expectAnonymousPublicPage = async (request, path, headers = {}) => {
+  const response = await request.get(buildE2eUrl(path), { headers, maxRedirects: 0 });
+  const responseHeaders = response.headers();
   const body = await response.text();
 
   expect(response.status()).toBe(200);
-  expect(headers["cache-control"]).toMatch(/^public\b/);
-  expect(headers["set-cookie"]).toBeUndefined();
+  expect(responseHeaders["cache-control"]).toMatch(/^public\b/);
+  expect(responseHeaders.vary).toBe(PUBLIC_SHARED_CACHE_VARY);
+  expect(responseHeaders["set-cookie"]).toBeUndefined();
+  expect(getHtmlStartTag(body)).toBe(HTML_START_TAG);
   expect(body).toContain(USER_MENU_PLACEHOLDER);
   expect(body).not.toContain(LOGGED_IN_MARKER);
+
+  return responseHeaders;
 };
+
+/**
+ * Returns the `<html>` start tag of a page. Only the tag is inspected: the critical style holds
+ * `data-theme` and the user menu buttons carry `data-viewport-mode`.
+ * @param {string} body - Response body.
+ * @returns {string|undefined} Start tag, or undefined when the body has none.
+ */
+const getHtmlStartTag = (body) => body.match(/<html\b[^>]*>/u)?.[0];
 
 /** Returns the session cookie of a browser context, failing when it is missing. */
 const getSessionCookie = async (context) => {

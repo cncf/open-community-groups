@@ -112,11 +112,27 @@ describe("image-cropper", () => {
     expect(instructions.classList.contains("bg-stone-50")).to.equal(true);
     expect(instructions.querySelector(".svg-icon")).to.equal(null);
     expect(instructions.querySelectorAll("kbd")).to.have.length(2);
+    instructions.querySelectorAll("kbd").forEach((chip) => {
+      expect(chip.classList.contains("bg-surface")).to.equal(true);
+      expect(chip.classList.contains("bg-white")).to.equal(false);
+    });
     const stage = element.querySelector("[data-image-cropper-stage]");
     expect(stage.getAttribute("role")).to.equal("application");
+    expect(stage.classList.contains("ink")).to.equal(true);
     expect(stage.classList.contains("focus-visible:outline-stone-400")).to.equal(true);
     expect(stage.classList.contains("focus-visible:ring-primary-500")).to.equal(false);
     expect(document.activeElement).to.equal(stage);
+
+    // The stage chrome paints through tokens that the ink island keeps light.
+    const zoomControls = stage.querySelector('[role="group"][aria-label="Image zoom"]');
+    expect(zoomControls.classList.contains("bg-surface")).to.equal(true);
+    expect(zoomControls.classList.contains("bg-white")).to.equal(false);
+    element._status = "loading";
+    await element.updateComplete;
+    const spinner = stage.querySelector("svg-spinner");
+    expect(spinner.getAttribute("background-color")).to.equal("var(--color-primary-tint-strong)");
+    expect(spinner.parentElement.classList.contains("bg-surface/75")).to.equal(true);
+    expect(spinner.parentElement.classList.contains("bg-white/75")).to.equal(false);
 
     // Cancel the edit and verify the original trigger regains focus.
     [...element.querySelectorAll("button")].find((button) => button.textContent.trim() === "Cancel").click();
@@ -325,10 +341,10 @@ describe("image-cropper", () => {
     expect(cropperCanvas).to.not.equal(null);
     expect(element.querySelector("cropper-image")).to.not.equal(null);
     expect(element._selection.aspectRatio).to.equal(1200 / 630);
-    expect(element._selection.getAttribute("theme-color")).to.equal("var(--color-primary-500)");
+    expect(element._selection.getAttribute("theme-color")).to.equal("var(--color-primary-edge)");
     expect(selectionCorners).to.have.length(4);
     selectionCorners.forEach((corner) => {
-      expect(corner.classList.contains("border-primary-500")).to.equal(true);
+      expect(corner.classList.contains("border-primary-edge")).to.equal(true);
       expect(corner.classList.contains("pointer-events-none")).to.equal(true);
       expect(corner.classList.contains("size-[10px]")).to.equal(true);
     });

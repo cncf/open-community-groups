@@ -25,7 +25,7 @@
   {# End pending invitations alert -#}
   {# Pending invitations table -#}
   <div class="mb-10">
-    <div class="overflow-hidden bg-white">
+    <div class="overflow-hidden bg-surface">
       <div class="relative overflow-visible">
         <table class="table-auto w-full dashboard-table">
           {# Table header -#}
@@ -44,7 +44,7 @@
           <tbody>
             {% for invitation in pending_co_speaker_invitations -%}
               {# Invitation row -#}
-              <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
                 {# Proposal -#}
                 <td class="px-3 xl:px-5 py-4">
                   <div class="font-medium text-stone-900 line-clamp-1 wrap-anywhere">{{ invitation.session_proposal.title }}</div>
@@ -150,17 +150,17 @@
       <tbody>
         {% if session_proposals.is_empty() -%}
           {# Empty state -#}
-          <tr class="bg-white border-b border-stone-200 xl:hidden">
+          <tr class="bg-surface border-b border-stone-200 xl:hidden">
             <td class="px-8 py-16 text-center" colspan="3">
               {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
             </td>
           </tr>
-          <tr class="hidden xl:table-row 2xl:hidden bg-white border-b border-stone-200">
+          <tr class="hidden xl:table-row 2xl:hidden bg-surface border-b border-stone-200">
             <td class="px-8 py-16 text-center" colspan="4">
               {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
             </td>
           </tr>
-          <tr class="hidden 2xl:table-row bg-white border-b border-stone-200">
+          <tr class="hidden 2xl:table-row bg-surface border-b border-stone-200">
             <td class="px-8 py-16 text-center" colspan="5">
               {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
             </td>
@@ -169,7 +169,7 @@
         {% else -%}
           {% for session_proposal in session_proposals -%}
             {# Session proposal row -#}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
               {# Proposal -#}
               <td class="px-3 xl:px-5 py-4 w-full max-w-0">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>

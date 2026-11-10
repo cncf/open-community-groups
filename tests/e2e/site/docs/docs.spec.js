@@ -1,12 +1,33 @@
-import { expect, test } from "../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../fixtures.js";
 
 import { enableDesktopVersion } from "../../snapshots.js";
-import { expectDialogClosed, navigateToPath, waitForHtmxSettle } from "../../utils.js";
+import {
+  expectDarkTheme,
+  expectDialogClosed,
+  navigateToPath,
+  pickThemeFromAccountMenu,
+  resolveCssColor,
+  useTheme,
+  waitForHtmxSettle,
+} from "../../utils.js";
+import { openContents } from "./helpers.js";
 
 // Docsify's anchor scroll takes 500ms, and no event marks its end.
 const ANCHOR_SCROLL_END_MS = 700;
+// Docs elements whose backgrounds must never flash white while the docs stylesheets load.
+const DOCS_BACKGROUND_SELECTORS = [".ocg-docs-root", ".ocg-docs-root .content", ".ocg-docs-root .sidebar"];
+// Docs stylesheet path once `build.rs` hashes it; the group is the stylesheet name.
+const HASHED_DOCS_STYLESHEET_PATTERN = /^\/static\/css\/docs\/(theme|shell)\.[0-9a-f]{8}\.css$/;
+// Folder the docs stylesheets were served from before they joined the hashed tree.
+const LEGACY_DOCS_ASSETS_PATH = "/static/docs/assets/";
 // Header 64 and a gap of 8 (`static/js/site/docs/interactions.js`).
 const PHONE_ANCHOR_OFFSET_PX = 72;
+// Scoped docs `<style>` tags (`static/js/site/docs/styles.js`), set only together with the shell.
+const SCOPED_DOCS_STYLE_SELECTOR = "#ocg-docsify-vue-scoped-style, #ocg-docs-theme-scoped-style";
+// Shell stylesheet, held back to reproduce a slow docs stylesheet load.
+const SHELL_STYLESHEET_ROUTE = "**/static/css/docs/shell.*.css";
+// Computed white background, which no docs surface paints in dark.
+const WHITE_BACKGROUND = "rgb(255, 255, 255)";
 
 test.describe("site docs page", () => {
   test("loads the docs shell and documentation navigation", async ({ page }) => {
@@ -620,6 +641,153 @@ test.describe("site docs page", () => {
   });
 });
 
+test.describe("site docs page in dark", () => {
+  test("stored dark paints the docs content, sidebar and code", async ({ page }) => {
+    // Load a guide the sidebar highlights, in stored dark.
+    await useTheme(page, { stored: "dark" });
+    await navigateToPath(page, "/docs#/getting-started/quickstart");
+    const docsRoot = page.locator(".ocg-docs-root");
+    await expect(docsRoot.getByRole("heading", { name: "Quickstart", level: 1 })).toBeVisible({
+      timeout: 15000,
+    });
+    await expectDarkTheme(page);
+
+    // Verify the content paints the surface and the active link the strong primary text.
+    const content = docsRoot.locator(".content");
+    const activeLink = docsRoot
+      .locator(".sidebar-nav li.active")
+      .getByRole("link", { name: "Quickstart", exact: true });
+    const surface = await resolveCssColor(content, "var(--color-surface)");
+    expect(surface).not.toBe(WHITE_BACKGROUND);
+    await expect(content).toHaveCSS("background-color", surface);
+    await expect(activeLink).toHaveCSS(
+      "color",
+      await resolveCssColor(activeLink, "var(--color-primary-fg-strong)"),
+    );
+
+    // Load a deployment guide with fenced code.
+    await page.goto("about:blank");
+    await navigateToPath(page, "/docs#/zoom-deployment");
+    await expect(
+      docsRoot.getByRole("heading", { name: "Zoom Meetings Deployment Guide", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // Verify the code block paints the stone well and its code the subtle stone text.
+    const codeBlock = docsRoot.locator(".markdown-section pre").first();
+    const code = docsRoot.locator(".markdown-section pre > code").first();
+    await expect(codeBlock).toHaveCSS(
+      "background-color",
+      await resolveCssColor(codeBlock, "var(--color-stone-100)"),
+    );
+    await expect(code).toHaveCSS("color", await resolveCssColor(code, "var(--color-stone-700)"));
+  });
+
+  test("stored dark paints the phone bar and the Contents sheet @mobile", async ({ page }) => {
+    // Load the overview in stored dark.
+    await useTheme(page, { stored: "dark" });
+    await navigateToPath(page, "/docs");
+    const docsRoot = page.locator(".ocg-docs-root");
+    await expect(docsRoot.getByRole("heading", { level: 1 }).first()).toBeVisible({ timeout: 15000 });
+    await expectDarkTheme(page);
+
+    // Verify the phone root and the Contents bar paint the surface.
+    const surface = await resolveCssColor(docsRoot, "var(--color-surface)");
+    expect(surface).not.toBe(WHITE_BACKGROUND);
+    await expect(docsRoot).toHaveCSS("background-color", surface);
+    await expect(docsRoot.locator("[data-docs-bar]")).toHaveCSS("background-color", surface);
+
+    // Open Contents and verify the sheet and its head paint the raised surface.
+    const { sheet } = await openContents(page);
+    const raised = await resolveCssColor(sheet, "var(--color-raised)");
+    expect(raised).not.toBe(WHITE_BACKGROUND);
+    await expect(sheet).toHaveCSS("background-color", raised);
+    await expect(sheet.locator(".docs-sheet-head")).toHaveCSS("background-color", raised);
+  });
+
+  test("the docs switch the color theme live", async ({ page }) => {
+    // Load the overview in light and mark the document, so the switch can show it needed no reload.
+    await navigateToPath(page, "/docs");
+    const content = page.locator(".ocg-docs-root .content");
+    await expect(content).toBeVisible({ timeout: 15000 });
+    await expect(content).toHaveCSS("background-color", WHITE_BACKGROUND);
+    await page.evaluate(() => {
+      window.ocgDocsThemeDocument = true;
+    });
+
+    // Pick Dark and verify the content turns to the dark surface.
+    await pickThemeFromAccountMenu(page, "dark");
+    const surface = await resolveCssColor(content, "var(--color-surface)");
+    expect(surface).not.toBe(WHITE_BACKGROUND);
+    await expect(content).toHaveCSS("background-color", surface);
+
+    // Pick Light and verify the content is white again, in the same document.
+    await pickThemeFromAccountMenu(page, "light");
+    await expect(content).toHaveCSS("background-color", WHITE_BACKGROUND);
+    expect(await page.evaluate(() => window.ocgDocsThemeDocument)).toBe(true);
+  });
+
+  test("the docs load their stylesheets from hashed URLs", async ({ page }) => {
+    // Record the docs stylesheet requests from the first one on.
+    const requestedPaths = [];
+    page.on("request", (request) => {
+      const { pathname } = new URL(request.url());
+      if (pathname.startsWith("/static/css/docs/") || pathname.startsWith(LEGACY_DOCS_ASSETS_PATH)) {
+        requestedPaths.push(pathname);
+      }
+    });
+
+    // Load the overview.
+    await navigateToPath(page, "/docs");
+    await expect(page.locator(".markdown-section h1").first()).toBeVisible({ timeout: 15000 });
+
+    // Verify both stylesheets come from hashed URLs and nothing asks the old folder.
+    expect(requestedPaths.filter((path) => path.startsWith(LEGACY_DOCS_ASSETS_PATH))).toEqual([]);
+    expect(requestedPaths.filter((path) => !HASHED_DOCS_STYLESHEET_PATTERN.test(path))).toEqual([]);
+    expect(
+      [...new Set(requestedPaths.map((path) => HASHED_DOCS_STYLESHEET_PATTERN.exec(path)[1]))].toSorted(),
+    ).toEqual(["shell", "theme"]);
+  });
+
+  testAtBothWidths("stored dark paints no white while the docs stylesheets load", async ({ page }) => {
+    // Sample the docs backgrounds on every frame, hold the shell stylesheet and load the docs in
+    // stored dark.
+    await useTheme(page, { stored: "dark" });
+    await recordWhiteDocsBackgrounds(page);
+    const { promise: heldShell, resolve: holdShell } = Promise.withResolvers();
+    await page.route(SHELL_STYLESHEET_ROUTE, holdShell, { times: 1 });
+    const scopedSources = waitForScopedDocsSources(page);
+    // Awaited below; a failure before then must not surface as an unhandled rejection too.
+    scopedSources.catch(() => {});
+    await navigateToPath(page, "/docs");
+    const shell = await heldShell;
+
+    try {
+      // Verify the scoped styles wait for the shell, past the loader's turn after their sources
+      // arrive, and the docs root is not white meanwhile.
+      await scopedSources;
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+      expect(await page.locator(SCOPED_DOCS_STYLE_SELECTOR).count()).toBe(0);
+      expect(
+        await page
+          .locator(".ocg-docs-root")
+          .evaluate((docsRoot) => getComputedStyle(docsRoot).backgroundColor),
+      ).not.toBe(WHITE_BACKGROUND);
+    } finally {
+      // Release the shell; after a failure the page may already be closing.
+      await shell.continue().catch(() => {});
+    }
+
+    // Verify no frame painted a docs background white before the first heading rendered.
+    await expect(page.locator(".markdown-section h1").first()).toBeVisible({ timeout: 15000 });
+    await page.waitForFunction(() => window.ocgDocsBackgrounds.done);
+    const { frames, white } = await page.evaluate(() => window.ocgDocsBackgrounds);
+    expect(frames).toBeGreaterThan(0);
+    expect(white).toEqual([]);
+  });
+});
+
 /**
  * Holds the user menu response until the returned callback runs.
  * @param {import("@playwright/test").Page} page - Page about to load the docs.
@@ -681,6 +849,38 @@ const openGroupDashboardGuide = async (page) => {
 };
 
 /**
+ * Records, on every animation frame from the first script on until the first docs heading
+ * renders, which docs elements paint a white background. The result is
+ * `window.ocgDocsBackgrounds`: `{ done, frames, white }`, where `white` lists the selectors of
+ * the white samples.
+ * @param {import("@playwright/test").Page} page - Page about to load the docs.
+ * @returns {Promise<void>}
+ */
+const recordWhiteDocsBackgrounds = (page) =>
+  page.addInitScript(
+    ({ selectors, white }) => {
+      const record = { done: false, frames: 0, white: [] };
+      window.ocgDocsBackgrounds = record;
+      const sample = () => {
+        record.frames += 1;
+        for (const selector of selectors) {
+          const element = document.querySelector(selector);
+          if (element && getComputedStyle(element).backgroundColor === white) {
+            record.white.push(selector);
+          }
+        }
+        if (document.querySelector(".ocg-docs-root .markdown-section h1")) {
+          record.done = true;
+          return;
+        }
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    },
+    { selectors: DOCS_BACKGROUND_SELECTORS, white: WHITE_BACKGROUND },
+  );
+
+/**
  * Scrolls the page and waits for the position to take.
  * @param {import("@playwright/test").Page} page - Page showing the docs.
  * @param {number} scrollY - Target position.
@@ -700,22 +900,15 @@ const sidebarGuideLink = (page, slug) =>
   page.locator(`.ocg-docs-root .sidebar-nav a[href="#/guides/${slug}"]`);
 
 /**
- * Waits for the docs to render and opens the Contents sheet.
- * @param {import("@playwright/test").Page} page - Page showing the docs.
- * @returns {Promise<{
- *   contentsButton: import("@playwright/test").Locator,
- *   sheet: import("@playwright/test").Locator,
- * }>} Toggle and sheet.
+ * Waits until the vendor and theme docs stylesheets, which the loader scopes, have fully arrived.
+ * @param {import("@playwright/test").Page} page - Page about to load the docs.
+ * @returns {Promise<void>}
  */
-const openContents = async (page) => {
-  const docsRoot = page.locator(".ocg-docs-root");
-  const contentsButton = docsRoot.getByRole("button", { name: "Contents", exact: true });
-  const sheet = docsRoot.locator(".sidebar");
-  await expect(docsRoot.getByRole("heading", { level: 1 }).first()).toBeVisible({ timeout: 15000 });
-  await contentsButton.click();
-  await expect(sheet).toBeVisible();
-
-  // Wait for the slide to finish, so callers can measure the sheet.
-  await expect(sheet).toHaveCSS("transform", "none");
-  return { contentsButton, sheet };
+const waitForScopedDocsSources = async (page) => {
+  const responses = await Promise.all(
+    [/^\/static\/vendor\/css\/docsify-vue\./, /^\/static\/css\/docs\/theme\./].map((pattern) =>
+      page.waitForResponse((response) => pattern.test(new URL(response.url()).pathname)),
+    ),
+  );
+  await Promise.all(responses.map((response) => response.finished()));
 };

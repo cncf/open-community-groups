@@ -1,10 +1,10 @@
 {# Analytics chart container #}
 {# Used by public stats and dashboard analytics pages. #}
 {% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0, wrapper_class = "", has_data = true, summary = "", padding_class = "px-2 py-4 md:p-4 xl:p-6") -%}
-  <div class="bg-white border border-stone-200 rounded-lg {{ padding_class }} {{ wrapper_class }}">
+  <div class="bg-surface border border-stone-200 rounded-lg {{ padding_class }} {{ wrapper_class }}">
     {% if has_data && data.len() > min_points + 0 -%}
       <div id="{{ chart_id }}" class="{{ class }}">
-        <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
+        <svg-spinner size="size-10" class="flex items-center justify-center h-full text-stone-500">
         </svg-spinner>
       </div>
     {%- else -%}
@@ -46,7 +46,7 @@
 {# Stat card -#}
 {# Used by dashboard analytics pages for summary figures. -#}
 {% macro stat_card(title, value, description, extra_class = "") -%}
-  <div class="bg-white border border-stone-200 text-start rounded-lg p-5 {{ extra_class }}">
+  <div class="bg-surface border border-stone-200 text-start rounded-lg p-5 {{ extra_class }}">
     <div class="text-sm text-stone-600">{{ title }}</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">{{ value }}</div>
     <div class="mt-1 text-xs text-stone-500">{{ description }}</div>
@@ -63,7 +63,7 @@
   <section class="space-y-6 phone:space-y-0">
     <div class="flex flex-wrap items-center justify-between gap-4 section-strip section-strip-stone section-strip-plain phone:flex-nowrap">
       <h2 class="text-lg lg:text-xl font-semibold text-stone-900">{{ view.kind.title() }}</h2>
-      <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500 flex items-center justify-center w-[170px] phone:w-auto phone:px-3 phone:py-1.5">
+      <div class="bg-surface border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500 flex items-center justify-center w-[170px] phone:w-auto phone:px-3 phone:py-1.5">
         <div class="svg-icon size-4 icon-{{ kind }} bg-stone-500 me-2"></div>
         Total
         <span class="ms-2 text-base font-semibold text-stone-900">{{ view.section.total|num_fmt }}</span>
