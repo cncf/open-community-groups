@@ -1147,7 +1147,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     }
 
     #group-check-in-scanner-modal :has(> [data-group-check-in-video]) {
-      @apply sticky top-16 col-start-1 row-span-4 row-start-2 aspect-auto h-[calc(var(--scanner-height)-4rem)] min-h-0 self-start border-t-0 @container-size;
+      @apply sticky top-16 col-start-1 row-span-4 row-start-2 aspect-auto h-[calc(var(--scanner-height)-4rem)] min-h-0 self-start border-t-0;
+      container-type: size;
     }
 
     #group-check-in-scanner-modal [data-group-check-in-video] {
