@@ -15,9 +15,25 @@ import {
   renderChart,
 } from "/static/js/common/charts/stats.js";
 import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import { PHONE_MEDIA_QUERY, isPhoneViewport } from "/static/js/common/phone-viewport.js";
 
+const PHONE_CHART_GRID = { left: 8, right: 24, top: 56, bottom: 8, containLabel: true };
+const PHONE_MONTHLY_LABEL_TARGET = 4;
+const PHONE_VALUE_FORMAT = new Intl.NumberFormat("en", { notation: "compact" });
 const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";
 const SITE_STATS_READY_KEY = "siteStatsReady";
+
+/** Latest stats payload, kept so a phone-boundary change can re-render the charts. */
+let latestSiteStats = null;
+
+/** Media query watched to re-render when the viewport crosses the phone layout boundary. */
+let phoneViewportQuery = null;
+
+/** Whether a render is in progress, so overlapping requests coalesce instead of racing. */
+let siteStatsRendering = false;
+
+/** Whether a render was requested while one was in progress. */
+let siteStatsRenderQueued = false;
 
 /**
  * Apply public stats page legend styling without affecting dashboard charts.
@@ -50,12 +66,53 @@ const styleStatsPageLegend = (option, legendOverrides = {}) => {
 };
 
 /**
+ * Builds plain phone options: no legend, and no media rule rotating the x labels.
+ * @param {Object} option - ECharts option object.
+ * @returns {Object} Phone ECharts option.
+ */
+const getPhoneChartOption = (option) => {
+  const plainOption = option.baseOption || option;
+
+  return {
+    ...plainOption,
+    grid: PHONE_CHART_GRID,
+    legend: { show: false },
+    yAxis: {
+      ...plainOption.yAxis,
+      axisLabel: {
+        ...plainOption.yAxis?.axisLabel,
+        fontSize: 10,
+        formatter: (value) => PHONE_VALUE_FORMAT.format(value),
+      },
+    },
+  };
+};
+
+/**
+ * Applies the phone x-axis on top of a chart's own axis settings.
+ * @param {Object} option - ECharts option object.
+ * @returns {Object} ECharts option with the phone x-axis.
+ */
+const withPhoneXAxis = (option) => ({
+  ...option,
+  xAxis: {
+    ...option.xAxis,
+    axisLabel: { ...option.xAxis?.axisLabel, fontSize: 10, hideOverlap: true, rotate: 0 },
+    splitNumber: 4,
+  },
+});
+
+/**
  * Returns the target number of visible monthly x-axis labels for the viewport.
  * @returns {number} Visible label target.
  */
 const getMonthlyLabelTarget = () => {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return 8;
+  }
+
+  if (isPhoneViewport()) {
+    return PHONE_MONTHLY_LABEL_TARGET;
   }
 
   return window.matchMedia("(max-width: 640px)").matches ? 4 : 8;
@@ -72,11 +129,12 @@ const getMonthlyLabelTarget = () => {
 const initSectionCharts = async (key, label, stats = {}, palette) => {
   const section = stats[key] || {};
   const charts = [];
+  const isPhone = isPhoneViewport();
+  const styleOption = isPhone ? getPhoneChartOption : styleStatsPageLegend;
+  const finishOption = isPhone ? withPhoneXAxis : (option) => option;
 
   const runningData = section.running_total || [];
-  const runningOption = styleStatsPageLegend(
-    createAreaChart(`${label} over time`, label, runningData, palette),
-  );
+  const runningOption = styleOption(createAreaChart(`${label} over time`, label, runningData, palette));
   runningOption.xAxis = Object.assign({}, runningOption.xAxis, {
     axisLabel: Object.assign({}, runningOption.xAxis?.axisLabel, {
       formatter: "{yyyy}-{MM}",
@@ -84,11 +142,15 @@ const initSectionCharts = async (key, label, stats = {}, palette) => {
     }),
     splitNumber: getTimeSplitNumber(runningData.length),
   });
-  const runningChart = renderChart(`${key}-running-chart`, runningOption, hasTimeSeriesData(runningData));
+  const runningChart = renderChart(
+    `${key}-running-chart`,
+    finishOption(runningOption),
+    hasTimeSeriesData(runningData),
+  );
   if (runningChart) charts.push(runningChart);
 
   const monthlyData = section.per_month || [];
-  const monthlyOption = styleStatsPageLegend(
+  const monthlyOption = styleOption(
     createMonthlyBarChart(`New ${label} per Month`, label, monthlyData, palette),
   );
   const monthlyCategoryCount = monthlyOption.xAxis?.data?.length || monthlyData.length;
@@ -100,10 +162,42 @@ const initSectionCharts = async (key, label, stats = {}, palette) => {
       formatter: (value) => value,
     }),
   });
-  const monthlyChart = renderChart(`${key}-monthly-chart`, monthlyOption, hasChartData(monthlyData));
+  const monthlyChart = renderChart(
+    `${key}-monthly-chart`,
+    finishOption(monthlyOption),
+    hasChartData(monthlyData),
+  );
   if (monthlyChart) charts.push(monthlyChart);
 
   return charts;
+};
+
+/**
+ * Re-renders the stats charts when the viewport crosses the phone layout boundary. The layout is
+ * chosen per render from `isPhoneViewport()`, so a rotation or resize across the boundary would
+ * otherwise keep the previous layout until the next full render.
+ * @returns {void}
+ */
+const handlePhoneViewportChange = () => {
+  if (!latestSiteStats || !document.querySelector(SITE_STATS_DATA_SELECTOR)) {
+    return;
+  }
+
+  void initSiteStatsCharts(latestSiteStats);
+};
+
+/**
+ * Watches the phone media query, rebinding so a single listener stays registered across reloads.
+ * @returns {void}
+ */
+const watchPhoneViewport = () => {
+  if (typeof window.matchMedia !== "function") {
+    return;
+  }
+
+  phoneViewportQuery?.removeEventListener("change", handlePhoneViewportChange);
+  phoneViewportQuery = window.matchMedia(PHONE_MEDIA_QUERY);
+  phoneViewportQuery.addEventListener("change", handlePhoneViewportChange);
 };
 
 /**
@@ -116,18 +210,33 @@ export const initSiteStatsCharts = async (stats) => {
     return;
   }
 
-  await loadEChartsScript();
-  const palette = getThemePalette();
+  latestSiteStats = stats;
+  watchPhoneViewport();
 
-  const sections = [
-    { key: "groups", label: "Groups" },
-    { key: "members", label: "Members" },
-    { key: "events", label: "Events" },
-    { key: "attendees", label: "Attendees" },
-  ];
+  if (siteStatsRendering) {
+    siteStatsRenderQueued = true;
+    return;
+  }
 
-  for (const section of sections) {
-    await initSectionCharts(section.key, section.label, stats, palette);
+  siteStatsRendering = true;
+  try {
+    await loadEChartsScript();
+    const palette = getThemePalette();
+    const sections = [
+      { key: "groups", label: "Groups" },
+      { key: "members", label: "Members" },
+      { key: "events", label: "Events" },
+      { key: "attendees", label: "Attendees" },
+    ];
+
+    do {
+      siteStatsRenderQueued = false;
+      for (const section of sections) {
+        await initSectionCharts(section.key, section.label, latestSiteStats, palette);
+      }
+    } while (siteStatsRenderQueued);
+  } finally {
+    siteStatsRendering = false;
   }
 };
 

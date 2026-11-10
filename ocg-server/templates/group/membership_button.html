@@ -1,10 +1,10 @@
 {# Membership button section -#}
-<div id="membership-container">
+<div id="membership-container" class="phone:min-w-0 phone:flex-1">
 
   {# Loading spinner -#}
   <button id="loading-btn"
           disabled
-          class="group relative is-loading btn-primary-outline h-10 md:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+          class="group relative is-loading btn-primary-outline h-10 md:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:w-full phone:px-5 phone:text-sm">
     {% import "macros/ui.html" as ui -%}
     {{ ui::spinner(size = "size-4") -}}
     <span class="ms-2">Checking...</span>
@@ -14,7 +14,7 @@
   {# Sign in prompt -#}
   <button id="signin-btn"
           data-path="{{ path }}"
-          class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+          class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:w-full phone:px-5 phone:text-sm phone:enabled:btn-fill">
     <div class="svg-icon size-3 icon-user-plus"></div>
     <span>Join group</span>
   </button>
@@ -24,7 +24,7 @@
   <button id="join-btn"
           hx-post="/{{ group.community.name }}/group/{{ group.group_id }}/join"
           hx-swap="none"
-          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:w-full phone:px-5 phone:text-sm phone:enabled:btn-fill">
     <div class="svg-icon size-3 icon-user-plus"></div>
     <span>Join group</span>
   </button>
@@ -35,7 +35,7 @@
           hx-delete="/{{ group.community.name }}/group/{{ group.group_id }}/leave"
           hx-trigger="confirmed"
           hx-swap="none"
-          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px] phone:h-11 phone:w-full phone:px-5 phone:text-sm">
     <div class="svg-icon size-3 icon-cancel"></div>
     <span>Leave group</span>
   </button>

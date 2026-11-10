@@ -9,4 +9,5 @@
     - text: Exported PNG
     - button "Exported PNG Click to upload or drag and drop a file":
       - paragraph: Click to upload or drag and drop a file
+    - paragraph: Upload the PNG downloaded from your badge — not a photo.
     - button "Verify badge"

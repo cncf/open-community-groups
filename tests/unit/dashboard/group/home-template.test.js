@@ -29,7 +29,7 @@ describe("dashboard group home template", () => {
 
     // Verify the fallback keeps the standard wrapper with only the warning on mobile.
     expect(template).to.include(
-      'dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.", extra_classes = "mb-6 md:hidden")',
+      'dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.", extra_classes = "mb-6 md:hidden phone:mx-3 phone:mt-4")',
     );
     expect(template).to.include("{% if is_check_in_fallback -%}");
     expect(template).to.include('<div class="max-md:hidden">{{ content|safe }}</div>');
@@ -52,7 +52,7 @@ describe("dashboard group home template", () => {
       'dashboard::menu_item(name = "Co-hosts", icon = "cohosts", is_active = content.is_cohosts() , href = "/dashboard/group?tab=cohosts", extra_styles = "max-md:hidden")',
     );
     expect(template).to.include(
-      'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden")',
+      'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden phone:[&>a]:py-1.5")',
     );
     const eventsItem = template.indexOf('dashboard::menu_item(name = "Events"');
     const checkInItem = template.indexOf(
@@ -63,7 +63,7 @@ describe("dashboard group home template", () => {
 
     // Verify the drawer keeps a mobile-only Check-In entry for read-only groups.
     expect(template).to.include(
-      'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = is_check_in_fallback , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden")',
+      'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = is_check_in_fallback , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden phone:[&>a]:py-1.5")',
     );
   });
 
@@ -109,7 +109,7 @@ describe("dashboard group home template", () => {
     // Verify swapped dashboard content can fill the dashboard card.
     expect(template).to.include('id="dashboard-content"');
     expect(template).to.include(
-      'class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 xl:p-12"',
+      'class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 xl:p-12 phone:p-0 phone:min-h-[calc(100dvh-4rem)]"',
     );
     expect(template).to.include('hx-indicator="#dashboard-spinner" class="contents"');
   });
@@ -194,5 +194,23 @@ describe("dashboard group home template", () => {
     const dashboardContent = template.indexOf('<div id="dashboard-content"');
     expect(fallbackWarning).to.be.greaterThan(-1);
     expect(fallbackWarning).to.be.lessThan(dashboardContent);
+  });
+
+  it("names the community and group on phones through a menu button", async () => {
+    // Load the group dashboard shell before checking the check-in context button.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the button sits outside the swapped content, opens the Menu sheet and carries no text node.
+    const button = template.indexOf('<button type="button" class="group-context not-phone:hidden"');
+    expect(button).to.be.greaterThan(-1);
+    expect(button).to.be.lessThan(template.indexOf('<div id="dashboard-content"'));
+    expect(template).to.include(
+      'aria-controls="dashboard-menu-drawer" aria-expanded="false" data-dashboard-menu-open data-community-context="{{ current_selection.0.display_name }}" data-group-context="{{ current_selection.1.name }}"> <span class="svg-icon size-3 shrink-0 bg-stone-500 icon-caret-down" aria-hidden="true"></span> </button>',
+    );
+
+    // Verify the button has a name without generated content, as axe ignores ::before and ::after.
+    expect(template).to.include(
+      'aria-label="{{ current_selection.0.display_name }} · {{ current_selection.1.name }}, change group"',
+    );
   });
 });

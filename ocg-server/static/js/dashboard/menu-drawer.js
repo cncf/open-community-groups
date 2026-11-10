@@ -5,6 +5,7 @@ import {
   trapModalFocus,
   unlockBodyScroll,
 } from "/static/js/common/modals/modal-lifecycle.js";
+import { bindSheetGestures } from "/static/js/common/modals/sheet-gestures.js";
 
 const BACKDROP_ID = "dashboard-menu-backdrop";
 const CLOSE_BUTTON_ID = "close-dashboard-menu";
@@ -13,9 +14,15 @@ const DESKTOP_MEDIA_QUERY = "(min-width: 768px), (pointer: fine)";
 const DRAWER_CLOSED_CLASS = "-translate-x-full";
 const DRAWER_ID = "dashboard-menu-drawer";
 const OPEN_BUTTON_ID = "open-dashboard-menu";
+// Page controls that open the drawer too, such as the phone group context on the group dashboard.
+const OPENER_SELECTOR = `#${OPEN_BUTTON_ID}, [data-dashboard-menu-open]`;
 
 // Tracks whether the drawer currently holds the shared body scroll lock.
 let drawerHoldsScrollLock = false;
+// Releases the phone bottom-sheet drag gestures while the drawer is open, when bound.
+let releaseDrawerGestures = null;
+// Control that opened the drawer, which takes focus back on close.
+let drawerOpener = null;
 
 /**
  * Closes the dashboard menu drawer and returns focus to the open button (mobile only).
@@ -28,18 +35,19 @@ export const closeDashboardMenuDrawer = () => {
   drawer.classList.add(DRAWER_CLOSED_CLASS);
   setElementHidden(getElementById(document, BACKDROP_ID), true);
   releaseDrawerScrollLock();
+  releaseDrawerSheetGestures();
   syncDrawerHiddenState(drawer);
-  const openButton = getElementById(document, OPEN_BUTTON_ID);
-  if (openButton) {
-    openButton.setAttribute("aria-expanded", "false");
-    openButton.focus();
-  }
+  setOpenersExpanded(false);
+  const opener = drawerOpener?.isConnected ? drawerOpener : getElementById(document, OPEN_BUTTON_ID);
+  drawerOpener = null;
+  opener?.focus();
 };
 
 /**
  * Opens the dashboard menu drawer and moves focus to its close button (mobile only).
+ * @param {HTMLElement|null} [opener] - Control that opened it, the menu button when omitted
  */
-export const openDashboardMenuDrawer = () => {
+export const openDashboardMenuDrawer = (opener = null) => {
   const drawer = getElementById(document, DRAWER_ID);
   if (!drawer || !drawer.classList.contains(DRAWER_CLOSED_CLASS)) {
     return;
@@ -47,11 +55,10 @@ export const openDashboardMenuDrawer = () => {
   drawer.classList.remove(DRAWER_CLOSED_CLASS);
   setElementHidden(getElementById(document, BACKDROP_ID), false);
   acquireDrawerScrollLock();
+  releaseDrawerGestures = bindSheetGestures(drawer);
   syncDrawerHiddenState(drawer);
-  const openButton = getElementById(document, OPEN_BUTTON_ID);
-  if (openButton) {
-    openButton.setAttribute("aria-expanded", "true");
-  }
+  drawerOpener = opener;
+  setOpenersExpanded(true);
   const closeButton = getElementById(document, CLOSE_BUTTON_ID);
   if (closeButton) {
     closeButton.focus();
@@ -75,9 +82,10 @@ const acquireDrawerScrollLock = () => {
  * @param {MouseEvent} event - Click event
  */
 const handleMenuDrawerClick = (event) => {
-  if (closestElement(event.target, `#${OPEN_BUTTON_ID}`)) {
+  const opener = closestElement(event.target, OPENER_SELECTOR);
+  if (opener) {
     event.preventDefault();
-    openDashboardMenuDrawer();
+    openDashboardMenuDrawer(opener);
     return;
   }
   if (
@@ -116,6 +124,7 @@ const handleSwapDrawerCleanup = () => {
   const drawer = getElementById(document, DRAWER_ID);
   if (!drawer || drawer.classList.contains(DRAWER_CLOSED_CLASS)) {
     releaseDrawerScrollLock();
+    releaseDrawerSheetGestures();
   }
   syncDrawerHiddenState(drawer);
 };
@@ -138,21 +147,40 @@ const releaseDrawerScrollLock = () => {
 };
 
 /**
+ * Releases the phone bottom-sheet drag gestures bound while the drawer was open.
+ */
+const releaseDrawerSheetGestures = () => {
+  if (releaseDrawerGestures) {
+    releaseDrawerGestures();
+    releaseDrawerGestures = null;
+  }
+};
+
+/**
  * Resets the drawer to its closed state without moving focus. Used when history
  * navigation, page restoration, or viewport changes invalidate the open state.
  */
 const resetDrawerState = () => {
   releaseDrawerScrollLock();
+  releaseDrawerSheetGestures();
   const drawer = getElementById(document, DRAWER_ID);
   if (drawer) {
     drawer.classList.add(DRAWER_CLOSED_CLASS);
   }
   setElementHidden(getElementById(document, BACKDROP_ID), true);
-  const openButton = getElementById(document, OPEN_BUTTON_ID);
-  if (openButton) {
-    openButton.setAttribute("aria-expanded", "false");
-  }
+  drawerOpener = null;
+  setOpenersExpanded(false);
   syncDrawerHiddenState(drawer);
+};
+
+/**
+ * Reflects the drawer state on every control that opens it.
+ * @param {boolean} isExpanded - Whether the drawer is open
+ */
+const setOpenersExpanded = (isExpanded) => {
+  document.querySelectorAll(OPENER_SELECTOR).forEach((opener) => {
+    opener.setAttribute("aria-expanded", String(isExpanded));
+  });
 };
 
 /**

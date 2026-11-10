@@ -6,5 +6,8 @@
   - text: "/Capacity: \\d+ \\(Remaining: \\d+\\) in-person/"
   - link "Meetup":
     - /url: https://www.meetup.com/test-group/events/123456789/
+  - text: "/\\d+ spots? left · [A-Z][a-z]{2} +\\d+/"
   - button "Attend event"
-  - group
+  - button "Share"
+  - link "Add to calendar":
+    - /url: /e2e-test-community/group/test-group-alpha/event/alpha-event-1/calendar.ics

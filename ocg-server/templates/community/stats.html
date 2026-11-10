@@ -2,7 +2,7 @@
 
 {# Stats -#}
 {# Desktop -#}
-<div class="hidden lg:flex w-full flex-row justify-around items-center mx-auto border border-dashed border-stone-200 p-10 rounded-lg bg-white">
+<div class="hidden lg:flex w-full flex-row justify-around items-center mx-auto border-4 border-double border-stone-200 p-10 rounded-lg bg-white">
   {# Group stats -#}
   {{ stats_macros::stat_block(kind = "groups", title = "Groups", value = stats.groups) -}}
   {# End group stats -#}
@@ -28,7 +28,7 @@
 {# End desktop -#}
 
 {# Mobile -#}
-<div class="grid grid-cols-2 gap-x-0 gap-y-8 justify-around lg:hidden w-full mx-auto border border-dashed border-stone-200 rounded-lg py-6 bg-white">
+<div class="grid grid-cols-2 gap-x-0 gap-y-8 justify-around lg:hidden w-full mx-auto border-4 border-double border-stone-200 rounded-lg py-6 bg-white stat-box">
   {# Group stats -#}
   {{ stats_macros::stat_block(kind = "groups", title = "Groups", value = stats.groups, extra_styles = Some("place-self-center w-[130px] -ms-4")) -}}
   {# End group stats -#}

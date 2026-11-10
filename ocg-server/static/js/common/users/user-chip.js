@@ -73,8 +73,12 @@ export class UserChip extends LitWrapper {
     const displayName = name || username;
     const isClickable = this.displayModal;
     const initials = computeUserInitials(name, username, 2);
-    const cardSize = this.featured ? "px-5 py-4 md:py-5" : "px-4 py-3";
-    const borderState = this.featured ? "border-amber-200 bg-amber-50/50" : "border-stone-200 bg-white";
+    // The avatar's phone size sits here, because logo-image's size attribute is desktop-visible.
+    const cardSize = this.featured ? "px-5 py-4 md:py-5" : "px-4 py-3 phone:[&>logo-image>div]:size-12";
+    // Only clickable cards carry a role, so only they react to a press.
+    const borderState = this.featured
+      ? "border-amber-200 bg-amber-50/50 phone:[&[role=button]:active]:border-amber-500"
+      : "border-stone-200 bg-white phone:[&[role=button]:active]:border-primary-300";
     const avatarSize = this.featured ? "size-18 md:size-22" : "size-15 md:size-18";
     const nameSize = this.featured ? "text-lg md:text-xl" : "text-base";
     const jobSize = this.featured ? "text-sm md:text-base" : "text-[0.8rem]";
@@ -82,7 +86,7 @@ export class UserChip extends LitWrapper {
     if (this.small) {
       return html`
         <div
-          class="inline-flex items-center gap-2 rounded-full ps-1 pe-2 py-1 ${
+          class="inline-flex items-center gap-2 rounded-full ps-1 pe-2 py-1 phone:relative phone:after:absolute phone:after:inset-x-0 phone:after:-inset-y-1.5 ${
             this.featured
               ? "bg-amber-50/50 border border-amber-200 text-amber-800"
               : "bg-stone-100 border border-stone-200 text-stone-700"
@@ -116,7 +120,7 @@ export class UserChip extends LitWrapper {
 
     return html`
       <div
-        class="relative flex items-center gap-4 rounded-lg border ${cardSize} ${borderState} w-full ${
+        class="relative flex items-center gap-4 rounded-lg border ${cardSize} ${borderState} w-full phone:min-h-16 phone:gap-3 phone:px-3 phone:py-2.5 ${
           isClickable
             ? `cursor-pointer ${this.featured ? "hover:border-amber-500" : "hover:border-primary-300"} hover:shadow-sm transition-all`
             : ""
@@ -137,8 +141,20 @@ export class UserChip extends LitWrapper {
         </logo-image>
         <div class="leading-tight min-w-0">
           <div class="font-semibold text-stone-900 truncate ${nameSize}">${displayName}</div>
-          ${jobTitle ? html`<div class="text-stone-600 mt-3 truncate ${jobSize}">${jobTitle}</div>` : ""}
+          ${
+            jobTitle
+              ? html`<div class="text-stone-600 mt-3 truncate phone:mt-0.5 ${jobSize}">${jobTitle}</div>`
+              : ""
+          }
         </div>
+        ${
+          isClickable
+            ? html`<div
+                class="svg-icon ms-auto size-4 shrink-0 bg-stone-400 icon-arrow-right not-phone:hidden"
+                aria-hidden="true"
+              ></div>`
+            : ""
+        }
       </div>
     `;
   }

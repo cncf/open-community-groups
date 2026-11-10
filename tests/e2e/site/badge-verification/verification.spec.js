@@ -1,11 +1,15 @@
 import { expect, test } from "../../fixtures.js";
 
 import { TEST_GROUP_IDS } from "../../seed.js";
-import { buildE2eUrl, navigateToPath } from "../../utils.js";
+import { buildE2eUrl, getPageOverflow, navigateToPath } from "../../utils.js";
 
 const ACTIVE_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada02";
 const BADGE_STATUS_LIST_ID = "cacacaca-caca-caca-caca-cacacacaca01";
 const MEMBER_HOST_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada06";
+const PHONE_VIEWPORTS = [
+  { height: 568, width: 320 },
+  { height: 874, width: 402 },
+];
 const REVOKED_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada04";
 
 test.describe("public badge verification page", () => {
@@ -19,7 +23,10 @@ test.describe("public badge verification page", () => {
       page.getByText("Enter an OCG credential URL or ID, or upload an exported PNG.", { exact: true }),
     ).toBeVisible();
     await expect(page.getByLabel("Credential URL or ID")).toHaveAttribute("autocomplete", "off");
-    await expect(page.locator('image-field[name="png"]')).toHaveAttribute("accepted-formats", "image/png");
+    await expect(page.locator('image-field[name="png"]')).toHaveAttribute(
+      "accepted-formats",
+      ".png,image/png",
+    );
 
     // Submit an empty form and verify the accessible failure state.
     await page.getByRole("button", { name: "Verify badge" }).click();
@@ -151,5 +158,95 @@ test.describe("public badge verification page", () => {
     } else {
       expect(oversizedUploadResult.error).toBeTruthy();
     }
+  });
+
+  for (const { height, width } of PHONE_VIEWPORTS) {
+    test(`verification form fits at ${width}px @mobile`, async ({ page }) => {
+      // Load the form at this phone size.
+      await page.setViewportSize({ height, width });
+      await navigateToPath(page, "/badges/verify");
+      await expect(page.getByRole("heading", { name: "Verify an OCG badge" })).toBeVisible();
+
+      // Verify the card's 12px gutter and the 44px controls.
+      const form = await page.locator("form").boundingBox();
+      expect(form.x).toBe(12);
+      expect(form.width).toBe(width - 24);
+      expect((await page.getByLabel("Credential URL or ID").boundingBox()).height).toBe(44);
+      const button = await page.getByRole("button", { name: "Verify badge" }).boundingBox();
+      expect(button.height).toBe(44);
+      expect(button.width).toBeGreaterThan(form.width - 40);
+
+      // Verify the upload prompt tells the truth on a phone.
+      await expect(page.getByText("Tap to upload", { exact: true })).toBeVisible();
+      await expect(page.getByText("Click to upload", { exact: true })).toBeHidden();
+      await expect(page.getByText("or drag and drop a file")).toBeHidden();
+    });
+
+    test(`verification result sits above the form at ${width}px @mobile`, async ({ page }) => {
+      // Verify a credential at this phone size.
+      await page.setViewportSize({ height, width });
+      await navigateToPath(page, "/badges/verify");
+      await page.getByLabel("Credential URL or ID").fill(ACTIVE_CREDENTIAL_ID);
+      await page.getByRole("button", { name: "Verify badge" }).click();
+      await expect(page.getByText("Valid and active", { exact: true })).toBeVisible();
+
+      // Verify the answer is on screen without scrolling, with the form below it.
+      const result = await page.locator("[aria-live] article").boundingBox();
+      const form = await page.locator("form").boundingBox();
+      expect(result.y).toBeLessThan(100);
+      expect(form.y).toBeGreaterThanOrEqual(result.y + result.height);
+      expect(result.x).toBe(12);
+      expect(result.width).toBe(width - 24);
+
+      // Verify the art and title share the row and the details take the full width.
+      const art = await page.getByAltText("Host badge artwork").boundingBox();
+      const title = await page.getByRole("heading", { name: "Host" }).boundingBox();
+      const details = await page.locator("[aria-live] dl").boundingBox();
+      expect(art.width).toBe(80);
+      expect(title.x).toBeGreaterThan(art.x + art.width);
+      expect(details.x).toBeCloseTo(art.x, 0);
+      expect(details.width).toBeGreaterThan(title.width);
+    });
+  }
+
+  test("an empty verification leaves the error above the form @mobile", async ({ page }) => {
+    // Submit the empty form.
+    await navigateToPath(page, "/badges/verify");
+    await page.getByRole("button", { name: "Verify badge" }).click();
+    const alert = page.getByRole("alert");
+    await expect(alert).toBeVisible();
+
+    // Verify the alert keeps its 12px gap above the form.
+    const alertBox = await alert.boundingBox();
+    const form = await page.locator("form").boundingBox();
+    expect(form.y - (alertBox.y + alertBox.height)).toBe(12);
+  });
+
+  test("an empty live region adds no gap above the form @mobile", async ({ page }) => {
+    // Load the form with nothing to report.
+    await navigateToPath(page, "/badges/verify");
+
+    // Verify the form starts right under the section's padding.
+    const form = await page.locator("form").boundingBox();
+    const section = await page.getByRole("region", { name: "Verify an OCG badge" }).boundingBox();
+    expect(form.y - section.y).toBe(12);
+  });
+
+  test("the chosen file name stays visible after upload @mobile", async ({ page }) => {
+    // Pick a PNG on the phone form.
+    await navigateToPath(page, "/badges/verify");
+    const fileName = "IMG_20261104_123456_host_open_badge_export_final_version_copy_1.png";
+    await page.locator('image-field[name="png"] input[type="file"]').setInputFiles({
+      name: fileName,
+      mimeType: "image/png",
+      buffer: Buffer.from("png"),
+    });
+
+    // Verify the name is the sign that the pick worked.
+    await expect(page.getByText(fileName)).toBeVisible();
+    await expect(page.getByText("Tap to upload", { exact: true })).toBeVisible();
+
+    // Verify a name with no break points wraps inside the page.
+    expect(await getPageOverflow(page)).toBeLessThanOrEqual(0);
   });
 });

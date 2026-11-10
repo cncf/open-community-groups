@@ -67,11 +67,11 @@ test.describe("event registration windows", () => {
     await expect(getTicketModal(member2Page)).toBeHidden();
   });
 
-  test("registration deadline is truncated on mobile @mobile", async ({ member2Page }) => {
+  test("registration deadline wraps on mobile @mobile", async ({ member2Page }) => {
     // Load an event with a registration deadline on a mobile viewport.
     await navigateToRegistrationWindowEvent(member2Page, TEST_REGISTRATION_WINDOW_EVENTS.paidOpen);
 
-    // Verify the full deadline is truncated without widening the page.
+    // Verify the full deadline wraps without widening the page.
     const message = member2Page.locator("[data-registration-window-message-display]");
     const icon = member2Page.locator("[data-registration-window-message-container] .icon-calendar");
     await expect(message).toBeVisible();
@@ -81,9 +81,7 @@ test.describe("event registration windows", () => {
 
       return {
         clientWidth: node.clientWidth,
-        overflow: styles.overflow,
         scrollWidth: node.scrollWidth,
-        textOverflow: styles.textOverflow,
         whiteSpace: styles.whiteSpace,
       };
     });
@@ -91,11 +89,9 @@ test.describe("event registration windows", () => {
       Math.max(document.body.scrollWidth, document.documentElement.scrollWidth),
     );
 
-    // Verify the truncated layout keeps the document within the viewport.
-    expect(layout.overflow).toBe("hidden");
-    expect(layout.textOverflow).toBe("ellipsis");
-    expect(layout.whiteSpace).toBe("nowrap");
-    expect(layout.scrollWidth).toBeGreaterThan(layout.clientWidth);
+    // Verify nothing is cut and the document stays within the viewport.
+    expect(layout.whiteSpace).toBe("normal");
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
     expect(documentWidth).toBeLessThanOrEqual(member2Page.viewportSize()?.width ?? 0);
   });
 

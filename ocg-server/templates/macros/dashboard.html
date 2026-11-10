@@ -268,8 +268,8 @@
 {# Used by dashboards to cover unsupported content on small touch screens and point to the
    desktop version option in the user menu. Fine pointers keep the md layout instead (see the
    md variant in styles.src.css). -#}
-{% macro mobile_notice() -%}
-  <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">
+{% macro mobile_notice(extra_styles = "") -%}
+  <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden {{ extra_styles }}">
     <div class="max-w-md rounded-lg border-4 border-dashed border-primary-600 bg-stone-100 p-8 text-center text-stone-800">
       <p class="text-xl font-medium">This dashboard is not optimized yet for mobile devices</p>
       <p class="hidden pointer-coarse:block text-sm text-stone-600 mt-4">
@@ -527,7 +527,7 @@
   {% let dot -%}{% if dot_tone.is_empty() %}{{ tone }}{% else %}{{ dot_tone }}{% endif %}{%- endlet -%}
   <span class="group/tooltip-trigger relative inline-flex shrink-0">
     <button type="button"
-            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 phone:before:-inset-y-[13px]"
             {% if !aria_label.is_empty() %}aria-label="{{ aria_label }}"{% endif %}
             aria-describedby="{{ tooltip_id }}">
       <span class="custom-badge badge-{{ tone }}"

@@ -547,4 +547,89 @@ describe("attendance availability", () => {
     expect(container.querySelector('[value="ticket-private"]')).to.equal(null);
     expect(container.textContent).to.not.include("Invitation-only details");
   });
+
+  describe("phone bar summary", () => {
+    /** Renders availability over a summary line and returns its span. */
+    const renderSummary = (availability) => {
+      document.body.innerHTML = `
+        <div data-attendance-container>
+          <span data-availability-summary></span>
+        </div>
+      `;
+      renderAttendanceAvailability(document.querySelector("[data-attendance-container]"), {
+        canceled: false,
+        capacity: 10,
+        remaining_capacity: 4,
+        ticket_types: [],
+        ...availability,
+      });
+
+      return document.querySelector("[data-availability-summary]");
+    };
+
+    it("writes the remaining spots", () => {
+      // Assert the plural and singular forms.
+      expect(renderSummary({ remaining_capacity: 30 }).textContent).to.equal("30 spots left");
+      expect(renderSummary({ remaining_capacity: 1 }).textContent).to.equal("1 spot left");
+      expect(renderSummary({ remaining_capacity: 1 }).hasAttribute("data-sold-out")).to.equal(false);
+    });
+
+    it("marks a full event as sold out", () => {
+      [0, -2].forEach((remaining) => {
+        const summary = renderSummary({ remaining_capacity: remaining });
+
+        expect(summary.textContent).to.equal("Sold out");
+        expect(summary.hasAttribute("data-sold-out")).to.equal(true);
+      });
+    });
+
+    it("stays empty for uncapped and canceled events, so the kind shows", () => {
+      // An empty span is what lets the kind show.
+      const uncapped = renderSummary({ capacity: null, remaining_capacity: null });
+      expect(uncapped.textContent).to.equal("");
+
+      const canceled = renderSummary({ canceled: true, remaining_capacity: 0 });
+      expect(canceled.textContent).to.equal("");
+      expect(canceled.hasAttribute("data-sold-out")).to.equal(false);
+    });
+
+    it("clears sold out when spots return", () => {
+      // Render a full event, then fresh availability with a spot back.
+      const summary = renderSummary({ remaining_capacity: 0 });
+      renderAttendanceAvailability(document.querySelector("[data-attendance-container]"), {
+        capacity: 10,
+        remaining_capacity: 2,
+        ticket_types: [],
+      });
+
+      expect(summary.textContent).to.equal("2 spots left");
+      expect(summary.hasAttribute("data-sold-out")).to.equal(false);
+    });
+
+    it("leaves the summary empty until availability arrives", async () => {
+      // The server renders no count, so unhydrated pages show the kind.
+      const response = await fetch("/ocg-server/templates/event/attend_button.html");
+      const template = await response.text();
+
+      expect(template).to.include("<span data-availability-summary></span>");
+    });
+
+    it("does not touch the strict caption locators", () => {
+      // Add the captions e2e reads as single elements.
+      document.body.innerHTML = `
+        <div data-attendance-container>
+          <span data-availability-remaining></span>
+          <span data-availability-summary></span>
+        </div>
+      `;
+      renderAttendanceAvailability(document.querySelector("[data-attendance-container]"), {
+        capacity: 10,
+        remaining_capacity: 4,
+        ticket_types: [],
+      });
+
+      expect(document.querySelector("[data-availability-remaining]").textContent).to.equal("4");
+      expect(document.querySelector("[data-availability-summary]").textContent).to.equal("4 spots left");
+    });
+  });
 });

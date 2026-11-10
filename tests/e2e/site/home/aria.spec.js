@@ -19,7 +19,7 @@ test.describe("site home page ARIA snapshots", () => {
     const introduction = await openSiteHome(page);
 
     // Capture the introduction; its stats are counts other tests change.
-    await expectAriaSnapshot(page, introduction, "home-introduction");
+    await expectAriaSnapshot(page, introduction, "home-introduction-mobile");
   });
 });
 

@@ -13,6 +13,7 @@ import {
   handleBeforeRequest,
   handleConfigRequest,
 } from "/static/js/event/attendance/request-handlers.js";
+import "/static/js/event/directions-link.js";
 
 /**
  * Initializes attendance handlers for the current page.

@@ -52,14 +52,16 @@ const CANCEL_ACTION_ICON = "icon-cancel";
 const REQUEST_INVITATION_ICON = "icon-request-invitation";
 
 const CANCEL_CHECKOUT_TITLE = "Release this ticket hold and choose again.";
+const INVITATION_PENDING_BAR_REASON = "Awaiting organizer approval.";
 const INVITATION_PENDING_TITLE = "Your invitation request is waiting for organizer review.";
 const INVITATION_REJECTED_TITLE = "Your invitation request was rejected.";
 const NO_CAPACITY_TITLE = "This event has no attendee capacity.";
 const PAST_EVENT_TITLE = "You cannot change attendance because the event has already started.";
 const REFUND_CLOSED_TITLE = "Refunds are no longer available for this ticket.";
+const REFUND_PENDING_BAR_REASON = "Awaiting organizer review.";
 const REFUND_PENDING_TITLE = "Your refund request is waiting for organizer review.";
 const REFUND_PROCESSING_TITLE = "Your refund is being processed.";
-const REFUND_REJECTED_TITLE = "Your refund request was rejected. Contact the organizers for help.";
+const REFUND_REJECTED_TITLE = "Contact the organizers for help.";
 const SOLD_OUT_TITLE = "This event is sold out.";
 const TICKETS_BY_INVITATION_TITLE = "Tickets for this event are available by invitation only.";
 const TICKETS_UNAVAILABLE_TITLE = "Tickets are not currently available for this event.";
@@ -176,6 +178,7 @@ export const renderMeetingDetails = (isAttendee, meta) => {
   joinLinksLive.forEach((link) => {
     setElementHidden(link, !showAttendeeMeetingAccess);
     link.classList.toggle("xl:flex", showAttendeeMeetingAccess);
+    link.classList.toggle("phone:flex", showAttendeeMeetingAccess);
   });
 
   const joinLinksMenu = document.querySelectorAll("[data-join-link-menu]");
@@ -384,6 +387,7 @@ export const showPendingApprovalAttendanceState = (container, meta) => {
     "leaveButton",
     withEventActionState(meta, {
       ariaLabel: REQUEST_PENDING_CANCEL_ARIA_LABEL,
+      barReason: INVITATION_PENDING_BAR_REASON,
       icon: CANCEL_ACTION_ICON,
       label: REQUEST_PENDING_LABEL,
       title: INVITATION_PENDING_TITLE,
@@ -648,11 +652,12 @@ const getDefaultAttendLabel = (meta) => {
  * Returns the attendee refund-control state for the current response.
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
  * @param {{can_request_refund?: boolean, purchase_amount_minor?: number, refund_rejection_reason?: string, refund_request_status?: string}} response - Attendance response
- * @returns {{disabled?: boolean, label?: string|null, title?: string|null}} Render state
+ * @returns {{barReason?: string|null, disabled?: boolean, label?: string|null, title?: string|null}} Render state
  */
 const getRefundState = (meta, response) => {
   if (response.refund_request_status === "pending") {
     return {
+      barReason: REFUND_PENDING_BAR_REASON,
       disabled: true,
       label: REFUND_REQUESTED_LABEL,
       title: REFUND_PENDING_TITLE,
@@ -860,6 +865,7 @@ const renderControl = (control, state = {}) => {
 
   const {
     ariaLabel = null,
+    barReason = null,
     disabled = false,
     hidePriceBadge = false,
     icon = null,
@@ -911,6 +917,14 @@ const renderControl = (control, state = {}) => {
     control.title = title;
   } else {
     control.removeAttribute("title");
+  }
+
+  // The phone bar surfaces this copy as the left-hand reason for enabled
+  // controls that still need an explanation (for example, pending approval).
+  if (barReason) {
+    control.dataset.barReasonText = barReason;
+  } else {
+    delete control.dataset.barReasonText;
   }
 
   if (control instanceof HTMLButtonElement) {

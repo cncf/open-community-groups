@@ -61,6 +61,28 @@ const DASHBOARD_TABS = [
   },
 ];
 
+// Dashboard tabs rendered on phones, with their own scan keys. `fixture` signs in the page.
+const MOBILE_DASHBOARD_TABS = [
+  {
+    fixture: "pending2Page",
+    name: "check-in",
+    open: (page) => navigateToPath(page, "/dashboard/user?tab=check-in"),
+    ready: (page) => page.locator("[data-user-check-in-open]").first(),
+  },
+  {
+    fixture: "checkInManagerGroupPage",
+    name: "group check-in",
+    open: (page) => navigateToPath(page, "/dashboard/group?tab=check-in"),
+    ready: (page) => page.locator("[data-group-check-in-open]").first(),
+  },
+  {
+    fixture: "pending1Page",
+    name: "invitations",
+    open: (page) => navigateToPath(page, "/dashboard/user?tab=invitations"),
+    ready: (page) => page.getByRole("button", { name: "Approve" }).first(),
+  },
+];
+
 test.describe("dashboard tabs axe scan", () => {
   for (const dashboardTab of DASHBOARD_TABS) {
     test(`${dashboardTab.name} has no critical or serious axe violations`, async ({ pageAs }) => {
@@ -76,6 +98,21 @@ test.describe("dashboard tabs axe scan", () => {
 
       // Verify the rendered view against the critical/serious baseline.
       await expectNoAxeViolations(page, { scan: `dashboard ${dashboardTab.name}` });
+    });
+  }
+});
+
+test.describe("dashboard tabs mobile axe scan @mobile", () => {
+  for (const dashboardTab of MOBILE_DASHBOARD_TABS) {
+    test(`${dashboardTab.name} has no critical or serious axe violations`, async ({ pageAs }) => {
+      // Open the seeded tab and let HTMX finish any swaps before scanning.
+      const page = await pageAs(dashboardTab.fixture);
+      await dashboardTab.open(page);
+      await expect(dashboardTab.ready(page)).toBeVisible({ timeout: 15_000 });
+      await waitForHtmxSettle(page);
+
+      // Verify the rendered tab against the critical/serious baseline.
+      await expectNoAxeViolations(page, { scan: `${dashboardTab.name} mobile` });
     });
   }
 });

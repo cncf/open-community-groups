@@ -1,4 +1,4 @@
-import { showConfirmAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import { showConfirmAlert, showSigninPrompt } from "/static/js/common/alerts.js";
 import { closestElement, isElementHidden } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
@@ -56,14 +56,9 @@ export const handleAttendanceClick = (event) => {
   const signinButton = closestElement(event.target, '[data-attendance-role="signin-btn"]');
   if (signinButton instanceof HTMLElement) {
     const path = signinButton.dataset.path || window.location.pathname;
-    const nextUrl = encodeURIComponent(path);
     const label = getAttendanceControlLabel(signinButton) || ATTEND_EVENT_LABEL;
-    const actionText = getSigninActionText(label);
 
-    showInfoAlert(
-      `You need to be <a href='/log-in?next_url=${nextUrl}' class='underline font-medium' hx-boost='true'>logged in</a> to ${actionText}.`,
-      true,
-    );
+    showSigninPrompt(getSigninActionText(label), path);
     return;
   }
 

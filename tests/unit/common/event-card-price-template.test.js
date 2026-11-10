@@ -35,7 +35,7 @@ describe("event card templates", () => {
     );
     expect(template).not.to.include("group-hover:text-primary-600");
     expect(template).to.include(
-      '{{ event.name }} </span> {{ cohosts::cohosts_line(event.cohosts) -}} <span class="mt-auto flex min-h-[17px] flex-wrap items-end gap-2">{{ caller() }}</span>',
+      '{{ event.name }} </span> {{ cohosts::cohosts_line(event.cohosts) -}} <span class="mt-auto flex min-h-[17px] flex-wrap items-end gap-2 phone:w-full phone:pt-1">{{ caller() }}</span>',
     );
     expect(template).not.to.include("status_before_title");
   });

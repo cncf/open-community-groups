@@ -15,12 +15,18 @@
 {% endblock anchor_attributes %}
 
 {% block logo -%}
-  {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px]", size = 88) -}}
+  {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px] phone:h-12 phone:w-12 phone:min-w-12 phone:border-[3px]", size = 88) -}}
 {% endblock logo %}
 
 {% block corner_badge -%}
   {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
 {% endblock corner_badge %}
+
+{% block top_row_classes -%}
+  {% if event.capacity.is_some() && event.capacity.unwrap() > 0 && event.remaining_capacity.is_some() && event.remaining_capacity.unwrap() == 0 -%}
+    phone:pe-9
+  {% endif -%}
+{% endblock top_row_classes %}
 
 {% block content_stack_classes -%}
   md:min-h-[88px]
@@ -31,12 +37,12 @@
 {% endblock title_classes %}
 
 {% block preheader -%}
-  <span>
-    <span class="hidden text-primary-500 sm:inline">{{ event.community_display_name }}</span>
-    <span class="px-1 hidden sm:inline">·</span>
-    <span>{{- event.group_name -}}</span>
-    <span class="px-1 hidden sm:inline">·</span>
-    <span class="hidden sm:inline">{{ event.group_category_name }}</span>
+  <span class="phone:flex phone:min-w-0 phone:items-baseline">
+    <span class="hidden text-primary-500 sm:inline phone:hidden">{{ event.community_display_name }}</span>
+    <span class="px-1 hidden sm:inline phone:hidden">·</span>
+    <span class="phone:min-w-0 phone:truncate">{{- event.group_name -}}</span>
+    <span class="px-1 hidden sm:inline phone:hidden">·</span>
+    <span class="hidden sm:inline phone:hidden">{{ event.group_category_name }}</span>
   </span>
 {%- endblock preheader %}
 
@@ -44,7 +50,7 @@
   {% if event.cohosts.is_empty() -%}
     !line-clamp-2
   {% else -%}
-    !line-clamp-1
+    !line-clamp-1 phone:!line-clamp-2
   {% endif -%}
 {% endblock title_line_clamp_classes %}
 
@@ -63,9 +69,15 @@
   {% endif -%}
   {% if !event.cohosts.is_empty() -%}
     {# One-line title and description keep the co-hosts credit on the logo bottom edge. -#}
-    <div class="mt-auto min-w-0">{{ cohosts::cohosts_line(event.cohosts) -}}</div>
+    <div class="mt-auto min-w-0 phone:hidden">{{ cohosts::cohosts_line(event.cohosts) -}}</div>
   {% endif -%}
 {% endblock inline_details %}
+
+{% block below_top_row -%}
+  {% if !event.cohosts.is_empty() -%}
+    <div class="min-w-0 px-3.5 pt-3 not-phone:hidden">{{ cohosts::cohosts_line(event.cohosts, "!mt-0") -}}</div>
+  {% endif -%}
+{% endblock below_top_row %}
 
 {% block details -%}
   {% if let Some(description_short) = &event.description_short -%}

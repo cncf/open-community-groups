@@ -2,9 +2,10 @@
 <footer class="flex-none bg-stone-950 text-center text-white text-surface/75 lg:text-left"
         role="contentinfo"
         aria-label="Site footer">
+  {# Phones space the logo, GitHub icon, rule and copy by the 28px bottom padding; the gap and padding around the icon leave room for its 8px hover padding. -#}
   <div class="px-8 py-7 lg:px-16 lg:py-12">
-    <div class="pb-8 sm:pb-10 text-center md:text-left">
-      <div class="flex flex-col justify-between items-center gap-6 md:flex-row">
+    <div class="pb-8 sm:pb-10 text-center md:text-left phone:pb-5">
+      <div class="flex flex-col justify-between items-center gap-6 md:flex-row phone:gap-5">
         {# Footer logo -#}
         {% if let Some(footer_logo_url) = &self.site_settings.footer_logo_url -%}
           <div class="inline-flex">
@@ -31,7 +32,7 @@
     </div>
 
     {# Copyright section -#}
-    <div class="pt-8 border-solid border-0 border-t border-stone-800 text-xs text-stone-300">
+    <div class="pt-8 border-solid border-0 border-t border-stone-800 text-xs text-stone-300 phone:pt-7">
       {% if let Some(copyright_notice) = &self.site_settings.copyright_notice -%}
         <div class="mb-4 copyright">{{ copyright_notice|md_to_html|safe }}</div>
       {% endif -%}

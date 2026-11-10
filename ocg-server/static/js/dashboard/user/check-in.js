@@ -1,10 +1,12 @@
 import { initializeOnReadyAndHtmxLoad, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { toggleModalVisibility, trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
+import { holdScreenAwake } from "/static/js/common/phone-viewport.js";
 import { computeUserInitials } from "/static/js/common/users/initials.js";
 
 const MODAL_ID = "user-check-in-modal";
 let activeRoot = null;
+let releaseScreen = () => {};
 
 /**
  * Initializes the attendee credential modal.
@@ -22,6 +24,7 @@ export const initializeUserCheckIn = (container = document, { historyRestore = f
   }
   if (historyRestore) {
     activeRoot = null;
+    releaseScreen();
     delete root.dataset.userCheckInReady;
   }
   if (!markDatasetReady(root, "userCheckInReady")) {
@@ -39,6 +42,8 @@ export const initializeUserCheckIn = (container = document, { historyRestore = f
       populateUserCheckInModal(root, trigger);
       toggleModalVisibility(modal, trigger);
       activeRoot = root;
+      releaseScreen();
+      releaseScreen = holdScreenAwake();
       return;
     }
 
@@ -109,17 +114,20 @@ export const populateUserCheckInModal = (root, trigger) => {
 const closeUserCheckInModal = (root, modal) => {
   if (!isElementHidden(modal)) toggleModalVisibility(modal);
   if (activeRoot === root) activeRoot = null;
+  releaseScreen();
 };
 
 /** Loads a credential image with visible progress and recovery controls. */
 const loadQrImage = (root, eventName, url) => {
   const image = root.querySelector("#user-check-in-qr-image");
+  const caption = root.querySelector("[data-user-check-in-qr-caption]");
   const retry = root.querySelector("[data-user-check-in-qr-retry]");
   const status = root.querySelector("[data-user-check-in-qr-status]");
   if (!(image instanceof HTMLImageElement)) return;
 
   image.classList.add("hidden");
   retry?.classList.add("hidden");
+  caption?.classList.remove("hidden");
   if (status) {
     status.classList.remove("hidden");
     status.textContent = "Loading QR code…";
@@ -135,6 +143,7 @@ const loadQrImage = (root, eventName, url) => {
     image.removeAttribute("src");
     if (status) status.textContent = "The QR code could not be loaded. Try again.";
     retry?.classList.remove("hidden");
+    caption?.classList.add("hidden");
   };
   image.removeAttribute("src");
   if (url) {

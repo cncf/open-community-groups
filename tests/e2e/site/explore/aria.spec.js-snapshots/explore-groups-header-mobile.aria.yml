@@ -1,7 +1,15 @@
 - /children: deep-equal
-- button "Open filters"
+- heading "Explore" [level=1]
+- group "Show":
+  - button "Events"
+  - button "Groups" [pressed]
 - textbox "Search groups"
 - button "Search"
+- button "Open filters, 1 active"
+- paragraph: Active filters
+- button "Reset"
+- group "Applied filters":
+  - button "Remove filter Platform Engineering Community": Platform Engineering Community
 - text: /\d+ - \d+ of \d+ results Sort by/
 - combobox "Sort by":
   - option "Date"

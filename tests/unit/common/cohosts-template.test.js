@@ -21,6 +21,20 @@ const loadTemplate = async (path) => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("co-hosts templates", () => {
+  it("stacks the co-hosts box in one column on phones", async () => {
+    // Load the shared co-hosts macros.
+    const template = normalizeWhitespace(await loadTemplate("/ocg-server/templates/macros/cohosts.html"));
+    const box = template.slice(
+      template.indexOf("{% macro cohosts_box"),
+      template.indexOf("{% endmacro cohosts_box"),
+    );
+
+    // Verify the desktop grid stays and phones override it, with 44px links.
+    expect(box).to.include("sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 phone:grid-cols-1 phone:gap-2");
+    expect(box.match(/p-4 phone:px-3 phone:py-2\.5/g)).to.have.length(2);
+    expect(box).to.include("focus-visible:outline-primary-500 phone:min-h-11");
+  });
+
   it("credits co-hosts on cards with plain text instead of nested links", async () => {
     // Load the shared co-hosts macros.
     const template = normalizeWhitespace(await loadTemplate("/ocg-server/templates/macros/cohosts.html"));
@@ -91,11 +105,13 @@ describe("co-hosts templates", () => {
 
     // Verify the title matches the event date and location panels.
     expect(box).to.include(
-      '<div class="mb-4 flex min-h-[25px] items-center justify-between"> <div class="text-base/3 font-semibold uppercase text-stone-400">Co-hosted with</div>',
+      '<div class="mb-4 flex min-h-[25px] items-center justify-between section-strip phone:-mx-3"> <div class="text-base/3 font-semibold uppercase text-stone-400 section-strip-title phone:font-bold phone:text-inherit">Co-hosted with</div>',
     );
 
     // Verify co-hosts share one dashed box with responsive equal-width columns.
-    expect(box).to.include('<div class="rounded-lg border border-dashed border-stone-200 bg-white p-4">');
+    expect(box).to.include(
+      '<div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 phone:px-3 phone:py-2.5">',
+    );
     expect(box).to.include("grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4");
 
     // Verify each group shows its square logo with the community over the truncated name.
@@ -132,9 +148,11 @@ describe("co-hosts templates", () => {
     ]);
 
     // Verify the credit line and the owner preheader on co-hosted group cards.
-    expect(normalizeWhitespace(smallCard)).to.include("{{ cohosts::cohosts_line(event.cohosts) -}}");
+    expect(normalizeWhitespace(smallCard)).to.include(
+      '{{ cohosts::cohosts_line(event.cohosts, "phone:hidden") -}}',
+    );
     expect(normalizeWhitespace(exploreCard)).to.include(
-      '<div class="mt-auto min-w-0">{{ cohosts::cohosts_line(event.cohosts) -}}</div>',
+      '<div class="mt-auto min-w-0 phone:hidden">{{ cohosts::cohosts_line(event.cohosts) -}}</div>',
     );
     expect(normalizeWhitespace(exploreCard)).to.include(
       "{% if event.cohosts.is_empty() -%}line-clamp-2{% else -%}line-clamp-1{% endif -%}",
@@ -143,15 +161,23 @@ describe("co-hosts templates", () => {
       "{% if cohosted_by_page_group -%} <span>Hosted by {{ event.group_name -}}</span>",
     );
 
-    // Verify co-hosted card titles stay on one line.
+    // Verify co-hosted card titles stay on one line, except on phones.
     const oneLineTitle =
-      "{% block title_line_clamp_classes -%} {% if event.cohosts.is_empty() -%} !line-clamp-2 {% else -%} !line-clamp-1 {% endif -%} {% endblock title_line_clamp_classes %}";
+      "{% block title_line_clamp_classes -%} {% if event.cohosts.is_empty() -%} !line-clamp-2 {% else -%} !line-clamp-1 phone:!line-clamp-2 {% endif -%} {% endblock title_line_clamp_classes %}";
     expect(normalizeWhitespace(smallCard)).to.include(oneLineTitle);
     expect(normalizeWhitespace(exploreCard)).to.include(oneLineTitle);
 
-    // Verify card text uses the full width instead of reserving ribbon space.
-    expect(smallCard).not.to.include("top_row_classes");
-    expect(exploreCard).not.to.include("top_row_classes");
+    // Verify phones move the credit under the logo, across the full card width.
+    const phoneCreditRow =
+      '{% block below_top_row -%} {% if !event.cohosts.is_empty() -%} <div class="min-w-0 px-3.5 pt-3 not-phone:hidden">{{ cohosts::cohosts_line(event.cohosts, "!mt-0") -}}</div> {% endif -%} {% endblock below_top_row %}';
+    expect(normalizeWhitespace(smallCard)).to.include(phoneCreditRow);
+    expect(normalizeWhitespace(exploreCard)).to.include(phoneCreditRow);
+
+    // Verify card text only reserves ribbon space on sold-out cards on phones.
+    const soldOutTopRow =
+      "{% block top_row_classes -%} {% if event.capacity.is_some() && event.capacity.unwrap() > 0 && event.remaining_capacity.is_some() && event.remaining_capacity.unwrap() == 0 -%} phone:pe-9 {% endif -%} {% endblock top_row_classes %}";
+    expect(normalizeWhitespace(smallCard)).to.include(soldOutTopRow);
+    expect(normalizeWhitespace(exploreCard)).to.include(soldOutTopRow);
 
     // Verify calendar popovers inherit the one-line rule with a smaller title.
     const calendarCard = normalizeWhitespace(

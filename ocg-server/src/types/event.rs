@@ -577,6 +577,30 @@ impl EventFull {
         false
     }
 
+    /// Returns the Google Maps directions URL for the event venue, if it has one.
+    ///
+    /// Coordinates are preferred over the location text. Virtual events have no
+    /// venue, so they never get a URL.
+    pub fn directions_url(&self) -> Option<String> {
+        // Virtual events have no venue to navigate to
+        if self.kind == EventKind::Virtual {
+            return None;
+        }
+
+        // Select the most precise destination available
+        let destination = match (self.latitude, self.longitude) {
+            (Some(latitude), Some(longitude)) => format!("{latitude},{longitude}"),
+            _ => self.location(usize::MAX)?,
+        };
+
+        // Encode the destination as a query parameter
+        let query =
+            serde_urlencoded::to_string([("api", "1"), ("destination", destination.as_str())])
+                .ok()?;
+
+        Some(format!("https://www.google.com/maps/dir/?{query}"))
+    }
+
     /// Check if event reminders are enabled.
     pub fn event_reminder_is_enabled(&self) -> bool {
         self.event_reminder_enabled.unwrap_or(true)

@@ -6,7 +6,7 @@
     - link "Home":
       - /url: /
     - link "Explore":
-      - /url: /explore?community[0]=cncf&entity=events
+      - /url: /explore?entity=events
     - link "Stats":
       - /url: /stats
     - link "Docs":

@@ -93,13 +93,9 @@ describe("common header template", () => {
 
     // Verify each shortcut group follows and is named by its dashboard link.
     const groupLinkIndex = indexOf('<a id="user-menu-group-dashboard-link"');
-    const groupShortcutsIndex = indexOf(
-      '</a> <ul role="group" aria-labelledby="user-menu-group-dashboard-link">',
-    );
+    const groupShortcutsIndex = indexOf('<ul role="group" aria-labelledby="user-menu-group-dashboard-link">');
     const userLinkIndex = indexOf('<a id="user-menu-user-dashboard-link"');
-    const userShortcutsIndex = indexOf(
-      '</a> <ul role="group" aria-labelledby="user-menu-user-dashboard-link">',
-    );
+    const userShortcutsIndex = indexOf('<ul role="group" aria-labelledby="user-menu-user-dashboard-link">');
     expect(indexOf('<a href="/dashboard/community"')).to.be.lessThan(groupLinkIndex);
     expect(groupLinkIndex).to.be.lessThan(groupShortcutsIndex);
     expect(groupShortcutsIndex).to.be.lessThan(userLinkIndex);
@@ -171,5 +167,127 @@ describe("common header template", () => {
     expect(calls[0].index).to.be.lessThan(logoutIndex);
     expect(logoutIndex).to.be.lessThan(guestMenuIndex);
     expect(calls[1].index).to.be.greaterThan(guestMenuIndex);
+  });
+
+  it("adds the phone Invitations row after Check in", async () => {
+    // Load the header template and isolate the logged-in menu.
+    const template = normalizeWhitespace(await loadTemplate());
+    const loggedInMenu = template.slice(
+      0,
+      template.indexOf("{# User dropdown menu for non-logged users -#}"),
+    );
+
+    // Verify the row has the check-in shape and only renders on phones.
+    expect(loggedInMenu).to.include(
+      '<li class="not-phone:hidden" role="none"> <a href="/dashboard/user?tab=invitations" hx-boost="true" hx-target="body" class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100" role="menuitem"> <div class="flex items-center"> <div class="svg-icon size-4 icon-pending-invitation bg-stone-600"></div> <div class="ms-2 text-xs/6">Invitations</div>',
+    );
+
+    // Verify it sits between Check in and the desktop shortcuts.
+    const invitationsIndex = loggedInMenu.indexOf('href="/dashboard/user?tab=invitations"');
+    expect(invitationsIndex).to.be.greaterThan(loggedInMenu.indexOf('href="/dashboard/user?tab=check-in"'));
+    expect(invitationsIndex).to.be.lessThan(loggedInMenu.indexOf('href="/dashboard/user?tab=groups"'));
+  });
+
+  it("labels the phone dashboard shortcuts without adding links", async () => {
+    // Load the logged-in menu.
+    const template = normalizeWhitespace(await loadTemplate());
+    const loggedInMenu = template.slice(
+      0,
+      template.indexOf("{# User dropdown menu for non-logged users -#}"),
+    );
+
+    // Verify each shortcut group gets a phone-only, decorative label before it.
+    expect(loggedInMenu).to.include(
+      '<div class="title-preheader not-phone:hidden px-3 pt-2 pb-1" aria-hidden="true">Group dashboard</div> <ul role="group" aria-labelledby="user-menu-group-dashboard-link">',
+    );
+
+    // Verify the user label only splits the list when group shortcuts exist too.
+    expect(loggedInMenu).to.include(
+      '{% if user.belongs_to_any_group_team.unwrap_or(false) -%} <div class="title-preheader not-phone:hidden px-3 pt-2 pb-1" aria-hidden="true">User dashboard</div> {% endif -%} <ul role="group" aria-labelledby="user-menu-user-dashboard-link">',
+    );
+  });
+
+  it("shows the site title on phones when there is no logo, except where it repeats", async () => {
+    // Load the header template before checking the logo fallback.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the fallback is guarded on logos, dashboards and Home.
+    expect(template).to.include(
+      '{% let shows_phone_title = site_settings.header_logo_url.is_none() && !path.starts_with("/dashboard") && path != "/" -%}',
+    );
+
+    // Verify it swaps the desktop link for a phone-only one named after the visible title.
+    expect(template).to.include(
+      'class="inline-flex phone:min-w-0 {% if shows_phone_title %}phone:hidden{% endif %}">',
+    );
+    expect(template).to.include(
+      '{% if shows_phone_title -%} <a href="/" aria-label="Go to {{ site_settings.title }} homepage" class="not-phone:hidden flex items-center min-w-0 h-11 me-3"> <span class="truncate text-lg font-semibold text-stone-900">{{ site_settings.title }}</span> </a> {% endif -%}',
+    );
+  });
+
+  it("marks both user menus as the account sheet", async () => {
+    // Load the header template before checking the sheet hooks.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the single dropdown stays a menu in both variants.
+    expect([...template.matchAll(/<div id="user-dropdown"/g)]).to.have.lengthOf(2);
+    expect(
+      [...template.matchAll(/rounded-lg shadow border border-stone-200 account-sheet" role="menu">/g)],
+    ).to.have.lengthOf(2);
+    expect(
+      [
+        ...template.matchAll(
+          /<ul class="text-stone-700 my-2 sheet-panel sheet-body" role="none"> \{\{ header::account_sheet_head\(\) -\}\}/g,
+        ),
+      ],
+    ).to.have.lengthOf(2);
+
+    // Verify the guest actions become pills with DOM order unchanged.
+    const signUpIndex = template.indexOf(
+      '<li class="account-sheet-cta account-sheet-cta-fill" role="none"> <a href="/sign-up"',
+    );
+    const logInIndex = template.indexOf('<li class="account-sheet-cta" role="none"> <a href="/log-in"');
+    expect(signUpIndex).to.be.greaterThan(-1);
+    expect(logInIndex).to.be.greaterThan(signUpIndex);
+  });
+
+  it("gives the sheet head a phone-only title and a close control", async () => {
+    // Load the header macros before checking the sheet head.
+    const template = normalizeWhitespace(await loadTemplate("macros/header.html"));
+
+    // Verify the head keeps the menu roles and offers a direct close icon.
+    expect(template).to.include(
+      '<li class="sheet-head sheet-grab not-phone:hidden" role="none"> <span aria-hidden="true">Menu</span>',
+    );
+    expect(template).to.include('role="menuitem" aria-label="Close menu"> <div class="svg-icon size-4 icon-close"></div>');
+  });
+
+  it("adds only phone tokens to the identity row and trigger", async () => {
+    // Load the header template before checking the phone tokens.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the header and its triggers reach their phone sizes.
+    expect(template).to.include("h-20 min-h-20 phone:h-[63px] phone:min-h-[63px]");
+    expect([...template.matchAll(/size-\[38px\] p-0\.5 overflow-hidden phone:block phone:size-11/g)]).to.have.lengthOf(3);
+
+    // Verify the initials are phone-only and hidden from assistive technology.
+    expect(template).to.match(/<div class="not-phone:hidden [^"]*" aria-hidden="true"> \{\{ self::user_initials/);
+
+    // Verify the openprofile.dev link reaches a tap target on phones only.
+    expect(template).to.include('<a class="text-xs/6 text-stone-500 flex items-center mt-3 phone:min-h-11" href="https://openprofile.dev"');
+
+    // Verify an empty name line takes its gap with it, on phones only.
+    expect(template).to.include('text-stone-700 mb-3 phone:has-[+:empty]:mb-0 phone:text-base">{{ user.username|assigned_or("") }}');
+    expect(template).to.include('text-xs/4 truncate phone:empty:hidden phone:text-sm">{{ user.name|assigned_or("") }}');
+  });
+
+  it("lets the dashboard header host the fixed sheet on phones", async () => {
+    // Load the dashboard base before checking its header.
+    const template = normalizeWhitespace(await loadTemplate("dashboard/dashboard_base.html"));
+
+    // Verify the shadow filter no longer traps the sheet and the sheet clears the page.
+    expect(template).to.include(
+      "drop-shadow-sm flex items-center justify-between gap-3 px-3 xl:px-5 phone:filter-none phone:has-[#user-dropdown:not(.hidden)]:z-[1100]",
+    );
   });
 });

@@ -120,6 +120,33 @@ test.describe("site stats page", () => {
       PUBLIC_STATS_CHART_IDS.length,
     );
   });
+
+  test("shortens charts and pins sentence case headings on phones @mobile", async ({ page }) => {
+    // Load public statistics using the mobile project viewport.
+    await navigateToPath(page, "/stats");
+
+    // Verify each running and monthly slot takes its phone height.
+    const mainContent = page.locator("#main-content");
+    const heights = await mainContent
+      .locator(".chart-empty-state, [id$='-chart']")
+      .evaluateAll((elements) => elements.map((element) => element.offsetHeight));
+    expect(heights).toEqual([224, 208, 224, 208, 224, 208, 224, 208]);
+
+    // Verify the heading pins in desktop's sentence case on the canvas.
+    const heading = mainContent.locator(".section-strip").first();
+    const style = await heading.evaluate((element) => {
+      const { position, textTransform } = getComputedStyle(element);
+      return { position, textTransform };
+    });
+    expect(style).toEqual({ position: "sticky", textTransform: "none" });
+
+    // Verify the Total box stays beside the title, inside the 12px gutter.
+    const headingBox = await heading.boundingBox();
+    const totalBox = await heading.getByText("Total").boundingBox();
+    expect(headingBox.x).toBe(0);
+    expect(totalBox.y + totalBox.height).toBeLessThanOrEqual(headingBox.y + headingBox.height);
+    expect(totalBox.x + totalBox.width).toBeCloseTo(headingBox.width - 12, 0);
+  });
 });
 
 /** Waits for a stats chart or its empty state to settle. */

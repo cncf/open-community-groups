@@ -2,6 +2,7 @@ import { expect, test } from "../../../fixtures.js";
 import { cleanupEventsByIds, setupTicketAllocationEvent } from "../../../data-graphs/events.js";
 import { cleanupEventEnrollment, setupEventInvitation } from "../../../data-graphs/invitations.js";
 import { queryE2eDatabase } from "../../../database.js";
+import { enableDesktopVersion } from "../../../snapshots.js";
 import {
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
@@ -401,6 +402,138 @@ test.describe("user dashboard invitations view — event offers", () => {
 
     // Assert how many matching elements are shown.
     await expect(dashboardContent.locator("tr", { hasText: "Upcoming Virtual Event" })).toHaveCount(0);
+  });
+});
+
+test.describe("user dashboard invitations view on phones @mobile", () => {
+  test("claims an offer from its card action and a bottom sheet", async ({ owned, pending1Page }) => {
+    // Create the event invitation before claiming it; owned teardown removes it and any enrollment.
+    setupEventInvitation(EVENT_INVITATION);
+    owned.defer(() => cleanupEventEnrollment(EVENT_INVITATION));
+    await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
+    const offerCard = pending1Page.locator("#dashboard-content article", {
+      hasText: "Upcoming Virtual Event",
+    });
+
+    // Verify the card summarizes the offer and when it expires.
+    await expect(offerCard.getByRole("heading", { name: "Upcoming Virtual Event" })).toBeVisible();
+    await expect(offerCard.getByText("Free RSVP", { exact: true })).toBeVisible();
+    await expect(offerCard).toContainText(/Expires [A-Z][a-z]{2} \d{1,2}, \d{4}/);
+
+    // Verify the primary action is one tap away and 44px tall.
+    const claimButton = offerCard.getByRole("button", { name: "Claim offer", exact: true });
+    await expect(claimButton).toBeVisible();
+    expect((await claimButton.boundingBox()).height).toBeGreaterThanOrEqual(44);
+
+    // Verify Decline sits beside it at 44px, without an actions menu.
+    const declineButton = offerCard.getByRole("button", { name: "Decline", exact: true });
+    await expect(declineButton).toBeVisible();
+    const claimBox = await claimButton.boundingBox();
+    const declineBox = await declineButton.boundingBox();
+    expect(declineBox.height).toBeGreaterThanOrEqual(44);
+    expect(declineBox.y).toBe(claimBox.y);
+    expect(declineBox.x).toBeGreaterThan(claimBox.x + claimBox.width);
+    await expect(offerCard.getByLabel(/Open offer actions/)).toHaveCount(0);
+
+    // Open the claim form and verify it rests on the bottom edge, full width.
+    await claimButton.click();
+    const dialog = pending1Page.getByRole("dialog", { name: "Claim offer" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Close modal" })).toBeFocused();
+    const sheet = dialog.locator(".sheet-panel");
+    await expect(sheet).toHaveAttribute("data-sheet-drag", "");
+    const viewport = pending1Page.viewportSize();
+    await expect
+      .poll(async () => {
+        const box = await sheet.boundingBox();
+        return Math.round(box.y + box.height);
+      })
+      .toBe(viewport.height);
+    expect((await sheet.boundingBox()).width).toBe(viewport.width);
+
+    // Close it and verify focus returns to the card action.
+    await dialog.getByRole("button", { name: "Close modal" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(claimButton).toBeFocused();
+
+    // Complete the free offer through the unified checkout endpoint.
+    await claimButton.click();
+    await waitForActionResponse(
+      pending1Page,
+      () => dialog.getByRole("button", { name: "Claim offer", exact: true }).click(),
+      {
+        method: "POST",
+        urlIncludes: `/event/${TEST_EVENT_IDS.alpha.two}/checkout`,
+      },
+    );
+
+    // Verify the claimed offer leaves the list.
+    await pending1Page.reload();
+    await expect(offerCard).toHaveCount(0);
+  });
+
+  test("checkout-started offers continue from the card action", async ({ pending2Page }) => {
+    // Open the offer whose provider checkout has started.
+    await openUserDashboardPath("/dashboard/user?tab=invitations", pending2Page);
+    const offerCard = pending2Page.locator("#dashboard-content article", {
+      hasText: TEST_TICKETING_EVENTS.paidOffers.name,
+    });
+
+    // Verify the card links to checkout and the menu keeps Cancel checkout and Decline offer.
+    await expect(offerCard.getByRole("link", { name: "Continue to checkout" })).toHaveAttribute(
+      "href",
+      "https://example.test/checkout/paid-offer",
+    );
+    await openEventOfferActions(offerCard);
+    await expect(offerCard.getByRole("menuitem", { name: "Cancel checkout" })).toBeVisible();
+    await expect(offerCard.getByRole("menuitem", { name: "Decline offer" })).toBeVisible();
+    await expect(offerCard.getByRole("menuitem", { name: "Continue to checkout" })).toHaveCount(0);
+  });
+
+  test("a deep link lands below the fixed header", async ({ member1Page }) => {
+    // Use a short viewport, so the card has to scroll into view.
+    await member1Page.setViewportSize({ height: 400, width: 390 });
+
+    // The seeded offers tie on created_at, so take the first card, the one with room to scroll.
+    await openUserDashboardPath("/dashboard/user?tab=invitations", member1Page);
+    const firstCard = member1Page.locator('#dashboard-content article[id^="event-offer-card-"]').first();
+    const cardId = await firstCard.getAttribute("id");
+
+    // Leave the page, so the hash is a real load.
+    await member1Page.goto("about:blank");
+    await openUserDashboardPath(`/dashboard/user?tab=invitations#${cardId}`, member1Page);
+
+    // Verify the header does not cover the targeted card.
+    const card = member1Page.locator(`[id="${cardId}"]`);
+    await expect(card).toBeInViewport();
+    const headerBox = await member1Page.locator("#dashboard-header").boundingBox();
+    const headerBottom = headerBox.y + headerBox.height;
+    const cardTop = (await card.boundingBox()).y;
+    expect(cardTop).toBeGreaterThanOrEqual(headerBottom);
+    expect(cardTop).toBeLessThanOrEqual(headerBottom + 24);
+  });
+
+  test("the desktop version keeps the table and the modal", async ({ owned, pending1Page }) => {
+    // Create an offer and load it in the desktop version.
+    setupEventInvitation(EVENT_INVITATION);
+    owned.defer(() => cleanupEventEnrollment(EVENT_INVITATION));
+    await enableDesktopVersion(pending1Page);
+    await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
+    const content = pending1Page.locator("#dashboard-content");
+    const offerRow = content.locator("tr", { hasText: "Upcoming Virtual Event" });
+
+    // Verify the column headers stay and the phone action does not show.
+    await expect(content.getByRole("columnheader", { name: "Expires" })).toBeVisible();
+    await expect(offerRow.getByRole("button", { name: "Claim offer", exact: true })).toHaveCount(0);
+
+    // Verify the menu item opens the centred modal, with no sheet behaviour.
+    await openEventOfferActions(offerRow);
+    await offerRow.getByRole("menuitem", { name: "Claim offer" }).click();
+    const dialog = pending1Page.getByRole("dialog", { name: "Claim offer" });
+    await expect(dialog).toBeVisible();
+    const sheet = dialog.locator(".sheet-panel");
+    await expect(sheet).not.toHaveAttribute("data-sheet-drag");
+    await expect(sheet).not.toHaveCSS("position", "fixed");
   });
 });
 

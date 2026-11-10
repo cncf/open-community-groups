@@ -6,6 +6,8 @@ import {
   resetDeploymentReloadState,
   setDeploymentReloadHandler,
 } from "/static/js/common/deployment-version.js";
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
+import { setDocsReloadHandler } from "/static/js/site/docs/interactions.js";
 import {
   waitForAnimationFrames,
   waitForMicrotask,
@@ -18,6 +20,10 @@ import {
 } from "/tests/unit/test-utils/dom.js";
 import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
+import { mockPhoneMedia } from "/tests/unit/test-utils/wake-lock.js";
+
+const SCROLL_POSITIONS_KEY = "ocg-docs-scroll-positions";
+const SCROLL_RESTORE_KEY = "ocg-docs-scroll-restore";
 
 describe("site docs shell", () => {
   let fetchMock;
@@ -106,7 +112,9 @@ describe("site docs shell", () => {
     cleanupDocsHead();
     document.head.querySelector('meta[name="ocg-commit-sha"]')?.remove();
     resetDeploymentReloadState();
+    sessionStorage.removeItem(SCROLL_RESTORE_KEY);
     delete window.$docsify;
+    delete window.Docsify;
     delete window.htmx;
     resetDom();
   });
@@ -367,6 +375,402 @@ describe("site docs shell", () => {
     expect(
       document.getElementById("section-item")?.classList.contains("active"),
     ).to.equal(true);
+  });
+
+  describe("after Docsify replaces the app node", () => {
+    let originalMatchMedia;
+    let reloads;
+
+    /** Replaces matchMedia with a phone query the test can flip. */
+    const stubPhoneQuery = (matches) => mockPhoneMedia(PHONE_MEDIA_QUERY, matches);
+
+    /** Mounts docs, replaces the app node as Docsify does, then runs a later swap. */
+    const mountAndSwap = async () => {
+      document.body.innerHTML = `
+        <div class="ocg-docs-root">
+          <div id="ocg-docs-app"></div>
+        </div>
+      `;
+      fetchMock.setImpl(async () => ({
+        ok: true,
+        async text() {
+          return "body { color: black; }";
+        },
+      }));
+      await importDocsShell();
+      await waitForMicrotask();
+      await waitForAnimationFrames(3);
+
+      document.getElementById("ocg-docs-app").replaceWith(document.createElement("main"));
+      dispatchHtmxAfterSwap();
+      await waitForMicrotask();
+    };
+
+    /** Reports whether the mount still mirrors the body classes. */
+    const isMounted = async () => {
+      document.body.classList.add("close");
+      await waitForMicrotask();
+      const mounted = document.querySelector(".ocg-docs-root").classList.contains("close");
+      document.body.classList.remove("close");
+      await waitForMicrotask();
+      return mounted;
+    };
+
+    beforeEach(() => {
+      originalMatchMedia = window.matchMedia;
+      reloads = 0;
+      setDocsReloadHandler(() => {
+        reloads += 1;
+      });
+    });
+
+    afterEach(() => {
+      setDocsReloadHandler(() => window.location.reload());
+      window.matchMedia = originalMatchMedia;
+      document.body.classList.remove("close");
+    });
+
+    for (const { matches, name } of [
+      { matches: false, name: "off phones" },
+      { matches: true, name: "on phones" },
+    ]) {
+      it(`keeps the mount through a later swap ${name}`, async () => {
+        stubPhoneQuery(matches);
+
+        await mountAndSwap();
+
+        // Verify a late swap, such as the user menu, leaves the mount live.
+        expect(await isMounted()).to.equal(true);
+      });
+    }
+
+    it("keeps the mount through a later pageshow", async () => {
+      await mountAndSwap();
+
+      window.dispatchEvent(new PageTransitionEvent("pageshow"));
+      await waitForMicrotask();
+
+      expect(await isMounted()).to.equal(true);
+    });
+
+    it("keeps enhancing later pages off phones", async () => {
+      // Lose the app node, then render a later page as Docsify does.
+      await mountAndSwap();
+      window.location.hash = "#/guide";
+      document.querySelector(".ocg-docs-root main").innerHTML = `
+        <div class="markdown-section">
+          <a id="app-link" href="#/dashboard/groups">Dashboard</a>
+          <a id="anchor-link" href="#/guide?id=section-a">Section A</a>
+          <h2 id="section-a">Section A</h2>
+          <table>
+            <thead><tr><th>City</th></tr></thead>
+            <tbody><tr><td>Málaga</td></tr></tbody>
+          </table>
+        </div>
+      `;
+      window.$docsify.plugins.forEach((plugin) => plugin({ doneEach: (callback) => callback() }));
+      await waitForAnimationFrames(3);
+
+      // Verify tables and app links are still enhanced.
+      expect(document.querySelector("tbody td")?.getAttribute("data-label")).to.equal("City");
+      expect(document.getElementById("app-link")?.getAttribute("href")).to.equal("/dashboard/groups");
+
+      // Verify same-page anchors still take the instant jump.
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+      document.getElementById("anchor-link").dispatchEvent(event);
+      expect(event.defaultPrevented).to.equal(true);
+      expect(scrollToMock.calls.at(-1)?.behavior).to.equal("auto");
+    });
+
+    describe("on a phone query change", () => {
+      it("follows the query from a mount that outlived a swap, without reloading", async () => {
+        // Load wider than the query and take a later swap, then rotate both ways.
+        const { setMatches } = stubPhoneQuery(false);
+        await mountAndSwap();
+        expect(window.$docsify.topMargin).to.equal(0);
+
+        setMatches(true);
+        expect(window.$docsify.topMargin).to.equal(72);
+        setMatches(false);
+        expect(window.$docsify.topMargin).to.equal(0);
+        expect(reloads).to.equal(0);
+      });
+
+      it("leaves a mount that is still starting to read the query itself", async () => {
+        // Hold the styles, so the mount owns the root but has no phone shell yet.
+        let releaseStyles;
+        const stylesHeld = new Promise((resolve) => {
+          releaseStyles = resolve;
+        });
+        const { setMatches } = stubPhoneQuery(false);
+        document.body.innerHTML = `
+          <div class="ocg-docs-root">
+            <div id="ocg-docs-app"></div>
+          </div>
+        `;
+        fetchMock.setImpl(async () => {
+          await stylesHeld;
+          return {
+            ok: true,
+            async text() {
+              return "body { color: black; }";
+            },
+          };
+        });
+        await importDocsShell();
+
+        setMatches(true);
+        expect(reloads).to.equal(0);
+
+        // Verify the mount picks up the phone once it finishes.
+        releaseStyles();
+        await waitForMicrotask();
+        await waitForAnimationFrames(3);
+        expect(window.$docsify.topMargin).to.equal(72);
+        expect(reloads).to.equal(0);
+      });
+
+      it("ignores pages without docs", async () => {
+        // Leave the docs through a swap.
+        const { listeners, setMatches } = stubPhoneQuery(false);
+        await mountAndSwap();
+        document.body.innerHTML = "<div></div>";
+        dispatchHtmxAfterSwap();
+        await waitForMicrotask();
+
+        setMatches(true);
+
+        // Verify the listener left with the mount.
+        expect(listeners.size).to.equal(0);
+        expect(reloads).to.equal(0);
+      });
+
+      it("keeps one query listener through unmounts and remounts", async () => {
+        // Mount, leave and mount a new root.
+        const { listeners } = stubPhoneQuery(false);
+        await mountAndSwap();
+        expect(listeners.size).to.equal(1);
+
+        document.body.innerHTML = "<div></div>";
+        dispatchHtmxAfterSwap();
+        await waitForMicrotask();
+        document.body.innerHTML = `
+          <div class="ocg-docs-root">
+            <div id="ocg-docs-app"></div>
+          </div>
+        `;
+        dispatchHtmxAfterSwap();
+        await waitForMicrotask();
+        await waitForAnimationFrames(3);
+
+        expect(listeners.size).to.equal(1);
+      });
+    });
+
+    describe("on an HTMX history restore", () => {
+      /** Leaves the docs and restores their snapshot, which keeps Docsify's markup only. */
+      const leaveAndRestore = async () => {
+        await mountAndSwap();
+        document.body.innerHTML = "<div></div>";
+        dispatchHtmxAfterSwap();
+        document.body.innerHTML = '<div class="ocg-docs-root"><main></main></div>';
+        document.dispatchEvent(new CustomEvent("htmx:historyRestore"));
+        await waitForMicrotask();
+      };
+
+      for (const { matches, name } of [
+        { matches: false, name: "off phones" },
+        { matches: true, name: "on phones" },
+      ]) {
+        it(`reloads ${name}, where the snapshot's markup is dead`, async () => {
+          stubPhoneQuery(matches);
+
+          await leaveAndRestore();
+
+          expect(reloads).to.equal(1);
+        });
+      }
+
+      it("ignores restores of pages without docs", async () => {
+        await mountAndSwap();
+        document.body.innerHTML = "<div></div>";
+        document.dispatchEvent(new CustomEvent("htmx:historyRestore"));
+        await waitForMicrotask();
+
+        expect(reloads).to.equal(0);
+      });
+
+      describe("on markup that still has the app node", () => {
+        const dispatchRestore = () => {
+          document.dispatchEvent(
+            new CustomEvent("htmx:historyRestore", { detail: { cacheMiss: true } }),
+          );
+        };
+
+        /** Leaves the docs, then swaps fresh markup in with the events in the given order. */
+        const leaveAndMiss = async (dispatchEvents) => {
+          await mountAndSwap();
+          document.body.innerHTML = "<div></div>";
+          dispatchHtmxAfterSwap();
+          document.body.innerHTML = `
+            <div class="ocg-docs-root">
+              <div id="ocg-docs-app"></div>
+            </div>
+          `;
+          dispatchEvents();
+          await waitForMicrotask();
+        };
+
+        for (const { docsifyLoaded, name } of [
+          { docsifyLoaded: true, name: "with Docsify loaded" },
+          { docsifyLoaded: false, name: "before Docsify loaded" },
+        ]) {
+          it(`reloads once ${name}, when afterSwap comes first`, async () => {
+            if (docsifyLoaded) {
+              window.Docsify = {};
+            }
+
+            await leaveAndMiss(() => {
+              dispatchHtmxAfterSwap();
+              dispatchRestore();
+            });
+
+            expect(reloads).to.equal(1);
+          });
+
+          it(`reloads once ${name}, when the restore comes first`, async () => {
+            if (docsifyLoaded) {
+              window.Docsify = {};
+            }
+
+            await leaveAndMiss(() => {
+              dispatchRestore();
+              dispatchHtmxAfterSwap();
+            });
+
+            expect(reloads).to.equal(1);
+          });
+        }
+      });
+
+      it("arms the scroll restore for the reload", async () => {
+        await leaveAndRestore();
+
+        expect(JSON.parse(sessionStorage.getItem(SCROLL_RESTORE_KEY)).url).to.equal(window.location.href);
+      });
+    });
+
+    it("reloads a boosted arrival once Docsify has run, without arming a restore", async () => {
+      window.Docsify = {};
+
+      // Arrive through a boosted link, which is no history restore.
+      await mountAndSwap();
+      document.body.innerHTML = "<div></div>";
+      dispatchHtmxAfterSwap();
+      document.body.innerHTML = `
+        <div class="ocg-docs-root">
+          <div id="ocg-docs-app"></div>
+        </div>
+      `;
+      dispatchHtmxAfterSwap();
+      await waitForMicrotask();
+
+      // Verify the reload starts Docsify and no old position comes back.
+      expect(reloads).to.equal(1);
+      expect(sessionStorage.getItem(SCROLL_RESTORE_KEY)).to.equal(null);
+    });
+
+    it("reloads a snapshot this module first runs on, after the restore event fired", async () => {
+      document.body.innerHTML = '<div class="ocg-docs-root"><main></main></div>';
+
+      await importDocsShell();
+      await waitForMicrotask();
+
+      expect(reloads).to.equal(1);
+      expect(JSON.parse(sessionStorage.getItem(SCROLL_RESTORE_KEY)).url).to.equal(window.location.href);
+    });
+  });
+
+  describe("after the reload that replaces a history entry", () => {
+    const originalPath = `${window.location.pathname}${window.location.search}`;
+
+    /** Mounts docs, then finishes the given number of Docsify renders. */
+    const mountAndRender = async (renders) => {
+      document.body.innerHTML = `
+        <div class="ocg-docs-root">
+          <div id="ocg-docs-app"></div>
+        </div>
+      `;
+      fetchMock.setImpl(async () => ({
+        ok: true,
+        async text() {
+          return "body { color: black; }";
+        },
+      }));
+      await importDocsShell();
+      await waitForMicrotask();
+      await waitForAnimationFrames(2);
+
+      let doneEach = null;
+      window.$docsify.plugins[0]({
+        doneEach(callback) {
+          doneEach = callback;
+        },
+      });
+      for (let render = 0; render < renders; render += 1) {
+        doneEach();
+      }
+      await waitForAnimationFrames(2);
+    };
+
+    /** Leaves a saved position for the current URL, armed or not. */
+    const savePosition = ({ armed }) => {
+      const url = window.location.href;
+      sessionStorage.setItem(SCROLL_POSITIONS_KEY, JSON.stringify({ [url]: 1500 }));
+      if (armed) {
+        sessionStorage.setItem(
+          SCROLL_RESTORE_KEY,
+          JSON.stringify({ document: window.performance.timeOrigin - 1, url }),
+        );
+      }
+    };
+
+    beforeEach(() => {
+      setLocationPath(`${originalPath}#/guide`);
+    });
+
+    afterEach(() => {
+      // Unmount, which also ends the restore's hold.
+      document.body.innerHTML = "";
+      dispatchHtmxAfterSwap();
+      sessionStorage.removeItem(SCROLL_POSITIONS_KEY);
+      setLocationPath(originalPath);
+    });
+
+    it("restores the saved position after the first render", async () => {
+      savePosition({ armed: true });
+
+      await mountAndRender(1);
+
+      expect(scrollToMock.calls[0]).to.deep.equal({ behavior: "auto", top: 1500 });
+      expect(sessionStorage.getItem(SCROLL_RESTORE_KEY)).to.equal(null);
+    });
+
+    it("leaves the page alone until that render", async () => {
+      savePosition({ armed: true });
+
+      await mountAndRender(0);
+
+      expect(scrollToMock.calls).to.deep.equal([]);
+    });
+
+    it("gives a fresh visit no old position", async () => {
+      savePosition({ armed: false });
+
+      await mountAndRender(1);
+
+      expect(scrollToMock.calls).to.deep.equal([]);
+    });
   });
 
   it("cleans up and remounts docs lifecycle on swap and page events", async () => {

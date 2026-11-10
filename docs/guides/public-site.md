@@ -48,7 +48,7 @@ need to narrow results further.
 
 Explore gives you multiple view styles, and the available options depend on
 what you are browsing: events offer `List` and `Calendar` views, while groups
-offer `List` and `Map`.
+offer `List` and `Map`. Phones narrower than 768px show the `List` view only.
 
 As a quick guide, `List` helps when you want to scan titles, dates, and
 descriptions quickly; `Calendar` helps when you are planning around time

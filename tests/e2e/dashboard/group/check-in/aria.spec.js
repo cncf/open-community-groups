@@ -51,6 +51,11 @@ const expectCheckInViews = async ({ owned, page, viewport }) => {
     await expectPageLayout(page, { regions: [dialog] });
 
     // Capture the scanner header, the camera controls and the status.
-    await expectAriaSnapshot(page, dialog, "check-in-scanner-dialog");
+    // Below 640px a single camera hides the select, so the mobile tree has its own file.
+    await expectAriaSnapshot(
+      page,
+      dialog,
+      viewport === "mobile" ? "check-in-scanner-dialog-mobile" : "check-in-scanner-dialog",
+    );
   });
 };

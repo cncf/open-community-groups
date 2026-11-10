@@ -220,6 +220,21 @@ describe("common base template", () => {
     expect(index).to.be.lessThan(htmxScriptIndex);
   });
 
+  it("adds the phone header shell tokens without touching the desktop ones", async () => {
+    const template = await loadTemplate();
+
+    // Verify the wrappers unbox so #header sticks past the jumbotron.
+    expect(template).to.include("{%- endif %} phone:contents'>");
+    expect(template).to.include('<div class="px-4 lg:px-5 phone:contents ');
+
+    // Verify the header rises above the page only while the sheet is open.
+    expect(template).to.include("phone:[&>#header]:sticky");
+    expect(template).to.include("phone:[&>#header]:has-[#user-dropdown:not(.hidden)]:z-[1100]");
+
+    // Verify in-main modals can paint over the sticky header.
+    expect(template).to.include("class='grow z-[1] phone:z-auto ");
+  });
+
   it("strips only the deployment refresh parameter", async () => {
     // Load the base template and extract the cleanup source.
     const { body } = extractDeploymentRefreshScript(await loadTemplate());

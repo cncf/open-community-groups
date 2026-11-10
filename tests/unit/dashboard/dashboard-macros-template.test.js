@@ -261,11 +261,11 @@ describe("dashboard macros template", () => {
   it("renders the shared mobile notice with a touch-only desktop version hint", async () => {
     // Load the dashboard macros template before checking the mobile notice.
     const template = normalizeWhitespace(await loadTemplate());
-    const macro = template.slice(template.indexOf("{% macro mobile_notice() -%}"));
+    const macro = template.slice(template.indexOf('{% macro mobile_notice(extra_styles = "") -%}'));
 
     // Verify the overlay keeps its original card and heading.
     expect(macro).to.include(
-      '<div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">',
+      '<div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden {{ extra_styles }}">',
     );
     expect(macro).to.include(
       '<p class="text-xl font-medium">This dashboard is not optimized yet for mobile devices</p>',
@@ -288,7 +288,7 @@ describe("dashboard macros template", () => {
     // Verify each shell delegates to the shared macro and carries no copy of the card.
     templates.forEach((source) => {
       const template = normalizeWhitespace(source);
-      expect(template).to.include("{{ dashboard::mobile_notice() -}}");
+      expect(template).to.match(/\{\{ dashboard::mobile_notice\([^)]*\)+ -\}\}/u);
       expect(template).not.to.include("This dashboard is not optimized yet for mobile devices");
     });
 

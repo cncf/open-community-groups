@@ -16,10 +16,10 @@
 {% endblock scripts -%}
 
 {% block content -%}
-  <section class="mx-auto w-full max-w-3xl px-4 py-10 lg:py-16"
+  <section class="mx-auto w-full max-w-3xl px-4 py-10 lg:py-16 phone:p-3"
            aria-labelledby="verify-title">
-    <div class="w-full">
-      <form class="space-y-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm md:p-8"
+    <div class="w-full phone:flex phone:flex-col-reverse">
+      <form class="space-y-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm md:p-8 phone:p-4"
             method="post"
             enctype="multipart/form-data"
             aria-labelledby="verify-title">
@@ -29,7 +29,7 @@
         </div>
         <div>
           <label class="form-label" for="credential">Credential URL or ID</label>
-          <input class="input-primary mt-2"
+          <input class="input-primary mt-2 phone:h-11"
                  id="credential"
                  name="credential"
                  type="text"
@@ -42,20 +42,21 @@
           <div class="h-px grow bg-stone-200"></div>
         </div>
         <div>
-          <image-field class="block" label="Exported PNG" name="png" image-kind="logo" accepted-formats="image/png" direct-upload hide-remove-button>
+          <image-field class="block" label="Exported PNG" name="png" image-kind="logo" accepted-formats=".png,image/png" help-text="Upload the PNG downloaded from your badge — not a photo." direct-upload hide-remove-button>
           </image-field>
         </div>
-        <button class="btn-primary mx-auto block" type="submit">Verify badge</button>
+        <button class="btn-primary mx-auto block phone:h-11 phone:w-full"
+                type="submit">Verify badge</button>
       </form>
 
-      <div class="mt-6" aria-live="polite">
+      <div class="mt-6 phone:mt-0 phone:has-[>*]:mb-3" aria-live="polite">
         {% if let Some(error) = &error -%}
           <div class="rounded-md border border-red-200 bg-red-50 p-4 text-red-800"
                role="alert">{{ error }}</div>
         {% endif -%}
         {% if let Some(result) = &verified -%}
           <article class="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div class="flex items-center gap-3 px-6 py-4
+            <div class="flex items-center gap-3 px-6 py-4 phone:px-4 phone:py-3
                         {% if result.revoked %}
                           bg-red-50 text-red-800
                         {% else if result.superseded %}
@@ -83,36 +84,36 @@
                 <p class="text-sm font-semibold">Valid and active</p>
               {% endif -%}
             </div>
-            <div class="grid gap-6 p-6 sm:grid-cols-[8rem_1fr]">
-              <img class="mx-auto aspect-square w-full max-w-32 rounded-lg object-cover sm:mx-0"
+            <div class="grid gap-6 p-6 sm:grid-cols-[8rem_1fr] phone:grid-cols-[5rem_1fr] phone:gap-4 phone:p-4">
+              <img class="mx-auto aspect-square w-full max-w-32 rounded-lg object-cover sm:mx-0 phone:mx-0 phone:w-20"
                    src="{{ result.image_url }}"
                    alt="{{ result.name }} badge artwork"
                    width="512"
                    height="512">
-              <div class="min-w-0">
-                <div>
-                  <h2 class="text-xl font-medium text-stone-900">{{ result.name }}</h2>
-                  <p class="mt-2 text-stone-600">{{ result.description }}</p>
+              <div class="min-w-0 phone:contents">
+                <div class="phone:min-w-0">
+                  <h2 class="text-xl font-medium text-stone-900 phone:text-[17px]/6 phone:wrap-anywhere">{{ result.name }}</h2>
+                  <p class="mt-2 text-stone-600 phone:mt-1 phone:text-sm">{{ result.description }}</p>
                 </div>
-                <dl class="mt-6 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-[10rem_1fr]">
+                <dl class="mt-6 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-[10rem_1fr] phone:col-span-2 phone:mt-0 phone:block phone:space-y-3">
                   {% if let Some(recipient_name) = &result.recipient_name -%}
-                    <div class="contents">
+                    <div class="contents phone:block">
                       <dt class="font-medium text-stone-500">Current recipient</dt>
-                      <dd class="text-stone-900">
+                      <dd class="text-stone-900 phone:mt-0.5">
                         {{ recipient_name }}
                       </dd>
                     </div>
                   {% endif -%}
-                  <div class="contents">
+                  <div class="contents phone:block">
                     <dt class="font-medium text-stone-500">Issuer</dt>
-                    <dd class="break-all">
+                    <dd class="break-all phone:mt-0.5">
                       <a class="font-medium text-primary-600 hover:text-primary-700 hover:underline"
                          href="{{ result.issuer|safe_href }}">{{ result.issuer }}</a>
                     </dd>
                   </div>
-                  <div class="contents">
+                  <div class="contents phone:block">
                     <dt class="font-medium text-stone-500">Awarded</dt>
-                    <dd class="text-stone-900">
+                    <dd class="text-stone-900 phone:mt-0.5">
                       <time datetime="{{ result.valid_from.to_rfc3339() }}">
                         {{ result.valid_from.format("%B %-e, %Y") }}
                       </time>

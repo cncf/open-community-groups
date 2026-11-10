@@ -26,6 +26,10 @@ test.describe("user dashboard invitations ARIA snapshots", () => {
     await enableDesktopVersion(emptyUserPage);
     await expectInvitationsViews({ emptyUserPage, owned });
   });
+
+  test("matches the phone views @mobile", async ({ emptyUserPage, owned }) => {
+    await expectPhoneInvitationsViews({ emptyUserPage, owned });
+  });
 });
 
 /** Checks the layout of the invitations tab views and captures them. */
@@ -80,6 +84,57 @@ const expectInvitationsViews = async ({ emptyUserPage, owned }) => {
 
     // Capture the RSVP summary and the form actions without submitting it.
     await expectAriaSnapshot(emptyUserPage, dialog, "invitations-claim-offer-dialog");
+    await dialog.getByRole("button", { name: "Close modal" }).click();
+    await expect(dialog).toBeHidden();
+  });
+};
+
+/** Checks the layout of the phone views, whose action cards replace the desktop table. */
+const expectPhoneInvitationsViews = async ({ emptyUserPage, owned }) => {
+  // The menu is a closed drawer on phones.
+  const options = { menu: false };
+
+  await test.step("empty state", async () => {
+    // Load the invitations of a user without invitations and check the layout.
+    const content = await openUserDashboardView(emptyUserPage, "tab=invitations", options);
+
+    // Capture the event title and the shared empty state.
+    await expectAriaSnapshot(emptyUserPage, content, "invitations-empty-mobile");
+  });
+
+  // Invite the user to an owned event, a group team and a community team.
+  const userId = TEST_USER_IDS.empty;
+  const { eventId } = owned.event({ groupId: TEST_GROUP_IDS.community1.alpha, name: INVITED_EVENT_NAME });
+  setupEventInvitation({ eventId, userId });
+  owned.defer(() => cleanupEventEnrollment({ eventId, userId }));
+  setupGroupTeamInvitation({ groupId: TEST_GROUP_IDS.community1.alpha, role: "viewer", userId });
+  owned.defer(() => cleanupGroupTeamInvitation({ groupId: TEST_GROUP_IDS.community1.alpha, userId }));
+  setupCommunityTeamInvitation({ communityId: TEST_COMMUNITY_IDS.community1, role: "viewer", userId });
+  owned.defer(() => cleanupCommunityTeamInvitation({ communityId: TEST_COMMUNITY_IDS.community1, userId }));
+
+  await test.step("pending invitations", async () => {
+    // Load the pending invitations and check the layout.
+    const content = await openUserDashboardView(emptyUserPage, "tab=invitations", options);
+
+    // Capture the cards with their summaries and actions; the dates follow the seed day.
+    await expectAriaSnapshot(emptyUserPage, content, "invitations-pending-mobile");
+  });
+
+  // The free offer card keeps Claim and Decline as buttons, so it has no actions menu.
+  const offerCard = emptyUserPage
+    .locator("#dashboard-content")
+    .getByRole("article")
+    .filter({ hasText: INVITED_EVENT_NAME });
+
+  await test.step("event offer claim dialog", async () => {
+    // Open the claim form from the card and check the layout.
+    const dialog = emptyUserPage.getByRole("dialog", { name: "Claim offer" });
+    await offerCard.getByRole("button", { name: "Claim offer", exact: true }).click();
+    await expect(dialog).toBeVisible();
+    await expectPageLayout(emptyUserPage, { regions: [dialog] });
+
+    // The compact sheet head moves the event name into the offer summary.
+    await expectAriaSnapshot(emptyUserPage, dialog, "invitations-claim-offer-dialog-mobile");
     await dialog.getByRole("button", { name: "Close modal" }).click();
     await expect(dialog).toBeHidden();
   });

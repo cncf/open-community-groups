@@ -1,4 +1,4 @@
-import { showConfirmAlert, showInfoAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
+import { showConfirmAlert, showSigninPrompt, handleHtmxResponse } from "/static/js/common/alerts.js";
 import {
   closestElement,
   getElementById,
@@ -248,12 +248,7 @@ const handleMembershipClick = (event) => {
 
   const signinButton = closestElement(event.target, "#signin-btn");
   if (signinButton) {
-    const path = signinButton.dataset.path || window.location.pathname;
-    const nextUrl = encodeURIComponent(path);
-    showInfoAlert(
-      `You need to be <a href='/log-in?next_url=${nextUrl}' class='underline font-medium' hx-boost='true'>logged in</a> to join this group.`,
-      true,
-    );
+    showSigninPrompt("join this group", signinButton.dataset.path || window.location.pathname);
     return;
   }
 

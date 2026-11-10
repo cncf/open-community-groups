@@ -22,6 +22,21 @@ const createAnimatedGifFile = (name = "clip.gif") => {
   return new File([new Uint8Array([...header, ...frame, ...frame, 0x3b])], name, { type: "image/gif" });
 };
 
+/**
+ * Reads an element's text as one layout shows it, since the tests load no stylesheet.
+ * @param {HTMLElement} element - Element to read.
+ * @param {string} hiddenClass - Class the layout hides.
+ * @returns {string} Normalized visible text.
+ */
+const readVisibleText = (element, hiddenClass) => {
+  const clone = element.cloneNode(true);
+  [...clone.querySelectorAll("*")]
+    .filter((node) => node.classList.contains(hiddenClass))
+    .forEach((node) => node.remove());
+
+  return clone.textContent.replace(/\s+/g, " ").trim();
+};
+
 describe("image-field", () => {
   const env = useDashboardTestEnv({ withSwal: true, withScroll: true });
   useMountedElementsCleanup("image-field");
@@ -637,6 +652,76 @@ describe("image-field", () => {
     form.remove();
   });
 
+  it("rejects a direct-upload file whose type is not accepted", async () => {
+    // Render the verification upload inside the form that owns its submission.
+    const form = document.createElement("form");
+    document.body.append(form);
+    const element = await mountLitComponent("image-field", {
+      acceptedFormats: ".png,image/png",
+      directUpload: true,
+      label: "Exported PNG",
+      name: "png",
+    });
+    form.append(element);
+    const input = element.querySelector('input[type="file"]');
+
+    // Select a camera capture, which iOS offers even when the picker filters to PNG.
+    const cameraPhoto = new DataTransfer();
+    cameraPhoto.items.add(new File(["photo"], "camera-photo.jpg", { type: "image/jpeg" }));
+    input.files = cameraPhoto.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await element.updateComplete;
+
+    // The field explains the format rule, clears the input and keeps the form empty.
+    expect(env.current.swal.calls.at(-1).icon).to.equal("error");
+    expect(env.current.swal.calls.at(-1).text).to.equal("Choose a PNG file.");
+    expect(input.files).to.have.length(0);
+    expect(input.hasAttribute("name")).to.equal(false);
+    expect(new FormData(form).has("png")).to.equal(false);
+    form.remove();
+  });
+
+  it("submits a valid direct-upload PNG", async () => {
+    // Render the verification upload inside the form that owns its submission.
+    const form = document.createElement("form");
+    document.body.append(form);
+    const element = await mountLitComponent("image-field", {
+      acceptedFormats: ".png,image/png",
+      directUpload: true,
+      label: "Exported PNG",
+      name: "png",
+    });
+    form.append(element);
+    const input = element.querySelector('input[type="file"]');
+
+    // Select an accepted PNG.
+    const accepted = new DataTransfer();
+    accepted.items.add(new File(["badge"], "exported-badge.png", { type: "image/png" }));
+    input.files = accepted.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await element.updateComplete;
+
+    // The file is kept in the submitted field without any error.
+    expect(env.current.swal.calls).to.have.length(0);
+    expect(new FormData(form).get("png").name).to.equal("exported-badge.png");
+    form.remove();
+  });
+
+  it("renders the direct-upload help text under the drop zone", async () => {
+    // Render the verification upload with its guidance copy.
+    const element = await mountLitComponent("image-field", {
+      directUpload: true,
+      helpText: "Upload the PNG downloaded from your badge.",
+      label: "Exported PNG",
+      name: "png",
+    });
+
+    // The guidance appears so people know which file to pick.
+    expect(element.querySelector(".form-legend").textContent.trim()).to.equal(
+      "Upload the PNG downloaded from your badge.",
+    );
+  });
+
   it("names the direct-upload drop zone from its label and visible prompt", async () => {
     // Render the verification upload drop zone.
     const element = await mountLitComponent("image-field", {
@@ -650,9 +735,37 @@ describe("image-field", () => {
     const nameParts = dropZone
       .getAttribute("aria-labelledby")
       .split(" ")
-      .map((id) => document.getElementById(id).textContent.replace(/\s+/g, " ").trim());
+      .map((id) => readVisibleText(document.getElementById(id), "not-phone:hidden"));
     expect(dropZone.hasAttribute("aria-label")).to.equal(false);
     expect(nameParts).to.deep.equal(["Exported PNG", "Click to upload or drag and drop a file"]);
+  });
+
+  it("offers a tap prompt on phones and keeps the chosen file name", async () => {
+    // Render the verification upload drop zone.
+    const element = await mountLitComponent("image-field", {
+      directUpload: true,
+      label: "Exported PNG",
+      name: "png",
+    });
+    const prompt = element.querySelector('[role="button"] p');
+
+    // Verify phones read the tap prompt and drop the drag wording.
+    expect(readVisibleText(prompt, "phone:hidden")).to.equal("Tap to upload");
+
+    // Verify a camera file name, which has no break points, cannot widen the page.
+    expect(prompt.classList.contains("phone:wrap-anywhere")).to.equal(true);
+
+    // Pick a file through the input.
+    const fileInput = element.querySelector('input[type="file"]');
+    const selectedFiles = new DataTransfer();
+    selectedFiles.items.add(new File(["badge"], "badge-export.png", { type: "image/png" }));
+    fileInput.files = selectedFiles.files;
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+    await element.updateComplete;
+
+    // Verify the file name stays visible on both layouts.
+    expect(readVisibleText(prompt, "phone:hidden")).to.equal("Tap to upload badge-export.png");
+    expect(readVisibleText(prompt, "not-phone:hidden")).to.equal("Click to upload badge-export.png");
   });
 
   it("names the preview from its label and visible prompt", async () => {

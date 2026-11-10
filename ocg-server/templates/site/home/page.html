@@ -4,11 +4,11 @@
 
 {% block jumbotron -%}
   {# Jumbotron -#}
-  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 pb-10 sm:px-6 lg:px-8">
+  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 pb-10 sm:px-6 lg:px-8 phone:max-w-none phone:bg-linear-to-b phone:from-white phone:from-45% phone:to-stone-900/12 phone:to-98% phone:border-b phone:border-stone-200 phone:px-3 phone:pt-5 phone:pb-6">
     <section>
       <div role="region"
            aria-label="Site introduction"
-           class="relative z-10 max-w-7xl pb-6 lg:pb-10 text-center">
+           class="relative z-10 max-w-7xl pb-6 lg:pb-10 text-center phone:pb-0">
         {# Site title -#}
         <h1 class="mt-2 xl:mt-3 mb-8 text-[1.8rem] font-semibold tracking-tight leading-10 md:leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
           {{ site_settings.title }}
@@ -40,28 +40,47 @@
 
 {% block content -%}
   {# Main content -#}
-  <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
+  <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16 phone:px-3 phone:pt-2 phone:pb-6">
     <div class="flex flex-col gap-y-6 sm:gap-y-8 lg:gap-y-12">
       {# Communities list -#}
       <div>
-        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 sm:pb-8 lg:pt-2 lg:pb-14">
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 sm:pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
           Communities
         </div>
         {% if communities.len() > 0 -%}
-          <div class="grid grid-cols-[minmax(0,385px)] justify-start gap-6 sm:grid-cols-[repeat(2,minmax(0,385px))] sm:gap-8 lg:grid-cols-[repeat(3,minmax(0,385px))]">
-            {% for community in communities -%}
-              <a href="/{{ community.name }}"
-                 class="relative block overflow-hidden rounded-lg border border-stone-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 after:content-[''] after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:transition-shadow after:duration-200 hover:after:shadow-[inset_0_0_0_1px_var(--color-stone-300)] motion-reduce:after:transition-none">
-                <div class="aspect-[61/12]">
-                  <img class="w-full h-full object-cover"
-                       height="auto"
-                       width="auto"
-                       src="{{ community.banner_mobile_url }}"
-                       alt="{{ community.display_name }} banner" />
-                </div>
-              </a>
+          {# Phones stack up to three banners and swipe through more, three per page. Pages vanish from the desktop grid. -#}
+          {% let carousel = communities.len() > 3 -%}
+          <div class="grid grid-cols-[minmax(0,385px)] justify-start gap-6 sm:grid-cols-[repeat(2,minmax(0,385px))] sm:gap-8 lg:grid-cols-[repeat(3,minmax(0,385px))] phone:gap-3
+                      {% if carousel %}phone:flex phone:-mx-3 phone:px-3 phone:scroll-px-3 phone:overflow-x-auto phone:snap-x phone:snap-mandatory phone:[scrollbar-width:none] phone:pt-0.5 phone:pb-2.5{% else %}phone:grid-cols-1{% endif %}">
+            {% for communities_page in communities.chunks(3) -%}
+              <div class="contents
+                          {% if carousel %}phone:flex phone:w-[calc(100%-3.5rem)] phone:shrink-0 phone:snap-start phone:flex-col phone:gap-3{% endif %}">
+                {% for community in communities_page -%}
+                  <a href="/{{ community.name }}"
+                     class="relative block overflow-hidden rounded-lg border border-stone-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 after:content-[''] after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:transition-shadow after:duration-200 hover:after:shadow-[inset_0_0_0_1px_var(--color-stone-300)] motion-reduce:after:transition-none">
+                    <div class="aspect-[61/12] phone:aspect-[1220/192]">
+                      <img class="w-full h-full object-cover"
+                           height="auto"
+                           width="auto"
+                           src="{{ community.banner_mobile_url }}"
+                           alt="{{ community.display_name }} banner" />
+                    </div>
+                  </a>
+                {% endfor -%}
+              </div>
             {% endfor -%}
           </div>
+          {% if carousel -%}
+            {# Dots fit one line up to 24 pages; longer lists show a counter. -#}
+            <div class="not-phone:hidden"
+                 aria-hidden="true"
+                 data-snap-dots
+                 data-snap-dots-max="24">
+              {% if communities.len() > 72 -%}
+                <span data-snap-counter></span>
+              {% endif -%}
+            </div>
+          {% endif -%}
         {% else -%}
           {{ feedback::placeholder(title = "No communities yet",
             content = "Communities are being set up, check back soon.") -}}
@@ -86,8 +105,8 @@
         {# Latest groups added -#}
         {% if recently_added_groups.len() > 0 -%}
           <div>
-            <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">
+            <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12 section-strip phone:-mx-3">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2 section-strip-title">
                 Latest groups added
               </div>
               {# See all groups on desktop -#}
@@ -98,17 +117,25 @@
                    class="btn-secondary-anchor ms-4">Explore all groups</a>
               </div>
               {# End see all groups on desktop -#}
+
+              {# See all groups on phones -#}
+              <a href="{{ explore_groups }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 aria-label="See all latest groups added"
+                 class="btn-secondary-anchor pill-link not-phone:hidden">See all</a>
+              {# End see all groups on phones -#}
             </div>
             <div>
               {# Groups cards -#}
-              <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex">
+              <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex phone:gap-3">
                 {% for group in recently_added_groups -%}
                   {{- group|safe -}}
                 {% endfor -%}
               </div>
               {# End groups cards -#}
               {# See all groups mobile button -#}
-              <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+              <div class="flex mt-9 justify-self-center md:hidden md:mt-0 phone:hidden">
                 <a href="{{ explore_groups }}"
                    hx-boost="true"
                    hx-target="body"
@@ -125,3 +152,7 @@
   </div>
   {# End main content -#}
 {% endblock content -%}
+
+{% block scripts -%}
+  <script type="module" src="/static/js/common/snap-dots.js"></script>
+{% endblock scripts -%}

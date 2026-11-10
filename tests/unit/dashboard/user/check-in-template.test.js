@@ -32,6 +32,16 @@ describe("dashboard user check-in template", () => {
     expect(template).not.to.include("status_before_title");
   });
 
+  it("wraps a long unbroken event name inside the check-in card on phones", async () => {
+    // Load the shared card macro, where the title's width comes from its own content.
+    const response = await fetch("/ocg-server/templates/macros/cards.html");
+    expect(response.ok).to.equal(true);
+    const cards = normalizeWhitespace(await response.text());
+
+    // Verify the title can shrink below its longest word.
+    expect(cards).to.include("md:text-[0.9rem]/[1.1rem] phone:wrap-anywhere");
+  });
+
   it("hides checked-in events and preserves the empty state", async () => {
     // Load the Check-In template before checking event visibility.
     const template = normalizeWhitespace(await loadTemplate());
@@ -60,10 +70,50 @@ describe("dashboard user check-in template", () => {
     expect(footer).to.be.greaterThan(credentialEnd);
     expect(template).to.include('data-user-check-in-user> <div id="user-check-in-photo"');
     expect(template).to.include(
-      'class="text-center text-xs text-stone-500">Show this code to an organizer</p>',
+      'class="text-center text-xs text-stone-500" data-user-check-in-qr-caption>Show this code to an organizer</p>',
     );
     expect(template).to.include(
       'class="btn-primary-outline w-full sm:w-auto" data-user-check-in-close>Close</button>',
     );
+  });
+
+  it("opens the credential as a phone sheet", async () => {
+    // Load the Check-In template before checking the credential sheet.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the panel adopts the sheet primitive, with a title row that can be dragged.
+    expect(template).to.include("sheet-panel phone:h-[calc(100dvh-4rem)]");
+    expect(template).to.include("sheet-head sheet-grab");
+    expect(template).to.include("phone:max-w-[max(12rem,min(100%,calc(100dvh-26rem)))]");
+    expect(template).to.include("phone:line-clamp-2 phone:wrap-anywhere");
+  });
+
+  it("keeps the QR failure state free of the shared broken-image tile", async () => {
+    // Load the Check-In template before checking the QR area.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the image opts out of the tile, with no phone token left to hide it.
+    expect(template).to.match(/id="user-check-in-qr-image"[^>]*data-ocg-skip-broken-image>/);
+    expect(template).not.to.include("data-ocg-broken-image-icon");
+
+    // Verify the caption is hidden by the module rather than by a phone token.
+    expect(template).not.to.include("[&>p]:hidden");
+  });
+
+  it("shows the tap cue on phones only as a decorative Scan-style button", async () => {
+    // Load the Check-In template before checking the card cue.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the cue is hidden off phones and adds nothing to the card's accessible name.
+    const cue = template.slice(0, template.indexOf("Show QR code"));
+    const cueStart = cue.lastIndexOf('<span class="not-phone:hidden');
+    expect(cueStart).to.be.greaterThan(-1);
+    expect(cue.slice(cueStart)).to.include('aria-hidden="true"');
+
+    // Verify it reuses the group Scan button look, pinned to the card bottom it reserves.
+    expect(cue.slice(cueStart)).to.include(
+      "btn-primary-outline-anchor btn-mini phone:absolute phone:inset-x-3 phone:bottom-3 phone:h-11 phone:text-sm",
+    );
+    expect(template).to.include('focus-visible:outline-primary-500 phone:pb-14" data-user-check-in-open');
   });
 });

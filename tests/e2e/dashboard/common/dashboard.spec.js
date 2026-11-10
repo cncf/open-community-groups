@@ -81,7 +81,7 @@ test.describe("dashboard access and shared behavior", () => {
       await expect(organizerGroupPage.getByRole("heading", { name: "Check-In" })).toBeVisible();
     });
 
-    test("user dashboard opens mobile check-in from its only available option", async ({ member1Page }) => {
+    test("user dashboard opens mobile check-in and invitations from the drawer", async ({ member1Page }) => {
       // Load the user dashboard on a mobile viewport.
       await navigateToPath(member1Page, "/dashboard/user?tab=events");
 
@@ -93,8 +93,12 @@ test.describe("dashboard access and shared behavior", () => {
         name: "Check-In",
         exact: true,
       });
-      await expect(drawer.locator("a[hx-get]:visible")).toHaveCount(1);
+      await expect(drawer.locator("a[hx-get]:visible")).toHaveCount(2);
       await expect(checkInLink).toHaveAttribute("hx-get", "/dashboard/user?tab=check-in");
+      await expect(drawer.getByRole("link", { name: "Invitations", exact: true })).toHaveAttribute(
+        "hx-get",
+        "/dashboard/user?tab=invitations",
+      );
 
       // Follow the available option and verify the check-in surface replaces the page.
       await waitForActionResponse(member1Page, () => checkInLink.click(), {
@@ -105,6 +109,22 @@ test.describe("dashboard access and shared behavior", () => {
       await expect(member1Page.getByText(MOBILE_WARNING, { exact: true })).toBeHidden();
       await expect(member1Page.locator("#dashboard-main-content")).toBeVisible();
       await expect(member1Page.getByRole("heading", { name: "Check-In" })).toBeVisible();
+
+      // Follow the second option and verify the invitations tab replaces the check-in surface.
+      const invitationsDrawer = await openMobileDashboardDrawer(member1Page);
+      await waitForActionResponse(
+        member1Page,
+        () => invitationsDrawer.getByRole("link", { name: "Invitations", exact: true }).click(),
+        {
+          method: "GET",
+          urlEndsWith: "/dashboard/user?tab=invitations",
+        },
+      );
+      await expect(member1Page).toHaveURL(/\/dashboard\/user\?tab=invitations$/u);
+      await expect(member1Page.getByText(MOBILE_WARNING, { exact: true })).toBeHidden();
+      await expect(
+        member1Page.locator("#dashboard-content").getByText("Event Invitations", { exact: true }),
+      ).toBeVisible();
     });
 
     test("desktop version mode replaces the mobile unsupported state", async ({ member1Page }) => {

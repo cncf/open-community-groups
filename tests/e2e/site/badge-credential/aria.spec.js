@@ -19,7 +19,7 @@ test.describe("public badge credential page ARIA snapshots", () => {
     const credential = await openCredential(page);
 
     // Capture the credential; its award date follows the seed day.
-    await expectAriaSnapshot(page, credential, "badge-credential");
+    await expectAriaSnapshot(page, credential, "badge-credential-mobile");
   });
 });
 

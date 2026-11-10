@@ -10,6 +10,8 @@ const loadTemplate = async () => {
 
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
+const countOf = (value, text) => value.split(text).length - 1;
+
 describe("dashboard user invitations list template", () => {
   it("orders event group and community invitations", async () => {
     // Load the invitations template before checking section order.
@@ -24,8 +26,12 @@ describe("dashboard user invitations list template", () => {
     expect(groupInvitations).to.be.greaterThan(eventInvitations);
     expect(communityInvitations).to.be.greaterThan(groupInvitations);
     expect(template.match(/mb-12/gu)).to.have.length(2);
-    expect(template).to.include("{# Groups Invitations -#} <div>");
-    expect(template).to.include("{# Community Invitations -#} <div>");
+    expect(template).to.include(
+      '{# Groups Invitations -#} <div class="phone:px-3 phone:pb-3{% if group_invitations.is_empty() %} phone:hidden{% endif %}">',
+    );
+    expect(template).to.include(
+      '{# Community Invitations -#} <div class="phone:px-3 phone:pb-3{% if community_invitations.is_empty() %} phone:hidden{% endif %}">',
+    );
     expect(template).not.to.include("mb-10");
     expect(template).not.to.include('class="pt-12"');
     expect(template).to.not.include("border-t border-stone-900/10");
@@ -144,6 +150,164 @@ describe("dashboard user invitations list template", () => {
     expect(template).to.include("{% if let Some(instructions) = &external_payment.instructions -%}");
     expect(template).to.include(
       "{% else if let Some(resume_checkout_url) = &invitation.resume_checkout_url -%}",
+    );
+  });
+
+  it("replaces the phone tables with action cards", async () => {
+    // Load the invitations template before checking the phone card tokens.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // The desktop tables no longer stack; they hide on phones.
+    expect(template).to.not.include("dashboard-table-stacked");
+    expect(countOf(template, 'class="mt-10 phone:mt-0 phone:hidden"')).to.equal(3);
+
+    // Each kind gets its own phone-only action-card list.
+    expect(countOf(template, 'class="not-phone:hidden space-y-3 px-3 pb-4"')).to.equal(3);
+    expect(template).to.include("{# Event Invitations (phone action cards) -#}");
+    expect(template).to.include("{# Groups Invitations (phone action cards) -#}");
+    expect(template).to.include("{# Community Invitations (phone action cards) -#}");
+
+    // Section titles inset to match the cards so the page keeps a margin on phones.
+    expect(template).to.include(
+      '<div class="phone:px-3 phone:pt-4 phone:pb-3"> {{ dashboard::page_title(title = "Event Invitations"',
+    );
+    expect(countOf(template, "phone:px-3 phone:pb-3{% if")).to.equal(2);
+
+    // The desktop event name still wraps, and a deep link to an offer card clears the fixed header.
+    expect(countOf(template, "phone:whitespace-normal phone:line-clamp-2 phone:text-[15px]/5")).to.equal(3);
+    expect(template).to.include('id="event-offer-card-{{ invitation.admission_offer_id }}"');
+    expect(template).to.include(
+      'class="phone:-scroll-mt-11 rounded-lg border border-stone-200 bg-white p-3"',
+    );
+  });
+
+  it("names the invitation in phone decline and reject confirmations", async () => {
+    // Load the invitations template before checking the phone confirm copy.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // The offer card decline confirm names the event and keeps the shared confirm flow.
+    expect(template).to.include('id="decline-event-offer-card-{{ invitation.admission_offer_id }}"');
+    expect(template).to.include(
+      'data-confirm-message="Decline your invitation to {{ invitation.event_name }}? Your spot will be released."',
+    );
+
+    // Team reject confirms name the group or community.
+    expect(template).to.include('id="reject-group-card-{{ invitation.group_id }}"');
+    expect(template).to.include(
+      'data-confirm-message="Decline your invitation to join {{ invitation.group_name }}?"',
+    );
+    expect(template).to.include('id="reject-community-card-{{ invitation.community_id }}"');
+    expect(template).to.include(
+      'data-confirm-message="Decline your invitation to join {{ invitation.community_name }}?"',
+    );
+  });
+
+  it("summarizes each offer card with price and question chips and a source line", async () => {
+    // Load the invitations template before checking the offer card chips.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Free offers read as a plain RSVP; paid offers reuse the desktop's neutral price and tier badges.
+    expect(template).to.include('<span class="custom-badge badge-neutral">Free RSVP</span>');
+    expect(template).to.include(
+      '<span class="custom-badge badge-neutral" data-localized-currency>{{ price_label }}</span> <span class="custom-badge badge-neutral">{{ invitation.ticket_title }}</span>',
+    );
+    expect(template).to.include("{{ invitation.registration_questions.len() }} question");
+
+    // The offer source moves to its own meta line with the invitation icon instead of a chip.
+    expect(template).to.not.include(
+      '<span class="custom-badge badge-neutral">{{ invitation.source_label() }}</span>',
+    );
+    expect(template).to.include(
+      '<span class="svg-icon size-4 shrink-0 bg-stone-400 icon-pending-invitation" aria-hidden="true"></span> {{ invitation.source_label() }}',
+    );
+
+    // The offer card reuses the shared primary action as a filled button.
+    expect(template).to.include(
+      'button_classes = "btn-primary flex w-full items-center justify-center gap-2"',
+    );
+  });
+
+  it("hides empty sections on phones and keeps the event title", async () => {
+    // Load the invitations template before checking the section states.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // The event section hides its desktop table on phones; the page title stays above the cards.
+    expect(template).to.include(
+      "{% let no_invitations = event_invitations.is_empty() && group_invitations.is_empty() && community_invitations.is_empty() -%}",
+    );
+    expect(template).to.include('<div class="mt-10 phone:mt-0 phone:hidden">');
+
+    // Team tables hide when empty; the title before them follows through the primitive.
+    expect(template).to.include("{% if group_invitations.is_empty() %} phone:hidden{% endif %}");
+    expect(template).to.include("{% if community_invitations.is_empty() %} phone:hidden{% endif %}");
+
+    // One shared empty state replaces the per-section placeholders.
+    expect(template).to.include(
+      '{% if no_invitations -%} <div class="not-phone:hidden phone:px-3 text-stone-500"> {% call dashboard::empty_state("No pending invitations", title_margin = "mb-0") -%}',
+    );
+  });
+
+  it("shares the primary offer action between the menu and the phone row", async () => {
+    // Load the invitations template before checking the extracted action.
+    const template = normalizeWhitespace(await loadTemplate());
+    const macroStart = template.indexOf("{% macro event_offer_primary_action(");
+    const macro = template.slice(macroStart, template.indexOf("{% endmacro event_offer_primary_action"));
+
+    // Each branch writes the role only when the caller passes one, and keeps the ticket icon.
+    expect(macroStart).to.be.greaterThan(-1);
+    expect(countOf(macro, '{% if let Some(role_value) = role %}role="{{ role_value }}"{% endif %}')).to.equal(
+      3,
+    );
+    expect(countOf(macro, "icon-ticket")).to.equal(3);
+    expect(countOf(macro, 'class="{{ anchor_classes }}"')).to.equal(2);
+    expect(countOf(macro, 'class="{{ button_classes }}"')).to.equal(1);
+
+    // The menu keeps its row and hides it on phones, where a labelled action sits before the kebab.
+    const phoneAction = template.indexOf('<div class="not-phone:hidden phone:min-w-0 phone:flex-1');
+    const actionsMenu = template.indexOf("<details data-actions-menu");
+    const menuAction = template.indexOf('<li class="phone:hidden"> {{ event_offer_primary_action(');
+    expect(phoneAction).to.be.greaterThan(-1);
+    expect(phoneAction).to.be.lessThan(actionsMenu);
+    expect(menuAction).to.be.greaterThan(actionsMenu);
+    expect(template.slice(phoneAction, actionsMenu)).to.include("role = None");
+    expect(template.slice(menuAction, macroStart)).to.include('role = Some("menuitem")');
+
+    // The kebab and its menu fit a 44px trigger.
+    expect(template).to.include("phone:[&>.dropdown]:top-12");
+    expect(template).to.include("[&::-webkit-details-marker]:hidden phone:size-11");
+    expect(countOf(template, 'hover:text-stone-900 phone:py-3"')).to.equal(2);
+  });
+
+  it("labels team row actions on phones", async () => {
+    // Load the invitations template before checking the team actions.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Both team tables use a two-column action grid with visible labels and busy feedback.
+    expect(countOf(template, "justify-end gap-2 phone:grid phone:w-full phone:grid-cols-2")).to.equal(2);
+    expect(countOf(template, '<span class="not-phone:hidden">Approve</span>')).to.equal(2);
+    expect(countOf(template, '<span class="not-phone:hidden">Reject</span>')).to.equal(2);
+    expect(countOf(template, "phone:disabled:opacity-50")).to.equal(4);
+
+    // Only Approve carries the outline, so the two actions do not weigh the same.
+    expect(countOf(template, "phone:border phone:border-primary-500")).to.equal(2);
+  });
+
+  it("opens the claim form as a bottom sheet on phones", async () => {
+    // Load the invitations template before checking the sheet adoption.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // The modal card becomes the sheet, with a grabber on its title row and a scrolling body.
+    expect(template).to.include('<div class="modal-panel p-4 max-w-3xl phone:p-0">');
+    expect(template).to.include('<div class="modal-card sheet-panel rounded-lg">');
+    expect(template).to.include('<div class="sheet-head sheet-grab flex items-start justify-between');
+    expect(template).to.include('class="modal-body sheet-body space-y-6 p-4 md:p-6 phone:p-3"');
+
+    // The compact phone head drops the event name, so the offer summary leads with it instead.
+    expect(template).to.include(
+      '<p class="mt-1 text-sm text-stone-600 phone:hidden">{{ invitation.event_name }}</p>',
+    );
+    expect(template).to.include(
+      '<p class="mb-3 line-clamp-2 border-b border-stone-200 pb-3 text-sm font-semibold text-stone-900 wrap-anywhere not-phone:hidden"> {{ invitation.event_name }} </p>',
     );
   });
 

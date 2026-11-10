@@ -1,8 +1,21 @@
 import { closestElement, getElementById } from "/static/js/common/dom.js";
+import { isPhoneViewport, PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 
 const DOCSIFY_BODY_CLASSES = ["close", "ready", "sticky"];
+const DOCSIFY_TOGGLE_NAME = "Menu";
 const DOCS_ANCHOR_SCROLL_PADDING_PX = 30;
+const DOCS_BAR_DEFAULT_SECTION = "Documentation";
+const DOCS_BAR_PAGE_SELECTOR = "[data-docs-bar-page]";
+const DOCS_BAR_SECTION_SELECTOR = "[data-docs-bar-section]";
+// Header 64 and a gap of 8.
+const DOCS_PHONE_ANCHOR_OFFSET_PX = 72;
+const DOCS_PHONE_TOGGLE_NAME = "Contents";
+const DOCS_SHEET_HEAD_CLOSE_SELECTOR = ".docs-sheet-head-close";
+const DOCS_SHEET_HEAD_SELECTOR = ".docs-sheet-head";
 const DOCS_SIDEBAR_SELECTOR = ".sidebar-nav";
+const DOCS_TOGGLE_SELECTOR = ".sidebar-toggle";
+
+let docsReloadHandler = () => window.location.reload();
 
 /**
  * Mirrors docsify body classes to the docs container root.
@@ -93,6 +106,95 @@ export const setupMobileSidebarOutsideDismiss = () => {
 };
 
 /**
+ * Applies the phone anchor offset and binds the Contents sheet while the phone query matches.
+ * @param {HTMLElement} docsRoot Docs root container.
+ * @returns {() => void} Cleanup callback.
+ */
+export const setupDocsPhoneShell = (docsRoot) => {
+  const query = window.matchMedia(PHONE_MEDIA_QUERY);
+  let releaseContentsSheet = null;
+
+  const release = () => {
+    releaseContentsSheet?.();
+    releaseContentsSheet = null;
+  };
+
+  const sync = () => {
+    // Docsify reassigns this object and reads it per scroll, so hold no reference to it.
+    window.$docsify.topMargin = query.matches ? DOCS_PHONE_ANCHOR_OFFSET_PX : 0;
+
+    if (query.matches) {
+      releaseContentsSheet ??= bindContentsSheet(docsRoot);
+    } else {
+      release();
+    }
+  };
+
+  query.addEventListener("change", sync);
+  sync();
+
+  return () => {
+    query.removeEventListener("change", sync);
+    release();
+  };
+};
+
+/**
+ * Restores the page title on phones, where Docsify builds it from the innerText of the hidden
+ * Contents sheet, and names the section and page on the phone Contents bar.
+ * @param {HTMLElement} docsRoot Docs root container.
+ */
+export const syncPhoneDocsTitle = (docsRoot) => {
+  // Docsify moves active from the page to the section a deep link names.
+  const active = docsRoot.querySelector(`${DOCS_SIDEBAR_SELECTOR} .active`);
+  const pageItem = active?.closest(".app-sub-sidebar")?.parentElement ?? active;
+  const title = pageItem?.querySelector(":scope > a")?.textContent.trim() ?? "";
+  // Top-level pages such as Overview have no section heading.
+  const section = pageItem
+    ?.closest("li")
+    ?.parentElement?.closest("li")
+    ?.querySelector(":scope > p")
+    ?.textContent.trim();
+  writeDocsBarLabels(docsRoot, section || DOCS_BAR_DEFAULT_SECTION, title);
+
+  if (title && isPhoneViewport()) {
+    document.title = title;
+  }
+};
+
+/**
+ * Writes the section and page names into the phone Contents bar.
+ * @param {HTMLElement} docsRoot Docs root container.
+ * @param {string} section Section name.
+ * @param {string} page Page name.
+ */
+const writeDocsBarLabels = (docsRoot, section, page) => {
+  const sectionLabel = docsRoot.querySelector(DOCS_BAR_SECTION_SELECTOR);
+  const pageLabel = docsRoot.querySelector(DOCS_BAR_PAGE_SELECTOR);
+  if (sectionLabel) {
+    sectionLabel.textContent = section;
+  }
+  if (pageLabel) {
+    pageLabel.textContent = page;
+  }
+};
+
+/**
+ * Reloads the docs page.
+ */
+export const reloadDocsPage = () => {
+  docsReloadHandler();
+};
+
+/**
+ * Replaces the docs reload handler.
+ * @param {() => void} handler Reload handler.
+ */
+export const setDocsReloadHandler = (handler) => {
+  docsReloadHandler = handler;
+};
+
+/**
  * Updates docs hash to include current path and section ID.
  * @param {string} rawPath Route path.
  * @param {string} id Target section ID.
@@ -121,9 +223,10 @@ export const updateDocsAnchorHash = (rawPath, id) => {
  */
 export const jumpToElement = (element) => {
   const top = element.getBoundingClientRect().top + window.pageYOffset;
+  const padding = isPhoneViewport() ? DOCS_PHONE_ANCHOR_OFFSET_PX : DOCS_ANCHOR_SCROLL_PADDING_PX;
   window.scrollTo({
     behavior: "auto",
-    top: Math.max(0, top - DOCS_ANCHOR_SCROLL_PADDING_PX),
+    top: Math.max(0, top - padding),
   });
 };
 
@@ -194,3 +297,227 @@ export const createSamePageAnchorClickHandler =
     jumpToElement(targetElement);
     scheduleCurrentSidebarSectionStateSync();
   };
+
+/**
+ * Binds the Contents sheet state and the close paths that Docsify leaves out on phones.
+ * @param {HTMLElement} docsRoot Docs root container.
+ * @returns {() => void} Cleanup callback.
+ */
+const bindContentsSheet = (docsRoot) => {
+  let closeWatcher = null;
+  let sheetOpen = false;
+  let releaseSheetHead = null;
+
+  const hideSheet = () => {
+    document.body.classList.remove("close");
+    docsRoot.classList.remove("close");
+  };
+
+  const requestClose = () => {
+    docsRoot.querySelector(DOCS_TOGGLE_SELECTOR)?.click();
+  };
+
+  const handleEscape = (event) => {
+    if (event.key === "Escape") {
+      requestClose();
+    }
+  };
+
+  const releaseCloseRequests = () => {
+    closeWatcher?.destroy();
+    closeWatcher = null;
+    document.removeEventListener("keydown", handleEscape);
+    window.removeEventListener("hashchange", hideSheet);
+  };
+
+  // Follow the body class: links and outside taps close the sheet without the toggle.
+  const syncCloseRequests = () => {
+    if (!document.body.classList.contains("close")) {
+      releaseCloseRequests();
+      return;
+    }
+
+    // Back reaches the page behind the sheet wherever no CloseWatcher takes it first.
+    window.addEventListener("hashchange", hideSheet);
+
+    // Chromium turns Escape into a close request, so the key only needs a listener without it.
+    if (!("CloseWatcher" in window)) {
+      document.addEventListener("keydown", handleEscape);
+      return;
+    }
+
+    if (closeWatcher) {
+      return;
+    }
+
+    closeWatcher = new window.CloseWatcher();
+    closeWatcher.addEventListener("close", () => {
+      closeWatcher = null;
+      requestClose();
+    });
+  };
+
+  const syncSheetState = ({ returnFocus = true } = {}) => {
+    releaseSheetHead ??= insertContentsSheetHead(docsRoot);
+    const open = document.body.classList.contains("close");
+    if (open && !sheetOpen) {
+      revealCurrentRow(docsRoot);
+    }
+    if (!open && sheetOpen && returnFocus) {
+      returnFocusToToggle(docsRoot);
+    }
+    sheetOpen = open;
+    writeSheetAttributes(docsRoot, open);
+    syncCloseRequests();
+  };
+
+  // Runs at once, because HTMX clones the page for history before the body observer would.
+  const closeForNavigation = () => {
+    hideSheet();
+    syncSheetState({ returnFocus: false });
+  };
+
+  // Docsify closes on any tap when it loaded at 600px or less, and on none above that, so links
+  // close here and its body listener never sees the rest of the sheet.
+  const handleSheetClick = (event) => {
+    if (closestElement(event.target, DOCS_SHEET_HEAD_CLOSE_SELECTOR)) {
+      // The close button sits inside the sidebar, so dismiss here before the swallow below eats it.
+      event.stopPropagation();
+      requestClose();
+      return;
+    }
+    const link = closestElement(event.target, `${DOCS_SIDEBAR_SELECTOR} a`);
+    if (link?.hash === window.location.hash) {
+      // The current page goes nowhere, so this close counts as a dismissal.
+      hideSheet();
+    } else if (link) {
+      closeForNavigation();
+    } else if (closestElement(event.target, ".sidebar")) {
+      event.stopPropagation();
+    }
+  };
+
+  // The first pageshow fires after load and must not close a sheet opened on a slow page.
+  const handlePageShow = (event) => {
+    if (event.persisted) {
+      closeForNavigation();
+    }
+  };
+
+  // Also catches the toggle: Docsify renders it after this binds, then adds its ready class.
+  const bodyObserver = new MutationObserver(() => syncSheetState());
+  bodyObserver.observe(document.body, {
+    attributeFilter: ["class"],
+    attributes: true,
+  });
+  syncSheetState();
+
+  docsRoot.addEventListener("click", handleSheetClick, true);
+  document.addEventListener("htmx:beforeHistorySave", closeForNavigation);
+  document.addEventListener("htmx:historyRestore", closeForNavigation);
+  window.addEventListener("pageshow", handlePageShow);
+
+  return () => {
+    bodyObserver.disconnect();
+    releaseSheetHead?.();
+    releaseSheetHead = null;
+    releaseCloseRequests();
+    clearSheetAttributes(docsRoot);
+    docsRoot.removeEventListener("click", handleSheetClick, true);
+    document.removeEventListener("htmx:beforeHistorySave", closeForNavigation);
+    document.removeEventListener("htmx:historyRestore", closeForNavigation);
+    window.removeEventListener("pageshow", handlePageShow);
+  };
+};
+
+/**
+ * Gives the toggle and the page back the state they have off phones.
+ * @param {HTMLElement} docsRoot Docs root container.
+ */
+const clearSheetAttributes = (docsRoot) => {
+  const toggle = docsRoot.querySelector(DOCS_TOGGLE_SELECTOR);
+  toggle?.removeAttribute("aria-expanded");
+  toggle?.setAttribute("aria-label", DOCSIFY_TOGGLE_NAME);
+  docsRoot.querySelector(".content")?.removeAttribute("inert");
+};
+
+/**
+ * Inserts the Contents sheet head with a title and close button, so the phone Contents sheet
+ * matches the close affordance of the app's other sheets. No-op once the head exists or before
+ * Docsify has rendered the sidebar. The close button is handled by the sheet's delegated click
+ * listener, so no per-button listener is attached here.
+ * @param {HTMLElement} docsRoot Docs root container.
+ * @returns {(() => void)|null} Cleanup that removes the head, or null when nothing was inserted.
+ */
+const insertContentsSheetHead = (docsRoot) => {
+  const sidebar = docsRoot.querySelector(".sidebar");
+  if (!sidebar || sidebar.querySelector(DOCS_SHEET_HEAD_SELECTOR)) {
+    return null;
+  }
+
+  const head = document.createElement("div");
+  head.className = "docs-sheet-head";
+
+  const title = document.createElement("span");
+  title.className = "docs-sheet-head-title";
+  title.textContent = DOCS_PHONE_TOGGLE_NAME;
+
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "docs-sheet-head-close";
+  const closeLabel = document.createElement("span");
+  closeLabel.className = "sr-only";
+  closeLabel.textContent = "Close contents";
+  close.append(closeLabel);
+
+  head.append(title, close);
+  sidebar.prepend(head);
+
+  return () => {
+    head.remove();
+  };
+};
+
+/**
+ * Moves focus to the toggle when it would otherwise be lost with the hiding sheet. Focus a tap
+ * put elsewhere, such as on a header control, stays there.
+ * @param {HTMLElement} docsRoot Docs root container.
+ */
+const returnFocusToToggle = (docsRoot) => {
+  const { activeElement, body } = document;
+  if (activeElement === body || docsRoot.querySelector(".sidebar")?.contains(activeElement)) {
+    docsRoot.querySelector(DOCS_TOGGLE_SELECTOR)?.focus();
+  }
+};
+
+/**
+ * Scrolls the current row into the open Contents sheet, because Docsify's own sidebar tracking
+ * never runs at 600px or less.
+ * @param {HTMLElement} docsRoot Docs root container.
+ */
+const revealCurrentRow = (docsRoot) => {
+  const sheet = docsRoot.querySelector(".sidebar");
+  const row = [...docsRoot.querySelectorAll(`${DOCS_SIDEBAR_SELECTOR} li.active > a`)].pop();
+  if (!sheet || !row) {
+    return;
+  }
+
+  const sheetBox = sheet.getBoundingClientRect();
+  const rowBox = row.getBoundingClientRect();
+  if (rowBox.top < sheetBox.top || rowBox.bottom > sheetBox.bottom) {
+    // A third of the way down leaves room for the page's sub-rows below it.
+    sheet.scrollTop += rowBox.top - sheetBox.top - sheetBox.height / 3;
+  }
+};
+
+/**
+ * Writes the Contents sheet state onto the toggle and the page behind it.
+ * @param {HTMLElement} docsRoot Docs root container.
+ * @param {boolean} open Whether the sheet is open.
+ */
+const writeSheetAttributes = (docsRoot, open) => {
+  const toggle = docsRoot.querySelector(DOCS_TOGGLE_SELECTOR);
+  toggle?.setAttribute("aria-expanded", String(open));
+  toggle?.setAttribute("aria-label", DOCS_PHONE_TOGGLE_NAME);
+  docsRoot.querySelector(".content")?.toggleAttribute("inert", open);
+};

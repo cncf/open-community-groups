@@ -4,7 +4,10 @@ import { expectAriaSnapshot, expectPageLayout } from "../../../snapshots.js";
 import { navigateToPath } from "../../../utils.js";
 import { getDashboardMenu, getMobileNotice } from "../aria-helpers.js";
 
-// Every user dashboard tab; on mobile all but Check-In show the mobile notice instead of the content.
+// Tabs with a mobile layout; every other tab shows the mobile notice instead of the content.
+const MOBILE_TABS = ["check-in", "invitations"];
+
+// Every user dashboard tab.
 const USER_TABS = [
   "account",
   "badges",
@@ -54,7 +57,7 @@ test.describe("user dashboard shell ARIA snapshots", () => {
     await expectAriaSnapshot(emptyUserPage, header, "user-dashboard-header-mobile");
     await expectAriaSnapshot(emptyUserPage, notice, "user-dashboard-mobile-notice");
 
-    // Open the menu drawer and capture it: only Check-In is offered on mobile.
+    // Open the menu drawer and capture it: only Check-In and Invitations are offered on mobile.
     await emptyUserPage.getByRole("button", { name: "Open dashboard menu" }).click();
     await expect(menu).toBeInViewport({ ratio: 1 });
     await expect(emptyUserPage.locator("#dashboard-menu-backdrop")).toBeVisible();
@@ -72,8 +75,8 @@ test.describe("user dashboard shell ARIA snapshots", () => {
         // Load the tab as the user with the most dashboard data.
         await navigateToPath(member1Page, `/dashboard/user?tab=${tab}`);
 
-        // Verify Check-In renders its content and every other tab the mobile notice, within the viewport.
-        if (tab === "check-in") {
+        // Verify the mobile tabs render their content and every other tab the notice, within the viewport.
+        if (MOBILE_TABS.includes(tab)) {
           await expect(notice).toBeHidden();
           await expectPageLayout(member1Page, { regions: [header, main] });
         } else {

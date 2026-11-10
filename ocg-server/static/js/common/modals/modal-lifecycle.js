@@ -1,12 +1,21 @@
 import { getElementById, isElementHidden, setElementHidden } from "/static/js/common/dom.js";
+import {
+  bindSheetGestures,
+  getSheetCloseButton,
+  isBottomSheet,
+} from "/static/js/common/modals/sheet-gestures.js";
+import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
 
 const MODAL_AUTOFOCUS_SELECTOR = "[autofocus]";
 const RESTORABLE_MODAL_SELECTOR = '[data-restorable-modal], [role="dialog"][aria-modal="true"]';
 const MODAL_FOCUS_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), ' +
   'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const SHEET_PANEL_SELECTOR = ".sheet-panel";
 const modalCloseCleanups = new WeakMap();
 const modalFocusOrigins = new WeakMap();
+// Apart from modalCloseCleanups, because bindOpenModalKeyboard replaces that entry right after opening.
+const modalSheetCleanups = new WeakMap();
 
 /**
  * Runs and forgets the close cleanup registered for a modal.
@@ -20,16 +29,47 @@ const runModalCloseCleanup = (modal) => {
 };
 
 /**
+ * Runs and forgets the sheet gestures cleanup stored for a modal.
+ * @param {Element} modal Modal element.
+ * @returns {void}
+ */
+const runModalSheetCleanup = (modal) => {
+  const cleanup = modalSheetCleanups.get(modal);
+  modalSheetCleanups.delete(modal);
+  cleanup?.();
+};
+
+/**
+ * Returns the sheet panel of a modal.
+ * @param {Element} modal Modal element.
+ * @returns {Element|null} The modal itself or its sheet panel descendant.
+ */
+const getSheetPanel = (modal) =>
+  modal.matches(SHEET_PANEL_SELECTOR) ? modal : modal.querySelector(SHEET_PANEL_SELECTOR);
+
+/**
+ * Tells whether a modal focus target is out of reach. Phones read the layout
+ * instead of the hidden class, because a dashboard panel shown with phone:block
+ * keeps that class on its root.
+ * @param {HTMLElement} target Focus target.
+ * @returns {boolean} True when the target cannot take focus.
+ */
+const isFocusTargetHidden = (target) => {
+  if (!isPhoneViewport()) {
+    return target.closest('[hidden], [aria-hidden="true"], .hidden') !== null;
+  }
+
+  return target.closest('[hidden], [aria-hidden="true"]') !== null || target.getClientRects().length === 0;
+};
+
+/**
  * Returns available keyboard focus targets inside a modal.
  * @param {Element} modal Modal element.
  * @returns {HTMLElement[]} Available focus targets.
  */
 const getModalFocusTargets = (modal) =>
   Array.from(modal.querySelectorAll(MODAL_FOCUS_SELECTOR)).filter(
-    (target) =>
-      target instanceof HTMLElement &&
-      target.tabIndex >= 0 &&
-      !target.closest('[hidden], [aria-hidden="true"], .hidden'),
+    (target) => target instanceof HTMLElement && target.tabIndex >= 0 && !isFocusTargetHidden(target),
   );
 
 /**
@@ -61,9 +101,10 @@ const getModalFocusTarget = (modal) => {
  * Keeps Tab navigation within an open modal.
  * @param {KeyboardEvent} event Keyboard event.
  * @param {Element} modal Open modal element.
+ * @param {HTMLElement[]} [targets] Targets to cycle through, instead of the modal's own.
  * @returns {boolean} True when focus was wrapped.
  */
-export const trapModalFocus = (event, modal) => {
+export const trapModalFocus = (event, modal, targets) => {
   if (
     event.key !== "Tab" ||
     !(modal instanceof Element) ||
@@ -73,7 +114,7 @@ export const trapModalFocus = (event, modal) => {
     return false;
   }
 
-  const focusTargets = getModalFocusTargets(modal);
+  const focusTargets = targets ?? getModalFocusTargets(modal);
   if (focusTargets.length === 0) {
     event.preventDefault();
     getModalFocusTarget(modal)?.focus();
@@ -128,6 +169,45 @@ export const restoreModalFocus = (modal) => {
   modalFocusOrigins.delete(modal);
   if (focusOrigin instanceof HTMLElement && modal.ownerDocument?.contains(focusOrigin)) {
     focusOrigin.focus();
+  }
+};
+
+/**
+ * Moves focus into a sheet that opens without toggleModalVisibility, to its close
+ * button whatever the head renders before it. Anything but a bottom sheet keeps
+ * focus where it is. The opener is explicit because iOS does not focus a tapped
+ * control, and a custom element host hands over to the control it renders.
+ * @param {Element|null|undefined} panel Sheet panel.
+ * @param {EventTarget|null} opener Element that opened the sheet.
+ * @returns {(() => void)|null} Callback that returns focus to the opener, or null
+ *   when focus stayed put.
+ */
+export const focusBottomSheet = (panel, opener) => {
+  if (!isBottomSheet(panel)) {
+    return null;
+  }
+
+  focusModal(panel, opener instanceof HTMLElement ? (getModalFocusTargets(opener)[0] ?? opener) : null);
+  getSheetCloseButton(panel)?.focus();
+  return () => {
+    restoreModalFocus(panel);
+    // A backdrop tap closes on mousedown, whose default action would clear focus again.
+    if (window.event?.type === "mousedown") {
+      window.event.preventDefault();
+    }
+  };
+};
+
+/**
+ * Keeps Tab inside a sheet for as long as it is laid out as one, so a rotation past
+ * phone widths lets go of the trap.
+ * @param {KeyboardEvent} event Keyboard event.
+ * @param {Element|null|undefined} panel Sheet panel.
+ * @returns {void}
+ */
+export const trapBottomSheetFocus = (event, panel) => {
+  if (isBottomSheet(panel)) {
+    trapModalFocus(event, panel);
   }
 };
 
@@ -201,8 +281,10 @@ export const toggleModalVisibility = (modalTarget, trigger = null) => {
   if (willOpen) {
     lockBodyScroll();
     focusModal(modal, trigger);
+    modalSheetCleanups.set(modal, bindSheetGestures(getSheetPanel(modal)));
   } else {
     runModalCloseCleanup(modal);
+    runModalSheetCleanup(modal);
     unlockBodyScroll();
     restoreModalFocus(modal);
   }
@@ -337,6 +419,7 @@ export const resetRestoredModalState = (root = document) => {
 
   new Set(restorableModals).forEach((modal) => {
     runModalCloseCleanup(modal);
+    runModalSheetCleanup(modal);
     setElementHidden(modal, true);
     modal.setAttribute("aria-hidden", "true");
   });

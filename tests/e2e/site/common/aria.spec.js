@@ -7,6 +7,9 @@ import { PUBLIC_PAGES } from "./public-pages.js";
 // Badge pages replace the site header with the badge header, the same at every viewport.
 const BADGE_PAGES = new Set(["badge credential", "badge verification"]);
 
+// These pages load no user menu, so the phone header has no menu button.
+const NO_USER_MENU_PAGES = new Set(["login", "sign-up"]);
+
 // Untagged tests run on chromium-deep and @mobile ones on chromium-mobile-deep.
 const VIEWPORTS = [
   { name: "desktop", tag: "" },
@@ -69,6 +72,9 @@ test.describe("not found page ARIA snapshots", () => {
 const getHeaderSnapshotName = (pageName, viewport) => {
   if (BADGE_PAGES.has(pageName)) {
     return "badge-header";
+  }
+  if (viewport === "mobile" && NO_USER_MENU_PAGES.has(pageName)) {
+    return "auth-header-mobile";
   }
   return `${pageName === "home" ? "home" : "site"}-header-${viewport}`;
 };

@@ -1,8 +1,10 @@
 import { expect } from "@open-wc/testing";
 
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { initializeGroupCheckInScanner } from "/static/js/dashboard/group/check-in/scanner.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
+import { mockPhoneMedia, mockWakeLock } from "/tests/unit/test-utils/wake-lock.js";
 
 describe("group check-in scanner controls", () => {
   beforeEach(() => {
@@ -930,5 +932,148 @@ describe("group check-in scanner controls", () => {
       true,
     );
     expect(document.body.style.overflow).to.equal("");
+  });
+
+  describe("screen wake lock", () => {
+    let media;
+    let wakeLock;
+
+    /** Scanner double that starts without a real camera. */
+    class FakeScanner {
+      static async hasCamera() {
+        return true;
+      }
+      static async listCameras() {
+        return [];
+      }
+
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      async start() {}
+    }
+
+    beforeEach(() => {
+      wakeLock = mockWakeLock();
+    });
+
+    afterEach(() => {
+      media.restore();
+      wakeLock.restore();
+    });
+
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    const openScanner = async ({ phone = true, scanner = FakeScanner } = {}) => {
+      media = mockPhoneMedia(PHONE_MEDIA_QUERY, phone);
+      renderFixture();
+      window.__OCG_E2E_QR_SCANNER__ = scanner;
+      initializeGroupCheckInScanner();
+      document.querySelector("[data-group-check-in-open]").click();
+      await flush();
+    };
+
+    it("takes no lock off phones", async () => {
+      // Open the scanner with the phone query false.
+      await openScanner({ phone: false });
+
+      // Verify the scanner opens without a lock.
+      expect(document.getElementById("group-check-in-scanner-modal").classList.contains("hidden")).to.equal(
+        false,
+      );
+      expect(wakeLock.requests).to.deep.equal([]);
+    });
+
+    it("holds the lock until the scanner closes", async () => {
+      // Open the scanner on a phone.
+      await openScanner();
+      expect(wakeLock.requests).to.deep.equal(["screen"]);
+      expect(wakeLock.locks[0].released).to.equal(false);
+
+      // Close it and verify the lock is released.
+      document.querySelectorAll("[data-group-check-in-close]")[1].click();
+      await flush();
+      expect(wakeLock.locks[0].released).to.equal(true);
+    });
+
+    it("releases the lock on Escape", async () => {
+      // Open the scanner on a phone.
+      await openScanner();
+
+      // Press Escape inside the check-in root.
+      document
+        .querySelector("[data-group-check-in-mute]")
+        .dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+      await flush();
+
+      // Verify the lock is released.
+      expect(wakeLock.locks[0].released).to.equal(true);
+    });
+
+    it("releases the lock when HTMX removes the root", async () => {
+      // Open the scanner on a phone.
+      await openScanner();
+
+      // Announce cleanup of the root.
+      document
+        .querySelector("[data-group-check-in-root]")
+        .dispatchEvent(new Event("htmx:beforeCleanupElement", { bubbles: true }));
+      await flush();
+
+      // Verify the lock is released.
+      expect(wakeLock.locks[0].released).to.equal(true);
+    });
+
+    it("releases the lock on a browser cache restore", async () => {
+      // Open the scanner on a phone.
+      await openScanner();
+
+      // Restore the page from the browser cache.
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+      await flush();
+
+      // Verify the lock is released.
+      expect(wakeLock.locks[0].released).to.equal(true);
+    });
+
+    it("releases the lock on an HTMX history restore", async () => {
+      // Open the scanner on a phone.
+      await openScanner();
+
+      // Restore the root from the HTMX history cache.
+      initializeGroupCheckInScanner(document, { historyRestore: true });
+      await flush();
+
+      // Verify the lock is released.
+      expect(wakeLock.locks[0].released).to.equal(true);
+    });
+
+    it("releases the lock when the camera cannot start", async () => {
+      // Open the scanner with a camera that fails to start.
+      class BrokenScanner extends FakeScanner {
+        async start() {
+          throw new Error("Camera failed");
+        }
+      }
+      await openScanner({ scanner: BrokenScanner });
+
+      // Verify the modal stays open with nothing left to keep awake.
+      expect(document.getElementById("group-check-in-scanner-modal").classList.contains("hidden")).to.equal(
+        false,
+      );
+      expect(wakeLock.locks[0].released).to.equal(true);
+    });
+
+    it("keeps one lock when a second event opens the scanner", async () => {
+      // Open the scanner, then open the other event without closing it.
+      await openScanner();
+      document.querySelectorAll("[data-group-check-in-open]")[1].click();
+      await flush();
+
+      // Verify only the newest lock is held.
+      expect(wakeLock.locks.length).to.equal(2);
+      expect(wakeLock.locks.filter((lock) => !lock.released).length).to.equal(1);
+    });
   });
 });

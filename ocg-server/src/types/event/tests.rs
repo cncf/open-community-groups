@@ -249,6 +249,109 @@ fn test_event_full_cfs_predicates_follow_flag_and_window() {
 }
 
 #[test]
+fn test_event_full_directions_url_keeps_every_location_part() {
+    // Setup a venue longer than any display limit
+    let venue_name = "a".repeat(600);
+    let event = EventFull {
+        venue_city: Some("Madrid".to_string()),
+        venue_name: Some(venue_name.clone()),
+        ..Default::default()
+    };
+
+    // Check the destination keeps the venue and the city
+    assert_eq!(
+        event.directions_url().as_deref(),
+        Some(
+            format!("https://www.google.com/maps/dir/?api=1&destination={venue_name}%2C+Madrid")
+                .as_str()
+        )
+    );
+}
+
+#[test]
+fn test_event_full_directions_url_selects_the_destination() {
+    // Setup the expected URLs
+    let maps_url = "https://www.google.com/maps/dir/?api=1&destination=";
+    let venue = Some("Caf\u{e9} & Bar, Main St".to_string());
+    let venue_url = format!("{maps_url}Caf%C3%A9+%26+Bar%2C+Main+St");
+    let coordinates_url = format!("{maps_url}40.7128%2C-74.006");
+
+    // Setup the cases: (case, kind, latitude, longitude, venue_name, expected)
+    let cases = [
+        (
+            "coordinates win over the location text",
+            EventKind::InPerson,
+            Some(40.7128),
+            Some(-74.006),
+            venue.clone(),
+            Some(coordinates_url.clone()),
+        ),
+        (
+            "coordinates on a hybrid event",
+            EventKind::Hybrid,
+            Some(40.7128),
+            Some(-74.006),
+            None,
+            Some(coordinates_url),
+        ),
+        (
+            "location text without coordinates",
+            EventKind::InPerson,
+            None,
+            None,
+            venue.clone(),
+            Some(venue_url.clone()),
+        ),
+        (
+            "location text with incomplete coordinates",
+            EventKind::Hybrid,
+            Some(40.7128),
+            None,
+            venue.clone(),
+            Some(venue_url),
+        ),
+        (
+            "no coordinates and no location text",
+            EventKind::InPerson,
+            None,
+            None,
+            None,
+            None,
+        ),
+        (
+            "incomplete coordinates and no location text",
+            EventKind::InPerson,
+            None,
+            Some(-74.006),
+            None,
+            None,
+        ),
+        (
+            "virtual event with venue data",
+            EventKind::Virtual,
+            Some(40.7128),
+            Some(-74.006),
+            venue,
+            None,
+        ),
+    ];
+
+    // Check each case selects the expected destination
+    for (case, kind, latitude, longitude, venue_name, expected) in cases {
+        let event = EventFull {
+            kind,
+
+            latitude,
+            longitude,
+            venue_name,
+            ..Default::default()
+        };
+
+        assert_eq!(event.directions_url(), expected, "{case}");
+    }
+}
+
+#[test]
 fn test_event_full_has_only_free_visible_ticket_types_requires_all_visible_prices_to_be_free() {
     let free_event = EventFull {
         ticket_types: Some(vec![

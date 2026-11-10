@@ -4,17 +4,23 @@ import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
+  focusBottomSheet,
   isModalOverlayTarget,
   openModalBodyScroll,
+  trapBottomSheetFocus,
 } from "/static/js/common/modals/modal-lifecycle.js";
+import { bindSheetGestures } from "/static/js/common/modals/sheet-gestures.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
 import "/static/vendor/js/sharer.v0.5.4.min.js";
 
 /**
  * ShareModal displays a Share button that opens a modal with share options.
  * @extends LitWrapper
  * @property {string} triggerLabel - The accessible label for the share trigger
- * @property {string} triggerVariant - The trigger style variant
+ * @property {string} triggerVariant - The trigger style variant: button, icon or
+ *   menu-item, or the phone-only pill and action, which render in not-phone:hidden
+ *   hosts. An action fills its host, so the host takes the row's flex-1.
  * @property {string} title - The title to share
  * @property {string} url - The URL to share
  */
@@ -40,8 +46,11 @@ export class ShareModal extends LitWrapper {
     this.title = "";
     this.url = "";
     this._isOpen = false;
+    this._isSharing = false;
     this._modalContainer = null;
     this._removeDismissListeners = null;
+    this._removeSheetGestures = null;
+    this._restoreSheetFocus = null;
   }
 
   /**
@@ -61,6 +70,7 @@ export class ShareModal extends LitWrapper {
     this._removeEventListeners();
     this._removeModalContainer();
     this._isOpen = closeModalBodyScroll(this._isOpen);
+    this._restoreSheetFocus = null;
   }
 
   /**
@@ -84,14 +94,19 @@ export class ShareModal extends LitWrapper {
     this._isOpen = closeModalBodyScroll(this._isOpen);
     this._removeEventListeners();
     this._removeModalContainer();
+    this._restoreSheetFocus?.();
+    this._restoreSheetFocus = null;
   }
 
   /**
-   * Removes document-level event listeners for keydown and outside click.
+   * Removes document-level event listeners for keydown and outside click, and
+   * releases the sheet gestures.
    */
   _removeEventListeners() {
     this._removeDismissListeners?.();
     this._removeDismissListeners = null;
+    this._removeSheetGestures?.();
+    this._removeSheetGestures = null;
   }
 
   /**
@@ -129,7 +144,11 @@ export class ShareModal extends LitWrapper {
       return;
     }
 
-    render(this._renderModalContent(), this._ensureModalContainer());
+    const container = this._ensureModalContainer();
+    render(this._renderModalContent(), container);
+    const panel = container.querySelector(".sheet-panel");
+    this._removeSheetGestures = bindSheetGestures(panel, { onPageRestore: () => this._closeModal() });
+    this._restoreSheetFocus ??= focusBottomSheet(panel, this.querySelector("button"));
   }
 
   /**
@@ -144,13 +163,17 @@ export class ShareModal extends LitWrapper {
   }
 
   /**
-   * Handles keydown events to close the modal on Escape key press.
+   * Handles keydown events to close the modal on Escape key press, and keeps Tab
+   * inside the sheet.
    * @param {KeyboardEvent} event - The keyboard event
    */
   _handleKeydown(event) {
     if (this._isOpen && isEscapeEvent(event)) {
       event.preventDefault();
       this._closeModal();
+    }
+    if (this._restoreSheetFocus) {
+      trapBottomSheetFocus(event, this._modalContainer?.querySelector(".sheet-panel"));
     }
   }
 
@@ -210,6 +233,34 @@ export class ShareModal extends LitWrapper {
   }
 
   /**
+   * Shares through the system sheet on phones, and opens the modal without
+   * support or after a failure. navigator.share needs the tap's user gesture,
+   * so nothing may be awaited before it.
+   */
+  async _handleNativeShare() {
+    if (this._isSharing) {
+      return;
+    }
+
+    const shareData = { title: this.title, url: this._getFullUrl() };
+    if (!isPhoneViewport() || !navigator.canShare?.(shareData)) {
+      this._openModal();
+      return;
+    }
+
+    this._isSharing = true;
+    try {
+      await navigator.share(shareData);
+    } catch (error) {
+      if (error?.name !== "AbortError" && this.isConnected) {
+        this._openModal();
+      }
+    } finally {
+      this._isSharing = false;
+    }
+  }
+
+  /**
    * Renders the control that opens the share modal.
    * @returns {TemplateResult} The share trigger template
    */
@@ -224,6 +275,25 @@ export class ShareModal extends LitWrapper {
           title=${this.triggerLabel}
         >
           <span class="svg-icon size-3.5 icon-share" aria-hidden="true"></span>
+        </button>
+      `;
+    }
+
+    if (this.triggerVariant === "pill" || this.triggerVariant === "action") {
+      return html`
+        <button
+          type="button"
+          class="group btn-primary-outline phone:inline-flex phone:h-11 phone:items-center phone:justify-center phone:gap-2 phone:px-5 phone:whitespace-nowrap ${
+            this.triggerVariant === "action"
+              ? "phone:w-full phone:max-[360px]:px-2.5 phone:max-[360px]:text-[13px]"
+              : ""
+          }"
+          aria-label=${this.triggerLabel}
+          @click=${() => this._handleNativeShare()}
+          title=${this.triggerLabel}
+        >
+          <div class="svg-icon size-3 icon-share"></div>
+          <span>Share</span>
         </button>
       `;
     }
@@ -303,11 +373,11 @@ export class ShareModal extends LitWrapper {
           @click=${() => this._closeModal()}
         ></div>
 
-        <div class="modal-panel p-4 max-w-lg">
-          <div class="modal-card rounded-lg">
+        <div class="modal-panel p-4 max-w-lg phone:p-0">
+          <div class="modal-card sheet-panel rounded-lg">
             <div
-              class="flex items-center justify-between p-4 border-b
-                     border-stone-200 rounded-t"
+              class="sheet-head sheet-grab flex items-center justify-between p-4 border-b
+                     border-stone-200 rounded-t phone:py-0"
             >
               <h3 id="share-modal-title" class="text-lg font-semibold text-stone-900">Share</h3>
               <button
@@ -325,7 +395,7 @@ export class ShareModal extends LitWrapper {
               </button>
             </div>
 
-            <div class="modal-body p-5">
+            <div class="modal-body sheet-body p-5 phone:p-3">
               <div class="text-sm font-medium text-stone-700 mb-4">Share this link via</div>
               <div class="flex flex-wrap gap-3">
                 ${this._renderShareButton("email", "email", "Email")}
@@ -350,7 +420,7 @@ export class ShareModal extends LitWrapper {
                     type="button"
                     class="flex items-center justify-center size-8 rounded-full
                            hover:bg-stone-200 transition-colors cursor-pointer
-                           flex-shrink-0"
+                           flex-shrink-0 phone:size-11"
                     title="Copy link"
                     aria-label="Copy link"
                     @click=${() => this._handleCopyClick()}

@@ -16,8 +16,8 @@ test.describe("site explore page ARIA snapshots", () => {
   });
 
   test("matches the mobile events results header @mobile", async ({ page }) => {
-    // Load the events results and check the layout.
-    const resultsHeader = await openExplore(page, "events");
+    // Load the events results and check the layout. The header has no box of its own on phones.
+    const resultsHeader = await openExplore(page, "events", "#explore-cards");
 
     // Capture the search and results controls; the result count varies.
     await expectAriaSnapshot(page, resultsHeader, "explore-events-header-mobile");
@@ -32,8 +32,8 @@ test.describe("site explore page ARIA snapshots", () => {
   });
 
   test("matches the mobile groups results header @mobile", async ({ page }) => {
-    // Load the groups results and check the layout.
-    const resultsHeader = await openExplore(page, "groups");
+    // Load the groups results and check the layout. The header has no box of its own on phones.
+    const resultsHeader = await openExplore(page, "groups", "#explore-cards");
 
     // Capture the search and results controls; the result count varies.
     await expectAriaSnapshot(page, resultsHeader, "explore-groups-header-mobile");
@@ -66,13 +66,13 @@ const openCohostedEventCard = async (page) => {
 };
 
 /**
- * Opens the seeded community results for an entity, checks the layout and returns the results
- * header.
+ * Opens the seeded community results for an entity, checks the layout of a region and returns
+ * the results header.
  */
-const openExplore = async (page, entity) => {
+const openExplore = async (page, entity, layoutRegion = "#explore-results-header") => {
   const resultsHeader = page.locator("#explore-results-header");
   await navigateToPath(page, `/explore?entity=${entity}&community[0]=${TEST_COMMUNITY_NAME}`);
   await expect(page.getByPlaceholder(`Search ${entity}`)).toBeVisible();
-  await expectPageLayout(page, { regions: [resultsHeader] });
+  await expectPageLayout(page, { regions: [page.locator(layoutRegion)] });
   return resultsHeader;
 };

@@ -4,6 +4,9 @@
 {% import "macros/social.html" as social -%}
 {% import "macros/ui.html" as ui -%}
 
+{# Phones drop the stone canvas so the page reads as one white surface. -#}
+{% block shell_classes %}phone:bg-white{% endblock shell_classes %}
+
 {% block head_title -%}
   <title>{{ self.preview_title() |demoji }}</title>
 {% endblock head_title -%}
@@ -35,6 +38,7 @@
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
   <script type="module" src="/static/js/common/modals/images-gallery.js"></script>
   <script type="module" src="/static/js/common/charts/page-views.js"></script>
+  <script type="module" src="/static/js/common/read-more.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -45,27 +49,30 @@
   <h1 class="sr-only">{{ community.display_name }}</h1>
 
   {# Breadcrumb -#}
-  <breadcrumb-nav banner-url="{{ community.banner_url }}" banner-mobile-url="{{ community.banner_mobile_url }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ community.display_name|json }}, "icon": "community"}]'></breadcrumb-nav>
+  <breadcrumb-nav full-bleed banner-url="{{ community.banner_url }}" banner-mobile-url="{{ community.banner_mobile_url }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ community.display_name|json }}, "icon": "community"}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
-  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full">
-      <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
+  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:py-0">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full phone:rounded-none phone:border-0 phone:pb-2">
+      <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-8 lg:py-12 phone:px-3 phone:pb-4 phone:gap-y-6 phone:pt-1">
         {# About this community -#}
         {% let has_social_links = community.twitter_url.is_some() || community.bluesky_url.is_some() || community.github_url.is_some() || community.linkedin_url.is_some() || community.instagram_url.is_some() || community.wechat_url.is_some() || community.youtube_url.is_some() || community.flickr_url.is_some() || community.facebook_url.is_some() || community.slack_url.is_some() -%}
         <div role="region" aria-label="About this community">
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-10">
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-10 section-strip phone:-mx-3">
             About this community
           </div>
           {% if !community.description.is_empty() -%}
-            <div class="font-normal text-base/8 text-stone-600 community-description"
-                 data-ocg-remove-broken-images>{{ community.description|md_to_html|safe }}</div>
+            <div class="read-more">
+              <div class="font-normal text-base/8 text-stone-600 community-description read-more-body phone:text-[15px]/6"
+                   data-ocg-remove-broken-images>{{ community.description|md_to_html|safe }}</div>
+              {{ ui::read_more_toggle() -}}
+            </div>
           {% endif -%}
 
           {# New group instructions -#}
           {% if let Some(new_group_details) = &community.new_group_details -%}
             {% if !new_group_details.is_empty() -%}
-              <div class="mt-6 lg:mt-8">
+              <div class="mt-6 lg:mt-8 phone:hidden">
                 <div class="font-bold text-sm uppercase text-stone-400 mb-3">New groups</div>
                 <div class="font-normal text-base/8 text-stone-600 new-group-content"
                      data-ocg-remove-broken-images>{{ new_group_details|md_to_html|safe }}</div>
@@ -75,12 +82,12 @@
           {# End new group instructions -#}
 
           {# Stats -#}
-          <div class="mt-6 lg:mt-8">{{ stats|safe }}</div>
+          <div class="mt-6 lg:mt-8 phone:mt-5">{{ stats|safe }}</div>
           {# End stats -#}
 
           {# Social network links -#}
           {% if has_social_links -%}
-            <div class="mt-10 lg:mt-12 flex flex-wrap gap-3 justify-center">
+            <div class="mt-10 lg:mt-12 flex flex-wrap gap-3 justify-center phone:mt-5">
               {% if let Some(twitter_url) = &community.twitter_url -%}
                 {{ social::social_link(url = twitter_url, icon_name = "twitter", platform_name = "Twitter", big = true) -}}
               {% endif -%}
@@ -115,11 +122,11 @@
           {% endif -%}
           {# End social network links -#}
 
-          <div class="text-center mt-6 lg:mt-8">
+          <div class="text-center mt-6 lg:mt-8 phone:mt-5">
             <a href="/explore?community[0]={{ community.name }}"
                hx-boost="true"
                hx-target="body"
-               class="btn-primary-anchor text-md lg:text-lg px-8 font-semibold">Explore community groups and events</a>
+               class="btn-primary-anchor text-md lg:text-lg px-8 font-semibold phone:w-full phone:h-12 phone:px-4">Explore community groups and events</a>
           </div>
         </div>
         {# End about this community -#}
@@ -164,8 +171,8 @@
         {# Latest groups added -#}
         {% if recently_added_groups.len() > 0 -%}
           <div>
-            <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">
+            <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12 section-strip phone:-mx-3">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2 section-strip-title">
                 Latest groups added
               </div>
               {# See all groups on desktop -#}
@@ -176,17 +183,25 @@
                    class="btn-secondary-anchor ms-4">Explore all groups</a>
               </div>
               {# End see all groups on desktop -#}
+
+              {# See all groups on phones -#}
+              <a href="/explore?entity=groups&sort_by=name&community[0]={{ community.name }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 aria-label="See all latest groups added"
+                 class="btn-secondary-anchor pill-link not-phone:hidden">See all</a>
+              {# End see all groups on phones -#}
             </div>
             <div>
               {# Groups cards -#}
-              <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex">
+              <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex phone:gap-3">
                 {% for group in recently_added_groups -%}
                   {{- group|safe -}}
                 {% endfor -%}
               </div>
               {# End groups cards -#}
               {# See all groups mobile button -#}
-              <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+              <div class="flex mt-9 justify-self-center md:hidden md:mt-0 phone:hidden">
                 <a href="/explore?entity=groups&sort_by=name&community[0]={{ community.name }}"
                    hx-boost="true"
                    hx-target="body"
@@ -202,7 +217,7 @@
         {% if let Some(photos_urls) = &community.photos_urls -%}
           {% if !photos_urls.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
                 Gallery
               </div>
               <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>

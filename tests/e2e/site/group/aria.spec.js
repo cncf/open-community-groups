@@ -24,8 +24,9 @@ test.describe("group page ARIA snapshots", () => {
     // Capture the breadcrumb, which collapses into a select on mobile.
     await expectAriaSnapshot(page, breadcrumb, "group-breadcrumb-mobile");
 
-    // Capture the summary; its member count and creation month vary.
-    await expectAriaSnapshot(page, summary, "group-summary");
+    // Capture the summary, where a Share pill replaces the actions menu; its member
+    // count and creation month vary.
+    await expectAriaSnapshot(page, summary, "group-summary-mobile");
   });
 });
 

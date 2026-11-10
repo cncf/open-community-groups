@@ -280,13 +280,17 @@ export const getStatValue = (statsContainer, statLabel) => {
 export const getSectionByHeading = (page, heading) =>
   page.getByText(heading, { exact: true }).locator("..").locator("..");
 
-/** Selects a responsive link within a heading-based section. */
+/**
+ * Selects a responsive link within a heading-based section. Below md, roles skip
+ * hidden links, so it finds the bottom link in narrow mouse windows and the
+ * heading's pill on phones.
+ */
 export const getSectionLink = (page, heading, linkName, viewport) => {
   const section = getSectionByHeading(page, heading);
 
   return viewport === "desktop"
     ? section.locator("div.hidden.md\\:flex").getByRole("link", { name: linkName })
-    : section.locator("div.md\\:hidden").getByRole("link", { name: linkName });
+    : section.getByRole("link", { name: linkName });
 };
 
 /** Selects a community banner on the site home page. */
@@ -564,6 +568,57 @@ export const expectTableColumnsAtViewport = async (
 
     await expect(columnHeader).toBeHidden();
   }
+};
+
+/**
+ * Reads how far the page scrolls sideways. `clientWidth` is the bound because `innerWidth` grows
+ * with content wider than a phone's viewport, which would hide the overflow.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @returns {Promise<number>} Overflow in pixels, zero or less when the page fits.
+ */
+export const getPageOverflow = (page) =>
+  page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+
+/**
+ * Sends a close request as Android Back does. A sheet's own Escape handler would close it first
+ * and destroy its CloseWatcher, so the next keydown is stopped before reaching the page.
+ * @param {import("@playwright/test").Page} page - Page showing the sheet.
+ * @returns {Promise<void>} Resolves once the key is released.
+ */
+export const sendCloseRequest = async (page) => {
+  await page.evaluate(() => {
+    window.addEventListener("keydown", (event) => event.stopImmediatePropagation(), {
+      capture: true,
+      once: true,
+    });
+  });
+  await page.keyboard.press("Escape");
+};
+
+/**
+ * Plays a one-finger horizontal swipe through the browser's touch input.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @param {number} fromX - Starting x coordinate.
+ * @param {number} toX - Ending x coordinate.
+ * @param {number} [y] - Vertical coordinate of the swipe.
+ * @returns {Promise<void>} Resolves once the touch ends.
+ */
+export const swipeHorizontally = async (page, fromX, toX, y = 300) => {
+  const session = await page.context().newCDPSession(page);
+  const steps = 6;
+
+  await session.send("Input.dispatchTouchEvent", {
+    touchPoints: [{ x: fromX, y }],
+    type: "touchStart",
+  });
+  for (let step = 1; step <= steps; step += 1) {
+    await session.send("Input.dispatchTouchEvent", {
+      touchPoints: [{ x: fromX + ((toX - fromX) * step) / steps, y }],
+      type: "touchMove",
+    });
+  }
+  await session.send("Input.dispatchTouchEvent", { touchPoints: [], type: "touchEnd" });
+  await session.detach();
 };
 
 /**

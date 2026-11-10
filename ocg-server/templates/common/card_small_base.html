@@ -3,10 +3,10 @@
    class="group flex h-full min-w-0 select-none rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
    {% block anchor_attributes %}
    {% endblock %}>
-  <article class="card-hover-border relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-lg border border-stone-200 bg-white transition-all hover:border-primary-300 hover:shadow-sm">
+  <article class="card-hover-border relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-lg border border-stone-200 bg-white transition-all hover:border-primary-300 hover:shadow-sm phone:isolate phone:group-active:border-primary-300 phone:group-active:bg-stone-50 phone:group-active:transition-none">
     {% block corner_badge %}{% endblock %}
 
-    <div class="flex min-w-0 items-start gap-3 px-3.5 pt-3.5 md:gap-4 md:px-4 md:pt-4
+    <div class="flex min-w-0 items-start gap-3 px-3.5 pt-3.5 md:gap-4 md:px-4 md:pt-4 phone:items-center phone:pt-3
                 {% block top_row_classes %}{% endblock %}">
       <div class="relative shrink-0 transition-opacity">
         {% block logo %}{% endblock %}
@@ -14,15 +14,16 @@
       </div>
 
       <div class="min-w-0 flex-1">
-        <div class="flex min-h-[60px] flex-col
+        {# Phones reserve a two-line title, so cards keep one height, and centre the text on the logo. -#}
+        <div class="flex min-h-[60px] flex-col phone:min-h-[3.625rem] phone:justify-center
                     {% block content_stack_classes %}{% endblock %}">
-          <div class="card-header">
+          <div class="card-header phone:text-stone-500 phone:leading-4">
             {% block preheader %}{% endblock %}
           </div>
 
-          <div class="card-title !mt-0.5 !mb-0 !h-auto
+          <div class="card-title !mt-0.5 !mb-0 !h-auto phone:break-words
                       {% block title_line_clamp_classes %}!line-clamp-2{% endblock %}
-                      text-[0.98rem]/[1.4rem] md:text-[1.02rem]/[1.4rem]
+                      text-[0.98rem]/[1.4rem] md:text-[1.02rem]/[1.4rem] phone:text-[0.98rem]/[1.25rem]
                       {% block title_classes %}{% endblock %}">
             {% block title %}{% endblock %}
           </div>
@@ -32,14 +33,16 @@
       </div>
     </div>
 
+    {# Phones give rows that would crowd the logo column the full card width. -#}
+    {% block below_top_row %}{% endblock %}
     {% block details %}{% endblock %}
     {% block details_spacing %}
-      <div class="pb-3 md:pb-4"></div>
+      <div class="pb-3 md:pb-4 phone:pb-2"></div>
     {% endblock details_spacing %}
 
-    <div class="mt-auto px-3.5 pb-3.5 md:px-4 md:pb-4">
+    <div class="mt-auto px-3.5 pb-3.5 md:px-4 md:pb-4 phone:pb-3">
       {% block footer_top %}{% endblock %}
-      <div class="rounded-lg bg-stone-100/60 pl-0 pr-3 py-2.5 md:pl-0 md:pr-3.5 md:py-3">
+      <div class="rounded-lg bg-stone-100/60 pl-0 pr-3 py-2.5 md:pl-0 md:pr-3.5 md:py-3 phone:py-2">
         {% block footer %}{% endblock %}
       </div>
     </div>

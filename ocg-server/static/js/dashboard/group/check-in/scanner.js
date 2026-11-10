@@ -2,6 +2,7 @@ import { initializeOnReadyAndHtmxLoad, isElementHidden, markDatasetReady } from 
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { toggleModalVisibility, trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
+import { holdScreenAwake } from "/static/js/common/phone-viewport.js";
 import { createScanStateMachine } from "/static/js/dashboard/group/check-in/state-machine.js";
 import QrScanner from "/static/vendor/js/qr-scanner.min.js";
 
@@ -285,6 +286,7 @@ const startScannerSession = async (root, trigger) => {
   let controller = null;
   let hardwareControlPending = false;
   let refreshOnSettle = false;
+  let releaseScreen = () => {};
   let resourcesCleaned = false;
   let scanner = null;
   let session;
@@ -303,6 +305,7 @@ const startScannerSession = async (root, trigger) => {
     cleanupControls();
     if (resourcesCleaned) return;
     resourcesCleaned = true;
+    releaseScreen();
     try {
       if (controller) {
         controller.teardown();
@@ -368,6 +371,7 @@ const startScannerSession = async (root, trigger) => {
 
   try {
     toggleModalVisibility(modal, trigger);
+    releaseScreen = holdScreenAwake();
     audio = createScannerAudio();
     audio.unlock();
     const Scanner = scannerImplementation();

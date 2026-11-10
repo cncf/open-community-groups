@@ -170,7 +170,7 @@ closed, when you answered it, and your answers, without a way to change them.
 confirmed attendee and have not checked in yet. Open an event card and present the code to an
 organizer when you arrive. The card is removed after check-in.
 
-The mobile dashboard entry screen links to Check-In. On larger screens, open the section directly
+On phones, open Check-In from the dashboard menu or your user menu. You can also open it directly
 at [/dashboard/user?tab=check-in](/dashboard/user?tab=check-in ':ignore'). Canceled, unpublished,
 unscheduled, and past events are excluded.
 

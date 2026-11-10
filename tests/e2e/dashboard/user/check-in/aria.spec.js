@@ -8,8 +8,8 @@ import { openUserDashboardView } from "../aria-helpers.js";
 // Name of the owned event the user without data attends; its dates are matched with regexes.
 const CHECK_IN_EVENT_NAME = "E2E ARIA check-in event";
 
-// Check-In is the only user dashboard tab rendered on mobile, so the mobile test uses the
-// responsive layout instead of the desktop version.
+// Check-In is one of the two user dashboard tabs rendered on mobile, so the mobile test uses
+// the responsive layout instead of the desktop version.
 test.describe("user dashboard check-in ARIA snapshots", () => {
   test("matches the desktop views", async ({ emptyUserPage, owned }) => {
     await expectCheckInViews({ emptyUserPage, owned }, "desktop");

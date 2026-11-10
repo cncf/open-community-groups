@@ -61,13 +61,13 @@ export class MultiSelectFilter extends MultiSelect {
   _renderChip(option) {
     return html`
       <span
-        class="flex items-center justify-between w-full px-2 py-1 text-[0.775rem] text-primary-500 border border-primary-500 rounded-lg"
+        class="flex items-center justify-between w-full px-2 py-1 text-[0.775rem] text-primary-500 border border-primary-500 rounded-lg phone:py-0 phone:pe-0 phone:ps-3 phone:text-sm"
       >
-        <span>${option.name}</span>
+        <span class="phone:min-w-0 phone:break-words">${option.name}</span>
         <button
           type="button"
           aria-label=${`Remove ${option.name}`}
-          class="text-stone-400 hover:text-stone-700"
+          class="text-stone-400 hover:text-stone-700 phone:inline-flex phone:size-11 phone:flex-none phone:items-center phone:justify-center"
           @click=${(event) => this._removeSelection(option.value, event)}
         >
           <div class="svg-icon size-3.5 icon-close bg-current shrink-0"></div>
@@ -102,7 +102,9 @@ export class MultiSelectFilter extends MultiSelect {
                   )}
                 </ul>
               `
-            : html`<div class="px-3 py-2 text-[0.775rem] text-stone-500">${this.emptyMessage}</div>`
+            : html`<div class="px-3 py-2 text-[0.775rem] text-stone-500 phone:text-sm">
+                ${this.emptyMessage}
+              </div>`
         }
       </div>
     `;
@@ -115,7 +117,7 @@ export class MultiSelectFilter extends MultiSelect {
    */
   _renderLayout({ chips, dropdown, hiddenInputs, search, selected }) {
     return html`
-      <div class="px-6 py-7 pt-5 border-b border-stone-100">
+      <div class="px-6 py-7 pt-5 border-b border-stone-100 phone:px-3">
         <div class="font-semibold leading-4 md:leading-8 text-sm text-stone-700 mb-3">${this.title}</div>
 
         <div class="relative">${search} ${dropdown}</div>
@@ -139,7 +141,7 @@ export class MultiSelectFilter extends MultiSelect {
     return html`
       <li
         id=${this._optionId(index)}
-        class="w-full px-3 py-2 text-left text-[0.775rem] flex items-center gap-2 cursor-pointer ${
+        class="w-full px-3 py-2 text-left text-[0.775rem] flex items-center gap-2 cursor-pointer phone:min-h-11 phone:text-sm ${
           isActive ? "bg-stone-50" : "hover:bg-stone-50"
         }"
         role="option"
@@ -150,7 +152,7 @@ export class MultiSelectFilter extends MultiSelect {
         <span class="shrink-0 w-4 h-4 flex items-center justify-center">
           ${isSelected ? html`<div class="svg-icon size-3 icon-check bg-primary-500"></div>` : ""}
         </span>
-        <span class="text-stone-700">${option.name}</span>
+        <span class="text-stone-700 phone:min-w-0 phone:wrap-anywhere">${option.name}</span>
       </li>
     `;
   }
@@ -163,7 +165,7 @@ export class MultiSelectFilter extends MultiSelect {
     return html`
       <div
         data-multi-select-search
-        class="flex items-center gap-2 min-h-[38px] px-2 py-1.5 bg-white border border-stone-200 rounded-lg"
+        class="flex items-center gap-2 min-h-[38px] px-2 py-1.5 bg-white border border-stone-200 rounded-lg phone:min-h-11 phone:py-0 phone:pe-0"
       >
         <div class="svg-icon size-3 icon-search bg-stone-400 shrink-0"></div>
         <input
@@ -175,7 +177,7 @@ export class MultiSelectFilter extends MultiSelect {
           aria-haspopup="listbox"
           aria-activedescendant=${this._activeOptionId()}
           aria-label=${`${this.title} filter`}
-          class="flex-1 text-base md:text-[0.775rem] bg-transparent border-none focus:ring-0 focus:outline-none placeholder-stone-400 p-0"
+          class="flex-1 text-base md:text-[0.775rem] bg-transparent border-none focus:ring-0 focus:outline-none placeholder-stone-400 p-0 phone:min-w-0 phone:self-stretch"
           placeholder="${this.placeholder}"
           autocomplete="off"
           .value=${this._combobox.query}
@@ -189,7 +191,7 @@ export class MultiSelectFilter extends MultiSelect {
                 <button
                   type="button"
                   aria-label=${`Clear ${this.title}`}
-                  class="text-stone-400 hover:text-stone-700 shrink-0"
+                  class="text-stone-400 hover:text-stone-700 shrink-0 phone:inline-flex phone:size-11 phone:items-center phone:justify-center"
                   @click=${() => this._clearQuery()}
                 >
                   <div class="svg-icon size-4 md:size-3.5 icon-close bg-current"></div>
