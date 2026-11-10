@@ -79,12 +79,15 @@ const renderAttendanceDom = ({
         id="retry-btn"
         data-attendance-role="retry-btn"
         type="button"
-        aria-describedby="attendance-check-status"
+        aria-describedby="attendance-check-details"
         class="hidden"
       >
         <div class="svg-icon icon-refresh" data-attendance-icon></div>
         <span data-attendance-label>Retry</span>
       </button>
+      <span id="attendance-check-details" role="tooltip" data-tooltip-panel>
+        <span data-attendance-role="check-status-details"></span>
+      </span>
       <button
         id="attend-btn"
         data-attendance-role="attend-btn"
@@ -185,6 +188,9 @@ const renderAttendanceDom = ({
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
     checkStatus: document.querySelector(
       '[data-attendance-role="check-status"]',
+    ),
+    checkStatusDetails: document.querySelector(
+      '[data-attendance-role="check-status-details"]',
     ),
     retryButton: document.querySelector('[data-attendance-role="retry-btn"]'),
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
@@ -398,8 +404,14 @@ describe("event attendance", () => {
   [0, 500, 503].forEach((status) => {
     it(`shows Retry and the load error when the registration check fails (${status})`, () => {
       // Render the attendance fixture.
-      const { attendButton, checkStatus, checker, retryButton, signinButton } =
-        renderAttendanceDom();
+      const {
+        attendButton,
+        checkStatus,
+        checkStatusDetails,
+        checker,
+        retryButton,
+        signinButton,
+      } = renderAttendanceDom();
 
       // A network error or a server error leaves the registration unknown.
       dispatchHtmxAfterRequest(checker, { status });
@@ -408,6 +420,9 @@ describe("event attendance", () => {
       expect(retryButton.classList.contains("hidden")).to.equal(false);
       expect(retryButton.disabled).to.equal(false);
       expect(checkStatus.textContent).to.equal(
+        "Couldn't load your registration.",
+      );
+      expect(checkStatusDetails.textContent).to.equal(
         "Couldn't load your registration.",
       );
       expect(signinButton.classList.contains("hidden")).to.equal(true);
@@ -493,7 +508,7 @@ describe("event attendance", () => {
 
   it("a later successful check clears the load error", () => {
     // Render a failed registration check.
-    const { attendButton, checkStatus, checker, retryButton } =
+    const { attendButton, checkStatus, checkStatusDetails, checker, retryButton } =
       renderAttendanceDom();
     dispatchHtmxAfterRequest(checker, { status: 500 });
 
@@ -506,6 +521,7 @@ describe("event attendance", () => {
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(retryButton.classList.contains("hidden")).to.equal(true);
     expect(checkStatus.textContent).to.equal("");
+    expect(checkStatusDetails.textContent).to.equal("");
   });
 
   it("joins the simple RSVP waitlist when only private capacity remains", () => {

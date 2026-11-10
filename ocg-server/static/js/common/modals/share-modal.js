@@ -8,7 +8,7 @@ import {
   focusModal,
   isModalOverlayTarget,
   openModalBodyScroll,
-  trapBottomSheetFocus,
+  trapModalFocus,
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { bindSheetGestures } from "/static/js/common/modals/sheet-gestures.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
@@ -197,7 +197,7 @@ export class ShareModal extends LitWrapper {
 
   /**
    * Handles keydown events to close the modal on Escape key press, and keeps Tab
-   * inside the sheet.
+   * inside the sheet or the centred modal.
    * @param {KeyboardEvent} event - The keyboard event
    */
   _handleKeydown(event) {
@@ -206,7 +206,7 @@ export class ShareModal extends LitWrapper {
       this._closeModal();
     }
     if (this._restoreFocus) {
-      trapBottomSheetFocus(event, this._modalContainer?.querySelector(".sheet-panel"));
+      trapModalFocus(event, this._modalContainer?.querySelector(".sheet-panel"));
     }
   }
 

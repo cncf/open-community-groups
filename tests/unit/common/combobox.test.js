@@ -38,9 +38,12 @@ describe("common combobox", () => {
   };
 
   // Dispatch a cancelable keydown event on the host element.
-  const pressKey = (key) => {
+  const pressKey = (key) => pressKeyOn(host, key);
+
+  // Dispatch a cancelable keydown event that bubbles from a target to the host.
+  const pressKeyOn = (target, key) => {
     const event = new KeyboardEvent("keydown", { key, cancelable: true, bubbles: true });
-    host.dispatchEvent(event);
+    target.dispatchEvent(event);
     return event;
   };
 
@@ -192,6 +195,58 @@ describe("common combobox", () => {
     expect(controller.isOpen).to.equal(false);
   });
 
+  it("closes when focus moves to an element outside the host", () => {
+    // Mount focusable controls inside and outside the host.
+    createController({});
+    const inside = document.createElement("button");
+    host.append(inside);
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    controller.open();
+
+    // Focus moving inside the host or to no element keeps the dropdown open.
+    host.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: inside }));
+    host.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
+    expect(controller.isOpen).to.equal(true);
+
+    // Focus moving outside the host, as on Tab, closes the dropdown.
+    host.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: outside }));
+    expect(controller.isOpen).to.equal(false);
+  });
+
+  it("opens with ArrowDown from its control and leaves Enter on inner buttons and links native", () => {
+    // Mount the combobox control next to a chip remove button and a link.
+    const selections = [];
+    createController({
+      onSelect: (index) => {
+        selections.push(index);
+      },
+    });
+    host.innerHTML = `
+      <input role="combobox" />
+      <button type="button" aria-label="Remove AI"></button>
+      <a href="#details">Details</a>
+    `;
+    const [input, removeButton, link] = host.children;
+
+    // ArrowDown opens the closed dropdown only from its control.
+    expect(pressKeyOn(removeButton, "ArrowDown").defaultPrevented).to.equal(false);
+    expect(controller.isOpen).to.equal(false);
+    expect(pressKeyOn(input, "ArrowDown").defaultPrevented).to.equal(true);
+    expect(controller.isOpen).to.equal(true);
+    expect(controller.activeIndex).to.equal(null);
+
+    // Enter on inner buttons and links keeps its native action.
+    controller.activeIndex = 1;
+    expect(pressKeyOn(removeButton, "Enter").defaultPrevented).to.equal(false);
+    expect(pressKeyOn(link, "Enter").defaultPrevented).to.equal(false);
+    expect(selections).to.deep.equal([]);
+
+    // Enter on the control selects the highlighted option.
+    expect(pressKeyOn(input, "Enter").defaultPrevented).to.equal(true);
+    expect(selections).to.deep.equal([1]);
+  });
+
   it("debounces search updates and cancels them on close", async () => {
     // Track scheduled search updates.
     let updates = 0;
@@ -222,12 +277,14 @@ describe("common combobox", () => {
     controller.open();
     controller.hostDisconnected();
 
-    // Disconnected hosts ignore keyboard events and outside clicks.
+    // Disconnected hosts ignore keyboard events, outside clicks and focus loss.
     controller.isOpen = true;
     pressKey("ArrowDown");
     expect(controller.activeIndex).to.equal(null);
     document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await waitForMicrotask();
+    expect(controller.isOpen).to.equal(true);
+    host.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }));
     expect(controller.isOpen).to.equal(true);
   });
 });

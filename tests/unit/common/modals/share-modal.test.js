@@ -514,15 +514,21 @@ describe("share-modal", () => {
         expect(document.activeElement).to.equal(trigger);
       });
 
-      it("leaves Tab untrapped under a false phone query", async () => {
+      it("wraps Tab inside the centred modal under a false phone query", async () => {
         media = stubMatchMedia();
         const element = await mountSheetFixture();
         element.querySelector("button").click();
-        const copy = document.body.querySelector('[aria-label="Copy link"]');
+        const panel = document.body.querySelector(".sheet-panel");
+        const close = panel.querySelector("button:has(> .icon-close)");
+        const copy = panel.querySelector('[aria-label="Copy link"]');
         copy.focus();
 
-        // Tab from the last target does not wrap back to the close button.
+        // Tab from the last target wraps back to the close button.
         press("Tab");
+        expect(document.activeElement).to.equal(close);
+
+        // Shift-Tab from the first target wraps to the last.
+        press("Tab", true);
         expect(document.activeElement).to.equal(copy);
       });
     });

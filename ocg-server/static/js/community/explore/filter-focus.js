@@ -49,7 +49,8 @@ export const getFilterFocusKey = (element) => {
 
 /**
  * Moves focus back to the captured filter control after a section swap. Lit
- * filters render after the swap, so it waits for them first. Focus that
+ * filters render after the swap, so it waits for them first. Filters that can
+ * restore focus themselves do it, so dropdowns stay closed. Focus that
  * already left the body, for example through htmx's own id restore, stays.
  * @param {{filterName: string|null, formId: string, key: string|null}|null} snapshot
  *   Snapshot from captureFilterFocus
@@ -83,7 +84,15 @@ export const restoreFilterFocus = async (snapshot) => {
   const target =
     (snapshot.key && controls.find((control) => getFilterFocusKey(control) === snapshot.key)) ||
     (snapshot.filterName ? controls[0] : null);
-  target?.focus({ preventScroll: true });
+  if (!target) {
+    return;
+  }
+  const filter = target.closest(FILTER_COMPONENT_SELECTOR);
+  if (typeof filter?.restoreFocus === "function") {
+    filter.restoreFocus(target);
+  } else {
+    target.focus({ preventScroll: true });
+  }
 };
 
 /**

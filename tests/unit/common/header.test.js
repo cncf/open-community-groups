@@ -860,6 +860,61 @@ describe("header", () => {
       expect(userButton.getAttribute("aria-expanded")).to.equal("false");
     });
 
+    it("moves focus through the anchored menu items with arrows, Home and End", () => {
+      // Render the shell with the phone query off and list the rendered items.
+      media = stubMatchMedia();
+      const { dropdown, userButton } = renderSheetFixture();
+      const pressKey = (key) =>
+        document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key }));
+
+      // ArrowDown on the trigger opens the menu at its first item.
+      userButton.focus();
+      pressKey("ArrowDown");
+      const items = [...dropdown.querySelectorAll('[role="menuitem"]')].filter(
+        (item) => item.getClientRects().length > 0,
+      );
+      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
+      expect(document.activeElement).to.equal(items[0]);
+
+      // Arrows wrap around, and Home and End jump to the ends.
+      pressKey("ArrowUp");
+      expect(document.activeElement).to.equal(items.at(-1));
+      pressKey("ArrowDown");
+      expect(document.activeElement).to.equal(items[0]);
+      pressKey("ArrowDown");
+      expect(document.activeElement).to.equal(items[1]);
+      pressKey("End");
+      expect(document.activeElement).to.equal(items.at(-1));
+      pressKey("Home");
+      expect(document.activeElement).to.equal(items[0]);
+
+      // ArrowUp on the trigger of a closed menu opens it at its last item.
+      pressKey("Escape");
+      expect(document.activeElement).to.equal(userButton);
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+      pressKey("ArrowUp");
+      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
+      expect(document.activeElement).to.equal(items.at(-1));
+    });
+
+    it("closes the anchored menu when focus moves outside it", () => {
+      // Render the shell with the phone query off and open the menu.
+      media = stubMatchMedia();
+      const { dropdown, userButton } = renderSheetFixture();
+      userButton.focus();
+      userButton.click();
+
+      // Focus moving between the trigger and the items keeps the menu open.
+      document.getElementById("stats-row").focus();
+      document.getElementById("dashboard-row").focus();
+      expect(dropdown.classList.contains("hidden")).to.equal(false);
+
+      // Focus moving to the rest of the page, as on Tab, closes it.
+      document.getElementById("logo-link").focus();
+      expect(dropdown.classList.contains("hidden")).to.equal(true);
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+    });
+
     it('history restore resets a stale aria-expanded="true" on a hidden menu', () => {
       // Render a snapshot whose trigger claims a menu that is hidden.
       media = stubMatchMedia();

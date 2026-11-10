@@ -445,11 +445,11 @@ fn test_page_renders_attendance_check_retry_control() {
     let page = sample_upcoming_page(chrono_tz::UTC);
     let html = page.render().unwrap();
 
-    // Check Retry starts hidden and is described by the check status; `hidden` is the state
+    // Check Retry starts hidden and is described by its popover; `hidden` is the state
     // contract the attendance script toggles
     let retry_button = opening_tag_with(&html, r#"data-attendance-role="retry-btn""#);
     assert!(retry_button.contains(r#"class="hidden "#));
-    assert!(retry_button.contains(r#"aria-describedby="attendance-check-status-main""#));
+    assert!(retry_button.contains(r#"aria-describedby="attendance-check-details-main""#));
 
     // Check the status region the failed check writes to
     let status = opening_tag_with(&html, r#"id="attendance-check-status-main""#);

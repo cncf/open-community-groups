@@ -11,6 +11,7 @@
 <div id="drawer-filters"
      class="sheet-panel fixed top-0 left-0 z-[1100] h-screen overflow-y-auto transition-transform -translate-x-full bg-white w-80 border-r border-stone-200 shadow-lg phone:overflow-hidden phone:border-r-0"
      tabindex="-1"
+     inert
      aria-labelledby="drawer-label">
   {# Close button -#}
   <button id="close-filters"
@@ -46,7 +47,7 @@
 
   {# Reset button -#}
   <div class="text-end p-5 border-t border-stone-200 phone:flex phone:flex-none phone:gap-2 phone:p-3">
-    <button class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-stone-100 transition-colors focus:ring-4 focus:ring-stone-400 reset-filters phone:h-11 phone:px-5 phone:text-sm">
+    <button class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-stone-100 transition-colors reset-filters phone:h-11 phone:px-5 phone:text-sm">
       Reset
     </button>
     <button type="button"
@@ -132,7 +133,7 @@
           <div class="flex-1 phone:min-w-0">
             {% if view_mode == ViewMode::List -%}
               <div id="results"
-                   class="flex font-semibold text-xs md:text-sm text-black w-[175px] phone:w-auto phone:text-sm phone:leading-tight">
+                   class="flex whitespace-nowrap font-semibold text-xs md:text-sm text-black phone:text-sm phone:leading-tight">
                 {% block current_page -%}
                 {% endblock current_page -%}
               </div>

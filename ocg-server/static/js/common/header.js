@@ -2,7 +2,7 @@
  * Initializes header dropdown and nav loading behavior with HTMX awareness.
  */
 import { closestElement, getElementById, isElementHidden, setElementHidden } from "/static/js/common/dom.js";
-import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import {
   focusModal,
   lockBodyScroll,
@@ -32,6 +32,8 @@ const userSheetInertSelector =
   '#main-content, #dashboard-layout, footer[role="contentinfo"], #header a[aria-label$=" homepage"], ' +
   "div:has(> #header) ~ *";
 const userSheetTriggerSelector = "#user-dropdown-button";
+// Keys that move focus between the user menu items.
+const userMenuNavigationKeys = new Set(["ArrowDown", "ArrowUp", "End", "Home"]);
 
 /**
  * Finds the header nav link that triggered an event.
@@ -183,6 +185,86 @@ const getUserSheetFocusTargets = (dropdown) =>
   Array.from(dropdown.querySelectorAll("a[href], button:not([disabled])")).filter(
     (target) => target.getClientRects().length > 0,
   );
+
+/**
+ * Returns the rendered user menu items in display order.
+ * @param {Element} dropdown - User dropdown.
+ * @returns {HTMLElement[]} Rendered menu items.
+ */
+const getUserMenuItems = (dropdown) =>
+  getUserSheetFocusTargets(dropdown).filter((target) => target.matches('[role="menuitem"]'));
+
+/**
+ * Closes the anchored user menu when focus moves from it to the rest of the
+ * page, as on Tab. The sheet keeps focus inside itself instead.
+ * @param {FocusEvent} event - Focusout event.
+ */
+const closeUserMenuOnFocusOut = (event) => {
+  const button = getElementById(document, "user-dropdown-button");
+  const dropdown = getElementById(document, "user-dropdown");
+  if (userSheetOpen || !button || !dropdown || isElementHidden(dropdown)) {
+    return;
+  }
+
+  const isMenuElement = (node) => node === button || dropdown.contains(node);
+  const nextTarget = event.relatedTarget;
+  if (!isMenuElement(event.target) || !(nextTarget instanceof Node) || isMenuElement(nextTarget)) {
+    return;
+  }
+  setUserDropdownHidden(dropdown, true);
+};
+
+/**
+ * Moves focus between the user menu items with the arrow, Home and End keys.
+ * ArrowDown and ArrowUp on the trigger open the anchored menu at its first or
+ * last item.
+ * @param {KeyboardEvent} event - Keydown event.
+ * @returns {boolean} True when the event moved focus.
+ */
+const moveUserMenuFocus = (event) => {
+  if (!userMenuNavigationKeys.has(event.key) || event.altKey || event.ctrlKey || event.metaKey) {
+    return false;
+  }
+
+  const button = getElementById(document, "user-dropdown-button");
+  const dropdown = getElementById(document, "user-dropdown");
+  if (!button || !dropdown) {
+    return false;
+  }
+
+  const fromButton = event.target === button;
+  if (fromButton) {
+    const opensAnchoredMenu = event.key === "ArrowDown" || event.key === "ArrowUp";
+    if (!opensAnchoredMenu || (isElementHidden(dropdown) && isPhoneViewport())) {
+      return false;
+    }
+  } else if (!dropdown.contains(event.target) || isElementHidden(dropdown)) {
+    return false;
+  }
+
+  // Items are measured, so the menu must be visible before they are read.
+  if (fromButton && isElementHidden(dropdown)) {
+    setUserDropdownHidden(dropdown, false);
+  }
+  const items = getUserMenuItems(dropdown);
+  if (items.length === 0) {
+    return false;
+  }
+
+  const lastIndex = items.length - 1;
+  const itemIndex = fromButton ? -1 : items.indexOf(closestElement(event.target, '[role="menuitem"]'));
+  const currentIndex = itemIndex === -1 ? null : itemIndex;
+  const nextIndex = {
+    ArrowDown: getNextLoopedIndex(currentIndex, items.length, 1, 0),
+    ArrowUp: getNextLoopedIndex(currentIndex, items.length, -1, lastIndex),
+    End: lastIndex,
+    Home: 0,
+  }[event.key];
+
+  event.preventDefault();
+  items[nextIndex].focus();
+  return true;
+};
 
 /**
  * Marks the sheet rows that lead to the current page. The menu is a shared section
@@ -378,6 +460,10 @@ const ensureDocumentHandlers = () => {
       return;
     }
 
+    if (moveUserMenuFocus(event)) {
+      return;
+    }
+
     if (!isEscapeEvent(event)) {
       return;
     }
@@ -400,6 +486,7 @@ const ensureDocumentHandlers = () => {
 
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("click", startHeaderNavLoadingFromClick);
+  document.addEventListener("focusout", closeUserMenuOnFocusOut);
   document.addEventListener("keydown", handleKeydown);
 
   documentHandlersBound = true;

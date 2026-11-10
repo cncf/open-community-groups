@@ -43,8 +43,7 @@ const renderRatingEditor = ({
           return html`
             <button
               type="button"
-              class="inline-flex items-center justify-center rounded p-0.5 transition
-                hover:bg-amber-50 focus-visible:ring-2 focus-visible:ring-amber-400"
+              class="inline-flex items-center justify-center rounded p-0.5 transition hover:bg-amber-50"
               title=${`${star} ${star === 1 ? "star" : "stars"}`}
               @click=${() => onRatingStarSelect(star)}
               @focus=${() => onRatingStarEnter(star)}

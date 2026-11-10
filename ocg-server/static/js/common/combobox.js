@@ -2,13 +2,19 @@ import { bindOutsideClickListener } from "/static/js/common/dom.js";
 import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
 
+// Controls that open a closed dropdown with ArrowDown.
+const COMBOBOX_CONTROL_SELECTOR = '[role="combobox"], [aria-haspopup="listbox"]';
+// Native controls inside the host that keep their own Enter behavior.
+const NATIVE_ENTER_SELECTOR = "a[href], button:not([aria-haspopup])";
+
 /**
  * Shared reactive controller for searchable dropdown (combobox) components.
  *
  * The controller owns the open flag, search query and active option index, the
- * outside-click listener and the shared keyboard interactions: Escape closes the
- * dropdown, ArrowDown/ArrowUp move the highlight with wraparound and Enter selects
- * the highlighted option. Hosts keep their own data, filtering, rendering and
+ * outside-click and focus-out handling and the shared keyboard interactions: Escape
+ * closes the dropdown, ArrowDown opens it from its control, ArrowDown/ArrowUp move
+ * the highlight with wraparound and Enter selects the highlighted option. Enter on
+ * other buttons and links inside the host keeps its native behavior. Hosts keep their own data, filtering, rendering and
  * selection model and expose them through the callbacks below, so single-select
  * and multi-select components can share the same state machine.
  */
@@ -35,15 +41,18 @@ export class ComboboxController {
     this.activeIndex = null;
     this._searchTimeoutId = 0;
     this._documentClickHandler = null;
+    this._handleFocusout = this._handleFocusout.bind(this);
     this._handleKeydown = this._handleKeydown.bind(this);
     host.addController(this);
   }
 
   hostConnected() {
+    this.host.addEventListener("focusout", this._handleFocusout);
     this.host.addEventListener("keydown", this._handleKeydown);
   }
 
   hostDisconnected() {
+    this.host.removeEventListener("focusout", this._handleFocusout);
     this.host.removeEventListener("keydown", this._handleKeydown);
     this._removeDocumentListener();
     this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
@@ -167,12 +176,36 @@ export class ComboboxController {
   }
 
   /**
+   * Closes the dropdown when focus moves to an element outside the host, such
+   * as on Tab. Focus lost without a new target is left to the outside-click
+   * listener, so clicks on options that do not take focus still land.
+   * @param {FocusEvent} event Native focusout event.
+   * @returns {void}
+   */
+  _handleFocusout(event) {
+    const nextTarget = event.relatedTarget;
+    if (!this.isOpen || !(nextTarget instanceof Node) || this.host.contains(nextTarget)) {
+      return;
+    }
+    this.close();
+  }
+
+  /**
    * Handles the shared combobox keyboard interactions.
    * @param {KeyboardEvent} event Native keyboard event.
    * @returns {void}
    */
   _handleKeydown(event) {
-    if (event.defaultPrevented || this._isInteractionBlocked() || !this.isOpen) {
+    if (event.defaultPrevented || this._isInteractionBlocked()) {
+      return;
+    }
+
+    // Open a closed dropdown from its control, as combobox users expect.
+    if (!this.isOpen) {
+      if (event.key === "ArrowDown" && isElementMatching(event.target, COMBOBOX_CONTROL_SELECTOR)) {
+        event.preventDefault();
+        this.open();
+      }
       return;
     }
 
@@ -199,6 +232,9 @@ export class ComboboxController {
         this._options.onActiveIndexMove?.();
         break;
       case "Enter":
+        if (isElementMatching(event.target, NATIVE_ENTER_SELECTOR)) {
+          break;
+        }
         event.preventDefault();
         if (this.activeIndex !== null) {
           this._options.onSelect(this.activeIndex, event);
@@ -209,3 +245,11 @@ export class ComboboxController {
     }
   }
 }
+
+/**
+ * Checks whether an event target is an element matching a selector.
+ * @param {EventTarget|null} target Event target.
+ * @param {string} selector CSS selector.
+ * @returns {boolean} True when the target matches.
+ */
+const isElementMatching = (target, selector) => target instanceof Element && target.matches(selector);

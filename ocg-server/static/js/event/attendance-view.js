@@ -1111,16 +1111,19 @@ const resetPrimaryControls = (container) => {
 };
 
 /**
- * Writes the registration check status announced beside the primary control.
+ * Writes the registration check status to the announced status region and to
+ * the Retry popover that shows it.
  * @param {HTMLElement} container - Attendance container element
  * @param {string} message - Status text, or an empty string to clear it
  * @returns {void}
  */
 const setAttendanceCheckStatus = (container, message) => {
-  const status = getAttendanceControl(container, "check-status");
-  if (status) {
-    status.textContent = message;
-  }
+  ["check-status", "check-status-details"].forEach((role) => {
+    const element = getAttendanceControl(container, role);
+    if (element) {
+      element.textContent = message;
+    }
+  });
 };
 
 /**

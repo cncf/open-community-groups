@@ -739,5 +739,10 @@ describe("images-gallery", () => {
       expect(control.classList.contains("focus-visible:ring-primary-300")).to.equal(true);
       expect(control.classList.contains("phone:focus-visible:ring-2")).to.equal(false);
     });
+
+    // Verify the lightbox controls drop the global outline so only the ring shows.
+    controls.slice(1).forEach((control) => {
+      expect(control.classList.contains("focus-visible:outline-none")).to.equal(true);
+    });
   });
 });

@@ -178,7 +178,7 @@ export class MultiSelectFilter extends MultiSelect {
                   type="button"
                   aria-label=${`Clear ${this.title}`}
                   class="text-stone-400 hover:text-stone-700 shrink-0 phone:inline-flex phone:size-11 phone:items-center phone:justify-center"
-                  @click=${() => this._clearQuery()}
+                  @click=${() => this._handleClearSearch()}
                 >
                   <div class="svg-icon size-4 md:size-3.5 icon-close bg-current"></div>
                 </button>

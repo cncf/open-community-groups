@@ -30,7 +30,7 @@ const ROW_STYLE = "display: flex; column-gap: 8px; padding: 0 12px; width: 300px
 const renderExplore = (entity = "Events") => {
   document.body.innerHTML = `
     <div id="entity-section">
-      <div id="drawer-filters" class="-translate-x-full" tabindex="-1" aria-labelledby="drawer-label">
+      <div id="drawer-filters" class="-translate-x-full" tabindex="-1" inert aria-labelledby="drawer-label">
         <button id="close-filters" type="button"><div class="icon-close"></div></button>
         <form id="events-form-mobile" class="filters-form" hx-get="/explore/events-section">
           <input type="checkbox" name="kind[]" value="virtual" />

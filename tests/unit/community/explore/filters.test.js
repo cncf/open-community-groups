@@ -32,23 +32,24 @@ describe("explore filters", () => {
     htmx.restore();
   });
 
-  it("opens and closes the mobile filters drawer", () => {
-    // Render the DOM fixture for opening and closes the mobile filters drawer.
+  it("opens and closes the mobile filters drawer, keeping it inert while closed", () => {
+    // Render the closed drawer as the server does.
     document.body.innerHTML = `
-      <div id="drawer-filters" class="-translate-x-full"></div>
+      <div id="drawer-filters" class="-translate-x-full" inert></div>
       <div id="drawer-backdrop" class="hidden"></div>
     `;
+    const drawer = document.getElementById("drawer-filters");
 
-    // Verify opens and closes the mobile filters drawer.
+    // Verify opening shows the drawer and makes it reachable.
     openFiltersDrawer();
-    expect(document.getElementById("drawer-filters")?.classList.contains("-translate-x-full")).to.equal(
-      false,
-    );
+    expect(drawer.classList.contains("-translate-x-full")).to.equal(false);
+    expect(drawer.inert).to.equal(false);
     expect(document.getElementById("drawer-backdrop")?.classList.contains("hidden")).to.equal(false);
 
-    // Verify opens and closes the mobile filters drawer.
+    // Verify closing hides the drawer and takes it out of reach again.
     closeFiltersDrawer();
-    expect(document.getElementById("drawer-filters")?.classList.contains("-translate-x-full")).to.equal(true);
+    expect(drawer.classList.contains("-translate-x-full")).to.equal(true);
+    expect(drawer.inert).to.equal(true);
     expect(document.getElementById("drawer-backdrop")?.classList.contains("hidden")).to.equal(true);
   });
 

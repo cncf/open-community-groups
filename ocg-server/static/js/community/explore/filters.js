@@ -74,12 +74,14 @@ const clearExploreSearchInput = (form) => {
 
 /**
  * Opens the filters drawer view (mobile only).
- * Removes CSS classes to show the drawer and backdrop.
+ * Removes CSS classes to show the drawer and backdrop, and makes the drawer
+ * reachable again.
  */
 export const openFiltersDrawer = () => {
   const drawer = getElementById(document, "drawer-filters");
   if (drawer) {
     drawer.classList.remove("-translate-x-full");
+    drawer.inert = false;
   }
   const backdrop = getElementById(document, "drawer-backdrop");
   setElementHidden(backdrop, false);
@@ -87,12 +89,14 @@ export const openFiltersDrawer = () => {
 
 /**
  * Closes the filters drawer view (mobile only).
- * Adds CSS classes to hide the drawer and backdrop.
+ * Adds CSS classes to hide the drawer and backdrop, and keeps the off-screen
+ * drawer out of the Tab order and the accessibility tree.
  */
 export const closeFiltersDrawer = () => {
   const drawer = getElementById(document, "drawer-filters");
   if (drawer) {
     drawer.classList.add("-translate-x-full");
+    drawer.inert = true;
   }
   const backdrop = getElementById(document, "drawer-backdrop");
   setElementHidden(backdrop, true);

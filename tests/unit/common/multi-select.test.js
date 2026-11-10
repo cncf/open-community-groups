@@ -292,6 +292,44 @@ describe("multi-select", () => {
     expect(element.querySelectorAll('[aria-label="Clear search"]')).to.have.length(1);
   });
 
+  it("moves focus to the search input after clearing the query", async () => {
+    // Render the component and type a search query.
+    const element = await mountLitComponent("multi-select", { options: OPTIONS });
+    const input = await openDropdown(element);
+    input.value = "Clo";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await element.updateComplete;
+
+    // Activate the focused clear button, which unrenders once the query is empty.
+    const clearButton = element.querySelector('[aria-label="Clear search"]');
+    clearButton.focus();
+    clearButton.click();
+    await element.updateComplete;
+
+    // Verify the query is cleared and focus moved to the search input.
+    expect(element._combobox.query).to.equal("");
+    expect(element.querySelector('[aria-label="Clear search"]')).to.equal(null);
+    expect(document.activeElement).to.equal(input);
+  });
+
+  it("restores focus to the search input without opening the dropdown", async () => {
+    // Render a closed component.
+    const element = await mountLitComponent("multi-select", { options: OPTIONS });
+    const input = element.querySelector('input[role="combobox"]');
+
+    // Restore focus as a script does after a swap.
+    element.restoreFocus(input);
+    await element.updateComplete;
+    expect(document.activeElement).to.equal(input);
+    expect(input.getAttribute("aria-expanded")).to.equal("false");
+
+    // Verify a later user focus still opens the dropdown.
+    input.blur();
+    input.focus();
+    await element.updateComplete;
+    expect(input.getAttribute("aria-expanded")).to.equal("true");
+  });
+
   it("hides the native search clear button inside multi-select search inputs", async () => {
     // Load the stylesheet source.
     const response = await fetch("/ocg-server/static/css/styles.src.css");

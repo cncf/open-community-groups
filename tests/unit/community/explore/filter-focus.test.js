@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/community/explore/collapsible-filter.js";
+import "/static/js/community/explore/multi-select-filter.js";
 import {
   captureFilterFocus,
   getFilterFocusKey,
@@ -98,6 +99,24 @@ describe("filter focus", () => {
     const anyButton = document.querySelector('[data-focus-key="any"]');
     expect(anyButton).to.not.equal(null);
     expect(document.activeElement).to.equal(anyButton);
+  });
+
+  it("restores a multi-select filter search without opening its options", async () => {
+    // Focus the Group search of a rendered multi-select filter and capture it.
+    const groupFilter = `<multi-select-filter title="Group" name="group" options='${REGION_OPTIONS}' selected="[]"></multi-select-filter>`;
+    const form = renderForm(groupFilter);
+    await form.querySelector("multi-select-filter").updateComplete;
+    form.querySelector('[data-focus-key="search"]').focus();
+    const snapshot = captureFilterFocus(form);
+
+    // Replace the form and restore focus.
+    renderForm(groupFilter);
+    await restoreFilterFocus(snapshot);
+
+    // Verify the new search input has focus and its options stay closed.
+    const input = document.querySelector('[data-focus-key="search"]');
+    expect(document.activeElement).to.equal(input);
+    expect(input.getAttribute("aria-expanded")).to.equal("false");
   });
 
   it("falls back to the first control of the same filter when the focused one is gone", async () => {

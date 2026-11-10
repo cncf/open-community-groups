@@ -240,7 +240,15 @@ test.describe("event attendance", () => {
           await expect(reason).toHaveText(ATTENDANCE_CHECK_FAILED_MESSAGE);
           await expect(reason).toBeVisible();
         } else {
-          await expect(member2Page.getByText(ATTENDANCE_CHECK_FAILED_MESSAGE)).toBeVisible();
+          // Desktop shows the load error in the Retry popover.
+          const details = member2Page.getByRole("tooltip", { name: "Registration status" });
+          await expect(details).toBeHidden();
+          await retryButton.focus();
+          await expect(details).toBeVisible();
+          await expect(details).toContainText(ATTENDANCE_CHECK_FAILED_MESSAGE);
+          await expect(retryButton).toHaveAccessibleDescription(
+            `Registration status ${ATTENDANCE_CHECK_FAILED_MESSAGE}`,
+          );
         }
         await expect(getSignInButton(member2Page)).toBeHidden();
 
