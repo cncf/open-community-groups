@@ -204,9 +204,11 @@ describe("common combobox", () => {
     document.body.append(outside);
     controller.open();
 
-    // Focus moving inside the host or to no element keeps the dropdown open.
+    // Focus moving inside the host, to no element or to a focusable container
+    // of the host, as on an option click inside a sheet, keeps it open.
     host.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: inside }));
     host.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
+    host.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }));
     expect(controller.isOpen).to.equal(true);
 
     // Focus moving outside the host, as on Tab, closes the dropdown.
@@ -284,7 +286,9 @@ describe("common combobox", () => {
     document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await waitForMicrotask();
     expect(controller.isOpen).to.equal(true);
-    host.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }));
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    host.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: outside }));
     expect(controller.isOpen).to.equal(true);
   });
 });

@@ -177,14 +177,20 @@ export class ComboboxController {
 
   /**
    * Closes the dropdown when focus moves to an element outside the host, such
-   * as on Tab. Focus lost without a new target is left to the outside-click
+   * as on Tab. Focus lost without a new target, or moved to a focusable
+   * container of the host such as a sheet, is left to the outside-click
    * listener, so clicks on options that do not take focus still land.
    * @param {FocusEvent} event Native focusout event.
    * @returns {void}
    */
   _handleFocusout(event) {
     const nextTarget = event.relatedTarget;
-    if (!this.isOpen || !(nextTarget instanceof Node) || this.host.contains(nextTarget)) {
+    if (
+      !this.isOpen ||
+      !(nextTarget instanceof Node) ||
+      this.host.contains(nextTarget) ||
+      nextTarget.contains(this.host)
+    ) {
       return;
     }
     this.close();
