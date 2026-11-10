@@ -187,13 +187,18 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
+      - name: Get OS version
+        id: os
+        # Browser builds depend on the OS release, so it is part of the cache key.
+        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT"
+
       - name: Restore Playwright browsers cache
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           # Same key as the other chromium jobs; keep the key and install flags in sync with cache.yml.
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
+          key: ${{ runner.os }}-${{ steps.os.outputs.version }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -295,13 +300,18 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
+      - name: Get OS version
+        id: os
+        # Browser builds depend on the OS release, so it is part of the cache key.
+        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT"
+
       - name: Restore Playwright browsers cache
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           # Keep the key in sync with cache.yml, which warms this cache on main.
-          key: ${{ runner.os }}-playwright-firefox-webkit-${{ hashFiles('tests/e2e/package-lock.json') }}
+          key: ${{ runner.os }}-${{ steps.os.outputs.version }}-playwright-firefox-webkit-${{ hashFiles('tests/e2e/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -404,13 +414,18 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
+      - name: Get OS version
+        id: os
+        # Browser builds depend on the OS release, so it is part of the cache key.
+        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT"
+
       - name: Restore Playwright browsers cache
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           # Same key as the functional job and cache.yml.
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
+          key: ${{ runner.os }}-${{ steps.os.outputs.version }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
