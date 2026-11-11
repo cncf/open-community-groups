@@ -4,9 +4,10 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
-// Natural aspect ratios of the desktop and mobile banners, used by the load error placeholder.
-const DESKTOP_BANNER_ASPECT = "2428 / 192";
-const MOBILE_BANNER_ASPECT = "1220 / 192";
+// Natural sizes of the desktop and mobile banners. As the image width and height they hold the
+// banner's place until it loads, and as a ratio they shape the load error placeholder.
+const DESKTOP_BANNER_SIZE = Object.freeze({ height: 192, width: 2428 });
+const MOBILE_BANNER_SIZE = Object.freeze({ height: 192, width: 1220 });
 
 /**
  * BreadcrumbNav - Responsive breadcrumb navigation component with optional banner.
@@ -145,27 +146,47 @@ export class BreadcrumbNav extends LitWrapper {
    * Renders the banner image of one breakpoint. With a dark mode variant, each image gets its
    * own data-theme-image wrapper, so CSS shows the one matching the theme and a load error
    * styles only the failed image's wrapper. The dark image is lazy, so it loads only once shown.
+   * Every image carries the banner's natural width and height, so the browser keeps its place
+   * before it loads and the breadcrumb below does not jump; a loaded image keeps its own ratio.
    * @param {string} url - Light banner URL
    * @param {string|null} darkUrl - Dark mode banner URL
-   * @param {string} aspect - Banner aspect ratio for the load error placeholder
+   * @param {{height: number, width: number}} size - Natural banner size
    * @returns {TemplateResult} Banner image template
    * @private
    */
-  _renderBannerImages(url, darkUrl, aspect) {
+  _renderBannerImages(url, darkUrl, size) {
+    const aspect = getBannerAspect(size);
+
     if (!darkUrl) {
       return html`
-        <img src="${url}" class="block w-full h-auto" alt="Banner" @error="${this._handleBannerError}" />
+        <img
+          src="${url}"
+          class="block w-full h-auto"
+          width="${size.width}"
+          height="${size.height}"
+          alt="Banner"
+          @error="${this._handleBannerError}"
+        />
       `;
     }
 
     return html`
       <div data-theme-image="light" data-banner-aspect="${aspect}">
-        <img src="${url}" class="block w-full h-auto" alt="Banner" @error="${this._handleBannerError}" />
+        <img
+          src="${url}"
+          class="block w-full h-auto"
+          width="${size.width}"
+          height="${size.height}"
+          alt="Banner"
+          @error="${this._handleBannerError}"
+        />
       </div>
       <div data-theme-image="dark" data-banner-aspect="${aspect}">
         <img
           src="${darkUrl}"
           class="block w-full h-auto"
+          width="${size.width}"
+          height="${size.height}"
           alt="Banner"
           loading="lazy"
           @error="${this._handleBannerError}"
@@ -304,9 +325,9 @@ export class BreadcrumbNav extends LitWrapper {
                     class="w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg phone:block ${
                       this.fullBleed ? "phone:rounded-none" : ""
                     }"
-                    data-banner-aspect="${MOBILE_BANNER_ASPECT}"
+                    data-banner-aspect="${getBannerAspect(MOBILE_BANNER_SIZE)}"
                   >
-                    ${this._renderBannerImages(this.bannerMobileUrl, this.bannerMobileDarkUrl, MOBILE_BANNER_ASPECT)}
+                    ${this._renderBannerImages(this.bannerMobileUrl, this.bannerMobileDarkUrl, MOBILE_BANNER_SIZE)}
                   </div>
                 `
               : ""
@@ -316,9 +337,9 @@ export class BreadcrumbNav extends LitWrapper {
               ? html`
                   <div
                     class="w-full border-b border-stone-200 hidden sm:block overflow-hidden rounded-t-lg phone:hidden"
-                    data-banner-aspect="${DESKTOP_BANNER_ASPECT}"
+                    data-banner-aspect="${getBannerAspect(DESKTOP_BANNER_SIZE)}"
                   >
-                    ${this._renderBannerImages(this.bannerUrl, this.bannerDarkUrl, DESKTOP_BANNER_ASPECT)}
+                    ${this._renderBannerImages(this.bannerUrl, this.bannerDarkUrl, DESKTOP_BANNER_SIZE)}
                   </div>
                 `
               : ""
@@ -375,5 +396,12 @@ export class BreadcrumbNav extends LitWrapper {
     `;
   }
 }
+
+/**
+ * Formats a banner size as a CSS aspect ratio.
+ * @param {{height: number, width: number}} size - Natural banner size
+ * @returns {string} Aspect ratio, such as `2428 / 192`
+ */
+const getBannerAspect = (size) => `${size.width} / ${size.height}`;
 
 customElements.define("breadcrumb-nav", BreadcrumbNav);

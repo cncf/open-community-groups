@@ -108,6 +108,8 @@ const SITE_LOGO_URLS = {
   dark: "/e2e-theme/site-logo-dark.png",
   light: "/e2e-theme/site-logo-light.png",
 };
+// Width to height ratio of the fixed site header logo slot (`[data-site-logo]` in styles.src.css).
+const SITE_LOGO_SLOT_RATIO = 2388 / 605;
 // Application stylesheet, held back to reproduce a cold CSS cache.
 const STYLESHEET_ROUTE = "**/static/css/styles.*.css";
 // Storage key of the color theme choice (see static/js/common/theme.js).
@@ -410,6 +412,18 @@ test.describe("dark palette", () => {
     await expect.poll(() => readStyle(darkPanel, "box-shadow")).toContain(darkEdge);
   });
 
+  test("dashboard sidebar draws no modal edge in stored dark", async ({ member1Page: page }) => {
+    // Load the user dashboard, whose desktop sidebar is the same element as the phone menu sheet.
+    await useTheme(page, { stored: "dark" });
+    await navigateToPath(page, "/dashboard/user");
+    await expectTheme(page, "dark");
+
+    // Verify the static sidebar stays edgeless.
+    const sidebar = page.getByRole("navigation", { name: "Dashboard navigation" });
+    await expect(sidebar).toBeVisible();
+    expect(await readStyle(sidebar, "box-shadow")).not.toContain("0px 0px 0px 1px");
+  });
+
   test("light islands keep their light colors in stored dark", async ({ page }) => {
     // Read the island colors in light, then in stored dark.
     const light = await readIslandColors(page);
@@ -566,6 +580,70 @@ test.describe("logo plates", () => {
     await expectImageLoaded(darkLogo.locator("img"));
     expect(countDarkRequests()).toBeGreaterThan(0);
     await expect(page.locator("#header [data-ocg-broken-image-icon]")).toHaveCount(0);
+  });
+
+  test("site header keeps the logo slot size while the dark logo loads", async ({ page }) => {
+    // Serve the light logo, counting its requests, hold the dark one and load in stored dark.
+    const countLightRequests = await routeSiteLogo(page, SITE_LOGO_URLS.light);
+    const { promise: heldDarkLogo, resolve: holdDarkLogo } = Promise.withResolvers();
+    await page.route(`**${SITE_LOGO_URLS.dark}`, holdDarkLogo, { times: 1 });
+    await useTheme(page, { stored: "dark" });
+    await navigateToPath(page, "/explore");
+    await expectTheme(page, "dark");
+
+    // Inject the light and dark pair the site header renders for both URLs.
+    await injectSiteLogos(page, [
+      buildSiteLogo("light", SITE_LOGO_URLS.light),
+      buildSiteLogo("dark", SITE_LOGO_URLS.dark),
+    ]);
+    const darkLogo = getSiteLogo(page, "dark");
+
+    // Verify the slot already has its fixed size while the dark logo is on its way.
+    const darkLogoRoute = await heldDarkLogo;
+    await expect(darkLogo).toBeVisible();
+    const heldBox = await darkLogo.boundingBox();
+    expect(heldBox.width / heldBox.height).toBeCloseTo(SITE_LOGO_SLOT_RATIO, 1);
+
+    // Release the dark logo.
+    await darkLogoRoute.fulfill({ path: SITE_LOGO_FILE });
+
+    // Verify the loaded logo keeps the slot's box and the hidden light logo is never requested.
+    await expectImageLoaded(darkLogo.locator("img"));
+    expect(await darkLogo.boundingBox()).toEqual(heldBox);
+    expect(await darkLogo.locator("img").boundingBox()).toEqual(heldBox);
+    expect(countLightRequests()).toBe(0);
+  });
+
+  test("site header keeps the loaded logo across boosted navigation", async ({ isMobile, page }) => {
+    // Serve both logos, counting the light logo requests, and load a page in light.
+    const countLightRequests = await routeSiteLogo(page, SITE_LOGO_URLS.light);
+    await routeSiteLogo(page, SITE_LOGO_URLS.dark);
+    await navigateToPath(page, "/explore");
+    await markDocument(page);
+
+    // Inject the light and dark pair and mark the loaded light image element.
+    await injectSiteLogos(page, [
+      buildSiteLogo("light", SITE_LOGO_URLS.light),
+      buildSiteLogo("dark", SITE_LOGO_URLS.dark),
+    ]);
+    const lightImage = getSiteLogo(page, "light").locator("img");
+    await expectImageLoaded(lightImage);
+    await lightImage.evaluate((image) => {
+      image.ocgThemeSpecLogo = true;
+    });
+
+    // Follow the boosted Stats link.
+    await followStatsLink(page, isMobile);
+    await expectSameDocument(page);
+
+    // Verify the swapped header still shows the very same loaded image, requested once.
+    await expect(getSiteLogo(page, "light")).toBeVisible();
+    expect(
+      await lightImage.evaluate(
+        (image) => image.ocgThemeSpecLogo === true && image.complete && image.naturalWidth > 0,
+      ),
+    ).toBe(true);
+    expect(countLightRequests()).toBe(1);
   });
 
   test("site header shows the light logo again after a broken dark logo", async ({ page }) => {
@@ -993,8 +1071,9 @@ const buildLevelImages = (level) => {
 
 /**
  * Builds the markup `common/header.html` renders for one site header logo variant: a wrapper
- * with the logo image, eager except for the lazy dark image. The light and dark wrappers carry
- * their `data-theme-image` pair, which shows the one matching the theme.
+ * with the logo image, lazy in the light and dark pair. The pair wrappers carry their
+ * `data-theme-image`, which shows the one matching the theme. The header's inline script, which
+ * makes the shown logo eager, is not part of the markup.
  * @param {"dark"|"light"|"plated"} variant - Logo variant, the `data-site-logo` value.
  * @param {string} src - Image URL.
  * @returns {string} Wrapper markup.
@@ -1002,11 +1081,11 @@ const buildLevelImages = (level) => {
 const buildSiteLogo = (variant, src) => {
   const wrapperClass = variant === "plated" ? "relative plate" : "relative";
   const themeImage = variant === "plated" ? "" : ` data-theme-image="${variant}"`;
-  const loading = variant === "dark" ? ' loading="lazy"' : "";
+  const loading = variant === "plated" ? "" : ' loading="lazy"';
   return (
     `<span class="${wrapperClass}" data-site-logo="${variant}"${themeImage}>` +
-    '<img class="w-auto max-w-44 sm:max-w-52 h-10 sm:h-[42px] z-1" height="42" width="auto" ' +
-    `data-ocg-broken-image-bg-class="bg-transparent" src="${src}" alt="${TEST_SITE_TITLE} logo"${loading}>` +
+    '<img class="z-1" data-ocg-broken-image-bg-class="bg-transparent" ' +
+    `src="${src}" alt="${TEST_SITE_TITLE} logo"${loading}>` +
     "</span>"
   );
 };
