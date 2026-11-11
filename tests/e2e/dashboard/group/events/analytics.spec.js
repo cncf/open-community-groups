@@ -1,7 +1,12 @@
 import { expect, test } from "../../../fixtures.js";
 import { TEST_EVENT_ANALYTICS_SURVEYS } from "../../../data-graphs/surveys.js";
 import { TEST_EVENT_ANALYTICS, TEST_UNPUBLISHED_EVENT } from "../../../seed.js";
-import { waitForActionResponse } from "../../../utils.js";
+import {
+  pickThemeFromAccountMenu,
+  readTooltipBackground,
+  resolveCssColor,
+  waitForActionResponse,
+} from "../../../utils.js";
 import { openEventUpdateFormByName } from "./helpers.js";
 
 test.describe("group dashboard event analytics tab", () => {
@@ -75,6 +80,46 @@ test.describe("group dashboard event analytics tab", () => {
       "mastodon",
       "Not specified",
     ]);
+  });
+
+  test("organizer keeps the selected UTM dimension across a live color theme switch", async ({
+    organizerGroupPage,
+  }) => {
+    // Open the past paid event analytics and switch the values chart to mediums.
+    const { id, name } = TEST_EVENT_ANALYTICS.pastPaid;
+    await openEventUpdateFormByName(organizerGroupPage, name, id, { eventsTab: "past" });
+    const content = await openAnalyticsSection(organizerGroupPage, id, clickAnalyticsTab);
+    const mediumButton = content
+      .getByRole("group", { name: "UTM parameter" })
+      .getByRole("button", { name: "Medium", exact: true });
+    await mediumButton.click();
+    await expect(mediumButton).toHaveAttribute("aria-pressed", "true");
+    const valuesChart = content.locator("#event-utm-values-chart");
+    await expect
+      .poll(() => readCategoryAxisData(valuesChart))
+      .toEqual(expect.arrayContaining(["email", "social"]));
+    const mediumData = await readCategoryAxisData(valuesChart);
+
+    // Record the light daily chart and its surface tooltip.
+    const chart = content.locator("#event-views-daily-chart");
+    const lightInstance = await chart.getAttribute("_echarts_instance_");
+    const lightValuesInstance = await valuesChart.getAttribute("_echarts_instance_");
+    const lightSurface = await resolveCssColor(chart, "var(--color-surface)");
+    expect(await readTooltipBackground(chart)).toBe(lightSurface);
+
+    // Pick Dark from the account menu.
+    await pickThemeFromAccountMenu(organizerGroupPage, "dark");
+
+    // Verify the charts are new instances with the dark surface tooltip.
+    await expect(chart).not.toHaveAttribute("_echarts_instance_", lightInstance);
+    await expect(valuesChart).not.toHaveAttribute("_echarts_instance_", lightValuesInstance);
+    const darkSurface = await resolveCssColor(chart, "var(--color-surface)");
+    expect(darkSurface).not.toBe(lightSurface);
+    await expect.poll(() => readTooltipBackground(chart)).toBe(darkSurface);
+
+    // Verify the values chart still shows mediums.
+    await expect(mediumButton).toHaveAttribute("aria-pressed", "true");
+    expect(await readCategoryAxisData(valuesChart)).toEqual(mediumData);
   });
 
   test("organizer expands the options of a long registration question", async ({ organizerGroupPage }) => {
@@ -247,6 +292,14 @@ test.describe("group dashboard event analytics tab", () => {
  * @returns {Promise<void>} Resolves once the tab is clicked.
  */
 const clickAnalyticsTab = (page) => page.locator('button[data-section="analytics"]').click();
+
+/**
+ * Reads the category axis labels of a horizontal bar chart.
+ * @param {import("@playwright/test").Locator} chart - Rendered chart container.
+ * @returns {Promise<string[]>} Category labels, top to bottom as configured.
+ */
+const readCategoryAxisData = (chart) =>
+  chart.evaluate((element) => window.echarts.getInstanceByDom(element)?.getOption().yAxis[0].data ?? []);
 
 /**
  * Opens the analytics section of the loaded event editor and waits for its charts.

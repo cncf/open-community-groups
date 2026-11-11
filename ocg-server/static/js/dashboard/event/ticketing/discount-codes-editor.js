@@ -505,7 +505,7 @@ class DiscountCodesEditor extends TicketingEditorBase {
             : this._discountValueSummary(row);
 
         return html`
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
+          <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200 align-middle">
             <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
               <div class="font-medium text-stone-900 wrap-anywhere">${this._discountTitle(row)}</div>
               <div class="mt-2 text-xs font-medium text-stone-600 break-all 2xl:hidden">
@@ -672,7 +672,7 @@ class DiscountCodesEditor extends TicketingEditorBase {
             </tr>
           </thead>
           <tbody data-ticketing-role="empty-state" class=${this._rows.length > 0 ? "hidden" : ""}>
-            <tr class="bg-white border-b border-stone-200">
+            <tr class="bg-surface border-b border-stone-200">
               <td class="px-8 py-12 text-center text-stone-500" colspan="7">
                 No discount codes yet. Configured discount codes will appear here.
               </td>

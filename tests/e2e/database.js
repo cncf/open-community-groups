@@ -162,6 +162,14 @@ export const snapshotRow = ({ key, table }) => {
 };
 
 /**
+ * Quotes a value as a SQL string literal, or returns `null` when it is missing.
+ * @param {*} value - Value quoted with `sqlString` unless null or undefined.
+ * @returns {string} Literal such as `'it''s'`, or `null`.
+ */
+export const sqlNullableString = (value) =>
+  value === null || value === undefined ? "null" : sqlString(value);
+
+/**
  * Quotes a value as a SQL string literal, doubling embedded single quotes.
  * @param {*} value - Value converted with `String()` before quoting.
  * @returns {string} Literal such as `'it''s'`; append a cast for non-text columns.

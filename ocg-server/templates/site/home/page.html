@@ -4,7 +4,7 @@
 
 {% block jumbotron -%}
   {# Jumbotron -#}
-  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 pb-10 sm:px-6 lg:px-8 phone:max-w-none phone:bg-linear-to-b phone:from-white phone:from-45% phone:to-stone-900/12 phone:to-98% phone:border-b phone:border-stone-200 phone:px-3 phone:pt-5 phone:pb-6">
+  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 pb-10 sm:px-6 lg:px-8 phone:max-w-none phone:bg-linear-to-b phone:from-surface phone:from-45% phone:to-shade/12 phone:to-98% phone:border-b phone:border-stone-200 phone:px-3 phone:pt-5 phone:pb-6">
     <section>
       <div role="region"
            aria-label="Site introduction"
@@ -63,7 +63,17 @@
                            height="auto"
                            width="auto"
                            src="{{ community.banner_mobile_url }}"
-                           alt="{{ community.display_name }} banner" />
+                           alt="{{ community.display_name }} banner"
+                           {% if community.banner_mobile_dark_url.is_some() -%}data-theme-image="light"{% endif -%} />
+                      {% if let Some(banner_mobile_dark_url) = community.banner_mobile_dark_url -%}
+                        <img class="w-full h-full object-cover"
+                             height="auto"
+                             width="auto"
+                             src="{{ banner_mobile_dark_url }}"
+                             alt="{{ community.display_name }} banner"
+                             data-theme-image="dark"
+                             loading="lazy" />
+                      {% endif -%}
                     </div>
                   </a>
                 {% endfor -%}

@@ -31,6 +31,8 @@ returns json as $$
         -- Include optional fields and nested related collections
         || jsonb_build_object(
             'attendee_approval_required', e.attendee_approval_required,
+            'banner_dark_url', e.banner_dark_url,
+            'banner_mobile_dark_url', e.banner_mobile_dark_url,
             'banner_mobile_url', e.banner_mobile_url,
             'banner_url', e.banner_url,
             'capacity', e.capacity,
@@ -38,7 +40,8 @@ returns json as $$
             'cfs_enabled', e.cfs_enabled,
             'cfs_ends_at', epoch_seconds(e.cfs_ends_at),
             'cfs_starts_at', epoch_seconds(e.cfs_starts_at),
-            -- Expose the event's own logo so editors do not persist the fallback
+            -- Expose the event's own logos so editors do not persist the fallback
+            'custom_logo_dark_url', e.logo_dark_url,
             'custom_logo_url', e.logo_url,
             'description_short', e.description_short,
             'discount_codes', list_event_discount_codes(e.event_id),
@@ -64,6 +67,12 @@ returns json as $$
                 )
             ),
             'latitude', st_y(e.location::geometry),
+            -- Pair the dark logo with the level that provides the light logo
+            'logo_dark_url', paired_dark_image_url(
+                e.logo_url, e.logo_dark_url,
+                g.logo_url, g.logo_dark_url,
+                c.logo_url, c.logo_dark_url
+            ),
             'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
             'longitude', st_x(e.location::geometry),
             'luma_url', e.luma_url,

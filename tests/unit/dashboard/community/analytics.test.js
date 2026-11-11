@@ -1,5 +1,6 @@
 import { expect } from "@open-wc/testing";
 
+import { getThemePalette } from "/static/js/common/charts/charts.js";
 import {
   initializeCommunityAnalyticsFromPage,
   initAnalyticsCharts,
@@ -37,6 +38,32 @@ describe("dashboard community analytics", () => {
       per_month_by_region: { EU: [["2025-01", 1]] },
     },
   });
+
+  const getRethemePayload = () => ({
+    ...getCommunityAnalyticsPayload(),
+    events: {
+      running_total: [
+        [1, 1],
+        [2, 2],
+      ],
+      per_month: [["2025-01", 1]],
+    },
+  });
+
+  // Each page run keys its tab controls on its own JSON marker.
+  const initPageCharts = (stats, context = {}) =>
+    initAnalyticsCharts(stats, { marker: document.createElement("script"), ...context });
+
+  const flushTasks = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  const getMonthlyColor = (chartId) =>
+    setOptionCalls.filter((call) => call.id === chartId).at(-1)?.option.color[0];
+
+  const useNewPalette = () => {
+    document.documentElement.style.setProperty("--color-primary-500", "#1d4ed8");
+    document.documentElement.style.setProperty("--color-primary-700", "#1e3a8a");
+    return getThemePalette()[700];
+  };
 
   beforeEach(() => {
     resetDom();
@@ -95,7 +122,7 @@ describe("dashboard community analytics", () => {
 
   it("initializes the default groups analytics tab", async () => {
     // Verify initializes the default groups analytics tab.
-    await initAnalyticsCharts(getCommunityAnalyticsPayload());
+    await initPageCharts(getCommunityAnalyticsPayload());
 
     // Verify initializes the default groups analytics tab.
     expect(setOptionCalls).to.have.length(8);
@@ -132,7 +159,7 @@ describe("dashboard community analytics", () => {
 
     try {
       // Below xl the cards are plain stat cards outside the tab order.
-      await initAnalyticsCharts(getCommunityAnalyticsPayload());
+      await initPageCharts(getCommunityAnalyticsPayload());
       expect(summary.getAttribute("role")).to.equal("group");
       expect(groupsCard.hasAttribute("role")).to.equal(false);
       expect(groupsCard.hasAttribute("aria-selected")).to.equal(false);
@@ -215,7 +242,7 @@ describe("dashboard community analytics", () => {
 
     try {
       // The default tab is the only one in the tab order.
-      await initAnalyticsCharts(getCommunityAnalyticsPayload());
+      await initPageCharts(getCommunityAnalyticsPayload());
       expect(groupsTab.getAttribute("tabindex")).to.equal("0");
       expect(eventsTab.getAttribute("tabindex")).to.equal("-1");
 
@@ -262,6 +289,106 @@ describe("dashboard community analytics", () => {
     }
   });
 
+  it("keeps the selected tab when the charts are re-themed", async () => {
+    // Render the page and select a non-default tab.
+    const marker = document.createElement("script");
+    await initAnalyticsCharts(getRethemePayload(), { marker });
+    document.querySelector('[data-analytics-tab="events"]').click();
+    await flushTasks();
+
+    // Re-theme the charts under a new palette.
+    setOptionCalls = [];
+    const newColor = useNewPalette();
+    await initAnalyticsCharts(getRethemePayload(), { marker, retheme: true });
+
+    // Verify the selected tab stays selected and only its charts re-render.
+    const eventsTab = document.querySelector('[data-analytics-tab="events"]');
+    expect(eventsTab.dataset.active).to.equal("true");
+    expect(eventsTab.getAttribute("aria-selected")).to.equal("true");
+    expect(document.querySelector('[data-analytics-tab="groups"]').dataset.active).to.equal("false");
+    expect(document.querySelector('[data-analytics-content="events"]').classList.contains("hidden")).to.equal(
+      false,
+    );
+    expect(document.querySelector('[data-analytics-content="groups"]').classList.contains("hidden")).to.equal(
+      true,
+    );
+    expect(setOptionCalls).to.not.be.empty;
+    expect(setOptionCalls.every((call) => call.id.startsWith("events-"))).to.equal(true);
+    expect(getMonthlyColor("events-monthly-chart")).to.equal(newColor);
+  });
+
+  it("binds the tab controls and the summary media listener once across re-themes", async () => {
+    // Stub the xl media query and add the summary cards that follow it.
+    const media = stubMatchMedia({ [SUMMARY_TABS_MEDIA_QUERY]: false });
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      `<div role="tablist" aria-label="Analytics summary" data-analytics-summary>
+        <button role="tab" data-analytics-tab="groups" data-active="true"></button>
+        <button role="tab" data-analytics-tab="events" data-active="false"></button>
+      </div>`,
+    );
+    const marker = document.createElement("script");
+
+    try {
+      // Render the page, then re-theme it twice.
+      await initAnalyticsCharts(getRethemePayload(), { marker });
+      await initAnalyticsCharts(getRethemePayload(), { marker, retheme: true });
+      await initAnalyticsCharts(getRethemePayload(), { marker, retheme: true });
+
+      // Verify the summary cards follow the viewport through one listener.
+      expect(media.listeners(SUMMARY_TABS_MEDIA_QUERY).size).to.equal(1);
+
+      // Verify one click renders the tab charts once.
+      setOptionCalls = [];
+      document.querySelector('[aria-label="Analytics summary"] [data-analytics-tab="events"]').click();
+      await flushTasks();
+      expect(setOptionCalls.filter((call) => call.id === "events-monthly-chart")).to.have.length(1);
+    } finally {
+      media.restore();
+    }
+  });
+
+  it("renders a tab not shown yet with the new palette on its first show", async () => {
+    // Render the default tab, then re-theme it under a new palette.
+    const marker = document.createElement("script");
+    await initAnalyticsCharts(getRethemePayload(), { marker });
+    const newColor = useNewPalette();
+    await initAnalyticsCharts(getRethemePayload(), { marker, retheme: true });
+    expect(getMonthlyColor("groups-monthly-chart")).to.equal(newColor);
+
+    // Show the events tab for the first time.
+    setOptionCalls = [];
+    document.querySelector('[data-analytics-tab="events"]').click();
+    await flushTasks();
+
+    // Verify its charts use the new palette.
+    expect(getMonthlyColor("events-monthly-chart")).to.equal(newColor);
+  });
+
+  it("re-renders a tab shown before on its next show after a re-theme", async () => {
+    // Render the page, show the events tab and go back to the groups tab.
+    const marker = document.createElement("script");
+    await initAnalyticsCharts(getRethemePayload(), { marker });
+    document.querySelector('[data-analytics-tab="events"]').click();
+    await flushTasks();
+    const oldColor = getMonthlyColor("events-monthly-chart");
+    document.querySelector('[data-analytics-tab="groups"]').click();
+    await flushTasks();
+
+    // Re-theme the selected groups tab under a new palette.
+    const newColor = useNewPalette();
+    await initAnalyticsCharts(getRethemePayload(), { marker, retheme: true });
+    expect(newColor).to.not.equal(oldColor);
+
+    // Show the events tab again.
+    setOptionCalls = [];
+    document.querySelector('[data-analytics-tab="events"]').click();
+    await flushTasks();
+
+    // Verify its charts re-render with the new palette.
+    expect(getMonthlyColor("events-monthly-chart")).to.equal(newColor);
+  });
+
   it("initializes charts from the page payload only once", async () => {
     // Prepare the declarative analytics payload used by the page template.
     const marker = document.createElement("script");
@@ -304,7 +431,7 @@ describe("dashboard community analytics", () => {
 
   it("uses clearer event, attendee, and total page-view chart titles", async () => {
     // Verify uses clearer event, attendee, and total page-view.
-    await initAnalyticsCharts({
+    await initPageCharts({
       groups: {},
       events: {
         running_total: [

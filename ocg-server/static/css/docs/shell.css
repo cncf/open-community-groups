@@ -26,7 +26,7 @@
 }
 
 .ocg-docs-root .sidebar-toggle {
-  background: #fff;
+  background: var(--color-surface, #fff);
   border: 1px solid var(--theme-color, #0094ff);
   border-radius: 9999px;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
@@ -42,7 +42,7 @@
 }
 
 .ocg-docs-root .sidebar-toggle:hover {
-  background: #f5f9ff;
+  background: var(--ocg-docs-tint, #f5f9ff);
 }
 
 .ocg-docs-root .sidebar-toggle-button {
@@ -69,13 +69,13 @@
 }
 
 .ocg-docs-root.close .sidebar-toggle span {
-  background-color: #fff;
+  background-color: var(--color-on-primary, #fff);
 }
 
 @media screen and (min-width: 1025px) {
   .ocg-docs-root .content {
-    background: #fff;
-    border: 1px solid #e7e5e4;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-stone-200, #e7e5e4);
     border-radius: 0.5rem;
     bottom: auto;
     box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04);
@@ -136,8 +136,8 @@
 
 @media screen and (max-width: 1024px) {
   .ocg-docs-root .content {
-    background: #fff;
-    border: 1px solid #e7e5e4;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-stone-200, #e7e5e4);
     border-radius: 0.5rem;
     box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04);
     left: 0;
@@ -150,7 +150,7 @@
   }
 
   .ocg-docs-root .sidebar {
-    background: #f5f5f4;
+    background: var(--color-stone-100, #f5f5f4);
     border: 0;
     border-radius: 0;
     box-shadow: 0 8px 24px rgba(28, 25, 23, 0.18);
@@ -182,7 +182,7 @@
 
   /* Scoped Docsify body rules set overflow here, unlayered, so the phone token alone loses. */
   .ocg-docs-root:has(> [data-docs-bar]) {
-    background: var(--color-white);
+    background: var(--color-surface);
     overflow: visible;
   }
 
@@ -203,12 +203,14 @@
     z-index: auto;
   }
 
+  /* The bottom padding clears the fixed Contents bar (68px, its hairline and the home indicator
+     inset), since the docs page has no footer to absorb it. */
   .ocg-docs-root:has(> [data-docs-bar]) .markdown-section {
     font-size: 15px;
     line-height: 24px;
     margin: 0;
     max-width: none;
-    padding: 20px 12px 24px;
+    padding: 20px 12px calc(24px + 69px + env(safe-area-inset-bottom, 0px));
   }
 
   .ocg-docs-root:has(> [data-docs-bar]) .markdown-section :is(ol, p, ul) {
@@ -265,12 +267,15 @@
   }
 
   /* Contents sheet: Docsify's own sidebar, rising from behind the bar, which stays visible below it.
-     The header is 64px and the bar 68px plus the home indicator inset. */
+     The header is 64px and the bar 68px plus the home indicator inset. Its shadow starts with the
+     ring slot, which styles.src.css fills in dark with the thin edge every sheet draws. */
   .ocg-docs-root:has(> [data-docs-bar]) .sidebar {
-    background: var(--color-white);
+    background: var(--color-raised);
     border-radius: 1rem 1rem 0 0;
     bottom: calc(68px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -8px 30px color-mix(in srgb, var(--color-stone-900) 18%, transparent);
+    box-shadow:
+      var(--tw-ring-shadow, 0 0 transparent),
+      0 -8px 30px color-mix(in srgb, var(--color-shade) 18%, transparent);
     height: auto;
     left: 0;
     max-height: calc(100dvh - 140px - env(safe-area-inset-bottom, 0px));
@@ -310,7 +315,7 @@
      other sheets instead of only through the scrim, a link, Back or Escape. */
   .ocg-docs-root:has(> [data-docs-bar]) .sidebar .docs-sheet-head {
     align-items: center;
-    background: var(--color-white);
+    background: var(--color-raised);
     border-bottom: 1px solid var(--color-stone-200);
     display: flex;
     justify-content: space-between;
@@ -349,7 +354,7 @@
   }
 
   .ocg-docs-root:has(> [data-docs-bar]) .sidebar .docs-sheet-head-close:focus-visible {
-    outline: 2px solid var(--color-primary-500);
+    outline: 2px solid var(--color-focus);
     outline-offset: -2px;
   }
 
@@ -418,12 +423,12 @@
      after this visible word, which both states keep, so the open state only swaps the icon. */
   .ocg-docs-root:has(> [data-docs-bar]) .sidebar-toggle {
     align-items: center;
-    background: var(--color-white);
-    border: 1px solid var(--color-primary-500);
+    background: var(--color-surface);
+    border: 1px solid var(--color-primary-edge);
     border-radius: 9999px;
     bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     box-shadow: none;
-    color: var(--color-primary-500);
+    color: var(--color-primary-fg);
     display: flex;
     gap: 6px;
     height: 44px;
@@ -436,12 +441,12 @@
   }
 
   body.close .ocg-docs-root:has(> [data-docs-bar]) .sidebar-toggle {
-    background: var(--color-primary-500);
-    color: var(--color-white);
+    background: var(--color-primary-fill);
+    color: var(--color-on-primary);
   }
 
   .ocg-docs-root:has(> [data-docs-bar]) .sidebar-toggle:focus-visible {
-    outline: 2px solid var(--color-primary-500);
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
 

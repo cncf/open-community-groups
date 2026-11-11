@@ -1,9 +1,9 @@
 import { toTrimmedString } from "/static/js/common/utils.js";
 
 export const TICKET_CARD_AVAILABLE_CLASSES = [
-  "bg-white",
+  "bg-surface",
   "cursor-pointer",
-  "hover:border-primary-300",
+  "hover:border-primary-edge-soft",
   "hover:shadow-sm",
 ];
 export const TICKET_CARD_UNAVAILABLE_CLASSES = ["bg-stone-50", "cursor-not-allowed", "opacity-60"];

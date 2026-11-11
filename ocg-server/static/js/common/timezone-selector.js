@@ -152,7 +152,7 @@ export class TimezoneSelector extends LitWrapper {
         </button>
 
         <div
-          class="absolute top-full mt-1 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${
+          class="absolute top-full mt-1 left-0 right-0 z-10 bg-raised rounded-lg shadow-sm border border-stone-200 ${
             this._combobox.isOpen ? "" : "hidden"
           }"
         >
@@ -195,7 +195,7 @@ export class TimezoneSelector extends LitWrapper {
                         let statusClass = "";
                         if (isItemDisabled) {
                           statusClass =
-                            "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
+                            "cursor-not-allowed bg-primary-tint text-primary-fg-strong font-semibold opacity-100!";
                         } else if (isActive) {
                           statusClass = "cursor-pointer text-stone-900 bg-stone-50";
                         } else {

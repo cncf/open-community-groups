@@ -203,8 +203,6 @@ describe("community explore calendar", () => {
 
   it("loads the calendar script, skips malformed events, and renders the valid ones", async () => {
     // Create a calendar with past, upcoming, and malformed events.
-    document.documentElement.style.setProperty("--color-primary-50", "#eff6ff");
-    document.documentElement.style.setProperty("--color-primary-200", "#bfdbfe");
     const upcomingStartsAt = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
     const calendar = await renderCalendar({
       events: [
@@ -235,10 +233,11 @@ describe("community explore calendar", () => {
     expect(pastEvent).not.to.have.property("borderColor");
     expect(pastEvent.extendedProps.event.event_id).to.equal("event-1");
 
-    // Upcoming events use the primary colors and link to their page.
+    // Upcoming events read the primary roles in the page, so they follow a color theme switch,
+    // and link to their page.
     expect(upcomingEvent).to.include({
-      backgroundColor: "#eff6ff",
-      borderColor: "#bfdbfe",
+      backgroundColor: "var(--color-primary-tint)",
+      borderColor: "var(--color-primary-edge-faint)",
       title: "Upcoming",
       url: "/spain/group/malaga-javascript/event/upcoming",
     });

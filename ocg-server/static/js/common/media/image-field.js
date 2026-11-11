@@ -125,6 +125,7 @@ export class ImageField extends LitWrapper {
    * @property {string} submitLabel - Optional label for a form submit action.
    * @property {string} target - Upload target and crop dimension target.
    * @property {string} legend - Optional legend text displayed under the image preview area.
+   * @property {boolean} darkPreview - Whether to preview a dark mode image on a fixed dark stage, without the logo plate.
    */
   static properties = {
     label: { type: String },
@@ -143,6 +144,7 @@ export class ImageField extends LitWrapper {
     submitLabel: { type: String, attribute: "submit-label" },
     target: { type: String },
     legend: { type: String },
+    darkPreview: { type: Boolean, attribute: "dark-preview" },
     _isEditorOpen: { state: true },
     _isPreparing: { state: true },
     _pendingUploadFile: { state: true },
@@ -174,6 +176,7 @@ export class ImageField extends LitWrapper {
     this.submitLabel = "";
     this.target = "";
     this.legend = "";
+    this.darkPreview = false;
     this._directFileName = "";
   }
 
@@ -223,6 +226,11 @@ export class ImageField extends LitWrapper {
     return this._isUploading || (this._isPreparing && !this._isEditorOpen);
   }
 
+  /** Placeholder text color, lighter on the dark preview stage for contrast. */
+  get _placeholderTextClass() {
+    return this.darkPreview ? "text-stone-300" : "text-stone-500";
+  }
+
   /** Return a dashboard-safe preview URL for unsaved badge artwork. */
   get _previewUrl() {
     if (this.target === IMAGE_TARGET.BADGE && this.value.startsWith("/images/badges/")) {
@@ -264,21 +272,26 @@ export class ImageField extends LitWrapper {
       return html`
         <div class="flex flex-col items-center justify-center gap-2 px-3 text-center">
           <div class="svg-icon ${isWide ? "size-12" : "size-8"} icon-image bg-stone-400"></div>
-          <p id=${this._promptId} class="text-xs leading-snug text-stone-500">${this._directFileName}</p>
+          <p id=${this._promptId} class="text-xs leading-snug ${this._placeholderTextClass}">
+            ${this._directFileName}
+          </p>
         </div>
       `;
     }
 
     if (this._hasImage) {
+      // Logo previews show the public light plate in dark mode, dark mode images none.
+      const plateClass =
+        this.imageKind === IMAGE_KIND.LOGO && !this.darkPreview ? " plate plate-ring dark:bg-plate" : "";
       return html`
         <img
           src=${this._previewUrl}
           alt="Image preview"
-          class=${
+          class=${`${
             isWide
               ? "h-full w-full object-contain rounded p-1"
               : "max-h-[86px] max-w-[86px] object-contain mx-auto"
-          }
+          }${plateClass}`}
           loading="lazy"
         />
         <span id=${this._promptId} class="sr-only">Change image</span>
@@ -290,7 +303,7 @@ export class ImageField extends LitWrapper {
         class="flex flex-col items-center justify-center text-center ${isWide ? "gap-3 px-4" : "gap-2 px-3"}"
       >
         <div class="svg-icon ${isWide ? "size-12" : "size-8"} icon-image bg-stone-400"></div>
-        <p id=${this._promptId} class="text-xs text-stone-500 leading-snug">
+        <p id=${this._promptId} class="text-xs ${this._placeholderTextClass} leading-snug">
           ${isWide ? "Click to upload or drag and drop" : "Click or drop image"}
         </p>
       </div>
@@ -566,8 +579,8 @@ export class ImageField extends LitWrapper {
       </label>
       <div class="mt-2">
         <div
-          class="relative flex min-h-24 cursor-pointer items-center gap-4 rounded-lg border border-dashed border-stone-300 px-6 text-stone-600 transition-colors hover:border-primary-500 ${
-            this._isDragActive ? "border-primary-500 bg-primary-50" : ""
+          class="relative flex min-h-24 cursor-pointer items-center gap-4 rounded-lg border border-dashed border-stone-300 px-6 text-stone-600 transition-colors hover:border-primary-edge ${
+            this._isDragActive ? "border-primary-edge bg-primary-tint" : ""
           }"
           role="button"
           tabindex="0"
@@ -580,8 +593,8 @@ export class ImageField extends LitWrapper {
         >
           <div class="svg-icon size-8 shrink-0 icon-image bg-stone-400" aria-hidden="true"></div>
           <p id=${this._promptId} class="text-sm phone:wrap-anywhere">
-            <span class="font-semibold text-primary-600 phone:hidden">Click to upload</span>
-            <span class="font-semibold text-primary-600 not-phone:hidden">Tap to upload</span>
+            <span class="font-semibold text-primary-fg-strong phone:hidden">Click to upload</span>
+            <span class="font-semibold text-primary-fg-strong not-phone:hidden">Tap to upload</span>
             ${
               this._directFileName
                 ? html`<span> ${this._directFileName}</span>`
@@ -643,8 +656,10 @@ export class ImageField extends LitWrapper {
         <div
           class="relative ${
             isWide ? "w-full sm:max-w-md h-24" : "size-24"
-          } min-w-24 flex items-center justify-center bg-stone-200/50 rounded-lg border border-dashed border-stone-300 overflow-hidden ${
-            this._isDragActive && !this._isPending ? "ring-2 ring-primary-300" : ""
+          } min-w-24 flex items-center justify-center ${
+            this.darkPreview ? "ink bg-stone-900" : "bg-stone-200/50"
+          } rounded-lg border border-dashed ${this.darkPreview ? "border-stone-600" : "border-stone-300"} overflow-hidden ${
+            this._isDragActive && !this._isPending ? "ring-2 ring-primary-halo" : ""
           } cursor-pointer ${this.previewBgClass ? ` ${this.previewBgClass}` : ""}"
           role="button"
           tabindex="0"
@@ -659,14 +674,14 @@ export class ImageField extends LitWrapper {
           @drop=${this._handleDrop}
         >
           <div
-            class="absolute inset-0 flex items-center justify-center bg-white/50 z-10 ${
+            class="absolute inset-0 flex items-center justify-center bg-surface/50 z-10 ${
               this._showsBusyOverlay ? "opacity-100" : "opacity-0 pointer-events-none"
             } transition-opacity duration-200"
             aria-hidden=${this._showsBusyOverlay ? "false" : "true"}
           >
             <svg-spinner
               size="size-8"
-              background-color="var(--color-primary-100)"
+              background-color="var(--color-primary-tint-strong)"
               label=${this._isUploading ? "Uploading..." : "Preparing image..."}
             ></svg-spinner>
           </div>

@@ -9,7 +9,7 @@
   {# Overview -#}
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
        data-event-survey-overview>
-    <div class="rounded-lg border border-stone-200 bg-white p-5">
+    <div class="rounded-lg border border-stone-200 bg-surface p-5">
       <div class="text-xs font-medium uppercase text-stone-500">Responses</div>
       <div class="mt-2 text-lg font-semibold text-stone-900"
            data-survey-responses-label>
@@ -17,7 +17,7 @@
       </div>
       <div class="mt-1 text-xs text-stone-500">Eligible attendees who answered</div>
     </div>
-    <div class="rounded-lg border border-stone-200 bg-white p-5">
+    <div class="rounded-lg border border-stone-200 bg-surface p-5">
       <div class="text-xs font-medium uppercase text-stone-500">Audience</div>
       <div class="mt-2 text-lg font-semibold text-stone-900">
         {% if survey.audience == EventSurveyAudience::CheckedIn -%}
@@ -34,7 +34,7 @@
         {% endif -%}
       </div>
     </div>
-    <div class="rounded-lg border border-stone-200 bg-white p-5 md:col-span-2 lg:col-span-1">
+    <div class="rounded-lg border border-stone-200 bg-surface p-5 md:col-span-2 lg:col-span-1">
       <div class="text-xs font-medium uppercase text-stone-500">Closes</div>
       <div class="mt-2 text-balance text-lg font-semibold text-stone-900">
         {% if let Some(closes_at) = survey.closes_at -%}
@@ -74,7 +74,7 @@
               <span class="min-w-0">{{ question.prompt }}</span>
             </h3>
             <div class="mb-3 mt-1 text-xs text-stone-500">{{ (text.total as i64)|num_fmt }} answer{{ text.total|pluralize }}</div>
-            <div class="rounded-lg border border-stone-200 bg-white">
+            <div class="rounded-lg border border-stone-200 bg-surface">
               {% if text.answers.is_empty() -%}
                 <p class="p-5 text-sm text-stone-500">No answers yet.</p>
               {% else -%}

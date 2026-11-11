@@ -12,6 +12,12 @@ returns json as $$
             e.timezone,
 
             event_cohosts_json(e.event_id) as cohosts,
+            -- Pair the dark logo with the level that provides the light logo
+            paired_dark_image_url(
+                e.logo_url, e.logo_dark_url,
+                g.logo_url, g.logo_dark_url,
+                c.logo_url, c.logo_dark_url
+            ) as logo_dark_url,
             coalesce(e.logo_url, g.logo_url, c.logo_url) as logo_url,
             nullif(concat_ws(
                 ', ',

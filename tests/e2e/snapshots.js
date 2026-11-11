@@ -1,28 +1,29 @@
 import { expect } from "@playwright/test";
 
-import { buildE2eUrl, waitForHtmxSettle } from "./utils.js";
+import { seedLocalStorage, waitForHtmxSettle } from "./utils.js";
 
 // File extension of ARIA snapshot files, required by `toMatchAriaSnapshot({ name })`.
 const ARIA_SNAPSHOT_EXTENSION = ".aria.yml";
 // Event attendance controls hydrate through a plain fetch after the page loads.
 const ATTENDANCE_READY_TIMEOUT_MS = 10_000;
-// Cookie the user menu sets to load the desktop version (see static/js/common/viewport-mode.js).
-const DESKTOP_VERSION_COOKIE = { name: "ocg_viewport_mode", value: "desktop" };
 // Subpixel rounding allowed when comparing region edges with the viewport.
 const LAYOUT_EDGE_TOLERANCE_PX = 0.5;
 // Dashboard tabs with a phone layout; the others show the mobile notice.
 const PHONE_DASHBOARD_TABS = ["check-in", "invitations"];
 // Query of the `phone` variant (see static/js/common/phone-viewport.js).
 const PHONE_MEDIA_QUERY = "screen and (width < 48rem) and (not (pointer: fine))";
+// Storage key the user menu writes to load the desktop version (see static/js/common/viewport-mode.js).
+const VIEWPORT_MODE_STORAGE_KEY = "ocg_viewport_mode";
 
 /**
  * Makes the pages of a context load in the desktop version, as the user menu's "Desktop version"
  * item does: the page lays out at 1280px on mobile and dashboards render their content instead of
- * the mobile notice. Call it before navigating; the context keeps the cookie until it closes.
+ * the mobile notice. Call it before navigating: it seeds the stored preference once, on the next
+ * navigation of the context, and later pages keep it.
  * @param {import("@playwright/test").Page} page - Page whose context loads the desktop version.
  */
 export const enableDesktopVersion = async (page) => {
-  await page.context().addCookies([{ ...DESKTOP_VERSION_COOKIE, url: buildE2eUrl("/") }]);
+  await seedLocalStorage(page, { [VIEWPORT_MODE_STORAGE_KEY]: "desktop" });
 };
 
 /**

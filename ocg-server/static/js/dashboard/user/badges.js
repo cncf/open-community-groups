@@ -85,9 +85,9 @@ export const initializeBadgeList = (list) => {
       return;
     }
     if (dropTargetItem !== target) {
-      dropTargetItem?.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-300");
+      dropTargetItem?.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-halo");
       dropTargetItem = target;
-      dropTargetItem.querySelector(CARD_SELECTOR)?.classList.add("ring-2", "ring-primary-300");
+      dropTargetItem.querySelector(CARD_SELECTOR)?.classList.add("ring-2", "ring-primary-halo");
     }
     const before = event.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
     list.insertBefore(draggedItem, before ? target : target.nextElementSibling);
@@ -141,7 +141,7 @@ export const downloadBadge = async (link) => {
       html: `
         <p>This PNG contains the badge artwork and signed Open Badges 3.0 credential data.</p>
         <p class="mt-3">You can import it into compatible wallets, backpacks, and credential platforms. To let those platforms match the badge to your account, the file includes a salted hash of your account email — it does not include your email address or username in plain text. Anyone with the file can inspect and verify the credential; verification reports its current active or revoked status.</p>
-        <a class="mt-4 inline-flex font-medium text-primary-600 underline hover:text-primary-700"
+        <a class="mt-4 inline-flex font-medium text-primary-fg-strong underline hover:text-primary-fg-hover"
            href="/docs#/guides/badges?id=share-and-export-credentials"
            target="_blank"
            rel="noopener noreferrer">Read the badge export guide</a>`,
@@ -325,7 +325,7 @@ const badgeIds = (list) =>
 const clearDragStyles = (list) => {
   list.querySelectorAll("[data-user-badge-id]").forEach((item) => {
     item.classList.remove("opacity-70");
-    item.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-300");
+    item.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-halo");
   });
 };
 

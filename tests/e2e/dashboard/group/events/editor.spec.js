@@ -1,9 +1,15 @@
 import { expect, test } from "../../../fixtures.js";
 
 import { queryCount, queryE2eDatabase, queryE2eDatabaseRows, sqlString, sqlUuid } from "../../../database.js";
-import { cleanupEventsByIds, setupLabeledSessionEvent } from "../../../data-graphs/events.js";
+import {
+  cleanupEventsByIds,
+  insertOwnedEvent,
+  setupLabeledSessionEvent,
+} from "../../../data-graphs/events.js";
+import { cleanupTemporaryGroup, setupTemporaryGroup } from "../../../data-graphs/groups.js";
 import {
   TEST_CANCELED_PUBLIC_EVENT,
+  TEST_COMMUNITY_IDS,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_CATEGORY_IDS,
   TEST_EVENT_IDS,
@@ -20,6 +26,7 @@ import {
   futureDate,
   navigateToEvent,
   navigateToPath,
+  selectGroupContext,
   selectTimezone,
   uniqueName,
   waitForActionResponse,
@@ -48,6 +55,18 @@ import {
   openSessionsSection,
   setLabels,
 } from "./event-form-helpers.js";
+
+// Logos of the dark logo copy scenario: the group's, which its events inherit, and an event's own.
+const COPY_SOURCE_LOGOS = {
+  event: {
+    logoDarkUrl: "/static/images/e2e/entity-logo-dark.svg",
+    logoUrl: "/static/images/e2e/event-logo.svg",
+  },
+  group: {
+    logoDarkUrl: "/static/images/e2e/sponsor-logo.svg",
+    logoUrl: "/static/images/e2e/community-secondary-logo.svg",
+  },
+};
 
 // Palette colors used by the label editor; new labels start with the first one.
 const DEFAULT_LABEL_COLOR = "#FFD866";
@@ -977,6 +996,67 @@ test.describe("group dashboard event editor", () => {
     expect(listSessionLabels(copiedEventId)).toEqual([]);
   });
 
+  test("copying an event copies its own dark logo but not the inherited one", async ({
+    organizerGroupPage,
+    owned,
+  }) => {
+    // Create a group with a logo and a dark logo, a published event inheriting them and one with
+    // logos of its own, and select the group.
+    const { groupId } = owned.track(
+      setupTemporaryGroup({
+        ...COPY_SOURCE_LOGOS.group,
+        teamRole: "admin",
+        teamUserId: TEST_USER_IDS.organizer1,
+      }),
+      ({ groupId: temporaryGroupId }) => cleanupTemporaryGroup(temporaryGroupId),
+    );
+    const inheritingEvent = insertOwnedEvent({
+      groupId,
+      meetingJoinUrl: "https://meet.example.com/e2e-dark-logo-copy",
+      name: uniqueName("Inherited Dark Logo Source"),
+    });
+    const ownLogosEvent = insertOwnedEvent({
+      ...COPY_SOURCE_LOGOS.event,
+      groupId,
+      name: uniqueName("Own Dark Logo Source"),
+    });
+    await selectGroupContext(organizerGroupPage, TEST_COMMUNITY_IDS.community1, groupId);
+
+    // Copy the inheriting event and verify neither group logo is copied as the event's own.
+    await copyEventIntoAddForm(organizerGroupPage, inheritingEvent);
+    for (const name of ["logo_url", "logo_dark_url"]) {
+      await expect(
+        organizerGroupPage.locator(`image-field[name="${name}"] input[name="${name}"]`),
+      ).toHaveValue("");
+    }
+
+    // Schedule and save the copy, then verify it stores no logos of its own.
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+    await organizerGroupPage.locator("#starts_at").fill(futureDate({ days: 97, hour: 10 }));
+    await organizerGroupPage.locator("#ends_at").fill(futureDate({ days: 97, hour: 12 }));
+    const copiedEventId = owned.track(await saveNewEvent(organizerGroupPage), (id) =>
+      cleanupEventsByIds([id]),
+    );
+    expect(
+      queryCount(`
+        select count(*)
+        from event
+        where event_id = ${sqlUuid(copiedEventId)}
+        and logo_url is null
+        and logo_dark_url is null
+      `),
+    ).toBe(1);
+
+    // Copy the event with logos of its own and verify both are copied.
+    await copyEventIntoAddForm(organizerGroupPage, ownLogosEvent);
+    await expect(
+      organizerGroupPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
+    ).toHaveValue(COPY_SOURCE_LOGOS.event.logoUrl);
+    await expect(
+      organizerGroupPage.locator('image-field[name="logo_dark_url"] input[name="logo_dark_url"]'),
+    ).toHaveValue(COPY_SOURCE_LOGOS.event.logoDarkUrl);
+  });
+
   test("session card labels fit their row once the hidden sessions section is shown", async ({
     organizerGroupPage,
     owned,
@@ -1118,6 +1198,13 @@ test.describe("group dashboard event editor", () => {
       const nameInput = eventPage.locator("#name");
       await nameInput.focus();
       await expect(nameInput).not.toBeFocused();
+
+      // Verify the inert-form rule dims the selected meeting mode card ring and dot.
+      const selectedModeCard = eventPage.locator(
+        '#online-event-details label:has(input[type="radio"]:checked)',
+      );
+      await expect(selectedModeCard.locator(".border-primary-edge")).toHaveCSS("opacity", "0.5");
+      await expect(selectedModeCard.locator(".bg-primary-fg")).toHaveCSS("opacity", "0.5");
     });
   }
 
@@ -1153,6 +1240,27 @@ test.describe("group dashboard event editor", () => {
     });
   });
 });
+
+/**
+ * Opens the add event form and copies a published event of the selected group into it.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @param {{ eventId: string, name: string }} event - Source event.
+ */
+const copyEventIntoAddForm = async (page, { eventId, name }) => {
+  await navigateToPath(page, "/dashboard/group?tab=events");
+  await page.locator("#dashboard-content").getByRole("button", { name: "Add Event" }).click();
+  await expect(page.locator("#name")).toBeVisible();
+  await page.locator("#copy-event-selector").click();
+  await page.locator("#dropdown-events #event-search-input").fill(name);
+  const eventOption = page.locator('#dropdown-events button[id^="select-event-"]').filter({ hasText: name });
+  await waitForActionResponse(page, () => eventOption.click(), {
+    method: "GET",
+    pathname: `/dashboard/group/events/${eventId}/details`,
+    status: 200,
+  });
+  await expect(page.locator(".swal2-popup")).toContainText("Event details copied.");
+  await page.getByRole("button", { name: "OK" }).click();
+};
 
 /**
  * Creates a draft event with labels and one labeled session in a single save.

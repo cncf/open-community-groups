@@ -94,11 +94,12 @@ export class CohostsSelector extends LitWrapper {
 
   /**
    * Returns display-only co-host data for the event preview.
-   * @returns {{name: string, logo_url: string, status: string}[]}
+   * @returns {{name: string, logo_dark_url: string, logo_url: string, status: string}[]}
    */
   getPreviewCohosts() {
     return this.selectedCohosts
       .map((cohost) => ({
+        logo_dark_url: cohost.logo_dark_url || "",
         logo_url: cohost.logo_url || "",
         name: cohost.name || "",
         status: cohost.status === STATUS_APPROVED ? STATUS_APPROVED : STATUS_PENDING,
@@ -341,7 +342,7 @@ export class CohostsSelector extends LitWrapper {
         </div>
 
         <div
-          class="absolute start-0 end-0 z-10 mt-1 rounded-lg border border-stone-200 bg-white shadow ${
+          class="absolute start-0 end-0 z-10 mt-1 rounded-lg border border-stone-200 bg-raised shadow ${
             this._combobox.isOpen ? "" : "hidden"
           }"
         >
@@ -466,11 +467,11 @@ export class CohostsSelector extends LitWrapper {
       <div class="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
         ${this.selectedCohosts.map(
           (cohost) => html`
-            <div class="flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-white p-4">
+            <div class="flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-surface p-4">
               ${this._renderLogo(cohost, "size-15 md:size-18", "size-13 md:size-16")}
               <div class="min-w-0 flex-1">
                 <div class="title-preheader">${cohost.community_display_name}</div>
-                <div class="mt-0.5 truncate text-sm/5 font-semibold text-black">${cohost.name}</div>
+                <div class="mt-0.5 truncate text-sm/5 font-semibold text-stone-900">${cohost.name}</div>
                 <div class="mt-2 flex flex-wrap gap-1.5">${this._renderStatusPills(cohost)}</div>
               </div>
               ${
@@ -479,7 +480,7 @@ export class CohostsSelector extends LitWrapper {
                   : html`
                       <button
                         type="button"
-                        class="rounded-full p-1 hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                        class="rounded-full p-1 hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-edge"
                         aria-label="Remove ${cohost.name}"
                         data-cohost-remove
                         title="Remove"
@@ -497,22 +498,39 @@ export class CohostsSelector extends LitWrapper {
   }
 
   /**
-   * Renders a group logo, falling back to the groups icon.
-   * @param {Object} group - Group or co-host with name and logo URL.
+   * Renders a group logo, falling back to the groups icon. A dark mode logo, used only with
+   * the light one, renders as an unplated sibling that CSS shows in dark mode instead, like
+   * the ui::logo template macro.
+   * @param {Object} group - Group or co-host with name and logo URLs.
    * @param {string} wrapperSize - Size classes for the logo frame.
    * @param {string} imageSize - Size classes for the logo image.
    * @returns {import("lit").TemplateResult}
    */
   _renderLogo(group, wrapperSize, imageSize) {
-    return html`
+    const hasDarkLogo = Boolean(group.logo_url && group.logo_dark_url);
+    const plate = html`
       <div
-        class="relative flex ${wrapperSize} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-stone-200 bg-white"
+        class="plate plate-ring relative flex ${wrapperSize} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-stone-200 bg-plate p-[3px]"
+        data-theme-image=${hasDarkLogo ? "light" : nothing}
       >
         ${
           group.logo_url
             ? html`<img src=${group.logo_url} alt="" class="${imageSize} object-contain" loading="lazy" />`
             : html`<span class="svg-icon size-6 icon-groups bg-stone-400" aria-hidden="true"></span>`
         }
+      </div>
+    `;
+    if (!hasDarkLogo) {
+      return plate;
+    }
+
+    return html`
+      ${plate}
+      <div
+        class="relative flex ${wrapperSize} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-transparent outline outline-1 outline-stone-200"
+        data-theme-image="dark"
+      >
+        <img src=${group.logo_dark_url} alt="" class="${imageSize} object-contain" loading="lazy" />
       </div>
     `;
   }
@@ -650,6 +668,7 @@ const normalizeSelectedCohost = (cohost) => ({
   group_id: String(cohost?.group_id || ""),
   invitation_id: cohost?.invitation_id || "",
   invited_at: cohost?.invited_at || "",
+  logo_dark_url: cohost?.logo_dark_url || "",
   logo_url: cohost?.logo_url || "",
   name: cohost?.name || "",
   slug: cohost?.slug || "",

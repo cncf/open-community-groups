@@ -77,11 +77,46 @@ impl ImageTarget {
     }
 }
 
+/// Image URL with the optional dark mode variant from the same level.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ThemedImage<'a> {
+    /// Light image URL.
+    pub url: &'a str,
+
+    /// Dark mode variant, shown in dark mode in place of `url`.
+    pub dark_url: Option<&'a str>,
+}
+
+impl<'a> ThemedImage<'a> {
+    /// Returns the image of the first level with a light URL, if any.
+    ///
+    /// Each level is a (light URL, dark URL) pair. The dark URL always comes
+    /// from the level whose light URL wins, so a dark URL on a level without
+    /// a light one is ignored.
+    pub(crate) fn first(
+        levels: impl IntoIterator<Item = (Option<&'a str>, Option<&'a str>)>,
+    ) -> Option<Self> {
+        levels
+            .into_iter()
+            .find_map(|(url, dark_url)| url.map(|url| ThemedImage { url, dark_url }))
+    }
+
+    /// Returns the image of the first level with a light URL, or `fallback`.
+    ///
+    /// Levels are resolved like [`ThemedImage::first`].
+    pub(crate) fn first_or(
+        levels: impl IntoIterator<Item = (Option<&'a str>, Option<&'a str>)>,
+        fallback: ThemedImage<'a>,
+    ) -> Self {
+        Self::first(levels).unwrap_or(fallback)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
 
-    use super::ImageTarget;
+    use super::{ImageTarget, ThemedImage};
 
     #[test]
     fn test_image_target_round_trips_upload_names() {
@@ -110,5 +145,60 @@ mod tests {
         assert_eq!(ImageTarget::AdBanner.height(), 300);
         assert_eq!(ImageTarget::AdBanner.size_text(), "2400 x 300");
         assert_eq!(ImageTarget::OpenGraph.size_text(), "1200 x 630");
+    }
+
+    #[test]
+    fn test_themed_image_first_returns_none_without_a_light_level() {
+        // Setup levels without a light URL
+        let levels = [(None, Some("a-dark")), (None, None)];
+
+        // Check no level is chosen
+        assert_eq!(ThemedImage::first(levels), None);
+    }
+
+    #[test]
+    fn test_themed_image_first_or_keeps_the_dark_variant_of_the_chosen_level() {
+        // Setup the fallback level
+        let fallback = ThemedImage {
+            url: "fallback",
+            dark_url: Some("fallback-dark"),
+        };
+
+        // Setup cases: (label, levels, expected image)
+        let cases = [
+            (
+                "first level pair",
+                [(Some("a"), Some("a-dark")), (Some("b"), Some("b-dark"))],
+                ThemedImage {
+                    url: "a",
+                    dark_url: Some("a-dark"),
+                },
+            ),
+            (
+                "first level light without dark",
+                [(Some("a"), None), (Some("b"), Some("b-dark"))],
+                ThemedImage {
+                    url: "a",
+                    dark_url: None,
+                },
+            ),
+            (
+                "orphan dark falls through to the next level",
+                [(None, Some("a-dark")), (Some("b"), Some("b-dark"))],
+                ThemedImage {
+                    url: "b",
+                    dark_url: Some("b-dark"),
+                },
+            ),
+            (
+                "no level light uses the fallback",
+                [(None, Some("a-dark")), (None, None)],
+                fallback,
+            ),
+        ];
+
+        for (label, levels, expected) in cases {
+            assert_eq!(ThemedImage::first_or(levels, fallback), expected, "{label}");
+        }
     }
 }

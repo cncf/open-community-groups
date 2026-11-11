@@ -152,6 +152,9 @@ pub(crate) struct EventCohostInvitation {
     /// Current co-hosting status (pending or approved).
     pub status: EventCohostStatus,
 
+    /// URL to the logo image shown in dark mode in place of `logo_url`,
+    /// taken from the same level (group or community) as `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Admin-managed URL-friendly identifier for the co-host group.
     pub slug_pretty: Option<String>,
 }
@@ -202,6 +205,15 @@ pub(crate) struct EventInput {
     /// Whether attendee requests require organizer approval.
     #[garde(skip)]
     pub attendee_approval_required: Option<bool>,
+    /// URL to the event banner image shown in dark mode in place of
+    /// `banner_url`. On its own, without `banner_url`, it is ignored.
+    #[garde(custom(image_url_opt))]
+    pub banner_dark_url: Option<String>,
+    /// URL to the event mobile banner image shown in dark mode in place of
+    /// `banner_mobile_url`. On its own, without `banner_mobile_url`, it is
+    /// ignored.
+    #[garde(custom(image_url_opt))]
+    pub banner_mobile_dark_url: Option<String>,
     /// URL to the event banner image optimized for mobile devices.
     #[garde(custom(image_url_opt))]
     pub banner_mobile_url: Option<String>,
@@ -277,6 +289,10 @@ pub(crate) struct EventInput {
     /// Latitude coordinate of the event location.
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
+    /// URL to the event logo shown in dark mode in place of `logo_url`. On
+    /// its own, without `logo_url`, it is ignored.
+    #[garde(custom(image_url_opt))]
+    pub logo_dark_url: Option<String>,
     /// Longitude coordinate of the event location.
     #[garde(custom(valid_longitude))]
     pub longitude: Option<f64>,

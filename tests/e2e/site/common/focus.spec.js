@@ -9,7 +9,7 @@ import {
 } from "../../utils.js";
 
 // Outline colour of the site-primary focus indicator.
-const PRIMARY_OUTLINE = "var(--ocg-primary)";
+const PRIMARY_OUTLINE = "var(--color-focus)";
 
 test.describe("site focus indicator", () => {
   test("shows the focus outline on explore search, its buttons and the sort select", async ({ page }) => {

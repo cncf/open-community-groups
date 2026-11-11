@@ -3,7 +3,7 @@
 {# Site Home Group Card -#}
 {% block preheader -%}
   <span class="phone:flex phone:min-w-0 phone:items-baseline">
-    <span class="hidden text-primary-500 sm:inline phone:hidden">{{ group.community_display_name }}</span>
+    <span class="hidden text-primary-fg sm:inline phone:hidden">{{ group.community_display_name }}</span>
     <span class="px-1 hidden sm:inline phone:hidden">·</span>
     <span class="phone:min-w-0 phone:truncate">
       {%- if let Some(region) = &group.region -%}

@@ -86,6 +86,19 @@ export const SUMMARY_TABS_MEDIA_QUERY = "(min-width: 80rem)";
 const SUMMARY_TABS_SELECTOR = "[data-analytics-summary]";
 
 /**
+ * Analytics pages whose tab controls are bound, keyed by their JSON marker, or
+ * by the document for calls without one. Kept in memory, unlike a dataset
+ * marker, so a page restored from the HTMX history cache binds again.
+ */
+const boundAnalyticsPages = new WeakSet();
+
+/**
+ * Statistics, theme palette and rendered tabs of each analytics page, keyed
+ * like `boundAnalyticsPages` and read by the tab controls.
+ */
+const analyticsPageStates = new WeakMap();
+
+/**
  * Resolve the tab an arrow, Home or End key moves to within the exposed tab list.
  * Modified keys are left to the browser (for example Alt+ArrowLeft goes back in history).
  * @param {HTMLElement} button - Tab button that received the key.
@@ -623,40 +636,63 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
 };
 
 /**
- * Wire tab switching and lazy chart initialization for analytics sections.
- * @param {Object} stats - Community analytics payload.
- * @param {Object} palette - Theme palette.
+ * Render the charts of one analytics tab once per page state.
+ * @param {Document|Element} page - Analytics page key.
+ * @param {string} tab - Analytics tab key.
+ * @returns {Promise<boolean>} Whether the tab charts were rendered.
  */
-const setupAnalyticsTabs = (stats, palette) => {
+const initTabCharts = async (page, tab) => {
+  const state = analyticsPageStates.get(page);
+  if (!state) {
+    return false;
+  }
+
+  // A re-theme swaps the state, so a render still running marks only its own set.
+  const { initializedTabs, palette, stats } = state;
+
+  // Charts render once per tab and follow their container size afterwards.
+  if (initializedTabs.has(tab)) {
+    return false;
+  }
+
+  if (tab === "groups") {
+    await initGroupsCharts(stats.groups, palette);
+  } else if (tab === "members") {
+    await initMembersCharts(stats.members, palette);
+  } else if (tab === "events") {
+    await initEventsCharts(stats.events, palette);
+  } else if (tab === "attendees") {
+    await initAttendeesCharts(stats.attendees, palette);
+  } else if (tab === "page-views") {
+    await initPageViewsCharts(stats.page_views, palette);
+  }
+
+  initializedTabs.add(tab);
+  return true;
+};
+
+/**
+ * Re-render the selected analytics tab with the current page state. The other
+ * tabs render with it on their next show.
+ * @param {Document|Element} page - Analytics page key.
+ * @returns {Promise<boolean>} Whether the tab charts were rendered.
+ */
+const rerenderSelectedTab = async (page) => {
+  const selectedTab = document.querySelector('[data-analytics-tab][data-active="true"]');
+  return initTabCharts(page, selectedTab?.dataset.analyticsTab || "groups");
+};
+
+/**
+ * Wire tab switching and lazy chart initialization for analytics sections.
+ * The controls bind once per page; a later run shows the default tab again.
+ * @param {Document|Element} page - Analytics page key.
+ */
+const setupAnalyticsTabs = (page) => {
   const tabButtons = document.querySelectorAll("[data-analytics-tab]");
   const tabContents = document.querySelectorAll("[data-analytics-content]");
   if (!tabButtons.length || !tabContents.length) {
     return;
   }
-
-  const initializedTabs = new Set();
-
-  // Charts render once per tab and follow their container size afterwards.
-  const initTabCharts = async (tab) => {
-    if (initializedTabs.has(tab)) {
-      return false;
-    }
-
-    if (tab === "groups") {
-      await initGroupsCharts(stats.groups, palette);
-    } else if (tab === "members") {
-      await initMembersCharts(stats.members, palette);
-    } else if (tab === "events") {
-      await initEventsCharts(stats.events, palette);
-    } else if (tab === "attendees") {
-      await initAttendeesCharts(stats.attendees, palette);
-    } else if (tab === "page-views") {
-      await initPageViewsCharts(stats.page_views, palette);
-    }
-
-    initializedTabs.add(tab);
-    return true;
-  };
 
   const showTab = (tab) => {
     tabButtons.forEach((btn) => {
@@ -673,11 +709,18 @@ const setupAnalyticsTabs = (stats, palette) => {
       setElementHidden(content, !visible);
     });
 
-    initTabCharts(tab).catch((error) => console.error("Failed to initialize analytics charts", error));
+    initTabCharts(page, tab).catch((error) => console.error("Failed to initialize analytics charts", error));
   };
 
-  setupSummaryTabs(document.querySelector(SUMMARY_TABS_SELECTOR));
+  const isBound = boundAnalyticsPages.has(page);
+  if (!isBound) {
+    setupSummaryTabs(document.querySelector(SUMMARY_TABS_SELECTOR));
+  }
   showTab("groups");
+  if (isBound) {
+    return;
+  }
+  boundAnalyticsPages.add(page);
 
   tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -745,16 +788,28 @@ const syncSummaryTabs = (summary, isTabList) => {
 /**
  * Render analytics charts with lazy tab initialization.
  * @param {Object} stats - Community statistics payload from the server.
+ * @param {Object} context - Initialization context.
+ * @param {Element} context.marker - JSON marker the payload was read from.
+ * @param {boolean} context.retheme - Whether the run follows a color theme change.
+ * @returns {Promise<void>} Promise resolved when the charts are rendered.
  */
-export const initAnalyticsCharts = async (stats) => {
+export const initAnalyticsCharts = async (stats, { marker, retheme = false } = {}) => {
   if (!stats) {
     return;
   }
 
   return deferUntilHtmxSettled(async () => {
     await loadEChartsScript();
-    const palette = getThemePalette();
-    setupAnalyticsTabs(stats, palette);
+    const page = marker || document;
+    const isBound = boundAnalyticsPages.has(page);
+    analyticsPageStates.set(page, { initializedTabs: new Set(), palette: getThemePalette(), stats });
+
+    // A re-theme keeps the selected tab and leaves the hidden ones for their next show.
+    if (retheme && isBound) {
+      await rerenderSelectedTab(page);
+      return;
+    }
+    setupAnalyticsTabs(page);
   });
 };
 

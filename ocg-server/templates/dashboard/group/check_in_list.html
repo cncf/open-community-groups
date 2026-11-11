@@ -13,7 +13,7 @@
       <span class="hidden md:inline">
         For manual check-in, open an event's attendee list from
         <a href="/dashboard/group?tab=events"
-           class="font-medium text-primary-600 underline underline-offset-2 hover:text-primary-700">Events</a>.
+           class="font-medium text-primary-fg-strong underline underline-offset-2 hover:text-primary-fg-hover">Events</a>.
       </span>
     </p>
   </div>
@@ -34,14 +34,14 @@
     <div class="mt-6 grid min-w-0 max-w-full grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2 2xl:grid-cols-3 phone:mx-3 phone:mb-4 phone:mt-0 phone:gap-3"
          data-group-check-in-scanner-view>
       {% for event in events -%}
-        <article class="card-hover-border relative flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition-all hover:border-primary-300 hover:shadow-sm phone:pb-14"
+        <article class="card-hover-border relative flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-surface text-left transition-all hover:border-primary-edge-soft hover:shadow-sm phone:pb-14"
                  data-group-check-in-card>
           {% call cards::check_in_event_card(event) -%}
           {% if event.in_progress -%}
             <span class="custom-badge bg-green-50 text-green-800">In progress</span>
           {% endif -%}
           <button type="button"
-                  class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 phone:absolute phone:inset-x-3 phone:bottom-3 phone:h-11 phone:justify-center phone:text-sm"
+                  class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge phone:absolute phone:inset-x-3 phone:bottom-3 phone:h-11 phone:justify-center phone:text-sm"
                   data-group-check-in-open
                   data-event-id="{{ event.event_id }}"
                   data-event-date="{{ event.starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}"

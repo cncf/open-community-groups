@@ -383,6 +383,10 @@ dir, so the first run is slow.
 - `webkit-mobile-smoke`: tests tagged both `@mobile` and `@smoke` on WebKit
   with the iPhone 12 descriptor (see Writing Tests).
 
+Every project spreads `deepUseOverrides` (`playwright.config.js`), which pins
+`colorScheme: "light"`, so the default suite renders light. Dark tests opt in
+through `useTheme` (see [Helpers and Data Graphs](#helpers-and-data-graphs)).
+
 WebKit mobile limits: Linux WebKit with a device descriptor is not iOS
 Safari. It has no safe-area insets and no rubber-band scrolling, `dvh`
 behaves like `vh`, `navigator.maxTouchPoints` is 0 and there is no
@@ -423,9 +427,9 @@ CI-rendered baselines.
   applies (a computed-style check on the skip link), that the document is no
   wider than the viewport, and that each region is visible and horizontally
   inside the viewport. `navigateToPath` already fails when the stylesheet
-  loads empty or with an error status. `enableDesktopVersion(page)` sets
-  the cookie of the user menu's "Desktop version" item on the page's
-  context, so later pages lay out at 1280px on mobile.
+  loads empty or with an error status. `enableDesktopVersion(page)` seeds
+  the `localStorage` preference of the user menu's "Desktop version" item
+  on the page's context, so later pages lay out at 1280px on mobile.
 
 Updating, on any OS (it starts its own isolated stacks):
 
@@ -629,6 +633,19 @@ rewritten.
     an outline or box-shadow appeared on `indicator` (default `locator`)
     compared with before focus. With `outlineColor`, it must be an outline of
     that colour.
+- Storage, theme and basemap helpers in `utils.js`:
+  - `seedLocalStorage(page, entries)` registers a context init script that
+    writes the entries before any page script runs, including the inline
+    pre-paint script. It writes them once, on the first navigation after the
+    call, so a write made during the test survives navigation; a `null`
+    value removes the key.
+  - `useTheme(page, { stored, system })` sets up the color theme before the
+    next navigation: `stored` seeds `light` or `dark` (`system` removes the
+    stored choice) and `system` emulates the OS color scheme.
+  - `routeEmptyBasemap(page, { attribution })` fulfils both the bright and
+    the dark OpenFreeMap style URLs with an empty style, so maps keep the
+    real runtime without the network. With `attribution`, the style keeps
+    one empty source credited with that HTML.
 
 ### Data Ownership and Isolation
 
@@ -737,13 +754,28 @@ rewritten.
   from `axe.js` once the page is ready and HTMX has settled
   (`site/common/axe.spec.js` scans every `PUBLIC_PAGES` row and
   `dashboard/common/axe.spec.js` representative dashboard tabs). It runs the
-  WCAG 2.0 and 2.1 A and AA rules except `color-contrast` and fails on
-  critical and serious violations only. Fix the markup when the fix does not
-  change pixels. Otherwise add an `axe-allowlist.js` entry
-  (`{ scan, rule, target?, reason }`, where `target` is a CSS selector the
-  node matches or sits inside) or pass an `exclude` selector with a comment
-  giving the reason. A scan also fails when one of its allowlist entries no
-  longer matches, so remove entries once the markup is fixed.
+  WCAG 2.0 and 2.1 A and AA rules except `color-contrast`, because light
+  colors are not audited, and fails on critical and serious violations
+  only. Fix the markup when the fix does not change pixels. Otherwise add an
+  `axe-allowlist.js` entry (`{ scan, rule, target?, reason }`, where
+  `target` is a CSS selector the node matches or sits inside) or pass an
+  `exclude` selector with a comment giving the reason. A scan also fails
+  when one of its allowlist entries no longer matches, so remove entries
+  once the markup is fixed.
+- Dark scans seed the theme with `useTheme(page, { stored: "dark" })`
+  before loading, wait for `html[data-theme="dark"]` with
+  `expectDarkTheme(page)` and pass
+  `colorOnly: true`, which runs only `color-contrast` and
+  `link-in-text-block` once every finite animation and transition has
+  finished. `include` limits a scan to the given selectors, such as an open
+  overlay. A dark scan key appends `" dark"` to the light key (for example
+  `event dark` or `badge verify mobile dark`), so its allowlist entries never
+  apply to the light scan. A dark failure is fixed in a dark token value, a
+  Rust dark role or a move to a token with the same light value, never by
+  changing light, and a failure only a light change could fix gets a
+  reasoned `axe-allowlist.js` entry under the dark scan key; only text
+  inside a `plate` or `ink` island and opacity-dimmed enabled content
+  qualify.
 
 ## Troubleshooting
 

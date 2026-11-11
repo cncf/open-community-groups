@@ -12,6 +12,7 @@ use uuid::Uuid;
 use crate::types::{
     community::CommunitySummary,
     group::GroupSummary,
+    images::ThemedImage,
     location::{LocationParts, build_location},
     meetings::MeetingProvider,
     payments::{
@@ -137,6 +138,9 @@ pub struct EventSummary {
     pub group_slug_pretty: Option<String>,
     /// Latitude of the event's location.
     pub latitude: Option<f64>,
+    /// URL to the logo image shown in dark mode in place of `logo_url`,
+    /// taken from the same level (event, group or community) as `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Longitude of the event's location.
     pub longitude: Option<f64>,
     /// Extra instructions attendees need to join the meeting.
@@ -408,6 +412,13 @@ pub struct EventFull {
     /// Whether joining the waiting list is enabled for the event.
     pub waitlist_enabled: bool,
 
+    /// URL to the event banner image shown in dark mode in place of
+    /// `banner_url`. On its own, without `banner_url`, it is ignored.
+    pub banner_dark_url: Option<String>,
+    /// URL to the event mobile banner image shown in dark mode in place of
+    /// `banner_mobile_url`. On its own, without `banner_mobile_url`, it is
+    /// ignored.
+    pub banner_mobile_dark_url: Option<String>,
     /// URL to the event banner image optimized for mobile devices.
     pub banner_mobile_url: Option<String>,
     /// URL to the event banner image.
@@ -424,6 +435,10 @@ pub struct EventFull {
     /// Call for speakers start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub cfs_starts_at: Option<DateTime<Utc>>,
+    /// URL to the event's own logo shown in dark mode in place of
+    /// `custom_logo_url`. On its own, without `custom_logo_url`, it is
+    /// ignored.
+    pub custom_logo_dark_url: Option<String>,
     /// URL to the event's own logo, without the group or community fallback.
     pub custom_logo_url: Option<String>,
     /// Brief event description.
@@ -449,6 +464,9 @@ pub struct EventFull {
     pub legacy_hosts: Option<Vec<LegacyUser>>,
     /// Legacy event speakers.
     pub legacy_speakers: Option<Vec<LegacyUser>>,
+    /// URL to the logo image shown in dark mode in place of `logo_url`,
+    /// taken from the same level (event, group or community) as `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Longitude of the event's location.
     pub longitude: Option<f64>,
     /// Luma URL for the event.
@@ -539,6 +557,39 @@ impl EventFull {
         // Sort labels by name
         labels.sort_by(|a, b| a.name.cmp(&b.name));
         labels
+    }
+
+    /// Returns the desktop banner of the first level that has one (event,
+    /// group, then community), with that level's dark mode variant.
+    pub fn banner(&self) -> ThemedImage<'_> {
+        ThemedImage::first_or(
+            [
+                (self.banner_url.as_deref(), self.banner_dark_url.as_deref()),
+                (
+                    self.group.banner_url.as_deref(),
+                    self.group.banner_dark_url.as_deref(),
+                ),
+            ],
+            self.community.banner(),
+        )
+    }
+
+    /// Returns the mobile banner of the first level that has one (event,
+    /// group, then community), with that level's dark mode variant.
+    pub fn banner_mobile(&self) -> ThemedImage<'_> {
+        ThemedImage::first_or(
+            [
+                (
+                    self.banner_mobile_url.as_deref(),
+                    self.banner_mobile_dark_url.as_deref(),
+                ),
+                (
+                    self.group.banner_mobile_url.as_deref(),
+                    self.group.banner_mobile_dark_url.as_deref(),
+                ),
+            ],
+            self.community.banner_mobile(),
+        )
     }
 
     /// Check if call for speakers has closed.
@@ -835,6 +886,7 @@ impl From<&EventFull> for EventSummary {
             event_series_id: event.event_series_id,
             group_slug_pretty: event.group.slug_pretty.clone(),
             latitude: event.latitude,
+            logo_dark_url: event.logo_dark_url.clone(),
             longitude: event.longitude,
             meeting_join_instructions: event.meeting_join_instructions.clone(),
             meeting_join_url: event.meeting_join_url.clone(),
@@ -957,6 +1009,9 @@ pub struct EventCohostGroup {
     /// Generated URL-friendly identifier for the co-host group.
     pub slug: String,
 
+    /// URL to the logo image shown in dark mode in place of `logo_url`,
+    /// taken from the same level (group or community) as `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Admin-managed URL-friendly identifier for the co-host group.
     pub slug_pretty: Option<String>,
 }

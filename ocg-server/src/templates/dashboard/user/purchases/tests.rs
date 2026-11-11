@@ -40,6 +40,8 @@ fn test_list_page_renders_document_routes_for_past_refunded_purchase() {
     assert!(html.contains("Event Jul 01, 2026"));
     assert!(html.contains("target=\"_blank\""));
     assert!(html.contains("rel=\"noopener noreferrer\""));
+    // The credit note downloads in place: its link alone opens no new tab
+    assert_eq!(html.matches("rel=\"noreferrer\"").count(), 1);
 }
 
 #[test]

@@ -8,6 +8,12 @@ export const waitForAnimationFrames = async (count = 2) => {
   }
 };
 
+/** Waits for the next animation frame, then for the timer tasks it queues. */
+export const waitForFrameThenTask = async () => {
+  await waitForAnimationFrames(1);
+  await waitForMicrotask();
+};
+
 /** Creates a promise that the test resolves or rejects explicitly. */
 export const createDeferred = () => {
   let reject;

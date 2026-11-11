@@ -20,6 +20,8 @@ begin
 
         ad_banner_link_url = nullif(p_data->>'ad_banner_link_url', ''),
         ad_banner_url = nullif(p_data->>'ad_banner_url', ''),
+        banner_dark_url = nullif(p_data->>'banner_dark_url', ''),
+        banner_mobile_dark_url = nullif(p_data->>'banner_mobile_dark_url', ''),
         bluesky_url = nullif(p_data->>'bluesky_url', ''),
         extra_links = nullif(p_data->'extra_links', 'null'::jsonb),
         facebook_url = nullif(p_data->>'facebook_url', ''),
@@ -27,6 +29,7 @@ begin
         github_url = nullif(p_data->>'github_url', ''),
         instagram_url = nullif(p_data->>'instagram_url', ''),
         linkedin_url = nullif(p_data->>'linkedin_url', ''),
+        logo_dark_url = nullif(p_data->>'logo_dark_url', ''),
         new_group_details = nullif(p_data->>'new_group_details', ''),
         og_image_url = nullif(p_data->>'og_image_url', ''),
         photos_urls = jsonb_text_array(p_data->'photos_urls'),

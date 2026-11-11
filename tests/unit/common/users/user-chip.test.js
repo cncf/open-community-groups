@@ -175,7 +175,7 @@ describe("user-chip", () => {
     const regularCard = regularElement.firstElementChild;
     const featuredCard = featuredElement.firstElementChild;
 
-    expect(regularCard?.classList.contains("hover:border-primary-300")).to.equal(true);
+    expect(regularCard?.classList.contains("hover:border-primary-edge-soft")).to.equal(true);
     expect(regularCard?.classList.contains("hover:shadow-sm")).to.equal(true);
     expect(regularCard?.className).to.not.include("hover:bg-");
     expect(featuredCard?.classList.contains("hover:border-amber-400")).to.equal(true);
@@ -221,7 +221,7 @@ describe("user-chip", () => {
     for (const token of ["px-4", "py-3", "gap-4", "phone:min-h-16", "phone:px-3", "phone:py-2.5", "phone:gap-3"]) {
       expect(card.classList.contains(token), token).to.equal(true);
     }
-    expect(card.classList.contains("phone:active:border-primary-300")).to.equal(true);
+    expect(card.classList.contains("phone:active:border-primary-edge-soft")).to.equal(true);
     expect(title?.classList.contains("mt-3")).to.equal(true);
     expect(title?.classList.contains("phone:mt-0.5")).to.equal(true);
     expect(card.classList.contains("phone:[&>logo-image>div]:size-12")).to.equal(true);
@@ -282,7 +282,7 @@ describe("user-chip", () => {
     const featuredCard = featuredElement.firstElementChild;
 
     expect(
-      regularCard?.classList.contains("hover:border-primary-300"),
+      regularCard?.classList.contains("hover:border-primary-edge-soft"),
     ).to.equal(true);
     expect(regularCard?.classList.contains("hover:shadow-sm")).to.equal(true);
     expect(regularCard?.className).to.not.include("hover:bg-");

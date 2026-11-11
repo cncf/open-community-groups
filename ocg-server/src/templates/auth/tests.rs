@@ -1,4 +1,4 @@
-use crate::test_util::opening_tag_with;
+use crate::test_util::{element_html_with, element_text_with, opening_tag_with};
 
 use super::*;
 
@@ -150,6 +150,67 @@ fn test_user_menu_section_renders_named_menu_trigger() {
         } else {
             assert!(trigger.contains(r#"aria-label="User menu""#));
         }
+    }
+}
+
+#[test]
+fn test_user_menu_section_renders_theme_choice_group() {
+    let cases = [
+        ("guest", UserMenuState::default()),
+        ("member", sample_member()),
+    ];
+
+    for (label, user) in cases {
+        // Render the menu for the case user
+        let body = render_user_menu(user);
+
+        // Check the group is labelled by the visible Theme label
+        let group_needle = r#"aria-labelledby="user-menu-theme-label""#;
+        let group_tag = opening_tag_with(&body, group_needle);
+        assert!(group_tag.contains(r#"role="group""#), "{label}");
+        assert_eq!(
+            element_text_with(&body, r#"id="user-menu-theme-label""#),
+            "Theme",
+            "{label}"
+        );
+
+        // Check the group holds the light, dark and system choices in order
+        let group = element_html_with(&body, group_needle);
+        assert_eq!(
+            group.matches(r#"role="menuitemradio""#).count(),
+            3,
+            "{label}"
+        );
+        let choices = ["light", "dark", "system"].map(|value| {
+            let choice_needle = format!(r#"data-ocg-theme-choice="{value}""#);
+            let choice_tag = opening_tag_with(group, &choice_needle);
+            assert!(choice_tag.starts_with("<button"), "{label}, {value}");
+            assert!(choice_tag.contains(r#"type="button""#), "{label}, {value}");
+            assert!(
+                choice_tag.contains(r#"role="menuitemradio""#),
+                "{label}, {value}"
+            );
+            (group.find(&choice_needle).unwrap(), choice_tag)
+        });
+        assert!(
+            choices[0].0 < choices[1].0 && choices[1].0 < choices[2].0,
+            "{label}"
+        );
+
+        // Check only System is checked
+        assert_eq!(
+            group.matches(r#"aria-checked="true""#).count(),
+            1,
+            "{label}"
+        );
+        assert!(choices[0].1.contains(r#"aria-checked="false""#), "{label}");
+        assert!(choices[1].1.contains(r#"aria-checked="false""#), "{label}");
+        assert!(choices[2].1.contains(r#"aria-checked="true""#), "{label}");
+
+        // Check the group precedes the desktop version row
+        let group_position = body.find(group_needle).unwrap();
+        let desktop_position = body.find(r#"data-viewport-mode="desktop""#).unwrap();
+        assert!(group_position < desktop_position, "{label}");
     }
 }
 

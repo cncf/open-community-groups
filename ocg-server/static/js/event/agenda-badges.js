@@ -9,7 +9,7 @@ const isNarrowViewport = () =>
 const TOGGLE_CLASS =
   "custom-badge inline-flex items-center px-2.5 py-0.5 text-stone-600 border-stone-300 " +
   "bg-stone-100 cursor-pointer transition-colors hover:bg-stone-200 hover:text-stone-900 " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-edge";
 const COLLAPSE_LABEL = "Show less";
 // Visible lines kept on narrow layouts before badges fold behind the toggle. Desktop is untouched.
 const VISIBLE_LINES = 2;

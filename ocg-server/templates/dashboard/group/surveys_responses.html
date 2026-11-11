@@ -71,7 +71,7 @@
         <tbody>
           {% if responses.responses.is_empty() -%}
             {# No results state -#}
-            <tr class="border-b border-stone-200 bg-white">
+            <tr class="border-b border-stone-200 bg-surface">
               <td class="px-8 py-12 text-center" colspan="4">
                 {% call dashboard::empty_state("No respondents found matching your search.", title_margin = "mb-4") -%}
                 <p class="text-sm text-stone-700 lg:text-md">Try a different name, username, company or title.</p>
@@ -84,7 +84,7 @@
               {% let name = crate::templates::dashboard::group::surveys::respondent_name(response.user) -%}
               {% let submitted_at = crate::templates::dashboard::group::surveys::format_date(*response.created_at, *event.timezone) -%}
               {# Respondent row -#}
-              <tr class="cursor-pointer border-b border-stone-200 transition-colors odd:bg-white even:bg-stone-50/50 hover:bg-stone-100 focus:outline-none focus-visible:bg-stone-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-stone-400 motion-reduce:transition-none"
+              <tr class="cursor-pointer border-b border-stone-200 transition-colors odd:bg-surface even:bg-stone-50/50 hover:bg-stone-100 focus:outline-none focus-visible:bg-stone-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-stone-400 motion-reduce:transition-none"
                   tabindex="0"
                   hx-get="{{ self.response_url(response.user.user_id)? }}"
                   hx-trigger="click, keydown[key=='Enter']"

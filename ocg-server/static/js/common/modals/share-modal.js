@@ -382,7 +382,7 @@ export class ShareModal extends LitWrapper {
         @click=${(event) => this._handleShareClick(event)}
       >
         <div
-          class="svg-icon size-5 bg-primary-500 group-hover:bg-white transition-colors
+          class="svg-icon size-5 bg-primary-fg group-hover:bg-on-primary transition-colors
                  icon-${icon}"
         ></div>
       </button>

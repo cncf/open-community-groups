@@ -4151,6 +4151,7 @@ fn sample_cohosts_editor(
             slug: "cohost-group".to_string(),
             status,
 
+            logo_dark_url: None,
             slug_pretty: None,
         }],
         revision: 1,

@@ -6,6 +6,7 @@ import {
 } from "/static/js/common/dom.js";
 import { getHtmxTriggerNames } from "/static/js/common/htmx-triggers.js";
 import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
+import { THEME_CHANGE_EVENT } from "/static/js/common/theme.js";
 import { escapeHtml } from "/static/js/common/trusted-html.js";
 import { isInterceptedXHR } from "/static/js/common/utils.js";
 
@@ -13,6 +14,8 @@ const PAGE_ALERT_SELECTOR = "[data-page-alert]";
 const PAGE_ALERT_READY_KEY = "pageAlertReady";
 const BACKEND_FLASH_REFRESH_TRIGGERS = new Set(["refresh-user-dashboard-content"]);
 const REFRESH_BODY_EVENT = "refresh-body";
+// Success icon parts SweetAlert2 paints with the popup background to mask the ring.
+const SUCCESS_ICON_MASK_SELECTOR = "[class^=swal2-success-circular-line], .swal2-success-fix";
 
 /**
  * Returns common configuration options for all alert dialogs.
@@ -29,7 +32,9 @@ export const getCommonAlertOptions = () => {
     topLayer: true,
     ...(openModalDialog ? { target: openModalDialog } : {}),
     buttonsStyling: false,
-    iconColor: "var(--color-primary-500)",
+    // Pinned to the vendor default, so an upgrade cannot switch popups to its own dark palette.
+    theme: "light",
+    iconColor: "var(--color-primary-fg)",
     backdrop: false,
     customClass: {
       popup: "ocg-swal-popup",
@@ -464,4 +469,26 @@ export const waitForAlertToClose = (root = document) =>
 /** Returns the topmost open modal dialog, if any. */
 const getOpenModalDialog = () => [...document.querySelectorAll("dialog:modal")].at(-1) ?? null;
 
+/**
+ * Re-copies the popup background onto the success icon masks after a color theme change.
+ * SweetAlert2 copies it only when it renders, so an open success alert would keep the old
+ * theme's mask color.
+ */
+const syncSuccessIconMasks = () => {
+  if (!globalThis.Swal?.isVisible?.()) {
+    return;
+  }
+
+  const popup = Swal.getPopup?.();
+  if (!popup) {
+    return;
+  }
+
+  const background = window.getComputedStyle(popup).getPropertyValue("background-color");
+  popup.querySelectorAll(SUCCESS_ICON_MASK_SELECTOR).forEach((mask) => {
+    mask.style.backgroundColor = background;
+  });
+};
+
 initializeOnReadyAndHtmxLoad(initializePageAlerts);
+document.addEventListener(THEME_CHANGE_EVENT, syncSuccessIconMasks);

@@ -449,7 +449,7 @@ export class MultiSelect extends LitWrapper {
       <ul
         id=${this._listboxId()}
         data-multi-select-dropdown
-        class="absolute top-full mt-1 left-0 right-0 z-20 max-h-56 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-sm"
+        class="absolute top-full mt-1 left-0 right-0 z-20 max-h-56 overflow-y-auto rounded-lg border border-stone-200 bg-raised shadow-sm"
         role="listbox"
         aria-multiselectable="true"
       >
@@ -571,7 +571,7 @@ export class MultiSelect extends LitWrapper {
         </span>
         ${
           isSelected
-            ? html`<div class="svg-icon size-3 shrink-0 icon-check bg-primary-500" aria-hidden="true"></div>`
+            ? html`<div class="svg-icon size-3 shrink-0 icon-check bg-primary-fg" aria-hidden="true"></div>`
             : nothing
         }
       </li>

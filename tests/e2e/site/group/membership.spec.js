@@ -1,4 +1,4 @@
-import { expect, test } from "../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../fixtures.js";
 import { cleanupGroupMember } from "../../data-graphs/groups.js";
 import {
   TEST_COMMUNITY_NAME,
@@ -10,8 +10,11 @@ import {
 import {
   confirmAlert,
   dismissAlert,
+  expectDarkTheme,
   expectFocusIndicator,
   navigateToGroup,
+  resolveCssColor,
+  useTheme,
   waitForActionResponse,
 } from "../../utils.js";
 
@@ -36,6 +39,39 @@ test.describe("group membership", () => {
       `/log-in?next_url=%2F${TEST_COMMUNITY_NAME}%2Fgroup%2F${TEST_GROUP_SLUGS.community1.alpha}`,
     );
   });
+
+  testAtBothWidths(
+    "guest join prompt paints the raised token with dark text in dark",
+    async ({ isMobile, page }) => {
+      // Load the public group in the dark theme.
+      await useTheme(page, { stored: "dark" });
+      await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+      await expectDarkTheme(page);
+
+      // Open the sign-in prompt from the public join action.
+      await getSignInButton(page).click();
+      const signInPrompt = page.locator(".swal2-popup");
+      await expect(signInPrompt).toBeVisible();
+
+      // Verify phones show the bottom prompt with a Log in button, and desktop its inline link.
+      if (isMobile) {
+        // swal2-bottom is SweetAlert's position API class, not a utility class.
+        await expect(page.locator(".swal2-container")).toHaveClass(/swal2-bottom/);
+        await expect(signInPrompt.getByRole("button", { name: "Log in", exact: true })).toBeVisible();
+      } else {
+        await expect(signInPrompt.getByRole("link", { name: "logged in" })).toBeVisible();
+      }
+
+      // Verify the prompt paints the dark raised token with the dark stone-700 text.
+      const raised = await resolveCssColor(signInPrompt, "var(--color-raised)");
+      expect(raised).not.toBe("rgb(255, 255, 255)");
+      await expect(signInPrompt).toHaveCSS("background-color", raised);
+      await expect(signInPrompt).toHaveCSS(
+        "color",
+        await resolveCssColor(signInPrompt, "var(--color-stone-700)"),
+      );
+    },
+  );
 
   test("member can join and leave a group from the public page @smoke", async ({
     member2Page,

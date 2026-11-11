@@ -506,6 +506,7 @@ mod tests {
             event_series_id: None,
             group_slug_pretty: None,
             latitude: Some(37.78),
+            logo_dark_url: None,
             longitude: Some(-122.42),
             meeting_join_instructions: None,
             meeting_join_url: Some("https://example.test/live".to_string()),

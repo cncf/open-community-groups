@@ -35,6 +35,12 @@ export const TEST_UPLOAD_ASSET_PATHS = {
     __dirname,
     "../../../ocg-server/static/images/e2e/community-primary-banner-mobile.svg",
   ),
+  darkBanner: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/entity-banner-dark.svg"),
+  darkBannerMobile: path.resolve(
+    __dirname,
+    "../../../ocg-server/static/images/e2e/entity-banner-mobile-dark.svg",
+  ),
+  darkLogo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/entity-logo-dark.svg"),
   galleryOne: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/event-photo-1.svg"),
   galleryTwo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/event-photo-2.svg"),
   logo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/community-primary-logo.svg"),

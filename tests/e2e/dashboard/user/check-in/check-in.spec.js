@@ -1,9 +1,19 @@
-import { expect, test } from "../../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../../fixtures.js";
 
 import { TEST_OPEN_CHECK_IN_EVENT } from "../../../seed.js";
-import { expectDialogClosed, navigateToPath } from "../../../utils.js";
+import {
+  expectDarkTheme,
+  expectDialogClosed,
+  navigateToPath,
+  resolveCssColor,
+  useTheme,
+} from "../../../utils.js";
 import { installFakeWakeLock } from "../../group/check-in/helpers.js";
 
+// Dark `plate` token, #e7e5e4: the soft backing of plates in dark.
+const DARK_PLATE_BACKGROUND = "rgb(231, 229, 228)";
+// Raised token in light, which the credential sheet panel paints.
+const LIGHT_RAISED_BACKGROUND = "rgb(255, 255, 255)";
 const USER_CHECK_IN_PATH = "/dashboard/user?tab=check-in";
 
 test.describe("user dashboard check-in", () => {
@@ -200,6 +210,42 @@ test.describe("user dashboard check-in", () => {
     const imageBounds = await image.boundingBox();
     expect(imageBounds.y).toBeGreaterThanOrEqual(headBottom - 1);
     expect(imageBounds.y + imageBounds.height).toBeLessThanOrEqual(232);
+  });
+
+  test("event card logo tile keeps a soft plate in stored dark", async ({ pending2Page }) => {
+    // Load the attendee check-in dashboard in stored dark.
+    await useTheme(pending2Page, { stored: "dark" });
+    await navigateToPath(pending2Page, USER_CHECK_IN_PATH);
+    await expectDarkTheme(pending2Page);
+
+    // Verify the event card logo tile sits on the soft plate.
+    const eventCard = pending2Page.locator("[data-user-check-in-open]", {
+      hasText: TEST_OPEN_CHECK_IN_EVENT.name,
+    });
+    await expect(eventCard.locator(".plate")).toHaveCSS("background-color", DARK_PLATE_BACKGROUND);
+  });
+
+  testAtBothWidths("credential sheet follows stored dark and loads the QR code", async ({ pending2Page }) => {
+    // Open the credential in stored dark.
+    await useTheme(pending2Page, { stored: "dark" });
+    await navigateToPath(pending2Page, USER_CHECK_IN_PATH);
+    await expectDarkTheme(pending2Page);
+    await pending2Page
+      .locator("[data-user-check-in-open]", { hasText: TEST_OPEN_CHECK_IN_EVENT.name })
+      .click();
+    const modal = pending2Page.locator("#user-check-in-modal");
+    const panel = modal.locator("[data-user-check-in-panel]");
+    await expect(panel).toBeVisible();
+
+    // Verify the panel paints the dark raised token.
+    const raised = await resolveCssColor(panel, "var(--color-raised)");
+    expect(raised).not.toBe(LIGHT_RAISED_BACKGROUND);
+    await expect(panel).toHaveCSS("background-color", raised);
+
+    // Verify the QR code image loads.
+    const qrImage = modal.locator("#user-check-in-qr-image");
+    await expect(qrImage).toBeVisible();
+    await expect.poll(() => qrImage.evaluate((element) => element.naturalWidth)).toBeGreaterThan(0);
   });
 
   test("credential shows the failure message and retries the QR code on desktop", async ({

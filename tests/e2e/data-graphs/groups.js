@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 
-import { queryE2eDatabase, queryE2eDatabaseRows, sqlString, sqlTextArray, sqlUuid } from "../database.js";
+import {
+  queryE2eDatabase,
+  queryE2eDatabaseRows,
+  sqlNullableString,
+  sqlString,
+  sqlTextArray,
+  sqlUuid,
+} from "../database.js";
 import { TEST_COMMUNITY_IDS, TEST_GROUP_CATEGORY_IDS } from "../seed.js";
 import { shortId, uniqueName } from "../utils.js";
 import { cleanupEventsByIds } from "./events.js";
@@ -100,12 +107,18 @@ export const setupGroupSponsor = ({ groupId }) => {
 
 /**
  * Creates a temporary group, active and in the primary community unless told otherwise, with
- * optional region, gallery photos, team member, group member and badge artwork rows. Release it
- * with `cleanupTemporaryGroup`.
+ * optional images, region, gallery photos, team member, group member and badge artwork rows.
+ * Release it with `cleanupTemporaryGroup`.
  * @param {{
  *   active?: boolean,
+ *   bannerDarkUrl?: string | null,
+ *   bannerMobileDarkUrl?: string | null,
+ *   bannerMobileUrl?: string | null,
+ *   bannerUrl?: string | null,
  *   communityId?: string,
  *   groupCategoryId?: string,
+ *   logoDarkUrl?: string | null,
+ *   logoUrl?: string | null,
  *   memberUserId?: string,
  *   name?: string,
  *   photosUrls?: string[],
@@ -113,15 +126,22 @@ export const setupGroupSponsor = ({ groupId }) => {
  *   teamRole?: string,
  *   teamUserId?: string,
  *   withArtwork?: boolean
- * }} [options] - Status, community with one of its group categories, gallery `photosUrls`,
- *   region, accepted team row (`teamRole` for `teamUserId`), group member, artwork and a unique
- *   `name` replacing the generated one (for long-data layout coverage).
+ * }} [options] - Status, own logo and banners with their dark mode variants (none by default, so
+ *   the group shows the community ones), community with one of its group categories, gallery
+ *   `photosUrls`, region, accepted team row (`teamRole` for `teamUserId`), group member, artwork
+ *   and a unique `name` replacing the generated one (for long-data layout coverage).
  * @returns {{ groupId: string, groupName: string, slug: string }}
  */
 export const setupTemporaryGroup = ({
   active = true,
+  bannerDarkUrl = null,
+  bannerMobileDarkUrl = null,
+  bannerMobileUrl = null,
+  bannerUrl = null,
   communityId = TEST_COMMUNITY_IDS.community1,
   groupCategoryId = TEST_GROUP_CATEGORY_IDS.one,
+  logoDarkUrl = null,
+  logoUrl = null,
   memberUserId,
   name,
   photosUrls = null,
@@ -154,6 +174,12 @@ export const setupTemporaryGroup = ({
       slug,
       description,
       active,
+      banner_url,
+      banner_dark_url,
+      banner_mobile_url,
+      banner_mobile_dark_url,
+      logo_url,
+      logo_dark_url,
       photos_urls,
       region_id
     ) values (
@@ -164,6 +190,12 @@ export const setupTemporaryGroup = ({
       ${sqlString(slug)},
       'Temporary group owned by E2E coverage.',
       ${active},
+      ${sqlNullableString(bannerUrl)},
+      ${sqlNullableString(bannerDarkUrl)},
+      ${sqlNullableString(bannerMobileUrl)},
+      ${sqlNullableString(bannerMobileDarkUrl)},
+      ${sqlNullableString(logoUrl)},
+      ${sqlNullableString(logoDarkUrl)},
       ${photosUrls ? sqlTextArray(photosUrls) : "null"},
       ${regionId ? sqlUuid(regionId) : "null"}
     );

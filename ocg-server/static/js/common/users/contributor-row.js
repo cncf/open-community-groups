@@ -45,7 +45,9 @@ export const renderContributorActions = ({
       >
         <span class="svg-icon size-4 icon-vertical-dots"></span>
       </summary>
-      <div class="dropdown absolute z-20 end-0 top-8 w-48 rounded-lg border border-stone-200 bg-white shadow">
+      <div
+        class="dropdown absolute z-20 end-0 top-8 w-48 rounded-lg border border-stone-200 bg-raised shadow"
+      >
         <ul class="py-2 text-sm text-stone-700" role="menu">
           ${
             canAward

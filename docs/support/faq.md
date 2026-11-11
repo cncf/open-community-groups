@@ -15,8 +15,24 @@ If you need one of those sections from a phone or tablet, open the user menu at 
 choose **Desktop version**. The site reloads with the full desktop layout, so everything is
 available, although it is not optimized for small screens. The choice applies to the whole site
 and is remembered in that browser until you pick **Mobile version** from the same menu. It only
-changes the layout, never your permissions, and it requires JavaScript and cookies. Because the
-switch reloads the page, save any unfinished work first.
+changes the layout, never your permissions, and it requires JavaScript and browser storage.
+Because the switch reloads the page, save any unfinished work first.
+
+## Can I Use Dark Mode?
+
+Yes. Open the user menu at the top right and pick **Light**, **Dark** or **System** under
+**Theme**. The choice is available whether you are logged in or not. **System** is the default: it
+follows your device's appearance setting and changes with it.
+
+The page switches at once without reloading, and other open tabs of the site follow. The choice is
+remembered in that browser, not in your account, so each browser or device keeps its own.
+
+Organizers can add an optional dark mode version of community, group and event logos, banners and
+mobile banners. When one is set, dark mode shows it in place of the light image, and logos show
+without their light background. Without one, logos sit on a light background and banners appear
+as uploaded. Sponsor logos sit on a light background too, and photos appear as uploaded. Emails,
+link previews and calendar exports always use the light images; emails follow the light or dark
+setting of your mail app.
 
 ## Where Do I Submit a Speaker Proposal?
 

@@ -9,7 +9,9 @@ import {
 } from "/static/js/common/charts/charts.js";
 import { getCategoryLabelInterval, getTimeSplitNumber } from "/static/js/common/charts/stats.js";
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
+import { THEME_CHANGE_EVENT, THEME_STORAGE_KEY } from "/static/js/common/theme.js";
 import { initializeSiteStatsFromPage, initSiteStatsCharts } from "/static/js/site/stats.js";
+import { waitForFrameThenTask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
@@ -74,6 +76,16 @@ const buildDesktopOptions = (label, section, labelTarget) => {
 };
 
 /**
+ * Sets the primary 500 and 700 shades; the other shades fall back to 700.
+ * @param {string} shade500 Primary 500 color.
+ * @param {string} shade700 Primary 700 color.
+ */
+const setPrimaryPalette = (shade500, shade700) => {
+  document.documentElement.style.setProperty("--color-primary-500", shade500);
+  document.documentElement.style.setProperty("--color-primary-700", shade700);
+};
+
+/**
  * Makes an option comparable by deep equality, with functions compared by source.
  * @param {Object} option ECharts option.
  * @returns {Object} Plain option.
@@ -115,6 +127,7 @@ describe("site stats", () => {
         };
         return chart;
       },
+      registerTheme() {},
     };
 
     // Run the behavior under test.
@@ -140,8 +153,10 @@ describe("site stats", () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     resetDom();
+    localStorage.removeItem(THEME_STORAGE_KEY);
+    await waitForFrameThenTask();
     media.restore();
     if (originalEcharts) {
       globalThis.echarts = originalEcharts;
@@ -323,6 +338,61 @@ describe("site stats", () => {
     expect(phoneRunning.legend).to.deep.equal({ show: false });
     expect(phoneRunning.grid).to.deep.equal({ left: 8, right: 24, top: 56, bottom: 8, containLabel: true });
     expect(latestOption("attendees-monthly-chart").legend).to.deep.equal({ show: false });
+  });
+
+  it("re-renders every section with the new palette on a color theme change", async () => {
+    // Render the page payload in the phone layout under the light theme.
+    media.setMatches(PHONE_MEDIA_QUERY, true);
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
+    const marker = document.createElement("script");
+    marker.type = "application/json";
+    marker.dataset.siteStats = "";
+    marker.textContent = JSON.stringify(buildStatsPayload());
+    document.body.append(marker);
+    await initializeSiteStatsFromPage();
+    expect(initCalls).to.have.length(8);
+
+    // Queue another render with a newer palette while the re-theme render is in flight.
+    const init = globalThis.echarts.init;
+    let queued = false;
+    globalThis.echarts.init = (element, theme) => {
+      if (!queued) {
+        queued = true;
+        setPrimaryPalette("#f97316", "#c2410c");
+        void initSiteStatsCharts(buildStatsPayload(), { marker, retheme: true });
+      }
+      return init(element, theme);
+    };
+
+    // Switch to a dark palette and announce the dark theme.
+    setPrimaryPalette("#a855f7", "#7e22ce");
+    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    document.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT));
+    await waitForFrameThenTask();
+
+    // Assert the queued render repainted every section with the newest palette.
+    expect(initCalls).to.have.length(24);
+    const lastRender = initCalls.slice(16);
+    expect(lastRender.map(({ element }) => element.id)).to.have.members([
+      "groups-running-chart",
+      "groups-monthly-chart",
+      "members-running-chart",
+      "members-monthly-chart",
+      "events-running-chart",
+      "events-monthly-chart",
+      "attendees-running-chart",
+      "attendees-monthly-chart",
+    ]);
+    lastRender.forEach(({ option }) => {
+      const serialized = JSON.stringify(option);
+      expect(serialized).to.match(/#f97316|#c2410c/);
+      expect(serialized).to.not.match(/#a855f7|#7e22ce|#0f766e|#115e59/);
+
+      // Assert the phone layout stays.
+      expect(option).to.not.have.any.keys("baseOption", "media");
+      expect(option.legend).to.deep.equal({ show: false });
+      expect(option.grid).to.deep.equal({ left: 8, right: 24, top: 56, bottom: 8, containLabel: true });
+    });
   });
 
   it("initializes charts from the page payload only once", async () => {

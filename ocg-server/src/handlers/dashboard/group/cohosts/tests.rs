@@ -192,6 +192,7 @@ async fn test_group_options_returns_community_groups_excluding_selected_group() 
         name: "Other Group".to_string(),
         slug: "abc1234".to_string(),
 
+        logo_dark_url: None,
         slug_pretty: None,
     };
 
@@ -418,6 +419,8 @@ fn sample_cohosted_events_output() -> CohostedEventsOutput {
             timezone: chrono_tz::UTC,
 
             ends_at: None,
+            event_logo_dark_url: None,
+            owner_group_logo_dark_url: None,
             owner_group_slug_pretty: None,
             responded_at: None,
             starts_at: Some(Utc::now()),

@@ -101,6 +101,14 @@ fn main() -> Result<()> {
     // Copy documentation to the dist directory
     copy_dir(Path::new(DOCS_PATH), Path::new(DOCS_STATIC_DIST_PATH))?;
 
+    // Point the standalone documentation index at the hashed docs theme. Only
+    // the index is rewritten, as Markdown prose quoting static asset paths
+    // must stay as written.
+    replace_hashed_assets_refs_in_file(
+        &Path::new(DOCS_STATIC_DIST_PATH).join("index.html"),
+        &assets_manifest,
+    )?;
+
     Ok(())
 }
 

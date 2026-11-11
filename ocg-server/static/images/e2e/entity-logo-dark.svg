@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" role="img" aria-label="Entity dark mode logo">
+  <rect width="360" height="360" rx="72" fill="#1c1917"/>
+  <circle cx="180" cy="180" r="118" fill="#fafaf9" fill-opacity="0.08"/>
+  <path d="M110 128 h140 v34 h-102 v36 h84 v34 h-84 v52 h-38 z" fill="#fafaf9"/>
+  <path d="M214 120 h36 l-48 120 h-30 z" fill="#5eead4"/>
+</svg>

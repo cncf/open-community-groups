@@ -10,6 +10,8 @@
 {{ template "internal/badges/normalize_badge_image_file_name.sql" }}
 {{ template "internal/badges/user_badge_json.sql" }}
 
+{{ template "internal/images/paired_dark_image_url.sql" }} -- Dependency for event_cohosts_json
+
 {{ template "internal/cohosts/close_event_cohosts.sql" }}
 {{ template "internal/cohosts/event_cohosts_json.sql" }}
 {{ template "internal/cohosts/event_has_pending_cohosts.sql" }}

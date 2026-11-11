@@ -6,6 +6,7 @@ import {
   showChartEmptyState,
 } from "/static/js/common/charts/charts.js";
 import { getElementById, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
+import { getResolvedTheme, THEME_CHANGE_EVENT } from "/static/js/common/theme.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
 /** Delay applied before resizing a chart after its container changes size. */
@@ -17,8 +18,18 @@ const chartRegistry = new Map();
 /** JSON markers whose charts are being initialized. */
 const markersInFlight = new WeakSet();
 
+/**
+ * JSON markers whose charts rendered, with their initialization configuration
+ * and the color theme the run started under. Kept in memory, unlike a dataset
+ * marker, because HTMX history snapshots serialise dataset markers.
+ */
+const renderedMarkers = new Map();
+
 /** Shared observer resizing registered charts when their containers change size. */
 let chartResizeObserver = null;
+
+/** Animation frame of the pending color theme re-render, or null. */
+let rethemeFrame = null;
 
 /**
  * Render a chart or show an empty state based on data availability.
@@ -141,6 +152,7 @@ export const getTimeSplitNumber = (count) => {
  * @param {string} config.parseErrorMessage - Payload parse error message.
  * @param {string} config.initErrorMessage - Chart initialization error message.
  * @param {boolean} config.force - Whether to ignore an existing ready marker.
+ * @param {boolean} config.retheme - Whether the run re-renders the charts for a new color theme.
  * @returns {Promise<void>} Promise resolved when initialization finishes.
  */
 export const initializeChartsFromJsonMarker = async ({
@@ -151,6 +163,7 @@ export const initializeChartsFromJsonMarker = async ({
   parseErrorMessage,
   initErrorMessage,
   force = false,
+  retheme = false,
 }) => {
   const marker = getStatsMarker(root, selector);
   if (!marker || markersInFlight.has(marker) || (!force && isDatasetReady(marker, readyKey))) {
@@ -164,6 +177,8 @@ export const initializeChartsFromJsonMarker = async ({
     return;
   }
 
+  const theme = getResolvedTheme();
+  let rendered = false;
   markersInFlight.add(marker);
   try {
     await loadEChartsScript();
@@ -171,13 +186,43 @@ export const initializeChartsFromJsonMarker = async ({
       return;
     }
 
-    await initialize(stats, { marker });
+    await initialize(stats, { marker, retheme });
     markDatasetReady(marker, readyKey);
+    rendered = true;
   } catch (error) {
     console.error(initErrorMessage, error);
   } finally {
     markersInFlight.delete(marker);
   }
+
+  // Record the rendered marker, unless it was removed during the run
+  if (!rendered || !marker.isConnected) {
+    return;
+  }
+  renderedMarkers.set(marker, {
+    config: { initErrorMessage, initialize, parseErrorMessage, readyKey, selector },
+    theme,
+  });
+
+  // Apply a color theme change that landed while the charts rendered
+  if (theme !== getResolvedTheme()) {
+    scheduleRetheme();
+  }
+};
+
+/**
+ * Stops tracking the rendered JSON markers inside an element.
+ * @param {Element} root - Element being removed or cleaned up.
+ * @returns {void}
+ */
+const forgetMarkersWithin = (root) => {
+  if (!(root instanceof Element) || renderedMarkers.size === 0) {
+    return;
+  }
+
+  Array.from(renderedMarkers.keys())
+    .filter((marker) => root === marker || root.contains(marker))
+    .forEach((marker) => renderedMarkers.delete(marker));
 };
 
 /**
@@ -229,6 +274,43 @@ const registerChart = (element, chart) => {
 };
 
 /**
+ * Re-renders the charts of every connected JSON marker rendered under another
+ * color theme, dropping the markers removed from the document. Markers still
+ * in flight are skipped here; their run schedules another re-render when it
+ * ends under a different theme.
+ * @returns {void}
+ */
+const rethemeRenderedMarkers = () => {
+  const theme = getResolvedTheme();
+
+  Array.from(renderedMarkers).forEach(([marker, record]) => {
+    if (!marker.isConnected) {
+      renderedMarkers.delete(marker);
+      return;
+    }
+    if (record.theme !== theme) {
+      void initializeChartsFromJsonMarker({ ...record.config, root: marker, force: true, retheme: true });
+    }
+  });
+};
+
+/**
+ * Schedules one color theme re-render in the next animation frame, coalescing
+ * changes that land in the same frame.
+ * @returns {void}
+ */
+const scheduleRetheme = () => {
+  if (rethemeFrame !== null) {
+    return;
+  }
+
+  rethemeFrame = requestAnimationFrame(() => {
+    rethemeFrame = null;
+    rethemeRenderedMarkers();
+  });
+};
+
+/**
  * Stops tracking a chart container, cancelling pending resizes and disposing
  * its chart.
  * @param {Element|null} element - Chart container.
@@ -253,4 +335,8 @@ const unregisterChart = (element, { keepChart = null } = {}) => {
 // Dispose charts inside content HTMX removes or replaces.
 document.addEventListener("htmx:beforeCleanupElement", (event) => {
   disposeChartsWithin(event.target);
+  forgetMarkersWithin(event.target);
 });
+
+// Re-render charts with the new colors when the color theme changes.
+document.addEventListener(THEME_CHANGE_EVENT, scheduleRetheme);

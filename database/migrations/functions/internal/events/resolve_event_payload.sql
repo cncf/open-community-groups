@@ -62,6 +62,8 @@ begin
 
     -- Parse the columns the payload always carries
     v_resolved.attendee_approval_required := coalesce((p_event->>'attendee_approval_required')::boolean, false);
+    v_resolved.banner_dark_url := nullif(p_event->>'banner_dark_url', '');
+    v_resolved.banner_mobile_dark_url := nullif(p_event->>'banner_mobile_dark_url', '');
     v_resolved.banner_mobile_url := nullif(p_event->>'banner_mobile_url', '');
     v_resolved.banner_url := nullif(p_event->>'banner_url', '');
     v_resolved.capacity := get_event_ticket_capacity(v_ticket_types);
@@ -76,6 +78,7 @@ begin
     v_resolved.event_kind_id := p_event->>'kind_id';
     v_resolved.event_reminder_enabled := coalesce((p_event->>'event_reminder_enabled')::boolean, true);
     v_resolved.location := jsonb_geography_point(p_event);
+    v_resolved.logo_dark_url := nullif(p_event->>'logo_dark_url', '');
     v_resolved.logo_url := nullif(p_event->>'logo_url', '');
     v_resolved.luma_url := nullif(p_event->>'luma_url', '');
     v_resolved.meeting_hosts := jsonb_text_array(p_event->'meeting_hosts');

@@ -43,7 +43,7 @@ describe("collapsible-filter", () => {
     labels.forEach((label) => {
       expect(label.classList.contains("has-[:focus-visible]:outline-2")).to.equal(true);
       expect(label.classList.contains("has-[:focus-visible]:outline-offset-2")).to.equal(true);
-      expect(label.classList.contains("has-[:focus-visible]:outline-(--ocg-primary)")).to.equal(true);
+      expect(label.classList.contains("has-[:focus-visible]:outline-focus")).to.equal(true);
     });
   });
 

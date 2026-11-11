@@ -5,7 +5,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{
         HeaderValue, Method, StatusCode, Uri,
-        header::{LOCATION, SET_COOKIE},
+        header::{COOKIE, LOCATION, SET_COOKIE},
         response::Parts,
     },
 };
@@ -16,7 +16,10 @@ use uuid::Uuid;
 use crate::{
     db::mock::{MockDB, expect_site_settings},
     handlers::tests::*,
-    types::permissions::{CommunityPermission, GroupPermission},
+    types::{
+        permissions::{CommunityPermission, GroupPermission},
+        tests::sample_site_settings,
+    },
 };
 
 use super::*;
@@ -558,6 +561,16 @@ async fn test_payments_webhook_route_is_not_mounted_without_payments_config() {
 }
 
 #[tokio::test]
+async fn test_public_shared_cache_not_found_page_ignores_viewer_preferences() {
+    assert_public_response_ignores_viewer_preferences("/missing/page", StatusCode::NOT_FOUND).await;
+}
+
+#[tokio::test]
+async fn test_public_shared_cache_page_ignores_viewer_preferences() {
+    assert_public_response_ignores_viewer_preferences("/docs", StatusCode::OK).await;
+}
+
+#[tokio::test]
 async fn test_public_shared_cache_page_omits_set_cookie_with_stale_session() {
     // Setup database mock without the stored session
     let session_id = session::Id::default();
@@ -936,6 +949,15 @@ async fn test_static_handler_serves_assets_with_cache_policy() {
             CACHE_CONTROL_IMMUTABLE,
         ),
         (
+            "hashed docs css",
+            format!(
+                "/static/{}",
+                static_path_with_prefix_and_suffix("css/docs/", ".css")
+            ),
+            "text/css",
+            CACHE_CONTROL_IMMUTABLE,
+        ),
+        (
             "hashed js",
             format!(
                 "/static/{}",
@@ -973,6 +995,30 @@ async fn test_static_handler_serves_assets_with_cache_policy() {
 }
 
 #[tokio::test]
+async fn test_static_handler_serves_docs_index_with_hashed_theme() {
+    // Run handler
+    let uri = Uri::from_static("/static/docs/index.html");
+    let response = static_handler(uri).await.into_response();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the index links the content-hashed docs theme
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    let theme_prefix = "/static/css/docs/theme.";
+    let hash_start =
+        body.find(theme_prefix).expect("docs theme link to exist") + theme_prefix.len();
+    let hash = body.get(hash_start..hash_start + 8).unwrap_or_default();
+    assert_eq!(hash.len(), 8, "{body}");
+    assert!(
+        hash.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')),
+        "{body}"
+    );
+    assert!(body[hash_start + 8..].starts_with(".css\""), "{body}");
+    assert!(!body.contains("assets/theme.css"), "{body}");
+}
+
+#[tokio::test]
 async fn test_zoom_webhook_route_is_not_mounted_when_zoom_is_disabled() {
     // Setup disabled Zoom configuration
     let mut meetings_cfg = sample_zoom_meetings_cfg("zoom-secret");
@@ -995,6 +1041,55 @@ async fn test_zoom_webhook_route_is_not_mounted_when_zoom_is_disabled() {
 }
 
 // Helpers.
+
+/// Sends the same public request without and with viewer preference cookies
+/// and the color scheme client hint, then asserts both responses match.
+async fn assert_public_response_ignores_viewer_preferences(path: &str, status: StatusCode) {
+    // Setup database mock answering both site settings reads with one value
+    let site_settings = sample_site_settings();
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(2)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Send the request without and with viewer preferences
+    let router = TestRouterBuilder::new(db).build().await;
+    let plain_request = request("GET", path).body(Body::empty()).unwrap();
+    let (plain_parts, plain_bytes) = send(router.clone(), plain_request).await;
+    let preferences_request = request("GET", path)
+        .header(COOKIE, "ocg_theme=dark; ocg_viewport_mode=desktop")
+        .header("Sec-CH-Prefers-Color-Scheme", "dark")
+        .body(Body::empty())
+        .unwrap();
+    let (preferences_parts, preferences_bytes) = send(router, preferences_request).await;
+
+    // Check both responses are public shared-cache pages without cookies or client hints
+    for (parts, bytes) in [
+        (&plain_parts, &plain_bytes),
+        (&preferences_parts, &preferences_bytes),
+    ] {
+        assert_html_response(parts, bytes, status);
+        assert_public_response_without_set_cookie(parts);
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
+        );
+        let vary: Vec<_> = parts.headers.get_all(VARY).iter().collect();
+        assert_eq!(vary, [&HeaderValue::from_static(PUBLIC_SHARED_CACHE_VARY)]);
+        assert!(parts.headers.get("Accept-CH").is_none());
+        assert!(parts.headers.get("Critical-CH").is_none());
+    }
+
+    // Check the viewer preferences change neither the cache headers nor the body
+    for header in [CACHE_CONTROL, VARY] {
+        assert_eq!(
+            plain_parts.headers.get_all(&header).iter().collect::<Vec<_>>(),
+            preferences_parts.headers.get_all(&header).iter().collect::<Vec<_>>(),
+            "{header}"
+        );
+    }
+    assert_eq!(plain_bytes, preferences_bytes);
+}
 
 /// Asserts the response is public shared-cache and carries no `Set-Cookie`.
 fn assert_public_response_without_set_cookie(parts: &Parts) {

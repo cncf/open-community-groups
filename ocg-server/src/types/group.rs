@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::types::{
     community::CommunitySummary,
+    images::ThemedImage,
     location::{LocationParts, build_location},
     payments::GroupPaymentRecipient,
     user::User,
@@ -70,6 +71,13 @@ pub struct GroupSummary {
     /// URL-friendly identifier for this group.
     pub slug: String,
 
+    /// URL to the group's banner image shown in dark mode in place of
+    /// `banner_url`. On its own, without `banner_url`, it is ignored.
+    pub banner_dark_url: Option<String>,
+    /// URL to the group's mobile banner image shown in dark mode in place of
+    /// `banner_mobile_url`. On its own, without `banner_mobile_url`, it is
+    /// ignored.
+    pub banner_mobile_dark_url: Option<String>,
     /// URL to the group's banner image optimized for mobile devices.
     pub banner_mobile_url: Option<String>,
     /// URL to the group's banner image.
@@ -84,6 +92,9 @@ pub struct GroupSummary {
     pub description_short: Option<String>,
     /// Latitude for map display.
     pub latitude: Option<f64>,
+    /// URL to the logo image shown in dark mode in place of `logo_url`,
+    /// taken from the same level (group or community) as `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
     /// URL to the group's Open Graph image used for link previews.
@@ -148,6 +159,13 @@ pub struct GroupFull {
     #[serde(default)]
     pub subgroups: Vec<GroupSummary>,
 
+    /// URL to the group's banner image shown in dark mode in place of
+    /// `banner_url`. On its own, without `banner_url`, it is ignored.
+    pub banner_dark_url: Option<String>,
+    /// URL to the group's mobile banner image shown in dark mode in place of
+    /// `banner_mobile_url`. On its own, without `banner_mobile_url`, it is
+    /// ignored.
+    pub banner_mobile_dark_url: Option<String>,
     /// URL to the group's banner image optimized for mobile devices.
     pub banner_mobile_url: Option<String>,
     /// Banner image URL for the group page.
@@ -160,6 +178,10 @@ pub struct GroupFull {
     pub country_code: Option<String>,
     /// Full country name of the group.
     pub country_name: Option<String>,
+    /// URL to the group's own logo shown in dark mode in place of
+    /// `custom_logo_url`. On its own, without `custom_logo_url`, it is
+    /// ignored.
+    pub custom_logo_dark_url: Option<String>,
     /// URL to the group's own logo, without the community fallback.
     pub custom_logo_url: Option<String>,
     /// Group description text.
@@ -182,6 +204,9 @@ pub struct GroupFull {
     pub latitude: Option<f64>,
     /// `LinkedIn` profile URL.
     pub linkedin_url: Option<String>,
+    /// URL to the logo image shown in dark mode in place of `logo_url`,
+    /// taken from the same level (group or community) as `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
     /// URL to the group's Open Graph image used for link previews.
@@ -213,6 +238,27 @@ pub struct GroupFull {
 }
 
 impl GroupFull {
+    /// Returns the desktop banner of the first level that has one (group,
+    /// then community), with that level's dark mode variant.
+    pub fn banner(&self) -> ThemedImage<'_> {
+        ThemedImage::first_or(
+            [(self.banner_url.as_deref(), self.banner_dark_url.as_deref())],
+            self.community.banner(),
+        )
+    }
+
+    /// Returns the mobile banner of the first level that has one (group,
+    /// then community), with that level's dark mode variant.
+    pub fn banner_mobile(&self) -> ThemedImage<'_> {
+        ThemedImage::first_or(
+            [(
+                self.banner_mobile_url.as_deref(),
+                self.banner_mobile_dark_url.as_deref(),
+            )],
+            self.community.banner_mobile(),
+        )
+    }
+
     /// Build a display-friendly location string from available location data.
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
@@ -321,4 +367,91 @@ pub struct GroupSponsor {
 
     /// Sponsor website URL.
     pub website_url: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{community::CommunitySummary, images::ThemedImage};
+
+    use super::GroupFull;
+
+    #[test]
+    fn test_group_full_banner_pickers_pair_the_dark_variant_with_the_chosen_level() {
+        // Setup cases: (label, group desktop pair, group mobile pair, expected desktop, expected mobile)
+        let cases = [
+            (
+                "own pairs",
+                (Some("g"), Some("g-dark")),
+                (Some("gm"), Some("gm-dark")),
+                ("g", Some("g-dark")),
+                ("gm", Some("gm-dark")),
+            ),
+            (
+                "own light without dark while the community has a dark",
+                (Some("g"), None),
+                (Some("gm"), None),
+                ("g", None),
+                ("gm", None),
+            ),
+            (
+                "orphan own dark falls through to the community pair",
+                (None, Some("g-dark")),
+                (None, Some("gm-dark")),
+                ("c", Some("c-dark")),
+                ("cm", Some("cm-dark")),
+            ),
+            (
+                "no own banners use the community pair",
+                (None, None),
+                (None, None),
+                ("c", Some("c-dark")),
+                ("cm", Some("cm-dark")),
+            ),
+            (
+                "desktop and mobile resolve independently",
+                (None, None),
+                (Some("gm"), Some("gm-dark")),
+                ("c", Some("c-dark")),
+                ("gm", Some("gm-dark")),
+            ),
+        ];
+
+        for (label, (url, dark_url), (mobile_url, mobile_dark_url), desktop, mobile) in cases {
+            // Build a group over a community with both banner pairs
+            let group = GroupFull {
+                community: CommunitySummary {
+                    banner_mobile_url: "cm".to_string(),
+                    banner_url: "c".to_string(),
+
+                    banner_dark_url: Some("c-dark".to_string()),
+                    banner_mobile_dark_url: Some("cm-dark".to_string()),
+                    ..Default::default()
+                },
+
+                banner_dark_url: dark_url.map(str::to_string),
+                banner_mobile_dark_url: mobile_dark_url.map(str::to_string),
+                banner_mobile_url: mobile_url.map(str::to_string),
+                banner_url: url.map(str::to_string),
+                ..Default::default()
+            };
+
+            // Check each banner keeps the dark variant of its own level
+            assert_eq!(
+                group.banner(),
+                ThemedImage {
+                    url: desktop.0,
+                    dark_url: desktop.1,
+                },
+                "{label}"
+            );
+            assert_eq!(
+                group.banner_mobile(),
+                ThemedImage {
+                    url: mobile.0,
+                    dark_url: mobile.1,
+                },
+                "{label}"
+            );
+        }
+    }
 }

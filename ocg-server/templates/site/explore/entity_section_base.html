@@ -9,7 +9,7 @@
 
 {# Mobile filters -#}
 <div id="drawer-filters"
-     class="sheet-panel fixed top-0 left-0 z-[1100] h-screen overflow-y-auto transition-transform -translate-x-full bg-white w-80 border-r border-stone-200 shadow-lg phone:overflow-hidden phone:border-r-0"
+     class="sheet-panel fixed top-0 left-0 z-[1100] h-screen overflow-y-auto transition-transform -translate-x-full bg-raised w-80 border-r border-stone-200 shadow-lg phone:overflow-hidden phone:border-r-0"
      tabindex="-1"
      inert
      aria-labelledby="drawer-label">
@@ -47,7 +47,7 @@
 
   {# Reset button -#}
   <div class="text-end p-5 border-t border-stone-200 phone:flex phone:flex-none phone:gap-2 phone:p-3">
-    <button class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-stone-100 transition-colors reset-filters phone:h-11 phone:px-5 phone:text-sm">
+    <button class="bg-surface items-center py-1 px-3 text-xs text-center text-primary-fg rounded-full border border-primary-edge hover:border-primary-fg-hover hover:text-primary-fg-hover hover:bg-stone-100 transition-colors reset-filters phone:h-11 phone:px-5 phone:text-sm">
       Reset
     </button>
     <button type="button"
@@ -66,7 +66,7 @@
 <div class="flex items-start">
   {# Desktop filters -#}
   <div id="explore-filters"
-       class="relative hidden w-[28%] xl:w-1/4 lg:block bg-white border border-stone-200 rounded-lg">
+       class="relative hidden w-[28%] xl:w-1/4 lg:block bg-surface border border-stone-200 rounded-lg">
     {# Header Filters -#}
     {% include "site/explore/filters_header.html" -%}
     {# End header filters -#}
@@ -91,7 +91,7 @@
 
   <div id="explore-cards"
        class="relative w-full lg:w-[72%] xl:w-3/4 lg:pl-6 xl:pl-10 self-stretch">
-    <div class="relative flex flex-col bg-white border border-stone-200 rounded-lg pt-5 md:pt-7 h-full phone:rounded-none phone:border-0 phone:bg-transparent phone:pt-0">
+    <div class="relative flex flex-col bg-surface border border-stone-200 rounded-lg pt-5 md:pt-7 h-full phone:rounded-none phone:border-0 phone:bg-transparent phone:pt-0">
       {# Results header: search bar and results controls -#}
       <div id="explore-results-header" class="phone:contents">
         {# Phone title and entity switch -#}
@@ -114,8 +114,8 @@
           {# Mobile filters button -#}
           <div class="flex lg:hidden">
             <button id="open-filters"
-                    class="h-10 w-10 ml-3 inline-flex justify-center items-center bg-primary-500 text-lg rounded-full p-2 md:ml-5 hover:bg-primary-700 transition-colors phone:ml-0 phone:h-11 phone:w-auto phone:gap-1.5 phone:border phone:border-primary-500 phone:bg-white phone:px-4 phone:text-sm phone:text-primary-500 phone:hover:bg-white">
-              <div class="svg-icon h-4 w-4 bg-white icon-filter phone:bg-primary-500"></div>
+                    class="h-10 w-10 ml-3 inline-flex justify-center items-center bg-primary-fill text-lg rounded-full p-2 md:ml-5 hover:bg-primary-fill-hover transition-colors phone:ml-0 phone:h-11 phone:w-auto phone:gap-1.5 phone:border phone:border-primary-edge phone:bg-surface phone:px-4 phone:text-sm phone:text-primary-fg phone:hover:bg-surface">
+              <div class="svg-icon h-4 w-4 bg-on-primary icon-filter phone:bg-primary-fg"></div>
               <span class="sr-only">Open filters{{- explore::active_filters_count(count = applied_filters.len()) -}}</span>
               <span class="not-phone:hidden" aria-hidden="true">Filters</span>
               {{ explore::active_filters_dot(count = applied_filters.len()) -}}
@@ -133,14 +133,14 @@
           <div class="flex-1 phone:min-w-0">
             {% if view_mode == ViewMode::List -%}
               <div id="results"
-                   class="flex whitespace-nowrap font-semibold text-xs md:text-sm text-black phone:text-sm phone:leading-tight">
+                   class="flex whitespace-nowrap font-semibold text-xs md:text-sm text-stone-900 phone:text-sm phone:leading-tight">
                 {% block current_page -%}
                 {% endblock current_page -%}
               </div>
               {% if results_section.total == 0 -%}
                 <span data-results-empty
                       tabindex="-1"
-                      class="text-sm font-semibold text-black not-phone:hidden">0 results</span>
+                      class="text-sm font-semibold text-stone-900 not-phone:hidden">0 results</span>
               {% endif -%}
             {% endif -%}
           </div>
@@ -161,8 +161,8 @@
                        class="peer sr-only"
                        {% if view_mode == ViewMode::List %}checked{% endif %}>
                 <label for="list"
-                       class="w-[90px] xl:w-[115px] relative inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-s-md cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:text-primary-500 hover:bg-stone-50 transition-colors peer-focus-visible:z-20 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-(--ocg-primary)">
-                  <div class="svg-icon h-3 w-3 bg-stone-500 group-has-[input:checked]:bg-primary-500 icon-list"></div>
+                       class="w-[90px] xl:w-[115px] relative inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-surface border border-stone-200 rounded-s-md cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-edge hover:peer-unchecked:text-stone-600 peer-checked:text-primary-fg hover:bg-stone-50 transition-colors peer-focus-visible:z-20 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus">
+                  <div class="svg-icon h-3 w-3 bg-stone-500 group-has-[input:checked]:bg-primary-fg icon-list"></div>
                   <div class="text-[0.775rem] text-center text-nowrap ms-1">List</div>
                 </label>
               </div>
@@ -178,8 +178,8 @@
                          class="peer sr-only"
                          {% if view_mode == ViewMode::Calendar %}checked{% endif %}>
                   <label for="calendar"
-                         class="w-[90px] xl:w-[115px] relative -ms-px inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-md cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:text-primary-500 hover:bg-stone-50 transition-colors peer-focus-visible:z-20 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-(--ocg-primary)">
-                    <div class="svg-icon h-3 w-3 bg-stone-500 group-has-[input:checked]:bg-primary-500 icon-calendar"></div>
+                         class="w-[90px] xl:w-[115px] relative -ms-px inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-surface border border-stone-200 rounded-e-md cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-edge hover:peer-unchecked:text-stone-600 peer-checked:text-primary-fg hover:bg-stone-50 transition-colors peer-focus-visible:z-20 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus">
+                    <div class="svg-icon h-3 w-3 bg-stone-500 group-has-[input:checked]:bg-primary-fg icon-calendar"></div>
                     <div class="text-[0.775rem] text-center text-nowrap ms-1">Calendar</div>
                   </label>
                   {# End calendar view -#}
@@ -192,8 +192,8 @@
                          class="peer sr-only"
                          {% if view_mode == ViewMode::Map %}checked{% endif %}>
                   <label for="map"
-                         class="w-[90px] xl:w-[115px] relative -ms-px inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-md cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-stone-50 transition-colors peer-focus-visible:z-20 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-(--ocg-primary)">
-                    <div class="svg-icon h-3.5 w-3.5 bg-stone-500 group-has-[input:checked]:bg-primary-500 icon-map"></div>
+                         class="w-[90px] xl:w-[115px] relative -ms-px inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-surface border border-stone-200 rounded-e-md cursor-pointer select-none peer-checked:border-primary-edge hover:peer-unchecked:text-stone-600 peer-checked:z-10 peer-checked:text-primary-fg hover:bg-stone-50 transition-colors peer-focus-visible:z-20 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus">
+                    <div class="svg-icon h-3.5 w-3.5 bg-stone-500 group-has-[input:checked]:bg-primary-fg icon-map"></div>
                     <div class="text-[0.775rem] text-center text-nowrap ms-1">Map</div>
                   </label>
                   {# End Map view -#}
@@ -214,7 +214,7 @@
           <div class="flex flex-1 flex-row items-center justify-end mb-3 mt-3 sm:mb-0 sm:mt-0 phone:m-0 phone:flex-none">
             {% if view_mode == ViewMode::List -%}
               <label for="sort_selector"
-                     class="font-semibold text-[0.775rem] text-nowrap text-black leading-6 me-2 xl:me-3 phone:sr-only{% if results_section.total == 0 %}
+                     class="font-semibold text-[0.775rem] text-nowrap text-stone-900 leading-6 me-2 xl:me-3 phone:sr-only{% if results_section.total == 0 %}
                               phone:hidden{% endif %}">Sort by</label>
 
               {% let current_sort_by = filters.sort_by.clone().unwrap_or("date".to_string()) -%}

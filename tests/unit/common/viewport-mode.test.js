@@ -3,8 +3,7 @@ import { expect } from "@open-wc/testing";
 import {
   DESKTOP_MODE,
   VIEWPORT_MODE_ATTRIBUTE,
-  VIEWPORT_MODE_COOKIE,
-  buildViewportModeCookie,
+  VIEWPORT_MODE_STORAGE_KEY,
   getViewportModeReloadUrl,
   initViewportModeToggle,
   setViewportMode,
@@ -12,28 +11,44 @@ import {
 } from "/static/js/common/viewport-mode.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
-const DESKTOP_COOKIE = "ocg_viewport_mode=desktop; Path=/; Max-Age=31536000; SameSite=Lax";
-const CLEARED_COOKIE = "ocg_viewport_mode=; Path=/; Max-Age=0; SameSite=Lax";
+const EXPIRED_LEGACY_COOKIE = "ocg_viewport_mode=; Path=/; Max-Age=0; SameSite=Lax";
 
-/** Intercepts document.cookie writes without touching the real cookie jar. */
-const interceptCookieWrites = () => {
+/**
+ * Intercepts document.cookie without touching the real cookie jar.
+ * @param {string} [readable=""] - Cookie string the getter returns.
+ * @returns {{readable: string, restore: () => void, writes: string[]}} Recorded writes and controls.
+ */
+const interceptCookieWrites = (readable = "") => {
   const writes = [];
+  const cookies = { readable };
 
   Object.defineProperty(document, "cookie", {
     configurable: true,
-    get: () => "",
+    get: () => cookies.readable,
     set: (value) => {
       writes.push(value);
     },
   });
 
   return {
-    writes,
+    get readable() {
+      return cookies.readable;
+    },
+    set readable(value) {
+      cookies.readable = value;
+    },
     restore() {
       delete document.cookie;
     },
+    writes,
   };
 };
+
+/**
+ * Reads the stored viewport mode from the test page's real storage.
+ * @returns {string|null} Stored mode.
+ */
+const readStoredMode = () => window.localStorage.getItem(VIEWPORT_MODE_STORAGE_KEY);
 
 describe("viewport mode", () => {
   let cookieWrites;
@@ -50,50 +65,113 @@ describe("viewport mode", () => {
 
   afterEach(() => {
     cookieWrites.restore();
+    window.localStorage.removeItem(VIEWPORT_MODE_STORAGE_KEY);
     setViewportModeReloadHandler(() =>
       window.location.replace(getViewportModeReloadUrl(window.location.href)),
     );
     resetDom();
   });
 
-  it("shares the cookie and attribute names with the inline initializer script", async () => {
+  it("shares the storage key and attribute names with the inline preferences script", async () => {
     // Load the script the base template inlines to apply the mode before first paint.
-    const response = await fetch("/ocg-server/templates/common/scripts/viewport_mode_init.js");
+    const response = await fetch("/ocg-server/templates/common/scripts/preferences_init.js");
     expect(response.ok).to.equal(true);
     const inlineScript = await response.text();
 
-    // Verify both files agree on the persisted cookie pair and the html attribute.
-    expect(inlineScript).to.include(`"${VIEWPORT_MODE_COOKIE}=${DESKTOP_MODE}"`);
+    // Verify both files agree on the storage key and the html attribute.
+    expect(inlineScript).to.include(`"${VIEWPORT_MODE_STORAGE_KEY}"`);
     expect(inlineScript).to.include(`"${VIEWPORT_MODE_ATTRIBUTE}", "${DESKTOP_MODE}"`);
   });
 
-  it("builds a long-lived site-wide cookie for the desktop mode", () => {
-    // Verify the plain cookie used on HTTP development servers.
-    expect(buildViewportModeCookie("desktop")).to.equal(DESKTOP_COOKIE);
-
-    // Verify HTTPS pages add the Secure attribute.
-    expect(buildViewportModeCookie("desktop", { secure: true })).to.equal(`${DESKTOP_COOKIE}; Secure`);
-  });
-
-  it("builds an expiring cookie on the same path for any other mode", () => {
-    // Verify clearing reuses the path so the browser removes the stored cookie.
-    expect(buildViewportModeCookie("default")).to.equal(CLEARED_COOKIE);
-    expect(buildViewportModeCookie("", { secure: true })).to.equal(`${CLEARED_COOKIE}; Secure`);
-  });
-
-  it("writes the cookie and reloads once when a mode is selected", () => {
-    // Enable the desktop mode from the page served over HTTP.
+  it("stores the desktop mode and reloads once", () => {
+    // Enable the desktop mode.
     setViewportMode("desktop");
 
-    // Verify the cookie is written without Secure and the page reloads once.
-    expect(cookieWrites.writes).to.deep.equal([DESKTOP_COOKIE]);
+    // Verify the key is written and the page reloads once.
+    expect(readStoredMode()).to.equal(DESKTOP_MODE);
     expect(reloadCount).to.equal(1);
+  });
 
-    // Restore the default mode.
+  it("removes the stored mode and reloads once for the default mode", () => {
+    // Store the desktop mode, then restore the default one.
+    window.localStorage.setItem(VIEWPORT_MODE_STORAGE_KEY, DESKTOP_MODE);
     setViewportMode("default");
 
-    // Verify the cookie is cleared and the page reloads again.
-    expect(cookieWrites.writes).to.deep.equal([DESKTOP_COOKIE, CLEARED_COOKIE]);
+    // Verify the key is removed and the page reloads once.
+    expect(readStoredMode()).to.equal(null);
+    expect(reloadCount).to.equal(1);
+  });
+
+  it("never sets a cookie for either mode", () => {
+    // Select both modes.
+    setViewportMode("desktop");
+    setViewportMode("default");
+
+    // Verify no cookie is written.
+    expect(cookieWrites.writes).to.deep.equal([]);
+    expect(reloadCount).to.equal(2);
+  });
+
+  it("neither reloads nor writes a cookie when storage rejects the write", () => {
+    const originalSetItem = Storage.prototype.setItem;
+    const originalRemoveItem = Storage.prototype.removeItem;
+    Storage.prototype.setItem = () => {
+      throw new DOMException("Blocked", "SecurityError");
+    };
+    Storage.prototype.removeItem = () => {
+      throw new DOMException("Blocked", "SecurityError");
+    };
+
+    try {
+      // Select both modes while storage throws.
+      setViewportMode("desktop");
+      setViewportMode("default");
+    } finally {
+      Storage.prototype.setItem = originalSetItem;
+      Storage.prototype.removeItem = originalRemoveItem;
+    }
+
+    // Verify the page stays and no cookie is touched.
+    expect(reloadCount).to.equal(0);
+    expect(cookieWrites.writes).to.deep.equal([]);
+  });
+
+  it("expires a readable legacy cookie before reloading", () => {
+    // Make a legacy cookie readable, as a tab loaded before the release can rewrite it.
+    cookieWrites.readable = "theme=x; ocg_viewport_mode=desktop";
+    let writesAtReload = null;
+    setViewportModeReloadHandler(() => {
+      reloadCount += 1;
+      writesAtReload = [...cookieWrites.writes];
+    });
+
+    // Enable the desktop mode.
+    setViewportMode("desktop");
+
+    // Verify exactly one expiring write happens before the reload.
+    expect(cookieWrites.writes).to.deep.equal([EXPIRED_LEGACY_COOKIE]);
+    expect(writesAtReload).to.deep.equal([EXPIRED_LEGACY_COOKIE]);
+    expect(reloadCount).to.equal(1);
+
+    // Restore the default mode with the legacy cookie still readable.
+    setViewportMode("default");
+
+    // Verify the default mode expires it the same way.
+    expect(cookieWrites.writes).to.deep.equal([EXPIRED_LEGACY_COOKIE, EXPIRED_LEGACY_COOKIE]);
+    expect(writesAtReload).to.deep.equal([EXPIRED_LEGACY_COOKIE, EXPIRED_LEGACY_COOKIE]);
+    expect(reloadCount).to.equal(2);
+  });
+
+  it("leaves look-alike cookies alone", () => {
+    // Make only a cookie whose name merely ends with the key readable.
+    cookieWrites.readable = "xocg_viewport_mode=desktop";
+
+    // Select both modes.
+    setViewportMode("desktop");
+    setViewportMode("default");
+
+    // Verify no cookie is written.
+    expect(cookieWrites.writes).to.deep.equal([]);
     expect(reloadCount).to.equal(2);
   });
 
@@ -123,16 +201,17 @@ describe("viewport mode", () => {
     // Click the inner label of the desktop entry.
     document.getElementById("desktop-label").dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
-    // Verify the desktop cookie is written and the page reloads exactly once.
-    expect(cookieWrites.writes).to.deep.equal([DESKTOP_COOKIE]);
+    // Verify the desktop mode is stored and the page reloads exactly once.
+    expect(readStoredMode()).to.equal(DESKTOP_MODE);
     expect(reloadCount).to.equal(1);
 
     // Click the mobile entry.
     document.getElementById("mobile-label").dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
-    // Verify the cookie is cleared and the page reloads once more.
-    expect(cookieWrites.writes).to.deep.equal([DESKTOP_COOKIE, CLEARED_COOKIE]);
+    // Verify the stored mode is cleared and the page reloads once more.
+    expect(readStoredMode()).to.equal(null);
     expect(reloadCount).to.equal(2);
+    expect(cookieWrites.writes).to.deep.equal([]);
   });
 
   it("ignores clicks outside the viewport mode controls", () => {
@@ -145,8 +224,8 @@ describe("viewport mode", () => {
       .getElementById("other-link")
       .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
-    // Verify nothing is written and no reload happens.
-    expect(cookieWrites.writes).to.deep.equal([]);
+    // Verify nothing is stored and no reload happens.
+    expect(readStoredMode()).to.equal(null);
     expect(reloadCount).to.equal(0);
   });
 
@@ -162,8 +241,8 @@ describe("viewport mode", () => {
         .getElementById("other-link")
         .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
-      // Verify the page is neither re-marked nor reloaded.
-      expect(cookieWrites.writes).to.deep.equal([]);
+      // Verify nothing is stored and the page does not reload.
+      expect(readStoredMode()).to.equal(null);
       expect(reloadCount).to.equal(0);
     } finally {
       document.documentElement.removeAttribute(VIEWPORT_MODE_ATTRIBUTE);

@@ -83,6 +83,12 @@ test.describe("site home page", () => {
         .getByRole("link")
         .filter({ has: page.getByAltText(`${TEST_COMMUNITY_TITLE_2} banner`) });
       await expect(community2Link).toHaveAttribute("href", `/${TEST_COMMUNITY_NAME_2}`);
+
+      // Verify the seeded communities, without dark mode banners, render one banner image each.
+      for (const communityLink of [community1Link, community2Link]) {
+        await expect(communityLink.locator("img")).toHaveCount(1);
+        await expect(communityLink.locator("[data-theme-image]")).toHaveCount(0);
+      }
     });
 
     test("listing sections show seeded events, prices, and groups", async ({ page }) => {

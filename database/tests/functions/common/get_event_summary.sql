@@ -57,6 +57,7 @@ select plan(23);
 -- Community
 select fx_community(:'communityID', jsonb_build_object(
     'display_name', 'Cloud Native Seattle Event Summary',
+    'logo_dark_url', 'https://example.com/logo-dark.png',
     'logo_url', 'https://example.com/logo.png',
     'name', 'cloud-native-seattle-event-summary'
 ));
@@ -90,6 +91,7 @@ select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object(
 
 -- Group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'logo_dark_url', 'https://example.com/group-logo-dark.png',
     'logo_url', 'https://example.com/group-logo.png',
     'name', 'Seattle Kubernetes Meetup',
     'slug', 'abc1234',
@@ -115,6 +117,7 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', '2024-06-15 17:00:00+00',
     'event_series_id', :'eventSeriesID',
     'location', ST_GeogFromText('POINT(-122.3321 47.6062)'),
+    'logo_dark_url', 'https://example.com/event-logo-dark.png',
     'logo_url', 'https://example.com/event-logo.png',
     'meeting_join_instructions', 'Use your registration name when joining.',
     'meeting_join_url', 'https://meeting.example.com/summary',
@@ -581,6 +584,7 @@ select is(
         "ends_at": 1718470800,
         "event_series_id": "%s",
         "latitude": 47.6062,
+        "logo_dark_url": "https://example.com/event-logo-dark.png",
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -122.3321,
         "meeting_join_instructions": "Use your registration name when joining.",

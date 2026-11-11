@@ -183,6 +183,8 @@ select columns_are('community', array[
 
     'ad_banner_link_url',
     'ad_banner_url',
+    'banner_dark_url',
+    'banner_mobile_dark_url',
     'bluesky_url',
     'extra_links',
     'facebook_url',
@@ -190,6 +192,7 @@ select columns_are('community', array[
     'github_url',
     'instagram_url',
     'linkedin_url',
+    'logo_dark_url',
     'new_group_details',
     'og_image_url',
     'photos_urls',
@@ -291,6 +294,8 @@ select columns_are('event', array[
     'tsdoc',
 
     'attendee_approval_required',
+    'banner_dark_url',
+    'banner_mobile_dark_url',
     'banner_mobile_url',
     'banner_url',
     'capacity',
@@ -311,6 +316,7 @@ select columns_are('event', array[
     'legacy_id',
     'legacy_url',
     'location',
+    'logo_dark_url',
     'logo_url',
     'luma_url',
     'manual_tax_rate_ids',
@@ -752,6 +758,8 @@ select columns_are('group', array[
     'slug',
     'tsdoc',
 
+    'banner_dark_url',
+    'banner_mobile_dark_url',
     'banner_mobile_url',
     'banner_url',
     'bluesky_url',
@@ -771,6 +779,7 @@ select columns_are('group', array[
     'legacy_url',
     'linkedin_url',
     'location',
+    'logo_dark_url',
     'logo_url',
     'og_image_url',
     'parent_group_id',
@@ -1115,6 +1124,7 @@ select columns_are('site', array[
     'copyright_notice',
     'favicon_url',
     'footer_logo_url',
+    'header_logo_dark_url',
     'header_logo_url',
     'og_image_url'
 ]);

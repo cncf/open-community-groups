@@ -74,9 +74,12 @@ select plan(30);
 select fx_community(:'communityID', jsonb_build_object(
     'ad_banner_link_url', 'https://example.com/ad-banner-link',
     'ad_banner_url', 'https://example.com/ad-banner.png',
+    'banner_dark_url', 'https://example.com/banner-dark.png',
+    'banner_mobile_dark_url', 'https://example.com/banner-mobile-dark.png',
     'banner_mobile_url', 'https://example.com/banner_mobile.png',
     'banner_url', 'https://example.com/banner.png',
     'display_name', 'Cloud Native Seattle Event Full',
+    'logo_dark_url', 'https://example.com/logo-dark.png',
     'logo_url', 'https://example.com/logo.png',
     'name', 'cloud-native-seattle-event-full',
     'og_image_url', 'https://example.com/community-og.png'
@@ -158,6 +161,7 @@ insert into "group" (
     created_at,
     external_payments_seller_display_name,
     location,
+    logo_dark_url,
     logo_url,
     og_image_url,
     payment_recipient,
@@ -176,6 +180,7 @@ insert into "group" (
     '2024-03-01 10:00:00+00',
     'Seattle External Payee Co',
     ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326),  -- New York coordinates
+    'https://example.com/group-logo-dark.png',
     'https://example.com/group-logo.png',
     'https://example.com/group-og.png',
     jsonb_build_object(
@@ -222,7 +227,11 @@ insert into event (
     venue_state_code,
     venue_state_name,
     venue_zip_code,
+    logo_dark_url,
     logo_url,
+    banner_dark_url,
+    banner_mobile_dark_url,
+    banner_mobile_url,
     banner_url,
     capacity,
     meeting_in_sync,
@@ -265,7 +274,11 @@ insert into event (
     'NY',
     'New York',
     '10001',
+    'https://example.com/event-logo-dark.png',
     'https://example.com/event-logo.png',
+    'https://example.com/event-banner-dark.png',
+    'https://example.com/event-banner-mobile-dark.png',
+    'https://example.com/event-banner-mobile.png',
     'https://example.com/event-banner.png',
     500,
     true,
@@ -1381,8 +1394,12 @@ select is(
         "timezone": "America/New_York",
         "attendee_approval_required": false,
         "attendee_count": 2,
+        "banner_dark_url": "https://example.com/event-banner-dark.png",
+        "banner_mobile_dark_url": "https://example.com/event-banner-mobile-dark.png",
+        "banner_mobile_url": "https://example.com/event-banner-mobile.png",
         "banner_url": "https://example.com/event-banner.png",
         "capacity": 500,
+        "custom_logo_dark_url": "https://example.com/event-logo-dark.png",
         "custom_logo_url": "https://example.com/event-logo.png",
         "description_short": "Annual Kubernetes conference",
         "ends_at": 1718557200,
@@ -1391,6 +1408,7 @@ select is(
         "external_payment_url": "https://pay.example.test/event",
         "external_payment_window_hours": 72,
         "latitude": 47.6062,
+        "logo_dark_url": "https://example.com/event-logo-dark.png",
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -122.3321,
         "luma_url": "https://luma.com/event123",
@@ -1436,6 +1454,9 @@ select is(
             "name": "cloud-native-seattle-event-full",
             "ad_banner_link_url": "https://example.com/ad-banner-link",
             "ad_banner_url": "https://example.com/ad-banner.png",
+            "banner_dark_url": "https://example.com/banner-dark.png",
+            "banner_mobile_dark_url": "https://example.com/banner-mobile-dark.png",
+            "logo_dark_url": "https://example.com/logo-dark.png",
             "og_image_url": "https://example.com/community-og.png"
         },
         "group": {
@@ -1453,6 +1474,7 @@ select is(
             "community_name": "cloud-native-seattle-event-full",
             "group_id": "0c060000-0000-0000-0000-00000000000e",
             "latitude": 40.73061,
+            "logo_dark_url": "https://example.com/group-logo-dark.png",
             "logo_url": "https://example.com/group-logo.png",
             "longitude": -73.935242,
             "og_image_url": "https://example.com/group-og.png",
@@ -1960,17 +1982,21 @@ select is(
     'Should order event organizers by snapshot order with nulls last'
 );
 
--- Should use group logo without an own logo when event has no logo
+-- Should use group logos without own logos when event has no logo
 select is(
     jsonb_build_object(
+        'custom_logo_dark_url', event_json->'custom_logo_dark_url',
         'custom_logo_url', event_json->'custom_logo_url',
+        'logo_dark_url', event_json->'logo_dark_url',
         'logo_url', event_json->'logo_url'
     ),
     jsonb_build_object(
+        'custom_logo_dark_url', null,
         'custom_logo_url', null,
+        'logo_dark_url', 'https://example.com/group-logo-dark.png',
         'logo_url', 'https://example.com/group-logo.png'
     ),
-    'Should use group logo without an own logo when event has no logo'
+    'Should use group logos without own logos when event has no logo'
 )
 from (
     select get_event_full(
@@ -1980,17 +2006,21 @@ from (
     )::jsonb as event_json
 ) event_projection;
 
--- Should use community logo without an own logo when event and group have no logo
+-- Should use community logos without own logos when event and group have no logo
 select is(
     jsonb_build_object(
+        'custom_logo_dark_url', event_json->'custom_logo_dark_url',
         'custom_logo_url', event_json->'custom_logo_url',
+        'logo_dark_url', event_json->'logo_dark_url',
         'logo_url', event_json->'logo_url'
     ),
     jsonb_build_object(
+        'custom_logo_dark_url', null,
         'custom_logo_url', null,
+        'logo_dark_url', 'https://example.com/logo-dark.png',
         'logo_url', 'https://example.com/logo.png'
     ),
-    'Should use community logo without an own logo when event and group have no logo'
+    'Should use community logos without own logos when event and group have no logo'
 )
 from (
     select get_event_full(

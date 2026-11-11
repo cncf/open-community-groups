@@ -393,12 +393,12 @@ export class OnlineEventDetails extends LitWrapper {
       isDisabled
         ? "border-stone-300 border-dashed bg-stone-50 cursor-not-allowed"
         : isSelected
-          ? "border-primary-400 ring-2 ring-primary-200 bg-white"
-          : "border-stone-200 bg-white hover:border-primary-300 hover:shadow-sm",
+          ? "border-primary-edge-muted ring-2 ring-primary-edge-faint bg-surface"
+          : "border-stone-200 bg-surface hover:border-primary-edge-soft hover:shadow-sm",
     ].join(" ");
     const radioClasses = [
       "relative flex h-5 w-5 items-center justify-center rounded-full border",
-      isDisabled ? "border-stone-300 bg-stone-100" : isSelected ? "border-primary-500" : "border-stone-300",
+      isDisabled ? "border-stone-300 bg-stone-100" : isSelected ? "border-primary-edge" : "border-stone-300",
     ].join(" ");
     const titleClasses = ["text-base font-semibold", isDisabled ? "text-stone-500" : "text-stone-900"].join(
       " ",
@@ -423,7 +423,7 @@ export class OnlineEventDetails extends LitWrapper {
                 ${
                   isSelected
                     ? html`<span
-                        class="h-2.5 w-2.5 rounded-full ${isDisabled ? "bg-stone-400" : "bg-primary-500"}"
+                        class="h-2.5 w-2.5 rounded-full ${isDisabled ? "bg-stone-400" : "bg-primary-fg"}"
                       ></span>`
                     : ""
                 }
@@ -883,7 +883,7 @@ export class OnlineEventDetails extends LitWrapper {
     }
 
     return html`
-      <div class="rounded-lg border border-stone-200 bg-white p-4 space-y-2 mt-4">
+      <div class="rounded-lg border border-stone-200 bg-surface p-4 space-y-2 mt-4">
         <div class="flex items-center gap-3">
           ${
             this.meetingError
@@ -923,7 +923,7 @@ export class OnlineEventDetails extends LitWrapper {
                   <span class="font-medium">Join link:</span>
                   <a
                     href="${meetingJoinUrl}"
-                    class="text-primary-500 hover:text-primary-600 wrap-break-word"
+                    class="text-primary-fg hover:text-primary-fg-strong wrap-break-word"
                     target="_blank"
                     rel="noopener noreferrer"
                     >${meetingJoinUrl}</a
@@ -1121,7 +1121,7 @@ export class OnlineEventDetails extends LitWrapper {
    */
   _renderAutomaticFields() {
     return html`
-      <div class="space-y-4 rounded-xl border border-stone-200 bg-white p-4 md:p-5 md:col-span-2">
+      <div class="space-y-4 rounded-xl border border-stone-200 bg-surface p-4 md:p-5 md:col-span-2">
         <div class="space-y-1">
           <div class="text-base font-semibold text-stone-900 mb-3">Create meeting automatically</div>
           <p class="form-legend">We will create and manage the meeting when you save this event.</p>

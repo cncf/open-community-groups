@@ -15,7 +15,7 @@
 {% endblock anchor_attributes %}
 
 {% block logo -%}
-  {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px] phone:h-12 phone:w-12 phone:min-w-12 phone:border-[3px]", size = 88) -}}
+  {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px] phone:h-12 phone:w-12 phone:min-w-12 phone:border-[3px]", size = 88, logo_dark_url = event.logo_dark_url.as_deref().unwrap_or("")) -}}
 {% endblock logo %}
 
 {% block corner_badge -%}
@@ -38,7 +38,7 @@
 
 {% block preheader -%}
   <span class="phone:flex phone:min-w-0 phone:items-baseline">
-    <span class="hidden text-primary-500 sm:inline phone:hidden">{{ event.community_display_name }}</span>
+    <span class="hidden text-primary-fg sm:inline phone:hidden">{{ event.community_display_name }}</span>
     <span class="px-1 hidden sm:inline phone:hidden">·</span>
     <span class="phone:min-w-0 phone:truncate">{{- event.group_name -}}</span>
     <span class="px-1 hidden sm:inline phone:hidden">·</span>

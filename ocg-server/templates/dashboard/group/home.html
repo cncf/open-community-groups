@@ -99,13 +99,13 @@
           {{ dashboard::menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/group?tab=inbox", items_count = inbox_open_count, items_count_label = "open") -}}
           {# End inbox -#}
         {% endif -%}
-        <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors">
+        <div class="rounded-md px-3 border border-transparent hover:bg-surface hover:border-stone-200 transition-colors">
           <a href="{{ group_public_url }}"
              target="_blank"
              rel="noopener noreferrer"
              class="flex items-center justify-between cursor-pointer">
             <div class="flex items-center">
-              <div class="svg-icon size-4 icon-eye bg-primary-500"></div>
+              <div class="svg-icon size-4 icon-eye bg-primary-fg"></div>
               <div class="text-sm/8 ms-3">Group public site</div>
               <div class="svg-icon size-2.5 icon-external-link bg-stone-700 ms-2"></div>
             </div>
@@ -192,7 +192,9 @@
          data-community-name="{{ current_selection.0.name }}"
          data-community-display-name="{{ current_selection.0.display_name }}"
          data-community-logo-url="{{ current_selection.0.logo_url }}"
+         data-community-logo-dark-url="{%- if let Some(logo_dark_url) = &current_selection.0.logo_dark_url -%}{{ logo_dark_url }}{%- endif -%}"
          data-community-banner-url="{{ current_selection.0.banner_url }}"
+         data-community-banner-dark-url="{%- if let Some(banner_dark_url) = &current_selection.0.banner_dark_url -%}{{ banner_dark_url }}{%- endif -%}"
          data-community-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
          data-group-name="{{ current_selection.1.name }}"
          data-group-slug="{{ current_selection.1.public_slug() }}"

@@ -2,6 +2,13 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
+// OpenFreeMap basemap style of each color theme (see static/js/common/location/maplibre.js).
+export const BASEMAP_STYLE_URLS = {
+  dark: "https://tiles.openfreemap.org/styles/fiord",
+  light: "https://tiles.openfreemap.org/styles/bright",
+};
+// Either basemap style URL, matched whole.
+const BASEMAP_STYLE_URL_PATTERN = /^https:\/\/tiles\.openfreemap\.org\/styles\/(?:bright|fiord)$/;
 const NAVIGATION_ASSET_TIMEOUT_MS = 5_000;
 const NAVIGATION_RETRY_ATTEMPTS = 3;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
@@ -11,6 +18,12 @@ const ACTION_RESPONSE_BODY_PREVIEW_CHARS = 2_000;
 const TABLE_FILTER_MENU_TIMEOUT_MS = 10_000;
 // Wait for a table filter option before reopening its menu and trying again.
 const TABLE_FILTER_OPTION_TIMEOUT_MS = 2_000;
+// Prefix of the keys that record which `seedLocalStorage` entries a page already wrote.
+const SEED_MARKER_PREFIX = "__ocg_e2e_seeded";
+// Storage key of the color theme choice (see static/js/common/theme.js).
+const THEME_STORAGE_KEY = "ocg_theme";
+// Visible label of each account menu theme choice.
+const THEME_CHOICE_LABELS = { dark: "Dark", light: "Light", system: "System" };
 
 /** Builds an absolute E2E URL for a relative path. */
 const buildUrl = (path) => new URL(path, BASE_URL).toString();
@@ -748,6 +761,38 @@ export const expectDialogClosed = async (page, dialog, { opener, scrollY } = {})
 };
 
 /**
+ * Resolves a CSS color expression where an element's custom properties apply, so color checks
+ * hold in every color theme. A hidden probe appended to the element's parent (the root element
+ * when it has none) reads the computed color and is removed again.
+ * @param {import("@playwright/test").Locator} locator - Element whose context resolves the color.
+ * @param {string} color - Any CSS color, for example `"var(--color-surface)"`.
+ * @returns {Promise<string>} Computed color, for example `"rgb(255, 255, 255)"`.
+ */
+export const resolveCssColor = (locator, color) =>
+  locator.evaluate((element, expression) => {
+    const probe = document.createElement("span");
+    probe.hidden = true;
+    probe.style.color = expression;
+    (element.parentElement ?? document.documentElement).append(probe);
+    const resolvedColor = getComputedStyle(probe).color;
+    probe.remove();
+
+    return resolvedColor;
+  }, color);
+
+/**
+ * Reads the tooltip background of an ECharts chart, resolved in the page.
+ * @param {import("@playwright/test").Locator} chart - Rendered chart container.
+ * @returns {Promise<string>} Computed tooltip background color.
+ */
+export const readTooltipBackground = async (chart) => {
+  const background = await chart.evaluate(
+    (element) => window.echarts.getInstanceByDom(element).getOption().tooltip[0].backgroundColor,
+  );
+  return resolveCssColor(chart, background);
+};
+
+/**
  * Checks that moving focus with the keyboard draws a visible focus indicator. The outline or
  * box-shadow is compared before and after focus, so a static shadow never passes as a focus ring.
  * The helper presses no keys itself, so it never closes menus that close on focus loss.
@@ -758,7 +803,7 @@ export const expectDialogClosed = async (page, dialog, { opener, scrollY } = {})
  * @param {object} [options] - Optional indicator checks.
  * @param {import("@playwright/test").Locator} [options.indicator] - Element that draws the ring,
  * such as the label of a visually hidden input. Defaults to `locator`.
- * @param {string} [options.outlineColor] - Any CSS colour, for example `"var(--ocg-primary)"`.
+ * @param {string} [options.outlineColor] - Any CSS colour, for example `"var(--color-focus)"`.
  * When given, the indicator must be an outline of that colour.
  * @returns {Promise<void>} Resolves once the indicator is visible.
  */
@@ -817,16 +862,7 @@ export const expectFocusIndicator = async (locator, focus, { indicator = locator
   }
 
   // Resolve the expected outline colour where the indicator's custom properties apply.
-  const expectedOutlineColor = await indicator.evaluate((element, color) => {
-    const probe = document.createElement("span");
-    probe.hidden = true;
-    probe.style.color = color;
-    (element.parentElement ?? document.documentElement).append(probe);
-    const resolvedColor = getComputedStyle(probe).color;
-    probe.remove();
-
-    return resolvedColor;
-  }, outlineColor);
+  const expectedOutlineColor = await resolveCssColor(indicator, outlineColor);
 
   // Check that the indicator is an outline of that colour.
   await expect
@@ -890,12 +926,12 @@ export const swipeHorizontally = async (page, fromX, toX, y = 300) => {
 };
 
 /**
- * Replaces the external basemap style with an empty style while keeping the real map runtime.
- * With `attribution`, the style keeps one empty source credited with that HTML, so maps
- * render their attribution links without the network.
+ * Replaces the external basemap styles of both color themes (`styles/bright` and `styles/fiord`)
+ * with an empty style while keeping the real map runtime. With `attribution`, the style keeps one
+ * empty source credited with that HTML, so maps render their attribution links without the network.
  */
 export const routeEmptyBasemap = (page, { attribution } = {}) =>
-  page.route("https://tiles.openfreemap.org/styles/bright", (route) =>
+  page.route(BASEMAP_STYLE_URL_PATTERN, (route) =>
     route.fulfill({
       headers: { "access-control-allow-origin": "*" },
       json: attribution
@@ -932,6 +968,106 @@ export const routeNextRequestWithQuery = async (page, urlIncludes, query) => {
     { times: 1 },
   );
 };
+
+/**
+ * Seeds `localStorage` entries before any page script runs, including the inline pre-paint
+ * script. Each call writes its entries once, on the first navigation after it is registered, and
+ * skips them on later navigations, so a write made during the test survives navigation. A later
+ * call overrides an earlier one when a navigation separates them; init scripts run in no defined
+ * order, so two calls must not seed the same key before a navigation.
+ * @param {import("@playwright/test").Page} page - Page whose context gets the entries.
+ * @param {Record<string, string | null>} entries - Values by key; `null` removes the key.
+ * @returns {Promise<void>} Resolves once the init script is registered.
+ */
+export const seedLocalStorage = async (page, entries) => {
+  await page.context().addInitScript(
+    ({ markerPrefix, seedEntries, seedId }) => {
+      // Opaque origins such as `about:blank` throw on any storage access.
+      try {
+        for (const [key, value] of Object.entries(seedEntries)) {
+          const markerKey = `${markerPrefix}:${key}:${seedId}`;
+          if (localStorage.getItem(markerKey) !== null) {
+            continue;
+          }
+          localStorage.setItem(markerKey, "1");
+          if (value === null) {
+            localStorage.removeItem(key);
+          } else {
+            localStorage.setItem(key, value);
+          }
+        }
+      } catch {
+        // Nothing to seed where storage is unavailable.
+      }
+    },
+    { markerPrefix: SEED_MARKER_PREFIX, seedEntries: entries, seedId: randomUUID() },
+  );
+};
+
+/**
+ * Sets up the color theme for the next navigations. Every project pins `colorScheme: "light"`,
+ * so System renders light unless `system` changes it. Call it before navigating, and again before
+ * the next navigation to switch to another stored value.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @param {object} [options] - Theme inputs; omitted ones keep their current value.
+ * @param {"light" | "dark" | "system"} [options.stored] - Stored choice; `"system"` removes the key.
+ * @param {"light" | "dark"} [options.system] - Emulated OS color scheme.
+ * @returns {Promise<void>} Resolves once the inputs are in place.
+ */
+export const useTheme = async (page, { stored, system } = {}) => {
+  if (system) {
+    await page.emulateMedia({ colorScheme: system });
+  }
+  if (stored) {
+    await seedLocalStorage(page, { [THEME_STORAGE_KEY]: stored === "system" ? null : stored });
+  }
+};
+
+/**
+ * Picks a color theme from the account menu (the account sheet on phones) and waits for it to
+ * apply, as a live switch without a reload. The pick closes the menu.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @param {"dark" | "light" | "system"} preference - Choice to pick.
+ * @returns {Promise<void>} Resolves once the choice is applied and the menu is closed.
+ */
+export const pickThemeFromAccountMenu = async (page, preference) => {
+  const userMenu = page.locator("#user-dropdown");
+  await page.locator("#user-dropdown-button").click();
+  await expect(userMenu).toBeVisible();
+  const choice = userMenu
+    .getByRole("group", { name: "Theme" })
+    .getByRole("menuitemradio", { exact: true, name: THEME_CHOICE_LABELS[preference] });
+  await choice.click();
+  await expect
+    .poll(() => page.evaluate((key) => window.localStorage.getItem(key), THEME_STORAGE_KEY))
+    .toBe(preference === "system" ? null : preference);
+  if (preference !== "system") {
+    await expect(page.locator("html")).toHaveAttribute("data-theme", preference);
+  }
+  await expect(userMenu).toBeHidden();
+};
+
+/**
+ * Records every basemap style URL the page requests from now on, routed or not.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @returns {string[]} Requested style URLs, in request order; the array fills as requests start.
+ */
+export const trackBasemapStyleRequests = (page) => {
+  const requests = [];
+  page.on("request", (request) => {
+    if (BASEMAP_STYLE_URL_PATTERN.test(request.url())) {
+      requests.push(request.url());
+    }
+  });
+  return requests;
+};
+
+/**
+ * Verifies the dark theme applied to the document.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @returns {Promise<void>} Resolves once the root carries the dark theme.
+ */
+export const expectDarkTheme = (page) => expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
 /** Verifies loaded forward and backward pagination while preserving the first result. */
 export const expectCurrentPaginationNavigation = async (page, resultSelector) => {

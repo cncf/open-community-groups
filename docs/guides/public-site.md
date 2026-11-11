@@ -20,6 +20,7 @@ If you prefer a faster task-oriented run-through first, use
 - [Submit to Call for Speakers (CFS)](#submit-to-call-for-speakers-cfs)
 - [Contact Organizers](#contact-organizers)
 - [Use Stats for Platform Context](#use-stats-for-platform-context)
+- [Choose Light or Dark Mode](#choose-light-or-dark-mode)
 - [Recommended Member Flow](#recommended-member-flow)
 
 ## Understand the Core Pages
@@ -271,6 +272,13 @@ see [Inbox: Conversations with Organizers](user-dashboard.md#inbox-conversations
 momentum at a glance: groups, members, events, and attendees over time.
 
 ![Stats page overview](../screenshots/stats-page.png)
+
+## Choose Light or Dark Mode
+
+The **Theme** row in the user menu lets anyone, logged in or not, pick **Light**, **Dark** or
+**System**, which follows your device's appearance setting and is the default. For how the choice
+is remembered and what it changes, see
+[Can I Use Dark Mode?](../support/faq.md#can-i-use-dark-mode).
 
 ## Recommended Member Flow
 

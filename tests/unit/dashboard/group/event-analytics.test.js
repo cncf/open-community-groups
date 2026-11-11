@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import { disposeChartsWithin } from "/static/js/common/charts/stats.js";
+import { THEME_CHANGE_EVENT, THEME_STORAGE_KEY } from "/static/js/common/theme.js";
 import {
   formatCheckInBinLabels,
   getRegistrationsSeriesLabel,
@@ -8,6 +9,7 @@ import {
   initEventAnalyticsCharts,
   initializeEventAnalyticsFromPage,
 } from "/static/js/dashboard/group/event-analytics.js";
+import { waitForFrameThenTask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 const CHART_IDS = [
@@ -180,6 +182,7 @@ describe("dashboard group event analytics", () => {
   const originalEcharts = globalThis.echarts;
   let optionsById;
   let failInit;
+  let rendersById;
 
   /** Returns the last option rendered into a chart element. */
   const getOption = (id) => optionsById.get(id);
@@ -196,6 +199,7 @@ describe("dashboard group event analytics", () => {
     document.documentElement.style.setProperty("--color-stone-400", "#a8a29e");
     optionsById = new Map();
     failInit = false;
+    rendersById = new Map();
     globalThis.echarts = {
       getInstanceByDom() {
         return null;
@@ -209,15 +213,19 @@ describe("dashboard group event analytics", () => {
           resize() {},
           setOption(option) {
             optionsById.set(element.id, option);
+            rendersById.set(element.id, (rendersById.get(element.id) || 0) + 1);
           },
         };
       },
+      registerTheme() {},
     };
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     disposeChartsWithin(document.body);
     resetDom();
+    localStorage.removeItem(THEME_STORAGE_KEY);
+    await waitForFrameThenTask();
     if (originalEcharts) {
       globalThis.echarts = originalEcharts;
     } else {
@@ -438,6 +446,42 @@ describe("dashboard group event analytics", () => {
     viewsHeader.click();
     expect(viewsHeader.closest("th").getAttribute("aria-sort")).to.equal("descending");
     expect(rowSources()).to.deep.equal(["beta", "", "alpha"]);
+  });
+
+  it("keeps the selected UTM dimension and single control bindings on a color theme change", async () => {
+    // Render the page marker under the light theme and switch to the medium dimension.
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
+    const root = renderAnalyticsFixture(getEventAnalyticsPayload());
+    await initializeEventAnalyticsFromPage(root);
+    root.querySelector('[data-utm-dimension="medium"]').click();
+    const firstPalette = getOption("event-views-daily-chart").series.map((series) => series.itemStyle.color);
+
+    // Switch to a new palette and announce the dark theme.
+    [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].forEach((shade, index) => {
+      document.documentElement.style.setProperty(
+        `--color-primary-${shade}`,
+        `#00ff${String(index).padStart(2, "0")}`,
+      );
+    });
+    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    document.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT));
+    await waitForFrameThenTask();
+
+    // Assert the charts re-rendered with the new palette and kept the medium dimension.
+    const nextPalette = getOption("event-views-daily-chart").series.map((series) => series.itemStyle.color);
+    expect(firstPalette.some((color) => color.startsWith("#0000"))).to.equal(true);
+    expect(nextPalette).to.deep.equal(firstPalette.map((color) => color.replace(/^#0000/, "#00ff")));
+    expect(getOption("event-utm-values-chart").yAxis.data).to.deep.equal(["email", "Not specified"]);
+    expect(root.querySelector('[data-utm-dimension="medium"]').getAttribute("aria-pressed")).to.equal("true");
+
+    // Assert one click on a control runs its handler once.
+    const valuesRenders = rendersById.get("event-utm-values-chart");
+    root.querySelector('[data-utm-dimension="campaign"]').click();
+    expect(rendersById.get("event-utm-values-chart")).to.equal(valuesRenders + 1);
+    root.querySelector('[data-utm-sort="source"]').click();
+    expect(root.querySelector('[data-utm-sort="source"]').closest("th").getAttribute("aria-sort")).to.equal(
+      "ascending",
+    );
   });
 
   it("charts registration paths as shares without value axis labels", async () => {

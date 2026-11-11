@@ -45,7 +45,7 @@
     <tbody id="sponsors-list" role="rowgroup">
       {% if sponsors.is_empty() -%}
         {# Empty state -#}
-        <tr class="bg-white border-b border-stone-200">
+        <tr class="bg-surface border-b border-stone-200">
           {# Below xl: 3 columns (Sponsor, Featured, Actions) -#}
           <td class="xl:hidden px-8 py-12 text-center" colspan="3">
             {% include "dashboard/placeholders/group_sponsors_table.html" -%}
@@ -60,11 +60,11 @@
       {% else -%}
         {% for sponsor in sponsors -%}
           {# Sponsor row -#}
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+          <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
             {# Sponsor -#}
             <td class="px-3 xl:px-5 py-4 min-w-[140px] max-w-[220px] xl:max-w-[320px] 2xl:max-w-[420px]">
               <div class="flex items-center space-x-4 min-w-0">
-                <div class="h-10 w-10 min-w-10 rounded-lg overflow-hidden outline outline-1 outline-stone-300 border border-stone-200 border-[5px] border-white bg-white">
+                <div class="plate h-10 w-10 min-w-10 rounded-lg overflow-hidden outline outline-1 outline-plate-edge border border-[5px] border-plate bg-plate">
                   <img src="{{ sponsor.logo_url }}"
                        alt="{{ sponsor.name }} logo"
                        class="h-full w-full object-contain"
@@ -84,7 +84,7 @@
                 <a href="{{ website|safe_href }}"
                    target="_blank"
                    rel="noopener"
-                   class="block max-w-full truncate text-primary-600 hover:underline">{{ website }}</a>
+                   class="block max-w-full truncate text-primary-fg-strong hover:underline">{{ website }}</a>
               {% else -%}
                 -
               {% endif -%}

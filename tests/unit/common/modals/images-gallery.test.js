@@ -183,20 +183,21 @@ describe("images-gallery", () => {
     // Inline gallery image containers keep relative positioning.
     expect(thumbnailButton?.classList.contains("relative")).to.equal(true);
     expect(thumbnailButton?.classList.contains("overflow-hidden")).to.equal(true);
-    expect(thumbnailButton?.classList.contains("bg-white")).to.equal(true);
-    expect(thumbnailButton?.classList.contains("hover:outline-primary-300")).to.equal(true);
+    expect(thumbnailButton?.classList.contains("bg-surface")).to.equal(true);
+    expect(thumbnailButton?.classList.contains("plate")).to.equal(false);
+    expect(thumbnailButton?.classList.contains("hover:outline-primary-edge-soft")).to.equal(true);
     expect(thumbnailButton?.classList.contains("hover:shadow-sm")).to.equal(true);
     expect(mobileImage?.parentElement?.classList.contains("relative")).to.equal(
       true,
     );
     expect(mobileImage?.parentElement?.classList.contains("overflow-hidden")).to.equal(true);
-    expect(mobileImage?.parentElement?.classList.contains("bg-white")).to.equal(true);
+    expect(mobileImage?.parentElement?.classList.contains("bg-surface")).to.equal(true);
 
     // Phones show the button tile and drop the static one.
     expect(thumbnailButton?.parentElement?.classList.contains("phone:block")).to.equal(true);
     expect(mobileImage?.parentElement?.classList.contains("phone:hidden")).to.equal(true);
 
-    // Broken thumbnails keep the white mat and clip the fallback inside it.
+    // Broken thumbnails keep the mat and clip the fallback inside it.
     applyBrokenImagePlaceholder(thumbnailImage);
     const thumbnailFallback = thumbnailImage?.nextElementSibling;
     expect(thumbnailFallback?.classList.contains("m-[5px]")).to.equal(true);
@@ -216,6 +217,11 @@ describe("images-gallery", () => {
     expect(modalImage?.parentElement?.classList.contains("relative")).to.equal(
       false,
     );
+
+    // The lightbox photo carries the thumbnails' mat and edge, so its frame shows in dark too.
+    for (const className of ["border-surface", "outline", "outline-offset-1", "outline-plate-edge"]) {
+      expect(modalImage?.classList.contains(className)).to.equal(true);
+    }
   });
 
   it("closes the modal from escape and background clicks", async () => {
@@ -736,13 +742,28 @@ describe("images-gallery", () => {
     expect(controls).to.have.length(4);
     controls.forEach((control) => {
       expect(control.classList.contains("focus-visible:ring-2")).to.equal(true);
-      expect(control.classList.contains("focus-visible:ring-primary-300")).to.equal(true);
+      expect(control.classList.contains("focus-visible:ring-primary-halo")).to.equal(true);
       expect(control.classList.contains("phone:focus-visible:ring-2")).to.equal(false);
     });
 
     // Verify the lightbox controls drop the global outline so only the ring shows.
     controls.slice(1).forEach((control) => {
       expect(control.classList.contains("focus-visible:outline-none")).to.equal(true);
+    });
+  });
+
+  it("paints the prev and next icons stone-900 on their ink pills", async () => {
+    const element = await mountLitComponent("images-gallery", { images: IMAGES });
+
+    // Only the controls are light islands, so the photo frame follows the color theme.
+    expect(element.querySelector(".modal-container")?.classList.contains("ink")).to.equal(false);
+    expect(element.querySelector(".modal img")?.closest(".ink")).to.equal(null);
+    const icons = [element.querySelector(".icon-prev"), element.querySelector(".icon-next")];
+    icons.forEach((icon) => {
+      expect(icon?.classList.contains("bg-stone-900")).to.equal(true);
+      expect(icon?.classList.contains("bg-stone-950")).to.equal(false);
+      expect(icon?.parentElement?.classList.contains("bg-stone-200/75")).to.equal(true);
+      expect(icon?.parentElement?.classList.contains("ink")).to.equal(true);
     });
   });
 });

@@ -68,10 +68,13 @@ select is(
     (
         select jsonb_build_object(
             'attendee_approval_required', (r.resolved).attendee_approval_required,
+            'banner_dark_url', (r.resolved).banner_dark_url,
+            'banner_mobile_dark_url', (r.resolved).banner_mobile_dark_url,
             'banner_url', (r.resolved).banner_url,
             'event_category_id', (r.resolved).event_category_id,
             'event_kind_id', (r.resolved).event_kind_id,
             'event_reminder_enabled', (r.resolved).event_reminder_enabled,
+            'logo_dark_url', (r.resolved).logo_dark_url,
             'manual_tax_rate_ids', to_jsonb((r.resolved).manual_tax_rate_ids),
             'meeting_hosts', to_jsonb((r.resolved).meeting_hosts),
             'meeting_provider_id', (r.resolved).meeting_provider_id,
@@ -93,9 +96,12 @@ select is(
         )
         from resolve_event_payload(
             format('{
+                "banner_dark_url": "",
+                "banner_mobile_dark_url": "https://example.test/banner-mobile-dark.png",
                 "banner_url": "",
                 "category_id": "%s",
                 "kind_id": "virtual",
+                "logo_dark_url": "",
                 "meeting_hosts": ["host@example.test"],
                 "meeting_provider_id": "",
                 "name": "Resolved Event",
@@ -113,10 +119,13 @@ select is(
     ),
     format('{
         "attendee_approval_required": false,
+        "banner_dark_url": null,
+        "banner_mobile_dark_url": "https://example.test/banner-mobile-dark.png",
         "banner_url": null,
         "event_category_id": "%s",
         "event_kind_id": "virtual",
         "event_reminder_enabled": true,
+        "logo_dark_url": null,
         "manual_tax_rate_ids": [],
         "meeting_hosts": ["host@example.test"],
         "meeting_provider_id": null,

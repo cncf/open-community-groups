@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { queryE2eDatabase, sqlString, sqlUuid, sqlUuidArray } from "../database.js";
+import { queryE2eDatabase, sqlNullableString, sqlString, sqlUuid, sqlUuidArray } from "../database.js";
 import { TEST_EVENT_CATEGORY_IDS, TEST_USER_IDS } from "../seed.js";
 import { shortId, uniqueName } from "../utils.js";
 import { setupTemporaryUser } from "./users.js";
@@ -86,6 +86,10 @@ export const cleanupEventsByIds = (eventIds) => {
  * @param {{
  *   approvalRequired?: boolean,
  *   attendeeUserIds?: string[],
+ *   bannerDarkUrl?: string | null,
+ *   bannerMobileDarkUrl?: string | null,
+ *   bannerMobileUrl?: string | null,
+ *   bannerUrl?: string | null,
  *   capacity?: number,
  *   categoryId?: string,
  *   description?: string,
@@ -95,6 +99,8 @@ export const cleanupEventsByIds = (eventIds) => {
  *   eventId?: string,
  *   groupId: string,
  *   kind?: "hybrid" | "in-person" | "virtual",
+ *   logoDarkUrl?: string | null,
+ *   logoUrl?: string | null,
  *   meetingJoinUrl?: string | null,
  *   name?: string,
  *   organizerUserIds?: string[],
@@ -122,12 +128,18 @@ export const cleanupEventsByIds = (eventIds) => {
  * without a window when both registration bounds are omitted. A published event was published `publishedAgo` (a SQL
  * interval) before now, now when omitted, and has no `published_at` when it is null. `publishedBy`
  * defaults to organizer1 when published.
- * `waitlist` lists user IDs queued for the first tier, oldest first.
+ * `waitlist` lists user IDs queued for the first tier, oldest first. The event has no logo or
+ * banners of its own, so it shows the group and community ones, unless `logoUrl`, `bannerUrl` or
+ * `bannerMobileUrl` set them, each with an optional dark mode variant.
  * @returns {{ eventId: string, name: string, slug: string, ticketTypeIds: Record<string, string> }}
  */
 export const insertOwnedEvent = ({
   approvalRequired = false,
   attendeeUserIds = [],
+  bannerDarkUrl = null,
+  bannerMobileDarkUrl = null,
+  bannerMobileUrl = null,
+  bannerUrl = null,
   capacity = 10,
   categoryId = TEST_EVENT_CATEGORY_IDS.general,
   description = "Owned event used by E2E coverage.",
@@ -137,6 +149,8 @@ export const insertOwnedEvent = ({
   eventId = randomUUID(),
   groupId,
   kind = "virtual",
+  logoDarkUrl = null,
+  logoUrl = null,
   meetingJoinUrl = null,
   name,
   organizerUserIds = [TEST_USER_IDS.organizer1],
@@ -216,19 +230,25 @@ export const insertOwnedEvent = ({
       capacity,
       attendee_approval_required,
       test_event,
-      waitlist_enabled
+      waitlist_enabled,
+      banner_url,
+      banner_dark_url,
+      banner_mobile_url,
+      banner_mobile_dark_url,
+      logo_url,
+      logo_dark_url
     ) values (
       ${eventUuid},
       ${sqlString(eventName)},
       ${sqlString(eventSlug)},
       ${sqlString(description)},
-      ${descriptionShort === null ? "null" : sqlString(descriptionShort)},
+      ${sqlNullableString(descriptionShort)},
       ${sqlString(timezone)},
       ${sqlUuid(categoryId)},
       ${sqlString(kind)},
       ${sqlUuid(groupId)},
-      ${meetingJoinUrl === null ? "null" : sqlString(meetingJoinUrl)},
-      ${paymentCurrencyCode === null ? "null" : sqlString(paymentCurrencyCode)},
+      ${sqlNullableString(meetingJoinUrl)},
+      ${sqlNullableString(paymentCurrencyCode)},
       ${published},
       ${publishedAtSql},
       ${publishedBy === null ? "null" : sqlUuid(publishedBy)},
@@ -239,7 +259,13 @@ export const insertOwnedEvent = ({
       ${ownedTiers.reduce((total, tier) => total + tier.seats, 0)},
       ${approvalRequired},
       ${testEvent},
-      ${waitlistEnabled}
+      ${waitlistEnabled},
+      ${sqlNullableString(bannerUrl)},
+      ${sqlNullableString(bannerDarkUrl)},
+      ${sqlNullableString(bannerMobileUrl)},
+      ${sqlNullableString(bannerMobileDarkUrl)},
+      ${sqlNullableString(logoUrl)},
+      ${sqlNullableString(logoDarkUrl)}
     );
 
     insert into event_ticket_type (

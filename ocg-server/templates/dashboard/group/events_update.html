@@ -25,12 +25,16 @@
      data-community-name="{{ event.community.name }}"
      data-community-display-name="{{ event.community.display_name }}"
      data-community-logo-url="{{ event.community.logo_url }}"
+     data-community-logo-dark-url="{%- if let Some(logo_dark_url) = &event.community.logo_dark_url -%}{{ logo_dark_url }}{%- endif -%}"
      data-community-banner-url="{{ event.community.banner_url }}"
+     data-community-banner-dark-url="{%- if let Some(banner_dark_url) = &event.community.banner_dark_url -%}{{ banner_dark_url }}{%- endif -%}"
      data-community-banner-mobile-url="{{ event.community.banner_mobile_url }}"
      data-group-name="{{ event.group.name }}"
      data-group-slug="{{ event.group.public_slug() }}"
      data-group-logo-url="{{ event.group.logo_url }}"
+     data-group-logo-dark-url="{%- if let Some(logo_dark_url) = &event.group.logo_dark_url -%}{{ logo_dark_url }}{%- endif -%}"
      data-group-banner-url="{%- if let Some(banner_url) = &event.group.banner_url -%}{{ banner_url }}{%- endif -%}"
+     data-group-banner-dark-url="{%- if let Some(banner_dark_url) = &event.group.banner_dark_url -%}{{ banner_dark_url }}{%- endif -%}"
      data-group-banner-mobile-url="{%- if let Some(banner_mobile_url) = &event.group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}">
   <div class="col-span-full min-w-0 space-y-4">
     {# Back to the events list tab holding this event, guarded when the event has pending changes -#}
@@ -41,15 +45,15 @@
        hx-target="body"
        hx-indicator="#dashboard-spinner"
        data-pending-changes-guard
-       class="flex w-fit items-center gap-1 text-sm font-medium text-primary-500 hover:underline">
-      <span class="svg-icon size-4 icon-arrow-left bg-primary-500"
+       class="flex w-fit items-center gap-1 text-sm font-medium text-primary-fg hover:underline">
+      <span class="svg-icon size-4 icon-arrow-left bg-primary-fg"
             aria-hidden="true"></span>
       Back to events
     </a>
     {# End back to events -#}
 
     {# Event header -#}
-    <header class="rounded-lg border border-stone-200 bg-white">
+    <header class="rounded-lg border border-stone-200 bg-surface">
       {# Event title and publish action -#}
       <div class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6 sm:py-5">
         <h1 class="min-w-0 break-words text-xl font-semibold leading-tight text-stone-900 lg:text-2xl">{{ event.name }}</h1>
@@ -81,7 +85,7 @@
                 {% else -%}
                   title="Publish"
                 {% endif -%}>
-          <div class="svg-icon size-4 icon-check shrink-0 bg-white"></div>
+          <div class="svg-icon size-4 icon-check shrink-0 bg-on-primary"></div>
           <span>Publish</span>
         </button>
       </div>
@@ -166,7 +170,7 @@
   </div>
 
   <div id="pending-changes-alert" class="col-span-full hidden min-w-0">
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-edge-faint bg-primary-tint px-4 py-3 text-primary-fg-deep">
       <p class="min-w-0 flex-1 break-words text-sm/6">You have pending changes. If you leave without saving, changes will be lost.</p>
       <button id="update-event-button"
               type="button"
@@ -271,18 +275,35 @@
                   {% let logo_value -%}value="{%- if let Some(custom_logo_url) = &event.custom_logo_url -%}{{ custom_logo_url }}{%- endif -%}"{%- endlet %}
                 {% let banner_value -%}value="{%- if let Some(banner_url) = &event.banner_url -%}{{ banner_url }}{%- endif -%}"{%- endlet %}
               {% let banner_mobile_value -%}value="{%- if let Some(banner_mobile_url) = &event.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endlet %}
+            {# djlint:off #}
+            {% let logo_dark_value -%}value="{%- if let Some(custom_logo_dark_url) = &event.custom_logo_dark_url -%}{{ custom_logo_dark_url }}{%- endif -%}"{%- endlet %}
+            {% let banner_dark_value -%}value="{%- if let Some(banner_dark_url) = &event.banner_dark_url -%}{{ banner_dark_url }}{%- endif -%}"{%- endlet %}
+            {% let banner_mobile_dark_value -%}value="{%- if let Some(banner_mobile_dark_url) = &event.banner_mobile_dark_url -%}{{ banner_mobile_dark_url }}{%- endif -%}"{%- endlet %}
+            {# djlint:on #}
 
             {# Logo URL -#}
             {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", value_attr = logo_value, field_class = "col-span-full 2xl:col-span-4", input_class = "w-full block") -}}
             {# End Logo URL -#}
 
+            {# Logo dark URL -#}
+            {{ form_fields::image_field(label = "Logo (dark mode)", name = "logo_dark_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "Optional. Shown instead of the logo in dark mode, without the white background. Used only together with the logo above.", value_attr = logo_dark_value, field_class = "col-span-full 2xl:col-span-4", input_class = "w-full block", extra_attrs = "dark-preview") -}}
+            {# End Logo dark URL -#}
+
             {# Banner URL -#}
             {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_value, input_class = "w-full block") -}}
             {# End Banner URL -#}
 
+            {# Banner dark URL -#}
+            {{ form_fields::image_field(label = "Banner (dark mode)", name = "banner_dark_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "Optional. Shown instead of the banner in dark mode. Used only together with the banner above.", value_attr = banner_dark_value, input_class = "w-full block", extra_attrs = "dark-preview") -}}
+            {# End Banner dark URL -#}
+
             {# Banner Mobile URL -#}
             {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_mobile_value, input_class = "w-full block") -}}
             {# End Banner Mobile URL -#}
+
+            {# Banner Mobile dark URL -#}
+            {{ form_fields::image_field(label = "Banner Mobile (dark mode)", name = "banner_mobile_dark_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "Optional. Shown instead of the mobile banner in dark mode. Used only together with the mobile banner above.", value_attr = banner_mobile_dark_value, input_class = "w-full block", extra_attrs = "dark-preview") -}}
+            {# End Banner Mobile dark URL -#}
 
             {# Short Description -#}
             <div class="col-span-full">
@@ -1083,7 +1104,7 @@
                    target="_blank"
                    rel="noopener noreferrer"
                    hx-boost="false"
-                   class="mt-3 inline-block text-sm font-medium text-primary-700 hover:text-primary-800 hover:underline"
+                   class="mt-3 inline-block text-sm font-medium text-primary-fg-hover hover:text-primary-fg-hover-strong hover:underline"
                    data-automatic-tax-readiness-role="manual-tax-help"
                    hidden>Learn how to configure manual tax</a>
               </div>
@@ -1099,7 +1120,7 @@
                   <label for="manual-tax-rates">Manual Stripe Tax Rates</label>
                   <span class="group/manual-tax-info relative inline-flex align-super">
                     <button type="button"
-                            class="relative inline-flex cursor-help rounded-full before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                            class="relative inline-flex cursor-help rounded-full before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge"
                             aria-label="About Manual Stripe Tax Rates"
                             aria-describedby="manual-tax-rates-info">
                       <span class="svg-icon size-3 icon-question-mark bg-stone-500"

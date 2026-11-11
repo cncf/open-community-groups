@@ -49,6 +49,26 @@ const renderSheetFixture = () => {
         <li role="none">
           <a id="home-row" href="/" role="menuitem">Home</a>
         </li>
+        <li class="account-sheet-theme" role="none">
+          <div id="user-menu-theme-label" aria-hidden="true">Theme</div>
+          <ul role="group" aria-labelledby="user-menu-theme-label">
+            <li role="none">
+              <button type="button" role="menuitemradio" aria-checked="false" data-ocg-theme-choice="light">
+                Light
+              </button>
+            </li>
+            <li role="none">
+              <button type="button" role="menuitemradio" aria-checked="false" data-ocg-theme-choice="dark">
+                Dark
+              </button>
+            </li>
+            <li role="none">
+              <button type="button" role="menuitemradio" aria-checked="true" data-ocg-theme-choice="system">
+                System
+              </button>
+            </li>
+          </ul>
+        </li>
         <li style="display: none" role="none">
           <button id="mobile-version" type="button" role="menuitem">Mobile version</button>
         </li>
@@ -613,6 +633,21 @@ describe("header", () => {
       expect(dropdown.classList.contains("hidden")).to.equal(false);
     });
 
+    it("closes the anchored menu after a theme choice click and returns focus", () => {
+      // Open the anchored menu with the phone query off.
+      media = stubMatchMedia();
+      const { dropdown, userButton } = renderSheetFixture();
+      userButton.click();
+
+      // Pick a color theme.
+      dropdown.querySelector('[data-ocg-theme-choice="dark"]').click();
+
+      // Verify the menu closes and its trigger takes focus back.
+      expect(dropdown.classList.contains("hidden")).to.equal(true);
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+      expect(document.activeElement).to.equal(userButton);
+    });
+
     it("closes the anchored menu from Sign up without moving focus", () => {
       // Open the anchored menu with the phone query off.
       media = stubMatchMedia();
@@ -737,22 +772,60 @@ describe("header", () => {
       expect(dropdown.classList.contains("hidden")).to.equal(false);
     });
 
+    it("closes the sheet after a theme choice click and returns focus", () => {
+      // Open the sheet.
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
+      const { dropdown, userButton } = renderSheetFixture();
+      userButton.click();
+
+      // Pick a color theme.
+      dropdown.querySelector('[data-ocg-theme-choice="dark"]').click();
+
+      // Verify the sheet closes, releases the page and hands focus back to its trigger.
+      expect(dropdown.classList.contains("hidden")).to.equal(true);
+      expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
+      expect(document.activeElement).to.equal(userButton);
+    });
+
     it("traps Tab over the rendered rows, including the hidden class row", () => {
       // Open the sheet.
       media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { close, userButton } = renderSheetFixture();
       userButton.click();
       const desktopVersion = document.getElementById("desktop-version");
-      const pressTab = (shiftKey = false) =>
-        document.dispatchEvent(
-          new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Tab", shiftKey }),
-        );
+      const pressTab = (shiftKey = false) => {
+        const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Tab", shiftKey });
+        document.dispatchEvent(event);
+        return event;
+      };
 
       // Verify Shift+Tab wraps to the last rendered row.
       pressTab(true);
       expect(document.activeElement).to.equal(desktopVersion);
 
       // Verify Tab wraps back to the close button.
+      pressTab();
+      expect(document.activeElement).to.equal(close);
+
+      // Verify Tab moves on natively from each theme choice inside the cycle.
+      const themeChoices = [...document.querySelectorAll("[data-ocg-theme-choice]")];
+      expect(themeChoices.map((choice) => choice.dataset.ocgThemeChoice)).to.deep.equal([
+        "light",
+        "dark",
+        "system",
+      ]);
+      themeChoices.forEach((choice) => {
+        choice.focus();
+        expect(pressTab().defaultPrevented).to.equal(false);
+        expect(pressTab(true).defaultPrevented).to.equal(false);
+        expect(document.activeElement).to.equal(choice);
+      });
+
+      // Verify the trap wraps at the theme row once it is the last rendered row.
+      desktopVersion.closest("li").style.display = "none";
+      close.focus();
+      pressTab(true);
+      expect(document.activeElement).to.equal(themeChoices.at(-1));
       pressTab();
       expect(document.activeElement).to.equal(close);
     });

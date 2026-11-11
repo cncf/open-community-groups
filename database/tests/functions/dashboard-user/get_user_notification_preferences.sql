@@ -26,8 +26,12 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Active community containing most muted groups
-select fx_community(:'communityID', jsonb_build_object('display_name', 'Active Community'));
+-- Active community containing most muted groups, whose logos are never used as a fallback
+select fx_community(:'communityID', jsonb_build_object(
+    'display_name', 'Active Community',
+    'logo_dark_url', 'https://fixture.test/active-community-dark.png',
+    'logo_url', 'https://fixture.test/active-community.png'
+));
 
 -- Inactive community containing an unavailable muted group
 select fx_community(:'inactiveCommunityID', jsonb_build_object(
@@ -47,8 +51,9 @@ select fx_user(:'emptyUserID');
 -- User with opt-outs and muted groups
 select fx_user(:'userID');
 
--- Available muted group
+-- Available muted group with its own logos
 select fx_group(:'activeGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'logo_dark_url', 'https://fixture.test/active-dark.png',
     'logo_url', 'https://fixture.test/active.png',
     'name', 'Active Muted Group'
 ));
@@ -66,9 +71,10 @@ select fx_group(:'inactiveCommunityGroupID', :'inactiveCommunityID', :'inactiveC
     'name', 'Inactive Community Muted Group'
 ));
 
--- Inactive muted group listed as unavailable
+-- Inactive muted group listed as unavailable, with an orphan dark logo ignored
 select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', false,
+    'logo_dark_url', 'https://fixture.test/inactive-orphan-dark.png',
     'name', 'Inactive Muted Group'
 ));
 
@@ -118,8 +124,10 @@ select is(
             'available', true,
             'community_display_name', 'Active Community',
             'group_id', :'activeGroupID'::uuid,
-            'logo_url', 'https://fixture.test/active.png',
-            'name', 'Active Muted Group'
+            'name', 'Active Muted Group',
+
+            'logo_dark_url', 'https://fixture.test/active-dark.png',
+            'logo_url', 'https://fixture.test/active.png'
         ),
         jsonb_build_object(
             'available', false,

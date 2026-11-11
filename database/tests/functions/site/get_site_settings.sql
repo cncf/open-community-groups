@@ -27,6 +27,7 @@ insert into site (
     copyright_notice,
     favicon_url,
     footer_logo_url,
+    header_logo_dark_url,
     header_logo_url,
     og_image_url
 ) values (
@@ -38,6 +39,7 @@ insert into site (
     'Copyright 2024 Test Site',
     'https://example.com/favicon.ico',
     'https://example.com/footer-logo.png',
+    'https://example.com/header-logo-dark.png',
     'https://example.com/header-logo.png',
     'https://example.com/og-image.png'
 );
@@ -57,6 +59,7 @@ select is(
         'copyright_notice', 'Copyright 2024 Test Site',
         'favicon_url', 'https://example.com/favicon.ico',
         'footer_logo_url', 'https://example.com/footer-logo.png',
+        'header_logo_dark_url', 'https://example.com/header-logo-dark.png',
         'header_logo_url', 'https://example.com/header-logo.png',
         'og_image_url', 'https://example.com/og-image.png'
     ),

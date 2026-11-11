@@ -35,6 +35,17 @@ returns json as $$
                 ec.event_cohost_status_id as status,
                 e.timezone,
 
+                -- Pair the event's dark logo with the level that provides its light logo
+                paired_dark_image_url(
+                    e.logo_url, e.logo_dark_url,
+                    owner_group.logo_url, owner_group.logo_dark_url,
+                    owner_community.logo_url, owner_community.logo_dark_url
+                ) as event_logo_dark_url,
+                -- Pair the owner group's dark logo with the level that provides its light logo
+                paired_dark_image_url(
+                    owner_group.logo_url, owner_group.logo_dark_url,
+                    owner_community.logo_url, owner_community.logo_dark_url
+                ) as owner_group_logo_dark_url,
                 owner_group.slug_pretty as owner_group_slug_pretty
             from event_cohost ec
             join event e using (event_id)
@@ -79,6 +90,8 @@ returns json as $$
                         'timezone', timezone,
 
                         'ends_at', epoch_seconds(ends_at),
+                        'event_logo_dark_url', event_logo_dark_url,
+                        'owner_group_logo_dark_url', owner_group_logo_dark_url,
                         'owner_group_slug_pretty', owner_group_slug_pretty,
                         'responded_at', epoch_seconds(responded_at),
                         'starts_at', epoch_seconds(starts_at)

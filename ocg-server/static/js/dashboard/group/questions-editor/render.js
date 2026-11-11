@@ -137,11 +137,11 @@ const renderQuestionCard = (editor, question, questionIndex) => html`
     </button>
     <div
       class=${[
-        "min-w-0 flex-1 rounded-md border border-stone-200 bg-white p-4",
+        "min-w-0 flex-1 rounded-md border border-stone-200 bg-surface p-4",
         editor._dragOverQuestionIndex === questionIndex &&
         editor._draggedQuestionIndex !== null &&
         editor._draggedQuestionIndex !== questionIndex
-          ? "ring-2 ring-primary-300"
+          ? "ring-2 ring-primary-halo"
           : "",
       ].join(" ")}
     >
@@ -374,7 +374,7 @@ const renderDraftOptions = (editor) => html`
             editor._dragOverOptionIndex === optionIndex &&
             editor._draggedOptionIndex !== null &&
             editor._draggedOptionIndex !== optionIndex
-              ? "ring-2 ring-primary-300"
+              ? "ring-2 ring-primary-halo"
               : "",
             editor._draggedOptionIndex === optionIndex ? "opacity-70" : "",
           ].join(" ")}

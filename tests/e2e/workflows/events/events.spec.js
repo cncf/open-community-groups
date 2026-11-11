@@ -330,6 +330,8 @@ test.describe("event management workflows", () => {
 
     // Define rich event values for the create and update flow.
     const initialValues = {
+      bannerDarkPath: TEST_UPLOAD_ASSET_PATHS.darkBanner,
+      bannerMobileDarkPath: TEST_UPLOAD_ASSET_PATHS.darkBannerMobile,
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
       seatsTotal: "120",
@@ -351,6 +353,7 @@ test.describe("event management workflows", () => {
       ],
       kindId: "hybrid",
       labels: ["track / platform"],
+      logoDarkPath: TEST_UPLOAD_ASSET_PATHS.darkLogo,
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
       lumaUrl: "https://luma.com/e2e-rich-event-initial",
       meetupUrl: "https://meetup.com/e2e-rich-event-initial",
@@ -392,6 +395,8 @@ test.describe("event management workflows", () => {
       waitlistEnabled: true,
     };
     const updatedValues = {
+      bannerDarkPath: TEST_UPLOAD_ASSET_PATHS.darkBanner,
+      bannerMobileDarkPath: TEST_UPLOAD_ASSET_PATHS.darkBannerMobile,
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
       seatsTotal: "180",
@@ -413,6 +418,7 @@ test.describe("event management workflows", () => {
       ],
       kindId: "hybrid",
       labels: ["track / cloud", "track / devex"],
+      logoDarkPath: TEST_UPLOAD_ASSET_PATHS.darkLogo,
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
       lumaUrl: "https://luma.com/e2e-rich-event-updated",
       meetupUrl: "https://meetup.com/e2e-rich-event-updated",
@@ -472,6 +478,9 @@ test.describe("event management workflows", () => {
       await uploadImageField(organizerGroupPage, "logo_url", values.logoPath);
       await uploadImageField(organizerGroupPage, "banner_url", values.bannerPath);
       await uploadImageField(organizerGroupPage, "banner_mobile_url", values.bannerMobilePath);
+      await uploadImageField(organizerGroupPage, "logo_dark_url", values.logoDarkPath);
+      await uploadImageField(organizerGroupPage, "banner_dark_url", values.bannerDarkPath);
+      await uploadImageField(organizerGroupPage, "banner_mobile_dark_url", values.bannerMobileDarkPath);
       await organizerGroupPage.locator("#description_short").fill(values.descriptionShort);
       await fillMarkdownEditor(organizerGroupPage, "description", values.description);
       await openPaymentsSection(organizerGroupPage);
@@ -640,6 +649,11 @@ test.describe("event management workflows", () => {
     await expect(
       organizerGroupPage.locator('image-field[name="banner_mobile_url"] input[name="banner_mobile_url"]'),
     ).toHaveValue(/\/images\//);
+    for (const name of ["logo_dark_url", "banner_dark_url", "banner_mobile_dark_url"]) {
+      await expect(
+        organizerGroupPage.locator(`image-field[name="${name}"] input[name="${name}"]`),
+      ).toHaveValue(/\/images\//);
+    }
     await expect(
       organizerGroupPage.locator('multiple-inputs[field-name="tags"] input[name="tags[]"]'),
     ).toHaveCount(updatedValues.tags.length);
@@ -928,21 +942,24 @@ test.describe("event management workflows", () => {
       );
     };
 
-    // Count the seeded CFS summit row while it has no logo of its own.
+    // Count the seeded CFS summit row while it has neither a logo nor a dark logo of its own.
     const countCfsSummitWithoutOwnLogo = () =>
       queryCount(`
         select count(*)
         from event
         where event_id = ${sqlUuid(TEST_EVENT_IDS.alpha.cfsSummit)}
         and logo_url is null
+        and logo_dark_url is null
       `);
 
     // Read the original seeded values before mutating the event, whose logo falls back to the group.
     expect(countCfsSummitWithoutOwnLogo()).toBe(1);
     const originalValues = await readEventValues();
-    await expect(
-      organizerGroupPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
-    ).toHaveValue("");
+    for (const name of ["logo_url", "logo_dark_url"]) {
+      await expect(
+        organizerGroupPage.locator(`image-field[name="${name}"] input[name="${name}"]`),
+      ).toHaveValue("");
+    }
 
     // Build updated values relative to the original seeded values.
     const updatedValues = {

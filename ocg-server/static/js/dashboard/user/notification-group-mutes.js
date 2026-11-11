@@ -278,7 +278,7 @@ export class NotificationGroupMutes extends LitWrapper {
     return html`
       <div
         data-group-mute-dropdown
-        class="absolute start-0 end-0 z-10 mt-1 max-h-72 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow ${
+        class="absolute start-0 end-0 z-10 mt-1 max-h-72 overflow-y-auto rounded-lg border border-stone-200 bg-raised shadow ${
           this._combobox.isOpen ? "" : "hidden"
         }"
       >
@@ -535,29 +535,56 @@ const handleUnmuteBeforeOnLoad = (event) => {
 /**
  * Renders a group logo with the framed style used on group pages. Groups
  * without a logo show the same placeholder used for images that fail to load.
+ * A dark mode logo, used only with the light one, renders as an unplated
+ * sibling that CSS shows in dark mode instead, like the ui::logo template
+ * macro.
  * @param {Object} group Group option.
  * @returns {import("lit").TemplateResult}
  */
-const renderGroupLogo = (group) => html`
-  <span
-    class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[5px] border-white outline outline-1 outline-stone-300 ${
-      group.logo_url ? "bg-white" : "bg-stone-50"
-    }"
-  >
-    ${
-      group.logo_url
-        ? html`<img
-            src=${group.logo_url}
-            alt=""
-            class="h-full w-full object-contain"
-            width="36"
-            height="36"
-            loading="lazy"
-          />`
-        : html`<span class="svg-icon size-5 icon-broken-image bg-stone-400" aria-hidden="true"></span>`
-    }
-  </span>
-`;
+const renderGroupLogo = (group) => {
+  const hasDarkLogo = Boolean(group.logo_url && group.logo_dark_url);
+  const plate = html`
+    <span
+      class="plate flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[5px] border-plate outline outline-1 outline-plate-edge ${
+        group.logo_url ? "bg-plate" : "bg-stone-50"
+      }"
+      data-theme-image=${hasDarkLogo ? "light" : nothing}
+    >
+      ${
+        group.logo_url
+          ? html`<img
+              src=${group.logo_url}
+              alt=""
+              class="h-full w-full object-contain"
+              width="36"
+              height="36"
+              loading="lazy"
+            />`
+          : html`<span class="svg-icon size-5 icon-broken-image bg-stone-400" aria-hidden="true"></span>`
+      }
+    </span>
+  `;
+  if (!hasDarkLogo) {
+    return plate;
+  }
+
+  return html`
+    ${plate}
+    <span
+      class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[5px] border-transparent outline outline-1 outline-stone-200"
+      data-theme-image="dark"
+    >
+      <img
+        src=${group.logo_dark_url}
+        alt=""
+        class="h-full w-full object-contain"
+        width="36"
+        height="36"
+        loading="lazy"
+      />
+    </span>
+  `;
+};
 
 customElements.define("notification-group-mutes", NotificationGroupMutes);
 initializeMutedGroupsSwapFocusRecovery();

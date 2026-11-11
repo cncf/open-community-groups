@@ -63,7 +63,7 @@
            class="text-sm font-semibold text-nowrap text-stone-900">Sort by</label>
     <select id="waitlist-sort"
             name="sort"
-            class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
+            class="block h-10 w-40 rounded-md border border-stone-200 bg-surface px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-edge focus:border-stone-200 focus:ring-0 focus:hover:border-primary-edge disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
             {% if waitlist.is_empty() -%}
               disabled
             {% endif -%}>
@@ -174,7 +174,7 @@
     <tbody id="waitlist-list" role="rowgroup">
       {% if waitlist.is_empty() -%}
         {# Empty state -#}
-        <tr class="bg-white border-b border-stone-200">
+        <tr class="bg-surface border-b border-stone-200">
           <td class="xl:hidden px-8 py-12 text-center" colspan="3">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
@@ -219,11 +219,11 @@
       {% else -%}
         {% for entry in waitlist -%}
           {# Waitlist row -#}
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+          <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
             {# Entry -#}
             <td class="px-3 xl:px-5 py-4 max-w-0 xl:w-[30%]">
               {% call dashboard::user_profile_modal_trigger(entry.user, self::user_initials(entry.user.name.as_deref() , entry.user.username.as_str())) -%}
-              <div class="font-medium text-stone-900 truncate mb-1 group-hover:text-primary-600">{{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}</div>
+              <div class="font-medium text-stone-900 truncate mb-1 group-hover:text-primary-fg-strong">{{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}</div>
               {% endcall -%}
             </td>
             {# End entry -#}
@@ -298,7 +298,7 @@
                     </button>
                     <div id="dropdown-actions-{{ row_key }}"
                          data-event-actions-dropdown
-                         class="dropdown absolute end-0 top-8 z-10 hidden w-[280px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                         class="dropdown absolute end-0 top-8 z-10 hidden w-[280px] overflow-hidden rounded-lg border border-stone-200 bg-raised py-1 shadow-lg">
                       <ul class="text-sm text-stone-700">
                         {% if has_active_offer -%}
                           {% if let Some(admission_offer_id) = entry.admission_offer_id -%}

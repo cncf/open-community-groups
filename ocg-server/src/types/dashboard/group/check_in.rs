@@ -27,6 +27,9 @@ pub(crate) struct GroupCheckInEvent {
     /// Event timezone.
     pub timezone: Tz,
 
+    /// URL to the logo image shown in dark mode in place of `logo_url`,
+    /// taken from the same level (event, group or community) as `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Event logo URL.
     pub logo_url: Option<String>,
     /// Event venue summary.

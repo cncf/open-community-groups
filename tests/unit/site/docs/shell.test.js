@@ -9,6 +9,7 @@ import {
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { setDocsReloadHandler } from "/static/js/site/docs/interactions.js";
 import {
+  createDeferred,
   waitForAnimationFrames,
   waitForMicrotask,
 } from "/tests/unit/test-utils/async.js";
@@ -22,6 +23,11 @@ import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
+const DOCS_STYLE_SELECTOR = [
+  "#ocg-docsify-vue-scoped-style",
+  "#ocg-docs-theme-scoped-style",
+  "#ocg-docs-shell-style",
+].join(", ");
 const SCROLL_POSITIONS_KEY = "ocg-docs-scroll-positions";
 const SCROLL_RESTORE_KEY = "ocg-docs-scroll-restore";
 
@@ -35,9 +41,7 @@ describe("site docs shell", () => {
   let scrollToMock;
 
   const docsHeadSelector = [
-    "#ocg-docsify-vue-scoped-style",
-    "#ocg-docs-theme-scoped-style",
-    'link#ocg-docs-shell-overrides[href="/static/docs/assets/shell.css"]',
+    DOCS_STYLE_SELECTOR,
     'script[src="/static/vendor/js/docsify.v4.13.1.min.js"]',
     'script[src="/static/vendor/js/docsify-copy-code.v3.0.2.min.js"]',
   ].join(", ");
@@ -192,7 +196,8 @@ describe("site docs shell", () => {
     );
     expect(styleCalls.map(([url]) => url)).to.have.members([
       "/static/vendor/css/docsify-vue.v4.13.1.min.css",
-      "/static/docs/assets/theme.css",
+      "/static/css/docs/theme.css",
+      "/static/css/docs/shell.css",
     ]);
     styleCalls.forEach(([, init]) => {
       expect(new Headers(init?.headers).has(COMMIT_SHA_HEADER)).to.equal(false);
@@ -203,8 +208,70 @@ describe("site docs shell", () => {
     expect(
       document.getElementById("ocg-docs-theme-scoped-style")?.textContent,
     ).to.include("color: black");
+    expect(document.getElementById("ocg-docs-shell-style")?.textContent).to.equal(
+      "body { color: black; }",
+    );
     expect(isDeploymentReloadRequested()).to.equal(false);
     expect(reloadUrls).to.deep.equal([]);
+  });
+
+  it("applies the docs styles together once every stylesheet has loaded", async () => {
+    // Render the docs shell fixture before loading its stylesheets.
+    document.body.innerHTML = `
+      <div class="ocg-docs-root">
+        <div id="ocg-docs-app"></div>
+      </div>
+    `;
+    const initialStylesheetLinks = document.head.querySelectorAll(
+      'link[rel="stylesheet"]',
+    ).length;
+
+    // Hold the shell stylesheet while the other stylesheets load at once.
+    const shellCss = createDeferred();
+    fetchMock.setImpl(async (url) => ({
+      ok: true,
+      status: 200,
+      async text() {
+        if (String(url).endsWith("/shell.css")) {
+          return shellCss.promise;
+        }
+        return "body { color: black; }";
+      },
+    }));
+
+    // Load the page module while the shell stylesheet is pending.
+    await importDocsShell();
+    await waitForMicrotask();
+    await waitForAnimationFrames(3);
+
+    // Verify no docs style is applied before the shell stylesheet arrives.
+    expect(document.getElementById("ocg-docsify-vue-scoped-style")).to.equal(null);
+    expect(document.getElementById("ocg-docs-theme-scoped-style")).to.equal(null);
+    expect(document.getElementById("ocg-docs-shell-style")).to.equal(null);
+
+    // Release the shell stylesheet.
+    shellCss.resolve(".ocg-docs-root { background: transparent; }");
+    await waitForMicrotask();
+    await waitForAnimationFrames(3);
+
+    // Verify the docs styles are applied in order without a stylesheet link.
+    const docsStyles = [...document.head.querySelectorAll(DOCS_STYLE_SELECTOR)];
+    expect(docsStyles.map((style) => style.id)).to.deep.equal([
+      "ocg-docsify-vue-scoped-style",
+      "ocg-docs-theme-scoped-style",
+      "ocg-docs-shell-style",
+    ]);
+    expect(docsStyles.map((style) => style.tagName)).to.deep.equal([
+      "STYLE",
+      "STYLE",
+      "STYLE",
+    ]);
+    expect(docsStyles[2].textContent).to.equal(
+      ".ocg-docs-root { background: transparent; }",
+    );
+    expect(
+      document.head.querySelectorAll('link[rel="stylesheet"]').length,
+    ).to.equal(initialStylesheetLinks);
   });
 
   it("rewrites app links, mirrors body classes, and enhances markdown tables after mount", async () => {
@@ -292,7 +359,7 @@ describe("site docs shell", () => {
 
     // Confirm the docs assets were injected into the document head.
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
-    expect(document.getElementById("ocg-docs-shell-overrides")?.tagName).to.equal("LINK");
+    expect(document.getElementById("ocg-docs-shell-style")?.tagName).to.equal("STYLE");
 
     // Run the docs head cleanup helper.
     cleanupDocsHead();

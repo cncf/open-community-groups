@@ -73,7 +73,7 @@
     <tbody>
       {% if surveys.is_empty() -%}
         {# Empty state -#}
-        <tr class="bg-white border-b border-stone-200">
+        <tr class="bg-surface border-b border-stone-200">
           <td class="px-8 py-20 text-center lg:hidden" colspan="2">
             {% include "dashboard/placeholders/user_surveys_table.html" -%}
           </td>
@@ -87,7 +87,7 @@
       {% else -%}
         {% for survey in surveys -%}
           <tr data-user-event-survey="{{ survey.event_survey_id }}"
-              class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
+              class="border-b border-stone-200 odd:bg-surface even:bg-stone-50/50">
             <th scope="row"
                 class="w-full max-w-0 px-3 py-4 font-medium text-stone-900 xl:px-5">
               <div class="title-preheader">{{ survey.event_name }} · {{ survey.group_name }}</div>

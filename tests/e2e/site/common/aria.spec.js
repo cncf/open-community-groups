@@ -2,6 +2,7 @@ import { expect, test, testAtBothWidths } from "../../fixtures.js";
 
 import { expectAriaSnapshot, expectPageLayout } from "../../snapshots.js";
 import { navigateToPath } from "../../utils.js";
+import { openAccountMenuOnStats } from "./helpers.js";
 import { loadPublicPage, PUBLIC_PAGES } from "./public-pages.js";
 
 // Badge pages replace the site header with the badge header, the same at every viewport.
@@ -47,6 +48,24 @@ test.describe("not found page ARIA snapshots", () => {
 
     // Capture the message and the way back home.
     await expectAriaSnapshot(page, main, "not-found-main");
+  });
+});
+
+test.describe("account menu ARIA snapshots", () => {
+  testAtBothWidths("guest account menu matches its rows", async ({ isMobile, page }) => {
+    // Open the guest menu, the account sheet on phones.
+    const userMenu = await openAccountMenuOnStats(page);
+
+    // Capture the rows, with the Theme group and System checked.
+    await expectAriaSnapshot(page, userMenu, `account-menu-guest-${isMobile ? "mobile" : "desktop"}`);
+  });
+
+  testAtBothWidths("member account menu matches its rows", async ({ isMobile, member1Page }) => {
+    // Open the member menu, the account sheet on phones.
+    const userMenu = await openAccountMenuOnStats(member1Page);
+
+    // Capture the rows, with the Theme group and System checked.
+    await expectAriaSnapshot(member1Page, userMenu, `account-menu-member-${isMobile ? "mobile" : "desktop"}`);
   });
 });
 

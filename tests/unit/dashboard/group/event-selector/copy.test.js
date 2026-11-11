@@ -61,6 +61,48 @@ describe("event selector copy", () => {
     expect(logoField.value).to.equal("https://example.com/event-logo.png");
   });
 
+  it("copies only the source event's own dark mode images", async () => {
+    // Render the dark mode image fields with values from a previous copy.
+    document.body.innerHTML = `
+      <image-field name="logo_dark_url" value="https://example.com/previous-logo-dark.png"></image-field>
+      <image-field name="banner_dark_url" value="https://example.com/previous-banner-dark.png"></image-field>
+      <image-field
+        name="banner_mobile_dark_url"
+        value="https://example.com/previous-banner-mobile-dark.png"
+      ></image-field>
+    `;
+    const [logoField, bannerField, bannerMobileField] = document.querySelectorAll("image-field");
+    await Promise.all([logoField, bannerField, bannerMobileField].map((field) => field.updateComplete));
+
+    // Copy an event whose dark logo falls back to the group one and has no dark banners.
+    await applyCopiedEventDetails({
+      logo_dark_url: "https://example.com/group-logo-dark.png",
+      logo_url: "https://example.com/group-logo.png",
+      name: "Fallback logo event",
+    });
+
+    // Verify the inherited dark logo is not copied and the previous values are cleared.
+    expect(logoField.value).to.equal("");
+    expect(bannerField.value).to.equal("");
+    expect(bannerMobileField.value).to.equal("");
+
+    // Copy an event with its own dark logo and dark banners.
+    await applyCopiedEventDetails({
+      banner_dark_url: "https://example.com/event-banner-dark.png",
+      banner_mobile_dark_url: "https://example.com/event-banner-mobile-dark.png",
+      custom_logo_dark_url: "https://example.com/event-logo-dark.png",
+      custom_logo_url: "https://example.com/event-logo.png",
+      logo_dark_url: "https://example.com/event-logo-dark.png",
+      logo_url: "https://example.com/event-logo.png",
+      name: "Own logo event",
+    });
+
+    // Verify the own dark images are copied into the form.
+    expect(logoField.value).to.equal("https://example.com/event-logo-dark.png");
+    expect(bannerField.value).to.equal("https://example.com/event-banner-dark.png");
+    expect(bannerMobileField.value).to.equal("https://example.com/event-banner-mobile-dark.png");
+  });
+
   it("replaces organizers with the source organizers still on the team", async () => {
     // Render the organizers selector and copy an event with organizers.
     const selector = mountOrganizersSelector();

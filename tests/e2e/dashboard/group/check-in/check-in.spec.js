@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { expect, test } from "../../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../../fixtures.js";
 import { queryE2eDatabase, queryScalar } from "../../../database.js";
 import {
   TEST_COMMUNITY_TITLE,
@@ -9,7 +9,13 @@ import {
   TEST_OPEN_CHECK_IN_EVENT,
   TEST_USER_IDS,
 } from "../../../seed.js";
-import { navigateToPath, waitForActionResponse } from "../../../utils.js";
+import {
+  expectDarkTheme,
+  navigateToPath,
+  resolveCssColor,
+  useTheme,
+  waitForActionResponse,
+} from "../../../utils.js";
 import { installFakeQrScanner, installFakeWakeLock } from "./helpers.js";
 
 const CHECK_IN_CODE = "99999999-9999-9999-9999-999999999529";
@@ -84,6 +90,23 @@ test.describe("group dashboard check-in", () => {
     },
   );
 
+  testAtBothWidths(
+    "scanner panel follows stored dark while the camera box keeps its light colors",
+    async ({ checkInManagerGroupPage }) => {
+      // Read the scanner colors with a rejection card showing, in light and then in stored dark.
+      const light = await readScannerColors(checkInManagerGroupPage);
+      await useTheme(checkInManagerGroupPage, { stored: "dark" });
+      const dark = await readScannerColors(checkInManagerGroupPage);
+      await expectDarkTheme(checkInManagerGroupPage);
+
+      // Verify the panel turned dark around a camera box and result card that kept their colors.
+      const panel = checkInManagerGroupPage.locator("#group-check-in-scanner-modal .sheet-panel");
+      expect(dark.panel).toBe(await resolveCssColor(panel, "var(--color-raised)"));
+      expect(dark.panel).not.toBe(light.panel);
+      expect(dark.island).toEqual(light.island);
+    },
+  );
+
   test("organizer switches mobile check-in to another manageable group @mobile", async ({
     organizerGroupPage,
   }) => {
@@ -99,15 +122,22 @@ test.describe("group dashboard check-in", () => {
     await expect(groupButton).toBeVisible();
     await expect(groupButton).toContainText(TEST_GROUP_NAMES.alpha);
 
-    // Open each selector and verify focus follows the drawer selectors.
+    // Open each selector and verify its dropdown shows without focusing the search input, which
+    // would raise the keyboard over the options.
     await communityButton.click();
     const communitySearch = drawer.locator("#community-search-input");
-    await expect(communitySearch).toBeFocused();
-    await communitySearch.press("Escape");
+    await expect(communitySearch).toBeVisible();
+    await expect(communitySearch).not.toBeFocused();
+    await communityButton.press("Escape");
+    await expect(communitySearch).toBeHidden();
     await expect(drawer).toBeVisible();
     await groupButton.click();
     const groupSearch = drawer.locator("#group-search-input");
-    await expect(groupSearch).toBeFocused();
+    await expect(groupSearch).toBeVisible();
+    await expect(groupSearch).not.toBeFocused();
+
+    // Verify the whole list is in view inside the sheet, down to its last option.
+    await expect(drawer.locator("#group-selector-list [role='option']").last()).toBeInViewport({ ratio: 1 });
 
     // Switch to another manageable group without leaving the Check-In URL.
     const emptyGroup = drawer.locator(`#group-option-${TEST_GROUP_IDS.community1.empty}`);
@@ -464,8 +494,8 @@ test.describe("group dashboard check-in", () => {
     // Switch back to the manageable group from the drawer.
     await organizerGroupPage.getByRole("button", { name: "Open dashboard menu" }).click();
     await drawer.locator("#group-selector-button").click();
-    await expect(drawer.locator("#group-search-input")).toBeFocused();
     const manageableGroup = drawer.locator(`#group-option-${TEST_GROUP_IDS.community1.alpha}`);
+    await expect(manageableGroup).toBeVisible();
     await waitForActionResponse(organizerGroupPage, () => manageableGroup.click(), {
       method: "PUT",
       urlEndsWith: `/dashboard/group/${TEST_GROUP_IDS.community1.alpha}/select`,
@@ -506,6 +536,39 @@ const openScanner = async (
   await expect(modal.getByText(status)).toBeVisible();
 
   return { eventCard, modal };
+};
+
+/**
+ * Opens the scanner, shows a rejection card and reads the panel and camera box colors.
+ * @param {import("@playwright/test").Page} page - Check-in manager page.
+ * @returns {Promise<{ island: object, panel: string }>} Panel background and camera box colors.
+ */
+const readScannerColors = async (page) => {
+  // Open the scanner and reject an unknown credential, which changes no attendee.
+  const { modal } = await openScanner(page);
+  await submitScannedCredential(page, { checkInCode: randomUUID(), status: 422 });
+  const result = modal.locator("[data-group-check-in-result]");
+  await expect(result).toBeVisible();
+
+  // Read every color at once, before the rejection card hides again.
+  return modal.evaluate((element) => {
+    const style = (selector) => getComputedStyle(element.querySelector(selector));
+    const box = getComputedStyle(element.querySelector("[data-group-check-in-video]").parentElement);
+    const frame = getComputedStyle(
+      element.querySelector("[data-group-check-in-camera-unavailable]").parentElement,
+    );
+    const card = style("[data-group-check-in-result]");
+
+    return {
+      island: {
+        box: box.backgroundColor,
+        card: { background: card.backgroundColor, border: card.borderTopColor, color: card.color },
+        frame: frame.borderTopColor,
+        unavailable: style("[data-group-check-in-camera-unavailable]").color,
+      },
+      panel: style(".sheet-panel").backgroundColor,
+    };
+  });
 };
 
 /** Resets the scanner event_attendee row to a confirmed state. */

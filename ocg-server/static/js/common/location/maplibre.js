@@ -1,18 +1,29 @@
 import { loadScriptOnce } from "/static/js/common/dom.js";
+import { getResolvedTheme, THEME_CHANGE_EVENT } from "/static/js/common/theme.js";
 
 // Keep locations on the edge of the initial bounds inside the viewport so their pins render.
 const BOUNDS_PADDING_PX = 40;
 const MAPLIBRE_SCRIPT_SRC = "/static/vendor/js/maplibre-gl.v5.24.0.min.js";
+// OpenFreeMap basemap style for each color theme.
+const MAP_STYLE_URLS = {
+  dark: "https://tiles.openfreemap.org/styles/fiord",
+  light: "https://tiles.openfreemap.org/styles/bright",
+};
 // Keep opposite map edges distinct when MapLibre wraps longitude coordinates.
 const MAX_LONGITUDE = 180 - 1e-10;
 
 /**
  * Loads an OpenFreeMap map with an optional marker and popup.
+ *
+ * The basemap follows the color theme: the first paint loads the resolved theme's style, and a
+ * color theme change swaps it live.
  * @param {string} divId Map container ID.
  * @param {number} lat Latitude of the map center.
  * @param {number} lng Longitude of the map center.
  * @param {object} options Map options.
  * @param {number[][]} [options.bounds] Initial longitude/latitude bounds, fitted with padding.
+ * @param {Function} [options.transformStyle] MapLibre `transformStyle` passed to the basemap swap
+ *   of a color theme change, to carry the caller's sources and layers into the next style.
  * @returns {Promise<object|null>} MapLibre instance, or null if its container is gone.
  */
 export const loadMap = async (divId, lat, lng, options = {}) => {
@@ -21,9 +32,10 @@ export const loadMap = async (divId, lat, lng, options = {}) => {
   if (!container?.isConnected || document.getElementById(divId) !== container) return null;
 
   const interactive = options.interactive !== false;
+  let styleUrl = getMapStyleUrl(getResolvedTheme());
   const map = new maplibregl.Map({
     container: divId,
-    style: "https://tiles.openfreemap.org/styles/bright",
+    style: styleUrl,
     bounds: options.bounds,
     fitBoundsOptions: { padding: BOUNDS_PADDING_PX },
     center: [lng, lat],
@@ -77,9 +89,29 @@ export const loadMap = async (divId, lat, lng, options = {}) => {
     if (!container.isConnected) map.remove();
   });
   removalObserver.observe(document.body, { childList: true, subtree: true });
+
+  // Swap the basemap once per frame, after a burst of color theme changes settles. The default
+  // diff mode fetches the next style before dropping the current one, so a failed fetch keeps the
+  // current basemap and the next change retries.
+  let themeFrame = 0;
+  const handleThemeChange = () => {
+    if (themeFrame) return;
+    themeFrame = requestAnimationFrame(() => {
+      themeFrame = 0;
+      const nextStyleUrl = getMapStyleUrl(getResolvedTheme());
+      if (nextStyleUrl === styleUrl) return;
+      styleUrl = nextStyleUrl;
+      map.setStyle(nextStyleUrl, { transformStyle: options.transformStyle });
+    });
+  };
+  document.addEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+
   map.on("remove", () => {
     removalObserver.disconnect();
     document.removeEventListener("htmx:beforeCleanupElement", handleCleanup);
+    document.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+    cancelAnimationFrame(themeFrame);
+    themeFrame = 0;
   });
 
   return map;
@@ -94,11 +126,19 @@ export const loadMap = async (divId, lat, lng, options = {}) => {
 export const createMapMarker = (coordinates, options = {}) => {
   const element = options.element || document.createElement("div");
   if (!options.element) {
-    element.className = "svg-icon h-[30px] w-[30px] bg-primary-500 icon-marker";
+    element.className = "svg-icon h-[30px] w-[30px] bg-primary-fg icon-marker";
     element.setAttribute("aria-hidden", "true");
   }
   return new maplibregl.Marker({ element, anchor: options.anchor || "bottom" }).setLngLat(coordinates);
 };
+
+/**
+ * Returns the OpenFreeMap style URL for a color theme.
+ * @param {string} theme Resolved color theme, `light` or `dark`.
+ * @returns {string} Style URL, the light one for any other value.
+ */
+export const getMapStyleUrl = (theme) =>
+  Object.hasOwn(MAP_STYLE_URLS, theme) ? MAP_STYLE_URLS[theme] : MAP_STYLE_URLS.light;
 
 /**
  * Loads MapLibre once, including when several maps initialize together.

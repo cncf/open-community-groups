@@ -187,6 +187,77 @@ describe("common utilities", () => {
     expect(image.nextElementSibling?.classList.contains("absolute") ?? false).to.equal(true);
   });
 
+  it("keeps a site logo placeholder inside its positioned wrapper", () => {
+    // Create the site logo fixture; the unit page loads no CSS, so styles are inline.
+    const header = document.createElement("div");
+    header.innerHTML = `
+      <span class="relative" data-site-logo="light" style="position: relative; display: inline-flex">
+        <img src="https://example.com/missing-site-logo.png" alt="Test Site logo" />
+      </span>
+    `;
+    document.body.append(header);
+    const wrapper = header.querySelector("[data-site-logo]");
+    const image = wrapper.querySelector("img");
+
+    // Assert the error event.
+    image.dispatchEvent(new Event("error"));
+
+    // The placeholder sits inside the wrapper, which is left unchanged.
+    const placeholder = wrapper.querySelector("[data-ocg-broken-image-icon]");
+    expect(placeholder).to.not.equal(null);
+    expect(image.nextElementSibling).to.equal(placeholder);
+    expect(wrapper.dataset.ocgBrokenImageAddedRelative).to.equal(undefined);
+    expect(header.querySelectorAll("[data-ocg-broken-image-icon]")).to.have.length(1);
+  });
+
+  it("does not flag a deferred lazy site logo inside a hidden dark wrapper", async () => {
+    // Create the logo fixtures; the unit page loads no CSS, so styles are inline. Every source is
+    // a missing same-origin path, so each load fails as soon as the browser requests it.
+    const header = document.createElement("div");
+    header.innerHTML = `
+      <span class="relative" data-site-logo="light" style="position: relative; display: inline-flex">
+        <img src="/tests/unit/missing/site-logo-light.png" alt="" loading="lazy" data-visible-lazy-control />
+      </span>
+      <span class="relative" data-site-logo="dark" style="position: relative; display: none">
+        <img src="/tests/unit/missing/site-logo-dark.png" alt="Test Site logo" loading="lazy" data-lazy-logo />
+        <img src="/tests/unit/missing/site-logo-eager.png" alt="" data-hidden-eager-control />
+      </span>
+    `;
+    const image = header.querySelector("[data-lazy-logo]");
+    const controls = [
+      header.querySelector("[data-hidden-eager-control]"),
+      header.querySelector("[data-visible-lazy-control]"),
+    ];
+    const controlsFailed = Promise.all(
+      controls.map(
+        (control) =>
+          new Promise((resolve) => {
+            control.addEventListener("error", resolve, { once: true });
+          }),
+      ),
+    );
+    document.body.append(header);
+
+    // Wait until an eager image in the hidden wrapper and a visible lazy image have both failed.
+    await controlsFailed;
+
+    // Rescan as on DOM ready and window load; the deferred lazy image is still not complete.
+    expect(image.complete).to.equal(false);
+    applyBrokenImagePlaceholders(document);
+
+    // The deferred image keeps its source and gets no placeholder.
+    expect(image.dataset.ocgBrokenImagePlaceholder).to.equal(undefined);
+    expect(image.getAttribute("src")).to.equal("/tests/unit/missing/site-logo-dark.png");
+    expect(image.nextElementSibling).to.equal(controls[0]);
+
+    // Both controls did get their placeholders.
+    controls.forEach((control) => {
+      expect(control.dataset.ocgBrokenImagePlaceholder).to.equal("true");
+      expect(control.nextElementSibling?.dataset.ocgBrokenImageIcon).to.equal("true");
+    });
+    expect(header.querySelectorAll("[data-ocg-broken-image-icon]")).to.have.length(2);
+  });
+
   it("replaces images that failed before the error listener ran", () => {
     // Create the image fixture.
     const container = document.createElement("div");

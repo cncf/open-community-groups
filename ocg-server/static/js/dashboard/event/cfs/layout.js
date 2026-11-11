@@ -3,7 +3,7 @@ import { html } from "lit";
 const TAB_BUTTON_CLASS =
   "cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 " +
   "border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 " +
-  "data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 " +
+  "data-[active=true]:text-primary-fg data-[active=true]:border-primary-edge " +
   "text-nowrap w-32";
 
 /**
@@ -18,10 +18,10 @@ export const renderCfsPendingChangesAlert = (hasPendingChanges) => {
 
   return html`
     <div
-      class="inline-flex items-center gap-3 rounded-md border border-primary-200
-      bg-primary-50 px-3 py-2 text-primary-900"
+      class="inline-flex items-center gap-3 rounded-md border border-primary-edge-faint
+      bg-primary-tint px-3 py-2 text-primary-fg-deep"
     >
-      <div class="svg-icon size-4 bg-primary-700 icon-clock shrink-0"></div>
+      <div class="svg-icon size-4 bg-primary-fg-hover icon-clock shrink-0"></div>
       <p class="text-sm">You have pending changes. Click Save to apply these updates.</p>
     </div>
   `;

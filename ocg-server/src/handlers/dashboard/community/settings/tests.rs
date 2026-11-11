@@ -3,14 +3,22 @@ use axum::http::StatusCode;
 use crate::{
     db::mock::MockDB,
     handlers::{error::INVALID_REQUEST_PAYLOAD, tests::*},
-    types::permissions::CommunityPermission,
+    test_util::opening_tag_with,
+    types::{community::CommunityFull, permissions::CommunityPermission},
 };
 
 #[tokio::test]
 async fn test_update_page_success() {
     // Setup identifiers and data structures
     let ids = DashboardIds::new();
-    let community = sample_community_full(ids.community_id);
+    let community = CommunityFull {
+        banner_dark_url: Some("https://example.test/community-banner-dark.png".to_string()),
+        banner_mobile_dark_url: Some(
+            "https://example.test/community-banner-mobile-dark.png".to_string(),
+        ),
+        logo_dark_url: Some("https://example.test/community-logo-dark.png".to_string()),
+        ..sample_community_full(ids.community_id)
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -43,6 +51,31 @@ async fn test_update_page_success() {
     assert!(html.contains(
         r#"help-prefix-text="Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP." target="open_graph""#
     ));
+
+    // Check the dark images are rendered in the form with their upload targets
+    assert_image_field_value(
+        html,
+        "banner_dark_url",
+        "https://example.test/community-banner-dark.png",
+    );
+    assert_image_field_value(
+        html,
+        "banner_mobile_dark_url",
+        "https://example.test/community-banner-mobile-dark.png",
+    );
+    assert_image_field_value(
+        html,
+        "logo_dark_url",
+        "https://example.test/community-logo-dark.png",
+    );
+    for (name, target) in [
+        ("banner_dark_url", "banner"),
+        ("banner_mobile_dark_url", "banner_mobile"),
+        ("logo_dark_url", "logo"),
+    ] {
+        let field = opening_tag_with(html, &format!(r#"name="{name}""#));
+        assert!(field.contains(&format!(r#"target="{target}""#)), "{name}");
+    }
 }
 
 #[tokio::test]

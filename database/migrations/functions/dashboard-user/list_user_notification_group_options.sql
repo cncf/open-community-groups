@@ -8,6 +8,8 @@ returns json as $$
                 'group_id', g.group_id,
                 'name', g.name,
 
+                -- Pair the dark logo with the group's own light logo
+                'logo_dark_url', paired_dark_image_url(g.logo_url, g.logo_dark_url),
                 'logo_url', g.logo_url
             ))
             order by g.name asc, g.group_id asc

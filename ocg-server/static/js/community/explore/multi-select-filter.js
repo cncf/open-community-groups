@@ -44,7 +44,7 @@ export class MultiSelectFilter extends MultiSelect {
   _renderChip(option) {
     return html`
       <span
-        class="flex items-center justify-between w-full px-2 py-1 text-[0.775rem] text-primary-500 border border-primary-500 rounded-lg phone:py-0 phone:pe-0 phone:ps-3 phone:text-sm"
+        class="flex items-center justify-between w-full px-2 py-1 text-[0.775rem] text-primary-fg border border-primary-edge rounded-lg phone:py-0 phone:pe-0 phone:ps-3 phone:text-sm"
       >
         <span class="phone:min-w-0 phone:break-words">${option.name}</span>
         <button
@@ -74,7 +74,7 @@ export class MultiSelectFilter extends MultiSelect {
     return html`
       <div
         data-multi-select-dropdown
-        class="absolute top-full left-0 right-0 z-10 mt-1 bg-white rounded-lg shadow-lg border border-stone-200 max-h-48 overflow-y-auto"
+        class="absolute top-full left-0 right-0 z-10 mt-1 bg-raised rounded-lg shadow-lg border border-stone-200 max-h-48 overflow-y-auto"
       >
         ${
           options.length > 0
@@ -135,7 +135,7 @@ export class MultiSelectFilter extends MultiSelect {
         @mouseover=${() => this._combobox.setActiveIndex(index)}
       >
         <span class="shrink-0 w-4 h-4 flex items-center justify-center">
-          ${isSelected ? html`<div class="svg-icon size-3 icon-check bg-primary-500"></div>` : ""}
+          ${isSelected ? html`<div class="svg-icon size-3 icon-check bg-primary-fg"></div>` : ""}
         </span>
         <span class="text-stone-700 phone:min-w-0 phone:wrap-anywhere">${option.name}</span>
       </li>
@@ -150,7 +150,7 @@ export class MultiSelectFilter extends MultiSelect {
     return html`
       <div
         data-multi-select-search
-        class="flex items-center gap-2 min-h-[38px] px-2 py-1.5 bg-white border border-stone-200 rounded-lg has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-(--ocg-primary) phone:min-h-11 phone:py-0 phone:pe-0"
+        class="flex items-center gap-2 min-h-[38px] px-2 py-1.5 bg-surface border border-stone-200 rounded-lg has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-focus phone:min-h-11 phone:py-0 phone:pe-0"
       >
         <div class="svg-icon size-3 icon-search bg-stone-400 shrink-0"></div>
         <input

@@ -15,8 +15,8 @@ export class SvgSpinner extends LitWrapper {
   constructor() {
     super();
     this.size = "size-5";
-    this.accentColor = "var(--color-primary-500)";
-    this.backgroundColor = "#e5e7eb";
+    this.accentColor = "var(--color-primary-fg)";
+    this.backgroundColor = "var(--color-stone-200)";
     this.label = "Loading...";
   }
 

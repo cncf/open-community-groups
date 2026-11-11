@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -34,12 +34,26 @@ select fx_community(:'communityID', jsonb_build_object('display_name', 'Hosted C
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID');
-select fx_group(:'ownerGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Owner Events Group', 'slug_pretty', 'owner-pretty'));
+select fx_group(:'ownerGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'logo_dark_url', 'https://example.test/owner-group-dark.png',
+    'logo_url', 'https://example.test/owner-group.png',
+    'name', 'Owner Events Group',
+    'slug_pretty', 'owner-pretty'
+));
 select fx_event(:'deletedEventID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object('deleted', true, 'starts_at', '2099-01-10 10:00:00+00'));
-select fx_event(:'eventApprovedID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object('name', 'Approved Event', 'starts_at', '2099-01-06 10:00:00+00'));
+select fx_event(:'eventApprovedID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object(
+    'logo_dark_url', 'https://example.test/approved-event-dark.png',
+    'logo_url', 'https://example.test/approved-event.png',
+    'name', 'Approved Event',
+    'starts_at', '2099-01-06 10:00:00+00'
+));
 select fx_event(:'eventCanceledID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object('name', 'Canceled Event', 'starts_at', '2099-01-05 10:00:00+00'));
 select fx_event(:'eventDeletedStatusID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object('name', 'Event Deleted Status Event', 'starts_at', '2099-01-04 10:00:00+00'));
-select fx_event(:'eventPendingID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object('name', 'Pending Event', 'starts_at', '2099-01-07 10:00:00+00'));
+select fx_event(:'eventPendingID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object(
+    'logo_url', 'https://example.test/pending-event.png',
+    'name', 'Pending Event',
+    'starts_at', '2099-01-07 10:00:00+00'
+));
 select fx_event(:'eventRejectedID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object('name', 'Rejected Event', 'starts_at', '2099-01-03 10:00:00+00'));
 select fx_event(:'eventRemovedID', :'ownerGroupID', :'eventCategoryID', jsonb_build_object('name', 'Removed Event', 'starts_at', '2099-01-02 10:00:00+00'));
 
@@ -120,6 +134,37 @@ select is(
     ),
     array[:'eventApprovedID'::uuid, :'eventCanceledID'::uuid],
     'Should paginate after ordering'
+);
+
+-- Should pair dark logos with the levels that provide the light logos
+select results_eq(
+    format(
+        $$
+            select
+                item->>'event_id',
+                item->>'event_logo_dark_url',
+                item->>'owner_group_logo_dark_url'
+            from jsonb_array_elements(list_group_cohosted_events(%L::uuid, '{"limit":3}'::jsonb)::jsonb->'events') item
+        $$,
+        :'cohostGroupID'
+    ),
+    format(
+        $$
+            values
+                (%L::text, null::text, %L::text),
+                (%L::text, %L::text, %L::text),
+                (%L::text, %L::text, %L::text)
+        $$,
+        :'eventPendingID',
+        'https://example.test/owner-group-dark.png',
+        :'eventApprovedID',
+        'https://example.test/approved-event-dark.png',
+        'https://example.test/owner-group-dark.png',
+        :'eventCanceledID',
+        'https://example.test/owner-group-dark.png',
+        'https://example.test/owner-group-dark.png'
+    ),
+    'Should pair dark logos with the levels that provide the light logos'
 );
 
 -- Should report the total before pagination

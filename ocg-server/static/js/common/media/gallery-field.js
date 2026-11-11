@@ -406,8 +406,8 @@ export class GalleryField extends LitWrapper {
       <div
         class=${[
           "relative flex h-32 w-full max-h-32 flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 transition duration-150",
-          this._isAddDisabled ? "cursor-not-allowed opacity-70" : "hover:border-primary-400",
-          this._isDragActive && !this._isUploading ? "ring-2 ring-primary-300" : "",
+          this._isAddDisabled ? "cursor-not-allowed opacity-70" : "hover:border-primary-edge-muted",
+          this._isDragActive && !this._isUploading ? "ring-2 ring-primary-halo" : "",
         ].join(" ")}
         role="button"
         tabindex="0"
@@ -425,7 +425,7 @@ export class GalleryField extends LitWrapper {
         </div>
 
         <div
-          class="absolute inset-0 flex items-center justify-center bg-white/50 transition-opacity duration-150 ${
+          class="absolute inset-0 flex items-center justify-center bg-surface/50 transition-opacity duration-150 ${
             this._isUploading ? "opacity-100" : "opacity-0 pointer-events-none"
           }"
         >
@@ -455,7 +455,7 @@ export class GalleryField extends LitWrapper {
                 class=${[
                   "relative h-32 max-h-32 w-full overflow-hidden rounded-lg border border-stone-200 bg-stone-100",
                   this._dragOverIndex === index && this._draggedIndex !== null && this._draggedIndex !== index
-                    ? "ring-2 ring-primary-300"
+                    ? "ring-2 ring-primary-halo"
                     : "",
                   this._draggedIndex === index ? "opacity-80" : "",
                 ].join(" ")}
@@ -474,7 +474,7 @@ export class GalleryField extends LitWrapper {
                 />
                 <button
                   type="button"
-                  class="absolute end-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-stone-600 border border-stone-200 transition hover:bg-stone-100"
+                  class="absolute end-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-surface/90 text-stone-600 border border-stone-200 transition hover:bg-stone-100"
                   @click=${(event) => this._handleRemoveImageButtonClick(event, index)}
                   aria-label="Remove image ${index + 1}"
                 >

@@ -163,7 +163,7 @@ const renderPaidAttendanceDom = ({
                 />
                 <div
                   data-attendance-role="ticket-type-card-body"
-                  class="bg-white cursor-pointer hover:border-primary-300 hover:shadow-sm"
+                  class="bg-surface cursor-pointer hover:border-primary-edge-soft hover:shadow-sm"
                 >
                   <span data-attendance-role="ticket-type-title">Community</span>
                   <div class="ticket-price-badge">
@@ -184,7 +184,7 @@ const renderPaidAttendanceDom = ({
                 />
                 <div
                   data-attendance-role="ticket-type-card-body"
-                  class="bg-white cursor-pointer hover:border-primary-300 hover:shadow-sm"
+                  class="bg-surface cursor-pointer hover:border-primary-edge-soft hover:shadow-sm"
                 >
                   <span data-attendance-role="ticket-type-title">General</span>
                   <div class="ticket-price-badge">
@@ -979,7 +979,7 @@ describe("event attendance paid modal", () => {
     ).to.equal(true);
     ticketCardBodies.forEach((cardBody) => {
       expect(cardBody.classList.contains("cursor-not-allowed")).to.equal(true);
-      expect(cardBody.classList.contains("hover:border-primary-300")).to.equal(
+      expect(cardBody.classList.contains("hover:border-primary-edge-soft")).to.equal(
         false,
       );
       expect(cardBody.classList.contains("hover:shadow-sm")).to.equal(false);
@@ -1073,7 +1073,7 @@ describe("event attendance paid modal", () => {
 
       // Verify updates a not-on-sale ticket label when availability makes it.
       expect(ticketTypeOptions[2].disabled).to.equal(false);
-      expect(ticketCardBodies[2].classList.contains("bg-white")).to.equal(true);
+      expect(ticketCardBodies[2].classList.contains("bg-surface")).to.equal(true);
       expect(ticketCardBodies[2].classList.contains("cursor-pointer")).to.equal(
         true,
       );

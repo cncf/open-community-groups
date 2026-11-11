@@ -23,8 +23,8 @@ describe("svg-spinner", () => {
     // The rendered text shows the scenario data.
     expect(status?.getAttribute("aria-label")).to.equal("Loading...");
     expect(status?.className).to.include("size-5");
-    expect(paths[0]?.getAttribute("fill")).to.equal("#e5e7eb");
-    expect(paths[1]?.getAttribute("fill")).to.equal("var(--color-primary-500)");
+    expect(paths[0]?.getAttribute("fill")).to.equal("var(--color-stone-200)");
+    expect(paths[1]?.getAttribute("fill")).to.equal("var(--color-primary-fg)");
     expect(screenReaderLabel?.textContent).to.equal("Loading...");
   });
 

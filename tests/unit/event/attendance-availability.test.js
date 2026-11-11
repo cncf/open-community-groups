@@ -118,7 +118,7 @@ describe("attendance availability", () => {
       '[data-attendance-role="ticket-type-card-body"]',
     );
     expect(
-      ticketCardBody.classList.contains("hover:border-primary-300"),
+      ticketCardBody.classList.contains("hover:border-primary-edge-soft"),
     ).to.equal(true);
     expect(ticketCardBody.classList.contains("hover:shadow-sm")).to.equal(true);
     expect(
@@ -157,7 +157,7 @@ describe("attendance availability", () => {
               class="sr-only"
               checked
             />
-            <div data-attendance-role="ticket-type-card-body" class="bg-white cursor-pointer hover:border-primary-300 hover:shadow-sm"></div>
+            <div data-attendance-role="ticket-type-card-body" class="bg-surface cursor-pointer hover:border-primary-edge-soft hover:shadow-sm"></div>
             <div data-attendance-role="ticket-type-summary"></div>
             <span data-attendance-role="ticket-type-status-dot" class="bg-green-500"></span>
             <span data-attendance-role="ticket-type-status-label">Available now</span>
@@ -214,7 +214,7 @@ describe("attendance availability", () => {
     expect(ticketOption.disabled).to.equal(true);
     expect(ticketOption.checked).to.equal(false);
     expect(
-      ticketCardBody.classList.contains("hover:border-primary-300"),
+      ticketCardBody.classList.contains("hover:border-primary-edge-soft"),
     ).to.equal(false);
     expect(ticketCardBody.classList.contains("hover:shadow-sm")).to.equal(
       false,
@@ -399,7 +399,7 @@ describe("attendance availability", () => {
               value="ticket-inactive"
               checked
             />
-            <div data-attendance-role="ticket-type-card-body" class="bg-white cursor-pointer"></div>
+            <div data-attendance-role="ticket-type-card-body" class="bg-surface cursor-pointer"></div>
             <div data-attendance-role="ticket-type-summary"></div>
             <span data-attendance-role="ticket-type-status-dot" class="bg-green-500"></span>
             <span data-attendance-role="ticket-type-status-label">Available now</span>

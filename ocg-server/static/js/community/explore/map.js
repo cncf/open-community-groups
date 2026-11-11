@@ -151,7 +151,7 @@ export class Map {
     element.className = `marker-${item.slug}`;
     element.setAttribute("aria-label", name);
     const pin = document.createElement("div");
-    pin.className = "svg-icon h-[30px] w-[30px] bg-primary-500 hover:bg-primary-900 icon-marker";
+    pin.className = "svg-icon h-[30px] w-[30px] bg-primary-fg hover:bg-primary-fg-deep icon-marker";
     pin.setAttribute("aria-hidden", "true");
     element.replaceChildren(pin);
     const marker = createMapMarker([Number(item.longitude), Number(item.latitude)], { element });
@@ -374,6 +374,7 @@ export class Map {
         marker: false,
         minZoom: 2,
         navigationControl: true,
+        transformStyle: keepLocationsLayer,
         zoom: 3,
       });
     } catch {
@@ -512,7 +513,7 @@ const createClusterPopupContent = ({ links, onClose, title }) => {
   const closeButton = document.createElement("button");
   closeButton.type = "button";
   closeButton.className =
-    "group inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-primary-500";
+    "group inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-primary-edge";
   const closeIcon = document.createElement("div");
   closeIcon.className = "svg-icon size-5 bg-stone-500 transition-colors group-hover:bg-stone-900 icon-close";
   closeIcon.setAttribute("aria-hidden", "true");
@@ -592,6 +593,27 @@ const isCoordinateInRange = (value, limit) => {
   if (value === null || value === undefined || value === "") return false;
   const coordinate = Number(value);
   return Number.isFinite(coordinate) && Math.abs(coordinate) <= limit;
+};
+
+/**
+ * Carries the clustered locations source and its layer into the next basemap style of a color
+ * theme switch. A switch before the first style loads finds neither, and the `load` handler adds
+ * them once. One switch may run it twice (a diff, then a full rebuild), so it never mutates its
+ * arguments.
+ * @param {object|undefined} previousStyle Serialized current style.
+ * @param {object} nextStyle Style being loaded.
+ * @returns {object} Style to apply.
+ */
+const keepLocationsLayer = (previousStyle, nextStyle) => {
+  const source = previousStyle?.sources?.[LOCATIONS_SOURCE_ID];
+  const layer = previousStyle?.layers?.find((entry) => entry.id === LOCATIONS_SOURCE_ID);
+  if (!source || !layer) return nextStyle;
+  const layers = nextStyle.layers ?? [];
+  return {
+    ...nextStyle,
+    layers: layers.some((entry) => entry.id === LOCATIONS_SOURCE_ID) ? layers : [...layers, layer],
+    sources: { ...nextStyle.sources, [LOCATIONS_SOURCE_ID]: source },
+  };
 };
 
 /**

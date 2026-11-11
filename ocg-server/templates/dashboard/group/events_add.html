@@ -15,15 +15,15 @@
        hx-target="body"
        hx-indicator="#dashboard-spinner"
        data-pending-changes-guard
-       class="flex w-fit items-center gap-1 text-sm font-medium text-primary-500 hover:underline">
-      <span class="svg-icon size-4 icon-arrow-left bg-primary-500"
+       class="flex w-fit items-center gap-1 text-sm font-medium text-primary-fg hover:underline">
+      <span class="svg-icon size-4 icon-arrow-left bg-primary-fg"
             aria-hidden="true"></span>
       Back to events
     </a>
     {# End back to events -#}
 
     {# Draft event header -#}
-    <header class="rounded-lg border border-stone-200 bg-white">
+    <header class="rounded-lg border border-stone-200 bg-surface">
       {# Draft event title -#}
       <div class="px-4 py-4 sm:px-6 sm:py-5">
         <h1 id="draft-event-title"
@@ -68,7 +68,7 @@
   </div>
 
   <div id="pending-changes-alert" class="col-span-full hidden min-w-0">
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-edge-faint bg-primary-tint px-4 py-3 text-primary-fg-deep">
       <p class="min-w-0 flex-1 break-words text-sm/6">
         You have pending changes for this new event. If you leave without saving, this event will not be created.
       </p>
@@ -107,7 +107,7 @@
                     </label>
                     <div data-copy-indicator
                          id="copy-event-feedback"
-                         class="hidden items-center gap-2 text-sm text-primary-600"
+                         class="hidden items-center gap-2 text-sm text-primary-fg-strong"
                          aria-live="polite">
                       <svg-spinner size="size-4" label="Copying event">
                       </svg-spinner>
@@ -185,13 +185,25 @@
                 {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", field_class = "col-span-full lg:col-span-4", input_class = "w-full block") -}}
                 {# End Logo URL -#}
 
+                {# Logo dark URL -#}
+                {{ form_fields::image_field(label = "Logo (dark mode)", name = "logo_dark_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "Optional. Shown instead of the logo in dark mode, without the white background. Used only together with the logo above.", field_class = "col-span-full lg:col-span-4", input_class = "w-full block", extra_attrs = "dark-preview") -}}
+                {# End Logo dark URL -#}
+
                 {# Banner URL -#}
                 {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", input_class = "w-full block") -}}
                 {# End Banner URL -#}
 
+                {# Banner dark URL -#}
+                {{ form_fields::image_field(label = "Banner (dark mode)", name = "banner_dark_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "Optional. Shown instead of the banner in dark mode. Used only together with the banner above.", input_class = "w-full block", extra_attrs = "dark-preview") -}}
+                {# End Banner dark URL -#}
+
                 {# Banner Mobile URL -#}
                 {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", input_class = "w-full block") -}}
                 {# End Banner Mobile URL -#}
+
+                {# Banner Mobile dark URL -#}
+                {{ form_fields::image_field(label = "Banner Mobile (dark mode)", name = "banner_mobile_dark_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "Optional. Shown instead of the mobile banner in dark mode. Used only together with the mobile banner above.", input_class = "w-full block", extra_attrs = "dark-preview") -}}
+                {# End Banner Mobile dark URL -#}
 
                 {# Short Description -#}
                 <div class="col-span-full">
@@ -863,7 +875,7 @@
                       <label for="manual-tax-rates">Manual Stripe Tax Rates</label>
                       <span class="group/manual-tax-info relative inline-flex align-super">
                         <button type="button"
-                                class="relative inline-flex cursor-help rounded-full before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                                class="relative inline-flex cursor-help rounded-full before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge"
                                 aria-label="About Manual Stripe Tax Rates"
                                 aria-describedby="manual-tax-rates-info">
                           <span class="svg-icon size-3 icon-question-mark bg-stone-500"

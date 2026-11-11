@@ -2,25 +2,128 @@ import { expect } from "@open-wc/testing";
 
 import {
   createMapMarker,
+  getMapStyleUrl,
   loadMap,
 } from "/static/js/common/location/maplibre.js";
+import { THEME_CHANGE_EVENT, THEME_STORAGE_KEY } from "/static/js/common/theme.js";
+import { waitForAnimationFrames } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockMapLibre } from "/tests/unit/test-utils/maps.js";
+
+const BRIGHT_STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
+const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/fiord";
+
+/**
+ * Stores a color theme choice and announces it, as theme.js does after a switch.
+ * @param {"light"|"dark"} theme - Color theme to apply.
+ * @returns {void}
+ */
+const switchTheme = (theme) => {
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+  document.dispatchEvent(
+    new CustomEvent(THEME_CHANGE_EVENT, { detail: { theme } }),
+  );
+};
 
 describe("shared MapLibre map", () => {
   let mapLibre;
 
   beforeEach(() => {
-    // Create the map container and mock the browser library.
+    // Create the map container, mock the browser library and start in light.
     resetDom();
     mapLibre = mockMapLibre();
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
     document.body.innerHTML = '<div id="location-map"></div>';
   });
 
   afterEach(() => {
-    // Restore the map resources and DOM.
+    // Restore the map resources, storage and DOM.
     mapLibre.restore();
+    localStorage.removeItem(THEME_STORAGE_KEY);
     resetDom();
+  });
+
+  it("maps each color theme to its basemap style and falls back to bright", () => {
+    expect(getMapStyleUrl("light")).to.equal(BRIGHT_STYLE_URL);
+    expect(getMapStyleUrl("dark")).to.equal(DARK_STYLE_URL);
+    expect(getMapStyleUrl("system")).to.equal(BRIGHT_STYLE_URL);
+    expect(getMapStyleUrl("constructor")).to.equal(BRIGHT_STYLE_URL);
+    expect(getMapStyleUrl(undefined)).to.equal(BRIGHT_STYLE_URL);
+  });
+
+  it("loads the basemap style of the resolved color theme", async () => {
+    // Load one map in light and one in dark.
+    const lightMap = await loadMap("location-map", 36.7213, -4.4214);
+    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div id="dark-location-map"></div>',
+    );
+    const darkMap = await loadMap("dark-location-map", 36.7213, -4.4214);
+
+    // Verify each first paint requests its theme's style.
+    expect(lightMap.options.style).to.equal(BRIGHT_STYLE_URL);
+    expect(darkMap.options.style).to.equal(DARK_STYLE_URL);
+  });
+
+  it("swaps the basemap once per color theme change", async () => {
+    // Load a map with a style transform, then switch to dark twice within one frame.
+    const transformStyle = (previousStyle, nextStyle) => nextStyle;
+    const map = await loadMap("location-map", 36.7213, -4.4214, {
+      transformStyle,
+    });
+    switchTheme("dark");
+    switchTheme("dark");
+    expect(map.setStyleCalls).to.have.length(0);
+    await waitForAnimationFrames(2);
+
+    // Verify one diffed swap to dark that carries the transform.
+    expect(map.setStyleCalls).to.have.length(1);
+    expect(map.setStyleCalls[0].url).to.equal(DARK_STYLE_URL);
+    expect(map.setStyleCalls[0].options).to.deep.equal({ transformStyle });
+
+    // Switch back to light and verify the second swap.
+    switchTheme("light");
+    await waitForAnimationFrames(2);
+    expect(map.setStyleCalls.map(({ url }) => url)).to.deep.equal([
+      DARK_STYLE_URL,
+      BRIGHT_STYLE_URL,
+    ]);
+  });
+
+  it("applies only the last color theme of a burst", async () => {
+    // Switch to dark and back to light within one frame.
+    const map = await loadMap("location-map", 36.7213, -4.4214);
+    switchTheme("dark");
+    switchTheme("light");
+    await waitForAnimationFrames(2);
+
+    // Verify the basemap already matches, so nothing is swapped.
+    expect(map.setStyleCalls).to.have.length(0);
+  });
+
+  it("keeps the basemap when the style URL does not change", async () => {
+    // Announce a change that resolves to the current light theme.
+    const map = await loadMap("location-map", 36.7213, -4.4214);
+    switchTheme("light");
+    await waitForAnimationFrames(2);
+
+    // Verify no style request is made.
+    expect(map.setStyleCalls).to.have.length(0);
+  });
+
+  it("stops following the color theme once the map is removed", async () => {
+    // Switch to dark and remove the map before the queued frame runs.
+    const map = await loadMap("location-map", 36.7213, -4.4214);
+    switchTheme("dark");
+    map.remove();
+    await waitForAnimationFrames(2);
+
+    // Verify neither the queued frame nor a later change swaps the style.
+    switchTheme("light");
+    switchTheme("dark");
+    await waitForAnimationFrames(2);
+    expect(map.setStyleCalls).to.have.length(0);
   });
 
   it("keeps flat maps within Web Mercator bounds and the configured zoom limit", async () => {
@@ -134,6 +237,16 @@ describe("shared MapLibre map", () => {
     // Verify neither a marker nor a popup is created.
     expect(mapLibre.markers).to.have.length(0);
     expect(mapLibre.popups).to.have.length(0);
+  });
+
+  it("paints the default pin with the primary foreground role", async () => {
+    // Load a map with its default pin.
+    await loadMap("location-map", 36.7213, -4.4214);
+
+    // Verify the pin takes the foreground role, which follows the color theme.
+    const pin = mapLibre.markers[0].getElement();
+    expect(pin.classList.contains("bg-primary-fg")).to.equal(true);
+    expect(pin.classList.contains("bg-primary-500")).to.equal(false);
   });
 
   it("uses the supplied DOM element for custom markers", () => {

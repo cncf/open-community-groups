@@ -21,6 +21,7 @@ export const mockMapLibre = () => {
       this.fitBoundsCalls = [];
       this.easeToCalls = [];
       this.jumpToCalls = [];
+      this.setStyleCalls = [];
       this.zoom = options.zoom;
       this.keyboard = {
         disableRotation() {
@@ -46,16 +47,35 @@ export const mockMapLibre = () => {
     }
 
     addLayer(layer) {
+      if (this.layers.some((entry) => entry.id === layer.id)) {
+        throw new Error(
+          `Layer with id "${layer.id}" already exists on this map.`,
+        );
+      }
       this.layers.push(layer);
       return this;
     }
 
     addSource(id, options) {
+      if (this.sources[id]) {
+        throw new Error(`Source "${id}" already exists.`);
+      }
       this.sources[id] = {
         ...options,
         loaded: true,
         setData(data) {
           this.data = data;
+        },
+        // Returns the source specification with its current data, as GeoJSONSource does.
+        serialize() {
+          return structuredClone(
+            Object.fromEntries(
+              Object.entries(this).filter(
+                ([key, value]) =>
+                  key !== "loaded" && typeof value !== "function",
+              ),
+            ),
+          );
         },
         getClusterExpansionZoom: async () => 10,
         getClusterLeaves: async () => this.sources[id].data.features,
@@ -136,6 +156,34 @@ export const mockMapLibre = () => {
     }
 
     resize() {}
+
+    // Records the swap and rebuilds the style from the transformed result, as MapLibre does for a
+    // basemap that has no sources or layers of its own.
+    setStyle(url, options = {}) {
+      this.setStyleCalls.push({ options, url });
+      const previousStyle = {
+        layers: structuredClone(this.layers),
+        sources: Object.fromEntries(
+          Object.entries(this.sources).map(([id, source]) => [
+            id,
+            source.serialize(),
+          ]),
+        ),
+        version: 8,
+      };
+      const nextStyle = { layers: [], sources: {}, version: 8 };
+      const style = options.transformStyle
+        ? options.transformStyle(previousStyle, nextStyle)
+        : nextStyle;
+      this.layers = [];
+      this.sources = {};
+      Object.entries(style.sources).forEach(([id, source]) =>
+        this.addSource(id, source),
+      );
+      style.layers.forEach((layer) => this.addLayer(layer));
+      this.emit("style.load");
+      return this;
+    }
   }
 
   class Marker {

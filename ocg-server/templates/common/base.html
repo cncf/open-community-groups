@@ -11,11 +11,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    {# Desktop version mode: apply the cookie before first paint. Inline and synchronous on
-       purpose; a module or deferred script would run after layout. Cookie and attribute names
-       mirror static/js/common/viewport-mode.js. -#}
-    <script>
-      {% include "common/scripts/viewport_mode_init.js" -%}
+    <style>
+      @media screen {
+        html[data-theme="dark"] {
+          background-color: var(--color-surface, #181514);
+        }
+      }
+    </style>
+    {# Viewer preferences: apply the color theme and the desktop version before first paint.
+       Inline, synchronous and before the stylesheets on purpose: on a cold CSS fetch only the
+       canvas can paint early, and the inline color-scheme plus the critical style above cover
+       it. Storage keys and attribute names mirror static/js/common/theme.js and
+       static/js/common/viewport-mode.js. Askama parses the included file as template source
+       and build.rs rewrites static asset paths in templates, so the file must hold no Askama
+       opening delimiter and no static asset path, not even in a comment. -#}
+    <script data-ocg-preferences>
+      {% include "common/scripts/preferences_init.js" -%}
     </script>
     {# Deployment refresh: drop the cache-busting parameter before HTMX records the page path for
        history, keeping other parameters as sent. The parameter name mirrors
@@ -72,14 +83,24 @@
           href="/static/vendor/css/maplibre-gl.v5.24.0.min.css" />
     <link rel="stylesheet" href="/static/vendor/css/easymde.v2.21.0.min.css" />
     <link rel="stylesheet" href="/static/css/styles.css" />
+    {# Brand ramp: per-site light primary shades, read by the numbered primary
+       shades in styles.css, and dark primary roles, read by the dark block.
+       It sets only --ocg-* names. -#}
+    {% let brand_ramp = crate::templates::brand_ramp::BrandRamp::from_theme(&site_settings.theme) -%}
     <style>
       :root {
-        --ocg-primary: {{ site_settings.theme.primary_color }};
-        {% if !site_settings.theme.palette.is_empty() -%}
-          {% for (color_name, color_value) in site_settings.theme.palette -%}
-            --color-primary-{{ color_name }}: {{ color_value }};
-          {% endfor -%}
-        {% endif -%}
+        {% for (shade, value) in brand_ramp.light -%}
+          --ocg-primary-light-{{ shade }}: {{ value }};
+        {% endfor -%}
+        --ocg-primary-dark-edge: {{ brand_ramp.dark.edge }};
+        --ocg-primary-dark-edge-soft: {{ brand_ramp.dark.edge_soft }};
+        --ocg-primary-dark-fg: {{ brand_ramp.dark.fg }};
+        --ocg-primary-dark-fg-bright: {{ brand_ramp.dark.fg_bright }};
+        --ocg-primary-dark-fg-brighter: {{ brand_ramp.dark.fg_brighter }};
+        --ocg-primary-dark-fill: {{ brand_ramp.dark.fill }};
+        --ocg-primary-dark-fill-deep: {{ brand_ramp.dark.fill_deep }};
+        --ocg-primary-dark-tint: {{ brand_ramp.dark.tint }};
+        --ocg-primary-dark-tint-strong: {{ brand_ramp.dark.tint_strong }};
       }
     </style>
 
@@ -105,6 +126,7 @@
     <script type="module" src="/static/js/common/form-validation.js"></script>
     <script type="module" src="/static/js/common/ad-banner.js"></script>
     <script type="module" src="/static/js/common/viewport-mode.js"></script>
+    <script type="module" src="/static/js/common/theme.js"></script>
     {# End scripts -#}
   </head>
   {# djlint:off #}
@@ -113,19 +135,19 @@
     {% block skip_link -%}
       {# Skip navigation link -#}
       <a href="#main-content"
-         class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-md focus:shadow-lg">
+         class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-fill-strong focus:text-on-primary focus:rounded-md focus:shadow-lg">
         Skip to main content
       </a>
       {# End skip navigation link -#}
     {% endblock skip_link -%}
 
-    <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}{% if path == "/log-in" || path == "/sign-up" %} phone:bg-white{% endif %} {% block shell_classes %}{% endblock shell_classes %}'>
-      <div class='{%- if path == "/" -%}bg-linear-to-b from-white from-20% via-white from-80% md:from-60% lg:from-40% to-stone-900/12 to-98% lg:to-90% border-b border-stone-200{%- else if path == "/explore" -%}bg-transparent{%- endif %} phone:contents'>
+    <div class='min-h-full flex flex-col {% if path == "/" %}bg-surface{% else %}bg-canvas{% endif %}{% if path == "/log-in" || path == "/sign-up" %} phone:bg-surface{% endif %} {% block shell_classes %}{% endblock shell_classes %}'>
+      <div class='{%- if path == "/" -%}bg-linear-to-b from-surface from-20% via-surface from-80% md:from-60% lg:from-40% to-shade/12 to-98% lg:to-90% border-b border-stone-200{%- else if path == "/explore" -%}bg-transparent{%- endif %} phone:contents'>
         {% block header -%}
           {# Header -#}
           {% if !path.starts_with("/dashboard") -%}
             {# The wrapper targets #header because dashboards include the same header. -#}
-            <div class="px-4 lg:px-5 phone:contents phone:[&>#header]:sticky phone:[&>#header]:top-0 phone:[&>#header]:z-30 phone:[&>#header]:border-b phone:[&>#header]:border-stone-200 phone:[&>#header]:bg-white phone:[&>#header]:px-3 phone:[&>#header]:has-[#user-dropdown:not(.hidden)]:z-[1100]">{% include "common/header.html" -%}</div>
+            <div class="px-4 lg:px-5 phone:contents phone:[&>#header]:sticky phone:[&>#header]:top-0 phone:[&>#header]:z-30 phone:[&>#header]:border-b phone:[&>#header]:border-stone-200 phone:[&>#header]:bg-surface phone:[&>#header]:px-3 phone:[&>#header]:has-[#user-dropdown:not(.hidden)]:z-[1100]">{% include "common/header.html" -%}</div>
           {% endif -%}
           {# End header -#}
         {% endblock header -%}

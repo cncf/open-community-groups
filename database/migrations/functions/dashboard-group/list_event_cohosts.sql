@@ -24,6 +24,11 @@ returns json as $$
             g.slug,
             ec.event_cohost_status_id as status,
 
+            -- Pair the dark logo with the level that provides the light logo
+            paired_dark_image_url(
+                g.logo_url, g.logo_dark_url,
+                c.logo_url, c.logo_dark_url
+            ) as logo_dark_url,
             g.slug_pretty
         from event_row er
         join event_cohost ec on ec.event_id = p_event_id

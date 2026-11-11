@@ -1,5 +1,5 @@
 import { expect, test } from "../../../fixtures.js";
-import { withRowRestore } from "../../../database.js";
+import { queryCount, sqlUuid, withRowRestore } from "../../../database.js";
 
 import {
   TEST_UPLOAD_ASSET_PATHS,
@@ -12,6 +12,25 @@ import { navigateToPath, uniqueName, waitForActionResponse } from "../../../util
 
 // Seeded community row changed by the settings round-trip tests.
 const COMMUNITY_ROW = { key: { community_id: TEST_COMMUNITY_IDS.community1 }, table: "community" };
+
+// Optional dark mode image fields, each placed after its light field, with its size guidance.
+const DARK_IMAGE_FIELDS = [
+  {
+    helpText: "Images must be 360 x 360 px (square).",
+    legend: "Optional. Shown instead of the logo in dark mode, without the white background.",
+    name: "logo_dark_url",
+  },
+  {
+    helpText: "Size required 2428 x 192 px.",
+    legend: "Optional. Shown instead of the banner in dark mode.",
+    name: "banner_dark_url",
+  },
+  {
+    helpText: "Size required 1220 x 192 px.",
+    legend: "Optional. Shown instead of the mobile banner in dark mode.",
+    name: "banner_mobile_dark_url",
+  },
+];
 
 test.describe("community dashboard settings view", () => {
   test("settings form exposes every community configuration area", async ({ adminCommunityPage }) => {
@@ -58,6 +77,21 @@ test.describe("community dashboard settings view", () => {
     await expect(adminCommunityPage.locator('image-field[name="logo_url"]')).not.toContainText(
       "Size required",
     );
+
+    // Verify every dark mode image field is optional, previewed on the dark stage and sized like
+    // its light field; the advertisement banner has no dark variant.
+    for (const { helpText, legend, name } of DARK_IMAGE_FIELDS) {
+      const imageField = adminCommunityPage.locator(`image-field[name="${name}"]`);
+      await expect(imageField).toBeVisible();
+      await expect(imageField).toContainText(helpText);
+      await expect(imageField).toContainText(legend);
+      await expect(imageField).toHaveAttribute("dark-preview", "");
+      await expect(imageField).not.toHaveAttribute("required");
+    }
+    await expect(adminCommunityPage.locator('image-field[name="logo_dark_url"]')).not.toContainText(
+      "Size required",
+    );
+    await expect(adminCommunityPage.locator('image-field[name="ad_banner_dark_url"]')).toHaveCount(0);
 
     // Verify social and advertisement destinations use URL inputs.
     for (const socialLabel of [
@@ -240,6 +274,8 @@ test.describe("community dashboard settings view", () => {
 
       // Return the values used by the caller.
       return {
+        bannerDarkUrl: await getImageInput(adminCommunityPage, "banner_dark_url").inputValue(),
+        bannerMobileDarkUrl: await getImageInput(adminCommunityPage, "banner_mobile_dark_url").inputValue(),
         bannerMobileUrl: await adminCommunityPage
           .locator('image-field[name="banner_mobile_url"] input[name="banner_mobile_url"]')
           .inputValue(),
@@ -250,6 +286,7 @@ test.describe("community dashboard settings view", () => {
           (await descriptionEditor.getAttribute("content")) ??
           (await descriptionEditor.locator('textarea[name="description"]').first().inputValue()),
         displayName: await displayNameInput.inputValue(),
+        logoDarkUrl: await getImageInput(adminCommunityPage, "logo_dark_url").inputValue(),
         logoUrl: await adminCommunityPage
           .locator('image-field[name="logo_url"] input[name="logo_url"]')
           .inputValue(),
@@ -259,10 +296,13 @@ test.describe("community dashboard settings view", () => {
 
     // Submit community settings values and verify they persist.
     const submitSettings = async ({
+      bannerDarkUrl,
+      bannerMobileDarkUrl,
       bannerMobileUrl,
       bannerUrl,
       description,
       displayName,
+      logoDarkUrl,
       logoUrl,
       websiteUrl,
     }) => {
@@ -274,6 +314,9 @@ test.describe("community dashboard settings view", () => {
       await setImageFieldValue(adminCommunityPage, "logo_url", logoUrl);
       await setImageFieldValue(adminCommunityPage, "banner_url", bannerUrl);
       await setImageFieldValue(adminCommunityPage, "banner_mobile_url", bannerMobileUrl);
+      await setImageFieldValue(adminCommunityPage, "logo_dark_url", logoDarkUrl);
+      await setImageFieldValue(adminCommunityPage, "banner_dark_url", bannerDarkUrl);
+      await setImageFieldValue(adminCommunityPage, "banner_mobile_dark_url", bannerMobileDarkUrl);
       await adminCommunityPage.getByLabel("Website").fill(websiteUrl);
 
       // Click Update Settings.
@@ -298,22 +341,46 @@ test.describe("community dashboard settings view", () => {
       await expect(
         adminCommunityPage.locator('image-field[name="banner_mobile_url"] input[name="banner_mobile_url"]'),
       ).toHaveValue(bannerMobileUrl);
+      await expect(getImageInput(adminCommunityPage, "logo_dark_url")).toHaveValue(logoDarkUrl);
+      await expect(getImageInput(adminCommunityPage, "banner_dark_url")).toHaveValue(bannerDarkUrl);
+      await expect(getImageInput(adminCommunityPage, "banner_mobile_dark_url")).toHaveValue(
+        bannerMobileDarkUrl,
+      );
       await expect(adminCommunityPage.getByLabel("Website")).toHaveValue(websiteUrl);
     };
+
+    // Count the seeded community row while it has no dark logo.
+    const countCommunityWithoutDarkLogo = () =>
+      queryCount(`
+        select count(*)
+        from community
+        where community_id = ${sqlUuid(TEST_COMMUNITY_IDS.community1)}
+        and logo_dark_url is null
+      `);
 
     // Set up original values.
     const originalValues = await readSettingsFormValues();
     const updatedValues = {
       ...originalValues,
+      bannerDarkUrl: "/static/images/e2e/entity-banner-dark.svg",
+      bannerMobileDarkUrl: "/static/images/e2e/entity-banner-mobile-dark.svg",
       bannerMobileUrl: "/static/images/e2e/community-secondary-banner-mobile.svg",
       bannerUrl: "/static/images/e2e/community-secondary-banner.svg",
       description: "Updated platform engineering community details for settings coverage.",
       displayName: uniqueName("Platform Engineering Community"),
+      logoDarkUrl: "/static/images/e2e/entity-logo-dark.svg",
       logoUrl: "/static/images/e2e/community-secondary-logo.svg",
     };
 
-    // Save the updated settings, restoring the seeded community row afterwards.
-    await withRowRestore(COMMUNITY_ROW, () => submitSettings(updatedValues));
+    // Save the updated settings, then clear the dark logo, which stores no dark logo again,
+    // restoring the seeded community row afterwards.
+    expect(originalValues.logoDarkUrl).toBe("");
+    await withRowRestore(COMMUNITY_ROW, async () => {
+      await submitSettings(updatedValues);
+      expect(countCommunityWithoutDarkLogo()).toBe(0);
+      await submitSettings({ ...updatedValues, logoDarkUrl: "" });
+      expect(countCommunityWithoutDarkLogo()).toBe(1);
+    });
   });
 
   test("admin can update and restore extended community settings", async ({ adminCommunityPage }) => {
@@ -430,6 +497,14 @@ test.describe("community dashboard settings view", () => {
     );
   });
 });
+
+/**
+ * Finds the submitted input of an image field.
+ * @param {import("@playwright/test").Page} page - Page with the image field.
+ * @param {string} name - Image field name.
+ * @returns {import("@playwright/test").Locator} Image field input.
+ */
+const getImageInput = (page, name) => page.locator(`image-field[name="${name}"] input[name="${name}"]`);
 
 /**
  * Wraps the page's fetch to record the file name, target and type of every image upload.

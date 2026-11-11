@@ -66,7 +66,7 @@
              class="text-sm font-semibold text-nowrap text-stone-900">Status</label>
       <select id="attendees-enrollment-status"
               name="status"
-              class="block h-10 w-52 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:ring-0 focus:hover:border-primary-500">
+              class="block h-10 w-52 rounded-md border border-stone-200 bg-surface px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-edge focus:border-stone-200 focus:ring-0 focus:hover:border-primary-edge">
         <optgroup label="VIEWS">
           <option value="current"
                   {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::Current -%}
@@ -128,7 +128,7 @@
              class="text-sm font-semibold text-nowrap text-stone-900">Sort by</label>
       <select id="attendees-sort"
               name="sort"
-              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
+              class="block h-10 w-40 rounded-md border border-stone-200 bg-surface px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-edge focus:border-stone-200 focus:ring-0 focus:hover:border-primary-edge disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
               {% if attendees.is_empty() -%}
                 disabled
               {% endif -%}>
@@ -257,7 +257,7 @@
                 {% endif -%}">
       <button id="attendee-email-actions-button"
               type="button"
-              class="btn-primary-outline w-full whitespace-nowrap md:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500
+              class="btn-primary-outline w-full whitespace-nowrap md:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-fill group-has-[.dropdown:not(.hidden)]:text-on-primary group-has-[.dropdown:not(.hidden)]:border-primary-edge
                      {% if all_attendees_email_recipient_total == 0 || !can_manage_events || event.canceled -%}
                        opacity-50 cursor-not-allowed
                      {% endif -%}"
@@ -275,7 +275,7 @@
       </button>
       <div id="attendee-email-actions-menu"
            data-attendee-email-actions-dropdown
-           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-64 bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-64 bg-raised divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
         <ul class="py-2 text-sm text-stone-700" role="menu">
           <li>
             <button type="button"
@@ -308,7 +308,7 @@
                 {% endif -%}">
       <button id="attendee-badge-actions-button"
               type="button"
-              class="btn-primary-outline w-full whitespace-nowrap md:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500
+              class="btn-primary-outline w-full whitespace-nowrap md:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-fill group-has-[.dropdown:not(.hidden)]:text-on-primary group-has-[.dropdown:not(.hidden)]:border-primary-edge
                      {% if total == 0 || !can_manage_events || event.canceled -%}
                        opacity-50 cursor-not-allowed
                      {% endif -%}"
@@ -326,7 +326,7 @@
       </button>
       <div id="attendee-badge-actions-menu"
            data-attendee-badge-actions-dropdown
-           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-64 bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-64 bg-raised divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
         <ul class="py-2 text-sm text-stone-700" role="menu">
           <li>
             <button type="button"
@@ -367,7 +367,7 @@
     <div class="group relative">
       <button id="attendee-actions-button"
               type="button"
-              class="btn-actions btn-primary-outline h-[38px] w-[38px] p-0 inline-flex items-center justify-center group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500"
+              class="btn-actions btn-primary-outline h-[38px] w-[38px] p-0 inline-flex items-center justify-center group-has-[.dropdown:not(.hidden)]:bg-primary-fill group-has-[.dropdown:not(.hidden)]:text-on-primary group-has-[.dropdown:not(.hidden)]:border-primary-edge"
               aria-label="Open attendee actions menu"
               aria-haspopup="menu"
               aria-controls="attendee-actions-menu">
@@ -375,7 +375,7 @@
       </button>
       <div id="attendee-actions-menu"
            data-attendee-actions-dropdown
-           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-[22rem] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-[22rem] bg-raised divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
         <ul class="py-2 text-sm text-stone-700" role="menu">
           {% if can_manage_events -%}
             <li>
@@ -551,7 +551,7 @@
           || checked_in.is_some()
           || event_ticket_type_ids.is_some()
           || title.is_some() -%}
-        <tr class="bg-white border-b border-stone-200">
+        <tr class="bg-surface border-b border-stone-200">
           <td class="px-8 py-12 text-center" colspan="8">
             {% if has_active_attendee_filters -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
@@ -564,7 +564,7 @@
       {% else -%}
         {% for attendee in attendees -%}
           {# Attendee row -#}
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+          <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
             {# Email selection -#}
             <td class="hidden px-3 xl:px-5 py-4 w-10"
                 data-attendee-email-selection-column>
@@ -588,7 +588,7 @@
             <td class="px-3 xl:px-5 py-4 max-w-0 xl:w-[30%]">
               {% call dashboard::user_profile_modal_trigger(attendee.user, self::user_initials(attendee.user.name.as_deref() , attendee.user.username.as_str())) -%}
               <div class="flex items-center space-x-3 mb-1 min-w-0">
-                <div class="font-medium text-stone-900 truncate min-w-0 group-hover:text-primary-600">
+                <div class="font-medium text-stone-900 truncate min-w-0 group-hover:text-primary-fg-strong">
                   {% if (attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending
                     || attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending
                     || attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending) && attendee.user.name.is_none() -%}
@@ -717,7 +717,7 @@
                              title="Open attendee actions">
                       <div class="svg-icon size-4 icon-vertical-dots"></div>
                     </summary>
-                    <div class="dropdown absolute end-0 top-8 z-10 w-72 overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                    <div class="dropdown absolute end-0 top-8 z-10 w-72 overflow-hidden rounded-lg border border-stone-200 bg-raised py-1 shadow-lg">
                       <ul class="text-sm text-stone-700" role="menu">
                         {% if attendee.registration_answers.is_some() && !registration_questions.is_empty() -%}
                           <li>
@@ -784,7 +784,7 @@
                                         {% endif -%}
                                       {% endif -%}
                                       role="menuitem"
-                                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700">
+                                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-raised disabled:hover:text-stone-700">
                                 <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"></div>
                                 <span>Reissue invitation</span>
                               </button>
@@ -859,7 +859,7 @@
                                     title="Past event attendance cannot be canceled."
                                     {% endif -%}
                                     role="menuitem"
-                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-raised disabled:hover:text-stone-700"
                                     type="button">
                               <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
                               {% if self::is_paid_attendee(attendee.amount_minor) -%}

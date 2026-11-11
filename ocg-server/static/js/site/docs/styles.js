@@ -5,13 +5,13 @@ const DOCS_SCOPE_SELECTOR = ".ocg-docs-root";
 
 const STYLE_URLS = {
   docsify: "/static/vendor/css/docsify-vue.v4.13.1.min.css",
-  shell: "/static/docs/assets/shell.css",
-  theme: "/static/docs/assets/theme.css",
+  shell: "/static/css/docs/shell.css",
+  theme: "/static/css/docs/theme.css",
 };
 
 const STYLE_IDS = {
   docsify: "ocg-docsify-vue-scoped-style",
-  overrides: "ocg-docs-shell-overrides",
+  shell: "ocg-docs-shell-style",
   theme: "ocg-docs-theme-scoped-style",
 };
 
@@ -46,32 +46,19 @@ const setStyleTag = (styleId, cssText) => {
 };
 
 /**
- * Ensures a stylesheet link exists in the document head.
- * @param {string} styleId Link element ID.
- * @param {string} href Stylesheet URL.
- */
-const ensureStylesheetLink = (styleId, href) => {
-  if (getElementById(document, styleId)) {
-    return;
-  }
-
-  const link = document.createElement("link");
-  link.id = styleId;
-  link.rel = "stylesheet";
-  link.href = href;
-  document.head.appendChild(link);
-};
-
-/**
  * Loads and scopes docs styles.
+ * Fetches every stylesheet before applying any, so the docs root never paints
+ * the scoped theme without the shell rules that override it. The shell styles
+ * stay unscoped and are set last to win equal-specificity ties.
  */
 export const setupDocsScopedStyles = async () => {
-  const [docsifyCss, themeCss] = await Promise.all([
+  const [docsifyCss, themeCss, shellCss] = await Promise.all([
     fetchText(STYLE_URLS.docsify),
     fetchText(STYLE_URLS.theme),
+    fetchText(STYLE_URLS.shell),
   ]);
 
   setStyleTag(STYLE_IDS.docsify, scopeCssRules(docsifyCss, DOCS_SCOPE_SELECTOR));
   setStyleTag(STYLE_IDS.theme, scopeCssRules(themeCss, DOCS_SCOPE_SELECTOR));
-  ensureStylesheetLink(STYLE_IDS.overrides, STYLE_URLS.shell);
+  setStyleTag(STYLE_IDS.shell, shellCss);
 };

@@ -29,6 +29,7 @@ select plan(2);
 select fx_community(:'communityID', jsonb_build_object(
     'active', true,
     'display_name', 'Options Community',
+    'logo_dark_url', 'https://example.test/options-community-dark.png',
     'logo_url', 'https://example.test/options-community.png',
     'name', 'options-community'
 ));
@@ -46,9 +47,11 @@ select fx_group(:'excludedGroupID', :'communityID', :'groupCategoryID', jsonb_bu
     'name', 'Excluded Option'
 ));
 
--- Active group without a logo or pretty slug, sorted last by name but first by id
+-- Active group without a logo or pretty slug but with an orphan dark logo,
+-- sorted last by name but first by id
 select fx_group(:'fallbackLogoGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', true,
+    'logo_dark_url', 'https://example.test/zulu-orphan-dark.png',
     'logo_url', null,
     'name', 'Zulu Option',
     'slug', 'zulu-option'
@@ -66,9 +69,10 @@ select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_bu
     'name', 'Inactive Option'
 ));
 
--- Active group with its own logo and pretty slug, sorted first by name but last by id
+-- Active group with its own logos and pretty slug, sorted first by name but last by id
 select fx_group(:'ownLogoGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', true,
+    'logo_dark_url', 'https://example.test/alpha-option-dark.png',
     'logo_url', 'https://example.test/alpha-option.png',
     'name', 'Alpha Option',
     'slug', 'alpha-option',
@@ -91,6 +95,7 @@ select is(
             'name', 'Alpha Option',
             'slug', 'alpha-option',
 
+            'logo_dark_url', 'https://example.test/alpha-option-dark.png',
             'slug_pretty', 'alpha-pretty'
         ),
         jsonb_build_object(
@@ -99,7 +104,9 @@ select is(
             'group_id', :'fallbackLogoGroupID'::uuid,
             'logo_url', 'https://example.test/options-community.png',
             'name', 'Zulu Option',
-            'slug', 'zulu-option'
+            'slug', 'zulu-option',
+
+            'logo_dark_url', 'https://example.test/options-community-dark.png'
         )
     ),
     'Should return active groups ordered by name except the excluded group'

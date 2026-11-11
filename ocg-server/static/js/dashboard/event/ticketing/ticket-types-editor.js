@@ -589,7 +589,7 @@ class TicketTypesEditor extends TicketingEditorBase {
       this._rows,
       (row) => row._row_id,
       (row) => html`
-        <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
+        <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200 align-middle">
           <td class="px-3 xl:px-5 py-4 min-w-[180px]">
             <div class="font-medium text-stone-900 wrap-anywhere">${this._ticketTitle(row)}</div>
             <div class="mt-1 text-xs text-stone-500">
@@ -654,7 +654,7 @@ class TicketTypesEditor extends TicketingEditorBase {
       (windowRow) => {
         const isOnlyWindow = this._draftRow.price_windows.length === 1;
         return html`
-          <div class="rounded-xl border border-stone-200 bg-white p-4">
+          <div class="rounded-xl border border-stone-200 bg-surface p-4">
             <div class="flex items-start justify-between gap-3">
               <div>
                 <div class="text-sm font-medium text-stone-900">Price window</div>
@@ -789,7 +789,7 @@ class TicketTypesEditor extends TicketingEditorBase {
             </tr>
           </thead>
           <tbody data-ticketing-role="empty-state" class=${this._rows.length > 0 ? "hidden" : ""}>
-            <tr class="bg-white border-b border-stone-200">
+            <tr class="bg-surface border-b border-stone-200">
               <td class="px-8 py-12 text-center text-stone-500" colspan="5">
                 No ticket tiers yet. Configured ticket tiers will appear here.
               </td>

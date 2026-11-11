@@ -25,11 +25,46 @@
        target="{{ target }}"
      {% endif -%}
      data-header-nav-link
-     class="header-nav-link mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 transition-colors
+     class="header-nav-link mx-3 pb-1 border-0 border-primary-edge text-base font-semibold tracking-widest text-primary-fg uppercase border-b-2 transition-colors
             {% if current_path == href || current_path == path -%}
-              border-primary-500{%- else -%}border-transparent hover:border-primary-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
+              border-primary-edge{%- else -%}border-transparent hover:border-primary-edge-soft{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
 {% endmacro link -%}
 {# End link -#}
+
+{# Theme choice -#}
+{# Used by the theme choice items for one segment of the color theme control, styled like the
+   explore view mode toggle. The server always checks System; static JS syncs the stored choice. -#}
+{% macro theme_choice(value, label, icon) -%}
+  <li class="group/segment min-w-0 flex-1 not-first:-ms-px" role="none">
+    <button type="button"
+            role="menuitemradio"
+            aria-checked="{% if value == "system" %}true{% else %}false{% endif %}"
+            data-ocg-theme-choice="{{ value }}"
+            class="group relative flex w-full cursor-pointer items-center justify-center gap-1 border border-stone-200 bg-raised px-1 py-1.5 text-[0.775rem]/4 text-stone-500 select-none transition-colors motion-reduce:transition-none group-first/segment:rounded-s-md group-last/segment:rounded-e-md hover:bg-stone-100 focus-visible:z-20 aria-checked:z-10 aria-checked:border-primary-edge aria-checked:text-primary-fg pointer-coarse:min-h-11 phone:gap-1.5 phone:text-sm">
+      <span class="svg-icon size-3 shrink-0 {{ icon }} bg-stone-500 group-aria-checked:bg-primary-fg phone:size-4"></span>
+      <span>{{ label }}</span>
+    </button>
+  </li>
+{% endmacro theme_choice -%}
+{# End theme choice -#}
+
+{# Theme choice items -#}
+{# Used by the header user menu to pick the color theme: Light, Dark or System. The row sits
+   directly above the viewport mode items and is always visible. -#}
+{% macro theme_choice_items() -%}
+  <li class="account-sheet-theme border-t border-stone-200 mt-2 pt-2 px-4 pb-2 phone:px-3"
+      role="none">
+    <div id="user-menu-theme-label"
+         class="title-preheader pb-2"
+         aria-hidden="true">Theme</div>
+    <ul role="group" aria-labelledby="user-menu-theme-label" class="flex">
+      {{ theme_choice(value = "light", label = "Light", icon = "icon-sun") -}}
+      {{ theme_choice(value = "dark", label = "Dark", icon = "icon-moon") -}}
+      {{ theme_choice(value = "system", label = "System", icon = "icon-contrast") -}}
+    </ul>
+  </li>
+{% endmacro theme_choice_items -%}
+{# End theme choice items -#}
 
 {# Viewport mode items -#}
 {# Used by the header user menu to switch between the responsive layout and the desktop version.

@@ -94,9 +94,9 @@ export const getStatusColor = (statusId) => {
       };
     default:
       return {
-        border: "border-primary-500",
-        ring: "ring-2 ring-primary-200",
-        dot: "bg-primary-500",
+        border: "border-primary-edge",
+        ring: "ring-2 ring-primary-edge-faint",
+        dot: "bg-primary-fg",
       };
   }
 };

@@ -43,7 +43,7 @@ const renderLocationSearchResult = (state) => {
 export const renderLocationSearchDropdown = (state) => html`
   <div
     data-location-search-dropdown
-    class="absolute z-50 mt-2 w-full bg-white rounded-lg shadow-lg border border-stone-200
+    class="absolute z-50 mt-2 w-full bg-raised rounded-lg shadow-lg border border-stone-200
       max-h-80 overflow-y-auto"
     role="listbox"
   >

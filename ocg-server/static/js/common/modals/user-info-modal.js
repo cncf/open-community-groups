@@ -233,7 +233,7 @@ export class UserInfoModal extends LitWrapper {
                 aria-label=${link.label}
               >
                 <div
-                  class="svg-icon size-6 bg-primary-500 group-hover:bg-white transition-colors phone:size-5 icon-${link.icon}"
+                  class="svg-icon size-6 bg-primary-fg group-hover:bg-on-primary transition-colors phone:size-5 icon-${link.icon}"
                 ></div>
               </a>
             `,
@@ -278,7 +278,7 @@ export class UserInfoModal extends LitWrapper {
             (badge) => html`
               <li>
                 <a
-                  class="group relative inline-flex size-16 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 sm:size-24"
+                  class="group relative inline-flex size-16 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge sm:size-24"
                   href=${`/badges/credentials/${badge.user_badge_id}`}
                   aria-label=${`View ${badge.snapshot.name} badge credential`}
                   aria-describedby=${`profile-badge-details-${badge.user_badge_id}`}
@@ -293,7 +293,7 @@ export class UserInfoModal extends LitWrapper {
                   <span
                     id=${`profile-badge-details-${badge.user_badge_id}`}
                     role="tooltip"
-                    class="pointer-events-none invisible absolute bottom-full left-0 z-20 mb-2 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-stone-200 bg-white p-4 text-left opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
+                    class="pointer-events-none invisible absolute bottom-full left-0 z-20 mb-2 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-stone-200 bg-raised p-4 text-left opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
                   >
                     <span class="block text-sm font-semibold text-stone-900">${badge.snapshot.name}</span>
                     <span class="mt-2 block text-xs font-medium text-stone-500">
@@ -308,7 +308,7 @@ export class UserInfoModal extends LitWrapper {
                       }
                     </span>
                     <span
-                      class="absolute top-full left-6 size-3 -translate-y-1/2 rotate-45 border-r border-b border-stone-200 bg-white sm:left-10"
+                      class="absolute top-full left-6 size-3 -translate-y-1/2 rotate-45 border-r border-b border-stone-200 bg-raised sm:left-10"
                       aria-hidden="true"
                     ></span>
                   </span>

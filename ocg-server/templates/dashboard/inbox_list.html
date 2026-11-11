@@ -113,7 +113,7 @@
       <tbody>
         {% if conversations.is_empty() -%}
           {# Empty state -#}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-surface border-b border-stone-200">
             <td class="xl:hidden px-8 py-16 text-center" colspan="3">
               {% include "dashboard/placeholders/inbox_table.html" -%}
             </td>
@@ -127,7 +127,7 @@
         {% else -%}
           {% for conversation in conversations -%}
             {# Conversation row -#}
-            <tr class="cursor-pointer odd:bg-white even:bg-stone-50/50 border-b border-stone-200 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:bg-stone-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-stone-400 motion-reduce:transition-none"
+            <tr class="cursor-pointer odd:bg-surface even:bg-stone-50/50 border-b border-stone-200 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:bg-stone-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-stone-400 motion-reduce:transition-none"
                 tabindex="0"
                 hx-get="{{ scope.conversation_url(conversation.inbox_conversation_id) }}"
                 hx-trigger="click, keydown[key=='Enter']"

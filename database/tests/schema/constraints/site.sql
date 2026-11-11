@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -42,6 +42,19 @@ select throws_ok(
     '23505',
     'duplicate key value violates unique constraint "site_singleton_idx"',
     'Should reject a second site row'
+);
+
+-- Should reject a blank dark header logo URL
+select throws_ok(
+    format(
+        $$
+            update site set header_logo_dark_url = ' ' where site_id = %L
+        $$,
+        :'siteFirstID'
+    ),
+    '23514',
+    'new row for relation "site" violates check constraint "site_header_logo_dark_url_check"',
+    'Should reject a blank dark header logo URL'
 );
 
 -- ============================================================================

@@ -2,7 +2,11 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/common/breadcrumb-nav.js";
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  mountLitComponentWithAttributes,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 describe("breadcrumb-nav", () => {
@@ -223,6 +227,112 @@ describe("breadcrumb-nav", () => {
       expect(banner.style.aspectRatio.replace(/\s/g, "")).to.equal(aspect.replace(/\s/g, ""));
       expect(banner.style.background).to.contain("linear-gradient");
     }
+  });
+
+  it("renders a dark mode banner only together with its light banner", async () => {
+    // Render one breadcrumb with both dark banners and one with dark banners alone.
+    const paired = await mountLitComponentWithAttributes("breadcrumb-nav", {
+      attributes: {
+        "banner-dark-url": "/img/banner-desktop-dark.png",
+        "banner-mobile-dark-url": "/img/banner-mobile-dark.png",
+        "banner-mobile-url": "/img/banner-mobile.png",
+        "banner-url": "/img/banner-desktop.png",
+        items: JSON.stringify(breadcrumbItems),
+      },
+    });
+    const orphan = await mountLitComponentWithAttributes("breadcrumb-nav", {
+      attributes: {
+        "banner-dark-url": "/img/banner-desktop-dark.png",
+        "banner-mobile-dark-url": "/img/banner-mobile-dark.png",
+        items: JSON.stringify(breadcrumbItems),
+      },
+    });
+
+    // Verify each breakpoint pairs an eager light image with a lazy dark one.
+    for (const [lightUrl, darkUrl, aspect] of [
+      ["/img/banner-mobile.png", "/img/banner-mobile-dark.png", "1220 / 192"],
+      ["/img/banner-desktop.png", "/img/banner-desktop-dark.png", "2428 / 192"],
+    ]) {
+      const lightImg = paired.querySelector(`img[src="${lightUrl}"]`);
+      const darkImg = paired.querySelector(`img[src="${darkUrl}"]`);
+      const lightWrapper = lightImg.parentElement;
+      const darkWrapper = darkImg.parentElement;
+
+      expect(lightWrapper.dataset.themeImage).to.equal("light");
+      expect(darkWrapper.dataset.themeImage).to.equal("dark");
+      expect(lightWrapper.dataset.bannerAspect).to.equal(aspect);
+      expect(darkWrapper.dataset.bannerAspect).to.equal(aspect);
+      expect(lightWrapper.parentElement).to.equal(darkWrapper.parentElement);
+      expect(lightWrapper.parentElement.dataset.bannerAspect).to.equal(aspect);
+      expect(lightImg.hasAttribute("loading")).to.equal(false);
+      expect(darkImg.getAttribute("loading")).to.equal("lazy");
+      for (const img of [lightImg, darkImg]) {
+        expect(img.getAttribute("alt")).to.equal("Banner");
+        expect(img.classList.contains("w-full")).to.equal(true);
+        expect(img.classList.contains("h-auto")).to.equal(true);
+      }
+    }
+
+    // Verify dark banners without their light banners render nothing.
+    expect(orphan.querySelector("img")).to.equal(null);
+    expect(orphan.querySelector("[data-banner-aspect]")).to.equal(null);
+  });
+
+  it("resolves the desktop and mobile dark banners independently", async () => {
+    // Render a breadcrumb whose only dark banner is the desktop one.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+      bannerUrl: "/img/banner-desktop.png",
+      bannerDarkUrl: "/img/banner-desktop-dark.png",
+      bannerMobileUrl: "/img/banner-mobile.png",
+    });
+
+    // Verify the desktop banner is paired and the mobile banner keeps its single image.
+    const mobileImg = element.querySelector('img[src="/img/banner-mobile.png"]');
+    expect(element.querySelector('img[src="/img/banner-desktop-dark.png"]')).to.not.equal(null);
+    expect(element.querySelectorAll('[data-theme-image="dark"]')).to.have.length(1);
+    expect(mobileImg.parentElement.hasAttribute("data-theme-image")).to.equal(false);
+    expect(mobileImg.parentElement.classList.contains("sm:hidden")).to.equal(true);
+  });
+
+  it("keeps the single banner image markup without dark banners", async () => {
+    // Render the breadcrumb navigation with light banners only.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+      bannerUrl: "/img/banner-desktop.png",
+      bannerMobileUrl: "/img/banner-mobile.png",
+    });
+
+    // Verify each banner image sits directly in its breakpoint wrapper.
+    expect(element.querySelector("[data-theme-image]")).to.equal(null);
+    expect(element.querySelectorAll("img")).to.have.length(2);
+    for (const img of element.querySelectorAll("img")) {
+      expect(img.parentElement.classList.contains("border-b")).to.equal(true);
+      expect(img.hasAttribute("loading")).to.equal(false);
+    }
+  });
+
+  it("styles only the failed dark banner's wrapper as a placeholder", async () => {
+    // Render the breadcrumb navigation with a paired desktop banner.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+      bannerUrl: "/img/banner-desktop.png",
+      bannerDarkUrl: "/img/banner-desktop-dark.png",
+    });
+    const lightImg = element.querySelector('img[src="/img/banner-desktop.png"]');
+    const darkImg = element.querySelector('img[src="/img/banner-desktop-dark.png"]');
+    const breakpointWrapper = darkImg.parentElement.parentElement;
+
+    // Fail the dark banner.
+    darkImg.dispatchEvent(new Event("error"));
+
+    // Verify the dark wrapper becomes the placeholder and the light banner is untouched.
+    expect(darkImg.style.display).to.equal("none");
+    expect(darkImg.parentElement.style.aspectRatio.replace(/\s/g, "")).to.equal("2428/192");
+    expect(darkImg.parentElement.style.background).to.contain("linear-gradient");
+    expect(lightImg.style.display).to.equal("");
+    expect(lightImg.parentElement.style.background).to.equal("");
+    expect(breakpointWrapper.style.background).to.equal("");
   });
 
   it("closes the mobile dropdown on outside clicks and escape", async () => {

@@ -64,6 +64,7 @@ async fn db_contracts_get_user_notification_preferences_deserializes() -> Result
         .find(|group| group.group_id == cohost_reinvited_group_id())
         .expect("unavailable muted group should be present");
     assert!(!unavailable_group.available);
+    assert_eq!(unavailable_group.logo_dark_url, None);
     assert_eq!(
         unavailable_group.logo_url.as_deref(),
         Some("https://example.com/cohost-reinvited-logo.png")
@@ -73,6 +74,10 @@ async fn db_contracts_get_user_notification_preferences_deserializes() -> Result
         DateTime::from_timestamp(1_704_153_600, 0).unwrap()
     );
     assert_eq!(unavailable_group.name, "Contract Reinvited Co-host");
+
+    // Check the connected group without an own logo takes no community dark logo
+    assert_eq!(connected_group.logo_dark_url, None);
+    assert_eq!(connected_group.logo_url, None);
 
     // Check null logo URLs are omitted from the raw JSON object
     let raw_muted_groups = raw["muted_groups"]
@@ -85,6 +90,7 @@ async fn db_contracts_get_user_notification_preferences_deserializes() -> Result
         .expect("raw connected muted group should be present");
     assert_eq!(raw_connected_group["available"], true);
     assert_eq!(raw_connected_group["muted_at"], 1_704_067_200);
+    assert!(!raw_connected_group.as_object().unwrap().contains_key("logo_dark_url"));
     assert!(!raw_connected_group.as_object().unwrap().contains_key("logo_url"));
 
     Ok(())
@@ -105,12 +111,17 @@ async fn db_contracts_list_user_notification_group_options_deserializes() -> Res
     assert_eq!(options[0].group_id, group_id());
     assert_eq!(options[0].name, "Contract Group");
     assert_eq!(
+        options[0].logo_dark_url.as_deref(),
+        Some("https://example.com/group-logo-dark.png")
+    );
+    assert_eq!(
         options[0].logo_url.as_deref(),
         Some("https://example.com/group-logo.png")
     );
     assert_eq!(options[1].community_display_name, "Contract Community");
     assert_eq!(options[1].group_id, subgroup_id());
     assert_eq!(options[1].name, "Contract Subgroup");
+    assert_eq!(options[1].logo_dark_url, None);
     assert_eq!(options[1].logo_url, None);
 
     Ok(())

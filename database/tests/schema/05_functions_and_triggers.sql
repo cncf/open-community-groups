@@ -413,6 +413,7 @@ select set_eq(
         ('normalize_badge_image_file_name(p_value text)'),
         ('normalize_ticketing_schedule(p_schedule jsonb)'),
         ('opt_out_user_from_optional_notifications(p_email text, p_reason text)'),
+        ('paired_dark_image_url(p_first_light_url text, p_first_dark_url text, p_second_light_url text, p_second_dark_url text, p_third_light_url text, p_third_dark_url text)'),
         ('parse_explore_filters(p_filters jsonb)'),
         ('parse_search_filters(p_filters jsonb)'),
         ('payment_job_is_exhausted(p_job payment_job)'),

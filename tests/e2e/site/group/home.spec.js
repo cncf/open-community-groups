@@ -22,6 +22,7 @@ import {
   getSectionByHeading,
   getSectionLink,
   navigateToGroup,
+  resolveCssColor,
   sendCloseRequest,
   swipeHorizontally,
 } from "../../utils.js";
@@ -459,8 +460,8 @@ test.describe("group page - phone layout", () => {
     // Verify Join is the page's filled main action.
     await expect(join).toBeVisible();
     await expect(join).toHaveCSS("color", "rgb(255, 255, 255)");
-    await expect(join).not.toHaveCSS("background-color", "rgb(255, 255, 255)");
-    await expect(share).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    await expect(join).not.toHaveCSS("background-color", await resolveCssColor(join, "var(--color-surface)"));
+    await expect(share).toHaveCSS("background-color", await resolveCssColor(share, "var(--color-surface)"));
 
     // Verify both pills share one 44px row across the panel's gutters.
     const viewportWidth = page.viewportSize().width;

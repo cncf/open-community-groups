@@ -209,6 +209,63 @@ describe("event preview", () => {
     expect(context.sessions[1].labels).to.equal(undefined);
   });
 
+  it("sends the dark mode images of the community, group and co-hosts", () => {
+    // Prepare a page whose community, group and co-host have dark mode images.
+    const pageRoot = mountPreviewPage();
+    Object.assign(document.getElementById("dashboard-content").dataset, {
+      communityBannerDarkUrl: "/community-banner-dark.png",
+      communityLogoDarkUrl: "/community-dark.svg",
+    });
+    Object.assign(pageRoot.dataset, {
+      groupBannerDarkUrl: "/group-banner-dark.png",
+      groupLogoDarkUrl: " /group-dark.svg ",
+    });
+    pageRoot.querySelector("cohosts-selector").getPreviewCohosts = () => [
+      {
+        logo_dark_url: "/cohost-dark.png",
+        logo_url: "/cohost.png",
+        name: "Co-host Group",
+        status: "pending",
+      },
+    ];
+
+    // Build the preview context.
+    const context = JSON.parse(buildEventPreviewPayload(pageRoot).get("preview_context"));
+
+    // Verify every dark image reaches the context next to its light image.
+    expect(context.community.banner_dark_url).to.equal("/community-banner-dark.png");
+    expect(context.community.banner_url).to.equal("/community-banner.png");
+    expect(context.community.logo_dark_url).to.equal("/community-dark.svg");
+    expect(context.group.banner_dark_url).to.equal("/group-banner-dark.png");
+    expect(context.group.logo_dark_url).to.equal("/group-dark.svg");
+    expect(context.cohosts).to.deep.equal([
+      {
+        logo_dark_url: "/cohost-dark.png",
+        logo_url: "/cohost.png",
+        name: "Co-host Group",
+        status: "pending",
+      },
+    ]);
+  });
+
+  it("omits empty dark mode images from the preview context", () => {
+    // Prepare a page whose dark mode image attributes are empty.
+    const pageRoot = mountPreviewPage();
+    Object.assign(pageRoot.dataset, {
+      communityBannerDarkUrl: "",
+      communityLogoDarkUrl: "",
+      groupBannerDarkUrl: "",
+      groupLogoDarkUrl: "",
+    });
+
+    // Build the preview context.
+    const context = JSON.parse(buildEventPreviewPayload(pageRoot).get("preview_context"));
+
+    // Verify no dark key is sent.
+    expect(context.community).to.not.have.any.keys("banner_dark_url", "logo_dark_url");
+    expect(context.group).to.not.have.any.keys("banner_dark_url", "logo_dark_url");
+  });
+
   it("keeps preview co-host context empty when the selector is missing", () => {
     // Render the preview page without the co-hosts form.
     const pageRoot = mountPreviewPage();

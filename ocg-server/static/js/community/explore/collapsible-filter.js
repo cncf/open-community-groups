@@ -257,15 +257,15 @@ export class CollapsibleFilter extends LitWrapper {
                   aria-controls=${optionsId}
                   aria-expanded=${String(!this.isCollapsed)}
                   aria-label=${this.isCollapsed ? `Expand ${this.title}` : `Collapse ${this.title}`}
-                  class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 font-medium rounded-full text-sm p-1 text-center inline-flex items-center phone:relative phone:after:absolute phone:after:-inset-3"
+                  class="group/btn collapse-btn border border-stone-200 hover:bg-inverse font-medium rounded-full text-sm p-1 text-center inline-flex items-center phone:relative phone:after:absolute phone:after:-inset-3"
                 >
                   ${
                     this.isCollapsed
                       ? html`<div
-                          class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-down"
+                          class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-on-fill icon-caret-down"
                         ></div>`
                       : html`<div
-                          class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-up"
+                          class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-on-fill icon-caret-up"
                         ></div>`
                   }
                 </button>`
@@ -284,9 +284,9 @@ export class CollapsibleFilter extends LitWrapper {
             @click=${this._onSelectAny}
             aria-label=${`Any ${this.title}`}
             aria-pressed=${String(this.selected.length === 0)}
-            class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none phone:min-h-11 phone:px-3 ${
+            class="inline-flex items-center justify-between w-full px-2 py-1 bg-surface border rounded-md cursor-pointer select-none phone:min-h-11 phone:px-3 ${
               this.selected.length === 0
-                ? "border-primary-500 text-primary-500"
+                ? "border-primary-edge text-primary-fg"
                 : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
             }"
           >
@@ -299,9 +299,9 @@ export class CollapsibleFilter extends LitWrapper {
           (opt) =>
             html`<li>
               <label
-                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none phone:min-h-11 phone:px-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--ocg-primary) ${
+                class="inline-flex items-center justify-between w-full px-2 py-1 bg-surface border rounded-md cursor-pointer select-none phone:min-h-11 phone:px-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${
                   this.selected.includes(opt.value)
-                    ? "border-primary-500 text-primary-500"
+                    ? "border-primary-edge text-primary-fg"
                     : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
                 }"
               >

@@ -4,26 +4,26 @@
 {# Public event page box linking to each co-host group page. -#}
 {% macro cohosts_box(cohosts) -%}
   {% if !cohosts.is_empty() -%}
-    <div class="rounded-lg border border-stone-200 bg-white p-4 phone:px-3 phone:py-2.5">
+    <div class="rounded-lg border border-stone-200 bg-surface p-4 phone:px-3 phone:py-2.5">
       <div class="mb-4 flex min-h-[25px] items-center justify-between section-strip phone:-mx-3">
         <div class="text-base/3 font-semibold uppercase text-stone-400 section-strip-title phone:font-bold phone:text-inherit">Co-hosted with</div>
       </div>
-      <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 phone:px-3 phone:py-2.5">
+      <div class="rounded-lg border border-dashed border-stone-200 bg-surface p-4 phone:px-3 phone:py-2.5">
         <ul class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 phone:grid-cols-1 phone:gap-2"
             aria-label="Co-hosts">
           {% for cohost in cohosts -%}
             <li class="min-w-0">
               <a href="/{{ cohost.community_name }}/group/{{ cohost.public_slug() }}"
-                 class="group flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 phone:min-h-11"
+                 class="group flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge phone:min-h-11"
                  title="{{ cohost.name }} ({{ cohost.community_display_name }})"
                  hx-boost="true"
                  hx-target="body">
-                {{ ui::logo(logo_url = cohost.logo_url, classes = "size-10 shrink-0", size = 40) -}}
+                {{ ui::logo(logo_url = cohost.logo_url, classes = "size-10 shrink-0", size = 40, logo_dark_url = cohost.logo_dark_url.as_deref().unwrap_or("")) -}}
                 <span class="min-w-0 flex-1">
                   <span class="block truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400">
                     {{ cohost.community_display_name }}
                   </span>
-                  <span class="mt-0.5 block truncate text-sm/5 font-semibold text-black group-hover:text-primary-500">
+                  <span class="mt-0.5 block truncate text-sm/5 font-semibold text-stone-900 group-hover:text-primary-fg">
                     {{ cohost.name|demoji }}
                   </span>
                 </span>
@@ -54,7 +54,7 @@
           Co-hosted with {{ cohosts.len() }} groups
         </span>
         <template data-cohosts-panel-template>
-          <div class="fixed z-50 w-72 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-stone-200 bg-white text-left text-xs font-normal leading-5 text-stone-700 shadow-lg"
+          <div class="fixed z-50 w-72 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-stone-200 bg-raised text-left text-xs font-normal leading-5 text-stone-700 shadow-lg"
                data-cohosts-panel
                aria-hidden="true">
             <div class="border-b border-stone-200 bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-900">
@@ -63,12 +63,12 @@
             <ul class="space-y-2 px-3 py-3">
               {% for cohost in cohosts.iter() -%}
                 <li class="flex min-w-0 items-center gap-2.5">
-                  {{ ui::logo(logo_url = cohost.logo_url, classes = "size-9 shrink-0", size = 36) -}}
+                  {{ ui::logo(logo_url = cohost.logo_url, classes = "size-9 shrink-0", size = 36, logo_dark_url = cohost.logo_dark_url.as_deref().unwrap_or("")) -}}
                   <div class="min-w-0 flex-1">
                     <div class="truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400">
                       {{ cohost.community_display_name }}
                     </div>
-                    <div class="mt-0.5 truncate text-sm/5 font-semibold text-black">{{ cohost.name }}</div>
+                    <div class="mt-0.5 truncate text-sm/5 font-semibold text-stone-900">{{ cohost.name }}</div>
                   </div>
                 </li>
               {% endfor -%}

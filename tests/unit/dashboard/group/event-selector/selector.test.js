@@ -276,8 +276,11 @@ describe("event-selector", () => {
         <option value="workshop">Workshop</option>
       </select>
       <image-field name="logo_url"></image-field>
+      <image-field name="logo_dark_url"></image-field>
       <image-field name="banner_url"></image-field>
+      <image-field name="banner_dark_url"></image-field>
       <image-field name="banner_mobile_url"></image-field>
+      <image-field name="banner_mobile_dark_url"></image-field>
       <input id="description_short" />
       <textarea id="description-textarea"></textarea>
       <input id="toggle_event_reminder_enabled" type="checkbox" />
@@ -415,9 +418,13 @@ describe("event-selector", () => {
       category_name: "Conference",
       kind: "workshop",
       custom_logo_url: "https://example.com/logo.png",
+      custom_logo_dark_url: "https://example.com/logo-dark.png",
       logo_url: "https://example.com/logo.png",
+      logo_dark_url: "https://example.com/logo-dark.png",
       banner_url: "https://example.com/banner.png",
+      banner_dark_url: "https://example.com/banner-dark.png",
       banner_mobile_url: "https://example.com/banner-mobile.png",
+      banner_mobile_dark_url: "https://example.com/banner-mobile-dark.png",
       description_short: "Short description",
       description: "Long description",
       event_reminder_enabled: true,
@@ -496,6 +503,15 @@ describe("event-selector", () => {
     );
     expect(document.querySelector('image-field[name="banner_mobile_url"]')?.value).to.equal(
       "https://example.com/banner-mobile.png",
+    );
+    expect(document.querySelector('image-field[name="logo_dark_url"]')?.value).to.equal(
+      "https://example.com/logo-dark.png",
+    );
+    expect(document.querySelector('image-field[name="banner_dark_url"]')?.value).to.equal(
+      "https://example.com/banner-dark.png",
+    );
+    expect(document.querySelector('image-field[name="banner_mobile_dark_url"]')?.value).to.equal(
+      "https://example.com/banner-mobile-dark.png",
     );
     expect(document.getElementById("description_short")?.value).to.equal("Short description");
     expect(editorTextarea.value).to.equal("Long description");

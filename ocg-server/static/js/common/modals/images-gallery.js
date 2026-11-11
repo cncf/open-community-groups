@@ -275,14 +275,14 @@ export class ImagesGallery extends LitWrapper {
               } phone:shrink-0 phone:snap-start"
             >
               <button
-                class="relative w-full overflow-hidden rounded-lg bg-white outline outline-offset-1 outline-1 outline-stone-300 transition-all hover:outline-primary-300 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-primary-300"
+                class="relative w-full overflow-hidden rounded-lg bg-surface outline outline-offset-1 outline-1 outline-plate-edge transition-all hover:outline-primary-edge-soft hover:shadow-sm focus-visible:ring-2 focus-visible:ring-primary-halo"
                 aria-label="Open ${this.altImage} image ${index + 1}"
                 @click=${() => this._openModal(index)}
               >
                 <img
                   width="160"
                   height="160"
-                  class="bg-white w-full aspect-[1/1] object-cover rounded-lg border border-5 border-white"
+                  class="bg-surface w-full aspect-[1/1] object-cover rounded-lg border border-5 border-surface"
                   data-ocg-broken-image-bg-class="bg-stone-50 m-[5px] rounded-md"
                   src=${image}
                   alt="${this.altImage} image ${index + 1}"
@@ -290,12 +290,12 @@ export class ImagesGallery extends LitWrapper {
               </button>
             </div>
             <div
-              class="relative block overflow-hidden rounded-lg bg-white outline outline-offset-1 outline-1 outline-stone-300 md:hidden phone:hidden"
+              class="relative block overflow-hidden rounded-lg bg-surface outline outline-offset-1 outline-1 outline-plate-edge md:hidden phone:hidden"
             >
               <img
                 width="160"
                 height="160"
-                class="bg-white w-full aspect-[1/1] object-cover rounded-lg border border-5 border-white"
+                class="bg-surface w-full aspect-[1/1] object-cover rounded-lg border border-5 border-surface"
                 data-ocg-broken-image-bg-class="bg-stone-50 m-[5px] rounded-md"
                 src=${image}
                 alt="${this.altImage} image ${index + 1}"
@@ -334,10 +334,11 @@ export class ImagesGallery extends LitWrapper {
         ></div>
         <!-- End modal overlay -->
 
+        <!-- The controls are light islands on the dimmed page; the photo keeps the page's frame -->
         <div class="modal-container fixed w-full h-full z-50 overflow-y-auto">
           <!-- Close button -->
           <button
-            class="modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full bg-stone-200/75 hover:bg-stone-200/90 phone:mt-3 phone:mr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
+            class="ink modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full bg-stone-200/75 hover:bg-stone-200/90 phone:mt-3 phone:mr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-halo"
             @click=${this._closeModal}
           >
             <div class="svg-icon size-8 bg-stone-800 icon-close"></div>
@@ -348,7 +349,7 @@ export class ImagesGallery extends LitWrapper {
           <div class="modal-content container mx-auto h-full p-10 flex flex-col phone:p-0">
             <!-- Title -->
             <div
-              class="uppercase text-lg lg:text-2xl tracking-wide font-bold text-stone-800 text-center leading-10 mb-10 w-1/2 mx-auto min-w-[200px] bg-stone-200/75 rounded-full phone:mt-3 phone:mb-3 phone:min-w-0"
+              class="ink uppercase text-lg lg:text-2xl tracking-wide font-bold text-stone-800 text-center leading-10 mb-10 w-1/2 mx-auto min-w-[200px] bg-stone-200/75 rounded-full phone:mt-3 phone:mb-3 phone:min-w-0"
             >
               ${this.title}
             </div>
@@ -369,7 +370,7 @@ export class ImagesGallery extends LitWrapper {
                         src=${image}
                         height="auto"
                         width="auto"
-                        class="bg-white rounded-lg border border-5 border-white absolute block w-auto max-w-full max-h-full h-auto -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
+                        class="bg-surface rounded-lg border border-5 border-surface outline outline-offset-1 outline-1 outline-plate-edge absolute block w-auto max-w-full max-h-full h-auto -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
                         alt="${this.altImage} image ${index + 1}"
                       />
                     </div>
@@ -385,10 +386,10 @@ export class ImagesGallery extends LitWrapper {
               <div class="absolute top-0 start-0 z-30 flex items-center justify-center h-full px-5 xl:px-10">
                 <!-- Prev button -->
                 <button
-                  class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-200/75 hover:bg-stone-200/90 phone:size-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
+                  class="ink inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-200/75 hover:bg-stone-200/90 phone:size-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-halo"
                   @click=${() => this._navigateCarousel("prev")}
                 >
-                  <div class="svg-icon h-4 w-2.5 bg-stone-950 icon-prev"></div>
+                  <div class="svg-icon h-4 w-2.5 bg-stone-900 icon-prev"></div>
                   <span class="sr-only">Previous</span>
                 </button>
                 <!-- End prev button -->
@@ -396,10 +397,10 @@ export class ImagesGallery extends LitWrapper {
               <div class="absolute top-0 end-0 z-30 flex items-center justify-center h-full px-5 xl:px-10">
                 <!-- Next button -->
                 <button
-                  class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-200/75 hover:bg-stone-200/90 phone:size-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
+                  class="ink inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-200/75 hover:bg-stone-200/90 phone:size-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-halo"
                   @click=${() => this._navigateCarousel("next")}
                 >
-                  <div class="svg-icon h-4 w-2.5 bg-stone-950 icon-next"></div>
+                  <div class="svg-icon h-4 w-2.5 bg-stone-900 icon-next"></div>
                   <span class="sr-only">Next</span>
                 </button>
                 <!-- End next button -->

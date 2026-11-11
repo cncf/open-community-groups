@@ -118,6 +118,28 @@ pub(crate) fn message_matches(record: &session::Record, expected_message: &str) 
 
 // Expectations helpers.
 
+/// Assert the dark mode image fields render empty, with the dark preview.
+pub(crate) fn assert_empty_dark_image_fields(html: &str) {
+    for name in ["banner_dark_url", "banner_mobile_dark_url", "logo_dark_url"] {
+        // Find the opening tag of the named image field
+        let tag = opening_tag_with(html, &format!(r#"name="{name}""#));
+        assert!(
+            tag.starts_with("<image-field"),
+            "image field {name} should render"
+        );
+
+        // Check it has no value and previews on a dark background
+        assert!(
+            !tag.contains(" value=\""),
+            "image field {name} should be empty"
+        );
+        assert!(
+            tag.contains(" dark-preview"),
+            "image field {name} should use the dark preview"
+        );
+    }
+}
+
 /// Assert an empty HTMX location response with the expected status.
 pub(crate) fn assert_empty_hx_location_response(
     parts: &Parts,
@@ -961,6 +983,9 @@ pub(crate) fn sample_user_communities(community_id: Uuid) -> Vec<CommunitySummar
         name: "test-community".to_string(),
         ad_banner_link_url: None,
         ad_banner_url: None,
+        banner_dark_url: None,
+        banner_mobile_dark_url: None,
+        logo_dark_url: None,
         og_image_url: None,
     }]
 }
@@ -980,6 +1005,9 @@ pub(crate) fn sample_user_groups_by_community(
             name: "test-community".to_string(),
             ad_banner_link_url: None,
             ad_banner_url: None,
+            banner_dark_url: None,
+            banner_mobile_dark_url: None,
+            logo_dark_url: None,
             og_image_url: None,
         },
         groups: vec![sample_group_minimal(group_id)],

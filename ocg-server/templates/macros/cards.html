@@ -5,8 +5,10 @@
 {# Check-in event card -#}
 {# Used by attendee and organizer check-in lists. -#}
 {% macro check_in_event_card(event) -%}
+  {% let has_logo_dark = event.logo_url.is_some() && event.logo_dark_url.is_some() -%}
   <span class="flex min-w-0 items-start gap-3 px-3.5 pt-3.5 md:gap-4 md:px-4 md:pt-4 phone:px-3 phone:pt-3">
-    <span class="relative flex h-[60px] w-[60px] min-w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-lg border-[5px] border-white bg-white outline outline-1 outline-stone-300">
+    <span class="plate relative flex h-[60px] w-[60px] min-w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-lg border-[5px] border-plate bg-plate outline outline-1 outline-plate-edge"
+          {% if has_logo_dark -%}data-theme-image="light"{% endif -%}>
       {% if let Some(logo_url) = event.logo_url -%}
         <img src="{{ logo_url }}"
              alt=""
@@ -18,6 +20,18 @@
         <span class="svg-icon size-6 icon-calendar bg-stone-400" aria-hidden="true"></span>
       {% endif -%}
     </span>
+    {# Dark mode logo, shown in place of the plated logo like ui::logo; data-theme-image shows one per theme -#}
+    {% if let (Some(_), Some(logo_dark_url)) = (event.logo_url.as_ref(), event.logo_dark_url.as_ref()) -%}
+      <span class="relative flex h-[60px] w-[60px] min-w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-lg border-[5px] border-transparent outline outline-1 outline-stone-200"
+            data-theme-image="dark">
+        <img src="{{ logo_dark_url }}"
+             alt=""
+             class="size-full object-contain"
+             width="60"
+             height="60"
+             loading="lazy">
+      </span>
+    {% endif -%}
     <span class="min-w-0 flex-1">
       <span class="flex min-h-[60px] min-w-0 flex-col items-start">
         <span class="card-title !m-0 !h-auto !line-clamp-2 break-words text-[0.85rem]/[1.05rem] text-stone-900 md:text-[0.9rem]/[1.1rem] phone:wrap-anywhere">
@@ -108,9 +122,9 @@
             {{ ticket_price_badge(event) -}}
           {% endif -%}
           {% if event.canceled -%}
-            {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("shrink-0 bg-white")) -}}
+            {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("shrink-0 bg-surface")) -}}
           {% else if event.kind == EventKind::Hybrid -%}
-            {{ badges::event_badge(kind = event.kind, extra_styles = Some("shrink-0 bg-white")) -}}
+            {{ badges::event_badge(kind = event.kind, extra_styles = Some("shrink-0 bg-surface")) -}}
           {% endif -%}
         </div>
       </div>

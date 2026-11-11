@@ -27,6 +27,7 @@ jobs:
       markdown: ${{ steps.filter.outputs.markdown }}
       server: ${{ steps.filter.outputs.server }}
       templates: ${{ steps.filter.outputs.templates }}
+      theme: ${{ steps.filter.outputs.theme }}
     steps:
       - name: Determine changed paths
         id: filter
@@ -60,8 +61,10 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'tests/e2e/**'
               - 'tests/unit/**'
+              - 'ocg-server/static/css/docs/**'
               - 'ocg-server/static/js/**'
               - 'ocg-server/static/js/.prettierrc.yaml'
+              - 'tests/theme-lint/**'
               - 'ocg-server/templates/**/*.js'
               - 'tests/unit/package-lock.json'
             markdown:
@@ -81,6 +84,12 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'ocg-server/templates/**'
               - 'ocg-server/templates/.djlintrc'
+            theme:
+              - '.github/workflows/ci.yml'
+              - 'ocg-server/templates/**'
+              - 'ocg-server/static/js/**'
+              - 'ocg-server/static/css/styles.src.css'
+              - 'tests/theme-lint/**'
 
   audit-dependencies:
     needs: changes
@@ -114,13 +123,30 @@ jobs:
         with:
           dry: true
           prettier_version: 3.9.4
-          prettier_options: --check ocg-server/static/js/**/*.js ocg-server/templates/**/*.js tests/e2e/**/*.js --config ocg-server/static/js/.prettierrc.yaml
+          prettier_options: --check ocg-server/static/js/**/*.js ocg-server/templates/**/*.js tests/theme-lint/**/*.mjs tests/e2e/**/*.js --config ocg-server/static/js/.prettierrc.yaml
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
           node-version: "22"
       - name: Check e2e locators
         run: node tests/e2e/scripts/check-locators.js
+
+  lint-theme-colors:
+    needs: changes
+    if: needs.changes.outputs.theme == 'true'
+    runs-on:
+      labels: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Run theme lint
+        run: node tests/theme-lint/theme-lint.mjs
+      - name: Run theme lint tests
+        run: node --test tests/theme-lint/theme-lint.test.mjs
 
   lint-server:
     needs: changes

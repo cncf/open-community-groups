@@ -34,7 +34,7 @@
     <tbody id="team-list">
       {% if members.is_empty() -%}
         {# Empty state -#}
-        <tr class="bg-white border-b border-stone-200">
+        <tr class="bg-surface border-b border-stone-200">
           {# Mobile: 3 columns (Member, Role, Actions) -#}
           <td class="xl:hidden px-8 py-12 text-center" colspan="3">
             {% include "dashboard/placeholders/community_team_table.html" -%}
@@ -48,7 +48,7 @@
       {% else -%}
         {% for member in members -%}
           {# Member row -#}
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+          <tr class="odd:bg-surface even:bg-stone-50/50 border-b border-stone-200">
             {# Member -#}
             {{ team::member_identity_cell(photo_url = member.photo_url,
               name = member.name,
