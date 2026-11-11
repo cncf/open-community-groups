@@ -29,7 +29,8 @@ const openLightbox = async (page) => {
 /**
  * Opens the event gallery's lightbox at any width and reads its chrome and slide frame colors.
  * @param {import("@playwright/test").Page} page - Page under test.
- * @returns {Promise<object>} Viewer colors, and stone-900 as the viewer resolves it.
+ * @returns {Promise<object>} Viewer colors, stone-900 as the viewer controls resolve it, and the
+ *   page surface.
  */
 const readViewerColors = async (page) => {
   // Open the lightbox on the second image, which loads (the first is a broken fixture), and move
@@ -65,21 +66,30 @@ const readViewerColors = async (page) => {
   return {
     colors,
     stone900: await resolveCssColor(lightbox.locator(".icon-prev"), "var(--color-stone-900)"),
+    surface: await resolveCssColor(page.locator("body"), "var(--color-surface)"),
   };
 };
 
 test.describe("lightbox accessibility", () => {
-  testAtBothWidths("keeps the viewer chrome and slide frame light in stored dark", async ({ page }) => {
+  testAtBothWidths("keeps the viewer chrome light and frames the slide in the theme", async ({ page }) => {
     // Read the viewer colors in light, then in stored dark.
     const light = await readViewerColors(page);
     await useTheme(page, { stored: "dark" });
     const dark = await readViewerColors(page);
     await expectDarkTheme(page);
+    const { frame: lightFrame, ...lightChrome } = light.colors;
+    const { frame: darkFrame, ...darkChrome } = dark.colors;
 
-    // Verify the arrow icons paint stone-900 and the viewer island keeps every light color.
+    // Verify the arrow icons paint stone-900 and the viewer controls keep every light color.
     expect(light.colors.prevIcon).toBe(light.stone900);
     expect(light.colors.nextIcon).toBe(light.stone900);
-    expect(dark).toEqual(light);
+    expect(dark.stone900).toBe(light.stone900);
+    expect(darkChrome).toEqual(lightChrome);
+
+    // Verify the slide frame follows the page surface, like the gallery thumbnails.
+    expect(dark.surface).not.toBe(light.surface);
+    expect(lightFrame).toEqual({ background: light.surface, border: light.surface });
+    expect(darkFrame).toEqual({ background: dark.surface, border: dark.surface });
   });
 
   test("opens as a dialog with focus on Close and closes back to the tile @mobile", async ({ page }) => {

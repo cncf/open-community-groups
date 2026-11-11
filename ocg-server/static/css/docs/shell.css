@@ -274,7 +274,7 @@
     border-radius: 1rem 1rem 0 0;
     bottom: calc(68px + env(safe-area-inset-bottom, 0px));
     box-shadow:
-      var(--tw-ring-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 transparent),
       0 -8px 30px color-mix(in srgb, var(--color-shade) 18%, transparent);
     height: auto;
     left: 0;

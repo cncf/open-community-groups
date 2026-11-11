@@ -110,17 +110,24 @@ test.describe("group badge award history", () => {
   test("View credential opens through a themed tab that keeps no link to the dashboard", async ({
     organizerGroupPage,
   }) => {
-    // Load award history in stored dark and hold the credential page back.
+    // Load award history in stored dark, and record what a new tab shows right after it opens.
+    // The tab cannot be inspected itself while its first navigation is under way.
     await useTheme(organizerGroupPage, { stored: "dark" });
     await navigateToPath(organizerGroupPage, AWARDS_PATH);
     const surface = await resolveCssColor(organizerGroupPage.locator("body"), "var(--color-surface)");
-    let releaseCredential;
-    const credentialHeld = new Promise((resolve) => {
-      releaseCredential = resolve;
-    });
-    await organizerGroupPage.context().route("**/badges/credentials/*", async (route) => {
-      await credentialHeld;
-      await route.continue();
+    await organizerGroupPage.evaluate(() => {
+      const openWindow = window.open.bind(window);
+      window.open = (...args) => {
+        const tab = openWindow(...args);
+        queueMicrotask(() => {
+          window.ocgOpenedTab = {
+            background: tab.document.body.style.backgroundColor,
+            status: tab.document.querySelector('[role="status"]')?.textContent,
+            title: tab.document.title,
+          };
+        });
+        return tab;
+      };
     });
 
     // Follow the first credential link.
@@ -130,13 +137,12 @@ test.describe("group badge award history", () => {
       .first();
     const [tab] = await Promise.all([organizerGroupPage.waitForEvent("popup"), credentialLink.click()]);
 
-    try {
-      // Verify the new tab shows the dark placeholder while the credential loads.
-      await expect(tab.getByRole("status")).toHaveText("Opening…");
-      await expect(tab.locator("body")).toHaveCSS("background-color", surface);
-    } finally {
-      releaseCredential();
-    }
+    // Verify the new tab opened on the dark placeholder.
+    expect(await organizerGroupPage.evaluate(() => window.ocgOpenedTab)).toEqual({
+      background: surface,
+      status: "Opening…",
+      title: "Opening…",
+    });
 
     // Verify the tab lands on the credential with no way back to the placeholder or the dashboard.
     await tab.waitForURL(/\/badges\/credentials\/[0-9a-f-]+$/u);
