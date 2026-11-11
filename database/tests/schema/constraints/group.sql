@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -59,6 +59,39 @@ select lives_ok(
         :'groupDeletedID'
     ),
     'Should accept a deleted inactive group'
+);
+
+-- Should reject a blank dark banner URL
+select throws_ok(
+    format(
+        $$update "group" set banner_dark_url = ' ' where group_id = %L::uuid$$,
+        :'groupID'
+    ),
+    '23514',
+    'new row for relation "group" violates check constraint "group_banner_dark_url_check"',
+    'Should reject a blank dark banner URL'
+);
+
+-- Should reject a blank dark logo URL
+select throws_ok(
+    format(
+        $$update "group" set logo_dark_url = ' ' where group_id = %L::uuid$$,
+        :'groupID'
+    ),
+    '23514',
+    'new row for relation "group" violates check constraint "group_logo_dark_url_check"',
+    'Should reject a blank dark logo URL'
+);
+
+-- Should reject a blank dark mobile banner URL
+select throws_ok(
+    format(
+        $$update "group" set banner_mobile_dark_url = ' ' where group_id = %L::uuid$$,
+        :'groupID'
+    ),
+    '23514',
+    'new row for relation "group" violates check constraint "group_banner_mobile_dark_url_check"',
+    'Should reject a blank dark mobile banner URL'
 );
 
 -- Should reject more than 20 UTM campaigns

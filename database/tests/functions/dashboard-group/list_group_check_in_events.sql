@@ -40,13 +40,15 @@ select fx_event_category(:'eventCategoryID', :'communityID');
 -- Group category
 select fx_group_category(:'groupCategoryID', :'communityID');
 
--- Scanner group whose logo is the fallback for events without a logo
+-- Scanner group whose logos are the fallback for events without a logo
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'logo_dark_url', 'https://ex.test/check-in-group-logo-dark.png',
     'logo_url', 'https://ex.test/check-in-group-logo.png'
 ));
 
 -- Approved co-host group credited on the current event
 select fx_group(:'cohostGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'logo_dark_url', 'https://ex.test/check-in-cohost-logo-dark.png',
     'logo_url', 'https://ex.test/check-in-cohost-logo.png',
     'name', 'Check-in Cohost',
     'slug', 'check-in-cohost'
@@ -80,7 +82,7 @@ select fx_event(:'endedEventID', :'groupID', :'eventCategoryID', jsonb_build_obj
                 ) at time zone 'UTC'
 ));
 
--- Upcoming virtual event with its own logo and no venue
+-- Upcoming virtual event with its own logo, no dark logo and no venue
 select fx_event(:'futureEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
     'logo_url', 'https://ex.test/check-in-future-logo.png',
@@ -143,8 +145,11 @@ select is(
                 'group_id', :'cohostGroupID'::uuid,
                 'logo_url', 'https://ex.test/check-in-cohost-logo.png',
                 'name', 'Check-in Cohost',
-                'slug', 'check-in-cohost'
+                'slug', 'check-in-cohost',
+
+                'logo_dark_url', 'https://ex.test/check-in-cohost-logo-dark.png'
             )),
+            'logo_dark_url', 'https://ex.test/check-in-group-logo-dark.png',
             'logo_url', 'https://ex.test/check-in-group-logo.png',
             'location', 'Main Hall, Lisbon, Lisboa, Portugal',
             'in_progress', true
@@ -159,6 +164,7 @@ select is(
             )),
             'timezone', 'UTC',
             'cohosts', '[]'::jsonb,
+            'logo_dark_url', 'https://ex.test/check-in-group-logo-dark.png',
             'logo_url', 'https://ex.test/check-in-group-logo.png',
             'location', 'Porto',
             'in_progress', true
@@ -170,6 +176,7 @@ select is(
             'starts_at', epoch_seconds(current_timestamp + interval '1 day'),
             'timezone', 'UTC',
             'cohosts', '[]'::jsonb,
+            'logo_dark_url', null,
             'logo_url', 'https://ex.test/check-in-future-logo.png',
             'location', null,
             'in_progress', false

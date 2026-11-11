@@ -1,6 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 import { queryCount, queryE2eDatabaseRows, sqlString, sqlUuid, withRowRestore } from "../../../database.js";
-import { cleanupTemporaryGroup } from "../../../data-graphs/groups.js";
+import { cleanupTemporaryCommunity, setupTemporaryCommunity } from "../../../data-graphs/communities.js";
+import { cleanupTemporaryGroup, setupTemporaryGroup } from "../../../data-graphs/groups.js";
 import {
   TEST_COMMUNITY_IDS,
   TEST_COMMUNITY_NAME,
@@ -9,11 +10,13 @@ import {
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
   TEST_REGION_IDS,
+  TEST_USER_IDS,
 } from "../../../seed.js";
 import {
   confirmAlert,
   expectPaginationNavigation,
   navigateToPath,
+  selectCommunityContext,
   selectGroupContext,
   uniqueName,
   waitForActionResponse,
@@ -30,6 +33,9 @@ import {
 
 // Seeded group row changed by the deactivate and reactivate and the logo fallback tests.
 const BETA_GROUP_ROW = { key: { group_id: TEST_GROUP_IDS.community1.beta }, table: "group" };
+
+// Dark logo of the temporary community in the dark logo fallback scenario.
+const COMMUNITY_DARK_LOGO_URL = "/static/images/e2e/entity-logo-dark.svg";
 
 test.describe("community dashboard groups view", () => {
   test("empty state guides the first community group", async ({ adminEmptyCommunityPage }) => {
@@ -190,6 +196,65 @@ test.describe("community dashboard groups view", () => {
     });
   });
 
+  test("saving a group without its own logo does not store the community dark logo", async ({
+    adminCommunityPage,
+    owned,
+  }) => {
+    // Create a group without a logo of its own in a community with a dark logo, and select it.
+    const { communityId, groupCategoryId } = owned.track(
+      setupTemporaryCommunity({
+        label: "dark logo fallback",
+        logoDarkUrl: COMMUNITY_DARK_LOGO_URL,
+        teamRole: "admin",
+        userId: TEST_USER_IDS.admin1,
+      }),
+      ({ communityId: temporaryCommunityId }) => cleanupTemporaryCommunity(temporaryCommunityId),
+    );
+    const { groupId, groupName } = setupTemporaryGroup({ communityId, groupCategoryId });
+    await selectCommunityContext(adminCommunityPage, communityId);
+
+    // Count the group row while it has neither a logo nor a dark logo of its own.
+    const countGroupWithoutOwnLogos = () =>
+      queryCount(`
+        select count(*)
+        from "group"
+        where group_id = ${sqlUuid(groupId)}
+        and logo_url is null
+        and logo_dark_url is null
+      `);
+    expect(countGroupWithoutOwnLogos()).toBe(1);
+
+    // Open the group update form from the groups list.
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+    const groupRow = adminCommunityPage.locator("#dashboard-content tr", { hasText: groupName });
+    await waitForActionResponse(
+      adminCommunityPage,
+      () => groupRow.locator('button[hx-get*="/update"]').click(),
+      {
+        method: "GET",
+        pathname: `/dashboard/community/groups/${groupId}/update`,
+        status: 200,
+      },
+    );
+
+    // Verify neither community logo is prefilled as the group's own.
+    const updateGroupButton = adminCommunityPage.getByRole("button", { name: "Update Group" });
+    await expect(updateGroupButton).toBeVisible();
+    for (const name of ["logo_url", "logo_dark_url"]) {
+      await expect(
+        adminCommunityPage.locator(`image-field[name="${name}"] input[name="${name}"]`),
+      ).toHaveValue("");
+    }
+
+    // Save the group and verify it still has no logos of its own.
+    await waitForActionResponse(adminCommunityPage, () => updateGroupButton.click(), {
+      method: "PUT",
+      pathname: `/dashboard/community/groups/${groupId}/update`,
+      status: 204,
+    });
+    expect(countGroupWithoutOwnLogos()).toBe(1);
+  });
+
   test("admin can create and remove a subgroup relationship", async ({ adminCommunityPage }) => {
     // Create a unique group name for the temporary subgroup flow.
     const groupName = uniqueName("child community group");
@@ -335,11 +400,17 @@ test.describe("community dashboard groups view", () => {
   test("admin can create, update, and delete a community group with images and rich fields", async ({
     adminCommunityPage,
   }) => {
+    // Twelve image uploads and the gallery push the create, update and delete flow past the
+    // default budget under load.
+    test.setTimeout(60_000);
+
     const initialGroupName = uniqueName("rich community group");
     const updatedGroupName = uniqueName("rich community group updated");
 
     // Define rich group values for the create and update flow.
     const initialValues = {
+      bannerDarkPath: TEST_UPLOAD_ASSET_PATHS.darkBanner,
+      bannerMobileDarkPath: TEST_UPLOAD_ASSET_PATHS.darkBannerMobile,
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
       blueskyUrl: "https://bsky.app/profile/e2e-community-group-initial",
@@ -360,6 +431,7 @@ test.describe("community dashboard groups view", () => {
       instagramUrl: "https://instagram.com/e2e-community_group_initial",
       latitude: "41.3874",
       linkedinUrl: "https://linkedin.com/company/e2e-community-group-initial",
+      logoDarkPath: TEST_UPLOAD_ASSET_PATHS.darkLogo,
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
       longitude: "2.1686",
       name: initialGroupName,
@@ -373,6 +445,8 @@ test.describe("community dashboard groups view", () => {
       youtubeUrl: "https://youtube.com/@e2e-community-group-initial",
     };
     const updatedValues = {
+      bannerDarkPath: TEST_UPLOAD_ASSET_PATHS.darkBanner,
+      bannerMobileDarkPath: TEST_UPLOAD_ASSET_PATHS.darkBannerMobile,
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
       blueskyUrl: "https://bsky.app/profile/e2e-community-group-updated",
@@ -393,6 +467,7 @@ test.describe("community dashboard groups view", () => {
       instagramUrl: "https://instagram.com/e2e.community.group.updated",
       latitude: "40.4168",
       linkedinUrl: "https://linkedin.com/company/e2e-community-group-updated",
+      logoDarkPath: TEST_UPLOAD_ASSET_PATHS.darkLogo,
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
       longitude: "-3.7038",
       name: updatedGroupName,
@@ -420,6 +495,9 @@ test.describe("community dashboard groups view", () => {
       await uploadImageField(adminCommunityPage, "logo_url", values.logoPath);
       await uploadImageField(adminCommunityPage, "banner_url", values.bannerPath);
       await uploadImageField(adminCommunityPage, "banner_mobile_url", values.bannerMobilePath);
+      await uploadImageField(adminCommunityPage, "logo_dark_url", values.logoDarkPath);
+      await uploadImageField(adminCommunityPage, "banner_dark_url", values.bannerDarkPath);
+      await uploadImageField(adminCommunityPage, "banner_mobile_dark_url", values.bannerMobileDarkPath);
       await fillGroupLocation(adminCommunityPage, {
         city: values.city,
         countryCode: values.countryCode,
@@ -536,6 +614,11 @@ test.describe("community dashboard groups view", () => {
       await expect(
         adminCommunityPage.locator('image-field[name="banner_mobile_url"] input[name="banner_mobile_url"]'),
       ).toHaveValue(/\/images\//);
+      for (const name of ["logo_dark_url", "banner_dark_url", "banner_mobile_dark_url"]) {
+        await expect(
+          adminCommunityPage.locator(`image-field[name="${name}"] input[name="${name}"]`),
+        ).toHaveValue(/\/images\//);
+      }
       await expect(
         adminCommunityPage.locator('multiple-inputs[field-name="tags"] input[name="tags[]"]'),
       ).toHaveCount(updatedValues.tags.length);

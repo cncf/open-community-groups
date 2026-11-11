@@ -57,7 +57,9 @@
   {% let has_map = group.latitude.is_some() && group.longitude.is_some() -%}
 
   {# Breadcrumb -#}
-  <breadcrumb-nav full-bleed banner-url="{{ group.banner_url.as_ref().unwrap_or(&group.community.banner_url) }}" banner-mobile-url="{{ group.banner_mobile_url.as_ref().unwrap_or(&group.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.community.display_name|json }}, "href": "/{{ group.community.name }}", "icon": "community"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
+  {% let banner = group.banner() -%}
+  {% let banner_mobile = group.banner_mobile() -%}
+  <breadcrumb-nav full-bleed banner-url="{{ banner.url }}"{% if let Some(dark_url) = banner.dark_url %} banner-dark-url="{{ dark_url }}"{% endif %} banner-mobile-url="{{ banner_mobile.url }}"{% if let Some(dark_url) = banner_mobile.dark_url %} banner-mobile-dark-url="{{ dark_url }}"{% endif %} items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.community.display_name|json }}, "href": "/{{ group.community.name }}", "icon": "community"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:py-0">
@@ -70,7 +72,7 @@
             {# Group logo -#}
             <div class="relative hidden md:row-span-2 md:block phone:block phone:self-center"
                  data-group-logo>
-              {{ ui::logo(logo_url = group.logo_url, classes = "size-24 md:size-28 phone:size-14 phone:min-w-14 phone:border-[3px]", size = 112) -}}
+              {{ ui::logo(logo_url = group.logo_url, classes = "size-24 md:size-28 phone:size-14 phone:min-w-14 phone:border-[3px]", size = 112, logo_dark_url = group.logo_dark_url.as_deref().unwrap_or("")) -}}
             </div>
             {# End group logo -#}
 
@@ -330,7 +332,7 @@
          hx-boost="true"
          hx-target="body"
          class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-surface p-4 transition hover:border-primary-edge-soft hover:shadow-sm">
-        {{ ui::logo(logo_url = parent.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
+        {{ ui::logo(logo_url = parent.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72, logo_dark_url = parent.logo_dark_url.as_deref().unwrap_or("")) -}}
         <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ parent.name|demoji }}</span>
       </a>
     </div>
@@ -350,7 +352,7 @@
            hx-boost="true"
            hx-target="body"
            class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-surface p-4 transition hover:border-primary-edge-soft hover:shadow-sm">
-          {{ ui::logo(logo_url = subgroup.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
+          {{ ui::logo(logo_url = subgroup.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72, logo_dark_url = subgroup.logo_dark_url.as_deref().unwrap_or("")) -}}
           <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ subgroup.name|demoji }}</span>
         </a>
       {% endfor -%}

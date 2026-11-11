@@ -8,6 +8,7 @@ use crate::{
     db::{PgExecutor, common::DBCommon, user_facing_message},
     types::{
         event::EventKind,
+        images::ThemedImage,
         search::{SearchEventsFilters, SearchGroupsFilters},
     },
 };
@@ -57,6 +58,26 @@ async fn db_contracts_get_community_full_deserializes() -> Result<()> {
         Some("https://example.com/community-ad")
     );
 
+    // Check the dark images deserialize with their light counterparts
+    assert_eq!(
+        community.banner(),
+        ThemedImage {
+            url: "https://example.com/community-banner.png",
+            dark_url: Some("https://example.com/community-banner-dark.png"),
+        }
+    );
+    assert_eq!(
+        community.banner_mobile(),
+        ThemedImage {
+            url: "https://example.com/community-banner-mobile.png",
+            dark_url: Some("https://example.com/community-banner-mobile-dark.png"),
+        }
+    );
+    assert_eq!(
+        community.logo_dark_url.as_deref(),
+        Some("https://example.com/community-logo-dark.png")
+    );
+
     Ok(())
 }
 
@@ -76,6 +97,20 @@ async fn db_contracts_get_community_summary_deserializes() -> Result<()> {
     );
     assert_eq!(community.community_id, community_id());
     assert_eq!(community.name, "contract-community");
+
+    // Check the dark images deserialize
+    assert_eq!(
+        community.banner_dark_url.as_deref(),
+        Some("https://example.com/community-banner-dark.png")
+    );
+    assert_eq!(
+        community.banner_mobile_dark_url.as_deref(),
+        Some("https://example.com/community-banner-mobile-dark.png")
+    );
+    assert_eq!(
+        community.logo_dark_url.as_deref(),
+        Some("https://example.com/community-logo-dark.png")
+    );
 
     Ok(())
 }
@@ -193,6 +228,81 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_full_pairs_dark_images_with_their_level() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Load the events with own, fallback and missing dark images
+    let event = db.get_event_full(community_id(), group_id(), event_id()).await?;
+    let external_event = db
+        .get_event_full(community_id(), group_id(), external_event_id())
+        .await?;
+    let past_event = db.get_event_full(community_id(), group_id(), past_event_id()).await?;
+
+    // Check the dark logo comes from the level of the effective logo
+    assert_eq!(
+        event.custom_logo_dark_url.as_deref(),
+        Some("https://example.com/future-event-logo-dark.png")
+    );
+    assert_eq!(
+        event.logo_dark_url.as_deref(),
+        Some("https://example.com/future-event-logo-dark.png")
+    );
+    assert_eq!(external_event.custom_logo_dark_url, None);
+    assert_eq!(
+        external_event.logo_dark_url.as_deref(),
+        Some("https://example.com/group-logo-dark.png")
+    );
+    assert_eq!(
+        past_event.logo_url,
+        "https://example.com/past-event-logo.png"
+    );
+    assert_eq!(past_event.custom_logo_dark_url, None);
+    assert_eq!(past_event.logo_dark_url, None);
+
+    // Check the banners pair with the dark variants of their own level
+    assert_eq!(
+        event.banner(),
+        ThemedImage {
+            url: "https://example.com/future-event-banner.png",
+            dark_url: Some("https://example.com/future-event-banner-dark.png"),
+        }
+    );
+    assert_eq!(
+        event.banner_mobile(),
+        ThemedImage {
+            url: "https://example.com/future-event-banner-mobile.png",
+            dark_url: Some("https://example.com/future-event-banner-mobile-dark.png"),
+        }
+    );
+    assert_eq!(
+        past_event.banner(),
+        ThemedImage {
+            url: "https://example.com/past-event-banner.png",
+            dark_url: None,
+        }
+    );
+    assert_eq!(
+        external_event.banner(),
+        ThemedImage {
+            url: "https://example.com/group-banner.png",
+            dark_url: Some("https://example.com/group-banner-dark.png"),
+        }
+    );
+    assert_eq!(
+        external_event.group.banner_mobile_dark_url.as_deref(),
+        Some("https://example.com/group-banner-mobile-dark.png")
+    );
+    assert_eq!(
+        external_event.community.logo_dark_url.as_deref(),
+        Some("https://example.com/community-logo-dark.png")
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
     // Setup the contract database and event fixture
     let db = contract_tests_db()?;
@@ -221,6 +331,16 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
     // Check the venue zip code key
     assert_eq!(event.venue_zip_code.as_deref(), Some("94105"));
 
+    // Check the dark logo comes from the level of the effective logo
+    assert_eq!(
+        event.logo_dark_url.as_deref(),
+        Some("https://example.com/future-event-logo-dark.png")
+    );
+    assert_eq!(
+        external_event.logo_dark_url.as_deref(),
+        Some("https://example.com/group-logo-dark.png")
+    );
+
     // Check the external-payments summary marks off-platform payment collection
     assert_eq!(external_event.event_id, external_event_id());
     assert!(external_event.has_external_payment);
@@ -243,6 +363,28 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
         Some("https://example.com/group-logo.png")
     );
     assert_eq!(group.logo_url, "https://example.com/group-logo.png");
+    assert_eq!(
+        group.custom_logo_dark_url.as_deref(),
+        Some("https://example.com/group-logo-dark.png")
+    );
+    assert_eq!(
+        group.logo_dark_url.as_deref(),
+        Some("https://example.com/group-logo-dark.png")
+    );
+    assert_eq!(
+        group.banner(),
+        ThemedImage {
+            url: "https://example.com/group-banner.png",
+            dark_url: Some("https://example.com/group-banner-dark.png"),
+        }
+    );
+    assert_eq!(
+        group.banner_mobile(),
+        ThemedImage {
+            url: "https://example.com/group-banner-mobile.png",
+            dark_url: Some("https://example.com/group-banner-mobile-dark.png"),
+        }
+    );
     assert_eq!(
         group.community.ad_banner_link_url.as_deref(),
         Some("https://example.com/community-ad")
@@ -270,9 +412,14 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
     // Load the subgroup through the same contract
     let subgroup = db.get_group_full(community_id(), subgroup_id()).await?;
 
-    // Check the subgroup falls back to the community logo without an own logo
+    // Check the subgroup falls back to the community logo pair without an own logo
     assert_eq!(subgroup.custom_logo_url, None);
     assert_eq!(subgroup.logo_url, "https://example.com/community-logo.png");
+    assert_eq!(subgroup.custom_logo_dark_url, None);
+    assert_eq!(
+        subgroup.logo_dark_url.as_deref(),
+        Some("https://example.com/community-logo-dark.png")
+    );
 
     // Check the subgroup parent relationship
     assert_eq!(

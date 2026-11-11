@@ -7,14 +7,15 @@ create or replace function add_group(
 returns uuid as $$
 declare
     v_group_id uuid;
-    v_parent_group_id uuid;
-    v_slug text;
-    v_retries int := 0;
     v_max_retries int := 10;
+    v_parent_group_id uuid;
+    v_retries int := 0;
+    v_slug text;
 begin
-    -- Normalize and authorize the optional parent group before inserting
+    -- Normalize the optional parent group
     v_parent_group_id := nullif(p_group->>'parent_group_id', '')::uuid;
 
+    -- Reject a parent group the actor cannot manage
     if v_parent_group_id is not null
        and not user_has_group_permission(
            p_community_id,
@@ -41,12 +42,15 @@ begin
             )
         ) then
             v_retries := v_retries + 1;
+
+            -- Give up after exhausting the retry budget
             if v_retries >= v_max_retries then
                 raise exception 'failed to generate unique slug after % attempts', v_max_retries;
             end if;
             continue;
         end if;
 
+        -- Attempt the insert with the candidate slug
         begin
             insert into "group" (
                 community_id,
@@ -54,6 +58,8 @@ begin
                 slug,
                 group_category_id,
 
+                banner_dark_url,
+                banner_mobile_dark_url,
                 banner_mobile_url,
                 banner_url,
                 bluesky_url,
@@ -69,6 +75,7 @@ begin
                 instagram_url,
                 linkedin_url,
                 location,
+                logo_dark_url,
                 logo_url,
                 og_image_url,
                 parent_group_id,
@@ -87,6 +94,8 @@ begin
                 v_slug,
                 (p_group->>'category_id')::uuid,
 
+                nullif(p_group->>'banner_dark_url', ''),
+                nullif(p_group->>'banner_mobile_dark_url', ''),
                 nullif(p_group->>'banner_mobile_url', ''),
                 nullif(p_group->>'banner_url', ''),
                 nullif(p_group->>'bluesky_url', ''),
@@ -102,6 +111,7 @@ begin
                 nullif(p_group->>'instagram_url', ''),
                 nullif(p_group->>'linkedin_url', ''),
                 jsonb_geography_point(p_group),
+                nullif(p_group->>'logo_dark_url', ''),
                 nullif(p_group->>'logo_url', ''),
                 nullif(p_group->>'og_image_url', ''),
                 v_parent_group_id,
@@ -129,12 +139,15 @@ begin
 
             -- Return immediately once insertion succeeds
             return v_group_id;
-        exception when unique_violation then
+        exception
             -- Retry slug generation when a collision occurs
-            v_retries := v_retries + 1;
-            if v_retries >= v_max_retries then
-                raise exception 'failed to generate unique slug after % attempts', v_max_retries;
-            end if;
+            when unique_violation then
+                v_retries := v_retries + 1;
+
+                -- Give up after exhausting the retry budget
+                if v_retries >= v_max_retries then
+                    raise exception 'failed to generate unique slug after % attempts', v_max_retries;
+                end if;
         end;
     end loop;
 end;

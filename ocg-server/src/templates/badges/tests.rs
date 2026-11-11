@@ -19,12 +19,12 @@ fn test_verify_page_header_renders_logo_variants_for_configured_urls() {
             Some(dark_url),
             vec![
                 (
-                    r#"<span class="relative" data-site-logo="light">"#,
+                    r#"<span class="relative" data-site-logo="light" data-theme-image="light">"#,
                     light_url,
                     false,
                 ),
                 (
-                    r#"<span class="relative" data-site-logo="dark">"#,
+                    r#"<span class="relative" data-site-logo="dark" data-theme-image="dark">"#,
                     dark_url,
                     true,
                 ),
@@ -82,6 +82,18 @@ fn test_verify_page_header_renders_logo_variants_for_configured_urls() {
         assert_eq!(
             nav.matches(r#"loading="lazy""#).count(),
             logos.iter().filter(|(_, _, lazy)| *lazy).count(),
+            "{label}"
+        );
+
+        // Check only the paired light and dark wrappers carry a theme image marker
+        assert_eq!(
+            nav.matches(r#"data-theme-image="light""#).count(),
+            usize::from(header_logo_url.is_some() && header_logo_dark_url.is_some()),
+            "{label}"
+        );
+        assert_eq!(
+            nav.matches(r#"data-theme-image="dark""#).count(),
+            usize::from(header_logo_url.is_some() && header_logo_dark_url.is_some()),
             "{label}"
         );
 

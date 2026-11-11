@@ -380,6 +380,10 @@ async fn db_contracts_list_user_check_in_events_deserializes() -> Result<()> {
     );
     assert_eq!(event.timezone.to_string(), "America/Los_Angeles");
     assert_eq!(
+        event.logo_dark_url.as_deref(),
+        Some("https://example.com/future-event-logo-dark.png")
+    );
+    assert_eq!(
         event.logo_url.as_deref(),
         Some("https://example.com/future-event-logo.png")
     );

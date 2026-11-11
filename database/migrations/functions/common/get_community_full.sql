@@ -19,6 +19,8 @@ returns json as $$
         -- Include optional community profile fields
         'ad_banner_link_url', ad_banner_link_url,
         'ad_banner_url', ad_banner_url,
+        'banner_dark_url', banner_dark_url,
+        'banner_mobile_dark_url', banner_mobile_dark_url,
         'bluesky_url', bluesky_url,
         'extra_links', extra_links,
         'facebook_url', facebook_url,
@@ -26,6 +28,7 @@ returns json as $$
         'github_url', github_url,
         'instagram_url', instagram_url,
         'linkedin_url', linkedin_url,
+        'logo_dark_url', logo_dark_url,
         'new_group_details', new_group_details,
         'og_image_url', og_image_url,
         'photos_urls', photos_urls,

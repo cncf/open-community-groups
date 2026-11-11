@@ -63,7 +63,17 @@
                            height="auto"
                            width="auto"
                            src="{{ community.banner_mobile_url }}"
-                           alt="{{ community.display_name }} banner" />
+                           alt="{{ community.display_name }} banner"
+                           {% if community.banner_mobile_dark_url.is_some() -%}data-theme-image="light"{% endif -%} />
+                      {% if let Some(banner_mobile_dark_url) = community.banner_mobile_dark_url -%}
+                        <img class="w-full h-full object-cover"
+                             height="auto"
+                             width="auto"
+                             src="{{ banner_mobile_dark_url }}"
+                             alt="{{ community.display_name }} banner"
+                             data-theme-image="dark"
+                             loading="lazy" />
+                      {% endif -%}
                     </div>
                   </a>
                 {% endfor -%}

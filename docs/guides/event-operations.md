@@ -126,7 +126,8 @@ hidden for canceled events.
 ### Details
 
 In this tab, you define attendee-facing identity and enrollment posture: name, event type,
-category, description, branding assets, registration toggle, tags, and optional links.
+category, description, branding assets (with optional dark mode versions of the logo, banner and
+mobile banner), registration toggle, tags, and optional links.
 
 Event category options come from the defined community's
 [Event Categories](/dashboard/community?tab=event-categories ':ignore') tab.
@@ -376,6 +377,14 @@ Invitation review also lives here:
 Brand inheritance in event details mirrors the group model: if the event logo is not provided,
 OCG falls back to the group logo, then the community logo; if the event banner or mobile banner
 is not provided, OCG falls back to the group banner, then the community banner.
+
+The banner and the mobile banner resolve independently, each to the first of the event, the group
+and the community that has one. Dark mode then uses the dark mode version of that same level, if
+it has one; it never takes a dark mode version from another level. The logo follows the same rule.
+Dark mode versions are optional, previewed on a dark background and follow the same size rules as
+their light image. Without one, dark mode shows the light image, and logos keep their white
+background. Copying an event copies only its own images and their dark mode versions, never the
+ones it inherits.
 
 ![Event details](../screenshots/dashboard-group-event-details.png)
 

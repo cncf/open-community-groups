@@ -106,10 +106,13 @@ select fx_group(:'group3ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_bu
 
 -- Group used to verify empty strings convert to null
 select fx_group(:'group2ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'banner_dark_url', 'https://example.com/group2-banner-dark.png',
+    'banner_mobile_dark_url', 'https://example.com/group2-banner-mobile-dark.png',
     'city', 'San Francisco',
     'country_code', 'US',
     'country_name', 'United States',
     'created_at', '2024-01-15 10:00:00+00',
+    'logo_dark_url', 'https://example.com/group2-logo-dark.png',
     'slug', 'pqr4jkl',
     'state', 'CA',
     'website_url', 'https://example.com'
@@ -173,6 +176,9 @@ select lives_ok(
             "facebook_url": "https://facebook.com/updated",
             "twitter_url": "https://twitter.com/updated",
             "tags": ["updated", "test"],
+            "banner_dark_url": "https://example.com/updated-banner-dark.png",
+            "banner_mobile_dark_url": "https://example.com/updated-banner-mobile-dark.png",
+            "logo_dark_url": "https://example.com/updated-logo-dark.png",
             "logo_url": "https://example.com/updated-logo.png",
             "og_image_url": "https://example.com/updated-og.png"
         }'::jsonb
@@ -218,7 +224,11 @@ select is(
         "facebook_url": "https://facebook.com/updated",
         "twitter_url": "https://twitter.com/updated",
         "tags": ["updated", "test"],
+        "banner_dark_url": "https://example.com/updated-banner-dark.png",
+        "banner_mobile_dark_url": "https://example.com/updated-banner-mobile-dark.png",
+        "logo_dark_url": "https://example.com/updated-logo-dark.png",
         "logo_url": "https://example.com/updated-logo.png",
+        "custom_logo_dark_url": "https://example.com/updated-logo-dark.png",
         "custom_logo_url": "https://example.com/updated-logo.png",
         "og_image_url": "https://example.com/updated-og.png",
         "external_payments_enabled": false,
@@ -342,6 +352,8 @@ select lives_ok(
             "category_id": "%s",
             "description": "",
             "description_short": "",
+            "banner_dark_url": "",
+            "banner_mobile_dark_url": "",
             "banner_url": "",
             "city": "",
             "state": "",
@@ -358,6 +370,7 @@ select lives_ok(
             "instagram_url": "",
             "flickr_url": "",
             "wechat_url": "",
+            "logo_dark_url": "",
             "logo_url": "",
             "region_id": ""
         }'::jsonb

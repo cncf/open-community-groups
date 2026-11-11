@@ -5,7 +5,9 @@ create or replace function get_event_summary(
     p_event_id uuid
 )
 returns json as $$
-    -- Build event summary payload
+    -- Build event summary payload; this call passes 94 of the 100
+    -- json_build_object arguments, so split it with jsonb concatenation like
+    -- get_event_full before adding more keys
     select json_strip_nulls(json_build_object(
         -- Include core summary fields
         'canceled', e.canceled,
@@ -41,6 +43,12 @@ returns json as $$
         'group_slug_pretty', g.slug_pretty,
         'has_external_payment', nullif(e.external_payment_url is not null, false),
         'latitude', st_y(e.location::geometry),
+        -- Pair the dark logo with the level that provides the light logo
+        'logo_dark_url', paired_dark_image_url(
+            e.logo_url, e.logo_dark_url,
+            g.logo_url, g.logo_dark_url,
+            c.logo_url, c.logo_dark_url
+        ),
         'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
         'longitude', st_x(e.location::geometry),
         'meeting_join_instructions', e.meeting_join_instructions,

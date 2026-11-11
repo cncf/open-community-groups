@@ -4,6 +4,10 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
+// Natural aspect ratios of the desktop and mobile banners, used by the load error placeholder.
+const DESKTOP_BANNER_ASPECT = "2428 / 192";
+const MOBILE_BANNER_ASPECT = "1220 / 192";
+
 /**
  * BreadcrumbNav - Responsive breadcrumb navigation component with optional banner.
  *
@@ -15,12 +19,15 @@ import { parseJsonAttribute } from "/static/js/common/utils.js";
  *   - current: boolean (optional) - Mark as current page
  * - banner-url: string (optional) - URL to banner image displayed above breadcrumb (sm+, not phones)
  * - banner-mobile-url: string (optional) - URL to mobile banner image (below sm, and on phones)
+ * - banner-dark-url: string (optional) - Dark mode variant of banner-url, ignored without it
+ * - banner-mobile-dark-url: string (optional) - Dark mode variant of banner-mobile-url, ignored without it
  * - full-bleed: boolean (optional) - Spans the viewport edge to edge on phones, square and without side borders
  *
  * Example:
  * <breadcrumb-nav
  *   banner-url="/path/to/banner.jpg"
  *   banner-mobile-url="/path/to/banner-mobile.jpg"
+ *   banner-dark-url="/path/to/banner-dark.jpg"
  *   items='[
  *     {"label": "Home", "href": "/", "icon": "home"},
  *     {"label": "Group", "href": "/community/group/slug", "icon": "groups"},
@@ -34,6 +41,8 @@ export class BreadcrumbNav extends LitWrapper {
       items: { type: Array },
       bannerUrl: { type: String, attribute: "banner-url" },
       bannerMobileUrl: { type: String, attribute: "banner-mobile-url" },
+      bannerDarkUrl: { type: String, attribute: "banner-dark-url" },
+      bannerMobileDarkUrl: { type: String, attribute: "banner-mobile-dark-url" },
       fullBleed: { type: Boolean, attribute: "full-bleed" },
       _isOpen: { type: Boolean, state: true },
     };
@@ -44,6 +53,8 @@ export class BreadcrumbNav extends LitWrapper {
     this.items = [];
     this.bannerUrl = null;
     this.bannerMobileUrl = null;
+    this.bannerDarkUrl = null;
+    this.bannerMobileDarkUrl = null;
     this.fullBleed = false;
     this._isOpen = false;
     this._dropdownId = `breadcrumb-dropdown-${Math.random().toString(36).slice(2, 9)}`;
@@ -128,6 +139,39 @@ export class BreadcrumbNav extends LitWrapper {
       banner.style.aspectRatio = banner.dataset.bannerAspect;
     }
     banner.style.background = "linear-gradient(135deg, var(--color-stone-100), var(--color-stone-200))";
+  }
+
+  /**
+   * Renders the banner image of one breakpoint. With a dark mode variant, each image gets its
+   * own data-theme-image wrapper, so CSS shows the one matching the theme and a load error
+   * styles only the failed image's wrapper. The dark image is lazy, so it loads only once shown.
+   * @param {string} url - Light banner URL
+   * @param {string|null} darkUrl - Dark mode banner URL
+   * @param {string} aspect - Banner aspect ratio for the load error placeholder
+   * @returns {TemplateResult} Banner image template
+   * @private
+   */
+  _renderBannerImages(url, darkUrl, aspect) {
+    if (!darkUrl) {
+      return html`
+        <img src="${url}" class="block w-full h-auto" alt="Banner" @error="${this._handleBannerError}" />
+      `;
+    }
+
+    return html`
+      <div data-theme-image="light" data-banner-aspect="${aspect}">
+        <img src="${url}" class="block w-full h-auto" alt="Banner" @error="${this._handleBannerError}" />
+      </div>
+      <div data-theme-image="dark" data-banner-aspect="${aspect}">
+        <img
+          src="${darkUrl}"
+          class="block w-full h-auto"
+          alt="Banner"
+          loading="lazy"
+          @error="${this._handleBannerError}"
+        />
+      </div>
+    `;
   }
 
   _getCurrentItem() {
@@ -260,14 +304,9 @@ export class BreadcrumbNav extends LitWrapper {
                     class="w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg phone:block ${
                       this.fullBleed ? "phone:rounded-none" : ""
                     }"
-                    data-banner-aspect="1220 / 192"
+                    data-banner-aspect="${MOBILE_BANNER_ASPECT}"
                   >
-                    <img
-                      src="${this.bannerMobileUrl}"
-                      class="block w-full h-auto"
-                      alt="Banner"
-                      @error="${this._handleBannerError}"
-                    />
+                    ${this._renderBannerImages(this.bannerMobileUrl, this.bannerMobileDarkUrl, MOBILE_BANNER_ASPECT)}
                   </div>
                 `
               : ""
@@ -277,14 +316,9 @@ export class BreadcrumbNav extends LitWrapper {
               ? html`
                   <div
                     class="w-full border-b border-stone-200 hidden sm:block overflow-hidden rounded-t-lg phone:hidden"
-                    data-banner-aspect="2428 / 192"
+                    data-banner-aspect="${DESKTOP_BANNER_ASPECT}"
                   >
-                    <img
-                      src="${this.bannerUrl}"
-                      class="block w-full h-auto"
-                      alt="Banner"
-                      @error="${this._handleBannerError}"
-                    />
+                    ${this._renderBannerImages(this.bannerUrl, this.bannerDarkUrl, DESKTOP_BANNER_ASPECT)}
                   </div>
                 `
               : ""

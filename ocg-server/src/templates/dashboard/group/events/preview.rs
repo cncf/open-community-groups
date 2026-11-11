@@ -5,7 +5,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use crate::{templates::filters, validation::EVENT_LABEL_COLORS};
+use crate::{templates::filters, types::images::ThemedImage, validation::EVENT_LABEL_COLORS};
 
 #[cfg(test)]
 mod tests;
@@ -31,6 +31,8 @@ pub(crate) struct Page {
 /// Prepared view model for rendering the event preview.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Event {
+    /// Dark mode variant of `banner_url`, from the same level.
+    pub banner_dark_url: Option<String>,
     /// Banner image URL selected for the preview.
     pub banner_url: Option<String>,
     /// Co-hosts selected in the editor, with pending or approved status.
@@ -45,6 +47,8 @@ pub(crate) struct Event {
     pub input: Input,
     /// Event kind display label.
     pub kind_label: Option<String>,
+    /// Dark mode variant of `logo_url`, from the same level.
+    pub logo_dark_url: Option<String>,
     /// Logo image URL selected for the preview.
     pub logo_url: Option<String>,
     /// Missing or incomplete fields to highlight.
@@ -182,32 +186,37 @@ impl From<Input> for Event {
         let context = input.context();
 
         // Resolve branding, taxonomy, and public URL fallbacks
-        let banner_url = first_text([
-            input.banner_url.as_deref(),
-            context.group.as_ref().and_then(|group| group.banner_url.as_deref()),
-            context
-                .community
-                .as_ref()
-                .and_then(|community| community.banner_url.as_deref()),
+        let group = context.group.as_ref();
+        let community = context.community.as_ref();
+        let (banner_url, banner_dark_url) = first_image([
+            (
+                input.banner_url.as_deref(),
+                input.banner_dark_url.as_deref(),
+            ),
+            (
+                group.and_then(|group| group.banner_url.as_deref()),
+                group.and_then(|group| group.banner_dark_url.as_deref()),
+            ),
+            (
+                community.and_then(|community| community.banner_url.as_deref()),
+                community.and_then(|community| community.banner_dark_url.as_deref()),
+            ),
         ]);
         let community_display_name = first_text([
-            context
-                .community
-                .as_ref()
-                .and_then(|community| community.display_name.as_deref()),
-            context
-                .community
-                .as_ref()
-                .and_then(|community| community.name.as_deref()),
+            community.and_then(|community| community.display_name.as_deref()),
+            community.and_then(|community| community.name.as_deref()),
         ]);
         let kind_label = first_text([context.kind_label.as_deref(), input.kind_id.as_deref()]);
-        let logo_url = first_text([
-            input.logo_url.as_deref(),
-            context.group.as_ref().and_then(|group| group.logo_url.as_deref()),
-            context
-                .community
-                .as_ref()
-                .and_then(|community| community.logo_url.as_deref()),
+        let (logo_url, logo_dark_url) = first_image([
+            (input.logo_url.as_deref(), input.logo_dark_url.as_deref()),
+            (
+                group.and_then(|group| group.logo_url.as_deref()),
+                group.and_then(|group| group.logo_dark_url.as_deref()),
+            ),
+            (
+                community.and_then(|community| community.logo_url.as_deref()),
+                community.and_then(|community| community.logo_dark_url.as_deref()),
+            ),
         ]);
 
         // Normalize submitted collections, keeping only people the public page lists
@@ -234,6 +243,7 @@ impl From<Input> for Event {
 
         // Assemble the render model
         Self {
+            banner_dark_url,
             banner_url,
             cohosts,
             community_display_name,
@@ -241,6 +251,7 @@ impl From<Input> for Event {
             hosts,
             input,
             kind_label,
+            logo_dark_url,
             logo_url,
             missing_fields,
             organizers,
@@ -326,10 +337,14 @@ pub(crate) struct Input {
 
     /// Attendee capacity configured in the editor.
     pub capacity: Option<String>,
+    /// Event banner image URL shown in dark mode in place of `banner_url`.
+    pub banner_dark_url: Option<String>,
     /// Event banner image URL.
     pub banner_url: Option<String>,
     /// Event end time.
     pub ends_at: Option<String>,
+    /// Event logo image URL shown in dark mode in place of `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Event logo image URL.
     pub logo_url: Option<String>,
     /// Meeting join instructions.
@@ -446,6 +461,8 @@ pub(crate) struct Context {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct ContextCohost {
+    /// Co-host group logo URL shown in dark mode in place of `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Co-host group logo URL.
     pub logo_url: Option<String>,
     /// Co-host group name.
@@ -469,10 +486,15 @@ impl ContextCohost {
 /// Preview community display context.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct ContextCommunity {
+    /// Community banner image URL shown in dark mode in place of
+    /// `banner_url`.
+    pub banner_dark_url: Option<String>,
     /// Community banner image URL.
     pub banner_url: Option<String>,
     /// Community display name.
     pub display_name: Option<String>,
+    /// Community logo image URL shown in dark mode in place of `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Community logo image URL.
     pub logo_url: Option<String>,
     /// Community URL name.
@@ -482,8 +504,14 @@ pub(crate) struct ContextCommunity {
 /// Preview group display context.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct ContextGroup {
+    /// Group banner image URL shown in dark mode in place of `banner_url`.
+    pub banner_dark_url: Option<String>,
     /// Group banner image URL.
     pub banner_url: Option<String>,
+    /// Effective group logo image URL shown in dark mode in place of
+    /// `logo_url`, taken from the same level (group or community) as
+    /// `logo_url`.
+    pub logo_dark_url: Option<String>,
     /// Group logo image URL.
     pub logo_url: Option<String>,
     /// Group display name.
@@ -596,8 +624,13 @@ fn build_cohosts(cohosts: &[ContextCohost]) -> Vec<ContextCohost> {
                     status == COHOST_STATUS_APPROVED || status == COHOST_STATUS_PENDING
                 })?;
 
+            // Keep the dark logo only together with its light logo
+            let logo_url = normalize_text(cohost.logo_url.clone());
+            let logo_dark_url = logo_url.as_ref().and(normalize_text(cohost.logo_dark_url.clone()));
+
             Some(ContextCohost {
-                logo_url: normalize_text(cohost.logo_url.clone()),
+                logo_dark_url,
+                logo_url,
                 name: Some(name),
                 status: Some(status),
             })
@@ -771,6 +804,24 @@ fn build_sessions(
         .collect()
 }
 
+/// Returns the first level with a non-empty light image, paired with the
+/// normalized dark image of that same level.
+///
+/// Each level is a (light URL, dark URL) pair, normalized first and then
+/// resolved by [`ThemedImage::first`].
+fn first_image(levels: [(Option<&str>, Option<&str>); 3]) -> (Option<String>, Option<String>) {
+    // Treat blank URLs as missing before resolving the level
+    let levels = levels.map(|(url, dark_url)| (trimmed_text(url), trimmed_text(dark_url)));
+
+    // Return owned URLs of the level that provides the light image
+    ThemedImage::first(levels).map_or((None, None), |image| {
+        (
+            Some(image.url.to_string()),
+            image.dark_url.map(str::to_string),
+        )
+    })
+}
+
 /// Returns the first non-empty string in the provided collection.
 fn first_text<I, T>(values: I) -> Option<String>
 where
@@ -870,4 +921,9 @@ fn session_time_label(
         (Some(starts_at), None) => format!("{} {}", starts_at.format("%-I:%M %p"), timezone),
         (None, _) => "Missing start time".to_string(),
     }
+}
+
+/// Trims optional text, treating a blank value as missing.
+fn trimmed_text(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|value| !value.is_empty())
 }

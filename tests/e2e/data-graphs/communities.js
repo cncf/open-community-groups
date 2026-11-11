@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import { queryE2eDatabase, queryE2eDatabaseRows, sqlString, sqlUuid } from "../database.js";
+import {
+  queryE2eDatabase,
+  queryE2eDatabaseRows,
+  sqlNullableString,
+  sqlString,
+  sqlUuid,
+} from "../database.js";
 import {
   TEST_COMMUNITY_BANNER_MOBILE_URL,
   TEST_COMMUNITY_BANNER_URL,
@@ -93,13 +99,28 @@ export const setupCommunityTaxonomyItem = ({ communityId, kind, name }) => {
 };
 
 /**
- * Creates a temporary community with one group category and an accepted team member. Release it
- * with `cleanupTemporaryCommunity`.
- * @param {{ label: string, teamRole: string, userId: string }} options - Label used in the names
- * and the community team role granted to the user.
- * @returns {{ communityId: string, displayName: string, groupCategoryId: string }}
+ * Creates a temporary community with the seeded light logo and banners, one group category and an
+ * accepted team member. Release it with `cleanupTemporaryCommunity`.
+ * @param {{
+ *   bannerDarkUrl?: string | null,
+ *   bannerMobileDarkUrl?: string | null,
+ *   label: string,
+ *   logoDarkUrl?: string | null,
+ *   teamRole: string,
+ *   userId: string
+ * }} options - Label used in the names, the community team role granted to the user and the
+ *   optional dark mode variants of the logo and banners.
+ * @returns {{ communityId: string, displayName: string, groupCategoryId: string, name: string }}
+ *   Identifiers, with `name` as the community URL segment.
  */
-export const setupTemporaryCommunity = ({ label, teamRole, userId }) => {
+export const setupTemporaryCommunity = ({
+  bannerDarkUrl = null,
+  bannerMobileDarkUrl = null,
+  label,
+  logoDarkUrl = null,
+  teamRole,
+  userId,
+}) => {
   const communityId = randomUUID();
   const groupCategoryId = randomUUID();
   const communityName = `e2e-${label.replace(/\s+/gu, "-")}-${shortId(communityId)}`;
@@ -112,16 +133,22 @@ export const setupTemporaryCommunity = ({ label, teamRole, userId }) => {
       display_name,
       description,
       banner_url,
+      banner_dark_url,
       banner_mobile_url,
-      logo_url
+      banner_mobile_dark_url,
+      logo_url,
+      logo_dark_url
     ) values (
       ${sqlUuid(communityId)},
       ${sqlString(communityName)},
       ${sqlString(displayName)},
       'Temporary community owned by E2E coverage.',
       ${sqlString(TEST_COMMUNITY_BANNER_URL)},
+      ${sqlNullableString(bannerDarkUrl)},
       ${sqlString(TEST_COMMUNITY_BANNER_MOBILE_URL)},
-      ${sqlString(TEST_COMMUNITY_LOGO_URL)}
+      ${sqlNullableString(bannerMobileDarkUrl)},
+      ${sqlString(TEST_COMMUNITY_LOGO_URL)},
+      ${sqlNullableString(logoDarkUrl)}
     );
 
     insert into group_category (group_category_id, name, community_id)
@@ -131,5 +158,5 @@ export const setupTemporaryCommunity = ({ label, teamRole, userId }) => {
     values (${sqlUuid(communityId)}, ${sqlUuid(userId)}, true, ${sqlString(teamRole)});
   `);
 
-  return { communityId, displayName, groupCategoryId };
+  return { communityId, displayName, groupCategoryId, name: communityName };
 };

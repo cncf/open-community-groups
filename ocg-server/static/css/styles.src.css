@@ -883,27 +883,41 @@
     }
   }
 
-  /* Site header logo variants (common/header.html and
-     common/badge_header.html). The dark variant is screen only, so print
-     always shows the light logo. */
+  /* Theme image pairs: a light image and its dark mode variant, rendered side by side, with
+     data-theme-image="light" or "dark" on each wrapper (or on a standalone img, never on an
+     img inside a plate). These rules only hide, so the element's own display utilities apply
+     when it shows. The dark hide conditions are the exact complement of the dark variant, so
+     exactly one image of a pair shows: print and light islands (.plate, .ink) show the light
+     one. The dark img is lazy, so it is only fetched once shown. */
+  [data-theme-image="light"] {
+    @variant dark {
+      display: none !important;
+    }
+  }
+
+  @media not screen {
+    [data-theme-image="dark"] {
+      display: none !important;
+    }
+  }
+
+  @media screen {
+    html[data-theme]:not([data-theme="dark"]) [data-theme-image="dark"],
+    :where(.plate, .ink) [data-theme-image="dark"] {
+      display: none !important;
+    }
+  }
+
+  @media screen and (not (prefers-color-scheme: dark)) {
+    html:not([data-theme]) [data-theme-image="dark"] {
+      display: none !important;
+    }
+  }
+
+  /* Site header logo variants (common/header.html and common/badge_header.html), shown and
+     hidden by their data-theme-image pair. */
   [data-site-logo] {
     display: inline-flex;
-  }
-
-  [data-site-logo="dark"] {
-    display: none;
-  }
-
-  [data-site-logo="light"] {
-    @variant dark {
-      display: none;
-    }
-  }
-
-  [data-site-logo="dark"] {
-    @variant dark {
-      display: inline-flex;
-    }
   }
 
   [data-site-logo="plated"] {

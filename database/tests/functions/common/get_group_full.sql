@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,7 @@ select plan(6);
 \set groupID '0c0a0000-0000-0000-0000-000000000003'
 \set groupInactiveID '0c0a0000-0000-0000-0000-000000000004'
 \set groupNoLogoID '0c0a0000-0000-0000-0000-000000000012'
+\set groupOrphanDarkLogoID '0c0a0000-0000-0000-0000-000000000015'
 \set groupPrettySlugID '0c0a0000-0000-0000-0000-000000000013'
 \set hierarchyChildActiveID '0c0a0000-0000-0000-0000-00000000000e'
 \set hierarchyChildInactiveID '0c0a0000-0000-0000-0000-000000000010'
@@ -38,9 +39,12 @@ select plan(6);
 select fx_community(:'communityID', jsonb_build_object(
     'ad_banner_link_url', 'https://example.com/ad-banner-link',
     'ad_banner_url', 'https://example.com/ad-banner.png',
+    'banner_dark_url', 'https://example.com/banner-dark.png',
+    'banner_mobile_dark_url', 'https://example.com/banner-mobile-dark.png',
     'banner_mobile_url', 'https://example.com/banner_mobile.png',
     'banner_url', 'https://example.com/banner.png',
     'display_name', 'Cloud Native Seattle Group Full',
+    'logo_dark_url', 'https://example.com/logo-dark.png',
     'logo_url', 'https://example.com/logo.png',
     'name', 'cloud-native-seattle-group-full',
     'og_image_url', 'https://example.com/community-og.png'
@@ -107,7 +111,10 @@ insert into "group" (
     country_name,
     description,
     description_short,
+    logo_dark_url,
     logo_url,
+    banner_dark_url,
+    banner_mobile_dark_url,
     banner_url,
     location,
     tags,
@@ -143,7 +150,10 @@ insert into "group" (
     'United States',
     'A technology group focused on Kubernetes and cloud native technologies',
     'A brief overview of the Seattle Kubernetes group',
+    'https://example.com/group-logo-dark.png',
     'https://example.com/group-logo.png',
+    'https://example.com/group-banner-dark.png',
+    'https://example.com/group-banner-mobile-dark.png',
     'https://example.com/group-banner.png',
     ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
     array['kubernetes', 'cloud-native', 'containers'],
@@ -216,8 +226,16 @@ select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_bu
     'created_at', '2024-02-15 10:00:00+00'
 ));
 
--- Group variants
+-- Group without a logo
 select fx_group(:'groupNoLogoID', :'communityID', :'groupCategoryID', jsonb_build_object('created_at', '2024-02-20 10:00:00+00'));
+
+-- Group without a logo but with an orphan dark logo
+select fx_group(:'groupOrphanDarkLogoID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'created_at', '2024-02-22 10:00:00+00',
+    'logo_dark_url', 'https://example.com/orphan-group-logo-dark.png'
+));
+
+-- Group with a pretty slug
 select fx_group(:'groupPrettySlugID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'created_at', '2024-02-21 10:00:00+00',
     'slug_pretty', 'seattle-kubernetes'
@@ -266,10 +284,13 @@ select is(
         "members_count": 4,
         "name": "Seattle Kubernetes Meetup",
         "slug": "abc1234",
+        "banner_dark_url": "https://example.com/group-banner-dark.png",
+        "banner_mobile_dark_url": "https://example.com/group-banner-mobile-dark.png",
         "banner_url": "https://example.com/group-banner.png",
         "city": "New York",
         "country_code": "US",
         "country_name": "United States",
+        "custom_logo_dark_url": "https://example.com/group-logo-dark.png",
         "custom_logo_url": "https://example.com/group-logo.png",
         "description": "A technology group focused on Kubernetes and cloud native technologies",
         "description_short": "A brief overview of the Seattle Kubernetes group",
@@ -282,6 +303,7 @@ select is(
         "instagram_url": "https://instagram.com/seattlek8s",
         "latitude": 40.7128,
         "linkedin_url": "https://linkedin.com/company/seattlek8s",
+        "logo_dark_url": "https://example.com/group-logo-dark.png",
         "logo_url": "https://example.com/group-logo.png",
         "longitude": -74.006,
         "og_image_url": "https://example.com/group-og.png",
@@ -312,6 +334,9 @@ select is(
             "name": "cloud-native-seattle-group-full",
             "ad_banner_link_url": "https://example.com/ad-banner-link",
             "ad_banner_url": "https://example.com/ad-banner.png",
+            "banner_dark_url": "https://example.com/banner-dark.png",
+            "banner_mobile_dark_url": "https://example.com/banner-mobile-dark.png",
+            "logo_dark_url": "https://example.com/logo-dark.png",
             "og_image_url": "https://example.com/community-og.png"
         },
         "organizers": [
@@ -390,6 +415,7 @@ select is(
                 "community_name": "cloud-native-seattle-group-full",
                 "created_at": 1709287200,
                 "group_id": "%s",
+                "logo_dark_url": "https://example.com/logo-dark.png",
                 "logo_url": "https://example.com/logo.png",
                 "name": "Hierarchy Parent",
                 "slug": "hierarchy-parent"
@@ -406,6 +432,7 @@ select is(
                     "community_name": "cloud-native-seattle-group-full",
                     "created_at": 1709373600,
                     "group_id": "%s",
+                    "logo_dark_url": "https://example.com/logo-dark.png",
                     "logo_url": "https://example.com/logo.png",
                     "name": "Active Hierarchy Child",
                     "slug": "active-hierarchy-child"
@@ -421,17 +448,44 @@ select is(
     'Should include only active visible parent and subgroup summaries'
 );
 
--- Should use community logo without an own logo when group has no logo
+-- Should keep an orphan dark logo editable without pairing it with the community logo
 select is(
     jsonb_build_object(
+        'custom_logo_dark_url', group_json->'custom_logo_dark_url',
         'custom_logo_url', group_json->'custom_logo_url',
+        'logo_dark_url', group_json->'logo_dark_url',
         'logo_url', group_json->'logo_url'
     ),
     jsonb_build_object(
+        'custom_logo_dark_url', 'https://example.com/orphan-group-logo-dark.png',
         'custom_logo_url', null,
+        'logo_dark_url', 'https://example.com/logo-dark.png',
         'logo_url', 'https://example.com/logo.png'
     ),
-    'Should use community logo without an own logo when group has no logo'
+    'Should keep an orphan dark logo editable without pairing it with the community logo'
+)
+from (
+    select get_group_full(
+        :'communityID'::uuid,
+        :'groupOrphanDarkLogoID'::uuid
+    )::jsonb as group_json
+) group_projection;
+
+-- Should use community logos without own logos when group has no logo
+select is(
+    jsonb_build_object(
+        'custom_logo_dark_url', group_json->'custom_logo_dark_url',
+        'custom_logo_url', group_json->'custom_logo_url',
+        'logo_dark_url', group_json->'logo_dark_url',
+        'logo_url', group_json->'logo_url'
+    ),
+    jsonb_build_object(
+        'custom_logo_dark_url', null,
+        'custom_logo_url', null,
+        'logo_dark_url', 'https://example.com/logo-dark.png',
+        'logo_url', 'https://example.com/logo.png'
+    ),
+    'Should use community logos without own logos when group has no logo'
 )
 from (
     select get_group_full(

@@ -112,14 +112,16 @@
 
 {# Logo -#}
 {# Used by public cards, pages, and dashboard previews for entity logos. -#}
-{% macro logo(logo_url, classes, size, border = true) -%}
+{# A non-empty logo_dark_url adds a dark mode sibling without the white plate; data-theme-image shows one per theme. -#}
+{% macro logo(logo_url, classes, size, logo_dark_url = "", border = true) -%}
   {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) -%}
 
   <div class="plate md:my-auto bg-plate overflow-hidden
               {% if border -%}
                 rounded-lg outline outline-1 outline-plate-edge border border-[5px] border-plate
               {% endif -%}
-              {{ classes }}">
+              {{ classes }}"
+       {% if !logo_dark_url.is_empty() -%}data-theme-image="light"{% endif -%}>
     <img src="{{ bg_image }}"
          alt=""
          class="h-full w-full object-contain"
@@ -127,6 +129,22 @@
          height="{{ size }}"
          loading="lazy" />
   </div>
+  {% if !logo_dark_url.is_empty() -%}
+    {% let dark_bg_image = logo_dark_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) -%}
+    <div data-theme-image="dark"
+         class="md:my-auto overflow-hidden
+                {% if border -%}
+                  rounded-lg outline outline-1 outline-stone-200 border border-[5px] border-transparent
+                {% endif -%}
+                {{ classes }}">
+      <img src="{{ dark_bg_image }}"
+           alt=""
+           class="h-full w-full object-contain"
+           width="{{ size }}"
+           height="{{ size }}"
+           loading="lazy" />
+    </div>
+  {% endif -%}
 {% endmacro logo -%}
 {# End logo -#}
 

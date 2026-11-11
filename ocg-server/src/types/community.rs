@@ -6,6 +6,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::types::images::ThemedImage;
+
 // Community types.
 
 /// Full community information.
@@ -40,6 +42,11 @@ pub struct CommunityFull {
     pub ad_banner_link_url: Option<String>,
     /// URL to the advertisement banner image.
     pub ad_banner_url: Option<String>,
+    /// URL to the banner image shown in dark mode in place of `banner_url`.
+    pub banner_dark_url: Option<String>,
+    /// URL to the mobile banner image shown in dark mode in place of
+    /// `banner_mobile_url`.
+    pub banner_mobile_dark_url: Option<String>,
     /// Link to the community's Bluesky profile.
     pub bluesky_url: Option<String>,
     /// Additional custom links displayed in the community navigation.
@@ -54,6 +61,9 @@ pub struct CommunityFull {
     pub instagram_url: Option<String>,
     /// Link to the community's `LinkedIn` page.
     pub linkedin_url: Option<String>,
+    /// URL to the logo image shown in dark mode in place of `logo_url`,
+    /// without the white plate.
+    pub logo_dark_url: Option<String>,
     /// Instructions for creating new groups.
     pub new_group_details: Option<String>,
     /// URL to the Open Graph image used for link previews.
@@ -70,6 +80,24 @@ pub struct CommunityFull {
     pub wechat_url: Option<String>,
     /// Link to the community's `YouTube` channel.
     pub youtube_url: Option<String>,
+}
+
+impl CommunityFull {
+    /// Returns the desktop banner with its dark mode variant.
+    pub fn banner(&self) -> ThemedImage<'_> {
+        ThemedImage {
+            url: &self.banner_url,
+            dark_url: self.banner_dark_url.as_deref(),
+        }
+    }
+
+    /// Returns the mobile banner with its dark mode variant.
+    pub fn banner_mobile(&self) -> ThemedImage<'_> {
+        ThemedImage {
+            url: &self.banner_mobile_url,
+            dark_url: self.banner_mobile_dark_url.as_deref(),
+        }
+    }
 }
 
 /// Community team role enumeration.
@@ -115,8 +143,34 @@ pub struct CommunitySummary {
     pub ad_banner_link_url: Option<String>,
     /// URL to the advertisement banner image.
     pub ad_banner_url: Option<String>,
+    /// URL to the banner image shown in dark mode in place of `banner_url`.
+    pub banner_dark_url: Option<String>,
+    /// URL to the mobile banner image shown in dark mode in place of
+    /// `banner_mobile_url`.
+    pub banner_mobile_dark_url: Option<String>,
+    /// URL to the logo image shown in dark mode in place of `logo_url`,
+    /// without the white plate.
+    pub logo_dark_url: Option<String>,
     /// URL to the Open Graph image used for link previews.
     pub og_image_url: Option<String>,
+}
+
+impl CommunitySummary {
+    /// Returns the desktop banner with its dark mode variant.
+    pub fn banner(&self) -> ThemedImage<'_> {
+        ThemedImage {
+            url: &self.banner_url,
+            dark_url: self.banner_dark_url.as_deref(),
+        }
+    }
+
+    /// Returns the mobile banner with its dark mode variant.
+    pub fn banner_mobile(&self) -> ThemedImage<'_> {
+        ThemedImage {
+            url: &self.banner_mobile_url,
+            dark_url: self.banner_mobile_dark_url.as_deref(),
+        }
+    }
 }
 
 /// Community statistics shown on the community home page.
@@ -130,4 +184,67 @@ pub(crate) struct CommunityStats {
     pub events: i64,
     /// Total number of attendees across all events.
     pub events_attendees: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::images::ThemedImage;
+
+    use super::{CommunityFull, CommunitySummary};
+
+    #[test]
+    fn test_community_full_banner_pickers_pair_each_banner_with_its_dark_variant() {
+        // Setup a community with only a desktop dark banner
+        let community = CommunityFull {
+            banner_mobile_url: "cm".to_string(),
+            banner_url: "c".to_string(),
+
+            banner_dark_url: Some("c-dark".to_string()),
+            ..Default::default()
+        };
+
+        // Check desktop and mobile resolve independently
+        assert_eq!(
+            community.banner(),
+            ThemedImage {
+                url: "c",
+                dark_url: Some("c-dark"),
+            }
+        );
+        assert_eq!(
+            community.banner_mobile(),
+            ThemedImage {
+                url: "cm",
+                dark_url: None,
+            }
+        );
+    }
+
+    #[test]
+    fn test_community_summary_banner_pickers_pair_each_banner_with_its_dark_variant() {
+        // Setup a community with only a mobile dark banner
+        let community = CommunitySummary {
+            banner_mobile_url: "cm".to_string(),
+            banner_url: "c".to_string(),
+
+            banner_mobile_dark_url: Some("cm-dark".to_string()),
+            ..Default::default()
+        };
+
+        // Check desktop and mobile resolve independently
+        assert_eq!(
+            community.banner(),
+            ThemedImage {
+                url: "c",
+                dark_url: None,
+            }
+        );
+        assert_eq!(
+            community.banner_mobile(),
+            ThemedImage {
+                url: "cm",
+                dark_url: Some("cm-dark"),
+            }
+        );
+    }
 }

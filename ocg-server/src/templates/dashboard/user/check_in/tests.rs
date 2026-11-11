@@ -55,6 +55,7 @@ fn sample_event(event_id: Uuid, checked_in: bool) -> UserCheckInEvent {
             .with_timezone(&Utc),
         timezone: Los_Angeles,
 
+        logo_dark_url: None,
         logo_url: None,
         location: Some("Main hall".to_string()),
         ticket_title: Some("General admission".to_string()),

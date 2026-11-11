@@ -7,13 +7,13 @@
        aria-label="Go to {{ site_settings.title }} homepage">
       {% if let Some(url) = &site_settings.header_logo_url -%}
         {% if let Some(dark_url) = &site_settings.header_logo_dark_url -%}
-          <span class="relative" data-site-logo="light">
+          <span class="relative" data-site-logo="light" data-theme-image="light">
             <img class="h-10 w-auto max-w-44 sm:h-[42px] sm:max-w-52"
                  src="{{ url }}"
                  alt="{{ site_settings.title }} logo"
                  height="42">
           </span>
-          <span class="relative" data-site-logo="dark">
+          <span class="relative" data-site-logo="dark" data-theme-image="dark">
             <img class="h-10 w-auto max-w-44 sm:h-[42px] sm:max-w-52"
                  src="{{ dark_url }}"
                  alt="{{ site_settings.title }} logo"

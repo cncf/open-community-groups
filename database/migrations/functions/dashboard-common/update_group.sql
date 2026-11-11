@@ -290,6 +290,8 @@ begin
         name = p_group->>'name',
         group_category_id = (p_group->>'category_id')::uuid,
 
+        banner_dark_url = nullif(p_group->>'banner_dark_url', ''),
+        banner_mobile_dark_url = nullif(p_group->>'banner_mobile_dark_url', ''),
         banner_mobile_url = nullif(p_group->>'banner_mobile_url', ''),
         banner_url = nullif(p_group->>'banner_url', ''),
         bluesky_url = nullif(p_group->>'bluesky_url', ''),
@@ -307,6 +309,7 @@ begin
         instagram_url = nullif(p_group->>'instagram_url', ''),
         linkedin_url = nullif(p_group->>'linkedin_url', ''),
         location = jsonb_geography_point(p_group),
+        logo_dark_url = nullif(p_group->>'logo_dark_url', ''),
         logo_url = nullif(p_group->>'logo_url', ''),
         og_image_url = nullif(p_group->>'og_image_url', ''),
         parent_group_id = v_new_parent_group_id,

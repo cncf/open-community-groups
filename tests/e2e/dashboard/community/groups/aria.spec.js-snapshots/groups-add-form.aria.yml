@@ -46,6 +46,13 @@
 - button "Upload image for Logo"
 - button "Remove image" [disabled]
 - paragraph: If this logo isn't provided, we'll fall back to the community logo.
+- text: Logo (dark mode)
+- button "Logo (dark mode) Click or drop image":
+  - paragraph: Click or drop image
+- paragraph: "/Images must be \\d+ x \\d+ px \\(square\\)\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Logo (dark mode)"
+- button "Remove image" [disabled]
+- paragraph: Optional. Shown instead of the logo in dark mode, without the white background. Used only together with the logo above.
 - text: Banner
 - button "Banner Click to upload or drag and drop":
   - paragraph: Click to upload or drag and drop
@@ -53,6 +60,13 @@
 - button "Upload image for Banner"
 - button "Remove image" [disabled]
 - paragraph: If this banner isn't provided, we'll fall back to the community banner.
+- text: Banner (dark mode)
+- button "Banner (dark mode) Click to upload or drag and drop":
+  - paragraph: Click to upload or drag and drop
+- paragraph: "/Size required \\d+ x \\d+ px\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Banner (dark mode)"
+- button "Remove image" [disabled]
+- paragraph: Optional. Shown instead of the banner in dark mode. Used only together with the banner above.
 - text: Banner Mobile
 - button "Banner Mobile Click to upload or drag and drop":
   - paragraph: Click to upload or drag and drop
@@ -60,6 +74,13 @@
 - button "Upload image for Banner Mobile"
 - button "Remove image" [disabled]
 - paragraph: If this banner isn't provided, we'll fall back to the community banner.
+- text: Banner Mobile (dark mode)
+- button "Banner Mobile (dark mode) Click to upload or drag and drop":
+  - paragraph: Click to upload or drag and drop
+- paragraph: "/Size required \\d+ x \\d+ px\\. Maximum size: [\\d,.]+[bkmBKM]+\\. Supported formats: SVG, PNG, JPEG, GIF and WEBP\\./"
+- button "Upload image for Banner Mobile (dark mode)"
+- button "Remove image" [disabled]
+- paragraph: Optional. Shown instead of the mobile banner in dark mode. Used only together with the mobile banner above.
 - text: Open Graph Image
 - button "Open Graph Image Click to upload or drag and drop":
   - paragraph: Click to upload or drag and drop

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(6);
 \set eventCategoryID 'c00c0000-0000-0000-0000-000000000002'
 \set eventDeletedID 'c00c0000-0000-0000-0000-000000000003'
 \set eventEqualDatesID 'c00c0000-0000-0000-0000-000000000004'
+\set eventImagesID 'c00c0000-0000-0000-0000-00000000000a'
 \set eventInvalidDatesID 'c00c0000-0000-0000-0000-000000000005'
 \set eventPublishedID 'c00c0000-0000-0000-0000-000000000006'
 \set eventStartOnlyID 'c00c0000-0000-0000-0000-000000000007'
@@ -42,6 +43,9 @@ select fx_event(:'eventDeletedID', :'groupID', :'eventCategoryID');
 
 -- Undated event given equal start and end dates
 select fx_event(:'eventEqualDatesID', :'groupID', :'eventCategoryID');
+
+-- Event receiving the rejected blank image URLs
+select fx_event(:'eventImagesID', :'groupID', :'eventCategoryID');
 
 -- Dated event receiving the rejected date ranges
 select fx_event(:'eventInvalidDatesID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -93,6 +97,39 @@ select lives_ok(
         :'eventStartOnlyID'
     ),
     'Should accept starts_at without ends_at'
+);
+
+-- Should reject a blank dark banner URL
+select throws_ok(
+    format(
+        $$update event set banner_dark_url = ' ' where event_id = %L::uuid$$,
+        :'eventImagesID'
+    ),
+    '23514',
+    'new row for relation "event" violates check constraint "event_banner_dark_url_check"',
+    'Should reject a blank dark banner URL'
+);
+
+-- Should reject a blank dark logo URL
+select throws_ok(
+    format(
+        $$update event set logo_dark_url = ' ' where event_id = %L::uuid$$,
+        :'eventImagesID'
+    ),
+    '23514',
+    'new row for relation "event" violates check constraint "event_logo_dark_url_check"',
+    'Should reject a blank dark logo URL'
+);
+
+-- Should reject a blank dark mobile banner URL
+select throws_ok(
+    format(
+        $$update event set banner_mobile_dark_url = ' ' where event_id = %L::uuid$$,
+        :'eventImagesID'
+    ),
+    '23514',
+    'new row for relation "event" violates check constraint "event_banner_mobile_dark_url_check"',
+    'Should reject a blank dark mobile banner URL'
 );
 
 -- Should reject a deleted published event

@@ -258,6 +258,105 @@ fn test_public_regular_speakers_lists_legacy_then_non_featured_named() {
 }
 
 #[test]
+fn test_page_breadcrumb_pairs_banners_with_the_chosen_level_dark_variant() {
+    // Setup cases: (label, event desktop pair, event mobile pair, group desktop pair,
+    // group mobile pair, expected desktop, expected mobile), where the community
+    // pairs are always (c, c-dark) and (cm, cm-dark)
+    let cases = [
+        (
+            "event pairs",
+            (Some("e"), Some("e-dark")),
+            (Some("em"), Some("em-dark")),
+            (Some("g"), Some("g-dark")),
+            (Some("gm"), Some("gm-dark")),
+            ("e", Some("e-dark")),
+            ("em", Some("em-dark")),
+        ),
+        (
+            "event light without dark while the group has a dark",
+            (Some("e"), None),
+            (Some("em"), None),
+            (Some("g"), Some("g-dark")),
+            (Some("gm"), Some("gm-dark")),
+            ("e", None),
+            ("em", None),
+        ),
+        (
+            "group light without dark while the community has a dark",
+            (None, None),
+            (None, None),
+            (Some("g"), None),
+            (Some("gm"), None),
+            ("g", None),
+            ("gm", None),
+        ),
+        (
+            "orphan darks fall through to the community pairs",
+            (None, Some("e-dark")),
+            (None, Some("em-dark")),
+            (None, Some("g-dark")),
+            (None, Some("gm-dark")),
+            ("c", Some("c-dark")),
+            ("cm", Some("cm-dark")),
+        ),
+        (
+            "desktop and mobile resolve independently",
+            (Some("e"), Some("e-dark")),
+            (None, None),
+            (None, None),
+            (Some("gm"), None),
+            ("e", Some("e-dark")),
+            ("gm", None),
+        ),
+    ];
+
+    for (label, event_desktop, event_mobile, group_desktop, group_mobile, desktop, mobile) in cases
+    {
+        // Setup the case banners on every level
+        let url = |token: &str| format!("https://example.test/{token}.png");
+        let mut page = sample_page(None, chrono_tz::UTC);
+        page.event.banner_dark_url = event_desktop.1.map(url);
+        page.event.banner_mobile_dark_url = event_mobile.1.map(url);
+        page.event.banner_mobile_url = event_mobile.0.map(url);
+        page.event.banner_url = event_desktop.0.map(url);
+        page.event.group.banner_dark_url = group_desktop.1.map(url);
+        page.event.group.banner_mobile_dark_url = group_mobile.1.map(url);
+        page.event.group.banner_mobile_url = group_mobile.0.map(url);
+        page.event.group.banner_url = group_desktop.0.map(url);
+        page.event.community.banner_dark_url = Some(url("c-dark"));
+        page.event.community.banner_mobile_dark_url = Some(url("cm-dark"));
+        page.event.community.banner_mobile_url = url("cm");
+        page.event.community.banner_url = url("c");
+
+        // Render the event page and keep its breadcrumb
+        let body = page.render().unwrap();
+        let breadcrumb = opening_tag_with(&body, "<breadcrumb-nav");
+
+        // Check each banner carries only the dark variant of its own level
+        assert_eq!(
+            attribute_value(breadcrumb, "banner-url"),
+            Some(url(desktop.0).as_str()),
+            "{label}"
+        );
+        assert_eq!(
+            attribute_value(breadcrumb, "banner-dark-url"),
+            desktop.1.map(url).as_deref(),
+            "{label}"
+        );
+        assert_eq!(
+            attribute_value(breadcrumb, "banner-mobile-url"),
+            Some(url(mobile.0).as_str()),
+            "{label}"
+        );
+        assert_eq!(
+            attribute_value(breadcrumb, "banner-mobile-dark-url"),
+            mobile.1.map(url).as_deref(),
+            "{label}"
+        );
+    }
+}
+
+#[test]
 fn test_page_breadcrumb_strips_emoji_from_group_name() {
     // Render an event whose group name contains an emoji
     let mut page = sample_page(None, chrono_tz::UTC);
@@ -268,6 +367,38 @@ fn test_page_breadcrumb_strips_emoji_from_group_name() {
     let breadcrumb = opening_tag_with(&body, "<breadcrumb-nav");
     assert!(breadcrumb.contains("Rust Group"));
     assert!(!breadcrumb.contains('🦀'));
+}
+
+#[test]
+fn test_page_logo_renders_dark_variant_only_with_dark_logo() {
+    // Setup logo URLs
+    let logo_url = "https://example.test/event-logo.png";
+    let logo_dark_url = "https://example.test/event-logo-dark.png";
+
+    // Render the event page without a dark logo
+    let mut page = sample_page(None, chrono_tz::UTC);
+    page.event.logo_url = logo_url.to_string();
+    let body = page.render().unwrap();
+
+    // Check the plated logo renders alone and unmarked
+    assert!(opening_tag_with(&body, &format!(r#"src="{logo_url}""#)).starts_with("<img"));
+    assert!(!body.contains("data-theme-image"));
+
+    // Render the event page with a dark logo
+    page.event.logo_dark_url = Some(logo_dark_url.to_string());
+    let body = page.render().unwrap();
+
+    // Check the marked plated logo precedes the unplated lazy dark logo
+    let light = element_html_with(&body, r#"data-theme-image="light""#);
+    assert!(opening_tag_with(light, "data-theme-image").contains("plate"));
+    assert!(opening_tag_with(light, &format!(r#"src="{logo_url}""#)).starts_with("<img"));
+    let dark = element_html_with(&body, r#"data-theme-image="dark""#);
+    assert!(!opening_tag_with(dark, "data-theme-image").contains("plate"));
+    let dark_image = opening_tag_with(dark, &format!(r#"src="{logo_dark_url}""#));
+    assert!(dark_image.starts_with("<img"));
+    assert!(dark_image.contains(r#"loading="lazy""#));
+    assert!(body.find(r#"data-theme-image="light""#) < body.find(r#"data-theme-image="dark""#));
+    assert_eq!(body.matches("data-theme-image").count(), 2);
 }
 
 #[test]
@@ -803,6 +934,12 @@ fn test_page_renders_session_speakers_featured_first() {
 }
 
 // Helpers.
+
+/// Returns the value of the named attribute in a rendered opening tag.
+fn attribute_value<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
+    let (_, rest) = tag.split_once(&format!(r#" {name}=""#))?;
+    rest.split('"').next()
+}
 
 /// Returns the bio mode and name of a person listed in a people section.
 fn person_summary<'a>(person: &EventPerson<'a>) -> (bool, Option<&'a str>) {

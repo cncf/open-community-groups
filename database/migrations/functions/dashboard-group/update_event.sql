@@ -162,6 +162,8 @@ begin
         event_kind_id = v_event.event_kind_id,
 
         attendee_approval_required = v_event.attendee_approval_required,
+        banner_dark_url = v_event.banner_dark_url,
+        banner_mobile_dark_url = v_event.banner_mobile_dark_url,
         banner_mobile_url = v_event.banner_mobile_url,
         banner_url = v_event.banner_url,
         cfs_description = v_event.cfs_description,
@@ -193,6 +195,7 @@ begin
         external_payment_url = v_event.external_payment_url,
         external_payment_window_hours = v_event.external_payment_window_hours,
         location = v_event.location,
+        logo_dark_url = v_event.logo_dark_url,
         logo_url = v_event.logo_url,
         luma_url = v_event.luma_url,
         manual_tax_rate_ids = v_event.manual_tax_rate_ids,

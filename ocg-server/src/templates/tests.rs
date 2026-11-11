@@ -11,10 +11,14 @@ use crate::{
         PageId,
         auth::UserMenuState,
         brand_ramp::{AZURE_RAMP, DARK_SURFACE},
-        site,
+        community, site,
     },
     test_util::{element_html_with, opening_tag_with},
-    types::{site::SiteSettings, tests::sample_site_settings},
+    types::{
+        community::{CommunityFull, CommunityStats},
+        site::SiteSettings,
+        tests::sample_site_settings,
+    },
 };
 
 #[test]
@@ -253,6 +257,88 @@ fn test_base_layout_runs_inline_initializers_before_assets() {
 }
 
 #[test]
+fn test_community_page_breadcrumb_pairs_each_banner_with_its_dark_variant() {
+    // Setup banner URLs
+    let banner_url = "https://example.test/community-banner.png";
+    let banner_dark_url = "https://example.test/community-banner-dark.png";
+    let banner_mobile_url = "https://example.test/community-banner-mobile.png";
+    let banner_mobile_dark_url = "https://example.test/community-banner-mobile-dark.png";
+
+    // Setup cases: (label, desktop dark url, mobile dark url)
+    let cases = [
+        (
+            "both dark banners",
+            Some(banner_dark_url),
+            Some(banner_mobile_dark_url),
+        ),
+        ("desktop dark banner only", Some(banner_dark_url), None),
+        (
+            "mobile dark banner only",
+            None,
+            Some(banner_mobile_dark_url),
+        ),
+        ("no dark banners", None, None),
+    ];
+
+    for (label, dark_url, mobile_dark_url) in cases {
+        // Render the community page with the case banners and keep its breadcrumb
+        let html = community::Page {
+            base_url: "https://example.test".to_string(),
+            community: CommunityFull {
+                banner_mobile_url: banner_mobile_url.to_string(),
+                banner_url: banner_url.to_string(),
+                display_name: "Test Community".to_string(),
+                name: "test-community".to_string(),
+
+                banner_dark_url: dark_url.map(str::to_string),
+                banner_mobile_dark_url: mobile_dark_url.map(str::to_string),
+                ..Default::default()
+            },
+            page_id: PageId::Community,
+            path: "/test-community".to_string(),
+            recently_added_groups: vec![],
+            site_settings: sample_site_settings(),
+            stats: community::Stats {
+                stats: CommunityStats::default(),
+            },
+            upcoming_in_person_events: vec![],
+            upcoming_virtual_events: vec![],
+            user: UserMenuState::default(),
+        }
+        .render()
+        .unwrap();
+        let breadcrumb = opening_tag_with(&html, "<breadcrumb-nav");
+
+        // Check the light banners always render and each dark banner only when set
+        assert!(
+            breadcrumb.contains(&format!(r#" banner-url="{banner_url}""#)),
+            "{label}"
+        );
+        assert!(
+            breadcrumb.contains(&format!(r#" banner-mobile-url="{banner_mobile_url}""#)),
+            "{label}"
+        );
+        assert_eq!(
+            breadcrumb.contains(&format!(r#" banner-dark-url="{banner_dark_url}""#)),
+            dark_url.is_some(),
+            "{label}"
+        );
+        assert_eq!(
+            breadcrumb.contains(&format!(
+                r#" banner-mobile-dark-url="{banner_mobile_dark_url}""#
+            )),
+            mobile_dark_url.is_some(),
+            "{label}"
+        );
+        assert_eq!(
+            breadcrumb.matches("dark-url=").count(),
+            usize::from(dark_url.is_some()) + usize::from(mobile_dark_url.is_some()),
+            "{label}"
+        );
+    }
+}
+
+#[test]
 fn test_header_names_user_menu_placeholder() {
     // Render a page whose header defers the user menu
     let html = render_base_layout(sample_site_settings());
@@ -276,12 +362,12 @@ fn test_header_renders_logo_variants_for_configured_urls() {
             Some(dark_url),
             vec![
                 (
-                    r#"<span class="relative" data-site-logo="light">"#,
+                    r#"<span class="relative" data-site-logo="light" data-theme-image="light">"#,
                     light_url,
                     false,
                 ),
                 (
-                    r#"<span class="relative" data-site-logo="dark">"#,
+                    r#"<span class="relative" data-site-logo="dark" data-theme-image="dark">"#,
                     dark_url,
                     true,
                 ),
@@ -339,6 +425,18 @@ fn test_header_renders_logo_variants_for_configured_urls() {
         assert_eq!(
             header.matches(r#"loading="lazy""#).count(),
             logos.iter().filter(|(_, _, lazy)| *lazy).count(),
+            "{label}"
+        );
+
+        // Check only the paired light and dark wrappers carry a theme image marker
+        assert_eq!(
+            header.matches(r#"data-theme-image="light""#).count(),
+            usize::from(header_logo_url.is_some() && header_logo_dark_url.is_some()),
+            "{label}"
+        );
+        assert_eq!(
+            header.matches(r#"data-theme-image="dark""#).count(),
+            usize::from(header_logo_url.is_some() && header_logo_dark_url.is_some()),
             "{label}"
         );
 

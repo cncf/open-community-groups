@@ -125,6 +125,7 @@ export class ImageField extends LitWrapper {
    * @property {string} submitLabel - Optional label for a form submit action.
    * @property {string} target - Upload target and crop dimension target.
    * @property {string} legend - Optional legend text displayed under the image preview area.
+   * @property {boolean} darkPreview - Whether to preview a dark mode image on a fixed dark stage, without the logo plate.
    */
   static properties = {
     label: { type: String },
@@ -143,6 +144,7 @@ export class ImageField extends LitWrapper {
     submitLabel: { type: String, attribute: "submit-label" },
     target: { type: String },
     legend: { type: String },
+    darkPreview: { type: Boolean, attribute: "dark-preview" },
     _isEditorOpen: { state: true },
     _isPreparing: { state: true },
     _pendingUploadFile: { state: true },
@@ -174,6 +176,7 @@ export class ImageField extends LitWrapper {
     this.submitLabel = "";
     this.target = "";
     this.legend = "";
+    this.darkPreview = false;
     this._directFileName = "";
   }
 
@@ -223,6 +226,11 @@ export class ImageField extends LitWrapper {
     return this._isUploading || (this._isPreparing && !this._isEditorOpen);
   }
 
+  /** Placeholder text color, lighter on the dark preview stage for contrast. */
+  get _placeholderTextClass() {
+    return this.darkPreview ? "text-stone-300" : "text-stone-500";
+  }
+
   /** Return a dashboard-safe preview URL for unsaved badge artwork. */
   get _previewUrl() {
     if (this.target === IMAGE_TARGET.BADGE && this.value.startsWith("/images/badges/")) {
@@ -264,14 +272,17 @@ export class ImageField extends LitWrapper {
       return html`
         <div class="flex flex-col items-center justify-center gap-2 px-3 text-center">
           <div class="svg-icon ${isWide ? "size-12" : "size-8"} icon-image bg-stone-400"></div>
-          <p id=${this._promptId} class="text-xs leading-snug text-stone-500">${this._directFileName}</p>
+          <p id=${this._promptId} class="text-xs leading-snug ${this._placeholderTextClass}">
+            ${this._directFileName}
+          </p>
         </div>
       `;
     }
 
     if (this._hasImage) {
-      // Logo previews show the public white plate in dark mode.
-      const plateClass = this.imageKind === IMAGE_KIND.LOGO ? " plate plate-ring dark:bg-plate" : "";
+      // Logo previews show the public white plate in dark mode, dark mode images none.
+      const plateClass =
+        this.imageKind === IMAGE_KIND.LOGO && !this.darkPreview ? " plate plate-ring dark:bg-plate" : "";
       return html`
         <img
           src=${this._previewUrl}
@@ -292,7 +303,7 @@ export class ImageField extends LitWrapper {
         class="flex flex-col items-center justify-center text-center ${isWide ? "gap-3 px-4" : "gap-2 px-3"}"
       >
         <div class="svg-icon ${isWide ? "size-12" : "size-8"} icon-image bg-stone-400"></div>
-        <p id=${this._promptId} class="text-xs text-stone-500 leading-snug">
+        <p id=${this._promptId} class="text-xs ${this._placeholderTextClass} leading-snug">
           ${isWide ? "Click to upload or drag and drop" : "Click or drop image"}
         </p>
       </div>
@@ -645,7 +656,9 @@ export class ImageField extends LitWrapper {
         <div
           class="relative ${
             isWide ? "w-full sm:max-w-md h-24" : "size-24"
-          } min-w-24 flex items-center justify-center bg-stone-200/50 rounded-lg border border-dashed border-stone-300 overflow-hidden ${
+          } min-w-24 flex items-center justify-center ${
+            this.darkPreview ? "ink bg-stone-900" : "bg-stone-200/50"
+          } rounded-lg border border-dashed ${this.darkPreview ? "border-stone-600" : "border-stone-300"} overflow-hidden ${
             this._isDragActive && !this._isPending ? "ring-2 ring-primary-halo" : ""
           } cursor-pointer ${this.previewBgClass ? ` ${this.previewBgClass}` : ""}"
           role="button"

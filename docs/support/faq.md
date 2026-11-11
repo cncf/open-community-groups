@@ -27,8 +27,12 @@ follows your device's appearance setting and changes with it.
 The page switches at once without reloading, and other open tabs of the site follow. The choice is
 remembered in that browser, not in your account, so each browser or device keeps its own.
 
-Community, group, event and sponsor logos keep their white background, and banners and photos
-appear as uploaded. Emails are unaffected: they follow the light or dark setting of your mail app.
+Organizers can add an optional dark mode version of community, group and event logos, banners and
+mobile banners. When one is set, dark mode shows it in place of the light image, and logos show
+without their white background. Without one, logos keep their white background and banners appear
+as uploaded. Sponsor logos keep their white background and photos appear as uploaded. Emails, link
+previews and calendar exports always use the light images; emails follow the light or dark setting
+of your mail app.
 
 ## Where Do I Submit a Speaker Proposal?
 

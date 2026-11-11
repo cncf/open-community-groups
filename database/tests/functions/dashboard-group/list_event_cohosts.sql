@@ -33,13 +33,14 @@ select plan(4);
 select fx_community(:'communityID', jsonb_build_object(
     'active', true,
     'display_name', 'Editor Community',
+    'logo_dark_url', 'https://example.test/editor-community-dark.png',
     'logo_url', 'https://example.test/editor-community.png',
     'name', 'editor-community'
 ));
 select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 
--- Active approved co-host group with its own logo and pretty slug
+-- Active approved co-host group with its own logo, no dark logo and a pretty slug
 select fx_group(:'approvedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', true,
     'logo_url', 'https://example.test/beta-approved.png',
@@ -51,7 +52,7 @@ select fx_group(:'approvedGroupID', :'communityID', :'groupCategoryID', jsonb_bu
 -- Owner group
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Inactive pending co-host group without a logo
+-- Inactive pending co-host group without a logo, falling back to the community logos
 select fx_group(:'inactivePendingGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'active', false,
     'logo_url', null,
@@ -156,7 +157,9 @@ select is(
                 'logo_url', 'https://example.test/editor-community.png',
                 'name', 'Alpha Pending',
                 'slug', 'alpha-pending',
-                'status', 'pending'
+                'status', 'pending',
+
+                'logo_dark_url', 'https://example.test/editor-community-dark.png'
             ),
             jsonb_build_object(
                 'community_display_name', 'Editor Community',

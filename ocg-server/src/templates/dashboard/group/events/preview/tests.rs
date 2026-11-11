@@ -1,4 +1,4 @@
-use super::{ContextPerson, Event, Input};
+use super::{Context, ContextCommunity, ContextGroup, ContextPerson, Event, Input};
 
 #[test]
 fn test_context_defaults_missing_lists() {
@@ -136,8 +136,10 @@ fn test_event_keeps_organizers_in_submitted_order() {
 fn test_event_normalizes_cohost_entries() {
     let input = input_with_context(
         r#"{"cohosts":[
-                {"name":" Alpha ","status":"Approved","logo_url":"https://example.test/a.png"},
-                {"name":"Beta","status":"pending","logo_url":" "},
+                {"name":" Alpha ","status":"Approved","logo_url":"https://example.test/a.png",
+                    "logo_dark_url":" https://example.test/a-dark.png "},
+                {"name":"Beta","status":"pending","logo_url":" ",
+                    "logo_dark_url":"https://example.test/b-dark.png"},
                 {"name":"Gamma","status":"rejected"},
                 {"name":"  ","status":"pending"}
             ]}"#,
@@ -152,9 +154,14 @@ fn test_event_normalizes_cohost_entries() {
         cohosts[0].logo_url.as_deref(),
         Some("https://example.test/a.png")
     );
+    assert_eq!(
+        cohosts[0].logo_dark_url.as_deref(),
+        Some("https://example.test/a-dark.png")
+    );
     assert_eq!(cohosts[1].name_label(), "Beta");
     assert!(!cohosts[1].is_approved());
     assert!(cohosts[1].logo_url.is_none());
+    assert!(cohosts[1].logo_dark_url.is_none());
 }
 
 #[test]
@@ -261,7 +268,158 @@ fn test_event_lists_missing_fields() {
     }
 }
 
+#[test]
+fn test_event_pairs_dark_images_with_the_chosen_level() {
+    // Setup cases: (label, event pair, group pair, expected pair), where the
+    // community pair is always (c, c-dark)
+    let cases = [
+        (
+            "event pair",
+            (Some("e"), Some("e-dark")),
+            (Some("g"), Some("g-dark")),
+            (Some("e"), Some("e-dark")),
+        ),
+        (
+            "event light without dark while the group has a dark",
+            (Some("e"), None),
+            (Some("g"), Some("g-dark")),
+            (Some("e"), None),
+        ),
+        (
+            "blank event dark is dropped",
+            (Some("e"), Some(" ")),
+            (Some("g"), Some("g-dark")),
+            (Some("e"), None),
+        ),
+        (
+            "event dark without event light falls through to the group pair",
+            (None, Some("e-dark")),
+            (Some("g"), Some("g-dark")),
+            (Some("g"), Some("g-dark")),
+        ),
+        (
+            "blank event light falls through to the group pair",
+            (Some(" "), Some("e-dark")),
+            (Some("g"), Some("g-dark")),
+            (Some("g"), Some("g-dark")),
+        ),
+        (
+            "group light without dark while the community has a dark",
+            (None, None),
+            (Some("g"), None),
+            (Some("g"), None),
+        ),
+        (
+            "orphan group dark falls through to the community pair",
+            (None, None),
+            (None, Some("g-dark")),
+            (Some("c"), Some("c-dark")),
+        ),
+    ];
+
+    for kind in ["banner", "logo"] {
+        for (label, event_pair, group_pair, expected) in cases {
+            // Build the preview with the case images for the image kind
+            let event = Event::from(branded_input(kind, event_pair, group_pair));
+
+            // Check the image keeps the dark variant of its own level
+            let (light, dark) = if kind == "banner" {
+                (event.banner_url, event.banner_dark_url)
+            } else {
+                (event.logo_url, event.logo_dark_url)
+            };
+            assert_eq!(light, image_url(kind, expected.0), "{kind}: {label}");
+            assert_eq!(dark, image_url(kind, expected.1), "{kind}: {label}");
+        }
+    }
+}
+
+#[test]
+fn test_event_pairs_no_dark_image_without_branding() {
+    // Build the preview with dark images but no light image at any level
+    let event = Event::from(Input {
+        banner_dark_url: Some("https://example.test/banner-dark.png".to_string()),
+        logo_dark_url: Some("https://example.test/logo-dark.png".to_string()),
+        ..Input::default()
+    });
+
+    // Check the orphan dark images are ignored
+    assert_eq!(event.banner_url, None);
+    assert_eq!(event.banner_dark_url, None);
+    assert_eq!(event.logo_url, None);
+    assert_eq!(event.logo_dark_url, None);
+}
+
 // Helpers.
+
+/// Returns an input with the given (light, dark) event and group pairs for one
+/// image kind, over a community with the (c, c-dark) pair.
+fn branded_input(
+    kind: &str,
+    event_pair: (Option<&str>, Option<&str>),
+    group_pair: (Option<&str>, Option<&str>),
+) -> Input {
+    // Setup the community and group branding context for the image kind
+    let url = |value: Option<&str>| image_url(kind, value);
+    let (community, group) = if kind == "banner" {
+        (
+            ContextCommunity {
+                banner_dark_url: url(Some("c-dark")),
+                banner_url: url(Some("c")),
+                ..ContextCommunity::default()
+            },
+            ContextGroup {
+                banner_dark_url: url(group_pair.1),
+                banner_url: url(group_pair.0),
+                ..ContextGroup::default()
+            },
+        )
+    } else {
+        (
+            ContextCommunity {
+                logo_dark_url: url(Some("c-dark")),
+                logo_url: url(Some("c")),
+                ..ContextCommunity::default()
+            },
+            ContextGroup {
+                logo_dark_url: url(group_pair.1),
+                logo_url: url(group_pair.0),
+                ..ContextGroup::default()
+            },
+        )
+    };
+    let context = Context {
+        community: Some(community),
+        group: Some(group),
+        ..Context::default()
+    };
+
+    // Setup the event images for the image kind
+    let mut input = Input {
+        preview_context: Some(serde_json::to_string(&context).unwrap()),
+        ..Input::default()
+    };
+    if kind == "banner" {
+        input.banner_dark_url = url(event_pair.1);
+        input.banner_url = url(event_pair.0);
+    } else {
+        input.logo_dark_url = url(event_pair.1);
+        input.logo_url = url(event_pair.0);
+    }
+    input
+}
+
+/// Returns the image URL for a level token and image kind, keeping blank
+/// tokens blank.
+fn image_url(kind: &str, token: Option<&str>) -> Option<String> {
+    token.map(|token| {
+        if token.trim().is_empty() {
+            token.to_string()
+        } else {
+            format!("{token}-{kind}")
+        }
+    })
+}
 
 /// Returns an input carrying only the given preview context JSON.
 fn input_with_context(context: &str) -> Input {

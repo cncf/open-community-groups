@@ -97,6 +97,12 @@ social links, optional ad placements, gallery images, tags, and extra links. It 
 can restrict group team management to community admins and groups managers when policy requires
 it.
 
+The logo, banner and mobile banner each accept an optional dark mode version, previewed on a dark
+background. It follows the same size rules as its light image, and the public pages show it in
+dark mode in place of that image, with logos shown without their white background. A dark mode
+version is used only together with its light image; without one, dark mode shows the light image.
+Emails, link previews and calendar exports always use the light images.
+
 Advertisement settings are community-wide. When a banner image is configured, OCG shows it on the
 public community page and as a floating banner on public group and event pages for that community.
 The optional banner link URL makes the banner clickable.
@@ -222,7 +228,10 @@ location, links, and optional content before launch.
 
 Group-branding inheritance also applies from this flow: if the group logo is empty, the public
 group view uses the community logo, and if the group banner or mobile banner is empty, the public
-group view uses the community banner.
+group view uses the community banner. Each image comes with its dark mode version from the same
+place: a group without its own image uses the community image together with the community's dark
+mode version, while a group with its own image uses only its own dark mode version, never the
+community's. The group's dark mode versions are optional, like the community ones.
 
 ![Add group flow](../screenshots/dashboard-community-add-group.png)
 

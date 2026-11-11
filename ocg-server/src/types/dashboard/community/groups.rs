@@ -66,6 +66,15 @@ pub(crate) struct GroupInput {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
     pub name: String,
 
+    /// URL to the group's banner image shown in dark mode in place of
+    /// `banner_url`. On its own, without `banner_url`, it is ignored.
+    #[garde(custom(image_url_opt))]
+    pub banner_dark_url: Option<String>,
+    /// URL to the group's mobile banner image shown in dark mode in place of
+    /// `banner_mobile_url`. On its own, without `banner_mobile_url`, it is
+    /// ignored.
+    #[garde(custom(image_url_opt))]
+    pub banner_mobile_dark_url: Option<String>,
     /// URL to the group's banner image optimized for mobile devices.
     #[garde(custom(image_url_opt))]
     pub banner_mobile_url: Option<String>,
@@ -117,6 +126,10 @@ pub(crate) struct GroupInput {
     /// `LinkedIn` profile URL.
     #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
+    /// URL to the group logo shown in dark mode in place of `logo_url`. On
+    /// its own, without `logo_url`, it is ignored.
+    #[garde(custom(image_url_opt))]
+    pub logo_dark_url: Option<String>,
     /// Longitude coordinate of the group location.
     #[garde(custom(valid_longitude))]
     pub longitude: Option<f64>,
@@ -183,4 +196,74 @@ pub(crate) struct GroupInput {
     /// `YouTube` channel URL.
     #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub youtube_url: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use garde::Validate;
+    use uuid::Uuid;
+
+    use super::GroupInput;
+
+    #[test]
+    fn test_group_input_validation_accepts_dark_images() {
+        let group = GroupInput {
+            banner_dark_url: Some("https://example.test/banner-dark.png".to_string()),
+            banner_mobile_dark_url: Some("https://example.test/banner-mobile-dark.png".to_string()),
+            logo_dark_url: Some("/images/logo-dark.png".to_string()),
+            ..sample_group_input()
+        };
+
+        assert!(group.validate().is_ok());
+    }
+
+    #[test]
+    fn test_group_input_validation_rejects_invalid_dark_images() {
+        // Setup cases: (case, group, invalid field)
+        let cases = [
+            (
+                "invalid dark banner URL",
+                GroupInput {
+                    banner_dark_url: Some("not-a-url".to_string()),
+                    ..sample_group_input()
+                },
+                "banner_dark_url",
+            ),
+            (
+                "invalid dark mobile banner URL",
+                GroupInput {
+                    banner_mobile_dark_url: Some("not-a-url".to_string()),
+                    ..sample_group_input()
+                },
+                "banner_mobile_dark_url",
+            ),
+            (
+                "blank dark logo URL",
+                GroupInput {
+                    logo_dark_url: Some("  ".to_string()),
+                    ..sample_group_input()
+                },
+                "logo_dark_url",
+            ),
+        ];
+
+        for (case, group, field) in cases {
+            // Check only the dark image field is rejected
+            let report = group.validate().expect_err(case);
+            let fields: Vec<String> = report.iter().map(|(path, _)| path.to_string()).collect();
+            assert_eq!(fields, [field], "{case}");
+        }
+    }
+
+    // Helpers.
+
+    /// Returns a valid group input with only the required fields.
+    fn sample_group_input() -> GroupInput {
+        GroupInput {
+            category_id: Uuid::new_v4(),
+            description: "Group description".to_string(),
+            name: "Group".to_string(),
+            ..GroupInput::default()
+        }
+    }
 }

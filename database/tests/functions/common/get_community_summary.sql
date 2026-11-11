@@ -1,3 +1,5 @@
+-- Tests returning community summary information.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -20,9 +22,12 @@ select plan(2);
 select fx_community(:'communityID', jsonb_build_object(
     'ad_banner_link_url', 'https://example.com/ad-banner-link',
     'ad_banner_url', 'https://example.com/ad-banner.png',
+    'banner_dark_url', 'https://example.com/banner-dark.png',
+    'banner_mobile_dark_url', 'https://example.com/banner-mobile-dark.png',
     'banner_mobile_url', 'https://example.com/banner_mobile.png',
     'banner_url', 'https://example.com/banner.png',
     'display_name', 'Cloud Native Seattle Community Summary',
+    'logo_dark_url', 'https://example.com/logo-dark.png',
     'logo_url', 'https://example.com/logo.png',
     'name', 'cloud-native-seattle-community-summary',
     'og_image_url', 'https://example.com/community-og.png'
@@ -44,6 +49,9 @@ select is(
         "name": "cloud-native-seattle-community-summary",
         "ad_banner_link_url": "https://example.com/ad-banner-link",
         "ad_banner_url": "https://example.com/ad-banner.png",
+        "banner_dark_url": "https://example.com/banner-dark.png",
+        "banner_mobile_dark_url": "https://example.com/banner-mobile-dark.png",
+        "logo_dark_url": "https://example.com/logo-dark.png",
         "og_image_url": "https://example.com/community-og.png"
     }', :'communityID')::jsonb,
     'Should return correct community summary data as JSON'

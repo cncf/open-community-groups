@@ -8,6 +8,41 @@ use crate::{
 use super::*;
 
 #[test]
+fn test_page_community_banner_renders_dark_variant_only_with_dark_banner() {
+    // Setup one community with a dark mobile banner and one without
+    let banner_url = "https://example.test/banner_mobile.png";
+    let banner_dark_url = "https://example.test/banner_mobile-dark.png";
+    let page = Page {
+        communities: vec![
+            CommunitySummary {
+                banner_mobile_dark_url: Some(banner_dark_url.to_string()),
+                ..sample_community_summary(Uuid::from_u128(1))
+            },
+            sample_community_summary(Uuid::from_u128(2)),
+        ],
+        ..sample_page()
+    };
+
+    // Render the home page
+    let body = page.render().unwrap();
+
+    // Check both light banners render and only the first is marked as light
+    assert_eq!(body.matches(&format!(r#"src="{banner_url}""#)).count(), 2);
+    assert_eq!(body.matches(r#"data-theme-image="light""#).count(), 1);
+    let light = opening_tag_with(&body, r#"data-theme-image="light""#);
+    assert!(light.contains(&format!(r#"src="{banner_url}""#)));
+
+    // Check the lazy dark banner follows its light banner
+    assert_eq!(body.matches(r#"data-theme-image="dark""#).count(), 1);
+    let dark = opening_tag_with(&body, r#"data-theme-image="dark""#);
+    assert!(dark.starts_with("<img"));
+    assert!(dark.contains(&format!(r#"src="{banner_dark_url}""#)));
+    assert!(dark.contains(r#"alt="Test banner""#));
+    assert!(dark.contains(r#"loading="lazy""#));
+    assert!(body.find(r#"data-theme-image="light""#) < body.find(r#"data-theme-image="dark""#));
+}
+
+#[test]
 fn test_page_title_defaults_to_site_title() {
     // Render the home page, which sets no page title of its own
     let body = sample_page().render().unwrap();

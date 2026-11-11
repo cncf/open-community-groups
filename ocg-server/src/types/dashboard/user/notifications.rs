@@ -22,6 +22,9 @@ pub(crate) struct MutedGroup {
     /// Group name.
     pub name: String,
 
+    /// URL to the group's own logo shown in dark mode in place of
+    /// `logo_url`. On its own, without `logo_url`, it is ignored.
+    pub logo_dark_url: Option<String>,
     /// Group logo URL.
     pub logo_url: Option<String>,
 }
@@ -63,6 +66,9 @@ pub(crate) struct NotificationGroupOption {
     /// Group name.
     pub name: String,
 
+    /// URL to the group's own logo shown in dark mode in place of
+    /// `logo_url`. On its own, without `logo_url`, it is ignored.
+    pub logo_dark_url: Option<String>,
     /// Group logo URL.
     pub logo_url: Option<String>,
 }

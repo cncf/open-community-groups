@@ -1,16 +1,22 @@
 import { expect, test } from "../../../fixtures.js";
 import { queryCount, restoreRow, snapshotRow, sqlUuid, withRowRestore } from "../../../database.js";
+import { cleanupTemporaryCommunity, setupTemporaryCommunity } from "../../../data-graphs/communities.js";
+import { setupTemporaryGroup } from "../../../data-graphs/groups.js";
 
 import { fillMarkdownEditor, fillMultipleInputs } from "../../form-helpers.js";
-import { TEST_GROUP_IDS, TEST_PAYMENT_GROUP_RECIPIENT } from "../../../seed.js";
+import { TEST_GROUP_IDS, TEST_PAYMENT_GROUP_RECIPIENT, TEST_USER_IDS } from "../../../seed.js";
 import {
   expectDarkTheme,
   navigateToPath,
   pickThemeFromAccountMenu,
   resolveCssColor,
+  selectGroupContext,
   useTheme,
   waitForActionResponse,
 } from "../../../utils.js";
+
+// Dark logo of the temporary community in the dark logo fallback scenario.
+const COMMUNITY_DARK_LOGO_URL = "/static/images/e2e/entity-logo-dark.svg";
 
 // Group settings page used by the UTM scenarios.
 const SETTINGS_PATH = "/dashboard/group?tab=settings";
@@ -59,17 +65,29 @@ test.describe("group dashboard settings view", () => {
     // Verify every group image field is available with its required size guidance.
     for (const { helpText, name } of [
       { helpText: "Images must be 360 x 360 px (square).", name: "logo_url" },
+      { helpText: "Images must be 360 x 360 px (square).", name: "logo_dark_url" },
       { helpText: "Size required 2428 x 192 px.", name: "banner_url" },
+      { helpText: "Size required 2428 x 192 px.", name: "banner_dark_url" },
       { helpText: "Size required 1220 x 192 px.", name: "banner_mobile_url" },
+      { helpText: "Size required 1220 x 192 px.", name: "banner_mobile_dark_url" },
       { helpText: "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", name: "og_image_url" },
     ]) {
       const imageField = organizerGroupPage.locator(`image-field[name="${name}"]`);
       await expect(imageField).toBeVisible();
       await expect(imageField).toContainText(helpText);
     }
-    await expect(organizerGroupPage.locator('image-field[name="logo_url"]')).not.toContainText(
-      "Size required",
-    );
+    for (const name of ["logo_url", "logo_dark_url"]) {
+      await expect(organizerGroupPage.locator(`image-field[name="${name}"]`)).not.toContainText(
+        "Size required",
+      );
+    }
+
+    // Verify the dark mode image fields are optional and previewed on the dark stage.
+    for (const name of ["logo_dark_url", "banner_dark_url", "banner_mobile_dark_url"]) {
+      const imageField = organizerGroupPage.locator(`image-field[name="${name}"]`);
+      await expect(imageField).toHaveAttribute("dark-preview", "");
+      await expect(imageField).not.toHaveAttribute("required");
+    }
 
     // Verify the group location controls are available.
     await expect(organizerGroupPage.locator("location-search-field#group-location-search")).toBeVisible();
@@ -348,6 +366,57 @@ test.describe("group dashboard settings view", () => {
       // Reload the settings form and verify the short description persisted.
       expect((await readSettingsFormValues()).descriptionShort).toBe(updatedValues.descriptionShort);
     });
+  });
+
+  test("saving a group without its own logo does not store the community dark logo", async ({
+    organizerGroupPage,
+    owned,
+  }) => {
+    // Create a group without a logo of its own under a community with a dark logo, and select it.
+    const { communityId, groupCategoryId } = owned.track(
+      setupTemporaryCommunity({
+        label: "dark logo fallback",
+        logoDarkUrl: COMMUNITY_DARK_LOGO_URL,
+        teamRole: "admin",
+        userId: TEST_USER_IDS.admin1,
+      }),
+      ({ communityId: temporaryCommunityId }) => cleanupTemporaryCommunity(temporaryCommunityId),
+    );
+    const { groupId } = setupTemporaryGroup({
+      communityId,
+      groupCategoryId,
+      teamRole: "admin",
+      teamUserId: TEST_USER_IDS.organizer1,
+    });
+    await selectGroupContext(organizerGroupPage, communityId, groupId);
+
+    // Count the group row while it has neither a logo nor a dark logo of its own.
+    const countGroupWithoutOwnLogos = () =>
+      queryCount(`
+        select count(*)
+        from "group"
+        where group_id = ${sqlUuid(groupId)}
+        and logo_url is null
+        and logo_dark_url is null
+      `);
+    expect(countGroupWithoutOwnLogos()).toBe(1);
+
+    // Load the settings and verify neither community logo is prefilled as the group's own.
+    await navigateToPath(organizerGroupPage, SETTINGS_PATH);
+    await expect(organizerGroupPage.locator("#groups-form")).toBeVisible();
+    for (const name of ["logo_url", "logo_dark_url"]) {
+      await expect(
+        organizerGroupPage.locator(`image-field[name="${name}"] input[name="${name}"]`),
+      ).toHaveValue("");
+    }
+
+    // Save the settings and verify the group still has no logos of its own.
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+      { method: "PUT", status: 204, urlIncludes: "/dashboard/group/settings/update" },
+    );
+    expect(countGroupWithoutOwnLogos()).toBe(1);
   });
 
   test("description editor follows the dark theme and keeps typed text across a live toggle", async ({

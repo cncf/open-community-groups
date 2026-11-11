@@ -13,7 +13,7 @@
 {% endblock anchor_attributes %}
 
 {% block logo -%}
-  {{ ui::logo(logo_url = group.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px] phone:h-12 phone:w-12 phone:min-w-12 phone:border-[3px]", size = 88) -}}
+  {{ ui::logo(logo_url = group.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px] phone:h-12 phone:w-12 phone:min-w-12 phone:border-[3px]", size = 88, logo_dark_url = group.logo_dark_url.as_deref().unwrap_or("")) -}}
 {% endblock logo %}
 
 {% block content_stack_classes -%}

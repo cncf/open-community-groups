@@ -93,7 +93,7 @@ Use `Settings` to maintain the information people rely on before joining or atte
 You can manage:
 
 - Name, category, and descriptions.
-- Branding assets.
+- Branding assets, with optional dark mode versions of the logo, banner and mobile banner.
 - Location search and map coordinates.
 - Optional pretty URL slug for public group links.
 - Social links.
@@ -111,6 +111,14 @@ Brand inheritance works as follows in this scope: if a group logo is not set, OC
 the community logo; if a group banner or mobile banner is not set, OCG falls back to the
 community banner; and if a group Open Graph image is not set, group and event link previews fall
 back to the community Open Graph image.
+
+Dark mode versions follow the image they belong to. They are optional, previewed on a dark
+background and follow the same size rules as their light image. Dark mode shows the dark mode
+version of the image OCG picked: a group without its own logo or banner uses the community image
+together with the community's dark mode version, while a group with its own image uses only its
+own dark mode version and never the community's. Without a dark mode version, dark mode shows the
+light image, and logos keep their white background. Emails, link previews and calendar exports
+always use the light images.
 
 Pretty URL slugs are optional. When set, OCG uses the pretty slug in generated
 group and event links, while the generated group slug continues to work.

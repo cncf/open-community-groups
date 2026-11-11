@@ -102,6 +102,7 @@ async fn test_add_page_success() {
     assert!(body.contains(">Tickets</"));
     assert!(body.contains("free-only"));
     assert!(body.contains("Ticket prices are fixed at 0 until payments are configured"));
+    assert_empty_dark_image_fields(&body);
 
     // Check the authoring tabs are grouped without review groups
     assert!(appear_in_order(
@@ -355,8 +356,11 @@ async fn test_update_page_leaves_logo_field_empty_without_own_logo() {
     let ids = DashboardIds::new();
     let event_id = Uuid::new_v4();
     let mut event_full = sample_event_full(ids.community_id, event_id, ids.group_id);
+    event_full.custom_logo_dark_url = None;
     event_full.custom_logo_url = None;
+    event_full.group.logo_dark_url = Some("https://example.test/group-logo-dark.png".to_string());
     event_full.group.logo_url = "https://example.test/group-logo.png".to_string();
+    event_full.logo_dark_url = Some("https://example.test/group-logo-dark.png".to_string());
     event_full.logo_url = "https://example.test/group-logo.png".to_string();
 
     // Setup database mock without enrollment rows
@@ -383,6 +387,63 @@ async fn test_update_page_leaves_logo_field_empty_without_own_logo() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert_image_field_value(&body, "logo_url", "");
     assert!(body.contains(r#"data-group-logo-url="https://example.test/group-logo.png""#));
+    assert_image_field_value(&body, "logo_dark_url", "");
+    assert!(
+        body.contains(r#"data-group-logo-dark-url="https://example.test/group-logo-dark.png""#)
+    );
+}
+
+#[tokio::test]
+async fn test_update_page_prefills_own_dark_images() {
+    // Setup identifiers and an event with its own dark images
+    let ids = DashboardIds::new();
+    let event_id = Uuid::new_v4();
+    let mut event_full = sample_event_full(ids.community_id, event_id, ids.group_id);
+    event_full.banner_dark_url = Some("https://example.test/event-banner-dark.png".to_string());
+    event_full.banner_mobile_dark_url =
+        Some("https://example.test/event-banner-mobile-dark.png".to_string());
+    event_full.custom_logo_dark_url = Some("https://example.test/event-logo-dark.png".to_string());
+    event_full.custom_logo_url = Some("https://example.test/event-logo.png".to_string());
+    event_full.logo_dark_url = Some("https://example.test/event-logo-dark.png".to_string());
+    event_full.logo_url = "https://example.test/event-logo.png".to_string();
+
+    // Setup database mock without enrollment rows
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::Read);
+    expect_group_permission_result(&mut db, &ids, GroupPermission::EventsWrite, true);
+    expect_update_page_reads(
+        &mut db,
+        &ids,
+        event_full,
+        EventCohostsEditor::default(),
+        None,
+    );
+    expect_invitation_requests_tab_search(&mut db, &ids, event_id, 0);
+    expect_waitlist_tab_search(&mut db, &ids, event_id, 0);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = update_page_request(&ids, event_id);
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the own dark images are rendered in the form
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert_image_field_value(
+        &body,
+        "banner_dark_url",
+        "https://example.test/event-banner-dark.png",
+    );
+    assert_image_field_value(
+        &body,
+        "banner_mobile_dark_url",
+        "https://example.test/event-banner-mobile-dark.png",
+    );
+    assert_image_field_value(
+        &body,
+        "logo_dark_url",
+        "https://example.test/event-logo-dark.png",
+    );
 }
 
 #[tokio::test]
@@ -648,6 +709,7 @@ async fn test_update_page_waits_for_pending_cohosts_before_publishing() {
             slug: "cohost-group".to_string(),
             status: EventCohostStatus::Pending,
 
+            logo_dark_url: None,
             slug_pretty: None,
         }],
         revision: 4,

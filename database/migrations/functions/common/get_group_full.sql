@@ -4,7 +4,9 @@ create or replace function get_group_full(
     p_group_id uuid
 )
 returns json as $$
-    -- Build full group payload with related entities and computed fields
+    -- Build full group payload with related entities and computed fields; this
+    -- call passes 96 of the 100 json_build_object arguments, so split it with
+    -- jsonb concatenation like get_event_full before adding more keys
     select json_strip_nulls(json_build_object(
         -- Include core group fields
         'active', g.active,
@@ -21,13 +23,16 @@ returns json as $$
         'slug', g.slug,
 
         -- Include optional group profile fields
+        'banner_dark_url', g.banner_dark_url,
+        'banner_mobile_dark_url', g.banner_mobile_dark_url,
         'banner_mobile_url', g.banner_mobile_url,
         'banner_url', g.banner_url,
         'bluesky_url', g.bluesky_url,
         'city', g.city,
         'country_code', g.country_code,
         'country_name', g.country_name,
-        -- Expose the group's own logo so editors do not persist the fallback
+        -- Expose the group's own logos so editors do not persist the fallback
+        'custom_logo_dark_url', g.logo_dark_url,
         'custom_logo_url', g.logo_url,
         'description', g.description,
         'description_short', g.description_short,
@@ -39,6 +44,11 @@ returns json as $$
         'instagram_url', g.instagram_url,
         'latitude', st_y(g.location::geometry),
         'linkedin_url', g.linkedin_url,
+        -- Pair the dark logo with the level that provides the light logo
+        'logo_dark_url', paired_dark_image_url(
+            g.logo_url, g.logo_dark_url,
+            c.logo_url, c.logo_dark_url
+        ),
         'logo_url', coalesce(g.logo_url, c.logo_url),
         'longitude', st_x(g.location::geometry),
         'og_image_url', g.og_image_url,

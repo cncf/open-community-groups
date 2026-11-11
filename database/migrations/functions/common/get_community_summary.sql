@@ -11,6 +11,9 @@ returns json as $$
 
         'ad_banner_link_url', ad_banner_link_url,
         'ad_banner_url', ad_banner_url,
+        'banner_dark_url', banner_dark_url,
+        'banner_mobile_dark_url', banner_mobile_dark_url,
+        'logo_dark_url', logo_dark_url,
         'og_image_url', og_image_url
     ))
     from community

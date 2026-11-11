@@ -56,7 +56,7 @@
               <th scope="row"
                   class="px-3 py-4 font-medium text-stone-900 w-full max-w-0 xl:px-5">
                 <div class="flex min-w-0 items-center gap-3">
-                  {{ ui::logo(logo_url = event.event_logo_url, classes = "size-10 shrink-0", size = 40) -}}
+                  {{ ui::logo(logo_url = event.event_logo_url, classes = "size-10 shrink-0", size = 40, logo_dark_url = event.event_logo_dark_url.as_deref().unwrap_or("")) -}}
                   <div class="min-w-0">
                     <div class="title-preheader mb-0.5 xl:hidden">
                       {{ event.owner_group_name }} · {{ event.owner_community_display_name }}
@@ -80,7 +80,7 @@
               </th>
               <td class="hidden xl:table-cell px-3 py-4 xl:px-5">
                 <div class="flex min-w-0 items-center gap-3">
-                  {{ ui::logo(logo_url = event.owner_group_logo_url, classes = "size-9 shrink-0", size = 36) -}}
+                  {{ ui::logo(logo_url = event.owner_group_logo_url, classes = "size-9 shrink-0", size = 36, logo_dark_url = event.owner_group_logo_dark_url.as_deref().unwrap_or("")) -}}
                   <div class="min-w-0 max-w-48 2xl:max-w-xs">
                     <div class="truncate font-medium text-stone-900">{{ event.owner_group_name }}</div>
                     <div class="truncate text-xs text-stone-600">{{ event.owner_community_display_name }}</div>

@@ -111,9 +111,11 @@ async fn test_add_page_success() {
     let router = TestRouterBuilder::new(db).build().await;
     let request = get_request("/dashboard/community/groups/add", ids.session_id);
     let (parts, bytes) = send(router, request).await;
+    let html = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_empty_dark_image_fields(&html);
 }
 
 #[tokio::test]
@@ -121,8 +123,14 @@ async fn test_update_page_success() {
     // Setup identifiers and data structures
     let ids = DashboardIds::new();
     let group_full = GroupFull {
+        banner_dark_url: Some("https://example.test/group-banner-dark.png".to_string()),
+        banner_mobile_dark_url: Some(
+            "https://example.test/group-banner-mobile-dark.png".to_string(),
+        ),
+        custom_logo_dark_url: Some("https://example.test/group-logo-dark.png".to_string()),
         custom_logo_url: Some("https://example.test/group-logo.png".to_string()),
         description_short: Some("Short group description".to_string()),
+        logo_dark_url: Some("https://example.test/group-logo-dark.png".to_string()),
         logo_url: "https://example.test/group-logo.png".to_string(),
         ..sample_group_full(ids.community_id, ids.group_id)
     };
@@ -144,6 +152,23 @@ async fn test_update_page_success() {
     assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_image_field_value(&html, "logo_url", "https://example.test/group-logo.png");
     assert!(html.contains(r#"value="Short group description""#));
+
+    // Check the own dark images are rendered in the form
+    assert_image_field_value(
+        &html,
+        "banner_dark_url",
+        "https://example.test/group-banner-dark.png",
+    );
+    assert_image_field_value(
+        &html,
+        "banner_mobile_dark_url",
+        "https://example.test/group-banner-mobile-dark.png",
+    );
+    assert_image_field_value(
+        &html,
+        "logo_dark_url",
+        "https://example.test/group-logo-dark.png",
+    );
 }
 
 #[tokio::test]
@@ -151,7 +176,9 @@ async fn test_update_page_leaves_logo_field_empty_without_own_logo() {
     // Setup identifiers and data structures
     let ids = DashboardIds::new();
     let group_full = GroupFull {
+        custom_logo_dark_url: None,
         custom_logo_url: None,
+        logo_dark_url: Some("https://example.test/community-logo-dark.png".to_string()),
         logo_url: "https://example.test/community-logo.png".to_string(),
         ..sample_group_full(ids.community_id, ids.group_id)
     };
@@ -169,9 +196,10 @@ async fn test_update_page_leaves_logo_field_empty_without_own_logo() {
     let (parts, bytes) = send(router, request).await;
     let html = String::from_utf8(bytes.to_vec()).unwrap();
 
-    // Check the community fallback logo is not prefilled
+    // Check the community fallback logos are not prefilled
     assert_html_response(&parts, &bytes, StatusCode::OK);
     assert_image_field_value(&html, "logo_url", "");
+    assert_image_field_value(&html, "logo_dark_url", "");
 }
 
 #[tokio::test]

@@ -459,6 +459,8 @@ select lives_ok(
         :'group1ID',
         :'event8ID',
         jsonb_build_object(
+            'banner_dark_url', 'https://example.com/banner-dark.jpg',
+            'banner_mobile_dark_url', 'https://example.com/banner-mobile-dark.jpg',
             'banner_mobile_url', 'https://example.com/banner-mobile.jpg',
             'banner_url', 'https://example.com/banner.jpg',
             'capacity', 150,
@@ -468,6 +470,7 @@ select lives_ok(
             'ends_at', '2020-01-02T12:30:00',
             'hosts', jsonb_build_array(:'user1ID'),
             'kind_id', 'virtual',
+            'logo_dark_url', 'https://example.com/logo-dark.png',
             'logo_url', 'https://example.com/logo.png',
             'luma_url', 'https://luma.com/group/events/123456',
             'meeting_join_url', 'https://meet.example.com/room',
@@ -521,6 +524,8 @@ select lives_ok(
 select is(
     (
         select jsonb_build_object(
+            'banner_dark_url', banner_dark_url,
+            'banner_mobile_dark_url', banner_mobile_dark_url,
             'banner_mobile_url', banner_mobile_url,
             'banner_url', banner_url,
             'capacity', capacity,
@@ -529,6 +534,7 @@ select is(
             'ends_at', ends_at,
             'event_category_id', event_category_id,
             'event_kind_id', event_kind_id,
+            'logo_dark_url', logo_dark_url,
             'logo_url', logo_url,
             'luma_url', luma_url,
             'meeting_join_url', meeting_join_url,
@@ -554,6 +560,8 @@ select is(
         where event_id = :'event8ID'::uuid
     ),
     jsonb_build_object(
+        'banner_dark_url', 'https://example.com/banner-dark.jpg',
+        'banner_mobile_dark_url', 'https://example.com/banner-mobile-dark.jpg',
         'banner_mobile_url', 'https://example.com/banner-mobile.jpg',
         'banner_url', 'https://example.com/banner.jpg',
         'capacity', 100,
@@ -562,6 +570,7 @@ select is(
         'ends_at', '2020-01-02 12:30:00+00'::timestamptz,
         'event_category_id', :'category2ID'::uuid,
         'event_kind_id', 'virtual',
+        'logo_dark_url', 'https://example.com/logo-dark.png',
         'logo_url', 'https://example.com/logo.png',
         'luma_url', 'https://luma.com/group/events/123456',
         'meeting_join_url', 'https://meet.example.com/room',

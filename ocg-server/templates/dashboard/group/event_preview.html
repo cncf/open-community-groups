@@ -49,7 +49,7 @@
         {# End missing fields warning -#}
 
         {# Breadcrumb -#}
-        <breadcrumb-nav class="[&>.container]:max-w-[90rem]" {% if let Some(banner_url) = &event.banner_url -%} banner-url="{{ banner_url }}" {% endif -%} items='[ {"label": "Home", "icon": "home"}, {% if let Some(community_display_name) = &event.community_display_name -%} {"label": {{ community_display_name|json }}, "icon": "community"}, {% endif -%} {"label": {{ event.group_name() |json }}, "icon": "groups"}, {"label": {{ event.name_label() |json }}, "icon": "date", "current": true} ]'></breadcrumb-nav>
+        <breadcrumb-nav class="[&>.container]:max-w-[90rem]" {% if let Some(banner_url) = &event.banner_url -%} banner-url="{{ banner_url }}" {% if let Some(banner_dark_url) = &event.banner_dark_url -%} banner-dark-url="{{ banner_dark_url }}" {% endif -%} {% endif -%} items='[ {"label": "Home", "icon": "home"}, {% if let Some(community_display_name) = &event.community_display_name -%} {"label": {{ community_display_name|json }}, "icon": "community"}, {% endif -%} {"label": {{ event.group_name() |json }}, "icon": "groups"}, {"label": {{ event.name_label() |json }}, "icon": "date", "current": true} ]'></breadcrumb-nav>
         {# End breadcrumb -#}
 
         {# Preview content -#}
@@ -63,7 +63,7 @@
                   {# Event logo -#}
                   <div class="relative hidden md:row-span-2 md:block">
                     {% if let Some(logo_url) = &event.logo_url -%}
-                      {{ ui::logo(logo_url = logo_url, classes = "size-24 md:size-28", size = 112) -}}
+                      {{ ui::logo(logo_url = logo_url, classes = "size-24 md:size-28", size = 112, logo_dark_url = event.logo_dark_url.as_deref().unwrap_or("")) -}}
                     {% else -%}
                       <div class="flex size-24 items-center justify-center rounded-lg border border-stone-200 bg-surface px-3 text-center text-xs font-medium text-stone-500 md:size-28">
                         Missing logo
@@ -164,7 +164,7 @@
                       {% for cohost in event.cohosts -%}
                         <div class="flex min-w-0 items-center gap-3 rounded-lg border border-dashed border-stone-200 bg-surface p-3">
                           {% if let Some(logo_url) = &cohost.logo_url -%}
-                            {{ ui::logo(logo_url = logo_url, classes = "size-12 shrink-0", size = 48) -}}
+                            {{ ui::logo(logo_url = logo_url, classes = "size-12 shrink-0", size = 48, logo_dark_url = cohost.logo_dark_url.as_deref().unwrap_or("")) -}}
                           {% else -%}
                             <div class="flex size-12 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-surface">
                               <div class="svg-icon size-5 bg-stone-400 icon-groups" aria-hidden="true"></div>

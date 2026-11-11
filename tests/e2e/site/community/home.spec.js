@@ -153,6 +153,7 @@ test.describe("community home page", () => {
         "href",
         buildE2eUrl(`/${TEST_COMMUNITY_NAME}`),
       );
+      // Without dark mode banners in the seed, only the desktop and mobile banners render.
       await expect(page.getByAltText("Banner")).toHaveCount(2);
 
       // Verify social previews use the canonical community contract.
@@ -237,6 +238,10 @@ test.describe("community home page", () => {
       const breadcrumb = page.locator("breadcrumb-nav");
       await expect(breadcrumb).toHaveAttribute("banner-url", TEST_COMMUNITY_BANNER_URL);
       await expect(breadcrumb).toHaveAttribute("banner-mobile-url", TEST_COMMUNITY_BANNER_MOBILE_URL);
+
+      // Verify the seeded community, without dark mode banners, passes no dark banner URLs.
+      await expect(breadcrumb).not.toHaveAttribute("banner-dark-url");
+      await expect(breadcrumb).not.toHaveAttribute("banner-mobile-dark-url");
 
       // Set up items attr.
       const itemsAttr = await breadcrumb.getAttribute("items");

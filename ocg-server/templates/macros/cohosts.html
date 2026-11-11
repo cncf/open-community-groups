@@ -18,7 +18,7 @@
                  title="{{ cohost.name }} ({{ cohost.community_display_name }})"
                  hx-boost="true"
                  hx-target="body">
-                {{ ui::logo(logo_url = cohost.logo_url, classes = "size-10 shrink-0", size = 40) -}}
+                {{ ui::logo(logo_url = cohost.logo_url, classes = "size-10 shrink-0", size = 40, logo_dark_url = cohost.logo_dark_url.as_deref().unwrap_or("")) -}}
                 <span class="min-w-0 flex-1">
                   <span class="block truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400">
                     {{ cohost.community_display_name }}
@@ -63,7 +63,7 @@
             <ul class="space-y-2 px-3 py-3">
               {% for cohost in cohosts.iter() -%}
                 <li class="flex min-w-0 items-center gap-2.5">
-                  {{ ui::logo(logo_url = cohost.logo_url, classes = "size-9 shrink-0", size = 36) -}}
+                  {{ ui::logo(logo_url = cohost.logo_url, classes = "size-9 shrink-0", size = 36, logo_dark_url = cohost.logo_dark_url.as_deref().unwrap_or("")) -}}
                   <div class="min-w-0 flex-1">
                     <div class="truncate text-[0.65rem]/3 font-semibold uppercase tracking-wider text-stone-400">
                       {{ cohost.community_display_name }}

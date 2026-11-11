@@ -153,6 +153,7 @@ describe("notification group mutes", () => {
       const placeholderFrame = withoutLogo.querySelector(".icon-broken-image").parentElement;
       expect(logoFrame.classList.contains("plate")).to.equal(true);
       expect(logoFrame.classList.contains("bg-plate")).to.equal(true);
+      expect(logoFrame.hasAttribute("data-theme-image")).to.equal(false);
       expect(placeholderFrame.classList.contains("plate")).to.equal(true);
       expect(placeholderFrame.classList.contains("bg-stone-50")).to.equal(true);
       expect(placeholderFrame.classList.contains("bg-plate")).to.equal(false);
@@ -165,6 +166,49 @@ describe("notification group mutes", () => {
       expect(withLogo.querySelector(".title-preheader")?.textContent.trim()).to.equal(
         "Cloud Native Community",
       );
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("pairs option logos with their dark mode logos", async () => {
+    const fetchMock = mockFetch({
+      impl: () =>
+        new Response(
+          JSON.stringify([
+            {
+              ...GROUPS[0],
+              logo_dark_url: "https://example.com/logo-dark.png",
+              logo_url: "https://example.com/logo.png",
+            },
+            { ...GROUPS[1], logo_dark_url: "https://example.com/orphan-dark.png" },
+          ]),
+          { status: 200 },
+        ),
+    });
+
+    try {
+      // Render the component and load the options.
+      const element = await mountGroupMutes();
+      await loadOptions(element);
+      const [paired, orphan] = element.querySelectorAll('[role="option"]');
+
+      // The plated light logo comes first, followed by an unplated lazy dark logo.
+      const [lightImage, darkImage] = paired.querySelectorAll("img");
+      expect(lightImage.getAttribute("src")).to.equal("https://example.com/logo.png");
+      expect(lightImage.parentElement.dataset.themeImage).to.equal("light");
+      expect(lightImage.parentElement.classList.contains("plate")).to.equal(true);
+      expect(darkImage.getAttribute("src")).to.equal("https://example.com/logo-dark.png");
+      expect(darkImage.getAttribute("alt")).to.equal("");
+      expect(darkImage.getAttribute("loading")).to.equal("lazy");
+      expect(darkImage.parentElement.dataset.themeImage).to.equal("dark");
+      expect(darkImage.parentElement.classList.contains("plate")).to.equal(false);
+      expect(darkImage.parentElement.classList.contains("bg-plate")).to.equal(false);
+
+      // A dark logo without its light logo is ignored, so the placeholder stays alone.
+      expect(orphan.querySelector("img")).to.equal(null);
+      expect(orphan.querySelector("[data-theme-image]")).to.equal(null);
+      expect(orphan.querySelector(".icon-broken-image")).to.not.equal(null);
     } finally {
       fetchMock.restore();
     }

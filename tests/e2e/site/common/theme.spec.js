@@ -2,13 +2,27 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test, testAtBothWidths } from "../../fixtures.js";
 
-import { TEST_COMMUNITY_LOGO_URL, TEST_SITE_TITLE } from "../../seed.js";
+import {
+  cleanupTemporaryCommunity,
+  setupCommunityTaxonomyItem,
+  setupTemporaryCommunity,
+} from "../../data-graphs/communities.js";
+import { insertOwnedEvent } from "../../data-graphs/events.js";
+import { setupTemporaryGroup } from "../../data-graphs/groups.js";
+import {
+  TEST_COMMUNITY_BANNER_MOBILE_URL,
+  TEST_COMMUNITY_BANNER_URL,
+  TEST_COMMUNITY_LOGO_URL,
+  TEST_SITE_TITLE,
+  TEST_USER_IDS,
+} from "../../seed.js";
 import {
   buildE2eUrl,
   expectFocusIndicator,
   getSectionByHeading,
   navigateToPath,
   pressKeyUntilFocused,
+  uniqueName,
   useTheme,
   waitForHtmxSettle,
 } from "../../utils.js";
@@ -24,6 +38,30 @@ const DARK_RAISED_BACKGROUND = "rgb(32, 29, 27)";
 const DARK_SHELL_BACKGROUND = "rgb(11, 10, 9)";
 // Dark `surface` token, #181514: the root, content cards, sticky bars and section strips.
 const DARK_SURFACE_BACKGROUND = "rgb(24, 21, 20)";
+// Static e2e files behind the images of the temporary entity pages. The community light images
+// are always the seeded ones; `buildLevelImages` adds a level query to every other URL.
+const ENTITY_IMAGE_FILES = {
+  banner: TEST_COMMUNITY_BANNER_URL,
+  bannerDark: "/static/images/e2e/entity-banner-dark.svg",
+  bannerMobile: TEST_COMMUNITY_BANNER_MOBILE_URL,
+  bannerMobileDark: "/static/images/e2e/entity-banner-mobile-dark.svg",
+  logo: TEST_COMMUNITY_LOGO_URL,
+  logoDark: "/static/images/e2e/entity-logo-dark.svg",
+};
+// Temporary pages whose summary logo can have a dark variant: the level that owns the logo, the
+// logo container and the page path `setupEntityPages` returns for images on that level.
+const ENTITY_LOGO_PAGES = [
+  {
+    level: "group",
+    logos: (page) => page.locator("[data-group-logo]"),
+    setup: (owned, images) => setupEntityPages(owned, { group: images }).groupPath,
+  },
+  {
+    level: "event",
+    logos: (page) => page.getByRole("region", { name: "Event summary" }),
+    setup: (owned, images) => setupEntityPages(owned, { event: images }).eventPath,
+  },
+];
 // Seeded event page, with the phone CTA bar, section strips and the contact sheet.
 const EVENT_PAGE = PUBLIC_PAGES.find(({ name }) => name === "event");
 // Outline of focused links inside the footer ink island, in both themes.
@@ -559,6 +597,292 @@ test.describe("logo plates", () => {
   });
 });
 
+test.describe("entity dark images", () => {
+  for (const { level, logos, setup } of ENTITY_LOGO_PAGES) {
+    test(`${level} logo shows its dark variant without the plate only in dark`, async ({ owned, page }) => {
+      // Create the page with a logo and its dark variant, count the dark logo requests and load it.
+      const { logoDarkUrl, logoUrl } = buildLevelImages(level);
+      const path = setup(owned, { logoDarkUrl, logoUrl });
+      const countDarkRequests = countImageRequests(page, logoDarkUrl);
+      await navigateToPath(page, path);
+      await expectTheme(page, "light");
+      const { dark, light } = getThemeImages(logos(page));
+
+      // Verify light shows only the loaded plated logo and never requests the dark one.
+      await expect(light).toBeVisible();
+      await expect(light).toHaveClass(/\bplate\b/u);
+      await expect(dark).toBeHidden();
+      await expectImageLoaded(light.locator("img"));
+      expect(countDarkRequests()).toBe(0);
+
+      // Pick Dark from the account menu.
+      await pickTheme(page, "dark");
+
+      // Verify dark shows only the loaded dark logo, straight on the surface without a plate.
+      await expect(dark).toBeVisible();
+      await expect(light).toBeHidden();
+      await expect(dark.locator("img")).toHaveAttribute("src", logoDarkUrl);
+      await expectImageLoaded(dark.locator("img"));
+      await expect(dark).toHaveCSS("background-color", TRANSPARENT_BACKGROUND);
+      expect(countDarkRequests()).toBeGreaterThan(0);
+
+      // Pick Light again and verify the plated logo is back.
+      await pickTheme(page, "light");
+      await expect(light).toBeVisible();
+      await expect(dark).toBeHidden();
+    });
+  }
+
+  testAtBothWidths(
+    "breadcrumb banners show one banner per theme on every entity page",
+    async ({ isMobile, owned, page }) => {
+      // Give every level its own banners with dark variants, so each page shows its own.
+      const images = {
+        community: buildLevelImages("community"),
+        event: buildLevelImages("event"),
+        group: buildLevelImages("group"),
+      };
+      const paths = setupEntityPages(owned, images);
+      const pages = [
+        { level: "community", path: paths.communityPath },
+        { level: "group", path: paths.groupPath },
+        { level: "event", path: paths.eventPath },
+      ];
+
+      for (const { level, path } of pages) {
+        await test.step(level, async () => {
+          // Load the page in light, counting the requests for the dark banner of this width.
+          const { bannerDarkUrl, bannerMobileDarkUrl, bannerMobileUrl, bannerUrl } = images[level];
+          const darkUrl = isMobile ? bannerMobileDarkUrl : bannerDarkUrl;
+          const lightUrl = isMobile ? bannerMobileUrl : bannerUrl;
+          const countDarkRequests = countImageRequests(page, darkUrl);
+          await navigateToPath(page, path);
+          await expectTheme(page, "light");
+          const visibleBanners = getVisibleBanners(page);
+
+          // Verify light shows only the loaded light banner and never requests the dark one.
+          await expect(visibleBanners).toHaveCount(1);
+          await expect(visibleBanners).toHaveAttribute("src", lightUrl);
+          await expectImageLoaded(visibleBanners);
+          expect(countDarkRequests()).toBe(0);
+
+          // Pick Dark and verify only the loaded dark banner of the same level shows.
+          await pickTheme(page, "dark");
+          await expect(visibleBanners).toHaveCount(1);
+          await expect(visibleBanners).toHaveAttribute("src", darkUrl);
+          await expectImageLoaded(visibleBanners);
+
+          // Pick Light again for the next page and verify the light banner is back.
+          await pickTheme(page, "light");
+          await expect(visibleBanners).toHaveCount(1);
+          await expect(visibleBanners).toHaveAttribute("src", lightUrl);
+        });
+      }
+    },
+  );
+
+  testAtBothWidths(
+    "banner cascade uses the dark variant of the level it picks",
+    async ({ isMobile, owned, page }) => {
+      // Give the community both dark banners, the group a desktop banner with its dark variant and
+      // a mobile banner without one, and the event only a mobile banner with its dark variant.
+      const communityImages = buildLevelImages("community");
+      const eventImages = buildLevelImages("event");
+      const groupImages = buildLevelImages("group");
+      const { eventPath, groupPath } = setupEntityPages(owned, {
+        community: communityImages,
+        event: {
+          bannerMobileDarkUrl: eventImages.bannerMobileDarkUrl,
+          bannerMobileUrl: eventImages.bannerMobileUrl,
+        },
+        group: {
+          bannerDarkUrl: groupImages.bannerDarkUrl,
+          bannerMobileUrl: groupImages.bannerMobileUrl,
+          bannerUrl: groupImages.bannerUrl,
+        },
+      });
+
+      // Each width resolves on its own: the event takes the group desktop pair and its own mobile
+      // pair, and the group keeps its light mobile banner instead of the community dark one.
+      const pages = [
+        {
+          banner: { dark: groupImages.bannerDarkUrl, light: groupImages.bannerUrl },
+          bannerMobile: { dark: eventImages.bannerMobileDarkUrl, light: eventImages.bannerMobileUrl },
+          path: eventPath,
+        },
+        {
+          banner: { dark: groupImages.bannerDarkUrl, light: groupImages.bannerUrl },
+          bannerMobile: { dark: null, light: groupImages.bannerMobileUrl },
+          path: groupPath,
+        },
+      ];
+      await useTheme(page, { stored: "dark" });
+
+      for (const { banner, bannerMobile, path } of pages) {
+        await test.step(path, async () => {
+          // Load the page in stored dark.
+          await navigateToPath(page, path);
+          await expectTheme(page, "dark");
+
+          // Verify the banner pairs each width resolved, a dark variant only with its own level.
+          const breadcrumb = page.locator("breadcrumb-nav");
+          await expect(breadcrumb).toHaveAttribute("banner-url", banner.light);
+          await expect(breadcrumb).toHaveAttribute("banner-dark-url", banner.dark);
+          await expect(breadcrumb).toHaveAttribute("banner-mobile-url", bannerMobile.light);
+          if (bannerMobile.dark) {
+            await expect(breadcrumb).toHaveAttribute("banner-mobile-dark-url", bannerMobile.dark);
+          } else {
+            await expect(breadcrumb).not.toHaveAttribute("banner-mobile-dark-url");
+          }
+
+          // Verify dark shows the dark variant of this width's pair, or its light banner without one.
+          const { dark, light } = isMobile ? bannerMobile : banner;
+          const visibleBanners = getVisibleBanners(page);
+          await expect(visibleBanners).toHaveCount(1);
+          await expect(visibleBanners).toHaveAttribute("src", dark ?? light);
+          await expectImageLoaded(visibleBanners);
+          await expect(page.locator(`img[src="${communityImages.bannerMobileDarkUrl}"]`)).toHaveCount(0);
+          await expect(page.locator(`img[src="${communityImages.bannerDarkUrl}"]`)).toHaveCount(0);
+        });
+      }
+    },
+  );
+
+  test("orphan dark logo is ignored and the logo level pair is used", async ({ owned, page }) => {
+    // Give two groups a dark logo without a logo of their own, one under a community with a dark
+    // logo and one under a community without.
+    const communityImages = buildLevelImages("community");
+    const orphanDarkUrl = buildLevelImages("group").logoDarkUrl;
+    const withCommunityDark = setupEntityPages(owned, {
+      community: { logoDarkUrl: communityImages.logoDarkUrl },
+      group: { logoDarkUrl: orphanDarkUrl },
+    });
+    const withoutCommunityDark = setupEntityPages(owned, { group: { logoDarkUrl: orphanDarkUrl } });
+    await useTheme(page, { stored: "dark" });
+
+    // Load the first group in stored dark.
+    await navigateToPath(page, withCommunityDark.groupPath);
+    await expectTheme(page, "dark");
+    const groupLogo = page.locator("[data-group-logo]");
+    const { dark, light } = getThemeImages(groupLogo);
+
+    // Verify the community logo pair shows its dark logo and the orphan is never rendered.
+    await expect(dark).toBeVisible();
+    await expect(light).toBeHidden();
+    await expect(light.locator("img")).toHaveAttribute("src", communityImages.logoUrl);
+    await expect(dark.locator("img")).toHaveAttribute("src", communityImages.logoDarkUrl);
+    await expect(page.locator(`img[src="${orphanDarkUrl}"]`)).toHaveCount(0);
+
+    // Load the second group and verify the community logo keeps its plate, with no dark logo.
+    await navigateToPath(page, withoutCommunityDark.groupPath);
+    await expectTheme(page, "dark");
+    await expect(groupLogo.locator("[data-theme-image]")).toHaveCount(0);
+    await expect(groupLogo.locator(".plate")).toBeVisible();
+    await expect(groupLogo.locator(".plate")).toHaveCSS("background-color", PLATE_BACKGROUND);
+    await expect(page.locator(`img[src="${orphanDarkUrl}"]`)).toHaveCount(0);
+  });
+
+  test("print renders stored dark with the light logo and banner", async ({ owned, page }) => {
+    // Create a group with a logo and banners with dark variants.
+    const groupImages = buildLevelImages("group");
+    const { groupPath } = setupEntityPages(owned, { group: groupImages });
+
+    // Load the group page in stored dark for print.
+    await useTheme(page, { stored: "dark" });
+    await page.emulateMedia({ media: "print" });
+    await navigateToPath(page, groupPath);
+    expect(await page.locator("html").getAttribute("data-theme")).toBe("dark");
+
+    // Verify print shows the light logo and the light banner only.
+    const { dark, light } = getThemeImages(page.locator("[data-group-logo]"));
+    await expect(light).toBeVisible();
+    await expect(dark).toBeHidden();
+    const visibleBanners = getVisibleBanners(page);
+    await expect(visibleBanners).toHaveCount(1);
+    await expect(visibleBanners).toHaveAttribute("src", groupImages.bannerUrl);
+  });
+
+  test("JavaScript disabled shows the dark logo on a dark OS", async ({ browser, browserHealth, owned }) => {
+    // Create a group with a logo and its dark variant.
+    const { logoDarkUrl, logoUrl } = buildLevelImages("group");
+    const { groupPath } = setupEntityPages(owned, { group: { logoDarkUrl, logoUrl } });
+
+    // Open a context without JavaScript on a dark OS.
+    const context = await browser.newContext({ colorScheme: "dark", javaScriptEnabled: false });
+    browserHealth.track(context);
+
+    try {
+      // Load the group page; without JavaScript htmx never loads, so wait for the load event.
+      const page = await context.newPage();
+      await page.goto(buildE2eUrl(groupPath), { waitUntil: "load" });
+
+      // Verify no script resolved the theme and the server-rendered dark logo shows alone.
+      expect(await page.locator("html").getAttribute("data-theme")).toBeNull();
+      const { dark, light } = getThemeImages(page.locator("[data-group-logo]"));
+      await expect(dark).toBeVisible();
+      await expect(light).toBeHidden();
+      await expect(dark.locator("img")).toHaveAttribute("src", logoDarkUrl);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("broken dark logo shows its placeholder in its own slot", async ({ owned, page }) => {
+    // Create a group with a logo and a dark variant that fails, and load it in stored dark.
+    const { logoDarkUrl, logoUrl } = buildLevelImages("group");
+    const { groupPath } = setupEntityPages(owned, { group: { logoDarkUrl, logoUrl } });
+    await page.route(
+      (url) => `${url.pathname}${url.search}` === logoDarkUrl,
+      (route) => route.fulfill({ status: 404 }),
+    );
+    await useTheme(page, { stored: "dark" });
+    await navigateToPath(page, groupPath);
+    await expectTheme(page, "dark");
+    const { dark, light } = getThemeImages(page.locator("[data-group-logo]"));
+    const placeholder = dark.locator("[data-ocg-broken-image-icon] .icon-broken-image");
+
+    // Verify dark shows the broken-image placeholder inside the dark slot.
+    await expect(placeholder).toBeVisible();
+    await expect(light).toBeHidden();
+
+    // Pick Light and verify the placeholder hides with its slot and the loaded light logo shows.
+    await pickTheme(page, "light");
+    await expect(placeholder).toBeHidden();
+    await expect(light).toBeVisible();
+    await expectImageLoaded(light.locator("img"));
+  });
+
+  test("link previews never use a dark image", async ({ owned, page }) => {
+    // Create a group and an event with every image and its dark variant.
+    const images = {
+      community: buildLevelImages("community"),
+      event: buildLevelImages("event"),
+      group: buildLevelImages("group"),
+    };
+    const { eventPath, groupPath } = setupEntityPages(owned, images);
+    const darkUrls = Object.values(images).flatMap(({ bannerDarkUrl, bannerMobileDarkUrl, logoDarkUrl }) => [
+      bannerDarkUrl,
+      bannerMobileDarkUrl,
+      logoDarkUrl,
+    ]);
+
+    for (const path of [groupPath, eventPath]) {
+      await test.step(path, async () => {
+        // Load the page and read its link preview images.
+        await navigateToPath(page, path);
+        const previewImages = await page
+          .locator('meta[property="og:image"], meta[name="twitter:image"]')
+          .evaluateAll((metas) => metas.map((meta) => meta.getAttribute("content")));
+
+        // Verify no preview image is a dark variant.
+        for (const previewImage of previewImages) {
+          expect(darkUrls.some((darkUrl) => previewImage.endsWith(darkUrl))).toBe(false);
+        }
+      });
+    }
+  });
+});
+
 /**
  * Makes every `window.localStorage` access throw from the first script on, as when the browser or
  * a policy blocks storage.
@@ -576,17 +900,42 @@ const blockLocalStorage = (page) =>
   });
 
 /**
+ * Builds the image URLs of one level of the temporary entity pages: the logo, banner and mobile
+ * banner with their dark variants. A level query makes each URL unique on the page and in the
+ * request log; the community light images are the seeded ones `setupTemporaryCommunity` stores.
+ * @param {"community"|"event"|"group"} level - Level that owns the images.
+ * @returns {{ bannerDarkUrl: string, bannerMobileDarkUrl: string, bannerMobileUrl: string,
+ *   bannerUrl: string, logoDarkUrl: string, logoUrl: string }} Image URLs by option name.
+ */
+const buildLevelImages = (level) => {
+  const levelUrl = (kind) =>
+    level === "community" && !kind.endsWith("Dark")
+      ? ENTITY_IMAGE_FILES[kind]
+      : `${ENTITY_IMAGE_FILES[kind]}?level=${level}`;
+  return {
+    bannerDarkUrl: levelUrl("bannerDark"),
+    bannerMobileDarkUrl: levelUrl("bannerMobileDark"),
+    bannerMobileUrl: levelUrl("bannerMobile"),
+    bannerUrl: levelUrl("banner"),
+    logoDarkUrl: levelUrl("logoDark"),
+    logoUrl: levelUrl("logo"),
+  };
+};
+
+/**
  * Builds the markup `common/header.html` renders for one site header logo variant: a wrapper
- * with the logo image, eager except for the lazy dark image.
+ * with the logo image, eager except for the lazy dark image. The light and dark wrappers carry
+ * their `data-theme-image` pair, which shows the one matching the theme.
  * @param {"dark"|"light"|"plated"} variant - Logo variant, the `data-site-logo` value.
  * @param {string} src - Image URL.
  * @returns {string} Wrapper markup.
  */
 const buildSiteLogo = (variant, src) => {
   const wrapperClass = variant === "plated" ? "relative plate" : "relative";
+  const themeImage = variant === "plated" ? "" : ` data-theme-image="${variant}"`;
   const loading = variant === "dark" ? ' loading="lazy"' : "";
   return (
-    `<span class="${wrapperClass}" data-site-logo="${variant}">` +
+    `<span class="${wrapperClass}" data-site-logo="${variant}"${themeImage}>` +
     '<img class="w-auto max-w-44 sm:max-w-52 h-10 sm:h-[42px] z-1" height="42" width="auto" ' +
     `data-ocg-broken-image-bg-class="bg-transparent" src="${src}" alt="${TEST_SITE_TITLE} logo"${loading}>` +
     "</span>"
@@ -601,6 +950,23 @@ const buildSiteLogo = (variant, src) => {
 const closeAccountMenu = async (page) => {
   await page.keyboard.press("Escape");
   await expect(getAccountSheet(page).userMenu).toBeHidden();
+};
+
+/**
+ * Counts the requests the page makes for one image URL from now on.
+ * @param {import("@playwright/test").Page} page - Page under test.
+ * @param {string} url - Image URL path with its query, as stored for the entity.
+ * @returns {() => number} Reads the number of requests so far.
+ */
+const countImageRequests = (page, url) => {
+  let requests = 0;
+  page.on("request", (request) => {
+    const { pathname, search } = new URL(request.url());
+    if (`${pathname}${search}` === url) {
+      requests += 1;
+    }
+  });
+  return () => requests;
 };
 
 /**
@@ -817,6 +1183,25 @@ const getThemeChoices = (page) => {
     system: group.getByRole("menuitemradio", { exact: true, name: "System" }),
   };
 };
+
+/**
+ * Finds the light and dark images of a theme image pair inside a container.
+ * @param {import("@playwright/test").Locator} scope - Container holding one pair.
+ * @returns {{ dark: import("@playwright/test").Locator, light: import("@playwright/test").Locator }}
+ *   Pair wrappers by variant.
+ */
+const getThemeImages = (scope) => ({
+  dark: scope.locator('[data-theme-image="dark"]'),
+  light: scope.locator('[data-theme-image="light"]'),
+});
+
+/**
+ * Finds the breadcrumb banner images the current theme and width show.
+ * @param {import("@playwright/test").Page} page - Community, group or event page.
+ * @returns {import("@playwright/test").Locator} Visible banner images.
+ */
+const getVisibleBanners = (page) =>
+  page.locator('breadcrumb-nav img[alt="Banner"]').filter({ visible: true });
 
 /**
  * Finds the site header logo wrappers the current theme shows.
@@ -1050,4 +1435,44 @@ const routeSiteLogo = async (page, url, { broken = false } = {}) => {
     return broken ? route.fulfill({ status: 404 }) : route.fulfill({ path: SITE_LOGO_FILE });
   });
   return () => requests;
+};
+
+/**
+ * Creates a temporary community with one active group and, when `event` is given, a published
+ * event in that group, each with the images given for its level. The community keeps the seeded
+ * light logo and banners and takes only the dark variants. Its cleanup removes the whole graph.
+ * @param {object} owned - Owned data fixture.
+ * @param {{ community?: object, event?: object, group?: object }} [images] - Image options per
+ *   level, named as in `buildLevelImages`: dark ones only for the community, any for the group
+ *   (`setupTemporaryGroup`) and the event (`insertOwnedEvent`).
+ * @returns {{ communityPath: string, eventPath?: string, groupPath: string }} Public page paths.
+ */
+const setupEntityPages = (owned, { community = {}, event, group = {} } = {}) => {
+  const { bannerDarkUrl = null, bannerMobileDarkUrl = null, logoDarkUrl = null } = community;
+  const { communityId, groupCategoryId, name } = owned.track(
+    setupTemporaryCommunity({
+      bannerDarkUrl,
+      bannerMobileDarkUrl,
+      label: "dark images",
+      logoDarkUrl,
+      teamRole: "admin",
+      userId: TEST_USER_IDS.admin1,
+    }),
+    ({ communityId: temporaryCommunityId }) => cleanupTemporaryCommunity(temporaryCommunityId),
+  );
+  const { groupId, slug } = setupTemporaryGroup({ communityId, groupCategoryId, ...group });
+  const paths = { communityPath: `/${name}`, groupPath: `/${name}/group/${slug}` };
+
+  if (event) {
+    // Events need a category of their own community.
+    const categoryId = setupCommunityTaxonomyItem({
+      communityId,
+      kind: "eventCategory",
+      name: uniqueName("dark images category"),
+    });
+    const { slug: eventSlug } = insertOwnedEvent({ categoryId, groupId, ...event });
+    paths.eventPath = `${paths.groupPath}/event/${eventSlug}`;
+  }
+
+  return paths;
 };

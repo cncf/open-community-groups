@@ -175,6 +175,30 @@ fn test_event_validation_rejects_invalid_fields() {
             },
             "cohost_group_ids",
         ),
+        (
+            "invalid dark banner URL",
+            EventInput {
+                banner_dark_url: Some("not-a-url".to_string()),
+                ..sample_event()
+            },
+            "banner_dark_url",
+        ),
+        (
+            "invalid dark mobile banner URL",
+            EventInput {
+                banner_mobile_dark_url: Some("not-a-url".to_string()),
+                ..sample_event()
+            },
+            "banner_mobile_dark_url",
+        ),
+        (
+            "invalid dark logo URL",
+            EventInput {
+                logo_dark_url: Some("not-a-url".to_string()),
+                ..sample_event()
+            },
+            "logo_dark_url",
+        ),
     ];
 
     for (case, event, field) in cases {

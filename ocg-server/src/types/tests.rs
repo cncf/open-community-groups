@@ -131,6 +131,9 @@ pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
         name: "test".to_string(),
         ad_banner_link_url: None,
         ad_banner_url: None,
+        banner_dark_url: None,
+        banner_mobile_dark_url: None,
+        logo_dark_url: None,
         og_image_url: None,
     }
 }
@@ -410,6 +413,7 @@ pub(crate) fn sample_event_cohost_group(group_id: Uuid, name: &str) -> EventCoho
         name: name.to_string(),
         slug: format!("cohost-{}", &group_id.simple().to_string()[..7]),
 
+        logo_dark_url: None,
         slug_pretty: None,
     }
 }
@@ -572,6 +576,7 @@ pub(crate) fn sample_event_summary(event_id: Uuid) -> EventSummary {
         event_series_id: None,
         group_slug_pretty: None,
         latitude: Some(42.3601),
+        logo_dark_url: None,
         longitude: Some(-71.0589),
         meeting_join_instructions: None,
         meeting_join_url: Some("https://example.test/meeting".to_string()),
@@ -770,6 +775,8 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         name: "Test Group".to_string(),
         slug: "npq6789".to_string(),
 
+        banner_dark_url: None,
+        banner_mobile_dark_url: None,
         banner_mobile_url: Some("https://example.test/banner_mobile.png".to_string()),
         banner_url: Some("https://example.test/banner.png".to_string()),
         city: Some("San Francisco".to_string()),
@@ -777,6 +784,7 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         country_name: Some("United States".to_string()),
         description_short: Some("An example summary for the sample group".to_string()),
         latitude: Some(37.0),
+        logo_dark_url: None,
         longitude: Some(-122.0),
         og_image_url: None,
         region: Some(sample_group_region()),

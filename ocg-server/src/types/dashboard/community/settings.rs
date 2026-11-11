@@ -40,6 +40,14 @@ pub(crate) struct CommunityUpdate {
     /// URL to the advertisement banner image.
     #[garde(custom(image_url_opt))]
     pub ad_banner_url: Option<String>,
+    /// URL to the community banner image shown in dark mode in place of
+    /// `banner_url`.
+    #[garde(custom(image_url_opt))]
+    pub banner_dark_url: Option<String>,
+    /// URL to the community mobile banner image shown in dark mode in place
+    /// of `banner_mobile_url`.
+    #[garde(custom(image_url_opt))]
+    pub banner_mobile_dark_url: Option<String>,
     /// Link to the community's Bluesky profile.
     #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub bluesky_url: Option<String>,
@@ -61,6 +69,9 @@ pub(crate) struct CommunityUpdate {
     /// Link to the community's `LinkedIn` page.
     #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
+    /// URL to the logo image shown in dark mode in place of `logo_url`.
+    #[garde(custom(image_url_opt))]
+    pub logo_dark_url: Option<String>,
     /// Instructions for creating new groups.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION))]
     pub new_group_details: Option<String>,
@@ -85,4 +96,68 @@ pub(crate) struct CommunityUpdate {
     /// Link to the community's `YouTube` channel.
     #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub youtube_url: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use garde::Validate;
+
+    use super::CommunityUpdate;
+
+    #[test]
+    fn test_community_update_validation_accepts_missing_dark_images() {
+        assert!(sample_community_update().validate().is_ok());
+    }
+
+    #[test]
+    fn test_community_update_validation_rejects_invalid_dark_images() {
+        // Setup cases: (case, community, invalid field)
+        let cases = [
+            (
+                "invalid dark banner URL",
+                CommunityUpdate {
+                    banner_dark_url: Some("not-a-url".to_string()),
+                    ..sample_community_update()
+                },
+                "banner_dark_url",
+            ),
+            (
+                "invalid dark mobile banner URL",
+                CommunityUpdate {
+                    banner_mobile_dark_url: Some("not-a-url".to_string()),
+                    ..sample_community_update()
+                },
+                "banner_mobile_dark_url",
+            ),
+            (
+                "blank dark logo URL",
+                CommunityUpdate {
+                    logo_dark_url: Some("  ".to_string()),
+                    ..sample_community_update()
+                },
+                "logo_dark_url",
+            ),
+        ];
+
+        for (case, community, field) in cases {
+            // Check only the dark image field is rejected
+            let report = community.validate().expect_err(case);
+            let fields: Vec<String> = report.iter().map(|(path, _)| path.to_string()).collect();
+            assert_eq!(fields, [field], "{case}");
+        }
+    }
+
+    // Helpers.
+
+    /// Returns a valid community update without dark images.
+    fn sample_community_update() -> CommunityUpdate {
+        CommunityUpdate {
+            banner_mobile_url: "https://example.test/banner-mobile.png".to_string(),
+            banner_url: "https://example.test/banner.png".to_string(),
+            description: "Community description".to_string(),
+            display_name: "Community".to_string(),
+            logo_url: "https://example.test/logo.png".to_string(),
+            ..CommunityUpdate::default()
+        }
+    }
 }

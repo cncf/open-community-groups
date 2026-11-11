@@ -4,11 +4,77 @@ use chrono_tz::America::New_York;
 use uuid::Uuid;
 
 use crate::{
-    test_util::opening_tag_with,
+    test_util::{element_html_with, opening_tag_with},
     types::{dashboard::group::check_in::GroupCheckInEvent, event::EventKind},
 };
 
 use super::ListPage;
+
+#[test]
+fn test_list_page_card_renders_dark_logo_only_with_both_logos() {
+    // Setup logo URLs
+    let logo_url = "https://example.test/event-logo.png";
+    let logo_dark_url = "https://example.test/event-logo-dark.png";
+
+    // Setup cases: (label, light url, dark url)
+    let cases = [
+        ("both logos", Some(logo_url), Some(logo_dark_url)),
+        ("light logo only", Some(logo_url), None),
+        ("dark logo only", None, Some(logo_dark_url)),
+        ("no logo", None, None),
+    ];
+
+    for (label, light_url, dark_url) in cases {
+        // Render one event card with the case logos
+        let html = ListPage {
+            events: vec![GroupCheckInEvent {
+                logo_dark_url: dark_url.map(str::to_string),
+                logo_url: light_url.map(str::to_string),
+                ..sample_event(EventKind::InPerson, Some("Main Hall"), false)
+            }],
+        }
+        .render()
+        .unwrap();
+        let paired = light_url.is_some() && dark_url.is_some();
+
+        // Check the light logo always renders when set
+        assert_eq!(
+            html.contains(&format!(r#"src="{logo_url}""#)),
+            light_url.is_some(),
+            "{label}"
+        );
+
+        // Check the dark logo renders only together with the light logo
+        assert_eq!(html.contains(logo_dark_url), paired, "{label}");
+        assert_eq!(
+            html.matches(r#"data-theme-image="light""#).count(),
+            usize::from(paired),
+            "{label}"
+        );
+        assert_eq!(
+            html.matches(r#"data-theme-image="dark""#).count(),
+            usize::from(paired),
+            "{label}"
+        );
+
+        // Check the plated light box precedes the unplated lazy dark box
+        if paired {
+            let light = opening_tag_with(&html, r#"data-theme-image="light""#);
+            assert!(light.contains("plate"), "{label}");
+            let dark = element_html_with(&html, r#"data-theme-image="dark""#);
+            assert!(
+                !opening_tag_with(dark, "data-theme-image").contains("plate"),
+                "{label}"
+            );
+            let dark_image = opening_tag_with(dark, &format!(r#"src="{logo_dark_url}""#));
+            assert!(dark_image.contains(r#"loading="lazy""#), "{label}");
+            assert!(
+                html.find(r#"data-theme-image="light""#) < html.find(r#"data-theme-image="dark""#),
+                "{label}"
+            );
+        }
+    }
+}
 
 #[test]
 fn test_list_page_marks_only_in_progress_events() {
@@ -104,6 +170,7 @@ fn sample_event(kind: EventKind, location: Option<&str>, in_progress: bool) -> G
         starts_at: Utc.with_ymd_and_hms(2030, 6, 15, 18, 0, 0).unwrap(),
         timezone: New_York,
 
+        logo_dark_url: None,
         logo_url: None,
         location: location.map(str::to_string),
     }

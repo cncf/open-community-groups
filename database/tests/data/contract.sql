@@ -36,23 +36,29 @@ insert into site (
 insert into community (
     ad_banner_link_url,
     ad_banner_url,
+    banner_dark_url,
+    banner_mobile_dark_url,
     banner_mobile_url,
     banner_url,
     community_id,
     created_at,
     description,
     display_name,
+    logo_dark_url,
     logo_url,
     name
 ) values (
     'https://example.com/community-ad',
     'https://example.com/community-ad-banner.png',
+    'https://example.com/community-banner-dark.png',
+    'https://example.com/community-banner-mobile-dark.png',
     'https://example.com/community-banner-mobile.png',
     'https://example.com/community-banner.png',
     '00000000-0000-0000-0000-00000000c001',
     '2024-01-01 00:00:00+00',
     'A community used by Rust database contract tests',
     'Contract Community',
+    'https://example.com/community-logo-dark.png',
     'https://example.com/community-logo.png',
     'contract-community'
 );
@@ -590,6 +596,8 @@ insert into event_category (
 -- ============================================================================
 
 insert into "group" (
+    banner_dark_url,
+    banner_mobile_dark_url,
     banner_mobile_url,
     banner_url,
     city,
@@ -604,6 +612,7 @@ insert into "group" (
     group_category_id,
     group_id,
     location,
+    logo_dark_url,
     logo_url,
     name,
     payment_recipient,
@@ -617,6 +626,8 @@ insert into "group" (
     utm_sources,
     website_url
 ) values (
+    'https://example.com/group-banner-dark.png',
+    'https://example.com/group-banner-mobile-dark.png',
     'https://example.com/group-banner-mobile.png',
     'https://example.com/group-banner.png',
     'San Francisco',
@@ -631,6 +642,7 @@ insert into "group" (
     '00000000-0000-0000-0000-00000000c012',
     '00000000-0000-0000-0000-00000000c021',
     ST_SetSRID(ST_MakePoint(-122.4194, 37.7749), 4326),
+    'https://example.com/group-logo-dark.png',
     'https://example.com/group-logo.png',
     'Contract Group',
     '{"provider":"stripe","recipient_id":"acct_contract","seller_display_name":"Contract Fiscal Sponsor"}'::jsonb,
@@ -801,8 +813,12 @@ insert into group_sponsor (
 -- EVENTS
 -- ============================================================================
 
--- Public events consumed by event read and CFS lock contracts
+-- Public events consumed by event read and CFS lock contracts; the past event
+-- has its own light images and no dark ones, so its logo never falls back to
+-- the group's dark logo
 insert into event (
+    banner_dark_url,
+    banner_mobile_dark_url,
     banner_mobile_url,
     banner_url,
     capacity,
@@ -820,6 +836,7 @@ insert into event (
     event_kind_id,
     group_id,
     location,
+    logo_dark_url,
     logo_url,
     luma_url,
     name,
@@ -843,6 +860,8 @@ insert into event (
     waitlist_enabled
 ) values
     (
+        'https://example.com/future-event-banner-dark.png',
+        'https://example.com/future-event-banner-mobile-dark.png',
         'https://example.com/future-event-banner-mobile.png',
         'https://example.com/future-event-banner.png',
         100,
@@ -860,6 +879,7 @@ insert into event (
         'hybrid',
         '00000000-0000-0000-0000-00000000c021',
         ST_SetSRID(ST_MakePoint(-122.4194, 37.7749), 4326),
+        'https://example.com/future-event-logo-dark.png',
         'https://example.com/future-event-logo.png',
         'https://luma.com/contract-event',
         'Future Contract Event',
@@ -883,6 +903,8 @@ insert into event (
         true
     ),
     (
+        null,
+        null,
         'https://example.com/past-event-banner-mobile.png',
         'https://example.com/past-event-banner.png',
         50,
@@ -900,6 +922,7 @@ insert into event (
         'virtual',
         '00000000-0000-0000-0000-00000000c021',
         ST_SetSRID(ST_MakePoint(-122.4194, 37.7749), 4326),
+        null,
         'https://example.com/past-event-logo.png',
         null,
         'Past Contract Event',

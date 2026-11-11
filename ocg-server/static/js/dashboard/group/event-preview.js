@@ -152,6 +152,10 @@ const collectEventPreviewContext = (pageRoot) => {
     ...compactObject({
       category_label: selectedOptionLabel(categorySelect),
       community: compactObject({
+        banner_dark_url: firstValue(
+          pageRoot.dataset?.communityBannerDarkUrl,
+          dashboardContent?.dataset?.communityBannerDarkUrl,
+        ),
         banner_url: firstValue(
           pageRoot.dataset?.communityBannerUrl,
           dashboardContent?.dataset?.communityBannerUrl,
@@ -161,11 +165,23 @@ const collectEventPreviewContext = (pageRoot) => {
           dashboardContent?.dataset?.communityDisplayName,
           dashboardContent?.dataset?.community,
         ),
+        logo_dark_url: firstValue(
+          pageRoot.dataset?.communityLogoDarkUrl,
+          dashboardContent?.dataset?.communityLogoDarkUrl,
+        ),
         logo_url: firstValue(pageRoot.dataset?.communityLogoUrl, dashboardContent?.dataset?.communityLogoUrl),
         name: firstValue(pageRoot.dataset?.communityName, dashboardContent?.dataset?.community),
       }),
       group: compactObject({
+        banner_dark_url: firstValue(
+          pageRoot.dataset?.groupBannerDarkUrl,
+          dashboardContent?.dataset?.groupBannerDarkUrl,
+        ),
         banner_url: firstValue(pageRoot.dataset?.groupBannerUrl, dashboardContent?.dataset?.groupBannerUrl),
+        logo_dark_url: firstValue(
+          pageRoot.dataset?.groupLogoDarkUrl,
+          dashboardContent?.dataset?.groupLogoDarkUrl,
+        ),
         logo_url: firstValue(pageRoot.dataset?.groupLogoUrl, dashboardContent?.dataset?.groupLogoUrl),
         name: firstValue(pageRoot.dataset?.groupName, dashboardContent?.dataset?.groupName),
         slug: firstValue(pageRoot.dataset?.groupSlug, dashboardContent?.dataset?.groupSlug),
@@ -664,6 +680,7 @@ const collectCohosts = (cohosts) =>
   readArray(cohosts)
     .map((cohost) =>
       compactObject({
+        logo_dark_url: cohost?.logo_dark_url,
         logo_url: cohost?.logo_url,
         name: cohost?.name,
         status: cohost?.status,

@@ -7,6 +7,8 @@ import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 // Inline logo used by fixtures to avoid image requests.
 const LOGO_URL = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+// Inline dark mode logo, distinct from the light one.
+const LOGO_DARK_URL = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 
 // Communities offered by the selector fixture.
 const COMMUNITIES = [
@@ -443,7 +445,49 @@ describe("event co-hosts selector", () => {
         expect(frame.classList.contains("plate")).to.equal(true);
         expect(frame.classList.contains("plate-ring")).to.equal(true);
         expect(frame.classList.contains("bg-plate")).to.equal(true);
+        expect(frame.hasAttribute("data-theme-image")).to.equal(false);
       });
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("pairs group logos with their dark mode logos", async () => {
+    const groups = [
+      { ...GROUPS[0], logo_dark_url: LOGO_DARK_URL },
+      { ...GROUPS[1], logo_dark_url: LOGO_DARK_URL, logo_url: "" },
+    ];
+    const fetchMock = mockFetch({
+      response: new Response(JSON.stringify(groups), { status: 200 }),
+    });
+
+    try {
+      // Render one selected co-host with a dark logo and the group options.
+      const selected = [{ ...groups[0], group_id: "group-3", status: "approved" }];
+      const element = mountSelector(`selected-cohosts='${JSON.stringify(selected)}'`);
+      await element.updateComplete;
+      await loadGroups(element);
+
+      // Verify each light logo keeps its plate and gains an unplated lazy dark sibling.
+      const darkImages = [...element.querySelectorAll(`img[src="${LOGO_DARK_URL}"]`)];
+      expect(darkImages).to.have.length(2);
+      darkImages.forEach((darkImage) => {
+        const darkFrame = darkImage.parentElement;
+        const lightFrame = darkFrame.previousElementSibling;
+        expect(darkFrame.dataset.themeImage).to.equal("dark");
+        expect(darkFrame.classList.contains("plate")).to.equal(false);
+        expect(darkFrame.classList.contains("bg-plate")).to.equal(false);
+        expect(darkImage.getAttribute("alt")).to.equal("");
+        expect(darkImage.getAttribute("loading")).to.equal("lazy");
+        expect(lightFrame.dataset.themeImage).to.equal("light");
+        expect(lightFrame.classList.contains("plate")).to.equal(true);
+        expect(lightFrame.querySelector("img").getAttribute("src")).to.equal(LOGO_URL);
+      });
+
+      // Verify a dark logo without its light logo is ignored.
+      const placeholderOption = element.querySelector("#cohost-group-option-1");
+      expect(placeholderOption.querySelector("img")).to.equal(null);
+      expect(placeholderOption.querySelector("[data-theme-image]")).to.equal(null);
     } finally {
       fetchMock.restore();
     }
@@ -534,15 +578,21 @@ describe("event co-hosts selector", () => {
 
   it("returns preview co-hosts with pending and approved statuses", async () => {
     const selected = [
-      { group_id: "group-1", logo_url: LOGO_URL, name: "One", status: "approved" },
+      {
+        group_id: "group-1",
+        logo_dark_url: LOGO_DARK_URL,
+        logo_url: LOGO_URL,
+        name: "One",
+        status: "approved",
+      },
       { group_id: "group-2", logo_url: LOGO_URL, name: "Two", status: "pending" },
     ];
     const element = mountSelector(`selected-cohosts='${JSON.stringify(selected)}'`);
     await element.updateComplete;
 
     expect(element.getPreviewCohosts()).to.deep.equal([
-      { logo_url: LOGO_URL, name: "One", status: "approved" },
-      { logo_url: LOGO_URL, name: "Two", status: "pending" },
+      { logo_dark_url: LOGO_DARK_URL, logo_url: LOGO_URL, name: "One", status: "approved" },
+      { logo_dark_url: "", logo_url: LOGO_URL, name: "Two", status: "pending" },
     ]);
   });
 

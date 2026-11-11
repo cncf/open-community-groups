@@ -17,6 +17,8 @@ returns json as $$
         'slug', g.slug,
 
         -- Include optional group profile fields
+        'banner_dark_url', g.banner_dark_url,
+        'banner_mobile_dark_url', g.banner_mobile_dark_url,
         'banner_mobile_url', g.banner_mobile_url,
         'banner_url', g.banner_url,
         'city', g.city,
@@ -24,6 +26,11 @@ returns json as $$
         'country_name', g.country_name,
         'description_short', g.description_short,
         'latitude', st_y(g.location::geometry),
+        -- Pair the dark logo with the level that provides the light logo
+        'logo_dark_url', paired_dark_image_url(
+            g.logo_url, g.logo_dark_url,
+            c.logo_url, c.logo_dark_url
+        ),
         'logo_url', coalesce(g.logo_url, c.logo_url),
         'longitude', st_x(g.location::geometry),
         'og_image_url', g.og_image_url,

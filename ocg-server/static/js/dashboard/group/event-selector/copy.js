@@ -116,9 +116,13 @@ export const applyCopiedEventDetails = async (details) => {
   setTextValue("registration_starts_at", "");
   setCategoryValue(details);
   setSelectValue("kind_id", details.kind);
+  // Copy only the source event's own images, never the logo it inherits.
   setImageFieldValue("logo_url", details.custom_logo_url);
+  setImageFieldValue("logo_dark_url", details.custom_logo_dark_url);
   setImageFieldValue("banner_url", details.banner_url);
+  setImageFieldValue("banner_dark_url", details.banner_dark_url);
   setImageFieldValue("banner_mobile_url", details.banner_mobile_url);
+  setImageFieldValue("banner_mobile_dark_url", details.banner_mobile_dark_url);
   setTextValue("description_short", details.description_short);
   updateMarkdownContent(details.description);
   setEventReminderEnabled(details.event_reminder_enabled !== false);

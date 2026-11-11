@@ -58,6 +58,14 @@ pub(crate) struct CohostedEvent {
     /// Event end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
+    /// URL to the event logo shown in dark mode in place of `event_logo_url`,
+    /// taken from the same level (event, owner group or community) as
+    /// `event_logo_url`.
+    pub event_logo_dark_url: Option<String>,
+    /// URL to the owner group logo shown in dark mode in place of
+    /// `owner_group_logo_url`, taken from the same level (group or
+    /// community) as `owner_group_logo_url`.
+    pub owner_group_logo_dark_url: Option<String>,
     /// Admin-managed URL-friendly identifier for the owner group.
     pub owner_group_slug_pretty: Option<String>,
     /// When the co-host group or the organizer last responded.
@@ -206,6 +214,8 @@ mod tests {
             timezone: chrono_tz::UTC,
 
             ends_at: None,
+            event_logo_dark_url: None,
+            owner_group_logo_dark_url: None,
             owner_group_slug_pretty: None,
             responded_at: None,
             starts_at: None,

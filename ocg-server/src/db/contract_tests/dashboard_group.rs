@@ -58,6 +58,7 @@ use crate::{
             EventDeleteEligibility, EventFull, EventInvitationRequestStatus, EventKind,
         },
         group::GroupRole,
+        images::ThemedImage,
         payments::{EventPurchaseChargeModel, PaymentProvider},
         questionnaire::{QuestionnaireAnswerValue, QuestionnaireQuestionKind},
         utm::GroupUtmSettings,
@@ -94,6 +95,91 @@ async fn db_contracts_accept_event_invitation_request_deserializes() -> Result<(
         allocation.outcome,
         EventAdmissionAllocationOutcome::OfferCreated
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_add_event_stores_dark_images() -> Result<()> {
+    // Setup a rolled-back unit of work and an event with paired dark images
+    let uow = contract_unit_of_work().await?;
+    let banner_url = "https://example.com/added-event-banner.png";
+    let banner_dark_url = "https://example.com/added-event-banner-dark.png";
+    let banner_mobile_url = "https://example.com/added-event-banner-mobile.png";
+    let banner_mobile_dark_url = "https://example.com/added-event-banner-mobile-dark.png";
+    let logo_url = "https://example.com/added-event-logo.png";
+    let logo_dark_url = "https://example.com/added-event-logo-dark.png";
+    let event = EventInput {
+        banner_dark_url: Some(banner_dark_url.to_string()),
+        banner_mobile_dark_url: Some(banner_mobile_dark_url.to_string()),
+        banner_mobile_url: Some(banner_mobile_url.to_string()),
+        banner_url: Some(banner_url.to_string()),
+        logo_dark_url: Some(logo_dark_url.to_string()),
+        logo_url: Some(logo_url.to_string()),
+        ..contract_event_input("Contract Dark Images Event", 2)
+    };
+
+    // Add the event through the Rust contract
+    let event_id = uow
+        .add_event(
+            organizer_id(),
+            group_id(),
+            &event.to_db_payload()?,
+            &HashMap::new(),
+            None,
+        )
+        .await?;
+
+    // Check the dark images are read back with their light counterparts
+    let event_full = uow.get_event_full(community_id(), group_id(), event_id).await?;
+    assert_eq!(
+        event_full.banner(),
+        ThemedImage {
+            url: banner_url,
+            dark_url: Some(banner_dark_url),
+        }
+    );
+    assert_eq!(
+        event_full.banner_mobile(),
+        ThemedImage {
+            url: banner_mobile_url,
+            dark_url: Some(banner_mobile_dark_url),
+        }
+    );
+    assert_eq!(
+        event_full.custom_logo_dark_url.as_deref(),
+        Some(logo_dark_url)
+    );
+    assert_eq!(event_full.logo_dark_url.as_deref(), Some(logo_dark_url));
+
+    // Update the event without its dark images
+    let event = EventInput {
+        banner_dark_url: None,
+        banner_mobile_dark_url: None,
+        logo_dark_url: None,
+        ..event
+    };
+    uow.update_event(
+        organizer_id(),
+        group_id(),
+        event_id,
+        &event.to_db_payload()?,
+        &HashMap::new(),
+        None,
+    )
+    .await?;
+
+    // Check the omitted dark images are cleared and the group dark logo is not used
+    let event_full = uow.get_event_full(community_id(), group_id(), event_id).await?;
+    assert_eq!(event_full.banner_dark_url, None);
+    assert_eq!(event_full.banner_mobile_dark_url, None);
+    assert_eq!(event_full.custom_logo_dark_url, None);
+    assert_eq!(event_full.custom_logo_url.as_deref(), Some(logo_url));
+    assert_eq!(event_full.logo_dark_url, None);
+
+    // Roll back the created event
+    Box::new(uow).rollback().await?;
 
     Ok(())
 }
@@ -1527,6 +1613,10 @@ async fn db_contracts_list_cohost_group_options_deserializes() -> Result<()> {
         .expect("subgroup to be offered as a co-host");
     assert_eq!(subgroup.community_name, "contract-community");
     assert_eq!(subgroup.logo_url, "https://example.com/community-logo.png");
+    assert_eq!(
+        subgroup.logo_dark_url.as_deref(),
+        Some("https://example.com/community-logo-dark.png")
+    );
 
     // Check inactive communities offer no options
     let inactive_options = db
@@ -1641,6 +1731,7 @@ async fn db_contracts_list_event_cohosts_deserializes() -> Result<()> {
         pending.invited_at,
         DateTime::parse_from_rfc3339("2024-02-01T10:00:00Z")?
     );
+    assert_eq!(pending.logo_dark_url, None);
     assert_eq!(
         pending.logo_url,
         "https://example.com/cohost-pending-logo.png"
@@ -1758,6 +1849,10 @@ async fn db_contracts_list_group_check_in_events_deserializes() -> Result<()> {
     );
     assert_eq!(event.timezone.to_string(), "America/Los_Angeles");
     assert_eq!(
+        event.logo_dark_url.as_deref(),
+        Some("https://example.com/future-event-logo-dark.png")
+    );
+    assert_eq!(
         event.logo_url.as_deref(),
         Some("https://example.com/future-event-logo.png")
     );
@@ -1791,6 +1886,10 @@ async fn db_contracts_list_group_cohosted_events_deserializes() -> Result<()> {
     assert_eq!(event.event_id, cohost_canceled_event_id());
     assert_eq!(event.event_kind, EventKind::Virtual);
     assert_eq!(
+        event.event_logo_dark_url.as_deref(),
+        Some("https://example.com/community-logo-dark.png")
+    );
+    assert_eq!(
         event.event_logo_url,
         "https://example.com/community-logo.png"
     );
@@ -1798,6 +1897,10 @@ async fn db_contracts_list_group_cohosted_events_deserializes() -> Result<()> {
     assert_eq!(event.event_slug, "contract-cohost-canceled-event");
     assert_eq!(event.owner_community_display_name, "Contract Community");
     assert_eq!(event.owner_community_name, "contract-community");
+    assert_eq!(
+        event.owner_group_logo_dark_url.as_deref(),
+        Some("https://example.com/community-logo-dark.png")
+    );
     assert_eq!(
         event.owner_group_logo_url,
         "https://example.com/community-logo.png"

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,8 +28,11 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the group
-select fx_community(:'communityID');
+-- Community owning the group, providing the logos of events without their own
+select fx_community(:'communityID', jsonb_build_object(
+    'logo_dark_url', 'https://ex.test/user-check-in-community-logo-dark.png',
+    'logo_url', 'https://ex.test/user-check-in-community-logo.png'
+));
 
 -- User whose attendance is excluded from the listed user's events
 select fx_user(:'otherUserID');
@@ -63,6 +66,8 @@ select fx_event(:'endedEventID', :'groupID', :'eventCategoryID', jsonb_build_obj
 ));
 select fx_event(:'futureEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
+    'logo_dark_url', 'https://ex.test/user-check-in-future-logo-dark.png',
+    'logo_url', 'https://ex.test/user-check-in-future-logo.png',
     'published', true,
     'published_at', current_timestamp,
     'starts_at', current_timestamp + interval '1 day'
@@ -144,6 +149,25 @@ select results_eq(
     'Should list the user''s in-progress event before the upcoming event'
 );
 
+-- Should pair the dark logo with the level that provides the light logo
+select results_eq(
+    format(
+        $$
+            select value->>'event_id', value->>'logo_dark_url'
+            from json_array_elements(list_user_check_in_events(%L::uuid)) value
+        $$,
+        :'userID'
+    ),
+    format(
+        $$ values (%L::text, %L::text), (%L::text, %L::text) $$,
+        :'currentEventID',
+        'https://ex.test/user-check-in-community-logo-dark.png',
+        :'futureEventID',
+        'https://ex.test/user-check-in-future-logo-dark.png'
+    ),
+    'Should pair the dark logo with the level that provides the light logo'
+);
+
 -- Should retain checked-in events with their status
 select is(
     (
@@ -190,6 +214,7 @@ select results_eq(
             ('in_progress'),
             ('kind'),
             ('location'),
+            ('logo_dark_url'),
             ('logo_url'),
             ('name'),
             ('starts_at'),

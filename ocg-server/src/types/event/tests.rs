@@ -68,6 +68,7 @@ fn test_event_full_to_summary_maps_event_fields() {
         },
         has_related_events: true,
         kind: EventKind::Hybrid,
+        logo_dark_url: Some("https://example.com/logo-dark.png".to_string()),
         logo_url: "https://example.com/logo.png".to_string(),
         name: "Event Name".to_string(),
         payment_currency_code: Some("USD".to_string()),
@@ -107,6 +108,10 @@ fn test_event_full_to_summary_maps_event_fields() {
     assert!(summary.has_external_payment);
     assert!(summary.has_related_events);
     assert_eq!(summary.kind, EventKind::Hybrid);
+    assert_eq!(
+        summary.logo_dark_url.as_deref(),
+        Some("https://example.com/logo-dark.png")
+    );
     assert_eq!(summary.logo_url, "https://example.com/logo.png");
     assert_eq!(summary.name, "Event Name");
     assert_eq!(summary.payment_currency_code.as_deref(), Some("USD"));
@@ -181,6 +186,114 @@ fn test_event_full_agenda_labels_ignores_event_labels_not_assigned_to_sessions()
 
     // Check no agenda labels are returned
     assert_eq!(event.agenda_labels(), Vec::<&EventLabel>::new());
+}
+
+#[test]
+fn test_event_full_banner_pickers_pair_the_dark_variant_with_the_chosen_level() {
+    // Setup cases: (label, event desktop pair, event mobile pair, group desktop pair,
+    // group mobile pair, expected desktop, expected mobile)
+    let cases = [
+        (
+            "own pairs",
+            (Some("e"), Some("e-dark")),
+            (Some("em"), Some("em-dark")),
+            (Some("g"), Some("g-dark")),
+            (Some("gm"), Some("gm-dark")),
+            ("e", Some("e-dark")),
+            ("em", Some("em-dark")),
+        ),
+        (
+            "own light without dark while the group has a dark",
+            (Some("e"), None),
+            (Some("em"), None),
+            (Some("g"), Some("g-dark")),
+            (Some("gm"), Some("gm-dark")),
+            ("e", None),
+            ("em", None),
+        ),
+        (
+            "orphan own dark falls through to the group pair",
+            (None, Some("e-dark")),
+            (None, Some("em-dark")),
+            (Some("g"), Some("g-dark")),
+            (Some("gm"), Some("gm-dark")),
+            ("g", Some("g-dark")),
+            ("gm", Some("gm-dark")),
+        ),
+        (
+            "group light without dark while the community has a dark",
+            (None, None),
+            (None, None),
+            (Some("g"), None),
+            (Some("gm"), None),
+            ("g", None),
+            ("gm", None),
+        ),
+        (
+            "orphan event and group darks fall through to the community pair",
+            (None, Some("e-dark")),
+            (None, Some("em-dark")),
+            (None, Some("g-dark")),
+            (None, Some("gm-dark")),
+            ("c", Some("c-dark")),
+            ("cm", Some("cm-dark")),
+        ),
+        (
+            "desktop and mobile resolve independently",
+            (Some("e"), Some("e-dark")),
+            (None, None),
+            (None, None),
+            (Some("gm"), None),
+            ("e", Some("e-dark")),
+            ("gm", None),
+        ),
+    ];
+
+    for (label, event_desktop, event_mobile, group_desktop, group_mobile, desktop, mobile) in cases
+    {
+        // Build an event over a group and a community with the case banners
+        let event = EventFull {
+            community: CommunitySummary {
+                banner_mobile_url: "cm".to_string(),
+                banner_url: "c".to_string(),
+
+                banner_dark_url: Some("c-dark".to_string()),
+                banner_mobile_dark_url: Some("cm-dark".to_string()),
+                ..Default::default()
+            },
+            group: GroupSummary {
+                banner_dark_url: group_desktop.1.map(str::to_string),
+                banner_mobile_dark_url: group_mobile.1.map(str::to_string),
+                banner_mobile_url: group_mobile.0.map(str::to_string),
+                banner_url: group_desktop.0.map(str::to_string),
+                ..Default::default()
+            },
+
+            banner_dark_url: event_desktop.1.map(str::to_string),
+            banner_mobile_dark_url: event_mobile.1.map(str::to_string),
+            banner_mobile_url: event_mobile.0.map(str::to_string),
+            banner_url: event_desktop.0.map(str::to_string),
+            ..Default::default()
+        };
+
+        // Check each banner keeps the dark variant of its own level
+        assert_eq!(
+            event.banner(),
+            ThemedImage {
+                url: desktop.0,
+                dark_url: desktop.1,
+            },
+            "{label}"
+        );
+        assert_eq!(
+            event.banner_mobile(),
+            ThemedImage {
+                url: mobile.0,
+                dark_url: mobile.1,
+            },
+            "{label}"
+        );
+    }
 }
 
 #[test]

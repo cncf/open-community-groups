@@ -39,6 +39,7 @@ select plan(2);
 -- Baseline communities and categories
 select fx_community(:'communityID', jsonb_build_object(
     'display_name', 'Matrix Community',
+    'logo_dark_url', 'https://example.test/matrix-community-dark.png',
     'logo_url', 'https://example.test/matrix-community.png',
     'name', 'matrix-community'
 ));
@@ -56,8 +57,10 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 select fx_event(:'emptyEventID', :'groupID', :'eventCategoryID');
 select fx_event(:'eventID', :'groupID', :'eventCategoryID');
 
--- Visible co-host groups (no logo falls back to the community logo)
+-- Visible co-host groups (no logo falls back to the community logos, ignoring
+-- an orphan dark logo, and a logo without a dark variant has no dark logo)
 select fx_group(:'approvedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'logo_dark_url', 'https://example.test/alpha-orphan-dark.png',
     'logo_url', null,
     'name', 'Alpha Approved',
     'slug', 'alpha-approved'
@@ -74,9 +77,11 @@ select fx_group(:'zuluApprovedGroupID', :'communityID', :'groupCategoryID', json
     'slug_pretty', 'zulu'
 ));
 
--- Visible co-host group sharing a name, ordered after its twin by group id
+-- Visible co-host group sharing a name, ordered after its twin by group id,
+-- with its own logos
 select fx_group(:'zuluTwinGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'logo_url', null,
+    'logo_dark_url', 'https://example.test/zulu-twin-dark.png',
+    'logo_url', 'https://example.test/zulu-twin.png',
     'name', 'Zulu Approved',
     'slug', 'zulu-twin'
 ));
@@ -128,7 +133,8 @@ select is(
             "group_id": "%s",
             "logo_url": "https://example.test/matrix-community.png",
             "name": "Alpha Approved",
-            "slug": "alpha-approved"
+            "slug": "alpha-approved",
+            "logo_dark_url": "https://example.test/matrix-community-dark.png"
         },
         {
             "community_display_name": "Matrix Community",
@@ -136,7 +142,8 @@ select is(
             "group_id": "%s",
             "logo_url": "https://example.test/matrix-community.png",
             "name": "Beta Event Canceled",
-            "slug": "beta-event-canceled"
+            "slug": "beta-event-canceled",
+            "logo_dark_url": "https://example.test/matrix-community-dark.png"
         },
         {
             "community_display_name": "Matrix Community",
@@ -151,9 +158,10 @@ select is(
             "community_display_name": "Matrix Community",
             "community_name": "matrix-community",
             "group_id": "%s",
-            "logo_url": "https://example.test/matrix-community.png",
+            "logo_url": "https://example.test/zulu-twin.png",
             "name": "Zulu Approved",
-            "slug": "zulu-twin"
+            "slug": "zulu-twin",
+            "logo_dark_url": "https://example.test/zulu-twin-dark.png"
         }
     ]', :'approvedGroupID', :'eventCanceledApprovedGroupID', :'zuluApprovedGroupID', :'zuluTwinGroupID')::jsonb,
     'Should return only public co-hosts ordered by name then group id'

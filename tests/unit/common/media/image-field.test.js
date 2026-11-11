@@ -2,7 +2,11 @@ import { expect, waitUntil } from "@open-wc/testing";
 
 import "/static/js/common/media/image-field.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  mountLitComponentWithAttributes,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 /** Builds a decodable SVG whose 5000 × 1000 ratio matches no target, so the editor opens. */
@@ -803,6 +807,62 @@ describe("image-field", () => {
     expect(await readPlateClasses("logo")).to.deep.equal(plateClasses);
     expect(await readPlateClasses("avatar")).to.deep.equal([]);
     expect(await readPlateClasses("banner")).to.deep.equal([]);
+  });
+
+  it("previews dark mode logos on a dark stage without the plate", async () => {
+    // Render a dark mode logo field from its template attributes.
+    const element = await mountLitComponentWithAttributes("image-field", {
+      attributes: {
+        "dark-preview": "",
+        "image-kind": "logo",
+        name: "logo_dark_url",
+        value: "https://example.com/logo-dark.png",
+      },
+    });
+    const tile = element.querySelector("[data-image-upload-preview]");
+    const preview = element.querySelector('img[alt="Image preview"]');
+
+    // Verify the image shows directly on a fixed dark stage.
+    expect(element.darkPreview).to.equal(true);
+    for (const className of ["plate", "plate-ring", "dark:bg-plate"]) {
+      expect(preview.classList.contains(className)).to.equal(false);
+    }
+    for (const className of ["ink", "bg-stone-900", "border-stone-600"]) {
+      expect(tile.classList.contains(className)).to.equal(true);
+    }
+    for (const className of ["bg-stone-200/50", "border-stone-300"]) {
+      expect(tile.classList.contains(className)).to.equal(false);
+    }
+  });
+
+  it("previews empty dark mode banners on a dark stage with a light prompt", async () => {
+    // Render an empty dark mode banner field.
+    const element = await mountLitComponent("image-field", {
+      darkPreview: true,
+      imageKind: "banner",
+      name: "banner_dark_url",
+    });
+    const tile = element.querySelector("[data-image-upload-preview]");
+    const prompt = tile.querySelector("p");
+
+    // Verify the stage is dark and the prompt stays readable on it.
+    expect(tile.classList.contains("ink")).to.equal(true);
+    expect(tile.classList.contains("bg-stone-900")).to.equal(true);
+    expect(prompt.classList.contains("text-stone-300")).to.equal(true);
+    expect(prompt.classList.contains("text-stone-500")).to.equal(false);
+  });
+
+  it("keeps the light preview tile for fields without dark-preview", async () => {
+    // Render a light logo field.
+    const element = await mountLitComponent("image-field", { imageKind: "logo", name: "logo_url" });
+    const tile = element.querySelector("[data-image-upload-preview]");
+
+    // Verify the light stage and prompt color are unchanged.
+    expect(element.darkPreview).to.equal(false);
+    expect(tile.classList.contains("ink")).to.equal(false);
+    expect(tile.classList.contains("bg-stone-200/50")).to.equal(true);
+    expect(tile.classList.contains("border-stone-300")).to.equal(true);
+    expect(tile.querySelector("p").classList.contains("text-stone-500")).to.equal(true);
   });
 
   it("does not give direct-upload-only file inputs an empty name", async () => {

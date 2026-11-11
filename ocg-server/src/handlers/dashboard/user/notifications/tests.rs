@@ -31,6 +31,8 @@ async fn test_group_options_returns_json() {
                 community_display_name: "Community".to_string(),
                 group_id,
                 name: "Group".to_string(),
+
+                logo_dark_url: None,
                 logo_url: None,
             }])
         });
@@ -52,6 +54,7 @@ async fn test_group_options_returns_json() {
             "community_display_name": "Community",
             "group_id": group_id,
             "name": "Group",
+            "logo_dark_url": null,
             "logo_url": null,
         }])
     );
@@ -483,6 +486,8 @@ fn sample_muted_group(group_id: Uuid, name: &str, available: bool) -> MutedGroup
         group_id,
         muted_at: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
         name: name.to_string(),
+
+        logo_dark_url: None,
         logo_url: None,
     }
 }

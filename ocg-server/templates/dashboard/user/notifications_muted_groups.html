@@ -15,7 +15,7 @@
       <li class="flex items-center gap-4 px-4 py-3"
           data-muted-group-id="{{ group.group_id }}">
         {% if let Some(logo_url) = group.logo_url -%}
-          {{ ui::logo(logo_url = logo_url, classes = "size-10 shrink-0", size = 40) -}}
+          {{ ui::logo(logo_url = logo_url, classes = "size-10 shrink-0", size = 40, logo_dark_url = group.logo_dark_url.as_deref().unwrap_or("")) -}}
         {% else -%}
           <div class="plate flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[5px] border-plate bg-stone-50 outline outline-1 outline-plate-edge">
             <div class="svg-icon size-6 icon-broken-image bg-stone-400"

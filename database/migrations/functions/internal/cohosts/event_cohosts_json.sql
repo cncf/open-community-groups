@@ -11,6 +11,11 @@ returns jsonb as $$
                 'name', g.name,
                 'slug', g.slug,
 
+                -- Pair the dark logo with the level that provides the light logo
+                'logo_dark_url', paired_dark_image_url(
+                    g.logo_url, g.logo_dark_url,
+                    c.logo_url, c.logo_dark_url
+                ),
                 'slug_pretty', g.slug_pretty
             ))
             order by g.name asc, g.group_id asc
