@@ -434,7 +434,7 @@ test.describe("group dashboard event editor", () => {
         },
       );
       await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedName);
-      await expect(organizerGroupPage.locator("#pending-changes-alert")).toHaveClass(/hidden/);
+      await expect(organizerGroupPage.locator("#pending-changes-alert")).toBeHidden();
 
       // Publish from the editor reloads the same update page.
       await organizerGroupPage.locator("#publish-event-button").click();

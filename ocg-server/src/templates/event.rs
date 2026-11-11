@@ -1,6 +1,7 @@
 //! This module defines the templates for the event page.
 
 use askama::Template;
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
@@ -11,11 +12,17 @@ use crate::{
         helpers::{self, user_initials},
     },
     types::{
-        event::{EventFull, EventKind, EventLabel, EventSummary, SessionProposal},
+        event::{
+            EventFull, EventKind, EventLabel, EventSummary, LegacyUser, SessionProposal, Speaker,
+        },
         inbox::InboxContactContext,
         site::SiteSettings,
+        user::User,
     },
 };
+
+#[cfg(test)]
+mod tests;
 
 // Pages and sections templates.
 
@@ -78,6 +85,64 @@ impl Page {
             self.event.name.clone()
         }
     }
+
+    /// Returns the featured speakers listed publicly, skipping those without a name.
+    pub(crate) fn public_featured_speakers(&self) -> Vec<&User> {
+        self.event
+            .speakers
+            .iter()
+            .filter(|speaker| speaker.featured)
+            .map(|speaker| &speaker.user)
+            .filter(|user| helpers::has_public_name(user.name.as_deref()))
+            .collect()
+    }
+
+    /// Returns the legacy hosts followed by the hosts, skipping those without a name.
+    pub(crate) fn public_hosts(&self) -> Vec<EventPerson<'_>> {
+        let legacy_hosts = self
+            .event
+            .legacy_hosts
+            .iter()
+            .flatten()
+            .filter(|host| helpers::has_public_name(host.name.as_deref()))
+            .map(EventPerson::Legacy);
+        let hosts = self
+            .event
+            .hosts
+            .iter()
+            .filter(|host| helpers::has_public_name(host.name.as_deref()))
+            .map(EventPerson::User);
+        legacy_hosts.chain(hosts).collect()
+    }
+
+    /// Returns the organizers listed publicly, skipping those without a name.
+    pub(crate) fn public_organizers(&self) -> Vec<&User> {
+        self.event
+            .organizers
+            .iter()
+            .filter(|organizer| helpers::has_public_name(organizer.name.as_deref()))
+            .collect()
+    }
+
+    /// Returns the legacy speakers followed by the non-featured speakers, skipping
+    /// those without a name.
+    pub(crate) fn public_regular_speakers(&self) -> Vec<EventPerson<'_>> {
+        let legacy_speakers = self
+            .event
+            .legacy_speakers
+            .iter()
+            .flatten()
+            .filter(|speaker| helpers::has_public_name(speaker.name.as_deref()))
+            .map(EventPerson::Legacy);
+        let speakers = self
+            .event
+            .speakers
+            .iter()
+            .filter(|speaker| !speaker.featured)
+            .filter(|speaker| helpers::has_public_name(speaker.user.name.as_deref()))
+            .map(|speaker| EventPerson::User(&speaker.user));
+        legacy_speakers.chain(speakers).collect()
+    }
 }
 
 /// Call for speakers modal template.
@@ -110,166 +175,35 @@ pub(crate) struct ContactModal {
     pub sent_inbox_conversation_id: Option<Uuid>,
 }
 
-#[cfg(test)]
-mod tests {
-    use chrono::{DateTime, TimeZone, Utc};
-    use chrono_tz::{America::Los_Angeles, Tz};
-    use uuid::Uuid;
+// Types.
 
-    use crate::types::{
-        community::CommunitySummary,
-        group::GroupSummary,
-        payments::{EventTicketPriceWindow, EventTicketType, EventTicketTypeAvailability},
-    };
+/// Person listed in a public event people section.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(untagged)]
+pub(crate) enum EventPerson<'a> {
+    /// Imported person, whose bio is stored as HTML.
+    Legacy(&'a LegacyUser),
+    /// Platform user.
+    User(&'a User),
+}
 
-    use super::*;
-
-    #[test]
-    fn test_preview_title_uses_event_date_in_event_timezone() {
-        let page = sample_page(
-            Some(Utc.with_ymd_and_hms(2030, 3, 6, 7, 30, 0).unwrap()),
-            Los_Angeles,
-        );
-
-        assert_eq!(page.preview_title(), "Test Event - March 5");
+impl EventPerson<'_> {
+    /// Returns true when the bio must be rendered as trusted HTML.
+    pub(crate) fn bio_is_html(&self) -> bool {
+        matches!(self, Self::Legacy(_))
     }
+}
 
-    #[test]
-    fn test_preview_title_without_start_date_uses_event_name() {
-        let page = sample_page(None, chrono_tz::UTC);
+// Helpers.
 
-        assert_eq!(page.preview_title(), "Test Event");
-    }
-
-    #[test]
-    fn test_preview_description_uses_group_and_community_names() {
-        let page = sample_page(None, chrono_tz::UTC);
-
-        assert_eq!(
-            page.preview_description(),
-            "Test Group in Test Community community. Open Community Groups, where Open Source communities thrive."
-        );
-    }
-
-    #[test]
-    fn test_open_graph_image_url_prefers_group_image_over_community_image() {
-        // (case, group image, community image, expected)
-        let cases = [
-            (
-                "group image",
-                Some("/images/group.png"),
-                Some("/images/community.png"),
-                Some("https://example.test/images/og/group.png"),
-            ),
-            (
-                "community image fallback",
-                None,
-                Some("/images/community.png"),
-                Some("https://example.test/images/og/community.png"),
-            ),
-            ("no image", None, None, None),
-        ];
-
-        for (case, group_image, community_image, expected) in cases {
-            let mut page = sample_page(None, chrono_tz::UTC);
-            page.event.group.og_image_url = group_image.map(str::to_string);
-            page.event.community.og_image_url = community_image.map(str::to_string);
-
-            assert_eq!(page.open_graph_image_url().as_deref(), expected, "{case}");
-        }
-    }
-
-    #[test]
-    fn test_page_renders_calendar_year_in_iso_week_of_next_year() {
-        // December 30, 2030 belongs to the first ISO week of 2031
-        let page = sample_page(
-            Some(Utc.with_ymd_and_hms(2030, 12, 30, 18, 0, 0).unwrap()),
-            chrono_tz::UTC,
-        );
-
-        let body = page.render().unwrap();
-
-        assert!(body.contains("30, 2030"));
-        assert!(!body.contains("2031"));
-    }
-
-    #[test]
-    fn test_page_renders_host_for_paid_event_with_seller() {
-        let mut page = sample_page(None, chrono_tz::UTC);
-        page.event.seller_display_name = Some("Example Payee <Ltd>".to_string());
-        page.event.ticket_types = Some(vec![sample_ticket_type(1_500)]);
-
-        let body = page.render().unwrap();
-
-        assert!(body.contains("data-event-host"));
-        assert!(body.contains("This event is hosted by"));
-        assert!(body.contains("Example Payee &#60;Ltd&#62;"));
-    }
-
-    #[test]
-    fn test_page_hides_host_for_free_event() {
-        let mut page = sample_page(None, chrono_tz::UTC);
-        page.event.seller_display_name = Some("Example Payee".to_string());
-        page.event.ticket_types = Some(vec![sample_ticket_type(0)]);
-
-        let body = page.render().unwrap();
-
-        assert!(!body.contains("data-event-host"));
-        assert!(!body.contains("Example Payee"));
-    }
-
-    #[test]
-    fn test_page_hides_host_for_paid_event_without_seller() {
-        let mut page = sample_page(None, chrono_tz::UTC);
-        page.event.ticket_types = Some(vec![sample_ticket_type(1_500)]);
-
-        let body = page.render().unwrap();
-
-        assert!(!body.contains("data-event-host"));
-    }
-
-    // Helpers.
-
-    fn sample_ticket_type(amount_minor: i64) -> EventTicketType {
-        EventTicketType {
-            active: true,
-            availability: EventTicketTypeAvailability::Public,
-            event_ticket_type_id: Uuid::new_v4(),
-            order: 1,
-            title: "General admission".to_string(),
-
-            price_windows: vec![EventTicketPriceWindow {
-                amount_minor,
-                event_ticket_price_window_id: Uuid::new_v4(),
-
-                ends_at: None,
-                starts_at: None,
-            }],
-            ..Default::default()
-        }
-    }
-
-    fn sample_page(starts_at: Option<DateTime<Utc>>, timezone: Tz) -> Page {
-        Page {
-            base_url: "https://example.test".to_string(),
-            event: EventFull {
-                community: CommunitySummary {
-                    display_name: "Test Community".to_string(),
-                    ..Default::default()
-                },
-                group: GroupSummary {
-                    name: "Test Group".to_string(),
-                    ..Default::default()
-                },
-                name: "Test Event".to_string(),
-                starts_at,
-                timezone,
-                ..Default::default()
-            },
-            page_id: PageId::Event,
-            path: "/test-community/group/test-group/event/test-event".to_string(),
-            site_settings: SiteSettings::default(),
-            user: UserMenuState::default(),
-        }
-    }
+/// Returns the named session speakers, featured first, keeping input order within each group.
+pub(crate) fn public_session_speakers(speakers: &[Speaker]) -> Vec<&Speaker> {
+    // Keep only speakers with a public name
+    let mut named_speakers: Vec<&Speaker> = speakers
+        .iter()
+        .filter(|speaker| helpers::has_public_name(speaker.user.name.as_deref()))
+        .collect();
+    // List featured speakers first; the sort is stable, so each group keeps its input order
+    named_speakers.sort_by_key(|speaker| !speaker.featured);
+    named_speakers
 }

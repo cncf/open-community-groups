@@ -3,40 +3,14 @@ import { expect } from "@open-wc/testing";
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 const ITEM_WIDTH = 150;
 const ITEM_GAP = 10;
 const STEP = ITEM_WIDTH + ITEM_GAP;
 
 const originalAddEventListener = document.addEventListener;
-const originalMatchMedia = window.matchMedia;
 const originalRemoveEventListener = document.removeEventListener;
-
-/** Query the module keeps for its whole life, since it reads matchMedia only on load. */
-const phoneQuery = {
-  listeners: new Set(),
-  matches: false,
-  addEventListener(type, listener) {
-    if (type === "change") {
-      this.listeners.add(listener);
-    }
-  },
-  removeEventListener(type, listener) {
-    if (type === "change") {
-      this.listeners.delete(listener);
-    }
-  },
-};
-
-/**
- * Changes the phone query and notifies the module.
- * @param {boolean} matches Next query state.
- * @returns {void}
- */
-const setPhone = (matches) => {
-  phoneQuery.matches = matches;
-  phoneQuery.listeners.forEach((listener) => listener({ matches }));
-};
 
 /**
  * Renders a scroller and its position row.
@@ -93,11 +67,13 @@ const activeStates = (dots) => dots.map((dot) => dot.hasAttribute("data-active")
 describe("snap-dots", () => {
   const documentListeners = [];
   const removedDocumentListeners = [];
+  // The module reads matchMedia only on load, so one stub serves the whole file.
+  let media;
   let syncSnapDots;
 
   before(async () => {
     // Record the module's load-time wiring with the phone query false.
-    window.matchMedia = (text) => (text === PHONE_MEDIA_QUERY ? phoneQuery : { matches: false });
+    media = stubMatchMedia();
     document.addEventListener = function addEventListener(type, ...rest) {
       documentListeners.push(type);
       return originalAddEventListener.call(this, type, ...rest);
@@ -114,18 +90,18 @@ describe("snap-dots", () => {
   after(() => {
     document.addEventListener = originalAddEventListener;
     document.removeEventListener = originalRemoveEventListener;
-    window.matchMedia = originalMatchMedia;
+    media.restore();
   });
 
   afterEach(() => {
-    setPhone(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
     removeMountedElements("images-gallery");
     resetDom();
   });
 
   it("keeps one query listener and only the HTMX listeners off phones", () => {
     // The load-time wiring matches the section 8.3 allowance.
-    expect(phoneQuery.listeners.size).to.equal(1);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
     expect(documentListeners.filter((type) => type === "htmx:load")).to.have.length(1);
     expect(documentListeners.filter((type) => type === "htmx:historyRestore")).to.have.length(1);
     expect(documentListeners).to.not.include("scroll");
@@ -148,7 +124,7 @@ describe("snap-dots", () => {
     const { dots } = renderCarousel({ rowContent: "<span data-snap-counter></span>" });
 
     // The phone branch fills the row and marks the first item.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     expect(activeStates(dots())).to.deep.equal([true, false, false]);
     expect(document.querySelector("[data-snap-counter]").textContent).to.equal("1 / 3");
     expect(document.querySelector("[data-snap-dots]").lastElementChild.dataset.snapCounter).to.equal(
@@ -159,7 +135,7 @@ describe("snap-dots", () => {
   it("follows scrollLeft", async () => {
     // Render the carousel on a phone.
     const { dots, scroller } = renderCarousel({ rowContent: "<span data-snap-counter></span>" });
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     // The active dot and the counter follow the scroll position.
     await scrollTo(scroller, STEP);
@@ -176,7 +152,7 @@ describe("snap-dots", () => {
   it("ignores scrolls of the document and of other elements", () => {
     // Render the carousel on a phone.
     const { dots } = renderCarousel();
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     // Document has no closest(), and an unrelated element has no row.
     document.dispatchEvent(new Event("scroll"));
@@ -191,7 +167,7 @@ describe("snap-dots", () => {
       rowAttributes: 'data-snap-dots-max="3"',
       rowContent: "<span data-snap-counter></span>",
     });
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     // Only the counter remains.
     expect(dots()).to.have.length(0);
@@ -201,14 +177,14 @@ describe("snap-dots", () => {
   it("shows no dots for a single item", () => {
     // Render one item.
     const { dots } = renderCarousel({ items: 1 });
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     expect(dots()).to.have.length(0);
   });
 
   it("resyncs rows after an HTMX swap and a history restore", async () => {
     // Swapped-in markup is synced from htmx:load.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { dots, row, scroller } = renderCarousel();
     expect(dots()).to.have.length(0);
     scroller.dispatchEvent(new CustomEvent("htmx:load", { bubbles: true }));
@@ -233,12 +209,12 @@ describe("snap-dots", () => {
   it("stops following the scroller when the query turns false", async () => {
     // Render the carousel on a phone.
     const { dots, scroller } = renderCarousel();
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const scrollListeners = documentListeners.filter((type) => type === "scroll").length;
     const removedScrollListeners = removedDocumentListeners.filter((type) => type === "scroll").length;
 
     // Rotating past 768px removes the scroll listener.
-    setPhone(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
     expect(removedDocumentListeners.filter((type) => type === "scroll")).to.have.length(
       removedScrollListeners + 1,
     );
@@ -246,7 +222,7 @@ describe("snap-dots", () => {
     expect(activeStates(dots())).to.deep.equal([true, false, false]);
 
     // Rotating back listens again and catches up.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     expect(documentListeners.filter((type) => type === "scroll")).to.have.length(scrollListeners + 1);
     expect(activeStates(dots())).to.deep.equal([false, true, false]);
   });
@@ -256,7 +232,7 @@ describe("snap-dots", () => {
     const style = document.createElement("style");
     style.textContent = ".md\\:hidden { display: none; }";
     document.head.append(style);
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     // Render a gallery within the dots limit.
     const gallery = await mountLitComponent("images-gallery", {

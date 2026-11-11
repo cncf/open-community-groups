@@ -12,6 +12,9 @@ use crate::{
     },
 };
 
+#[cfg(test)]
+mod tests;
+
 // Pages and sections templates.
 
 /// Template for rendering the global site home page.

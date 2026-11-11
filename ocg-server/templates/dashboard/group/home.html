@@ -96,7 +96,7 @@
         {{ dashboard::menu_item(name = "Team", icon = "team", is_active = content.is_team() , href = "/dashboard/group?tab=team") -}}
         {% if can_manage_inbox -%}
           {# Inbox -#}
-          {{ dashboard::menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/group?tab=inbox", items_count = inbox_open_count) -}}
+          {{ dashboard::menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/group?tab=inbox", items_count = inbox_open_count, items_count_label = "open") -}}
           {# End inbox -#}
         {% endif -%}
         <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors">

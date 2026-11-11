@@ -34,6 +34,26 @@ use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_count_user_pending_invitations() -> Result<()> {
+    // Setup the contract database
+    let db = contract_tests_db()?;
+
+    // Check the pending team invitation and the claimable offer are counted,
+    // and the accepted team membership is not
+    let invitee_count = db
+        .count_user_pending_invitations(pending_invitations_invitee_id())
+        .await?;
+    assert_eq!(invitee_count, 2);
+
+    // Check a user with only an accepted team membership has none
+    let admin_count = db.count_user_pending_invitations(payment_lock_admin_id()).await?;
+    assert_eq!(admin_count, 0);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_count_user_unanswered_event_surveys_counts_open_unanswered() -> Result<()> {
     // Setup the contract database
     let db = contract_tests_db()?;
@@ -383,9 +403,11 @@ async fn db_contracts_list_user_community_team_invitations_deserializes() -> Res
 
     // Check community and role fields
     assert_eq!(invitations.len(), 1);
+    assert_eq!(invitations[0].community_display_name, "Contract Community");
     assert_eq!(invitations[0].community_id, community_id());
     assert_eq!(invitations[0].community_name, "contract-community");
     assert_eq!(invitations[0].role, CommunityRole::Viewer);
+    assert_eq!(invitations[0].role_display_name, "Viewer");
 
     Ok(())
 }
@@ -861,6 +883,7 @@ async fn db_contracts_list_user_group_team_invitations_deserializes() -> Result<
     assert_eq!(invitations[0].group_id, claim_group_id());
     assert_eq!(invitations[0].group_name, "Contract Meeting Claim Group");
     assert_eq!(invitations[0].role, GroupRole::Viewer);
+    assert_eq!(invitations[0].role_display_name, "Viewer");
 
     Ok(())
 }

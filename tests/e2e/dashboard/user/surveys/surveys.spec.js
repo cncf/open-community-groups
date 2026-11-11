@@ -12,7 +12,12 @@ import {
   TEST_EVENT_SURVEYS,
 } from "../../../data-graphs/surveys.js";
 import { TEST_USER_CREDENTIALS, TEST_USER_IDS } from "../../../seed.js";
-import { expectCurrentPaginationNavigation, navigateToPath, waitForActionResponse } from "../../../utils.js";
+import {
+  expectCurrentPaginationNavigation,
+  navigateToPath,
+  waitForActionResponse,
+  waitForActionResponses,
+} from "../../../utils.js";
 
 // Message shown when the survey an email links to isn't available.
 const UNAVAILABLE_SURVEY_WARNING = "This survey is closed or isn't available to you.";
@@ -336,7 +341,7 @@ test.describe("user dashboard event surveys", () => {
     // Load the Surveys tab and verify the menu badge counts the survey left to answer.
     await navigateToPath(pending2Page, "/dashboard/user?tab=surveys");
     const surveysMenuItem = pending2Page.locator('#dashboard-menu a[href="/dashboard/user?tab=surveys"]');
-    await expect(surveysMenuItem).toHaveText(/^\s*Surveys\s*1\s*$/);
+    await expect(surveysMenuItem).toHaveAccessibleName("Surveys 1 unanswered");
 
     // Verify open surveys come first, then the answered closed survey.
     const rows = pending2Page.locator("#dashboard-content tbody tr[data-user-event-survey]");
@@ -380,14 +385,20 @@ test.describe("user dashboard event surveys", () => {
       { method: "GET", urlIncludes: `/dashboard/user/surveys/${toAnswer.id}` },
     );
     await modal.getByLabel("Any feedback?").fill("More breaks.");
-    await waitForActionResponse(
+    await waitForActionResponses(
       pending2Page,
       () => modal.getByRole("button", { name: "Submit answers" }).click(),
-      { method: "PUT", status: 204, urlIncludes: `/dashboard/user/surveys/${toAnswer.id}/response` },
+      [
+        { method: "PUT", status: 204, urlIncludes: `/dashboard/user/surveys/${toAnswer.id}/response` },
+        { method: "GET", params: { tab: "surveys" }, pathname: "/dashboard/user", status: 200 },
+      ],
     );
-    await expect(pending2Page.locator(".swal2-popup")).toContainText("Survey answers saved.");
     await expect(pending2Page.locator(`[data-user-event-survey="${toAnswer.id}"]`)).toContainText("Answered");
-    await expect(surveysMenuItem).toHaveText(/^\s*Surveys\s*$/);
+    await expect(surveysMenuItem).toHaveAccessibleName("Surveys");
+
+    // Verify the saved answers alert stays open once the layout refresh has settled.
+    await expect(pending2Page.locator(".swal2-popup")).toBeVisible();
+    await expect(pending2Page.locator(".swal2-popup")).toContainText("Survey answers saved.");
 
     // Move between result pages one survey at a time.
     await navigateToPath(pending2Page, "/dashboard/user?tab=surveys&limit=1&offset=0");

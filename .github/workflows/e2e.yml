@@ -187,13 +187,18 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
+      - name: Get OS version
+        id: os
+        # Browser builds depend on the OS release, so it is part of the cache key.
+        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT"
+
       - name: Restore Playwright browsers cache
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           # Same key as the other chromium jobs; keep the key and install flags in sync with cache.yml.
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
+          key: ${{ runner.os }}-${{ steps.os.outputs.version }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -244,7 +249,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-  # The Firefox and WebKit smoke projects on fresh isolated stacks, archived for merge-reports.
+  # The Firefox, WebKit and WebKit mobile smoke projects on fresh isolated stacks, archived for merge-reports.
   smoke:
     name: Smoke (Firefox and WebKit)
     needs:
@@ -295,13 +300,18 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
+      - name: Get OS version
+        id: os
+        # Browser builds depend on the OS release, so it is part of the cache key.
+        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT"
+
       - name: Restore Playwright browsers cache
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           # Keep the key in sync with cache.yml, which warms this cache on main.
-          key: ${{ runner.os }}-playwright-firefox-webkit-${{ hashFiles('tests/e2e/package-lock.json') }}
+          key: ${{ runner.os }}-${{ steps.os.outputs.version }}-playwright-firefox-webkit-${{ hashFiles('tests/e2e/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -337,7 +347,7 @@ jobs:
           OCG_E2E_PARALLEL_WORKERS: "2"
           OCG_E2E_RUN_ARCHIVE: ${{ runner.temp }}/e2e-runs/smoke
           TMPDIR: ${{ runner.temp }}
-        run: just e2e-tests-parallel --project=firefox-smoke --project=webkit-smoke
+        run: just e2e-tests-parallel --project=firefox-smoke --project=webkit-smoke --project=webkit-mobile-smoke
 
       - name: Upload run archive
         if: ${{ !cancelled() }}
@@ -404,13 +414,18 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
+      - name: Get OS version
+        id: os
+        # Browser builds depend on the OS release, so it is part of the cache key.
+        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT"
+
       - name: Restore Playwright browsers cache
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           # Same key as the functional job and cache.yml.
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
+          key: ${{ runner.os }}-${{ steps.os.outputs.version }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'

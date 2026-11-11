@@ -1,18 +1,10 @@
-import { expect, test } from "../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../fixtures.js";
 
 import { expectAriaSnapshot, expectPageLayout } from "../../snapshots.js";
 import { navigateToPath } from "../../utils.js";
 
 test.describe("site stats page ARIA snapshots", () => {
-  test("matches the desktop totals", async ({ page }) => {
-    // Load the stats page and check its layout.
-    const main = await openStats(page);
-
-    // Capture the heading and totals; the totals are counts other tests change.
-    await expectAriaSnapshot(page, main, "stats-main");
-  });
-
-  test("matches the mobile totals @mobile", async ({ page }) => {
+  testAtBothWidths("matches the totals", async ({ page }) => {
     // Load the stats page and check its layout.
     const main = await openStats(page);
 

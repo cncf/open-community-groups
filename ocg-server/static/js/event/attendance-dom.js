@@ -53,12 +53,13 @@ export const getAttendanceContainers = (root) => {
 /**
  * Returns the primary controls for a container.
  * @param {HTMLElement} container - Attendance container element
- * @returns {{actionsMenu: HTMLElement|null, attendButton: HTMLElement|null, checkoutCancelButton: HTMLElement|null, checkoutResumeButton: HTMLElement|null, leaveButton: HTMLElement|null, loadingButton: HTMLElement|null, refundButton: HTMLElement|null, signinButton: HTMLElement|null}}
+ * @returns {{actionsMenu: HTMLElement|null, attendButton: HTMLElement|null, checkoutCancelButton: HTMLElement|null, checkoutResumeButton: HTMLElement|null, leaveButton: HTMLElement|null, loadingButton: HTMLElement|null, refundButton: HTMLElement|null, retryButton: HTMLElement|null, signinButton: HTMLElement|null}}
  */
 export const getPrimaryControls = (container) => ({
   actionsMenu: getAttendanceControl(container, "actions-menu"),
   loadingButton: getAttendanceControl(container, "loading-btn"),
   signinButton: getAttendanceControl(container, "signin-btn"),
+  retryButton: getAttendanceControl(container, "retry-btn"),
   attendButton: getAttendanceControl(container, "attend-btn"),
   checkoutCancelButton: getAttendanceControl(container, "checkout-cancel-btn"),
   checkoutResumeButton: getAttendanceControl(container, "checkout-resume-btn"),
@@ -176,7 +177,8 @@ const parseHydratedIsPast = (container) => {
  * @returns {object} Attendance metadata
  */
 export const getAttendanceMeta = (container) => {
-  const startsAtValue = container?.dataset?.starts ?? null;
+  // Mirror Event::is_past_at: the end time, or the start time when there is none.
+  const pastReferenceValue = container?.dataset?.ends || container?.dataset?.starts || null;
   const capacity = parseCapacity(container);
   const remainingCapacity = parseRemainingCapacity(container);
   const hasNoCapacity = capacity === 0;
@@ -208,11 +210,11 @@ export const getAttendanceMeta = (container) => {
       return hydratedIsPast;
     }
 
-    if (!startsAtValue) {
+    if (!pastReferenceValue) {
       return false;
     }
 
-    const parsedDate = new Date(startsAtValue);
+    const parsedDate = new Date(pastReferenceValue);
     if (Number.isNaN(parsedDate.valueOf())) {
       return false;
     }

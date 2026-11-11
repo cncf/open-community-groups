@@ -1,4 +1,4 @@
-import { expect, test } from "../../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../../fixtures.js";
 
 import { expectAriaSnapshot, expectPageLayout } from "../../../snapshots.js";
 import { openGroupDashboardView, setupAriaEvent, setupAriaGroup } from "../aria-helpers.js";
@@ -6,12 +6,8 @@ import { installFakeQrScanner } from "./helpers.js";
 
 // Check-In is the only group dashboard tab with a mobile layout, so its @mobile test uses it.
 test.describe("group dashboard check-in ARIA snapshots", () => {
-  test("matches the desktop views", async ({ organizerGroupPage, owned }) => {
-    await expectCheckInViews({ owned, page: organizerGroupPage, viewport: "desktop" });
-  });
-
-  test("matches the mobile views @mobile", async ({ organizerGroupPage, owned }) => {
-    await expectCheckInViews({ owned, page: organizerGroupPage, viewport: "mobile" });
+  testAtBothWidths("matches the views", async ({ isMobile, organizerGroupPage, owned }) => {
+    await expectCheckInViews({ owned, page: organizerGroupPage, viewport: isMobile ? "mobile" : "desktop" });
   });
 });
 

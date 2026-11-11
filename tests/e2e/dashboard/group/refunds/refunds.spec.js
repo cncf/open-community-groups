@@ -20,6 +20,7 @@ import {
 import {
   dismissAlert,
   expectCurrentPaginationNavigation,
+  expectDialogClosed,
   shortId,
   waitForActionResponse,
   waitForActionResponses,
@@ -537,8 +538,7 @@ test.describe("group dashboard refunds", () => {
       message: "Something went wrong rejecting this refund request.",
     });
     await rejectDialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(rejectDialog).toBeHidden();
-    await expect(actionsSummary).toBeFocused();
+    await expectDialogClosed(organizerGroupPage, rejectDialog, { opener: actionsSummary });
   });
 
   test("shows attendee refund cancellation availability across request states", async ({
@@ -884,8 +884,7 @@ test.describe("group dashboard refunds", () => {
       message: "Something went wrong completing this refund recovery.",
     });
     await recoveryDialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(recoveryDialog).toBeHidden();
-    await expect(actionsSummary).toBeFocused();
+    await expectDialogClosed(organizerGroupPage, recoveryDialog, { opener: actionsSummary });
   });
 
   test("retries an exhausted refund from the attention queue", async ({ organizerGroupPage }) => {

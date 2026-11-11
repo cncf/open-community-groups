@@ -205,7 +205,7 @@ test.describe("group dashboard event meetings", () => {
         hasText: sessionName,
       });
       await expect(sessionCard).toBeVisible();
-      await sessionCard.locator('button[title="Edit"]').click();
+      await sessionCard.getByRole("button", { name: "Edit", exact: true }).click();
 
       // Verify the reopened session keeps recording override values.
       await expect(sessionDialog).toBeVisible();

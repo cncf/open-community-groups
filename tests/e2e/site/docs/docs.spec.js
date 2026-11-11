@@ -1,7 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
 import { enableDesktopVersion } from "../../snapshots.js";
-import { navigateToPath, waitForHtmxSettle } from "../../utils.js";
+import { expectDialogClosed, navigateToPath, waitForHtmxSettle } from "../../utils.js";
 
 // Docsify's anchor scroll takes 500ms, and no event marks its end.
 const ANCHOR_SCROLL_END_MS = 700;
@@ -219,12 +219,13 @@ test.describe("site docs page", () => {
     // Verify the phone state stays off the toggle and the page, open or closed.
     await expect(toggle).not.toHaveAttribute("aria-expanded");
     await toggle.click();
+    // The body close class is Docsify's sidebar state contract.
     await expect(page.locator("body")).toHaveClass(/\bclose\b/);
     await expect(toggle).not.toHaveAttribute("aria-expanded");
     await expect(page.locator(".ocg-docs-root .content")).not.toHaveAttribute("inert");
   });
 
-  test("documentation remains navigable on mobile @mobile", async ({ page }) => {
+  test("documentation remains navigable on mobile @mobile @smoke", async ({ page }) => {
     // Load documentation using the mobile project viewport.
     await navigateToPath(page, "/docs");
 
@@ -356,15 +357,12 @@ test.describe("site docs page", () => {
     await sheet.getByText("Getting Started", { exact: true }).click();
     await expect(sheet).toBeVisible();
 
-    // Verify Escape, which drives CloseWatcher in Chromium, closes the sheet in place.
+    // Verify Escape, which drives CloseWatcher in Chromium, closes the sheet in place, returns
+    // focus to the toggle and lets the page scroll again.
     await page.keyboard.press("Escape");
-    await expect(sheet).toBeHidden();
+    await expectDialogClosed(page, sheet, { opener: contentsButton });
     await expect(page).toHaveURL(/\/docs#\/getting-started\/quickstart$/);
     expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
-
-    // Verify focus returns to the toggle and the page scrolls again.
-    await expect(contentsButton).toBeFocused();
-    await expect(page.locator("html")).not.toHaveCSS("overflow-y", "hidden");
   });
 
   test("Escape closes Contents where CloseWatcher is missing @mobile", async ({ page }) => {
@@ -379,11 +377,10 @@ test.describe("site docs page", () => {
 
     // Verify the key closes the sheet and focus returns to the toggle.
     await page.keyboard.press("Escape");
-    await expect(sheet).toBeHidden();
-    await expect(contentsButton).toBeFocused();
+    await expectDialogClosed(page, sheet, { opener: contentsButton });
   });
 
-  test("Back behind Contents closes it where CloseWatcher is missing @mobile", async ({ page }) => {
+  test("Back behind Contents closes it where CloseWatcher is missing @mobile @smoke", async ({ page }) => {
     // Take the API away, so Back goes to the page behind the sheet.
     await page.addInitScript(() => {
       delete window.CloseWatcher;
@@ -424,10 +421,9 @@ test.describe("site docs page", () => {
 
     // Verify a tap outside the sheet undoes both and returns focus to the toggle.
     await docsRoot.locator("[data-docs-bar]").click({ position: { x: 16, y: 22 } });
-    await expect(sheet).toBeHidden();
+    await expectDialogClosed(page, sheet, { opener: contentsButton });
     await expect(contentsButton).toHaveAttribute("aria-expanded", "false");
     await expect(content).not.toHaveAttribute("inert");
-    await expect(contentsButton).toBeFocused();
   });
 
   test("the toggle follows the phone query @mobile", async ({ page }) => {

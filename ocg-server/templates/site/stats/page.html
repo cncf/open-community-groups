@@ -2,21 +2,24 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/stats.html" as stats_macro -%}
 
+{% block head_title -%}
+  <title>Stats · {{ site_settings.title }}</title>
+{% endblock head_title -%}
+
 {% block content -%}
   <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16 phone:px-0 phone:pt-6 phone:pb-8">
     <div class="flex flex-col gap-y-10 phone:gap-y-5">
       <div class="phone:px-3">
-        <div class="text-2xl lg:text-3xl font-medium text-stone-900">Stats</div>
+        <h1 class="text-2xl lg:text-3xl font-medium text-stone-900">Stats</h1>
         <div class="mt-1 flex flex-wrap items-center gap-3">
           <p class="text-sm/6 text-stone-500 m-0">Global growth trends across all communities.</p>
         </div>
       </div>
 
       <div class="space-y-12 phone:space-y-6">
-        {{ stats_macro::stats_section(kind = "groups", title = "Groups", section = stats.groups) -}}
-        {{ stats_macro::stats_section(kind = "members", title = "Members", section = stats.members) -}}
-        {{ stats_macro::stats_section(kind = "events", title = "Events", section = stats.events) -}}
-        {{ stats_macro::stats_section(kind = "attendees", title = "Attendees", section = stats.attendees) -}}
+        {% for view in self.sections() -%}
+          {{ stats_macro::stats_section(view = view) -}}
+        {% endfor -%}
       </div>
     </div>
   </div>

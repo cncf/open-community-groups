@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::{
     db::mock::{MockDB, expect_site_settings},
     handlers::{badges::USER_PROFILE_BADGES_LIMIT, tests::*},
+    test_util::element_text_with,
     types::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
@@ -24,7 +25,7 @@ async fn test_page_account_tab_success() {
     let ids = DashboardIds::new();
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_timezones()
         .times(1)
         .returning(|| Ok(vec!["UTC".to_string(), "America/New_York".to_string()]));
@@ -49,7 +50,7 @@ async fn test_page_account_tab_success() {
 async fn test_page_badges_tab_success() {
     // Setup identifiers and database mock
     let ids = DashboardIds::new();
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_user_badges()
         .times(1)
         .withf(move |uid| *uid == ids.user_id)
@@ -72,7 +73,7 @@ async fn test_page_badges_tab_success() {
 async fn test_page_check_in_tab_success() {
     // Setup identifiers and database mock
     let ids = DashboardIds::new();
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_user_check_in_events()
         .times(1)
         .withf(move |uid| *uid == ids.user_id)
@@ -99,7 +100,7 @@ async fn test_page_events_tab_success() {
     };
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_user_events()
         .times(1)
         .withf(move |uid, filters| {
@@ -128,7 +129,7 @@ async fn test_page_groups_tab_success() {
     };
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_user_dashboard_groups()
         .times(1)
         .withf(move |uid, filters| {
@@ -155,7 +156,7 @@ async fn test_page_inbox_tab_opens_owned_conversation() {
     let conversation = sample_inbox_conversation(inbox_conversation_id);
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_get_user_inbox_conversation()
         .times(1)
         .withf(move |uid, cid| *uid == ids.user_id && *cid == inbox_conversation_id)
@@ -185,7 +186,7 @@ async fn test_page_inbox_tab_success() {
     let summary = sample_inbox_conversation_summary(Uuid::new_v4());
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_user_inbox_conversations()
         .times(1)
         .withf(move |uid, filters| {
@@ -224,7 +225,7 @@ async fn test_page_inbox_tab_warns_about_conversation_of_another_user() {
     let ids = DashboardIds::new();
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_get_user_inbox_conversation()
         .times(1)
         .returning(|_, _| Ok(None));
@@ -258,7 +259,7 @@ async fn test_page_invitations_tab_success() {
     let group_invitations = vec![sample_group_invitation(group_id)];
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_user_community_team_invitations()
         .times(1)
         .withf(move |uid| *uid == ids.user_id)
@@ -288,7 +289,7 @@ async fn test_page_logs_tab_success() {
     let output = sample_audit_logs_output();
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_user_audit_logs()
         .times(1)
         .withf(move |uid, filters| {
@@ -314,7 +315,7 @@ async fn test_page_notifications_tab_success() {
     let ids = DashboardIds::new();
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_get_user_notification_preferences()
         .times(1)
         .withf(move |uid| *uid == ids.user_id)
@@ -344,7 +345,7 @@ async fn test_page_purchases_tab_success() {
     };
 
     // Setup database expectations
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_user_purchase_documents()
         .times(1)
         .withf(move |uid, filters| {
@@ -366,6 +367,38 @@ async fn test_page_purchases_tab_success() {
 }
 
 #[tokio::test]
+async fn test_page_renders_pending_invitations_count_in_menu() {
+    // Setup identifiers
+    let ids = DashboardIds::new();
+
+    // Setup database mock
+    let mut db = home_db_with_counts(
+        &ids,
+        MenuCounts {
+            invitations_pending: 2,
+            ..MenuCounts::default()
+        },
+    );
+    db.expect_list_timezones()
+        .times(1)
+        .returning(|| Ok(vec!["UTC".to_string()]));
+
+    // Send the request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = get_request("/dashboard/user?tab=account", ids.session_id);
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the Invitations menu item counts the pending invitations from any
+    // tab (hx-get skips the header's phone menu link to the same tab)
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert_eq!(
+        element_text_with(body, r#"hx-get="/dashboard/user?tab=invitations""#),
+        "Invitations 2 pending"
+    );
+}
+
+#[tokio::test]
 async fn test_page_session_proposals_tab_success() {
     // Setup identifiers and data structures
     let ids = DashboardIds::new();
@@ -375,7 +408,7 @@ async fn test_page_session_proposals_tab_success() {
     };
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_user_pending_session_proposal_co_speaker_invitations()
         .times(1)
         .withf(move |uid| *uid == ids.user_id)
@@ -411,7 +444,7 @@ async fn test_page_submissions_tab_success() {
     };
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     db.expect_list_user_cfs_submissions()
         .times(1)
         .withf(move |uid, filters| {
@@ -436,7 +469,7 @@ async fn test_page_surveys_tab_ignores_malformed_survey_id() {
     let ids = DashboardIds::new();
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     expect_empty_surveys_tab(&mut db, &ids);
     db.expect_get_user_event_survey().never();
 
@@ -464,7 +497,7 @@ async fn test_page_surveys_tab_opens_requested_survey() {
     let survey = sample_user_event_survey(event_survey_id, Uuid::new_v4());
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     expect_empty_surveys_tab(&mut db, &ids);
     db.expect_get_user_event_survey()
         .times(1)
@@ -495,7 +528,13 @@ async fn test_page_surveys_tab_renders_unanswered_surveys_badge() {
     let ids = DashboardIds::new();
 
     // Setup database mock
-    let mut db = home_db(&ids, 3);
+    let mut db = home_db_with_counts(
+        &ids,
+        MenuCounts {
+            surveys_unanswered: 3,
+            ..MenuCounts::default()
+        },
+    );
     expect_empty_surveys_tab(&mut db, &ids);
     db.expect_get_user_event_survey().never();
 
@@ -508,8 +547,8 @@ async fn test_page_surveys_tab_renders_unanswered_surveys_badge() {
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
     assert_eq!(
-        menu_item_count(body, "/dashboard/user?tab=surveys"),
-        Some("3")
+        element_text_with(body, r#"href="/dashboard/user?tab=surveys""#),
+        "Surveys 3 unanswered"
     );
     assert!(body.contains(r#"hx-get="/dashboard/user/surveys""#));
 }
@@ -521,7 +560,7 @@ async fn test_page_surveys_tab_warns_about_unavailable_survey() {
     let ids = DashboardIds::new();
 
     // Setup database mock
-    let mut db = home_db(&ids, 0);
+    let mut db = home_db(&ids);
     expect_empty_surveys_tab(&mut db, &ids);
     db.expect_get_user_event_survey()
         .times(1)
@@ -541,7 +580,10 @@ async fn test_page_surveys_tab_warns_about_unavailable_survey() {
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("This survey is closed or isn&#39;t available to you."));
     assert!(!body.contains("data-open-on-load"));
-    assert_eq!(menu_item_count(body, "/dashboard/user?tab=surveys"), None);
+    assert_eq!(
+        element_text_with(body, r#"href="/dashboard/user?tab=surveys""#),
+        "Surveys"
+    );
 }
 
 #[tokio::test]
@@ -555,7 +597,7 @@ async fn test_page_without_known_tab_defaults_to_account() {
     for (case, uri) in cases {
         // Setup identifiers and database mock
         let ids = DashboardIds::new();
-        let mut db = home_db(&ids, 0);
+        let mut db = home_db(&ids);
         db.expect_list_timezones()
             .times(1)
             .returning(|| Ok(vec!["UTC".to_string(), "America/New_York".to_string()]));
@@ -590,29 +632,36 @@ fn expect_empty_surveys_tab(db: &mut MockDB, ids: &DashboardIds) {
         });
 }
 
+/// Builds a database mock with the reads every dashboard home page performs,
+/// with both menu counts at zero.
+fn home_db(ids: &DashboardIds) -> MockDB {
+    home_db_with_counts(ids, MenuCounts::default())
+}
+
 /// Builds a database mock with the reads every dashboard home page performs:
-/// the session, the site settings and the count of surveys left to answer.
-fn home_db(ids: &DashboardIds, unanswered_surveys_count: usize) -> MockDB {
+/// the session, the site settings and the menu counts.
+fn home_db_with_counts(ids: &DashboardIds, counts: MenuCounts) -> MockDB {
     let mut db = MockDB::new();
     let user_id = ids.user_id;
     expect_session(&mut db, ids);
     expect_site_settings(&mut db);
+    db.expect_count_user_pending_invitations()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(move |_| Ok(counts.invitations_pending));
     db.expect_count_user_unanswered_event_surveys()
         .times(1)
         .withf(move |uid| *uid == user_id)
-        .returning(move |_| Ok(unanswered_surveys_count));
+        .returning(move |_| Ok(counts.surveys_unanswered));
 
     db
 }
 
-/// Returns the count badge of the menu item linking to the given URL.
-fn menu_item_count<'a>(body: &'a str, href: &str) -> Option<&'a str> {
-    let start = body.find(&format!(r#"href="{href}""#))?;
-    let item = &body[start..start + body[start..].find("</a>")?];
-    let badge_start = item.find("rounded-full px-2 pt-px ms-3")?;
-    let badge = &item[badge_start..];
-    let text_start = badge.find('>')? + 1;
-    let text_end = badge.find("</div>")?;
-
-    Some(badge[text_start..text_end].trim())
+/// Counts shown in the user dashboard menu.
+#[derive(Clone, Copy, Default)]
+struct MenuCounts {
+    /// Pending invitations and offers shown on the Invitations item.
+    invitations_pending: usize,
+    /// Open surveys left to answer shown on the Surveys item.
+    surveys_unanswered: usize,
 }

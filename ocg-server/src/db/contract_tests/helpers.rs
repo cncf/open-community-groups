@@ -951,6 +951,12 @@ pub(super) const fn payment_lock_group_id() -> Uuid {
     uuid!("00000000-0000-0000-0000-00000000f404")
 }
 
+/// Returns the user with one pending team invitation, one claimable offer and
+/// one accepted team membership.
+pub(super) const fn pending_invitations_invitee_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000f505")
+}
+
 /// Returns the pre-registered attendee identifier used by the contract fixture.
 pub(super) const fn pre_registered_id() -> Uuid {
     uuid!("00000000-0000-0000-0000-00000000c044")

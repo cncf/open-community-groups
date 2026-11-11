@@ -2,4 +2,4 @@
   - navigation "Main navigation":
     - link "Go to homepage":
       - /url: /
-    - button "EO"
+    - button "User menu"

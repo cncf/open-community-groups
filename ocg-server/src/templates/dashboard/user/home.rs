@@ -27,6 +27,8 @@ use crate::{
 pub(crate) struct Page {
     /// Main content section for the page.
     pub content: Content,
+    /// Number of pending invitations and offers, shown in the menu.
+    pub invitations_pending_count: usize,
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
     /// Identifier for the current page.
@@ -144,15 +146,16 @@ impl Content {
     /// tab has actions that refresh it.
     fn refresh_path(&self) -> Option<&'static str> {
         match self {
-            // These tabs update in place and have no refresh route
+            // These tabs update in place or reload the whole layout, so they
+            // have no refresh route
             Content::Account(_)
             | Content::Badges(_)
             | Content::CheckIn(_)
+            | Content::Invitations(_)
             | Content::Notifications(_) => None,
             Content::Events(_) => Some("events"),
             Content::Groups(_) => Some("groups"),
             Content::Inbox(_) | Content::InboxConversation(_) => Some("inbox"),
-            Content::Invitations(_) => Some("invitations"),
             Content::Logs(_) => Some("logs"),
             Content::Purchases(_) => Some("purchases"),
             Content::SessionProposals(_) => Some("session-proposals"),
@@ -244,7 +247,7 @@ mod tests {
                     event_invitations: vec![],
                     group_invitations: vec![],
                 }),
-                Some("invitations"),
+                None,
             ),
             (
                 Content::Surveys(surveys::ListPage {

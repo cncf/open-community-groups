@@ -1,6 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 
 import { TEST_PAYMENT_EVENT_IDS, TEST_PAYMENT_EVENT_NAMES } from "../../../seed.js";
+import { expectDialogClosed } from "../../../utils.js";
 
 import { getVisibleStatusBadge, openAttendeesTab } from "./attendees-helpers.js";
 
@@ -54,8 +55,9 @@ test.describe("group dashboard attendees tab — refunds", () => {
     await expect(approvalNote).toBeFocused();
     await expect(approvalNote).not.toHaveAttribute("required", "");
     await approveDialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(approveDialog).toBeHidden();
-    await expect(rowActionsMenu.locator("summary")).toBeFocused();
+    await expectDialogClosed(organizerGroupPage, approveDialog, {
+      opener: rowActionsMenu.locator("summary"),
+    });
 
     // Verify rejection opens the attendee-visible reason modal.
     await rowActionsMenu.locator("summary").click();
@@ -66,8 +68,7 @@ test.describe("group dashboard attendees tab — refunds", () => {
     await expect(rejectDialog).toBeVisible();
     await expect(rejectDialog.getByLabel("Reason shown to attendee")).toBeFocused();
     await rejectDialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(rejectDialog).toBeHidden();
-    await expect(rowActionsMenu.locator("summary")).toBeFocused();
+    await expectDialogClosed(organizerGroupPage, rejectDialog, { opener: rowActionsMenu.locator("summary") });
   });
 
   test("viewer cannot manage attendee refunds", async ({ groupViewerPage }) => {

@@ -1,22 +1,22 @@
-import { readFileSync } from "node:fs";
-
 import { expect, test } from "../../fixtures.js";
 
-import { getSeedClock, queryE2eDatabase } from "../../database.js";
+import { cleanupTemporaryGroup, setupTemporaryGroup } from "../../data-graphs/groups.js";
+import { getSeedClock, queryE2eDatabase, sqlString, sqlUuid } from "../../database.js";
 import {
   TEST_CALENDAR_EVENTS,
   TEST_COHOSTED_EVENT,
+  TEST_COMMUNITY_IDS,
   TEST_COMMUNITY_NAME,
   TEST_COMMUNITY_NAME_2,
   TEST_COMMUNITY_TITLE,
   TEST_EVENT_NAMES,
-  TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
 } from "../../seed.js";
 import {
   buildE2eUrl,
   dismissAlert,
+  expectDialogClosed,
   getIntroSection,
   getPageOverflow,
   getSectionByHeading,
@@ -29,16 +29,20 @@ import {
 // Owner group credited on co-host group event cards.
 const COHOSTED_EVENT_OWNER_GROUP_NAME = TEST_GROUP_NAMES.epsilon;
 
-// Only the dashboard-only empty group has no upcoming events, and the desktop case toggles
-// it, so the phone case renders the template's own markup inside a seeded card.
-const GROUP_TEMPLATE = readFileSync(
-  new URL("../../../../ocg-server/templates/group/page.html", import.meta.url),
-  "utf8",
-);
-const NO_UPCOMING_EVENTS_MARKUP = GROUP_TEMPLATE.slice(
-  GROUP_TEMPLATE.indexOf('<div class="flex flex-col gap-3 relative">'),
-  GROUP_TEMPLATE.indexOf("{% endif -%}\n</div>\n</div>\n</div>\n{# End next event section"),
-);
+/**
+ * Returns the slug of the first upcoming event the group page lists, from get_group_upcoming_events.
+ * @param {string} communityId - Community that owns the group.
+ * @param {string} groupSlug - Group slug.
+ * @returns {string} Event slug, or an empty string when the group has no upcoming events.
+ */
+const getNextEventSlug = (communityId, groupSlug) =>
+  // The kinds list mirrors the group page handler (ocg-server/src/handlers/group.rs).
+  queryE2eDatabase(`
+    select get_group_upcoming_events(
+      ${sqlUuid(communityId)}, ${sqlString(groupSlug)},
+      array['in-person', 'virtual', 'hybrid']::text[], 1
+    ) -> 0 ->> 'slug'
+  `);
 
 test.describe("group page", () => {
   test.beforeEach(async ({ page }) => {
@@ -51,43 +55,13 @@ test.describe("group page", () => {
     await expect(page.getByRole("heading", { level: 1, name: TEST_GROUP_NAMES.alpha })).toBeVisible();
     await expect(page.locator("breadcrumb-nav")).toBeVisible();
     await expect(page.getByText("North America", { exact: true })).toBeVisible();
-    await expect(page.getByText(/\d+\s+members/, { exact: false })).toBeVisible();
+    await expect(page.getByText(/\d+\s+members?/, { exact: false })).toBeVisible();
 
     // Verify the next event link points to the first upcoming event.
-    const expectedNextEventSlug = queryE2eDatabase(`
-      with target_group as (
-        select group_id, community_id
-        from "group"
-        where group_id = '${TEST_GROUP_IDS.community1.alpha}'::uuid
-        and active = true
-        and deleted = false
-      ),
-      scoped_groups as (
-        select tg.group_id
-        from target_group tg
-
-        union all
-
-        select child.group_id
-        from "group" child
-        join target_group tg on child.parent_group_id = tg.group_id
-        where child.community_id = tg.community_id
-        and child.active = true
-        and child.deleted = false
-      )
-      select e.slug
-      from event e
-      join scoped_groups sg using (group_id)
-      where e.deleted = false
-      and e.published = true
-      and e.test_event = false
-      and e.event_kind_id = any(array['in-person', 'virtual', 'hybrid']::text[])
-      and e.starts_at is not null
-      and e.starts_at > now()
-      and e.canceled = false
-      order by e.starts_at asc, e.event_id asc
-      limit 1
-    `);
+    const expectedNextEventSlug = getNextEventSlug(
+      TEST_COMMUNITY_IDS.community1,
+      TEST_GROUP_SLUGS.community1.alpha,
+    );
     expect(expectedNextEventSlug).not.toBe("");
     await expect(page.getByText("Next event", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "See details" })).toHaveAttribute(
@@ -112,62 +86,46 @@ test.describe("group page", () => {
     await expect(page.getByText("Past Event For Filtering", { exact: true })).toBeVisible();
   });
 
-  test("empty group page omits optional collection sections", async ({ adminCommunityPage, page }) => {
-    // Activate the dashboard-only empty group for the public-page assertion.
-    const groupId = TEST_GROUP_IDS.community1.empty;
-    const activatePath = `/dashboard/community/groups/${groupId}/activate`;
-    const deactivatePath = `/dashboard/community/groups/${groupId}/deactivate`;
-    const activateResponse = await adminCommunityPage.request.put(buildE2eUrl(activatePath));
-    expect(activateResponse.ok()).toBeTruthy();
+  test("empty group page omits optional collection sections", async ({ owned, page }) => {
+    // Load a temporary public group without events, members, or sponsors.
+    const { groupName, slug } = owned.track(setupTemporaryGroup(), ({ groupId }) =>
+      cleanupTemporaryGroup(groupId),
+    );
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, slug);
 
-    try {
-      // Load the temporary public group without events, members, or sponsors.
-      await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.empty);
+    // Verify the summary fallback and zero member copy remain explicit.
+    await expect(page.getByRole("heading", { level: 1, name: groupName })).toBeVisible();
+    await expect(page.getByText("No upcoming events scheduled", { exact: true })).toBeVisible();
+    await expect(page.getByText("0 members", { exact: true })).toBeVisible();
 
-      // Verify the summary fallback and zero member copy remain explicit.
-      await expect(
-        page.getByRole("heading", {
-          level: 1,
-          name: TEST_GROUP_NAMES.empty,
-        }),
-      ).toBeVisible();
-      await expect(page.getByText("No upcoming events scheduled", { exact: true })).toBeVisible();
-      await expect(page.getByText("0 members", { exact: true })).toBeVisible();
-
-      // Verify absent collections do not render empty public sections.
-      await expect(page.getByText("Upcoming Events", { exact: true })).toHaveCount(0);
-      await expect(page.getByText("Past Events", { exact: true })).toHaveCount(0);
-      await expect(page.getByText("Sponsors", { exact: true })).toHaveCount(0);
-    } finally {
-      // Restore the empty group to dashboard-only visibility.
-      const deactivateResponse = await adminCommunityPage.request.put(buildE2eUrl(deactivatePath));
-      expect(deactivateResponse.ok()).toBeTruthy();
-    }
+    // Verify absent collections do not render empty public sections.
+    await expect(page.getByText("Upcoming Events", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Past Events", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Sponsors", { exact: true })).toHaveCount(0);
   });
 
-  test("social links swap between mobile and desktop variants at the md breakpoint", async ({ page }) => {
+  test("social links render once at each width", async ({ page }) => {
     // Load the gamma group that carries seeded social links.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
 
-    // Find the desktop and mobile social link variants.
-    const desktopWebsiteLink = page.locator('div.hidden.md\\:flex a[title="Website"]');
-    const mobileWebsiteLink = page.locator('div.md\\:hidden a[title="Website"]');
+    // Find the Website link; role queries skip the copy hidden at the current width.
+    const websiteLink = page.getByRole("link", { name: "Website", exact: true });
 
-    // Verify only the desktop variant shows from the md breakpoint up.
-    await expect(desktopWebsiteLink).toBeVisible();
-    await expect(desktopWebsiteLink).toHaveAttribute("href", "https://example.com/e2e-observability-guild");
-    await expect(page.locator('div.hidden.md\\:flex a[title="Twitter"]')).toBeVisible();
-    await expect(mobileWebsiteLink).toBeHidden();
+    // Verify one copy of each link shows from the md breakpoint up.
+    await expect(websiteLink).toHaveCount(1);
+    await expect(websiteLink).toBeVisible();
+    await expect(websiteLink).toHaveAttribute("href", "https://example.com/e2e-observability-guild");
+    await expect(page.getByRole("link", { name: "Twitter", exact: true })).toBeVisible();
 
-    // Verify only the mobile variant shows below the md breakpoint.
+    // Verify one copy still shows below the md breakpoint.
     await page.setViewportSize({ width: 767, height: 900 });
-    await expect(mobileWebsiteLink).toBeVisible();
-    await expect(desktopWebsiteLink).toBeHidden();
+    await expect(websiteLink).toHaveCount(1);
+    await expect(websiteLink).toBeVisible();
   });
 
   test("group logo is shown only from the md breakpoint up", async ({ page }) => {
     // Target the header logo container that hides on mobile viewports.
-    const logoContainer = page.locator("div.md\\:row-span-2");
+    const logoContainer = page.locator("[data-group-logo]");
     await expect(logoContainer).toBeVisible();
 
     // Verify the logo container disappears below the md breakpoint.
@@ -229,7 +187,7 @@ test.describe("group page", () => {
     await expect(
       page.getByText("Primary meetup used for end-to-end dashboard and site coverage.", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByText(/\d+ members/)).toBeVisible();
+    await expect(page.getByText(/\d+ members?/)).toBeVisible();
     // The group was created when the seed loaded, so its month follows the seed clock.
     const seedMonth = new Intl.DateTimeFormat("en-US", {
       month: "long",
@@ -273,6 +231,7 @@ test.describe("group page", () => {
       `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}`,
     );
     await expect(shareDialog).toBeVisible();
+    await expect(shareDialog.getByRole("button", { name: "Close modal" })).toBeFocused();
     await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
     for (const destination of ["Email", "X", "Facebook", "WhatsApp", "Reddit", "LinkedIn", "Bluesky"]) {
       // Verify the current platform receives the same public group URL.
@@ -282,10 +241,10 @@ test.describe("group page", () => {
       );
     }
 
-    // Close with Escape and verify the global scroll lock is released.
+    // Close with Escape. The menu-item trigger hides with the closed menu, so focus returns to
+    // the menu summary.
     await page.keyboard.press("Escape");
-    await expect(shareDialog).toHaveCount(0);
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expectDialogClosed(page, shareDialog, { opener: actionsButton });
 
     // Replace clipboard writes locally so copy behavior stays deterministic.
     await page.evaluate(() => {
@@ -309,11 +268,13 @@ test.describe("group page", () => {
       })
       .click();
 
-    // Verify copy feedback, the copied value, and modal cleanup.
+    // Verify copy feedback, the copied value, and modal cleanup. The dialog closes before the
+    // alert opens, so dismissing the alert hands focus back to the menu summary.
     await expect(page.getByText("Link copied to clipboard!", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => window.__copiedShareUrl)).toBe(expectedGroupUrl);
-    await expect(page.getByRole("dialog", { name: "Share" })).toHaveCount(0);
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expect(shareDialog).toBeHidden();
+    await dismissAlert(page, { message: "Link copied to clipboard!" });
+    await expectDialogClosed(page, shareDialog, { opener: actionsButton });
   });
 
   test("failed share copy keeps the dialog open for retry", async ({ page }) => {
@@ -330,7 +291,8 @@ test.describe("group page", () => {
     });
 
     // Open the group share dialog and attempt to copy its link.
-    await page.locator("details[data-group-actions-menu] summary").click();
+    const actionsButton = page.locator("details[data-group-actions-menu] summary");
+    await actionsButton.click();
     await page.locator("share-modal").getByRole("button", { name: "Share" }).click();
     const shareDialog = page.getByRole("dialog", { name: "Share" });
     await shareDialog.getByRole("button", { name: "Copy link" }).click();
@@ -341,17 +303,16 @@ test.describe("group page", () => {
     await expect(shareDialog.getByRole("button", { name: "Copy link" })).toBeEnabled();
     await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
 
-    // Close the dialog and verify its scroll lock is released.
+    // Close the dialog and verify focus returns to the menu summary that hid the trigger.
     await dismissAlert(page, { message: "Failed to copy link. Please try again." });
     await shareDialog.getByRole("button", { name: "Close modal" }).click();
-    await expect(shareDialog).toHaveCount(0);
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expectDialogClosed(page, shareDialog, { opener: actionsButton });
   });
 
   test("organizer profile modal closes with Escape and restores focus", async ({ page }) => {
     // Find the organizer profile trigger.
     const organizerButton = page.getByRole("button", {
-      name: "View E2E Organizer One's profile",
+      name: /^View profile:\s*E2E Organizer One\b/,
     });
 
     // Open the profile with the keyboard.
@@ -369,8 +330,7 @@ test.describe("group page", () => {
 
     // Close the dialog and verify focus returns to its trigger.
     await page.keyboard.press("Escape");
-    await expect(profileDialog).toBeHidden();
-    await expect(organizerButton).toBeFocused();
+    await expectDialogClosed(page, profileDialog, { opener: organizerButton });
   });
 
   test("renders seeded parent and subgroup links", async ({ page }) => {
@@ -402,9 +362,7 @@ test.describe("group page - co-hosted events", () => {
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
 
     // Verify the next event links to the owner community event page with co-host credit.
-    const nextEventSection = page
-      .getByText("Next event", { exact: true })
-      .locator("xpath=ancestor::div[contains(@class, 'rounded-lg')][1]");
+    const nextEventSection = page.locator('[data-group-summary-card="next-event"]');
     await expect(nextEventSection.getByRole("link", { name: "See details" })).toHaveAttribute(
       "href",
       ownerEventPath,
@@ -430,13 +388,13 @@ test.describe("group page - responsive links", () => {
       `&community[0]=${TEST_COMMUNITY_NAME}`;
 
     // Verify the desktop upcoming link keeps group and community filters.
-    await expect(getSectionLink(page, "Upcoming Events", "See all events", "desktop")).toHaveAttribute(
+    await expect(getSectionLink(page, "Upcoming Events", "See all events")).toHaveAttribute(
       "href",
       expectedUpcomingHref,
     );
 
     // Verify the desktop past link keeps filters and historical date range.
-    await expect(getSectionLink(page, "Past Events", "See all events", "desktop")).toHaveAttribute(
+    await expect(getSectionLink(page, "Past Events", "See all events")).toHaveAttribute(
       "href",
       new RegExp(
         String.raw`^/explore\?entity=events&group\[0\]=${TEST_GROUP_SLUGS.community1.alpha}` +
@@ -452,8 +410,8 @@ test.describe("group page - responsive links", () => {
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
 
     // Verify each heading carries a pill that keeps the group filters.
-    const upcomingLink = getSectionLink(page, "Upcoming Events", "See all upcoming events", "mobile");
-    const pastLink = getSectionLink(page, "Past Events", "See all past events", "mobile");
+    const upcomingLink = getSectionLink(page, "Upcoming Events", "See all upcoming events");
+    const pastLink = getSectionLink(page, "Past Events", "See all past events");
     await expect(upcomingLink).toHaveText("See all");
     await expect(upcomingLink).toHaveAttribute(
       "href",
@@ -466,7 +424,7 @@ test.describe("group page - responsive links", () => {
 
     // Verify the bottom links give way to the pills.
     await expect(
-      getSectionByHeading(page, "Upcoming Events").locator("div.md\\:hidden").getByRole("link"),
+      getSectionByHeading(page, "Upcoming Events").getByRole("link", { name: "See all events", exact: true }),
     ).toHaveCount(0);
 
     // Verify the past pill reaches the past list.
@@ -477,15 +435,12 @@ test.describe("group page - responsive links", () => {
 
 test.describe("group page - phone layout", () => {
   /**
-   * Finds the card that holds a Next event or Location eyebrow.
+   * Finds the Next event or Location summary card.
    * @param {import("@playwright/test").Page} page - Page under test.
-   * @param {string} eyebrow - Exact eyebrow text.
+   * @param {"location" | "next-event"} kind - Summary card kind.
    * @returns {import("@playwright/test").Locator} Card element.
    */
-  const getSummaryCard = (page, eyebrow) =>
-    page
-      .getByText(eyebrow, { exact: true })
-      .locator("xpath=ancestor::div[contains(@class, 'rounded-lg')][1]");
+  const getSummaryCard = (page, kind) => page.locator(`[data-group-summary-card="${kind}"]`);
 
   test("summary keeps the logo and title above a filled Join and the Share pill @mobile", async ({
     page,
@@ -497,7 +452,7 @@ test.describe("group page - phone layout", () => {
     const share = summary.getByRole("button", { name: "Share" });
 
     // Verify desktop's logo and title stay, and the three-dots menu goes.
-    await expect(summary.locator("div.md\\:row-span-2")).toBeVisible();
+    await expect(summary.locator("[data-group-logo]")).toBeVisible();
     await expect(summary.getByRole("heading", { level: 1, name: TEST_GROUP_NAMES.alpha })).toBeVisible();
     await expect(summary.locator("details[data-group-actions-menu]")).toBeHidden();
 
@@ -523,7 +478,7 @@ test.describe("group page - phone layout", () => {
     // Load the group that carries seeded social links.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
     const summary = getIntroSection(page);
-    const website = summary.locator('div.md\\:hidden a[title="Website"]');
+    const website = summary.getByRole("link", { name: "Website", exact: true });
     await expect(website).toBeVisible();
 
     // Verify the tap target and icon sizes.
@@ -540,7 +495,7 @@ test.describe("group page - phone layout", () => {
   test("social links sit in one swipeable row on phones @mobile", async ({ page }) => {
     // Load the group with two social links.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
-    const links = getIntroSection(page).locator("div.md\\:hidden a");
+    const links = getIntroSection(page).getByRole("link", { name: /^(Website|Twitter)$/u });
     await expect(links).toHaveCount(2);
 
     for (const width of [568, 639, 667, 700]) {
@@ -560,8 +515,8 @@ test.describe("group page - phone layout", () => {
   test("next event and location read as matching cards @mobile", async ({ page }) => {
     // Load the group that has a location and an upcoming event.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.gamma);
-    const nextEventCard = getSummaryCard(page, "Next event");
-    const locationCard = getSummaryCard(page, "Location");
+    const nextEventCard = getSummaryCard(page, "next-event");
+    const locationCard = getSummaryCard(page, "location");
     await expect(nextEventCard).toBeVisible();
     await expect(locationCard).toBeVisible();
 
@@ -578,7 +533,7 @@ test.describe("group page - phone layout", () => {
     }
 
     // Verify the map panel keeps its fixed preview height.
-    expect((await locationCard.locator("div.border-dashed").boundingBox()).height).toBe(150);
+    expect((await locationCard.locator("[data-card-panel]").boundingBox()).height).toBe(150);
 
     // Verify See details reads as the small outlined pill.
     const seeDetails = nextEventCard.getByRole("link", { name: "See details" });
@@ -590,19 +545,17 @@ test.describe("group page - phone layout", () => {
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
 
     // Verify Next event stays and the empty Location card goes.
-    await expect(getSummaryCard(page, "Next event")).toBeVisible();
+    await expect(getSummaryCard(page, "next-event")).toBeVisible();
     await expect(page.getByText("Location", { exact: true })).toBeHidden();
     await expect(page.getByText("Location not provided", { exact: true })).toBeHidden();
   });
 
-  test("no upcoming events keeps the card with one plain message @mobile", async ({ page }) => {
-    // Render the empty state in a seeded Next event card.
-    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
-    const nextEventCard = getSummaryCard(page, "Next event");
-    const panel = nextEventCard.locator("div.border-dashed");
-    await panel.evaluate((element, markup) => {
-      element.innerHTML = markup;
-    }, NO_UPCOMING_EVENTS_MARKUP);
+  test("no upcoming events keeps the card with one plain message @mobile", async ({ owned, page }) => {
+    // Load a temporary group that has no upcoming events.
+    const { slug } = owned.track(setupTemporaryGroup(), ({ groupId }) => cleanupTemporaryGroup(groupId));
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, slug);
+    const nextEventCard = getSummaryCard(page, "next-event");
+    const panel = nextEventCard.locator("[data-card-panel]");
 
     // Verify the message flows in the panel at the phone size.
     const message = panel.getByText("No upcoming events scheduled", { exact: true });
@@ -611,30 +564,30 @@ test.describe("group page - phone layout", () => {
     await expect(message.locator("..")).toHaveCSS("position", "static");
 
     // Verify the skeleton bars go and the panel shrinks to its message.
-    await expect(panel.locator(".bg-stone-100")).toHaveCount(3);
-    await expect(panel.locator(".bg-stone-100:visible")).toHaveCount(0);
+    const skeletonBars = panel.locator("[data-skeleton-bar]");
+    await expect(skeletonBars).toHaveCount(3);
+    await expect(skeletonBars.filter({ visible: true })).toHaveCount(0);
     expect((await panel.boundingBox()).height).toBeLessThan(108);
   });
 
   test("gallery tile opens the lightbox and a swipe changes the image @mobile", async ({ owned, page }) => {
-    // Give a group two photos, which no seeded group has.
-    const groupId = TEST_GROUP_IDS.community1.alpha;
-    queryE2eDatabase(`
-      update "group"
-      set photos_urls = array['/static/images/e2e/event-banner.svg', '/static/images/e2e/event-logo.svg']
-      where group_id = '${groupId}';
-    `);
-    owned.defer(() =>
-      queryE2eDatabase(`update "group" set photos_urls = null where group_id = '${groupId}';`),
+    // Load a temporary group with two photos, which no seeded group has.
+    const { groupName, slug } = owned.track(
+      setupTemporaryGroup({
+        photosUrls: ["/static/images/e2e/event-banner.svg", "/static/images/e2e/event-logo.svg"],
+      }),
+      ({ groupId }) => cleanupTemporaryGroup(groupId),
     );
-    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, slug);
 
     // Open the lightbox from the second tile.
     const gallery = page.locator("images-gallery");
     const lightbox = gallery.locator(".modal");
-    const activeSlideImage = lightbox.locator(".z-30.translate-x-0 img");
-    const imageName = `Group ${TEST_GROUP_NAMES.alpha} image`;
+    // Inactive slides are hidden, so the only accessible image is the current one.
+    const activeSlideImage = lightbox.getByRole("img");
+    const imageName = `Group ${groupName} image`;
     await gallery.getByRole("button", { name: `Open ${imageName} 2` }).tap();
+    // opacity-0 is the lightbox's only closed state, and Playwright counts opacity-0 as visible.
     await expect(lightbox).not.toHaveClass(/opacity-0/);
     await expect(activeSlideImage).toHaveAttribute("alt", `${imageName} 2`);
 
@@ -681,11 +634,11 @@ test.describe("group page - phone layout", () => {
   test("upcoming list stops at three cards @mobile", async ({ page }) => {
     // Load the group with more than three upcoming events.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
-    const upcomingGrid = getSectionByHeading(page, "Upcoming Events").locator(":scope > div.grid");
+    const upcomingCards = getSectionByHeading(page, "Upcoming Events").locator('a[href*="/event/"]');
 
     // Verify the rest stay behind See all.
-    expect(await upcomingGrid.locator(":scope > *").count()).toBeGreaterThan(3);
-    await expect(upcomingGrid.locator(":scope > *:visible")).toHaveCount(3);
+    expect(await upcomingCards.count()).toBeGreaterThan(3);
+    await expect(upcomingCards.filter({ visible: true })).toHaveCount(3);
   });
 
   test("about text shows read more only while clipped @mobile", async ({ page }) => {
@@ -720,8 +673,9 @@ test.describe("group page - phone layout", () => {
     const summary = getIntroSection(page);
     const share = summary.getByRole("button", { name: "Share" });
 
-    // Give the legend a long region, which no seeded group has.
-    await summary.locator("span.tracking-wide").evaluate((legend) => {
+    // Give the legend a long region, which no seeded group has. Gamma has no region, so its legend
+    // shows the category.
+    await summary.getByText("E2E Category One", { exact: true }).evaluate((legend) => {
       legend.textContent = "Asia Pacific, Middle East and North Africa Regional Chapters";
     });
 
@@ -814,8 +768,7 @@ test.describe("group page - share and profile sheets", () => {
 
     // Verify cancelling opens no fallback.
     await expect.poll(() => page.evaluate(() => window.shareCalls.length)).toBe(1);
-    await expect(page.getByRole("dialog", { name: "Share" })).toHaveCount(0);
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expectDialogClosed(page, page.getByRole("dialog", { name: "Share" }));
   });
 
   test("share pill falls back to the sheet when the system share fails @mobile", async ({ page }) => {
@@ -852,8 +805,7 @@ test.describe("group page - share and profile sheets", () => {
     await sendCloseRequest(page);
 
     // Verify the sheet closed and history did not move.
-    await expect(shareDialog).toHaveCount(0);
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expectDialogClosed(page, shareDialog, { opener: sharePill });
     expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
   });
 
@@ -876,18 +828,19 @@ test.describe("group page - share and profile sheets", () => {
     await page.mouse.up();
 
     // Verify the drag closed the sheet through its real close path.
-    await expect(shareDialog).toHaveCount(0);
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expectDialogClosed(page, shareDialog, { opener: sharePill });
   });
 
   test("organizer card shows a chevron and opens the profile as a sheet @mobile", async ({ page }) => {
     // Load the group and find the organizer card.
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
-    const organizerCard = page.getByRole("button", { name: "View E2E Organizer One's profile" });
+    const organizerCard = page.getByRole("button", { name: /^View profile:\s*E2E Organizer One\b/ });
     await expect(organizerCard.locator(".icon-arrow-right")).toBeVisible();
     const historyLength = await page.evaluate(() => window.history.length);
 
-    // Open the profile.
+    // Open the profile, reading the scroll position the click leaves the card at.
+    await organizerCard.scrollIntoViewIfNeeded();
+    const scrollY = await page.evaluate(() => Math.round(window.scrollY));
     await organizerCard.click();
 
     // Verify the sheet keeps the dialog name while the title leaves the head.
@@ -905,9 +858,8 @@ test.describe("group page - share and profile sheets", () => {
     // Reach the CloseWatcher past the sheet's own Escape handler.
     await sendCloseRequest(page);
 
-    // Verify the sheet closed and history did not move.
-    await expect(profileDialog).toHaveCount(0);
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    // Verify the sheet closed without a scroll jump and history did not move.
+    await expectDialogClosed(page, profileDialog, { opener: organizerCard, scrollY });
     expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
   });
 });

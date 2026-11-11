@@ -12,9 +12,9 @@ import {
   TEST_TICKETING_EVENTS,
   TEST_USER_IDS,
 } from "../../../seed.js";
-import { buildE2eUrl, confirmAlert, waitForActionResponse } from "../../../utils.js";
+import { buildE2eUrl, confirmAlert, expectDialogClosed, waitForActionResponse } from "../../../utils.js";
 import { clearEventAttendeeState, openUserDashboardPath } from "../helpers.js";
-import { openEventOfferActions } from "./helpers.js";
+import { openEventOfferActions, readInvitationsMenuCount } from "./helpers.js";
 
 const ENDED_PRICE_APPROVAL_OFFER_ID = "59555555-5555-5555-5555-555555555923";
 
@@ -258,6 +258,8 @@ test.describe("user dashboard invitations view — event offers", () => {
     // Verify the invitation is exposed as a checkout-owned RSVP offer.
     await expect(dashboardContent.getByText("Event Invitations", { exact: true })).toBeVisible();
     await expect(eventInvitationRow).toContainText("Platform Ops Meetup");
+    const pendingCount = await readInvitationsMenuCount(pending1Page);
+    expect(pendingCount).toBeGreaterThan(0);
     await openEventOfferActions(eventInvitationRow);
     const claimEventInvitationButton = eventInvitationRow.getByRole("menuitem", {
       name: "Claim offer",
@@ -280,6 +282,9 @@ test.describe("user dashboard invitations view — event offers", () => {
         urlIncludes: `/event/${TEST_EVENT_IDS.alpha.two}/checkout`,
       },
     );
+
+    // Verify the layout refresh drops the menu count without a reload.
+    await expect.poll(() => readInvitationsMenuCount(pending1Page)).toBe(pendingCount - 1);
 
     // Reload the invited user dashboard.
     await pending1Page.reload();
@@ -453,8 +458,7 @@ test.describe("user dashboard invitations view on phones @mobile", () => {
 
     // Close it and verify focus returns to the card action.
     await dialog.getByRole("button", { name: "Close modal" }).click();
-    await expect(dialog).toBeHidden();
-    await expect(claimButton).toBeFocused();
+    await expectDialogClosed(pending1Page, dialog, { opener: claimButton });
 
     // Complete the free offer through the unified checkout endpoint.
     await claimButton.click();

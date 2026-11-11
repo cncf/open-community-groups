@@ -13,6 +13,9 @@ use crate::{
     },
 };
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// List invitation requests page template for a group's event.

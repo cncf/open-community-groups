@@ -6,8 +6,10 @@ import {
   TEST_GROUP_SLUG,
   TEST_GROUP_SLUGS,
   TEST_SITE_TITLE,
+  TEST_USER_CREDENTIALS,
 } from "../../seed.js";
 import {
+  expectDialogClosed,
   navigateToEvent,
   navigateToGroup,
   navigateToPath,
@@ -67,8 +69,7 @@ test.describe("site header", () => {
 
     // Close the menu and verify focus returns to its trigger.
     await page.keyboard.press("Escape");
-    await expect(userMenu).toBeHidden();
-    await expect(userMenuButton).toBeFocused();
+    await expectDialogClosed(page, userMenu, { opener: userMenuButton });
   });
 
   test("user menu closes after an outside click", async ({ page }) => {
@@ -82,6 +83,44 @@ test.describe("site header", () => {
     await expect(userMenu).toBeVisible();
     await page.locator("main#main-content").click({ position: { x: 5, y: 5 } });
     await expect(userMenu).toBeHidden();
+  });
+
+  test("user menu trigger exposes its name and expanded state", async ({ member1Page, page }) => {
+    // Load the public shell signed out and find the trigger by its name.
+    await navigateToSiteHome(page);
+    const userMenuButton = page.locator("#header").getByRole("button", { name: "User menu", exact: true });
+    await expect(userMenuButton).toHaveAttribute("data-logged-in", "false");
+    await expect(userMenuButton).toHaveAttribute("aria-haspopup", "menu");
+    await expect(userMenuButton).toHaveAttribute("aria-expanded", "false");
+
+    // Verify Escape collapses the open menu and keeps focus on the trigger.
+    await userMenuButton.click();
+    await expect(userMenuButton).toHaveAttribute("aria-expanded", "true");
+    await page.keyboard.press("Escape");
+    await expectDialogClosed(page, page.locator("#user-dropdown"), { opener: userMenuButton });
+    await expect(userMenuButton).toHaveAttribute("aria-expanded", "false");
+
+    // Verify an outside click collapses the open menu.
+    await userMenuButton.click();
+    await expect(userMenuButton).toHaveAttribute("aria-expanded", "true");
+    await page.locator("main#main-content").click({ position: { x: 5, y: 5 } });
+    await expect(userMenuButton).toHaveAttribute("aria-expanded", "false");
+
+    // Verify a second toggle collapses the open menu.
+    await userMenuButton.click();
+    await expect(userMenuButton).toHaveAttribute("aria-expanded", "true");
+    await userMenuButton.click();
+    await expect(userMenuButton).toHaveAttribute("aria-expanded", "false");
+
+    // Verify the signed-in trigger carries the same name instead of the initials.
+    await navigateToSiteHome(member1Page);
+    const memberMenuButton = member1Page
+      .locator("#header")
+      .getByRole("button", { name: "User menu", exact: true });
+    await expect(memberMenuButton).toHaveAttribute("data-logged-in", "true");
+    await expect(memberMenuButton).toHaveAttribute("aria-expanded", "false");
+    await memberMenuButton.click();
+    await expect(memberMenuButton).toHaveAttribute("aria-expanded", "true");
   });
 
   test("desktop navigation collapses into the user menu below the lg breakpoint", async ({ page }) => {
@@ -164,10 +203,11 @@ test.describe("site header", () => {
   });
 
   test("desktop version mode is toggled from the mobile user menu @mobile", async ({ page }) => {
-    // Load a public page with a query string the reload must keep and a fragment it drops.
+    // Load a public page with a query string the reload must preserve and a fragment it drops.
     await navigateToPath(page, "/explore?entity=events#main-content");
     const initialUrl = page.url();
     expect(initialUrl).toContain("?entity=events#main-content");
+    const reloadUrl = initialUrl.replace(/#main-content$/u, "");
     const userMenuButton = page.locator('#user-dropdown-button[data-logged-in="false"]');
     const userMenu = page.locator("#user-dropdown");
     const desktopVersionItem = userMenu.getByRole("menuitem", { name: "Desktop version" });
@@ -188,8 +228,8 @@ test.describe("site header", () => {
     // Enable the desktop version and wait for the reload it triggers.
     await Promise.all([page.waitForEvent("load"), desktopVersionItem.click()]);
 
-    // Verify the reloaded document is in desktop mode at the same URL without the fragment.
-    expect(page.url()).toBe(initialUrl.replace("#main-content", ""));
+    // Verify the reloaded document is in desktop mode at the same URL, without the fragment.
+    expect(page.url()).toBe(reloadUrl);
     await expect
       .poll(() => page.evaluate(() => document.documentElement.dataset.viewportMode))
       .toBe("desktop");
@@ -287,7 +327,7 @@ test.describe("site header", () => {
     await expect(pending2Page.getByRole("heading", { name: "Check-In" })).toBeVisible();
   });
 
-  test("group team member opens group check-in from the mobile menu @mobile", async ({
+  test("group team member opens group check-in from the mobile menu @mobile @smoke", async ({
     checkInManagerGroupPage,
   }) => {
     // Load the public shell with a check-in manager session.
@@ -440,7 +480,7 @@ test.describe("site header", () => {
     await expect(footer.getByRole("link", { name: /GitHub/i })).toHaveAttribute("href", /github\.com/);
   });
 
-  test("phone header stays pinned at 64px after scrolling @mobile", async ({ page }) => {
+  test("phone header stays pinned at 64px after scrolling @mobile @smoke", async ({ page }) => {
     // Load a long public page and scroll well past the header.
     await navigateToPath(page, "/stats");
     await page.evaluate(() => window.scrollTo(0, 900));
@@ -546,7 +586,7 @@ test.describe("site header", () => {
   test("tap progress bar shows while a boosted link loads @mobile", async ({ page }) => {
     // Hold the card's response so the bar outlasts its delay.
     await navigateToSiteHome(page);
-    const card = page.locator("a.group[hx-boost]").first();
+    const card = page.getByRole("main").locator('a[hx-boost="true"][href*="/group/"]').first();
     const { pathname } = new URL(await card.evaluate((element) => element.href));
     let releaseResponse;
     const responseHeld = new Promise((resolve) => {
@@ -574,10 +614,10 @@ test.describe("site header", () => {
     // Load a public page without a header logo.
     await navigateToPath(page, "/stats");
     const header = page.locator("#header");
-    await expect(header.locator("nav span.truncate")).toBeVisible();
+    const titleLink = header.getByRole("link", { name: `Go to ${TEST_SITE_TITLE} homepage` });
+    await expect(titleLink).toBeVisible();
 
     // Verify the title links home under a name that includes its visible text.
-    const titleLink = header.getByRole("link", { name: `Go to ${TEST_SITE_TITLE} homepage` });
     await expect(titleLink).toHaveAttribute("href", "/");
     await expect(titleLink).toHaveText(TEST_SITE_TITLE);
     expect((await titleLink.boundingBox()).height).toBe(44);
@@ -591,7 +631,7 @@ test.describe("site header", () => {
     // Verify Home does not repeat the title that sits right below it.
     await navigateToSiteHome(page);
     await expect(userButton).toBeVisible();
-    await expect(header.locator("nav span.truncate")).toHaveCount(0);
+    await expect(titleLink).toHaveCount(0);
   });
 
   test("phone header leaves the desktop shell without the title", async ({ page }) => {
@@ -600,10 +640,12 @@ test.describe("site header", () => {
     const header = page.locator("#header");
 
     // Verify the phone title does not render.
-    await expect(header.locator("nav span.truncate")).toBeHidden();
+    await expect(header.getByRole("link", { name: `Go to ${TEST_SITE_TITLE} homepage` })).toBeHidden();
   });
 
-  test("account sheet opens from the user button and returns focus to it @mobile", async ({ page }) => {
+  test("account sheet opens from the user button and returns focus to it @mobile @smoke", async ({
+    page,
+  }) => {
     // Load a public page with the menu mounted.
     await navigateToPath(page, "/stats");
     const { closeButton, userButton, userMenu } = getAccountSheet(page);
@@ -618,10 +660,43 @@ test.describe("site header", () => {
 
     // Close it and verify focus goes back to the trigger.
     await closeButton.click();
-    await expect(userMenu).toBeHidden();
-    await expect(userButton).toBeFocused();
-    await expect(userButton).not.toHaveAttribute("aria-expanded", "true");
-    await expectAccountSheetReleased(page);
+    await expectAccountSheetReleased(page, { opener: userButton });
+    await expect(userButton).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("user menu trigger exposes its name and the sheet state on phones @mobile", async ({
+    member1Page,
+    page,
+  }) => {
+    // Load a public page signed out and find the trigger by its name.
+    await navigateToPath(page, "/stats");
+    const { closeButton, userMenu } = getAccountSheet(page);
+    const userButton = page.locator("#header").getByRole("button", { name: "User menu", exact: true });
+    await expect(userButton).toHaveAttribute("aria-expanded", "false");
+
+    // Verify the trigger reports the sheet open and closed from its close button.
+    await userButton.click();
+    await expect(userMenu).toBeVisible();
+    await expect(userButton).toHaveAttribute("aria-expanded", "true");
+    await closeButton.click();
+    await expectAccountSheetReleased(page, { opener: userButton });
+    await expect(userButton).toHaveAttribute("aria-expanded", "false");
+
+    // Verify the trigger reports the sheet closed by Escape.
+    await userButton.click();
+    await expect(userButton).toHaveAttribute("aria-expanded", "true");
+    await page.keyboard.press("Escape");
+    await expectAccountSheetReleased(page, { opener: userButton });
+    await expect(userButton).toHaveAttribute("aria-expanded", "false");
+
+    // Verify the signed-in trigger carries the same name on phones.
+    await navigateToPath(member1Page, "/stats");
+    const memberButton = member1Page
+      .locator("#header")
+      .getByRole("button", { name: "User menu", exact: true });
+    await expect(memberButton).toHaveAttribute("data-logged-in", "true");
+    await memberButton.click();
+    await expect(memberButton).toHaveAttribute("aria-expanded", "true");
   });
 
   test("account sheet closes from its scrim and marks the current page @mobile", async ({ page }) => {
@@ -636,9 +711,8 @@ test.describe("site header", () => {
 
     // Tap the scrim above the sheet.
     await page.touchscreen.tap(100, 20);
-    await expect(userMenu).toBeHidden();
+    await expectAccountSheetReleased(page, { opener: userButton });
     await expect(userMenu.locator('[aria-current="page"]')).toHaveCount(0);
-    await expectAccountSheetReleased(page);
   });
 
   test("account sheet keeps Desktop version above the guest pills @mobile", async ({ page }) => {
@@ -694,7 +768,6 @@ test.describe("site header", () => {
     await waitForHtmxSettle(page);
 
     // Verify the sheet stayed closed and can open again.
-    await expect(userMenu).toBeHidden();
     await expectAccountSheetReleased(page);
     await userButton.click();
     await expect(userMenu).toBeVisible();
@@ -714,7 +787,7 @@ test.describe("site header", () => {
     // Verify the sheet state is gone and the anchored menu remains.
     await expect(userMenu).toBeVisible();
     await expect(userMenu).toHaveCSS("position", "absolute");
-    await expectAccountSheetReleased(page);
+    await expectAccountSheetReleased(page, { closed: false });
   });
 
   test("a close request closes the account sheet without a history entry @mobile", async ({ page }) => {
@@ -729,9 +802,7 @@ test.describe("site header", () => {
     await sendCloseRequest(page);
 
     // Verify the sheet closed, focus returned, and history did not move.
-    await expect(userMenu).toBeHidden();
-    await expect(userButton).toBeFocused();
-    await expectAccountSheetReleased(page);
+    await expectAccountSheetReleased(page, { opener: userButton });
     expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
   });
 
@@ -767,8 +838,7 @@ test.describe("site header", () => {
     await page.mouse.down();
     await page.mouse.move(startX, startY + 200, { steps: 4 });
     await page.mouse.up();
-    await expect(userMenu).toBeHidden();
-    await expectAccountSheetReleased(page);
+    await expectAccountSheetReleased(page, { opener: userButton });
   });
 
   test("account sheet shows no grabber without drag support @mobile", async ({ page }) => {
@@ -809,12 +879,9 @@ test.describe("site header", () => {
     await userButton.click();
 
     // Lengthen the username past the sheet width.
-    await userMenu
-      .locator(".truncate")
-      .first()
-      .evaluate((element) => {
-        element.textContent = "a-very-long-username-".repeat(6);
-      });
+    await userMenu.getByText(TEST_USER_CREDENTIALS.member1.username, { exact: true }).evaluate((element) => {
+      element.textContent = "a-very-long-username-".repeat(6);
+    });
 
     // Verify the sheet keeps its width instead of scrolling sideways.
     const panel = userMenu.locator(".sheet-panel");
@@ -832,8 +899,7 @@ test.describe("site header", () => {
     const viewport = member1Page.viewportSize();
     expect(await userMenu.boundingBox()).toMatchObject({ height: viewport.height, y: 0 });
     await closeButton.click();
-    await expect(userMenu).toBeHidden();
-    await expectAccountSheetReleased(member1Page);
+    await expectAccountSheetReleased(member1Page, { opener: userButton });
   });
 });
 
@@ -877,10 +943,18 @@ const getAccountSheet = (page) => {
 /**
  * Verifies the account sheet holds nothing on the page.
  * @param {import("@playwright/test").Page} page - Page under test.
+ * @param {object} [options] - Release checks.
+ * @param {boolean} [options.closed] - Whether the menu closed too; false when it stays open as
+ * the anchored menu. Defaults to true.
+ * @param {import("@playwright/test").Locator} [options.opener] - Trigger that gets focus back.
  * @returns {Promise<void>}
  */
-const expectAccountSheetReleased = async (page) => {
-  await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+const expectAccountSheetReleased = async (page, { closed = true, opener } = {}) => {
+  if (closed) {
+    await expectDialogClosed(page, getAccountSheet(page).userMenu, { opener });
+  } else {
+    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+  }
   await expect(page.locator("[inert]:not(#dashboard-menu-drawer)")).toHaveCount(0);
   await expect(page.locator("#user-dropdown [data-sheet-drag]")).toHaveCount(0);
 };

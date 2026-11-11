@@ -12,6 +12,9 @@ use crate::{
     types::site::SiteSettings,
 };
 
+#[cfg(test)]
+mod tests;
+
 // Pages and sections templates.
 
 /// Template for the log in page.

@@ -63,7 +63,7 @@ describe("user-chip", () => {
     });
 
     // Click the user chip.
-    element.querySelector('[role="button"]')?.click();
+    element.querySelector("button")?.click();
 
     // The click emits the complete modal payload.
     expect(eventDetail).to.deep.equal({
@@ -84,35 +84,52 @@ describe("user-chip", () => {
     });
   });
 
-  it("opens the modal from keyboard interactions when clickable", async () => {
-    // Mount a clickable chip before sending keyboard events.
+  it("renders a native dialog trigger named after the person", async () => {
+    // Mount a clickable chip with a job title.
     const element = await mountLitComponent("user-chip", {
       user: {
         name: "Margaret Hamilton",
+        title: "Software Engineer",
         username: "margaret",
       },
       displayModal: true,
     });
 
-    // List the fixture values.
-    const openedBy = [];
+    // The chip is a native button that announces the profile dialog.
+    const trigger = element.querySelector("button");
+    expect(trigger?.getAttribute("type")).to.equal("button");
+    expect(trigger?.getAttribute("aria-haspopup")).to.equal("dialog");
 
-    // Listen for the emitted event.
-    element.addEventListener("open-user-modal", () => {
-      openedBy.push("opened");
+    // Its content names it, so no role, tabindex or aria-label overrides it.
+    expect(trigger?.hasAttribute("role")).to.equal(false);
+    expect(trigger?.hasAttribute("tabindex")).to.equal(false);
+    expect(trigger?.hasAttribute("aria-label")).to.equal(false);
+    expect(trigger?.textContent).to.include("View profile:");
+    expect(trigger?.textContent).to.include("Margaret Hamilton");
+    expect(trigger?.textContent).to.include("Software Engineer");
+  });
+
+  it("renders a static card without a button or tabindex when the modal is off", async () => {
+    // Mount a card and a compact chip without the modal.
+    const card = await mountLitComponent("user-chip", {
+      user: { name: "Radia Perlman", username: "radia" },
+    });
+    const featuredCard = await mountLitComponent("user-chip", {
+      user: { name: "Grace Hopper", username: "grace" },
+      featured: true,
+    });
+    const chip = await mountLitComponent("user-chip", {
+      user: { name: "Ada Lovelace", username: "ada" },
+      small: true,
     });
 
-    // Collect the card element.
-    const card = element.querySelector('[role="button"]');
-    card.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-    );
-    card.dispatchEvent(
-      new KeyboardEvent("keydown", { key: " ", bubbles: true }),
-    );
-
-    // Enter and Space both emit the modal event.
-    expect(openedBy).to.deep.equal(["opened", "opened"]);
+    // No variant is focusable, exposed as a control or pressable.
+    for (const element of [card, featuredCard, chip]) {
+      expect(element.querySelector("button")).to.equal(null);
+      expect(element.querySelector("[tabindex], [role], [aria-label]")).to.equal(null);
+      expect(element.textContent).to.not.include("View profile:");
+      expect(element.firstElementChild?.className).to.not.include("phone:active:");
+    }
   });
 
   it("renders the compact featured variant", async () => {
@@ -204,7 +221,7 @@ describe("user-chip", () => {
     for (const token of ["px-4", "py-3", "gap-4", "phone:min-h-16", "phone:px-3", "phone:py-2.5", "phone:gap-3"]) {
       expect(card.classList.contains(token), token).to.equal(true);
     }
-    expect(card.classList.contains("phone:[&[role=button]:active]:border-primary-300")).to.equal(true);
+    expect(card.classList.contains("phone:active:border-primary-300")).to.equal(true);
     expect(title?.classList.contains("mt-3")).to.equal(true);
     expect(title?.classList.contains("phone:mt-0.5")).to.equal(true);
     expect(card.classList.contains("phone:[&>logo-image>div]:size-12")).to.equal(true);
@@ -223,7 +240,7 @@ describe("user-chip", () => {
     // Verify the shared phone layout keeps the featured look, with no extra star.
     expect(card.classList.contains("phone:px-3")).to.equal(true);
     expect(card.classList.contains("border-amber-200")).to.equal(true);
-    expect(card.classList.contains("phone:[&[role=button]:active]:border-amber-500")).to.equal(true);
+    expect(card.classList.contains("phone:active:border-amber-500")).to.equal(true);
     expect(card.classList.contains("phone:[&>logo-image>div]:size-12")).to.equal(false);
     expect(element.querySelector("logo-image")?.getAttribute("size")).to.equal("size-18 md:size-22");
     expect(element.querySelector(".icon-star")).to.equal(null);

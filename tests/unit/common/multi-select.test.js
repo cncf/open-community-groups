@@ -16,6 +16,14 @@ const OPTIONS = [
 ];
 
 /**
+ * Names the focused control by its aria-label, else its id, so failed
+ * assertions print a short value instead of a DOM node.
+ * @returns {string|null}
+ */
+const focusedControlName = () =>
+  document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.id ?? null;
+
+/**
  * Mounts a multi-select inside a form so tests can read submitted values.
  * @param {object} properties Component properties
  * @returns {Promise<{element: MultiSelect, form: HTMLFormElement}>}
@@ -50,6 +58,19 @@ const openDropdown = async (element) => {
  */
 const pressKey = async (element, key) => {
   element.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  await element.updateComplete;
+};
+
+/**
+ * Focuses a chip remove button and activates it the way Enter or Space does.
+ * @param {MultiSelect} element Mounted component
+ * @param {string} name Option name of the chip
+ * @returns {Promise<void>}
+ */
+const removeFocusedChip = async (element, name) => {
+  const button = element.querySelector(`[aria-label="Remove ${name}"]`);
+  button.focus();
+  button.click();
   await element.updateComplete;
 };
 
@@ -189,6 +210,73 @@ describe("multi-select", () => {
     expect(submittedValues).to.deep.equal([["1"], ["1", "2"], ["2"], []]);
   });
 
+  it("moves focus to the next chip, then to the search input, after removing a focused chip", async () => {
+    // Render three chips in display order: AI, Backend, Cloud.
+    const element = await mountLitComponent("multi-select", {
+      name: "filters[regions]",
+      options: OPTIONS,
+      selected: ["1", "2", "3"],
+    });
+    const focusedOnChange = [];
+    element.addEventListener("change", () => focusedOnChange.push(focusedControlName()));
+
+    // Remove a middle chip, so focus moves to the chip that took its place.
+    await removeFocusedChip(element, "Backend");
+    expect(focusedControlName()).to.equal("Remove Cloud");
+
+    // Remove the last chip, so focus moves back to the previous one.
+    await removeFocusedChip(element, "Cloud");
+    expect(focusedControlName()).to.equal("Remove AI");
+
+    // Remove the only chip left, so focus moves to the search input.
+    await removeFocusedChip(element, "AI");
+    const input = element.querySelector('input[role="combobox"]');
+    expect(element.selected).to.deep.equal([]);
+    expect(element.querySelectorAll("[data-multi-select-chip-remove]")).to.have.length(0);
+    expect(focusedControlName()).to.equal(input.id);
+
+    // Verify change listeners already saw the new focus.
+    expect(focusedOnChange).to.deep.equal(["Remove Cloud", "Remove AI", input.id]);
+  });
+
+  it("leaves focus alone when a chip is removed while focus is elsewhere", async () => {
+    // Render the component next to another focusable control.
+    document.body.innerHTML = '<button id="outside-control" type="button">Outside</button>';
+    const element = await mountLitComponent("multi-select", {
+      name: "filters[regions]",
+      options: OPTIONS,
+      selected: ["1", "2"],
+    });
+
+    // Remove a chip while the outside control has focus.
+    document.getElementById("outside-control").focus();
+    element.querySelector('[aria-label="Remove AI"]').click();
+    await element.updateComplete;
+
+    // Verify the selection changed and focus stayed outside.
+    expect(element.selected).to.deep.equal(["2"]);
+    expect(focusedControlName()).to.equal("outside-control");
+  });
+
+  it("skips a disabled search input when the last chip goes", async () => {
+    // Render one chip and disable the search input.
+    const element = await mountLitComponent("multi-select", {
+      name: "filters[regions]",
+      options: OPTIONS,
+      selected: ["1"],
+    });
+    const input = element.querySelector('input[role="combobox"]');
+    input.disabled = true;
+
+    // Remove the focused chip.
+    await removeFocusedChip(element, "AI");
+
+    // Verify focus is not forced onto the disabled input.
+    expect(element.selected).to.deep.equal([]);
+    expect(focusedControlName()).to.not.equal(input.id);
+    expect(element.contains(document.activeElement)).to.equal(false);
+  });
+
   it("renders a search input with a single clear button", async () => {
     // Render the component and type a search query.
     const element = await mountLitComponent("multi-select", { options: OPTIONS });
@@ -202,6 +290,44 @@ describe("multi-select", () => {
     expect(input.id).to.match(/-search$/);
     expect(input.closest("[data-multi-select-search]")).to.not.equal(null);
     expect(element.querySelectorAll('[aria-label="Clear search"]')).to.have.length(1);
+  });
+
+  it("moves focus to the search input after clearing the query", async () => {
+    // Render the component and type a search query.
+    const element = await mountLitComponent("multi-select", { options: OPTIONS });
+    const input = await openDropdown(element);
+    input.value = "Clo";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await element.updateComplete;
+
+    // Activate the focused clear button, which unrenders once the query is empty.
+    const clearButton = element.querySelector('[aria-label="Clear search"]');
+    clearButton.focus();
+    clearButton.click();
+    await element.updateComplete;
+
+    // Verify the query is cleared and focus moved to the search input.
+    expect(element._combobox.query).to.equal("");
+    expect(element.querySelector('[aria-label="Clear search"]')).to.equal(null);
+    expect(document.activeElement).to.equal(input);
+  });
+
+  it("restores focus to the search input without opening the dropdown", async () => {
+    // Render a closed component.
+    const element = await mountLitComponent("multi-select", { options: OPTIONS });
+    const input = element.querySelector('input[role="combobox"]');
+
+    // Restore focus as a script does after a swap.
+    element.restoreFocus(input);
+    await element.updateComplete;
+    expect(document.activeElement).to.equal(input);
+    expect(input.getAttribute("aria-expanded")).to.equal("false");
+
+    // Verify a later user focus still opens the dropdown.
+    input.blur();
+    input.focus();
+    await element.updateComplete;
+    expect(input.getAttribute("aria-expanded")).to.equal("true");
   });
 
   it("hides the native search clear button inside multi-select search inputs", async () => {

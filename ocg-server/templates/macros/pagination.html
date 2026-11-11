@@ -9,7 +9,9 @@
   {% let last_spinner_id = spinner_id_prefix.to_string() + "last-spinner" -%}
   {# Pagination -#}
   <div class="pagination flex items-end justify-center py-8">
-    <div class="inline-flex phone:rounded-full phone:bg-white" role="group">
+    <div class="inline-flex phone:rounded-full phone:bg-white"
+         role="group"
+         aria-label="Pagination">
       {# First button -#}
       {% if let Some(first) = links.first -%}
         <a href="{{ first.url }}"
@@ -17,7 +19,7 @@
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
            hx-indicator="#{{ first_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
-           class="group relative overflow-hidden cursor-pointer inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white phone:hidden">
+           class="group relative overflow-hidden cursor-pointer inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:bg-primary-500 focus:text-white max-sm:hidden phone:hidden">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
             <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-left-double">
             </div>
@@ -28,7 +30,7 @@
       {% else -%}
         <button type="button"
                 disabled
-                class="inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-stone-400 bg-stone-100 border border-stone-200 rounded-s-full phone:hidden">
+                class="inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-stone-400 bg-stone-100 border border-stone-200 rounded-s-full max-sm:hidden phone:hidden">
           <div class="svg-icon me-2 h-5 w-5 bg-stone-300 icon-arrow-left-double"></div>
           First
         </button>
@@ -42,7 +44,7 @@
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
            hx-indicator="#{{ prev_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
-           class="group relative overflow-hidden cursor-pointer inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-e border-primary-500 hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white phone:min-h-11 phone:rounded-s-full phone:border-s">
+           class="group relative overflow-hidden cursor-pointer inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-e border-primary-500 hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:bg-primary-500 focus:text-white max-sm:rounded-s-full max-sm:border-s phone:min-h-11 phone:rounded-s-full phone:border-s">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
             <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-left">
             </div>
@@ -53,12 +55,16 @@
       {% else -%}
         <button type="button"
                 disabled
-                class="inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-stone-400 bg-stone-100 border-t border-b border-e border-stone-200 phone:min-h-11 phone:rounded-s-full phone:border-s">
+                class="inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-stone-400 bg-stone-100 border-t border-b border-e border-stone-200 max-sm:rounded-s-full max-sm:border-s phone:min-h-11 phone:rounded-s-full phone:border-s">
           <div class="svg-icon me-2 h-5 w-5 bg-stone-300 icon-arrow-left"></div>
           Prev
         </button>
       {% endif -%}
       {# End prev button -#}
+
+      {# Page position -#}
+      <span class="inline-flex items-center px-4 py-2 text-sm font-medium text-stone-700 tabular-nums whitespace-nowrap border-t border-b border-stone-200 phone:min-h-11 phone:px-3">Page {{ links.current_page }} of {{ links.total_pages }}</span>
+      {# End page position -#}
 
       {# Next button -#}
       {% if let Some(next) = links.next -%}
@@ -67,7 +73,7 @@
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
            hx-indicator="#{{ next_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
-           class="group relative overflow-hidden cursor-pointer inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-s -ml-[1px] border-primary-500 hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white phone:min-h-11 phone:rounded-e-full phone:border-e">
+           class="group relative overflow-hidden cursor-pointer inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-s border-primary-500 hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:bg-primary-500 focus:text-white max-sm:rounded-e-full max-sm:border-e phone:min-h-11 phone:rounded-e-full phone:border-e">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
             Next
             <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-right">
@@ -78,7 +84,7 @@
       {% else -%}
         <button type="button"
                 disabled
-                class="inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-stone-400 bg-stone-100 border-t border-b border-stone-200 phone:min-h-11 phone:rounded-e-full phone:border-e">
+                class="inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-stone-400 bg-stone-100 border-t border-b border-s border-stone-200 max-sm:rounded-e-full max-sm:border-e phone:min-h-11 phone:rounded-e-full phone:border-e">
           Next
           <div class="svg-icon ms-2 h-5 w-5 bg-stone-300 icon-arrow-right"></div>
         </button>
@@ -92,7 +98,7 @@
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
            hx-indicator="#{{ last_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
-           class="group relative overflow-hidden cursor-pointer inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white phone:hidden">
+           class="group relative overflow-hidden cursor-pointer inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:bg-primary-500 focus:text-white max-sm:hidden phone:hidden">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
             Last
             <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-right-double">
@@ -103,7 +109,7 @@
       {% else -%}
         <button type="button"
                 disabled
-                class="inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-stone-400 bg-stone-100 border border-stone-200 rounded-e-full phone:hidden">
+                class="inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-stone-400 bg-stone-100 border border-stone-200 rounded-e-full max-sm:hidden phone:hidden">
           Last
           <div class="svg-icon ms-2 h-5 w-5 bg-stone-300 icon-arrow-right-double"></div>
         </button>

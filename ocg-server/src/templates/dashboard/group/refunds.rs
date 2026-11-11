@@ -13,6 +13,9 @@ use crate::{
     },
 };
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// Refunds list page template for a group.
@@ -66,54 +69,5 @@ pub(crate) fn status_tone(status: &GroupRefundStatus) -> BadgeTone {
         | GroupRefundStatus::Processing
         | GroupRefundStatus::Queued
         | GroupRefundStatus::Refunded => BadgeTone::Neutral,
-    }
-}
-
-// Tests.
-
-#[cfg(test)]
-mod tests {
-    use crate::{
-        templates::dashboard::BadgeTone, types::dashboard::group::refunds::GroupRefundStatus,
-    };
-
-    use super::status_tone;
-
-    #[test]
-    fn test_status_tone() {
-        let cases = [
-            (
-                "awaiting checkout",
-                GroupRefundStatus::AwaitingCheckout,
-                BadgeTone::Neutral,
-            ),
-            (
-                "needs review",
-                GroupRefundStatus::NeedsReview,
-                BadgeTone::Warning,
-            ),
-            (
-                "processing",
-                GroupRefundStatus::Processing,
-                BadgeTone::Neutral,
-            ),
-            ("queued", GroupRefundStatus::Queued, BadgeTone::Neutral),
-            (
-                "recovery required",
-                GroupRefundStatus::RecoveryRequired,
-                BadgeTone::Danger,
-            ),
-            ("refunded", GroupRefundStatus::Refunded, BadgeTone::Neutral),
-            ("rejected", GroupRefundStatus::Rejected, BadgeTone::Danger),
-            (
-                "retryable failure",
-                GroupRefundStatus::RetryableFailure,
-                BadgeTone::Danger,
-            ),
-        ];
-
-        for (case, status, expected) in cases {
-            assert_eq!(status_tone(&status), expected, "{case}");
-        }
     }
 }

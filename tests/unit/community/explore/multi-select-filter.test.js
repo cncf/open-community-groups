@@ -37,11 +37,10 @@ describe("multi-select-filter", () => {
     expect(element._filteredOptions).to.deep.equal([{ value: "security", name: "Security" }]);
     expect(input.getAttribute("role")).to.equal("combobox");
     expect(input.getAttribute("aria-expanded")).to.equal("true");
-    expect(input.getAttribute("aria-controls")).to.equal("name-filter-listbox");
-    expect(element.querySelector('[role="listbox"]')?.id).to.equal("name-filter-listbox");
-    expect(element.querySelector('[role="listbox"]')?.children[0]?.getAttribute("role")).to.equal(
-      "option",
-    );
+    const listbox = element.querySelector('[role="listbox"]');
+    expect(listbox?.id).to.not.equal("");
+    expect(input.getAttribute("aria-controls")).to.equal(listbox?.id);
+    expect(listbox?.children[0]?.getAttribute("role")).to.equal("option");
 
     // Verify filters typed options and renders hidden inputs.
     element.querySelector('[role="option"]')?.click();
@@ -89,7 +88,9 @@ describe("multi-select-filter", () => {
     // Verify supports keyboard navigation and closes on outside clicks.
     expect(element.selected).to.deep.equal(["cloud"]);
     expect(element._combobox.isOpen).to.equal(true);
-    expect(input.getAttribute("aria-activedescendant")).to.equal("name-filter-option-0");
+    const firstOption = element.querySelector('[role="option"]');
+    expect(firstOption?.id).to.not.equal("");
+    expect(input.getAttribute("aria-activedescendant")).to.equal(firstOption?.id);
 
     // Click outside the filter to close the options.
     document.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
@@ -165,5 +166,68 @@ describe("multi-select-filter", () => {
     expect(dropdownBounds.height).to.be.greaterThan(0);
     expect(dropdownBounds.bottom).to.be.at.most(search.getBoundingClientRect().top);
     expect(dropdownBounds.top).to.be.at.least(0);
+  });
+
+  it("gives two same-name filters different listbox ids", async () => {
+    // Render the same filter twice, as the sidebar and the phone sheet do.
+    const properties = {
+      title: "Group",
+      name: "group",
+      options: [{ value: "cloud", name: "Cloud" }],
+    };
+    const filters = [
+      await mountLitComponent("multi-select-filter", properties),
+      await mountLitComponent("multi-select-filter", properties),
+    ];
+
+    // Open each dropdown and read the listbox its search box controls.
+    const listboxIds = [];
+    for (const filter of filters) {
+      const input = filter.querySelector('input[type="text"]');
+      input.dispatchEvent(new FocusEvent("focus"));
+      await filter.updateComplete;
+
+      const listbox = filter.querySelector('[role="listbox"]');
+      expect(listbox?.id).to.not.equal("");
+      expect(input.getAttribute("aria-controls")).to.equal(listbox?.id);
+      listboxIds.push(listbox?.id);
+    }
+
+    // Verify the two listboxes do not share an id.
+    expect(listboxIds[0]).to.not.equal(listboxIds[1]);
+  });
+
+  it("keeps focus on the next chip after a removal and marks chips and search with focus keys", async () => {
+    // Render the filter with two selected groups.
+    const element = await mountLitComponent("multi-select-filter", {
+      title: "Group",
+      name: "group",
+      options: [
+        { value: "cloud", name: "Cloud" },
+        { value: "ai", name: "AI" },
+      ],
+      selected: ["cloud", "ai"],
+    });
+    const focusKeysOnChange = [];
+    element.addEventListener("filter-change", () =>
+      focusKeysOnChange.push(document.activeElement?.dataset.focusKey),
+    );
+
+    // Verify the search input and chip remove buttons carry stable focus keys.
+    const input = element.querySelector('input[role="combobox"]');
+    expect(input.dataset.focusKey).to.equal("search");
+    const removeButtons = [...element.querySelectorAll("[data-multi-select-chip-remove]")];
+    expect(removeButtons.map((button) => button.dataset.focusKey)).to.deep.equal(["chip:cloud", "chip:ai"]);
+
+    // Remove the first chip from the keyboard focus.
+    const cloudButton = element.querySelector('[aria-label="Remove Cloud"]');
+    cloudButton.focus();
+    cloudButton.click();
+    await element.updateComplete;
+
+    // Verify focus moved to the next chip before the filter change was emitted.
+    expect(element.selected).to.deep.equal(["ai"]);
+    expect(document.activeElement?.getAttribute("aria-label")).to.equal("Remove AI");
+    expect(focusKeysOnChange).to.deep.equal(["chip:ai"]);
   });
 });

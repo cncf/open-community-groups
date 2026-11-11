@@ -762,6 +762,34 @@ fn test_event_summary_registration_window_closes_open_only_window_at_event_start
 }
 
 #[test]
+fn test_event_summary_delete_unavailable_title_explains_blocked_deletion() {
+    // (case, delete eligibility, expected title)
+    let cases = [
+        (
+            "cancel first",
+            Some(EventDeleteEligibility::CancelFirst),
+            Some("Cancel this event before deleting it."),
+        ),
+        (
+            "refunds pending",
+            Some(EventDeleteEligibility::RefundsPending),
+            Some("Resolve pending checkouts and refunds before deleting this event."),
+        ),
+        ("allowed", Some(EventDeleteEligibility::Allowed), None),
+        ("unknown", None, None),
+    ];
+
+    for (case, delete_eligibility, expected) in cases {
+        let event = EventSummary {
+            delete_eligibility,
+            ..sample_event_summary(vec![])
+        };
+
+        assert_eq!(event.delete_unavailable_title(), expected, "{case}");
+    }
+}
+
+#[test]
 fn test_event_summary_formatted_ticket_price_badge_ignores_unsellable_tiers() {
     let event = sample_event_summary(vec![
         sample_ticket_type(false, Some(0), false, "Inactive free"),

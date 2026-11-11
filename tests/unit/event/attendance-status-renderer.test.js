@@ -1,5 +1,6 @@
 import { expect } from "@open-wc/testing";
 
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { getAttendanceMeta } from "/static/js/event/attendance-dom.js";
 import { renderMeetingDetails } from "/static/js/event/attendance-view.js";
 import {
@@ -7,8 +8,10 @@ import {
   storePendingAttendanceCheckResponse,
 } from "/static/js/event/attendance/status-renderer.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
-const PAST_TITLE = "You cannot change attendance because the event has already started.";
+const CHECK_FAILED_MESSAGE = "Couldn't load your registration.";
+const PAST_TITLE = "You cannot change attendance because the event has ended.";
 const PENDING_APPROVAL_REASON = "Awaiting organizer approval.";
 const REFUND_PENDING_BAR_REASON = "Awaiting organizer review.";
 const REFUND_PENDING_TITLE = "Your refund request is waiting for organizer review.";
@@ -31,6 +34,10 @@ const renderContainer = ({ dataset = {}, phoneBar = false } = {}) => {
       <button data-attendance-role="loading-btn" disabled></button>
       <button data-attendance-role="signin-btn" class="hidden">
         <div data-attendance-icon></div><span data-attendance-label></span>
+      </button>
+      <p data-attendance-role="check-status" role="status"></p>
+      <button data-attendance-role="retry-btn" type="button" class="hidden">
+        <div data-attendance-icon></div><span data-attendance-label>Retry</span>
       </button>
       <button data-attendance-role="attend-btn" class="hidden">
         <div data-attendance-icon></div><span data-attendance-label></span>
@@ -62,25 +69,22 @@ const enrollmentEvent = (response) => ({
 
 const signedOutEvent = { detail: { xhr: { responseText: "", status: 401 } } };
 
+const failedCheckEvent = { detail: { xhr: { responseText: "", status: 0 } } };
+
 const getReason = (container) =>
   container.querySelector('[data-attendance-role="bar-reason"]').textContent;
 
 describe("attendance status renderer", () => {
-  const originalMatchMedia = window.matchMedia;
-
-  /** Stubs the phone query with a fixed answer. */
-  const setPhoneQuery = (matches) => {
-    window.matchMedia = () => ({ matches });
-  };
+  let media;
 
   afterEach(() => {
-    window.matchMedia = originalMatchMedia;
+    media?.restore();
     resetDom();
   });
 
   describe("on phones", () => {
     beforeEach(() => {
-      setPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     });
 
     it("leaves the bar alone while the visible control is enabled", () => {
@@ -149,6 +153,26 @@ describe("attendance status renderer", () => {
       renderAttendanceCheckResponse(container, enrollmentEvent({ status: "attendee" }));
 
       expect(container.dataset.phoneBar).to.equal("hidden");
+    });
+
+    it("writes the load error as the reason beside Retry", () => {
+      // The registration check fails with a network error.
+      const container = renderContainer();
+      renderAttendanceCheckResponse(container, failedCheckEvent);
+
+      const retryButton = container.querySelector('[data-attendance-role="retry-btn"]');
+      expect(retryButton.classList.contains("hidden")).to.equal(false);
+      expect(container.hasAttribute("data-bar-reason")).to.equal(true);
+      expect(getReason(container)).to.equal(CHECK_FAILED_MESSAGE);
+    });
+
+    it("keeps the bar visible with Retry on a past event", () => {
+      // The member's registration is unknown, so Retry is still an action.
+      const container = renderContainer({ dataset: { isPast: "true" }, phoneBar: true });
+      renderAttendanceCheckResponse(container, failedCheckEvent);
+
+      expect(container.hasAttribute("data-phone-bar")).to.equal(false);
+      expect(getReason(container)).to.equal(CHECK_FAILED_MESSAGE);
     });
 
     it("keeps the bar hidden for signed-out visitors on a canceled event", () => {
@@ -240,7 +264,7 @@ describe("attendance status renderer", () => {
 
   describe("off phones", () => {
     beforeEach(() => {
-      setPhoneQuery(false);
+      media = stubMatchMedia();
     });
 
     it("never writes the bar state", () => {
@@ -264,34 +288,29 @@ describe("attendance status renderer", () => {
   });
 
   describe("phone query listener", () => {
-    /** Loads a fresh module on a fake query and returns its listeners. */
-    const loadWithFakeQuery = async (id) => {
-      const listeners = [];
-      const query = {
-        addEventListener: (type, listener) => listeners.push({ listener, type }),
-        matches: false,
-      };
-      window.matchMedia = () => query;
-      const module = await import(`/static/js/event/attendance/status-renderer.js?test=${id}`);
-
-      return { listeners, module, query };
+    /**
+     * Loads a fresh module under a false phone query, stubbed before the import reads it.
+     * @param {string} id Cache-busting module id.
+     * @returns {Promise<object>} Fresh module.
+     */
+    const loadWithFakeQuery = (id) => {
+      media = stubMatchMedia();
+      return import(`/static/js/event/attendance/status-renderer.js?test=${id}`);
     };
 
     it("keeps exactly one listener and re-runs the bar on rotation into a phone", async () => {
       // Render in landscape, where the query is false and nothing is written.
-      const { listeners, module, query } = await loadWithFakeQuery("rotate");
+      const module = await loadWithFakeQuery("rotate");
       const container = renderContainer({ dataset: { isPast: "true" }, phoneBar: true });
       module.renderAttendanceCheckResponse(
         container,
         enrollmentEvent({ refund_request_status: "pending", status: "attendee" }),
       );
-      expect(listeners).to.have.length(1);
-      expect(listeners[0].type).to.equal("change");
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
       expect(container.dataset.phoneBar).to.equal("hidden");
 
       // Rotate, so the query turns true.
-      query.matches = true;
-      listeners[0].listener({ matches: true });
+      media.setMatches(PHONE_MEDIA_QUERY, true);
 
       expect(container.hasAttribute("data-phone-bar")).to.equal(false);
       expect(getReason(container)).to.equal(REFUND_PENDING_BAR_REASON);
@@ -299,21 +318,20 @@ describe("attendance status renderer", () => {
 
     it("writes nothing when the query turns false", async () => {
       // Render a disabled state in landscape, then fire the false transition.
-      const { listeners, module } = await loadWithFakeQuery("leave");
+      const module = await loadWithFakeQuery("leave");
       const container = renderContainer({ dataset: { capacity: "10", remainingCapacity: "0" } });
       module.renderAttendanceCheckResponse(container, enrollmentEvent({ status: "guest" }));
-      listeners[0].listener({ matches: false });
+      media.setMatches(PHONE_MEDIA_QUERY, false);
 
       expect(container.hasAttribute("data-bar-reason")).to.equal(false);
     });
 
     it("skips containers that have no response yet", async () => {
       // A pending response is not the last rendered one.
-      const { listeners, query } = await loadWithFakeQuery("pending");
+      await loadWithFakeQuery("pending");
       const container = renderContainer({ dataset: { isPast: "true" }, phoneBar: true });
       storePendingAttendanceCheckResponse(container, enrollmentEvent({ status: "attendee" }));
-      query.matches = true;
-      listeners[0].listener({ matches: true });
+      media.setMatches(PHONE_MEDIA_QUERY, true);
 
       expect(container.dataset.phoneBar).to.equal("hidden");
     });

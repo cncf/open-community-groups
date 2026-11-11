@@ -34,6 +34,27 @@ const EXPLORE_LINK_VIEWPORTS = [
   { name: "mobile", width: 375 },
 ];
 
+const COMMUNITY_FILTER = `&community[0]=${TEST_COMMUNITY_NAME}`;
+const EXPLORE_LATEST_GROUPS_PATH = `/explore?entity=groups&sort_by=date${COMMUNITY_FILTER}`;
+
+const EXPLORE_SECTION_LINKS = [
+  {
+    heading: "upcoming in-person events",
+    linkName: "Explore all events",
+    href: `/explore?entity=events&kind[0]=in-person&kind[1]=hybrid${COMMUNITY_FILTER}`,
+  },
+  {
+    heading: "upcoming virtual events",
+    linkName: "Explore all events",
+    href: `/explore?entity=events&kind[0]=virtual&kind[1]=hybrid${COMMUNITY_FILTER}`,
+  },
+  {
+    heading: "Latest groups added",
+    linkName: "Explore all groups",
+    href: EXPLORE_LATEST_GROUPS_PATH,
+  },
+];
+
 test.describe("community home page", () => {
   test("community without active groups omits collection sections", async ({
     adminSecondaryCommunityPage,
@@ -82,15 +103,15 @@ test.describe("community home page", () => {
 
     // Verify each seeded social link exposes its destination.
     const mainContent = page.locator("#main-content");
-    await expect(mainContent.locator('a[title="Twitter"]')).toHaveAttribute(
+    await expect(mainContent.getByRole("link", { name: "Twitter", exact: true })).toHaveAttribute(
       "href",
       "https://twitter.com/e2e-devex",
     );
-    await expect(mainContent.locator('a[title="GitHub"]')).toHaveAttribute(
+    await expect(mainContent.getByRole("link", { name: "GitHub", exact: true })).toHaveAttribute(
       "href",
       "https://github.com/e2e-devex",
     );
-    await expect(mainContent.locator('a[title="LinkedIn"]')).toHaveAttribute(
+    await expect(mainContent.getByRole("link", { name: "LinkedIn", exact: true })).toHaveAttribute(
       "href",
       "https://linkedin.com/company/e2e-devex",
     );
@@ -248,24 +269,12 @@ test.describe("community home page", () => {
         await page.setViewportSize({ width: viewport.width, height: 900 });
         await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
 
-        // Verify both event sections keep the community filter.
-        const linkLayout = viewport.name === "desktop" ? "desktop" : "mobile";
-        for (const sectionName of ["upcoming in-person events", "upcoming virtual events"]) {
-          const eventsLink = getSectionLink(page, sectionName, "Explore all events", linkLayout);
-          await expect(eventsLink).toBeVisible();
-          await expect(eventsLink).toHaveAttribute(
-            "href",
-            `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
-          );
+        // Verify each section link keeps the community filter and matches its preview.
+        for (const { heading, linkName, href } of EXPLORE_SECTION_LINKS) {
+          const sectionLink = getSectionLink(page, heading, linkName);
+          await expect(sectionLink).toBeVisible();
+          await expect(sectionLink).toHaveAttribute("href", href);
         }
-
-        // Verify the groups section keeps the community filter.
-        const groupsLink = getSectionLink(page, "Latest groups added", "Explore all groups", linkLayout);
-        await expect(groupsLink).toBeVisible();
-        await expect(groupsLink).toHaveAttribute(
-          "href",
-          `/explore?entity=groups&sort_by=name&community[0]=${TEST_COMMUNITY_NAME}`,
-        );
       });
     }
   });
@@ -292,14 +301,11 @@ test.describe("community home page", () => {
       const advertisementImage = advertisementLink.getByRole("img", {
         name: `${TEST_COMMUNITY_TITLE_2} advertisement`,
       });
-      const advertisementCard = advertisementLink.locator("..");
 
       // Verify the advertisement exposes its seeded image and destination.
       await expect(advertisementLink).toBeVisible();
       await expect(advertisementLink).toHaveAttribute("href", TEST_COMMUNITY_AD_BANNER_LINK_URL_2);
       await expect(advertisementImage).toHaveAttribute("src", TEST_COMMUNITY_AD_BANNER_URL_2);
-      await expect(advertisementCard).toHaveClass(/hover:border-primary-300/);
-      await expect(advertisementCard).toHaveClass(/hover:shadow-sm/);
     });
 
     test("inline advertisement banner is hidden below the md breakpoint", async ({ page }) => {
@@ -480,10 +486,18 @@ test.describe("community home page", () => {
       await expect(section.getByRole("link", { name: "Explore all groups" })).toHaveCount(0);
 
       // Verify it keeps the community filter.
-      await expect(seeAll).toHaveAttribute(
-        "href",
-        `/explore?entity=groups&sort_by=name&community[0]=${TEST_COMMUNITY_NAME}`,
-      );
+      await expect(seeAll).toHaveAttribute("href", EXPLORE_LATEST_GROUPS_PATH);
+    });
+
+    test("see all latest groups opens Explore sorted by date", async ({ page }) => {
+      const seeAll = page.getByRole("link", { name: "See all latest groups added" });
+
+      // Follow the pill to the groups Explore view.
+      await seeAll.tap();
+      await expect(page).toHaveURL(/\/explore\?entity=groups&sort_by=date/);
+
+      // Verify the list keeps the newest-first order of the preview.
+      await expect(page.getByRole("combobox", { name: "Sort by" })).toHaveValue("date");
     });
 
     test("new groups stays hidden and the about actions fill the width", async ({ page }) => {
@@ -496,7 +510,10 @@ test.describe("community home page", () => {
       await expect(newGroups).toBeHidden();
 
       // Verify social links reach the tap target size.
-      const socialBox = await page.getByRole("main").locator('a[title="GitHub"]').boundingBox();
+      const socialBox = await page
+        .getByRole("main")
+        .getByRole("link", { name: "GitHub", exact: true })
+        .boundingBox();
       expect(socialBox.width).toBe(44);
       expect(socialBox.height).toBe(44);
 

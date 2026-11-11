@@ -2,23 +2,24 @@ import { expect } from "@open-wc/testing";
 
 import {
   closeDashboardMenuDrawer,
+  DESKTOP_MEDIA_QUERY,
   openDashboardMenuDrawer,
 } from "/static/js/dashboard/menu-drawer.js";
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 describe("dashboard menu drawer", () => {
-  let originalMatchMedia;
+  let media;
 
   beforeEach(() => {
     resetDom();
-    originalMatchMedia = window.matchMedia;
     // Release any drawer state leaked by a previous test case.
     window.dispatchEvent(new Event("pageshow"));
   });
 
   afterEach(() => {
-    window.matchMedia = originalMatchMedia;
+    media?.restore();
     resetDom();
   });
 
@@ -31,17 +32,6 @@ describe("dashboard menu drawer", () => {
       <div id="dashboard-menu-backdrop" class="hidden"></div>
       <button id="open-dashboard-menu" type="button" aria-expanded="false">Open dashboard menu</button>
     `;
-  };
-
-  // Forces the drawer helpers to treat the viewport as mobile or desktop.
-  const stubViewport = ({ isDesktop }) => {
-    window.matchMedia = () => ({ matches: isDesktop });
-  };
-
-  // Simulates a phone bottom sheet so the drag gestures bind, keeping the desktop query false.
-  const stubPhoneSheetViewport = () => {
-    const query = { addEventListener() {}, matches: true, removeEventListener() {} };
-    window.matchMedia = (text) => (text === PHONE_MEDIA_QUERY ? query : { matches: false });
   };
 
   // Renders the drawer as the phone bottom sheet the gestures look for: a fixed .sheet-panel.
@@ -175,7 +165,7 @@ describe("dashboard menu drawer", () => {
   it("hides the closed drawer from keyboard and assistive users on mobile", () => {
     // Render the drawer fixture on a mobile viewport and synchronize its state.
     renderFixture();
-    stubViewport({ isDesktop: false });
+    media = stubMatchMedia({ [DESKTOP_MEDIA_QUERY]: false });
     window.dispatchEvent(new Event("pageshow"));
 
     // Verify the closed off-canvas drawer is inert and hidden from assistive users.
@@ -197,7 +187,7 @@ describe("dashboard menu drawer", () => {
   it("keeps Tab focus inside the open drawer on mobile", () => {
     // Render the drawer fixture on a mobile viewport and open the drawer.
     renderFixture();
-    stubViewport({ isDesktop: false });
+    media = stubMatchMedia({ [DESKTOP_MEDIA_QUERY]: false });
     openDashboardMenuDrawer();
 
     // Tab past the last focusable control and verify focus wraps to the first one.
@@ -215,7 +205,7 @@ describe("dashboard menu drawer", () => {
   it("does not trap Tab focus when the static desktop menu is displayed", () => {
     // Render the drawer fixture on a desktop viewport with the menu markup open.
     renderFixture();
-    stubViewport({ isDesktop: true });
+    media = stubMatchMedia({ [DESKTOP_MEDIA_QUERY]: true });
     openDashboardMenuDrawer();
 
     // Verify Tab presses are left for the browser to handle.
@@ -267,9 +257,9 @@ describe("dashboard menu drawer", () => {
   });
 
   it("binds the bottom-sheet drag gestures while open on phone and releases them on close", () => {
-    // Render the drawer as a phone bottom sheet and open it.
+    // Render the drawer as a phone bottom sheet, with the desktop query false, and open it.
     renderSheetFixture();
-    stubPhoneSheetViewport();
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     openDashboardMenuDrawer();
 
     // Verify the drag gestures are bound while the sheet is open.

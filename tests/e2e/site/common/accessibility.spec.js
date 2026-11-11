@@ -1,9 +1,9 @@
 import { expect, test } from "../../fixtures.js";
 
 import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, TEST_REGISTRATION_QUESTIONS_EVENT } from "../../seed.js";
-import { navigateToEvent, navigateToPath, navigateToSiteHome } from "../../utils.js";
+import { expectDialogClosed, navigateToEvent, navigateToPath, navigateToSiteHome } from "../../utils.js";
 import { getAttendButton, waitForAttendanceState } from "../event/helpers.js";
-import { PUBLIC_PAGES } from "./public-pages.js";
+import { loadPublicPage, PUBLIC_PAGES } from "./public-pages.js";
 
 test.describe("site structural accessibility", () => {
   for (const publicPage of PUBLIC_PAGES) {
@@ -11,8 +11,7 @@ test.describe("site structural accessibility", () => {
       const { main = 1, mainNavigation = 1, siteFooter = 1 } = publicPage.landmarks ?? {};
 
       // Load a seeded public page before checking its application shell.
-      await navigateToPath(page, publicPage.path);
-      await expect(publicPage.ready(page)).toBeVisible({ timeout: 15_000 });
+      await loadPublicPage(page, publicPage);
 
       // Verify the shell landmark counts; event/group pages may also render breadcrumbs.
       await expect(page.getByRole("banner")).toHaveCount(1);
@@ -23,8 +22,7 @@ test.describe("site structural accessibility", () => {
 
     test(`${publicPage.name} images have alternative text or are hidden`, async ({ page }) => {
       // Load a seeded public page before scanning rendered image elements.
-      await navigateToPath(page, publicPage.path);
-      await expect(publicPage.ready(page)).toBeVisible({ timeout: 15_000 });
+      await loadPublicPage(page, publicPage);
 
       // Verify every rendered image has an alt attribute or is explicitly hidden from assistive tech.
       const inaccessibleImages = await page
@@ -103,7 +101,6 @@ test.describe("site structural accessibility", () => {
 
     // Verify Escape closes the dialog and restores focus to the opener.
     await emptyUserPage.keyboard.press("Escape");
-    await expect(dialog).toBeHidden();
-    await expect(attendButton).toBeFocused();
+    await expectDialogClosed(emptyUserPage, dialog, { opener: attendButton });
   });
 });

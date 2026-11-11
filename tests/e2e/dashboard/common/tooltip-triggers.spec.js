@@ -269,7 +269,7 @@ test.describe("dashboard tooltip triggers", () => {
     await test.step("click focuses the trigger and keeps it open without hover", async () => {
       // Click the badge, then move the pointer outside its wrapper.
       await trigger.click();
-      await outside.hover();
+      await movePointerOutside(page, outside);
       await expect(tooltip).toBeVisible();
       await expect(trigger).toBeFocused();
     });
@@ -284,11 +284,11 @@ test.describe("dashboard tooltip triggers", () => {
     await test.step("a new click reopens it and an outside press closes it", async () => {
       // Click again to clear the dismissal, then leave with the pointer.
       await trigger.click();
-      await outside.hover();
+      await movePointerOutside(page, outside);
       await expect(tooltip).toBeVisible();
 
       // Press outside the wrapper.
-      await outside.click();
+      await movePointerOutside(page, outside, { press: true });
       await expect(tooltip).toBeHidden();
       await expect(trigger).not.toBeFocused();
     });
@@ -369,6 +369,23 @@ const movePointerFromTriggerIntoPanel = async (page, trigger, tooltip) => {
   await expect(tooltip).toBeVisible();
   await page.mouse.move(panelBox.x + panelBox.width / 2, panelBox.y + panelBox.height / 2, { steps: 10 });
   await expect(tooltip).toBeVisible();
+};
+
+/**
+ * Moves the pointer to the centre of a visible element outside the tooltip wrapper, and presses
+ * there when asked. Raw mouse input skips the actionability "stable" wait, which once stalled for
+ * the whole test timeout in WebKit on CI.
+ * @param {import("@playwright/test").Page} page - Page showing the tooltip.
+ * @param {import("@playwright/test").Locator} outside - Non-interactive element outside the wrapper.
+ * @param {{ press?: boolean }} [options] - Whether to press at that point.
+ */
+const movePointerOutside = async (page, outside, { press = false } = {}) => {
+  await expect(outside).toBeInViewport();
+  const box = await outside.boundingBox();
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+
+  await (press ? page.mouse.click(x, y) : page.mouse.move(x, y));
 };
 
 /**

@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::{
     templates::dashboard::BadgeTone,
-    test_util::normalize_whitespace,
+    test_util::{element_text_with, normalize_whitespace, opening_tag_with},
     types::{
         dashboard::group::surveys::{
             EventSurveyFull, EventSurveyResponseFull, EventSurveyResponseNavigationFilters,
@@ -16,14 +16,18 @@ use crate::{
         event::EventSummary,
         event_survey::{EventSurveyAudience, EventSurveyState},
         pagination::NavigationLinks,
-        questionnaire::{QuestionnaireAnswers, QuestionnaireQuestionKind},
+        questionnaire::{
+            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
+            QuestionnaireOption, QuestionnaireOptionCount, QuestionnaireQuestion,
+            QuestionnaireQuestionBreakdown, QuestionnaireQuestionKind,
+        },
         tests::{
             sample_event_summary, sample_event_survey_full, sample_event_survey_summary,
             sample_user_summary,
         },
         user::UserSummary,
     },
-    validation::MAX_EVENT_SURVEYS,
+    validation::{MAX_EVENT_SURVEY_QUESTIONS, MAX_EVENT_SURVEYS},
 };
 
 use super::{
@@ -186,6 +190,48 @@ fn test_form_page_renders_locked_fields_with_hidden_values() {
 }
 
 #[test]
+fn test_form_page_submits_to_add_or_update() {
+    let survey_id = Uuid::from_u128(2);
+    let event_url = format!("/dashboard/group/events/{}", Uuid::from_u128(1));
+    // (case, survey, expected request attribute, unexpected method, expected label)
+    let cases = [
+        (
+            "new survey",
+            None,
+            format!(r#"hx-post="{event_url}/surveys/add""#),
+            "hx-put=",
+            "Add survey",
+        ),
+        (
+            "existing survey",
+            Some(sample_event_survey_full(survey_id)),
+            format!(r#"hx-put="{event_url}/surveys/{survey_id}/update""#),
+            "hx-post=",
+            "Save survey",
+        ),
+    ];
+
+    for (case, survey, expected_request, unexpected_method, expected_label) in cases {
+        // Render the form
+        let html = normalize_whitespace(&sample_form_page(survey).render().unwrap());
+
+        // Check the form target and the submit label follow the mode
+        let form = opening_tag_with(&html, r#"id="event-survey-form""#);
+        assert!(form.contains(&expected_request), "{case}: {form}");
+        assert!(!form.contains(unexpected_method), "{case}: {form}");
+        let submit = element_text_with(&html, r#"id="event-survey-form-submit""#);
+        assert!(submit.ends_with(expected_label), "{case}: {submit}");
+
+        // Check the questions editor is capped at the survey questions limit
+        let editor = opening_tag_with(&html, "<questions-editor");
+        assert!(
+            editor.contains(&format!(r#"max-questions="{MAX_EVENT_SURVEY_QUESTIONS}""#)),
+            "{case}: {editor}"
+        );
+    }
+}
+
+#[test]
 fn test_format_date_uses_event_timezone() {
     let timezone: Tz = "America/New_York".parse().unwrap();
 
@@ -193,6 +239,39 @@ fn test_format_date_uses_event_timezone() {
         format_date(sample_date(), timezone),
         "May 10, 2099 5:00 AM EDT"
     );
+}
+
+#[test]
+fn test_list_page_confirms_delete_with_response_count() {
+    let cases = [
+        (
+            1,
+            "Delete this survey and its 1 response? This cannot be undone.",
+        ),
+        (
+            3,
+            "Delete this survey and its 3 responses? This cannot be undone.",
+        ),
+    ];
+
+    for (responses_count, expected_message) in cases {
+        // Setup a survey with the given number of responses
+        let survey = EventSurveySummary {
+            responses_count,
+            ..sample_survey(EventSurveyState::Open)
+        };
+        let page = sample_list_page(vec![survey]);
+
+        // Render the list
+        let html = normalize_whitespace(&page.render().unwrap());
+
+        // Check the delete confirmation names the pluralized response count
+        let delete_button = opening_tag_with(&html, r#"id="delete-event-survey-"#);
+        assert!(
+            delete_button.contains(&format!(r#"data-confirm-message="{expected_message}""#)),
+            "{responses_count} responses: {delete_button}"
+        );
+    }
 }
 
 #[test]
@@ -305,6 +384,11 @@ fn test_list_page_without_manage_permission_disables_mutation_controls() {
             .count(),
         3
     );
+
+    // Check the notice explains what the role can still do
+    assert!(html.contains(
+        "Your role cannot manage surveys. You can still view results and download responses."
+    ));
 }
 
 #[test]
@@ -538,6 +622,85 @@ fn test_response_modal_links_neighbors_keeping_search() {
 }
 
 #[test]
+fn test_response_modal_renders_answers_and_unanswered_questions() {
+    // Setup a survey with free-text, single-select and multi-select questions
+    let mut survey = sample_event_survey_full(Uuid::from_u128(2));
+    survey.questions.push(QuestionnaireQuestion {
+        id: Uuid::from_u128(0x5d03),
+        kind: QuestionnaireQuestionKind::MultiSelect,
+        prompt: "Which formats did you enjoy?".to_string(),
+        required: false,
+
+        options: vec![
+            QuestionnaireOption {
+                id: Uuid::from_u128(0x5e02),
+                label: "Lightning talks".to_string(),
+            },
+            QuestionnaireOption {
+                id: Uuid::from_u128(0x5e03),
+                label: "Hallway track".to_string(),
+            },
+            QuestionnaireOption {
+                id: Uuid::from_u128(0x5e04),
+                label: "Panel debates".to_string(),
+            },
+        ],
+    });
+
+    // Setup answers skipping the free-text question and one multi-select option
+    let answers = QuestionnaireAnswers {
+        answers: vec![
+            QuestionnaireAnswer {
+                question_id: Uuid::from_u128(0x5d02),
+                value: QuestionnaireAnswerValue::One(Uuid::from_u128(0x5e01).to_string()),
+            },
+            QuestionnaireAnswer {
+                question_id: Uuid::from_u128(0x5d03),
+                value: QuestionnaireAnswerValue::Many(vec![
+                    Uuid::from_u128(0x5e02),
+                    Uuid::from_u128(0x5e03),
+                ]),
+            },
+        ],
+    };
+    let modal = ResponseModal {
+        event: sample_event(),
+        navigation_filters: EventSurveyResponseNavigationFilters::default(),
+        response: EventSurveyResponseFull {
+            answers,
+            position: 1,
+            summary: sample_respondent(),
+            total: 1,
+
+            next_user_id: None,
+            previous_user_id: None,
+        },
+        survey,
+    };
+
+    // Render the response modal
+    let html = normalize_whitespace(&modal.render().unwrap());
+
+    // Check every question prompt is listed
+    for prompt in [
+        "What should we improve?",
+        "How would you rate the sessions?",
+        "Which formats did you enjoy?",
+    ] {
+        assert!(html.contains(prompt), "missing prompt: {prompt}");
+    }
+
+    // Check only the skipped free-text question falls back to no answer
+    assert_eq!(html.matches("No answer provided").count(), 1);
+
+    // Check the selected options are listed and the unselected one is not
+    assert!(html.contains("Excellent"));
+    assert!(html.contains("Lightning talks"));
+    assert!(html.contains("Hallway track"));
+    assert!(!html.contains("Panel debates"));
+}
+
+#[test]
 fn test_response_modal_without_neighbors_has_no_links() {
     let modal = ResponseModal {
         event: sample_event(),
@@ -667,6 +830,64 @@ fn test_results_page_renders_overview_cards_and_question_sections() {
     // Check the answers modal shell
     assert!(html.contains(r#"id="event-survey-text-answers-modal""#));
     assert!(html.contains(r#"aria-labelledby="event-survey-text-answers-modal-title""#));
+}
+
+#[test]
+fn test_results_page_renders_select_question_breakdowns() {
+    // Setup the results of a survey with one single-select question
+    let question_id = Uuid::from_u128(9);
+    let page = ResultsPage {
+        event: sample_event(),
+        results: EventSurveyResults {
+            questions: vec![EventSurveyResultsQuestion {
+                kind: QuestionnaireQuestionKind::SingleSelect,
+                position: 1,
+                prompt: "How would you rate the sessions?".to_string(),
+                question_id,
+                required: true,
+
+                breakdown: Some(QuestionnaireQuestionBreakdown {
+                    kind: QuestionnaireQuestionKind::SingleSelect,
+                    options: vec![
+                        QuestionnaireOptionCount {
+                            count: 3,
+                            label: "Excellent".to_string(),
+                            option_id: Uuid::from_u128(0x5e01),
+                        },
+                        QuestionnaireOptionCount {
+                            count: 1,
+                            label: "Good".to_string(),
+                            option_id: Uuid::from_u128(0x5e02),
+                        },
+                    ],
+                    position: 1,
+                    prompt: "How would you rate the sessions?".to_string(),
+                    question_id,
+                    respondents: 4,
+                    selections: 4,
+                }),
+                text_answers: None,
+            }],
+            survey: sample_survey(EventSurveyState::Open),
+        },
+    };
+
+    // Render the results
+    let html = normalize_whitespace(&page.render().unwrap());
+
+    // Check the breakdown section is labelled by its prompt heading
+    let options_id = format!("event-survey-question-{question_id}-options");
+    let section = element_text_with(
+        &html,
+        &format!(r#"<section aria-labelledby="{options_id}-prompt""#),
+    );
+    assert!(html.contains(&format!(r#"<h3 id="{options_id}-prompt""#)));
+    assert!(section.contains("How would you rate the sessions?"));
+
+    // Check the totals, option labels and counts are listed
+    assert!(section.contains("4 respondents · 4 selections"));
+    assert!(section.contains("Excellent 3 · 75%"));
+    assert!(section.contains("Good 1 · 25%"));
 }
 
 #[test]

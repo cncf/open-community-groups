@@ -548,12 +548,18 @@ fn test_delivery_worker_prepare_content_badge_awarded() {
     let (subject, body) = render(NotificationKind::BadgeAwarded, template_data);
 
     // Check badge content and links are rendered from the typed template
+    let body = normalize_whitespace(&body);
     assert_eq!(subject, "[Test Group] You earned the Participant badge");
     assert!(body.contains("Recognizes participation"));
     assert!(body.contains("Attend the event"));
     assert!(body.contains("Test Group"));
     assert!(body.contains("https://example.test/dashboard/user?tab=badges"));
     assert!(body.contains("https://example.test/images/badges/badge.png"));
+
+    // Check the badge copy names its issuing group and platform
+    assert!(body.contains(
+        "badge issued by <strong>Test Group</strong> on <strong>Open Community Groups</strong>"
+    ));
 }
 
 #[test]
@@ -571,11 +577,17 @@ fn test_delivery_worker_prepare_content_badge_revoked_omits_reason() {
     let (subject, body) = render(NotificationKind::BadgeRevoked, template_data);
 
     // Check the public typed fields render without the private revocation reason
+    let body = normalize_whitespace(&body);
     assert_eq!(subject, "[Test Group] Your Participant badge was revoked");
     assert!(body.contains("permanently revoked"));
     assert!(body.contains("Contact Test Group"));
     assert!(body.contains("https://example.test/dashboard/user?tab=badges"));
     assert!(!body.contains("private audit detail"));
+
+    // Check the badge copy names its issuing group and platform
+    assert!(body.contains(
+        "issued by <strong>Test Group</strong> on <strong>Open Community Groups</strong>"
+    ));
 }
 
 #[test]
@@ -896,6 +908,46 @@ fn test_delivery_worker_prepare_content_event_custom_legacy_template_data() {
     assert_eq!(subject, "Custom event title");
     assert!(body.contains("Custom event title"));
     assert!(body.contains("Custom event body"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_external_payment_pending() {
+    // Prepare content
+    let (subject, body) = render(
+        NotificationKind::EventExternalPaymentPending,
+        sample_event_external_payment_template_data(),
+    );
+
+    // Check the subject and payment details
+    let body = normalize_whitespace(&body);
+    assert_eq!(subject, "[Payment Group] Complete your event payment");
+    assert!(body.contains("<strong>Amount:</strong> USD 25.00"));
+    assert!(body.contains("66666666-6666-6666-6666-666666666666"));
+    assert!(body.contains("<strong>Deadline:</strong> Sep 03, 2030 at 21:00 PDT"));
+
+    // Check organizer-supplied instructions are escaped
+    assert!(body.contains("Send a transfer to &#60;IBAN&#62;"));
+    assert!(!body.contains("<IBAN>"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_external_payment_reminder_without_instructions() {
+    // Setup a payload without organizer-supplied instructions
+    let mut template_data = sample_event_external_payment_template_data();
+    remove_keys(&mut template_data, &["external_payment_instructions"]);
+
+    // Prepare content
+    let (subject, body) = render(
+        NotificationKind::EventExternalPaymentReminder,
+        template_data,
+    );
+
+    // Check the subject, payment details and instructions fallback
+    let body = normalize_whitespace(&body);
+    assert_eq!(subject, "[Payment Group] Your payment window is closing");
+    assert!(body.contains("<strong>Amount:</strong> USD 25.00"));
+    assert!(body.contains("<strong>Deadline:</strong> Sep 03, 2030 at 21:00 PDT"));
+    assert!(body.contains("None provided."));
 }
 
 #[test]
@@ -1969,6 +2021,27 @@ fn sample_event_custom_legacy_template_data() -> serde_json::Value {
     remove_keys(&mut payload, &["subject"]);
     payload["title"] = json!("Custom event title");
     payload
+}
+
+/// Sample template payload for external payment pending and reminder
+/// notifications.
+fn sample_event_external_payment_template_data() -> serde_json::Value {
+    json!({
+        "amount_minor": 2500,
+        "currency_code": "USD",
+        "dashboard_url": "/dashboard/user?tab=events",
+        "deadline": 1_914_724_800,
+        "event_name": "Payment Event",
+        "event_purchase_id": "66666666-6666-6666-6666-666666666666",
+        "external_payment_instructions": "Send a transfer to <IBAN>\nInclude the reference.",
+        "external_payment_url": "https://pay.example.test/checkout",
+        "group_name": "Payment Group",
+        "theme": {
+            "primary_color": "#000000"
+        },
+        "ticket_title": "General Admission",
+        "timezone": "America/Los_Angeles"
+    })
 }
 
 /// Sample event JSON shared by the event notification payloads, as stored by

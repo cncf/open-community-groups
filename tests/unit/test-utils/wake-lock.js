@@ -43,43 +43,6 @@ export const mockWakeLock = () => {
 };
 
 /**
- * Replaces matchMedia with a phone query whose state tests can change.
- * @param {string} phoneQuery Query text that the double answers.
- * @param {boolean} matches Initial state.
- * @returns {{listeners: Set<Function>, restore: () => void, setMatches: (next: boolean) => void}} Controls.
- */
-export const mockPhoneMedia = (phoneQuery, matches) => {
-  const listeners = new Set();
-  const originalMatchMedia = window.matchMedia;
-  const query = {
-    addEventListener: (type, listener) => {
-      if (type === "change") {
-        listeners.add(listener);
-      }
-    },
-    matches,
-    removeEventListener: (type, listener) => {
-      if (type === "change") {
-        listeners.delete(listener);
-      }
-    },
-  };
-
-  window.matchMedia = (text) => (text === phoneQuery ? query : { matches: false });
-
-  return {
-    listeners,
-    restore: () => {
-      window.matchMedia = originalMatchMedia;
-    },
-    setMatches: (next) => {
-      query.matches = next;
-      [...listeners].forEach((listener) => listener({ matches: next }));
-    },
-  };
-};
-
-/**
  * Sets the page visibility and announces the change.
  * @param {"hidden"|"visible"} state New visibility state.
  * @returns {void}

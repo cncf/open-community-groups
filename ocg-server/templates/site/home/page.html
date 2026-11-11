@@ -92,13 +92,13 @@
       <div class="flex flex-col gap-y-6 sm:gap-y-8 lg:gap-y-12">
         {# Events in-person -#}
         {% if upcoming_in_person_events.len() > 0 -%}
-          {{ ui::events_list(title = "upcoming in-person events", link = explore_events, events = upcoming_in_person_events) -}}
+          {{ ui::events_list(title = "upcoming in-person events", link = explore_in_person_events, events = upcoming_in_person_events) -}}
         {% endif -%}
         {# End events in-person -#}
 
         {# Events online -#}
         {% if upcoming_virtual_events.len() > 0 -%}
-          {{ ui::events_list(title = "upcoming virtual events", link = explore_events, events = upcoming_virtual_events) -}}
+          {{ ui::events_list(title = "upcoming virtual events", link = explore_virtual_events, events = upcoming_virtual_events) -}}
         {% endif -%}
         {# End events online -#}
 
@@ -111,7 +111,7 @@
               </div>
               {# See all groups on desktop -#}
               <div class="hidden justify-self-end md:flex">
-                <a href="{{ explore_groups }}"
+                <a href="{{ explore_latest_groups }}"
                    hx-boost="true"
                    hx-target="body"
                    class="btn-secondary-anchor ms-4">Explore all groups</a>
@@ -119,7 +119,7 @@
               {# End see all groups on desktop -#}
 
               {# See all groups on phones -#}
-              <a href="{{ explore_groups }}"
+              <a href="{{ explore_latest_groups }}"
                  hx-boost="true"
                  hx-target="body"
                  aria-label="See all latest groups added"
@@ -136,7 +136,7 @@
               {# End groups cards -#}
               {# See all groups mobile button -#}
               <div class="flex mt-9 justify-self-center md:hidden md:mt-0 phone:hidden">
-                <a href="{{ explore_groups }}"
+                <a href="{{ explore_latest_groups }}"
                    hx-boost="true"
                    hx-target="body"
                    class="btn-secondary-anchor">Explore all groups</a>

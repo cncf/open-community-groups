@@ -551,7 +551,7 @@ test.describe("event co-hosting workflows", () => {
       await expect(cohostsSelector.locator('input[name="cohost_group_ids[0]"]')).toHaveValue(
         SECOND_COHOST_GROUP_ID,
       );
-      await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
+      await expect(organizerGroupPage.locator("#pending-changes-alert")).toBeVisible();
       expect(updateRequests).toEqual([]);
     } finally {
       // Stop tracking editor update requests.

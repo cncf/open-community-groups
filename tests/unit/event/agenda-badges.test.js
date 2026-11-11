@@ -2,7 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import { initializeAgendaBadges, CLAMP_MEDIA_QUERY } from "/static/js/event/agenda-badges.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mockPhoneMedia } from "/tests/unit/test-utils/wake-lock.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 // Two 50px badges plus the 4px gap fit the 110px row, so a third badge wraps.
 const BADGE_WIDTH = 50;
@@ -55,7 +55,7 @@ describe("agenda badges clamp", () => {
   beforeEach(() => {
     resetDom();
     // The clamp only runs on narrow layouts, so simulate one.
-    media = mockPhoneMedia(CLAMP_MEDIA_QUERY, true);
+    media = stubMatchMedia({ [CLAMP_MEDIA_QUERY]: true });
   });
 
   afterEach(() => {
@@ -97,7 +97,7 @@ describe("agenda badges clamp", () => {
 
   it("leaves every badge visible on desktop", async () => {
     // Desktop keeps the previous wrapped layout with no fold.
-    media.setMatches(false);
+    media.setMatches(CLAMP_MEDIA_QUERY, false);
     const row = renderRow(8);
 
     initializeAgendaBadges(document);
@@ -134,7 +134,7 @@ describe("agenda badges clamp", () => {
 
   it("re-folds a bound row when the viewport becomes narrow", async () => {
     // Start on desktop: the full list stays visible with no toggle.
-    media.setMatches(false);
+    media.setMatches(CLAMP_MEDIA_QUERY, false);
     const row = renderRow(8);
 
     initializeAgendaBadges(document);
@@ -145,7 +145,7 @@ describe("agenda badges clamp", () => {
     expect(toggle.hidden).to.equal(true);
 
     // Narrowing drives the media-change listener, which re-clamps the row.
-    media.setMatches(true);
+    media.setMatches(CLAMP_MEDIA_QUERY, true);
     await settle();
 
     expect(toggle.hidden).to.equal(false);

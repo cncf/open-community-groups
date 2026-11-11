@@ -53,6 +53,25 @@
 {% endmacro external_payment_tooltip -%}
 {# End external payment details tooltip -#}
 
+{# Registration check failed tooltip -#}
+{# Phones show the failure as the bar reason instead. -#}
+{% macro check_failed_tooltip(attendance_instance) -%}
+  {% let check_failed_tooltip_id -%}attendance-check-details-{{ attendance_instance }}{%- endlet %}
+<span class="contents phone:hidden">
+  {% call dashboard::tooltip_panel(
+    id = check_failed_tooltip_id,
+    title = "Registration status",
+    visibility_classes = "group-hover/attendance-check:visible group-hover/attendance-check:opacity-100 group-focus-within/attendance-check:visible group-focus-within/attendance-check:opacity-100",
+    width_classes = "w-64",
+    alignment_classes = "start-0 sm:start-1/2 sm:-translate-x-1/2"
+  ) -%}
+  <span data-attendance-role="check-status-details"
+        class="block text-stone-900"></span>
+  {% endcall -%}
+</span>
+{% endmacro check_failed_tooltip -%}
+{# End registration check failed tooltip -#}
+
 {# Initial attendance control content -#}
 {# Shared by the signed-out and signed-in primary attendance controls. -#}
 {% macro initial_control_content(event) -%}

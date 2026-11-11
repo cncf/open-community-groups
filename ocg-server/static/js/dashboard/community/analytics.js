@@ -82,7 +82,7 @@ const COMMUNITY_PAGE_VIEW_CHARTS = [
 ];
 // Summary cards act as tabs only from the xl breakpoint, where they are clickable
 // and show the selected card; below it the "Analytics tabs" list is the tab UI.
-const SUMMARY_TABS_MEDIA_QUERY = "(min-width: 80rem)";
+export const SUMMARY_TABS_MEDIA_QUERY = "(min-width: 80rem)";
 const SUMMARY_TABS_SELECTOR = "[data-analytics-summary]";
 
 /**

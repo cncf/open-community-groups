@@ -215,7 +215,7 @@ test.describe("group dashboard check-in", () => {
     expect(buttonBounds.y).toBeGreaterThanOrEqual(dateBounds.y + dateBounds.height);
 
     // Verify the location and date lines wrap instead of cutting off the time.
-    const lines = card.locator(".text-\\[0\\.825rem\\]");
+    const lines = card.locator(":is(.icon-location, .icon-date) + span");
     await expect(lines).toHaveCount(2);
     for (const line of await lines.all()) {
       expect(await line.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
@@ -248,7 +248,10 @@ test.describe("group dashboard check-in", () => {
       // Verify the only camera offers no choice, and the frame stays centred on the video.
       await expect(modal.getByLabel("Camera")).toBeHidden();
       const video = await modal.locator("[data-group-check-in-video]").boundingBox();
-      const frame = await modal.locator(".border-white\\/70").boundingBox();
+      const frame = await modal
+        .locator("[data-group-check-in-camera-unavailable]")
+        .locator("..")
+        .boundingBox();
       expect(Math.abs(frame.x + frame.width / 2 - (video.x + video.width / 2))).toBeLessThanOrEqual(1);
       expect(Math.abs(frame.y + frame.height / 2 - (video.y + video.height / 2))).toBeLessThanOrEqual(1);
     },
@@ -319,7 +322,10 @@ test.describe("group dashboard check-in", () => {
         expect(videoBounds.height).toBeGreaterThanOrEqual(240);
 
         // Verify the frame stays a centred square inside the video.
-        const frame = await modal.locator(".border-white\\/70").boundingBox();
+        const frame = await modal
+          .locator("[data-group-check-in-camera-unavailable]")
+          .locator("..")
+          .boundingBox();
         expect(frame.width).toBeCloseTo(frame.height, 0);
         expect(
           Math.abs(frame.x + frame.width / 2 - (videoBounds.x + videoBounds.width / 2)),
@@ -373,7 +379,10 @@ test.describe("group dashboard check-in", () => {
 
         // Verify the frame stays a square inside the camera view.
         const video = await modal.locator("[data-group-check-in-video]").boundingBox();
-        const frame = await modal.locator(".border-white\\/70").boundingBox();
+        const frame = await modal
+          .locator("[data-group-check-in-camera-unavailable]")
+          .locator("..")
+          .boundingBox();
         expect(frame.width).toBeCloseTo(frame.height, 0);
         expect(frame.x).toBeGreaterThanOrEqual(video.x);
         expect(frame.y).toBeGreaterThanOrEqual(video.y);
@@ -543,14 +552,18 @@ const verifyScannerCredentialFlow = async ({ checkInManagerGroupPage }) => {
   await expect(modal.getByText("Checked in", { exact: true })).toBeVisible();
   await expect(modal.getByText(/E2E Pending Two/u)).toBeVisible();
 
-  // Reopen the scanner and submit the same credential again.
+  // Mute sounds, then reopen the scanner and submit the same credential again.
+  // Click the visible label; the sr-only input sits outside its label's hit area.
+  await modal.getByText("Mute sounds", { exact: true }).click();
+  await expect(muteToggle).toBeChecked();
   await modal.getByRole("button", { name: "Close", exact: true }).click();
   await expect(modal).toBeHidden();
   await eventCard.click();
   await expect(modal).toBeVisible();
+  await expect(muteToggle).toBeChecked();
   await submitScannedCredential(checkInManagerGroupPage);
 
-  // Verify duplicate scans produce the durable already-checked-in outcome.
-  await expect(modal.getByText("Already checked in", { exact: true })).toBeVisible();
+  // Verify duplicate scans show the original check-in time.
+  await expect(modal.getByText(/^Already checked in · \d{1,2}:\d{2} [AP]M$/u)).toBeVisible();
   await expect(modal.getByText(/E2E Pending Two/u)).toBeVisible();
 };

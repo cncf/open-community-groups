@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-
 import { expect, test } from "../../fixtures.js";
 
 import {
@@ -13,7 +11,7 @@ import {
   TEST_SITE_TITLE,
 } from "../../seed.js";
 import { enableDesktopVersion } from "../../snapshots.js";
-import { getCommunityBanner, getPageOverflow, getSectionLink, navigateToSiteHome } from "../../utils.js";
+import { getCommunityBanner, getSectionLink, navigateToSiteHome } from "../../utils.js";
 import {
   expectLatestGroupsSection,
   expectNumericStats,
@@ -26,14 +24,27 @@ const EXPLORE_LINK_VIEWPORTS = [
   { name: "mobile", width: 375 },
 ];
 
-// The seed has two communities, so the carousel case borrows the template's own tokens.
-const HOME_TEMPLATE = readFileSync(
-  new URL("../../../../ocg-server/templates/site/home/page.html", import.meta.url),
-  "utf8",
-);
-const [CAROUSEL_LIST_TOKENS, CAROUSEL_PAGE_TOKENS] = [
-  ...HOME_TEMPLATE.matchAll(/{% if carousel %}(.*?){% (?:else|endif) %}/g),
-].map(([, tokens]) => tokens);
+const EXPLORE_IN_PERSON_EVENTS_PATH = "/explore?entity=events&kind[0]=in-person&kind[1]=hybrid";
+const EXPLORE_LATEST_GROUPS_PATH = "/explore?entity=groups&sort_by=date";
+const EXPLORE_VIRTUAL_EVENTS_PATH = "/explore?entity=events&kind[0]=virtual&kind[1]=hybrid";
+
+const EXPLORE_SECTION_LINKS = [
+  {
+    heading: "upcoming in-person events",
+    linkName: "Explore all events",
+    href: EXPLORE_IN_PERSON_EVENTS_PATH,
+  },
+  {
+    heading: "upcoming virtual events",
+    linkName: "Explore all events",
+    href: EXPLORE_VIRTUAL_EVENTS_PATH,
+  },
+  {
+    heading: "Latest groups added",
+    linkName: "Explore all groups",
+    href: EXPLORE_LATEST_GROUPS_PATH,
+  },
+];
 
 test.describe("site home page", () => {
   test.describe("default viewport", () => {
@@ -115,21 +126,12 @@ test.describe("site home page", () => {
         await page.setViewportSize({ width: viewport.width, height: 900 });
         await navigateToSiteHome(page);
 
-        // Verify the events link points to the explore page.
-        const linkLayout = viewport.name === "desktop" ? "desktop" : "mobile";
-        const eventsLink = getSectionLink(
-          page,
-          "upcoming in-person events",
-          "Explore all events",
-          linkLayout,
-        );
-        await expect(eventsLink).toBeVisible();
-        await expect(eventsLink).toHaveAttribute("href", "/explore?entity=events");
-
-        // Verify the groups link points to the explore page.
-        const groupsLink = getSectionLink(page, "Latest groups added", "Explore all groups", linkLayout);
-        await expect(groupsLink).toBeVisible();
-        await expect(groupsLink).toHaveAttribute("href", "/explore?entity=groups");
+        // Verify each section link opens the Explore view matching its preview.
+        for (const { heading, linkName, href } of EXPLORE_SECTION_LINKS) {
+          const sectionLink = getSectionLink(page, heading, linkName);
+          await expect(sectionLink).toBeVisible();
+          await expect(sectionLink).toHaveAttribute("href", href);
+        }
       });
     }
   });
@@ -248,63 +250,6 @@ test.describe("site home page", () => {
       await expect(page.locator("[data-snap-dots]")).toHaveCount(0);
     });
 
-    test("many communities swipe in pages of three with dots that follow the scroll", async ({ page }) => {
-      // Rebuild the seeded list as the template renders five communities: pages of three and two.
-      await page.evaluate(
-        async ({ listTokens, pageTokens }) => {
-          const tile = document.querySelector("a[href='/e2e-second-community']");
-          const firstPage = tile.parentElement;
-          const list = firstPage.parentElement;
-          list.classList.remove("phone:grid-cols-1");
-          list.classList.add(...listTokens.split(" "));
-          firstPage.append(tile.cloneNode(true));
-          const secondPage = firstPage.cloneNode(false);
-          secondPage.append(tile.cloneNode(true), tile.cloneNode(true));
-          list.append(secondPage);
-          [...list.children].forEach((item) => item.classList.add(...pageTokens.split(" ")));
-          list.insertAdjacentHTML(
-            "afterend",
-            '<div class="not-phone:hidden" aria-hidden="true" data-snap-dots></div>',
-          );
-          // The server hashes asset names, so reuse the URL the page already loaded.
-          const { src } = document.querySelector("script[src*='/snap-dots']");
-          const { syncSnapDots } = await import(src);
-          syncSnapDots();
-        },
-        { listTokens: CAROUSEL_LIST_TOKENS, pageTokens: CAROUSEL_PAGE_TOKENS },
-      );
-
-      // Verify the first page stacks its three banners in one column.
-      const firstPageBanners = await page.locator("[data-snap-dots]").evaluate((row) =>
-        [...row.previousElementSibling.children[0].children].map((tile) => {
-          const { height, x, y } = tile.getBoundingClientRect();
-          return { height, x, y };
-        }),
-      );
-      expect(firstPageBanners).toHaveLength(3);
-      expect(firstPageBanners[1].x).toBe(firstPageBanners[0].x);
-      expect(firstPageBanners[2].y).toBeGreaterThan(firstPageBanners[1].y + firstPageBanners[1].height);
-
-      // Verify a dot per page with the first active.
-      const dots = page.locator("[data-snap-dots] .snap-dot");
-      await expect(dots).toHaveCount(2);
-      await expect(dots.nth(0)).toHaveAttribute("data-active");
-
-      // Verify the page itself does not scroll sideways.
-      expect(await getPageOverflow(page)).toBeLessThanOrEqual(0);
-
-      // Verify the dots follow the swipe position.
-      await page.evaluate(() => {
-        const list = document.querySelector("[data-snap-dots]").previousElementSibling;
-        list.scrollTo({
-          behavior: "instant",
-          left: list.children[1].offsetLeft - list.children[0].offsetLeft,
-        });
-      });
-      await expect(dots.nth(1)).toHaveAttribute("data-active");
-      await expect(dots.nth(0)).not.toHaveAttribute("data-active");
-    });
-
     test("listing headings offer a sentence case See all", async ({ page }) => {
       // Find the pills in the upcoming and groups headings.
       const eventsLink = page.getByRole("link", { name: "See all upcoming in-person events" });
@@ -312,9 +257,9 @@ test.describe("site home page", () => {
 
       // Verify they sit in their headings and reach Explore.
       await expect(eventsLink).toBeVisible();
-      await expect(eventsLink).toHaveAttribute("href", "/explore?entity=events");
+      await expect(eventsLink).toHaveAttribute("href", EXPLORE_IN_PERSON_EVENTS_PATH);
       await expect(groupsLink).toBeVisible();
-      await expect(groupsLink).toHaveAttribute("href", "/explore?entity=groups");
+      await expect(groupsLink).toHaveAttribute("href", EXPLORE_LATEST_GROUPS_PATH);
 
       // Verify the strip's uppercase does not reach the pill.
       expect(await eventsLink.evaluate((element) => getComputedStyle(element).textTransform)).toBe("none");

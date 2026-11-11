@@ -87,9 +87,9 @@ review controls, see [Event Operations](../guides/event-operations.md).
 
 ## Validate Your Dashboard Access
 
-Open your avatar menu in the top-right corner to confirm which dashboard scopes
-your account has right now. This step requires logging in with Linux Foundation
-SSO.
+Open your user menu (your initials) in the top-right corner to confirm which
+dashboard scopes your account has right now. This step requires logging in with
+Linux Foundation SSO.
 
 - [User Dashboard](/dashboard/user ':ignore') is available to all logged-in
   users.

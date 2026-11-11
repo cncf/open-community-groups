@@ -102,7 +102,10 @@ test.describe("public badge resources", () => {
     // Open the public event page that renders the seeded member profile trigger.
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, TEST_EVENT_SLUG);
     // The same speaker can appear in more than one event section; either chip opens the same profile.
-    await page.getByRole("button", { name: "View E2E Member Two's profile" }).first().click();
+    await page
+      .getByRole("button", { name: /^View profile:\s*E2E Member Two\b/ })
+      .first()
+      .click();
 
     // Verify the modal renders only listed, active badge credentials.
     const profileDialog = page.getByRole("dialog", {

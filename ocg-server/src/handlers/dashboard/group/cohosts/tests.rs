@@ -10,6 +10,7 @@ use crate::{
     db::mock::MockDB,
     handlers::{error::INVALID_REQUEST_PAYLOAD, tests::*},
     services::events::{EventsError, MockEventsManager},
+    test_util::opening_tag_with,
     types::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
@@ -284,6 +285,21 @@ async fn test_list_page_renders_actions_with_settings_write() {
     assert!(!html.contains(&format!(
         "hx-put=\"/dashboard/group/cohosts/{invitation_id}/cancel\""
     )));
+
+    // Check the approve action waits for confirmation before mutating
+    let approve = opening_tag_with(
+        &html,
+        &format!(r#"hx-put="/dashboard/group/cohosts/{invitation_id}/approve""#),
+    );
+    assert!(approve.contains(r#"hx-trigger="confirmed""#));
+
+    // Check the list refreshes on the trigger the mutation handlers emit
+    let refresh = opening_tag_with(&html, r#"id="cohosts-refresh""#);
+    assert!(refresh.contains(&format!(
+        r#"hx-trigger="{} from:body""#,
+        super::REFRESH_TRIGGER
+    )));
+    assert!(refresh.contains(&format!(r#"hx-get="{}"#, super::PARTIAL_URL)));
 }
 
 #[tokio::test]

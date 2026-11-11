@@ -2,12 +2,8 @@ import { expect } from "@open-wc/testing";
 
 import { holdScreenAwake, isPhoneViewport, PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import {
-  mockPhoneMedia,
-  mockWakeLock,
-  restorePageVisibility,
-  setPageVisibility,
-} from "/tests/unit/test-utils/wake-lock.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
+import { mockWakeLock, restorePageVisibility, setPageVisibility } from "/tests/unit/test-utils/wake-lock.js";
 
 /**
  * Loads a repository file served by the test runner.
@@ -23,35 +19,37 @@ const loadFile = async (path) => {
 };
 
 describe("phone viewport", () => {
-  const originalMatchMedia = window.matchMedia;
+  let media;
 
   afterEach(() => {
-    window.matchMedia = originalMatchMedia;
+    media?.restore();
   });
 
   it("matches the phone query", () => {
-    // Stub a matching query and record what it receives.
-    const queries = [];
-    window.matchMedia = (query) => {
-      queries.push(query);
-      return { matches: true };
-    };
+    // Stub a matching query that records what it receives.
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
 
     // Verify the shared query reaches matchMedia.
     expect(isPhoneViewport()).to.equal(true);
-    expect(queries).to.deep.equal([PHONE_MEDIA_QUERY]);
+    expect(media.calls).to.deep.equal([PHONE_MEDIA_QUERY]);
   });
 
   it("reports false when the query does not match", () => {
-    window.matchMedia = () => ({ matches: false });
+    media = stubMatchMedia();
 
     expect(isPhoneViewport()).to.equal(false);
   });
 
   it("reports false without matchMedia", () => {
+    // Remove matchMedia, which the shared stub does not model.
+    const originalMatchMedia = window.matchMedia;
     window.matchMedia = undefined;
 
-    expect(isPhoneViewport()).to.equal(false);
+    try {
+      expect(isPhoneViewport()).to.equal(false);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 
   it("does not match a fine pointer or print", () => {
@@ -111,14 +109,14 @@ describe("holdScreenAwake", () => {
 
   it("does nothing off phones", async () => {
     // Hold the screen while the phone query is false.
-    media = mockPhoneMedia(PHONE_MEDIA_QUERY, false);
+    media = stubMatchMedia();
     const visibility = trackVisibilityListeners();
     const release = holdScreenAwake();
     await waitForMicrotask();
 
     // Verify nothing was requested and no listener was added.
     expect(wakeLock.requests).to.deep.equal([]);
-    expect(media.listeners.size).to.equal(0);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     expect(visibility.listeners.size).to.equal(0);
 
     // Verify the returned release is safe to call.
@@ -129,14 +127,14 @@ describe("holdScreenAwake", () => {
   it("does nothing without the API", () => {
     // Remove the API from a phone.
     wakeLock.restore();
-    media = mockPhoneMedia(PHONE_MEDIA_QUERY, true);
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     const original = Object.getOwnPropertyDescriptor(Navigator.prototype, "wakeLock");
     delete Navigator.prototype.wakeLock;
 
     // Verify holding and releasing add nothing.
     try {
       const release = holdScreenAwake();
-      expect(media.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
       release();
     } finally {
       if (original) Object.defineProperty(Navigator.prototype, "wakeLock", original);
@@ -145,7 +143,7 @@ describe("holdScreenAwake", () => {
 
   it("requests a screen lock on phones and releases it", async () => {
     // Hold the screen on a phone.
-    media = mockPhoneMedia(PHONE_MEDIA_QUERY, true);
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     const visibility = trackVisibilityListeners();
     const release = holdScreenAwake();
     await waitForMicrotask();
@@ -158,14 +156,14 @@ describe("holdScreenAwake", () => {
     release();
     await waitForMicrotask();
     expect(wakeLock.locks[0].released).to.equal(true);
-    expect(media.listeners.size).to.equal(0);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     expect(visibility.listeners.size).to.equal(0);
     visibility.restore();
   });
 
   it("requests the lock again when the page returns", async () => {
     // Hold the screen, then lose the lock as the browser does when the page hides.
-    media = mockPhoneMedia(PHONE_MEDIA_QUERY, true);
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     const release = holdScreenAwake();
     await waitForMicrotask();
     wakeLock.locks[0].released = true;
@@ -187,7 +185,7 @@ describe("holdScreenAwake", () => {
 
   it("stops requesting after release", async () => {
     // Release a held lock.
-    media = mockPhoneMedia(PHONE_MEDIA_QUERY, true);
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     const release = holdScreenAwake();
     await waitForMicrotask();
     release();
@@ -200,7 +198,7 @@ describe("holdScreenAwake", () => {
 
   it("releases a lock granted after the release", async () => {
     // Release before the request resolves.
-    media = mockPhoneMedia(PHONE_MEDIA_QUERY, true);
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     const release = holdScreenAwake();
     release();
     await waitForMicrotask();
@@ -212,7 +210,7 @@ describe("holdScreenAwake", () => {
 
   it("survives a refused lock and tries again on return", async () => {
     // Refuse the first request.
-    media = mockPhoneMedia(PHONE_MEDIA_QUERY, true);
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     wakeLock.reject(new DOMException("Refused", "NotAllowedError"));
     const release = holdScreenAwake();
     await waitForMicrotask();
@@ -227,11 +225,11 @@ describe("holdScreenAwake", () => {
 
   it("releases while the query is false and resumes when it returns", async () => {
     // Hold the screen, then rotate past the phone width.
-    media = mockPhoneMedia(PHONE_MEDIA_QUERY, true);
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     const visibility = trackVisibilityListeners();
     const release = holdScreenAwake();
     await waitForMicrotask();
-    media.setMatches(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
     await waitForMicrotask();
 
     // Verify the lock and the page listener are gone off phones.
@@ -242,7 +240,7 @@ describe("holdScreenAwake", () => {
     expect(wakeLock.requests.length).to.equal(1);
 
     // Rotate back and verify the hold resumes.
-    media.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForMicrotask();
     expect(wakeLock.requests.length).to.equal(2);
     expect(wakeLock.locks[1].released).to.equal(false);
@@ -251,7 +249,7 @@ describe("holdScreenAwake", () => {
     release();
     await waitForMicrotask();
     expect(wakeLock.locks[1].released).to.equal(true);
-    expect(media.listeners.size).to.equal(0);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     expect(visibility.listeners.size).to.equal(0);
     visibility.restore();
   });

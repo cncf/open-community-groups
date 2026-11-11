@@ -18,6 +18,7 @@ const initializeAttendanceDom = async () => {
 };
 
 const renderAttendanceDom = ({
+  ends = "",
   starts = "2099-05-10T10:00:00Z",
   capacity = "10",
   remainingCapacity = "5",
@@ -34,6 +35,7 @@ const renderAttendanceDom = ({
   document.body.innerHTML = `
     <div
       data-attendance-container
+      ${ends ? `data-ends="${ends}"` : ""}
       data-starts="${starts}"
       data-capacity="${capacity}"
       data-remaining-capacity="${remainingCapacity}"
@@ -68,6 +70,24 @@ const renderAttendanceDom = ({
         <div class="svg-icon icon-user-plus" data-attendance-icon></div>
         <span data-attendance-label>Attend event</span>
       </button>
+      <p
+        id="attendance-check-status"
+        data-attendance-role="check-status"
+        role="status"
+      ></p>
+      <button
+        id="retry-btn"
+        data-attendance-role="retry-btn"
+        type="button"
+        aria-describedby="attendance-check-details"
+        class="hidden"
+      >
+        <div class="svg-icon icon-refresh" data-attendance-icon></div>
+        <span data-attendance-label>Retry</span>
+      </button>
+      <span id="attendance-check-details" role="tooltip" data-tooltip-panel>
+        <span data-attendance-role="check-status-details"></span>
+      </span>
       <button
         id="attend-btn"
         data-attendance-role="attend-btn"
@@ -166,6 +186,13 @@ const renderAttendanceDom = ({
       '[data-attendance-role="loading-btn"]',
     ),
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
+    checkStatus: document.querySelector(
+      '[data-attendance-role="check-status"]',
+    ),
+    checkStatusDetails: document.querySelector(
+      '[data-attendance-role="check-status-details"]',
+    ),
+    retryButton: document.querySelector('[data-attendance-role="retry-btn"]'),
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
     leaveButton: document.querySelector('[data-attendance-role="leave-btn"]'),
     refundButton: document.querySelector('[data-attendance-role="refund-btn"]'),
@@ -372,6 +399,129 @@ describe("event attendance", () => {
     ).to.equal("Join waiting list");
     expect(attendButton.classList.contains("hidden")).to.equal(true);
     expect(leaveButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  [0, 500, 503].forEach((status) => {
+    it(`shows Retry and the load error when the registration check fails (${status})`, () => {
+      // Render the attendance fixture.
+      const {
+        attendButton,
+        checkStatus,
+        checkStatusDetails,
+        checker,
+        retryButton,
+        signinButton,
+      } = renderAttendanceDom();
+
+      // A network error or a server error leaves the registration unknown.
+      dispatchHtmxAfterRequest(checker, { status });
+
+      // Verify Retry and the load error replace the signed-out view.
+      expect(retryButton.classList.contains("hidden")).to.equal(false);
+      expect(retryButton.disabled).to.equal(false);
+      expect(checkStatus.textContent).to.equal(
+        "Couldn't load your registration.",
+      );
+      expect(checkStatusDetails.textContent).to.equal(
+        "Couldn't load your registration.",
+      );
+      expect(signinButton.classList.contains("hidden")).to.equal(true);
+      expect(attendButton.classList.contains("hidden")).to.equal(true);
+    });
+  });
+
+  it("keeps the signed-out view for 401 and 403", () => {
+    [401, 403].forEach((status) => {
+      // Render the attendance fixture.
+      const { checkStatus, checker, retryButton, signinButton } =
+        renderAttendanceDom();
+
+      // An expired session answers the check with an auth error.
+      dispatchHtmxAfterRequest(checker, { status });
+
+      // Verify the signed-out view stays without the load error.
+      expect(signinButton.classList.contains("hidden"), `${status}`).to.equal(
+        false,
+      );
+      expect(retryButton.classList.contains("hidden"), `${status}`).to.equal(
+        true,
+      );
+      expect(checkStatus.textContent, `${status}`).to.equal("");
+    });
+  });
+
+  it("Retry shows the loading state and checks registration again", async () => {
+    // Render a failed registration check.
+    const { checkStatus, checker, loadingButton, retryButton } =
+      renderAttendanceDom({
+        availabilityUrl: "/events/test-event/availability",
+      });
+    dispatchHtmxAfterRequest(checker, { status: 0 });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 10,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_simple_rsvp: true,
+          remaining_capacity: 5,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      },
+    });
+    let attendanceChangedCount = 0;
+    const countAttendanceChanged = () => {
+      attendanceChangedCount += 1;
+    };
+    document.body.addEventListener(
+      "attendance-changed",
+      countAttendanceChanged,
+    );
+
+    try {
+      // Retry the registration check.
+      retryButton.click();
+
+      // Verify the loading state replaces Retry and the load error.
+      expect(loadingButton.classList.contains("hidden")).to.equal(false);
+      expect(retryButton.classList.contains("hidden")).to.equal(true);
+      expect(checkStatus.textContent).to.equal("");
+
+      // Verify availability refreshes before the registration check runs again.
+      await waitForMicrotask();
+      expect(fetchMock.calls[0][0]).to.equal("/events/test-event/availability");
+      expect(attendanceChangedCount).to.equal(1);
+    } finally {
+      document.body.removeEventListener(
+        "attendance-changed",
+        countAttendanceChanged,
+      );
+      fetchMock.restore();
+    }
+  });
+
+  it("a later successful check clears the load error", () => {
+    // Render a failed registration check.
+    const { attendButton, checkStatus, checkStatusDetails, checker, retryButton } =
+      renderAttendanceDom();
+    dispatchHtmxAfterRequest(checker, { status: 500 });
+
+    // The next check succeeds.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    // Verify the guest state replaces Retry and the load error.
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(retryButton.classList.contains("hidden")).to.equal(true);
+    expect(checkStatus.textContent).to.equal("");
+    expect(checkStatusDetails.textContent).to.equal("");
   });
 
   it("joins the simple RSVP waitlist when only private capacity remains", () => {
@@ -921,7 +1071,47 @@ describe("event attendance", () => {
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal(
-      "You cannot change attendance because the event has already started.",
+      "You cannot change attendance because the event has ended.",
+    );
+  });
+
+  it("treats an event as past once it ends", () => {
+    // Render an event that started and ended in the past.
+    const { checker, attendButton } = renderAttendanceDom({
+      ends: "2000-05-10T12:00:00Z",
+      starts: "2000-05-10T10:00:00Z",
+    });
+
+    // Dispatch the HTMX after-request event.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    // Verify the ended event locks attendance changes.
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal(
+      "You cannot change attendance because the event has ended.",
+    );
+  });
+
+  it("keeps attendance open for an event that started but has not ended", () => {
+    // Render an event that started in the past and ends in the future.
+    const { checker, attendButton } = renderAttendanceDom({
+      ends: "2099-05-10T12:00:00Z",
+      starts: "2000-05-10T10:00:00Z",
+    });
+
+    // Dispatch the HTMX after-request event.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    // Verify the running event keeps attendance open.
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(false);
+    expect(attendButton.title).to.not.equal(
+      "You cannot change attendance because the event has ended.",
     );
   });
 

@@ -3,6 +3,7 @@ use axum::http::StatusCode;
 use crate::{
     db::mock::{MockDB, expect_site_settings},
     handlers::tests::*,
+    test_util::opening_tag_with,
     types::{
         community::CommunityFull,
         dashboard::{
@@ -237,6 +238,14 @@ async fn test_page_settings_tab_success() {
     assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("hx-get=\"/dashboard/community/settings/update\""));
     assert!(!body.contains("Your role cannot update community settings."));
+
+    // Check the session's selected community reaches the dashboard scripts
+    let layout = opening_tag_with(&body, r#"id="dashboard-layout""#);
+    assert!(layout.contains(&format!(
+        r#"data-ocg-selected-community-id="{}""#,
+        ids.community_id
+    )));
+    assert!(!layout.contains("data-ocg-selected-group-id"));
 }
 
 #[tokio::test]

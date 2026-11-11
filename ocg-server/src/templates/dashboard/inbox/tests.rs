@@ -1,10 +1,13 @@
 use askama::Template;
 use uuid::Uuid;
 
-use crate::types::{
-    inbox::{InboxConversationStatus, InboxMessageKind},
-    pagination::NavigationLinks,
-    tests::{sample_inbox_conversation, sample_inbox_conversation_summary},
+use crate::{
+    test_util::{element_text_with, opening_tag_with},
+    types::{
+        inbox::{InboxConversationStatus, InboxMessageKind},
+        pagination::NavigationLinks,
+        tests::{sample_inbox_conversation, sample_inbox_conversation_summary},
+    },
 };
 
 use super::*;
@@ -257,6 +260,27 @@ fn test_list_page_counterpart_label_per_scope() {
 
     page.scope = InboxScope::User;
     assert_eq!(page.counterpart_label(&conversation), "Test Group");
+}
+
+#[test]
+fn test_list_page_labels_active_filters_group() {
+    // Render the page with an active status filter
+    let mut page = sample_list_page(InboxScope::Group);
+    page.status = Some(InboxConversationStatus::Answered);
+    let html = page.render().unwrap();
+
+    // Check the active filter chips sit in the group named by its label
+    let group_needle = r#"aria-labelledby="inbox-active-filters-label""#;
+    assert!(opening_tag_with(&html, group_needle).contains(r#"role="group""#));
+    assert_eq!(
+        element_text_with(&html, r#"id="inbox-active-filters-label""#),
+        "Active filters"
+    );
+    let active_filters = element_text_with(&html, group_needle);
+    assert!(
+        active_filters.contains("Status: Answered"),
+        "{active_filters}"
+    );
 }
 
 #[test]

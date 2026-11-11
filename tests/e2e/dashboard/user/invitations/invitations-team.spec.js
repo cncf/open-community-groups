@@ -19,6 +19,7 @@ import {
 import { buildE2eUrl, confirmAlert, navigateToPath, waitForActionResponse } from "../../../utils.js";
 import { getMobileNotice } from "../aria-helpers.js";
 import { openUserDashboardPath } from "../helpers.js";
+import { readInvitationsMenuCount } from "./helpers.js";
 
 /** Seeded pending community viewer invitation of pending1. */
 const PENDING1_COMMUNITY_INVITATION = {
@@ -74,11 +75,13 @@ test.describe("user dashboard invitations view", () => {
     await expect(dashboardContent.getByText("Community Invitations", { exact: true })).toBeVisible();
     await expect(dashboardContent.getByText("Group Invitations", { exact: true })).toBeVisible();
 
-    // Find the community row.
+    // Find the community row. Event offer rows also name the community, so
+    // anchor it through its unique reject button id.
     const communityRow = dashboardContent.locator("tr", {
-      hasText: "e2e-test-community",
+      has: pending1Page.locator(`#reject-community-${PENDING1_COMMUNITY_INVITATION.communityId}`),
+      hasText: TEST_COMMUNITY_TITLE,
     });
-    await expect(communityRow).toContainText("viewer");
+    await expect(communityRow).toContainText("Viewer");
     await expect(communityRow.getByTitle("Approve")).toBeVisible();
     await expect(communityRow.getByTitle("Reject")).toBeVisible();
 
@@ -86,7 +89,7 @@ test.describe("user dashboard invitations view", () => {
     const groupRow = dashboardContent.locator("tr", {
       hasText: "Inactive Local Chapter",
     });
-    await expect(groupRow).toContainText("events-manager");
+    await expect(groupRow).toContainText("Events Manager");
     await expect(groupRow.getByTitle("Approve")).toBeVisible();
     await expect(groupRow.getByTitle("Reject")).toBeVisible();
   });
@@ -97,8 +100,11 @@ test.describe("user dashboard invitations view", () => {
 
     // Find the dashboard content.
     const dashboardContent = pending1Page.locator("#dashboard-content");
+    // Event offer rows also name the community, so anchor the community
+    // invitation row through its unique reject button id.
     const communityInvitationRow = dashboardContent.locator("tr", {
-      hasText: "e2e-test-community",
+      has: pending1Page.locator(`#reject-community-${PENDING1_COMMUNITY_INVITATION.communityId}`),
+      hasText: TEST_COMMUNITY_TITLE,
     });
     const approveCommunityInvitationButton = communityInvitationRow.getByTitle("Approve");
 
@@ -110,6 +116,8 @@ test.describe("user dashboard invitations view", () => {
       userId: PENDING1_COMMUNITY_INVITATION.userId,
     };
     const communityAuditCount = countTeamInvitationAuditLogs(communityAuditFilter);
+    const pendingCount = await readInvitationsMenuCount(pending1Page);
+    expect(pendingCount).toBeGreaterThan(0);
 
     try {
       // Accept the community invitation.
@@ -119,6 +127,9 @@ test.describe("user dashboard invitations view", () => {
         urlIncludes: "/dashboard/user/invitations/community/",
       });
       expect(countTeamInvitationAuditLogs(communityAuditFilter)).toBe(communityAuditCount + 1);
+
+      // Verify the menu count drops once the body refresh settles.
+      await expect.poll(() => readInvitationsMenuCount(pending1Page)).toBe(pendingCount - 1);
 
       // Verify the accepted role opens the community dashboard with the community selected.
       await navigateToPath(pending1Page, "/dashboard/community");
@@ -150,7 +161,7 @@ test.describe("user dashboard invitations view", () => {
       await pending1Page.reload();
 
       // Assert how many matching elements are shown.
-      await expect(dashboardContent.locator("tr", { hasText: "e2e-test-community" })).toHaveCount(0);
+      await expect(communityInvitationRow).toHaveCount(0);
       await expect(dashboardContent.locator("tr", { hasText: "Inactive Local Chapter" })).toHaveCount(0);
     } finally {
       // Restore both pending invitations for later tests.
@@ -220,8 +231,11 @@ test.describe("user dashboard invitations view", () => {
 
     // Find the dashboard content.
     const dashboardContent = pending2Page.locator("#dashboard-content");
+    // Event offer rows also name the community, so anchor the community
+    // invitation row through its unique reject button id.
     const communityInvitationRow = dashboardContent.locator("tr", {
-      hasText: "e2e-test-community",
+      has: pending2Page.locator(`#reject-community-${PENDING2_COMMUNITY_INVITATION.communityId}`),
+      hasText: TEST_COMMUNITY_TITLE,
     });
     const rejectCommunityInvitationButton = communityInvitationRow.getByTitle("Reject");
 
@@ -249,7 +263,7 @@ test.describe("user dashboard invitations view", () => {
       await pending2Page.reload();
 
       // Assert how many matching elements are shown.
-      await expect(dashboardContent.locator("tr", { hasText: "e2e-test-community" })).toHaveCount(0);
+      await expect(communityInvitationRow).toHaveCount(0);
     } finally {
       // Remove the owned community invitation if the rejection did not.
       cleanupCommunityTeamInvitation(PENDING2_COMMUNITY_INVITATION);

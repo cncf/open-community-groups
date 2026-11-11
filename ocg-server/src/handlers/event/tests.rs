@@ -442,20 +442,16 @@ async fn test_page_renders_location_card_for_venue_over_display_limit() {
         .unwrap();
     let (parts, bytes) = send(router, request).await;
 
-    // Check phones keep the card, the full address and the directions link
+    // Check the card renders the full address and the directions link
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     let body = body.split_whitespace().collect::<Vec<_>>().join(" ");
-    assert!(!body.contains("flex flex-col phone:p-3 phone:hidden"));
-    assert!(body.contains(&format!("phone:pb-0\"> {venue_address} </div>")));
+    assert!(body.contains(&format!("> {venue_address} </div>")));
     assert!(body.contains("data-directions-link"));
     assert!(body.contains(&format!("destination={venue_address}")));
 
-    // Check the desktop placeholder is kept, and hidden on phones
-    assert!(body.contains(
-        "justify-center phone:hidden\"> <div class=\"text-xl font-semibold text-stone-700 \
-         text-center\">Location not provided</div>"
-    ));
+    // Check the card also renders the location placeholder
+    assert!(body.contains(">Location not provided</div>"));
 }
 
 #[tokio::test]

@@ -1,7 +1,9 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/breadcrumb-nav.js";
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 describe("breadcrumb-nav", () => {
   useMountedElementsCleanup("breadcrumb-nav");
@@ -12,10 +14,10 @@ describe("breadcrumb-nav", () => {
     { label: "CNCF Madrid", icon: "groups", current: true },
   ];
 
-  const originalMatchMedia = window.matchMedia;
+  let media;
 
   afterEach(() => {
-    window.matchMedia = originalMatchMedia;
+    media?.restore();
   });
 
   it("renders nothing when no items are provided", async () => {
@@ -75,7 +77,7 @@ describe("breadcrumb-nav", () => {
 
   it("names the dropdown listbox on phones", async () => {
     // Stub a matching phone query.
-    window.matchMedia = () => ({ matches: true });
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
 
     // Render the breadcrumb navigation with a mobile dropdown.
     const element = await mountLitComponent("breadcrumb-nav", {
@@ -90,7 +92,7 @@ describe("breadcrumb-nav", () => {
 
   it("leaves the dropdown listbox unnamed off phones", async () => {
     // Stub a query that does not match.
-    window.matchMedia = () => ({ matches: false });
+    media = stubMatchMedia();
 
     // Render the breadcrumb navigation with a mobile dropdown.
     const element = await mountLitComponent("breadcrumb-nav", {

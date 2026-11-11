@@ -6,49 +6,9 @@ import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 
-const loadCfsModalTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/event/cfs_modal.html");
-
-  expect(response.ok).to.equal(true);
-
-  return response.text();
-};
-
-const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
-
 describe("event cfs modal", () => {
   afterEach(() => {
     resetDom();
-  });
-
-  it("shows the profile CTA only for incomplete signed-in users", async () => {
-    const template = normalizeWhitespace(await loadCfsModalTemplate());
-
-    expect(template).to.include("{% if user.logged_in && !user.profile_complete -%}");
-    expect(template).to.include("Help organizers learn more about you and your work.");
-    expect(template).to.include("Complete your profile");
-  });
-
-  it("keeps the declarative modal contract in the event templates", async () => {
-    // Load the event page and CFS modal templates
-    const [pageTemplate, modalTemplate] = await Promise.all([
-      fetch("/ocg-server/templates/event/page.html").then((response) => response.text()),
-      loadCfsModalTemplate(),
-    ]);
-
-    // Verify the root opens the modal and every close control toggles it
-    expect(normalizeWhitespace(pageTemplate)).to.include(
-      '<div id="cfs-modal-root" data-modal-open-on-swap="cfs-modal"',
-    );
-    expect(normalizeWhitespace(pageTemplate)).to.include(
-      '<div id="overlay-cfs-modal" data-modal-toggle="cfs-modal"',
-    );
-    expect(normalizeWhitespace(pageTemplate)).to.include(
-      '<button id="close-cfs-modal" type="button" data-modal-toggle="cfs-modal"',
-    );
-    expect(normalizeWhitespace(modalTemplate)).to.include(
-      '<button id="cancel-cfs-modal" type="button" data-modal-toggle="cfs-modal"',
-    );
   });
 
   it("opens after the modal root is swapped and enables or disables submit as the selection changes", async () => {

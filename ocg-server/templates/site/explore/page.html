@@ -1,5 +1,9 @@
 {% extends "common/base.html" -%}
 
+{% block head_title -%}
+  <title>Explore · {{ site_settings.title }}</title>
+{% endblock head_title -%}
+
 {% block scripts -%}
   <script type="module"
           src="/static/js/community/explore/collapsible-filter.js"></script>

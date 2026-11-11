@@ -1,6 +1,7 @@
 import { isElementHidden } from "/static/js/common/dom.js";
 import { isPhoneViewport, PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { isSuccessfulXHR } from "/static/js/common/utils.js";
+import { ATTENDANCE_CHECK_FAILED_MESSAGE } from "/static/js/event/attendance-copy.js";
 import {
   ATTENDANCE_CONTAINER_SELECTOR,
   getAttendanceControl,
@@ -8,6 +9,7 @@ import {
 } from "/static/js/event/attendance-dom.js";
 import {
   showAdmissionOfferState,
+  showAttendanceCheckFailedState,
   showAttendeeState,
   showExpiredOfferState,
   showGuestAttendanceState,
@@ -19,7 +21,10 @@ import {
 } from "/static/js/event/attendance-view.js";
 import { parseJsonResponse, showSignedOutFallback } from "/static/js/event/attendance/shared.js";
 
-const PHONE_BAR_CONTROL_ROLES = ["attend-btn", "signin-btn", "leave-btn", "refund-btn"];
+const PHONE_BAR_CONTROL_ROLES = ["attend-btn", "signin-btn", "leave-btn", "refund-btn", "retry-btn"];
+// The enrollment endpoint answers signed-out visitors with a 2xx login redirect, so only these
+// statuses mean the session is gone; any other failure leaves the registration unknown.
+const SIGNED_OUT_HTTP_STATUSES = new Set([401, 403]);
 const lastAttendanceXhrs = new WeakMap();
 
 /**
@@ -85,11 +90,18 @@ const dispatchAttendanceCheckResponse = (container, event) => {
   const meta = getAttendanceMeta(container);
   const xhr = event.detail?.xhr;
 
-  if (!isSuccessfulXHR(xhr)) {
+  if (!xhr || SIGNED_OUT_HTTP_STATUSES.has(xhr.status)) {
     showSignedOutFallback(container, meta);
     return;
   }
 
+  // Network errors (status 0) and server errors keep a signed-in user out of the signed-out UI.
+  if (!isSuccessfulXHR(xhr)) {
+    showAttendanceCheckFailedState(container, meta);
+    return;
+  }
+
+  // A 2xx response that is not JSON is the login redirect served to signed-out visitors.
   const response = parseJsonResponse(xhr);
   if (!response) {
     showSignedOutFallback(container, meta);
@@ -166,9 +178,13 @@ const renderPhoneBarState = (container, xhr) => {
     (checkoutCancelButton !== null && !isElementHidden(checkoutCancelButton));
   // A disabled control keeps its button; its title (when present) replaces the summary
   // details beside it. An expired offer has none: its own label already says why. Some
-  // enabled controls (pending approval) opt in to a reason via data-bar-reason-text.
+  // enabled controls (pending approval) opt in to a reason via data-bar-reason-text. Retry
+  // always explains the failed registration check.
   const explicitReason = control?.dataset?.barReasonText ?? "";
-  const reason = hasJoinLink ? "" : explicitReason || (control?.disabled ? control.title : "");
+  let reason = hasJoinLink ? "" : explicitReason || (control?.disabled ? control.title : "");
+  if (control?.dataset?.attendanceRole === "retry-btn") {
+    reason = ATTENDANCE_CHECK_FAILED_MESSAGE;
+  }
   const reasonLine = getAttendanceControl(container, "bar-reason");
 
   if (reasonLine) {

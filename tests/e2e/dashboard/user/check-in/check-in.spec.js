@@ -1,7 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 
 import { TEST_OPEN_CHECK_IN_EVENT } from "../../../seed.js";
-import { navigateToPath } from "../../../utils.js";
+import { expectDialogClosed, navigateToPath } from "../../../utils.js";
 import { installFakeWakeLock } from "../../group/check-in/helpers.js";
 
 const USER_CHECK_IN_PATH = "/dashboard/user?tab=check-in";
@@ -75,8 +75,7 @@ test.describe("user dashboard check-in", () => {
 
     // Close from the footer and verify focus returns to the event card.
     await footerCloseButton.click();
-    await expect(modal).toBeHidden();
-    await expect(eventCard).toBeFocused();
+    await expectDialogClosed(pending2Page, modal, { opener: eventCard });
   });
 
   test("event card shows the tap cue and unclipped dates at 320px @mobile", async ({ pending2Page }) => {
@@ -92,7 +91,7 @@ test.describe("user dashboard check-in", () => {
     await expect(pending2Page.getByRole("button", { name: /Show QR code/u })).toHaveCount(0);
 
     // Verify the location and date lines wrap instead of cutting off the time.
-    const lines = eventCard.locator(".text-\\[0\\.825rem\\]");
+    const lines = eventCard.locator(":is(.icon-location, .icon-date) + span");
     await expect(lines).toHaveCount(2);
     for (const line of await lines.all()) {
       expect(await line.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
@@ -266,7 +265,7 @@ test.describe("user dashboard check-in", () => {
     await expect(modal.getByText("Show this code to an organizer", { exact: true })).toBeVisible();
   });
 
-  test("credential sheet closes from Escape and a downward drag @mobile", async ({ pending2Page }) => {
+  test("credential sheet closes from Escape and a downward drag @mobile @smoke", async ({ pending2Page }) => {
     // Open the credential and wait for the sheet gestures.
     await navigateToPath(pending2Page, USER_CHECK_IN_PATH);
     const eventCard = pending2Page.locator("[data-user-check-in-open]", {
@@ -279,8 +278,7 @@ test.describe("user dashboard check-in", () => {
 
     // Close with Escape and verify focus returns to the card.
     await pending2Page.keyboard.press("Escape");
-    await expect(modal).toBeHidden();
-    await expect(eventCard).toBeFocused();
+    await expectDialogClosed(pending2Page, modal, { opener: eventCard });
 
     // Reopen and drag the title row past the close threshold.
     await eventCard.click();

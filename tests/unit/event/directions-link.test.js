@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 const ANDROID_USER_AGENT =
   "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36";
@@ -17,7 +18,6 @@ const GOOGLE_COORDINATES_URL =
   "https://www.google.com/maps/dir/?api=1&destination=40.7128%2C-74.006";
 
 const originalAddEventListener = document.addEventListener;
-const originalMatchMedia = window.matchMedia;
 
 /**
  * Renders one directions link.
@@ -35,18 +35,7 @@ describe("directions link", () => {
   let documentListeners = [];
   let buildAppleMapsUrl;
   let initializeDirectionsLinks;
-  let matchMediaCalls;
-  let phoneQuery;
-
-  /**
-   * Changes the phone query and notifies the module.
-   * @param {boolean} matches Next query state.
-   * @returns {void}
-   */
-  const setPhone = (matches) => {
-    phoneQuery.matches = matches;
-    phoneQuery.listeners.forEach((listener) => listener({ matches }));
-  };
+  let media;
 
   before(async () => {
     // Record what loading the module does on this desktop browser.
@@ -65,20 +54,7 @@ describe("directions link", () => {
   });
 
   beforeEach(() => {
-    matchMediaCalls = 0;
-    phoneQuery = {
-      listeners: new Set(),
-      matches: true,
-      addEventListener(type, listener) {
-        if (type === "change") {
-          this.listeners.add(listener);
-        }
-      },
-    };
-    window.matchMedia = (query) => {
-      matchMediaCalls += 1;
-      return query === PHONE_MEDIA_QUERY ? phoneQuery : { matches: false };
-    };
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     document.addEventListener = function addEventListener(type, listener, ...rest) {
       documentListeners.push([type, listener]);
       return originalAddEventListener.call(this, type, listener, ...rest);
@@ -89,7 +65,7 @@ describe("directions link", () => {
     documentListeners.forEach(([type, listener]) => document.removeEventListener(type, listener));
     documentListeners = [];
     document.addEventListener = originalAddEventListener;
-    window.matchMedia = originalMatchMedia;
+    media?.restore();
     resetDom();
   });
 
@@ -161,7 +137,7 @@ describe("directions link", () => {
 
   it("does nothing while the phone query is false", () => {
     const link = renderLink();
-    phoneQuery.matches = false;
+    media.setMatches(PHONE_MEDIA_QUERY, false);
 
     initializeDirectionsLinks(IPHONE_USER_AGENT);
     document.dispatchEvent(new CustomEvent("htmx:load"));
@@ -171,10 +147,10 @@ describe("directions link", () => {
 
   it("swaps after rotating into the phone layout", () => {
     const link = renderLink();
-    phoneQuery.matches = false;
+    media.setMatches(PHONE_MEDIA_QUERY, false);
     initializeDirectionsLinks(IPHONE_USER_AGENT);
 
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     expect(link.href).to.equal(APPLE_COORDINATES_URL);
   });
@@ -184,8 +160,8 @@ describe("directions link", () => {
 
     initializeDirectionsLinks(IPHONE_USER_AGENT);
 
-    expect(matchMediaCalls).to.equal(1);
-    expect(phoneQuery.listeners.size).to.equal(1);
+    expect(media.calls.length).to.equal(1);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
     expect(documentListeners.map(([type]) => type)).to.deep.equal([
       "htmx:load",
       "htmx:historyRestore",
@@ -203,8 +179,8 @@ describe("directions link", () => {
       document.dispatchEvent(new CustomEvent("htmx:load"));
 
       expect(link.href).to.equal(GOOGLE_COORDINATES_URL);
-      expect(matchMediaCalls).to.equal(0);
-      expect(phoneQuery.listeners.size).to.equal(0);
+      expect(media.calls.length).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
       expect(documentListeners).to.have.length(0);
     });
   }

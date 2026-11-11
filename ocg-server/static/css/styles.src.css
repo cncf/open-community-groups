@@ -87,6 +87,21 @@
   --color-primary-950: #002152;   /* Deepest navy */
 }
 
+@layer base {
+  /* One keyboard focus indicator; utilities may restyle or remove it per element. */
+  :focus-visible {
+    outline: 2px solid var(--ocg-primary, var(--color-primary-500));
+    outline-offset: 2px;
+  }
+
+  /* Script focus targets (headings, regions, containers) are not controls. Roving-tabindex
+     widgets must use real controls or set tabindex=0 on the target before it keeps focus,
+     so a focused control never matches this opt-out. */
+  :where(h1, h2, h3, h4, h5, h6, p, span, div, section, article, aside, main, nav, ul, ol, dialog)[tabindex="-1"]:focus-visible {
+    outline: none;
+  }
+}
+
 @layer components {
   breadcrumb-nav {
     display: block;
@@ -122,11 +137,11 @@
   }
 
   .btn-tertiary {
-    @apply enabled:cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:enabled:bg-stone-50 hover:enabled:border-stone-50 relative overflow-hidden phone:min-h-11 phone:min-w-11;
+    @apply enabled:cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full hover:enabled:bg-stone-50 hover:enabled:border-stone-50 relative overflow-hidden phone:min-h-11 phone:min-w-11;
   }
 
   .btn-tertiary-anchor {
-    @apply cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:bg-stone-50 hover:border-stone-50 relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
+    @apply cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full hover:bg-stone-50 hover:border-stone-50 relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
   }
 
   .btn-tertiary .svg-icon,
@@ -145,11 +160,11 @@
   }
 
   .btn-primary-outline {
-    @apply enabled:cursor-pointer text-center text-primary-500 border border-primary-500 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-500 hover:enabled:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden phone:min-h-11 phone:min-w-11;
+    @apply enabled:cursor-pointer text-center text-primary-500 border border-primary-500 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-500 hover:enabled:border-primary-500 text-sm px-5 py-2 relative overflow-hidden phone:min-h-11 phone:min-w-11;
   }
 
   .btn-primary-outline-anchor {
-    @apply cursor-pointer text-center text-primary-500 border border-primary-500 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-500 hover:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
+    @apply cursor-pointer text-center text-primary-500 border border-primary-500 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-500 hover:border-primary-500 text-sm px-5 py-2 relative overflow-hidden phone:min-h-11 phone:min-w-11 phone:inline-flex phone:items-center phone:justify-center;
   }
 
   .btn-primary-outline .svg-icon,
@@ -270,10 +285,6 @@
     @apply border-stone-200 shadow;
   }
 
-  .card-surface:focus-visible {
-    @apply outline outline-2 outline-offset-2 outline-primary-500;
-  }
-
   .card-content {
     @apply min-w-0 pl-4 content-center h-full w-full;
   }
@@ -303,7 +314,17 @@
   }
 
   .input-primary {
-    @apply block w-full rounded-md bg-white px-3 py-1.5 text-base text-stone-900 border border-stone-200 placeholder:text-stone-500/75 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-700 focus:ring-transparent sm:text-sm/6;
+    @apply block w-full rounded-md bg-white px-3 py-1.5 text-base text-stone-900 border border-stone-200 placeholder:text-stone-500/75 focus:ring-transparent sm:text-sm/6;
+  }
+
+  /* Beats the forms plugin, which hides the outline of focused controls. Fields draw it inside. */
+  :where(input, select, textarea):focus-visible {
+    outline: 2px solid var(--ocg-primary, var(--color-primary-500));
+    outline-offset: -2px;
+  }
+
+  :where(input[type="checkbox"], input[type="radio"]):focus-visible {
+    outline-offset: 2px;
   }
 
   .input-primary:disabled {
@@ -321,7 +342,7 @@
   }
 
   .select-primary {
-    @apply relative col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-stone-900 border border-stone-200 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-700 focus:ring-transparent sm:text-sm/6;
+    @apply relative col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-stone-900 border border-stone-200 focus:ring-transparent sm:text-sm/6;
   }
 
   .select-primary:disabled {
@@ -463,12 +484,6 @@ button:enabled {
 button:disabled {
   opacity: 0.5;
 }
-
-/* Generic styles */
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-  outline: 0;
-}
-/* End generic styles */
 
 @supports (font-size: 1cap) {
   .caps {
@@ -684,7 +699,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   /* The sheet's form refreshes outside htmx, so no request class reaches the spinner. */
-  #drawer-filters:has(> form[aria-busy="true"]) #loading-filters {
+  #drawer-filters:has(> form[aria-busy="true"]) [data-loading-filters] {
     @apply block;
   }
 

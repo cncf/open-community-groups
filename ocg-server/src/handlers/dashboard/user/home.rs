@@ -55,9 +55,10 @@ pub(crate) async fn page(
         .get("tab")
         .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
-    // Get site settings and the number of surveys left to answer
-    let (site_settings, surveys_unanswered_count) = tokio::try_join!(
+    // Get site settings and the menu counts
+    let (site_settings, invitations_pending_count, surveys_unanswered_count) = tokio::try_join!(
         db.get_site_settings(),
+        db.count_user_pending_invitations(user.user_id),
         db.count_user_unanswered_event_surveys(user.user_id),
     )?;
 
@@ -136,6 +137,7 @@ pub(crate) async fn page(
     // Render the page
     let page = Page {
         content,
+        invitations_pending_count,
         messages: messages.into_iter().collect(),
         page_id: PageId::UserDashboard,
         path: "/dashboard/user".to_string(),

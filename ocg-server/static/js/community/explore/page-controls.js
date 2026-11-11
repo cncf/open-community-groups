@@ -12,6 +12,7 @@ import {
   updateDateInput,
   updateSortInputsFromSelector,
 } from "/static/js/community/explore/filters.js";
+import { captureFilterFocus, restoreFilterFocus } from "/static/js/community/explore/filter-focus.js";
 import {
   closestElement,
   getElementById,
@@ -41,6 +42,7 @@ import {
 
 const EXPLORE_CONTROLS_READY_KEY = "exploreControlsReady";
 const DESKTOP_FILTER_FORM_SELECTOR = "#explore-filters .filters-form";
+const DRAWER_FILTER_FORM_SELECTOR = "#drawer-filters .filters-form";
 const FILTER_FORM_SELECTOR = ".filters-form";
 const SEARCH_INPUT_ID = "ts_query";
 const SORT_SELECTOR_ID = "sort_selector";
@@ -88,6 +90,12 @@ let filterSheet = null;
 
 // Focus to place once the next section swap settles.
 let settleFocus = null;
+
+// Sidebar filter control that had focus when its form sent the pending request, or null.
+let filterFocus = null;
+
+// Whether focus was in the tablet drawer's form when it sent the pending request.
+let drawerFilterFocus = false;
 
 // Drawers holding choices the results do not reflect yet. A swap replaces the drawer, so
 // entries clear themselves.
@@ -441,6 +449,8 @@ const initializeExploreControls = (root = document) => {
   root.addEventListener(FILTER_CHANGE_EVENT, handleFilterChange);
   root.addEventListener("htmx:afterSwap", handleExploreAfterSwap);
   root.addEventListener("htmx:historyRestore", handleExploreHistoryRestore);
+  root.addEventListener("htmx:beforeRequest", handleFilterFocusCapture);
+  root.addEventListener("htmx:afterSettle", handleFilterFocusRestore);
   initializePhoneControls();
   if (applyPhoneViewMode()) {
     return;
@@ -612,6 +622,23 @@ const fitAppliedFilters = () => {
 };
 
 /**
+ * Moves focus to the button that reopens the filters drawer after a swap closed the drawer. Focus
+ * that htmx's id restore put back in the closed drawer moves too; focus elsewhere stays.
+ */
+const focusOpenFilters = () => {
+  const active = document.activeElement;
+  const drawer = getElementById(document, DRAWER_FILTERS_ID);
+  if (active && active !== document.body && !drawer?.contains(active)) {
+    return;
+  }
+
+  const button = getElementById(document, OPEN_FILTERS_ID);
+  if (button?.checkVisibility()) {
+    button.focus();
+  }
+};
+
+/**
  * Finds the real control behind an applied filter chip.
  * @param {HTMLFormElement} form - Form holding the applied state
  * @param {HTMLElement} chip - Chip button
@@ -679,6 +706,49 @@ const handleEntitySwitchRequestEnd = (event) => {
   if (event.type !== "htmx:sendAbort" && !filterSheet) {
     reportFetchError({});
   }
+};
+
+/**
+ * Remembers the sidebar filter control that has focus when its form sends a request, because
+ * the section swap replaces the control and htmx only restores focus by id. The tablet drawer
+ * comes back closed from the swap, so its form only records that focus was inside it. Any other
+ * request drops both, so a later swap never restores a stale one.
+ * @param {CustomEvent} event - HTMX before request event
+ */
+const handleFilterFocusCapture = (event) => {
+  const elt = event.detail?.elt;
+  filterFocus = null;
+  drawerFilterFocus = false;
+  if (!(elt instanceof HTMLFormElement) || isPhoneViewport()) {
+    return;
+  }
+
+  if (elt.matches(DESKTOP_FILTER_FORM_SELECTOR)) {
+    filterFocus = captureFilterFocus(elt);
+  } else if (elt.matches(DRAWER_FILTER_FORM_SELECTOR)) {
+    drawerFilterFocus = elt.contains(document.activeElement);
+  }
+};
+
+/**
+ * Puts focus back once the section swap settles: on the captured sidebar filter control, or on
+ * the button that reopens the tablet drawer the swap closed. Phones place their own settle focus.
+ * @param {CustomEvent} event - HTMX after settle event
+ */
+const handleFilterFocusRestore = (event) => {
+  if (!(event.target instanceof Element) || event.target.id !== ENTITY_SECTION_ID || isPhoneViewport()) {
+    return;
+  }
+
+  const snapshot = filterFocus;
+  const fromDrawer = drawerFilterFocus;
+  filterFocus = null;
+  drawerFilterFocus = false;
+  if (fromDrawer) {
+    focusOpenFilters();
+    return;
+  }
+  restoreFilterFocus(snapshot);
 };
 
 /**

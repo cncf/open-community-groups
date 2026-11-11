@@ -303,6 +303,11 @@ surface per layer:
 - Handler (`handlers/**/tests.rs`): mocks managers and `MockDB` for reads
   and session; asserts status, headers, body, and the identifiers passed to
   the manager or notifier.
+- Template render (`templates/**/tests.rs`): no mocks; builds the template
+  struct from `types::tests` builders, renders it, and asserts the markup
+  each template branch produces (copy, attributes, links, `data-*` and ARIA
+  hooks, escaping). A template contract that needs no request is proven
+  here, not in a handler test.
 - Manager and service (`services/**/tests.rs`): mocks `MockDB`, providers,
   and `MockNotificationsManager`; asserts workflow order, commit or
   rollback, and side effects enqueued or suppressed. Manager tests do not
@@ -357,9 +362,24 @@ Rules that follow from the layering:
 - Pure functions and value logic are tested with tables: one test iterates
   labeled cases and every assertion message names the case. Handler and
   manager tests keep one test per scenario.
+- JS unit tests (`tests/unit`) prove static JavaScript behavior and never
+  read Askama template source, except plain script files under `templates/`
+  that a template includes verbatim (no Askama syntax), which JS tests may
+  load to exercise their behavior. Only the unit test runner
+  (`tests/unit/web-test-runner.config.mjs`) reads `common/base.html`, to
+  derive the vendored bundle paths the tests load. Template contracts are
+  proven by template render tests, or by handler or e2e tests when a
+  request is needed.
+- Rust and e2e tests do not assert utility classes, except a class that is
+  the state contract of a script or third-party library, asserted with a
+  comment saying so. When a style is what an e2e test exists to check, the
+  test asserts its computed value.
 - A test is removed only when the PR description names the test that proves
   the same behavior, at the same or another layer. A test with no
-  replacement stays.
+  replacement stays, unless it asserts only styling (utility classes, markup
+  order or shape) or what the compiler already checks (Askama macro
+  signatures, template fields); the PR description lists those tests and
+  cites this rule.
 
 ## Bounded operations and worker health
 

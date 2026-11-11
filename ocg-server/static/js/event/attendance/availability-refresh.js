@@ -3,6 +3,7 @@ import {
   fetchAttendanceAvailability,
   renderAttendanceAvailability,
 } from "/static/js/event/attendance-availability.js";
+import { showAttendanceCheckLoading } from "/static/js/event/attendance-view.js";
 import { replayPendingAttendanceCheckResponse } from "/static/js/event/attendance/status-renderer.js";
 
 const AVAILABILITY_REFRESH_ERROR_MESSAGE =
@@ -78,4 +79,15 @@ export const refreshAvailabilityAndRenderAttendance = (container) => {
   refreshAvailability(container, { rerenderAttendance: true }).catch(() => {
     handleAvailabilityRefreshFailure(container, { rerenderAttendance: true });
   });
+};
+
+/**
+ * Checks the registration again after a failed check, refreshing availability first. The
+ * container stays hydrated, so a failed availability refetch does not alert again.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {void}
+ */
+export const retryAttendanceCheck = (container) => {
+  showAttendanceCheckLoading(container);
+  refreshAvailabilityAndRenderAttendance(container);
 };

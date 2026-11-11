@@ -68,6 +68,57 @@ test.describe("group badge definitions", () => {
     }
   });
 
+  test("badge dialog keeps server errors dismissible inside the dialog", async ({ organizerGroupPage }) => {
+    const badgeName = uniqueName("Rejected Badge");
+    const description = "Rejected by the badge dialog error E2E test.";
+    const rejectBadgeCreation = (route) =>
+      route.request().method() === "POST"
+        ? route.fulfill({ status: 422, body: "Name is required." })
+        : route.fallback();
+
+    // Open the add badge dialog and fill the new definition.
+    await navigateToPath(organizerGroupPage, BADGES_PATH);
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await expect(dashboardContent.locator("[data-group-badges]")).toHaveAttribute(
+      "data-group-badges-ready",
+      "true",
+    );
+    await dashboardContent.getByRole("button", { name: "Add badge" }).click();
+    const addDialog = organizerGroupPage.getByRole("dialog", { name: "Add badge" });
+    await addDialog.getByLabel("Name").fill(badgeName);
+    await addDialog.getByLabel("Description").fill(description);
+    await addDialog.getByLabel("Criteria").fill("Receive a server validation error.");
+    await addDialog.getByLabel("Badge artwork 1").check({ force: true });
+
+    await organizerGroupPage.route("**/dashboard/group/badges", rejectBadgeCreation);
+    try {
+      // Submit the definition and receive the intercepted validation error.
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => addDialog.getByRole("button", { name: "Add badge" }).click(),
+        {
+          method: "POST",
+          urlEndsWith: "/dashboard/group/badges",
+          status: 422,
+        },
+      );
+
+      // Verify the error renders inside the modal dialog, where it stays interactive.
+      const alert = addDialog.locator(".swal2-popup");
+      await expect(alert).toContainText("The badge could not be saved.");
+      await expect(alert).toContainText("Name is required.");
+      await alert.getByRole("button", { name: "OK" }).click();
+      await expect(alert).toBeHidden();
+
+      // Verify the dialog stays open with the entered values for a retry.
+      await expect(addDialog).toBeVisible();
+      await expect(addDialog.getByLabel("Name")).toHaveValue(badgeName);
+      await expect(addDialog.getByLabel("Description")).toHaveValue(description);
+    } finally {
+      await organizerGroupPage.unroute("**/dashboard/group/badges", rejectBadgeCreation);
+    }
+  });
+
   test("organizer can search, create, edit, and delete a badge", async ({ organizerGroupPage }) => {
     // Create unique badge values for the temporary definition flow.
     const badgeName = uniqueName("Lifecycle Badge");
@@ -137,6 +188,12 @@ test.describe("group badge definitions", () => {
           status: 201,
         },
       );
+
+      // Verify the dialog closes before the success alert so the refresh does not remove it.
+      await expect(addDialog).toBeHidden();
+      const savedAlert = organizerGroupPage.locator(".swal2-popup");
+      await expect(savedAlert).toBeVisible();
+      await expect(savedAlert).toContainText("Badge saved.");
 
       // Verify the created badge appears in the refreshed list.
       const createdRow = dashboardContent.getByRole("row", {

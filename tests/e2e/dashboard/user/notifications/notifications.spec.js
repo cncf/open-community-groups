@@ -8,6 +8,7 @@ import {
 import { TEST_GROUP_IDS, TEST_GROUP_NAMES, TEST_USER_IDS } from "../../../seed.js";
 import {
   dismissAlert,
+  expectDialogClosed,
   navigateToPath,
   waitForActionResponse,
   waitForActionResponses,
@@ -41,8 +42,7 @@ test.describe("user dashboard notifications view", () => {
     await expect(alwaysSentModal).toBeVisible();
     await expect(alwaysSentModal).toContainText("Organizer actions:");
     await member1Page.keyboard.press("Escape");
-    await expect(alwaysSentModal).toBeHidden();
-    await expect(alwaysSentTrigger).toBeFocused();
+    await expectDialogClosed(member1Page, alwaysSentModal, { opener: alwaysSentTrigger });
 
     // Verify an accepted group admin sees the group organizing categories.
     await navigateToPath(organizerGroupPage, NOTIFICATIONS_PATH);

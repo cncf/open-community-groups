@@ -62,7 +62,7 @@
   {% let has_social_links = event.meetup_url.is_some() || event.luma_url.is_some() -%}
 
   {# Breadcrumb -#}
-  <breadcrumb-nav full-bleed banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.community.banner_url) }}" banner-mobile-url="{{ event.banner_mobile_url.as_ref().or(event.group.banner_mobile_url.as_ref()).unwrap_or(&event.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.community.display_name|json }}, "href": "/{{ event.community.name }}", "icon": "community"}, {"label": {{ event.group.name|json }}, "href": "/{{ event.community.name }}/group/{{ event.group.public_slug() }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
+  <breadcrumb-nav full-bleed banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.community.banner_url) }}" banner-mobile-url="{{ event.banner_mobile_url.as_ref().or(event.group.banner_mobile_url.as_ref()).unwrap_or(&event.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.community.display_name|json }}, "href": "/{{ event.community.name }}", "icon": "community"}, {"label": {{ event.group.name|demoji|json }}, "href": "/{{ event.community.name }}/group/{{ event.group.public_slug() }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full phone:px-0 phone:py-0">
@@ -274,7 +274,7 @@
                           <div class="hidden sm:block text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800 whitespace-nowrap phone:block phone:text-lg/6">
                             {{ start_tz.format("%b %e, %Y") }}
                           </div>
-                          <div class="mt-1 text-sm text-stone-600 phone:mt-1 phone:text-[15px]">{{ start_tz.format("%I:%M %p") }}</div>
+                          <div class="mt-1 text-sm text-stone-600 phone:mt-1 phone:text-[15px]">{{ start_tz.format("%I:%M %p %Z") }}</div>
                         </div>
                         <div class="text-stone-400 mt-6 xl:mt-7 phone:max-[375px]:hidden">→</div>
                         <div>
@@ -285,7 +285,7 @@
                           <div class="hidden sm:block text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800 whitespace-nowrap phone:block phone:text-lg/6">
                             {{ end_tz.format("%b %e, %Y") }}
                           </div>
-                          <div class="mt-1 text-sm text-stone-600 phone:mt-1 phone:text-[15px]">{{ end_tz.format("%I:%M %p") }}</div>
+                          <div class="mt-1 text-sm text-stone-600 phone:mt-1 phone:text-[15px]">{{ end_tz.format("%I:%M %p %Z") }}</div>
                         </div>
                       </div>
                     {% else -%}
@@ -345,7 +345,8 @@
          class="btn-secondary-anchor pill-link not-phone:hidden">Directions</a>
     {% endif -%}
   </div>
-  <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-[108px] phone:h-[150px] phone:min-h-[150px]">
+  <div data-card-panel
+       class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-[108px] phone:h-[150px] phone:min-h-[150px]">
     {% if event.kind != EventKind::Virtual %}
       {% if event.latitude.is_some() && event.longitude.is_some() %}
         {# Use event-specific location #}
@@ -650,22 +651,31 @@
       {# End single-day agenda -#}
     {% else -%}
       {# Multi-day agenda -#}
-      <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200 -mt-1 phone:flex-nowrap phone:overflow-x-auto phone:[scrollbar-width:none]">
+      <div role="tablist"
+           aria-label="Agenda days"
+           data-agenda-tabs
+           class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200 -mt-1 phone:flex-nowrap phone:overflow-x-auto phone:[scrollbar-width:none]">
         {% for day in event.sessions -%}
-          <li>
-            <button type="button"
-                    data-day-tab="day-{{ loop.index0 }}"
-                    data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
-                    class="cursor-pointer inline-flex items-center justify-center p-2 pt-0 sm:p-3 sm:pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap phone:min-h-11">
-              <span class="hidden md:inline">{{ day.0.format("%A, %B %e") }}</span>
-              <span class="inline md:hidden">{{ day.0.format("%e %b") }}</span>
-            </button>
-          </li>
+          <button type="button"
+                  role="tab"
+                  id="agenda-tab-{{ loop.index0 }}"
+                  aria-controls="agenda-panel-{{ loop.index0 }}"
+                  aria-selected="{{ loop.first }}"
+                  tabindex="{%- if loop.first -%}0{%- else -%}-1{%- endif -%}"
+                  data-day-tab
+                  data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
+                  class="cursor-pointer inline-flex items-center justify-center p-2 pt-0 sm:p-3 sm:pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap phone:min-h-11">
+            <span class="hidden md:inline">{{ day.0.format("%A, %B %e") }}</span>
+            <span class="inline md:hidden">{{ day.0.format("%e %b") }}</span>
+          </button>
         {% endfor -%}
-      </ul>
+      </div>
 
       {% for day in event.sessions -%}
-        <div data-day-content="day-{{ loop.index0 }}"
+        <div role="tabpanel"
+             id="agenda-panel-{{ loop.index0 }}"
+             aria-labelledby="agenda-tab-{{ loop.index0 }}"
+             tabindex="0"
              data-agenda-day
              {% if !loop.first -%}
                hidden
@@ -685,111 +695,61 @@
 {# End sessions section -#}
 
 {# Event speakers section -#}
-{% if !event.speakers.is_empty() -%}
-  <div class="featured-speakers-section hidden has-[user-chip]:block">
+{% let featured_speakers = self.public_featured_speakers() -%}
+{% let regular_speakers = self.public_regular_speakers() -%}
+{% if !featured_speakers.is_empty() -%}
+  <div class="featured-speakers-section">
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
       Featured speakers
     </div>
     <div class="featured-speakers-grid grid grid-cols-1 md:grid-cols-2 gap-4 phone:grid-cols-1 phone:gap-2">
-      {% for speaker in event.speakers -%}
-        {% if speaker.featured && speaker.user.name.is_some() -%}
-          <user-chip user='{{ speaker.user|json }}' featured display-modal></user-chip>
-        {% endif -%}
+      {% for speaker in featured_speakers -%}
+        <user-chip user='{{ speaker|json }}' featured display-modal></user-chip>
       {% endfor -%}
     </div>
   </div>
+{% endif -%}
 
-  <div class="hidden has-[user-chip]:block">
+{% if !regular_speakers.is_empty() -%}
+  <div>
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
       Speakers
     </div>
     <div class="regular-speakers-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 phone:grid-cols-1 phone:gap-2">
-      {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
-        {% for speaker in legacy_speakers -%}
-          {% if speaker.name.is_some() -%}
-            <user-chip user='{{ speaker|json }}' bio-is-html display-modal></user-chip>
-          {% endif -%}
-        {% endfor -%}
-      {% endif -%}
-      {% for speaker in event.speakers -%}
-        {% if !speaker.featured && speaker.user.name.is_some() -%}
-          <user-chip user='{{ speaker.user|json }}' display-modal></user-chip>
-        {% endif -%}
+      {% for person in regular_speakers -%}
+        <user-chip user='{{ person|json }}'{% if person.bio_is_html() %} bio-is-html{% endif %} display-modal></user-chip>
       {% endfor -%}
     </div>
   </div>
-{% else -%}
-  {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
-    {% if !legacy_speakers.is_empty() -%}
-      <div>
-        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
-          Speakers
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 phone:grid-cols-1 phone:gap-2">
-          {% for speaker in legacy_speakers -%}
-            {% if speaker.name.is_some() -%}
-              <user-chip user='{{ speaker|json }}' bio-is-html display-modal></user-chip>
-            {% endif -%}
-          {% endfor -%}
-        </div>
-      </div>
-    {% endif -%}
-  {% endif -%}
 {% endif -%}
 {# End event speakers section -#}
 
 {# Hosts section -#}
-{% if !event.hosts.is_empty() -%}
-  <div class="hidden has-[user-chip]:block">
+{% let hosts = self.public_hosts() -%}
+{% if !hosts.is_empty() -%}
+  <div>
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
       Hosts
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 phone:grid-cols-1 phone:gap-2">
-      {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
-        {% for host in legacy_hosts -%}
-          {% if host.name.is_some() -%}
-            <user-chip user='{{ host|json }}' display-modal></user-chip>
-          {% endif -%}
-        {% endfor -%}
-      {% endif -%}
-      {% for host in event.hosts -%}
-        {% if host.name.is_some() -%}
-          <user-chip user='{{ host|json }}' display-modal></user-chip>
-        {% endif -%}
+      {% for person in hosts -%}
+        <user-chip user='{{ person|json }}'{% if person.bio_is_html() %} bio-is-html{% endif %} display-modal></user-chip>
       {% endfor -%}
     </div>
   </div>
-{% else -%}
-  {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
-    {% if !legacy_hosts.is_empty() -%}
-      <div class="hidden has-[user-chip]:block">
-        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
-          Hosts
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 phone:grid-cols-1 phone:gap-2">
-          {% for host in legacy_hosts -%}
-            {% if host.name.is_some() -%}
-              <user-chip user='{{ host|json }}' display-modal></user-chip>
-            {% endif -%}
-          {% endfor -%}
-        </div>
-      </div>
-    {% endif -%}
-  {% endif -%}
 {% endif -%}
 {# End hosts section -#}
 
 {# Organizers section -#}
-{% if !event.organizers.is_empty() -%}
-  <div class="hidden has-[user-chip]:block">
+{% let organizers = self.public_organizers() -%}
+{% if !organizers.is_empty() -%}
+  <div>
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14 section-strip phone:-mx-3">
       Organizers
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 phone:grid-cols-1 phone:gap-2">
-      {% for organizer in event.organizers -%}
-        {% if organizer.name.is_some() -%}
-          <user-chip user='{{ organizer|json }}' display-modal></user-chip>
-        {% endif -%}
+      {% for organizer in organizers -%}
+        <user-chip user='{{ organizer|json }}' display-modal></user-chip>
       {% endfor -%}
     </div>
   </div>
@@ -854,18 +814,6 @@
   <p data-agenda-empty hidden class="text-sm text-stone-500 italic">No sessions match the selected labels.</p>
 {% endmacro -%}
 {# End macro for rendering the agenda empty filter message -#}
-
-{# Macro for rendering a single host social link -#}
-{% macro host_social_link(url, label, icon) -%}
-  <a href="{{ url|safe_href }}"
-     target="_blank"
-     rel="noopener noreferrer"
-     class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
-     aria-label="{{ label }}">
-    <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-{{ icon }}"></div>
-  </a>
-{% endmacro -%}
-{# End macro for rendering a single host social link -#}
 
 {# Macro for rendering a single session item -#}
 {% macro session_item(session) -%}
@@ -946,19 +894,13 @@
         </div>
       </div>
     {% endif -%}
-    {% if !session.speakers.is_empty() -%}
+    {% let session_speakers = self::public_session_speakers(session.speakers.as_slice()) -%}
+    {% if !session_speakers.is_empty() -%}
       <div class="mt-4">
         <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>
         <div class="flex flex-wrap items-center gap-3">
-          {% for speaker in session.speakers -%}
-            {% if speaker.featured && speaker.user.name.is_some() -%}
-              <user-chip user='{{ speaker.user|json }}' featured small display-modal></user-chip>
-            {% endif -%}
-          {% endfor -%}
-          {% for speaker in session.speakers -%}
-            {% if !speaker.featured && speaker.user.name.is_some() -%}
-              <user-chip user='{{ speaker.user|json }}' small display-modal></user-chip>
-            {% endif -%}
+          {% for speaker in session_speakers -%}
+            <user-chip user='{{ speaker.user|json }}'{% if speaker.featured %} featured{% endif %} small display-modal></user-chip>
           {% endfor -%}
         </div>
       </div>

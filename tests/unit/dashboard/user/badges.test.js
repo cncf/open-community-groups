@@ -8,14 +8,6 @@ import {
   updateListing,
 } from "/static/js/dashboard/user/badges.js";
 
-const loadTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/dashboard/user/badges.html");
-
-  expect(response.ok).to.equal(true);
-
-  return response.text();
-};
-
 const fixture = () => {
   const feedback = document.createElement("div");
   feedback.id = "user-badges-feedback";
@@ -55,50 +47,6 @@ describe("user dashboard badges", () => {
     document.querySelector("[data-user-badges-empty]")?.remove();
     window.fetch = originalFetch;
     window.Swal = originalSwal;
-  });
-
-  it("explains the profile modal badge limit", async () => {
-    // Load and normalize the user badge dashboard template.
-    const template = (await loadTemplate()).replace(/\s+/g, " ");
-
-    // Verify the profile listing cap is explained to the user.
-    expect(template).to.include(
-      "Your profile modal displays the first {{ max_public_profile_badges }} visible badges in the order shown here.",
-    );
-  });
-
-  it("keeps badge card content aligned and formats the issuer", async () => {
-    // Load and normalize the user badge dashboard template.
-    const template = (await loadTemplate()).replace(/\s+/g, " ");
-
-    // Verify the card layout, complete issuer label, and action contracts.
-    expect(template).to.include('class="flex items-start justify-between gap-4"');
-    expect(template).to.include('class="min-w-0 line-clamp-2 font-semibold text-stone-900"');
-    expect(template).to.include(
-      "{{ badge.snapshot.issuer.group_name }} ({{ badge.snapshot.issuer.community_name }})",
-    );
-    expect(template).to.include('trigger-label="Share {{ badge.snapshot.name }} badge credential"');
-    expect(template).to.include('trigger-variant="icon"');
-    expect(template).to.include('url="/badges/credentials/{{ badge.user_badge_id }}"');
-    expect(template).to.include('class="flex shrink-0 cursor-pointer items-center justify-end lg:mt-3"');
-    expect(template).to.not.include('<span aria-hidden="true">·</span>');
-  });
-
-  it("keeps the profile listing toggle beside a truncated issuer below lg", async () => {
-    // Load and normalize the user badge dashboard template.
-    const template = (await loadTemplate()).replace(/\s+/g, " ");
-
-    // Verify the footer never wraps, the issuer truncates with its full text in the title, and the
-    // short toggle label keeps the full accessible name.
-    expect(template).to.include(
-      'class="col-span-3 mt-3 flex items-center justify-between gap-3 lg:col-span-1 lg:col-start-3 lg:block"',
-    );
-    expect(template).to.include(
-      '<p class="min-w-0 truncate text-xs text-stone-500 lg:whitespace-normal lg:text-sm" title="Issued by {{ badge.snapshot.issuer.group_name }} ({{ badge.snapshot.issuer.community_name }})">',
-    );
-    expect(template).to.include(
-      '<span aria-hidden="true" class="xl:hidden">On profile</span><span class="max-xl:sr-only">Show on profile</span>',
-    );
   });
 
   it("shows an icon until badge artwork loads", () => {

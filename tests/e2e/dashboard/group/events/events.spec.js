@@ -119,7 +119,7 @@ test.describe("group dashboard Events tab", () => {
     // Open an upcoming event editor and make an unsaved change.
     await openEventUpdateFormByName(organizerGroupPage, TEST_EVENT_NAMES.alpha[0]);
     await organizerGroupPage.locator("#name").fill(`${TEST_EVENT_NAMES.alpha[0]} draft`);
-    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).toBeVisible();
 
     // Dismiss the confirmation and verify the editor keeps the change.
     const backLink = organizerGroupPage.getByRole("link", { name: "Back to events" });

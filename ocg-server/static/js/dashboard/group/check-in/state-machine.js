@@ -87,7 +87,8 @@ export const createScanStateMachine = ({
       beginCooldown(
         {
           attendeeName,
-          kind: alreadyCheckedIn ? "error" : "success",
+          checkedInAt: Number.isFinite(response.checked_in_at) ? response.checked_in_at : undefined,
+          kind: alreadyCheckedIn ? "neutral" : "success",
           message: alreadyCheckedIn ? "Already checked in" : "Checked in",
           ticketTitle: response.ticket_title || "Ticket information unavailable",
         },

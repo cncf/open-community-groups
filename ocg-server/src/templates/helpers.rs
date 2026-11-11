@@ -40,6 +40,11 @@ pub(crate) fn count_label(count: i64) -> String {
     count.to_formatted_string(&Locale::en)
 }
 
+/// Returns whether a person name is present and not blank.
+pub(crate) fn has_public_name(name: Option<&str>) -> bool {
+    name.is_some_and(|name| !name.trim().is_empty())
+}
+
 /// Builds the public URL for a configured Open Graph image.
 pub(crate) fn open_graph_image_url(base_url: &str, image_url: &str) -> String {
     // Route uploaded images through the public Open Graph image endpoint
@@ -172,6 +177,20 @@ mod tests {
     fn test_count_label_uses_thousands_separators() {
         assert_eq!(count_label(999), "999");
         assert_eq!(count_label(1_234_567), "1,234,567");
+    }
+
+    #[test]
+    fn test_has_public_name() {
+        let cases = [
+            ("missing name", None, false),
+            ("empty name", Some(""), false),
+            ("blank name", Some("   "), false),
+            ("padded name", Some(" Ana "), true),
+        ];
+
+        for (case, name, expected) in cases {
+            assert_eq!(has_public_name(name), expected, "{case}");
+        }
     }
 
     #[test]

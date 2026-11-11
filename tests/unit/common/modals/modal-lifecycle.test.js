@@ -12,26 +12,19 @@ import {
   trapBottomSheetFocus,
   trapModalFocus,
 } from "/static/js/common/modals/modal-lifecycle.js";
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 describe("modal lifecycle", () => {
-  const originalMatchMedia = window.matchMedia;
-
-  /**
-   * Answers the phone query as given.
-   * @param {boolean} matches Whether the phone query matches.
-   * @returns {void}
-   */
-  const mockMatchMedia = (matches) => {
-    window.matchMedia = () => ({ addEventListener() {}, matches, removeEventListener() {} });
-  };
+  let media;
 
   beforeEach(() => {
     resetDom();
   });
 
   afterEach(() => {
-    window.matchMedia = originalMatchMedia;
+    media?.restore();
     resetDom();
   });
 
@@ -127,7 +120,7 @@ describe("modal lifecycle", () => {
     document.body.append(panel);
 
     // The dialog itself takes focus, as it always has.
-    mockMatchMedia(false);
+    media = stubMatchMedia();
     toggleModalVisibility(modal);
     expect(document.activeElement).to.equal(modal);
   });
@@ -148,7 +141,7 @@ describe("modal lifecycle", () => {
     document.body.append(panel);
 
     // The first rendered button takes focus, and the undisplayed one is skipped.
-    mockMatchMedia(true);
+    media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
     toggleModalVisibility(modal);
     expect(document.activeElement).to.equal(button);
   });
@@ -222,7 +215,7 @@ describe("modal lifecycle", () => {
     };
 
     it("enters at the close button and returns to the opener", () => {
-      mockMatchMedia(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { close, panel } = renderSheet();
       const opener = document.getElementById("opener");
 
@@ -235,7 +228,7 @@ describe("modal lifecycle", () => {
     });
 
     it("stops a closing mouse press from clearing the returned focus", () => {
-      mockMatchMedia(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { panel } = renderSheet();
       const restore = focusBottomSheet(panel, document.getElementById("opener"));
 
@@ -248,7 +241,7 @@ describe("modal lifecycle", () => {
     });
 
     it("returns to the control a host element renders", () => {
-      mockMatchMedia(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { panel } = renderSheet();
 
       const restore = focusBottomSheet(panel, document.getElementById("host"));
@@ -258,7 +251,7 @@ describe("modal lifecycle", () => {
     });
 
     it("leaves focus alone off phones and on missing panels", () => {
-      mockMatchMedia(false);
+      media = stubMatchMedia();
       const { panel } = renderSheet();
       const opener = document.getElementById("opener");
       opener.focus();
@@ -269,7 +262,7 @@ describe("modal lifecycle", () => {
     });
 
     it("wraps Tab while the panel is a sheet and lets go when it stops being one", () => {
-      mockMatchMedia(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { last, link, panel } = renderSheet();
       focusBottomSheet(panel, document.getElementById("opener"));
       last.focus();
@@ -279,7 +272,7 @@ describe("modal lifecycle", () => {
       expect(document.activeElement).to.equal(link);
 
       // Verify a rotation past phone widths ends the trap.
-      mockMatchMedia(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
       last.focus();
       expect(pressTab(panel)).to.equal(false);
       expect(document.activeElement).to.equal(last);

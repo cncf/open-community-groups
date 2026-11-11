@@ -9,6 +9,7 @@ import {
   TEST_USER_IDS,
 } from "../../../seed.js";
 import {
+  dismissAlert,
   expectPaginationNavigation,
   navigateToGroup,
   navigateToPath,
@@ -88,7 +89,7 @@ test.describe("user dashboard my groups view", () => {
       "Are you sure you want to leave this group?",
     );
 
-    // Confirm the mutation and verify the row is removed
+    // Confirm the mutation and verify the success message and the removed row
     await waitForActionResponse(
       pending2Page,
       () => pending2Page.getByRole("button", { name: "Yes" }).click(),
@@ -97,6 +98,7 @@ test.describe("user dashboard my groups view", () => {
         urlIncludes: `/dashboard/user/groups/${TEST_COMMUNITY_NAME}/${groupId}/membership`,
       },
     );
+    await dismissAlert(pending2Page, { message: "You have successfully left the group." });
     await expect(groupRow).toHaveCount(0);
   });
 

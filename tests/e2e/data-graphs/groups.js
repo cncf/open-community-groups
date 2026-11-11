@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { queryE2eDatabase, queryE2eDatabaseRows, sqlString, sqlUuid } from "../database.js";
+import { queryE2eDatabase, queryE2eDatabaseRows, sqlString, sqlTextArray, sqlUuid } from "../database.js";
 import { TEST_COMMUNITY_IDS, TEST_GROUP_CATEGORY_IDS } from "../seed.js";
 import { shortId, uniqueName } from "../utils.js";
 import { cleanupEventsByIds } from "./events.js";
@@ -100,21 +100,22 @@ export const setupGroupSponsor = ({ groupId }) => {
 
 /**
  * Creates a temporary group, active and in the primary community unless told otherwise, with
- * optional region, team member, group member and badge artwork rows. Release it with
- * `cleanupTemporaryGroup`.
+ * optional region, gallery photos, team member, group member and badge artwork rows. Release it
+ * with `cleanupTemporaryGroup`.
  * @param {{
  *   active?: boolean,
  *   communityId?: string,
  *   groupCategoryId?: string,
  *   memberUserId?: string,
  *   name?: string,
+ *   photosUrls?: string[],
  *   regionId?: string,
  *   teamRole?: string,
  *   teamUserId?: string,
  *   withArtwork?: boolean
- * }} [options] - Status, community with one of its group categories, region, accepted team row
- *   (`teamRole` for `teamUserId`), group member, artwork and a unique `name` replacing the
- *   generated one (for long-data layout coverage).
+ * }} [options] - Status, community with one of its group categories, gallery `photosUrls`,
+ *   region, accepted team row (`teamRole` for `teamUserId`), group member, artwork and a unique
+ *   `name` replacing the generated one (for long-data layout coverage).
  * @returns {{ groupId: string, groupName: string, slug: string }}
  */
 export const setupTemporaryGroup = ({
@@ -123,6 +124,7 @@ export const setupTemporaryGroup = ({
   groupCategoryId = TEST_GROUP_CATEGORY_IDS.one,
   memberUserId,
   name,
+  photosUrls = null,
   regionId = null,
   teamRole,
   teamUserId,
@@ -152,6 +154,7 @@ export const setupTemporaryGroup = ({
       slug,
       description,
       active,
+      photos_urls,
       region_id
     ) values (
       ${sqlUuid(groupId)},
@@ -161,6 +164,7 @@ export const setupTemporaryGroup = ({
       ${sqlString(slug)},
       'Temporary group owned by E2E coverage.',
       ${active},
+      ${photosUrls ? sqlTextArray(photosUrls) : "null"},
       ${regionId ? sqlUuid(regionId) : "null"}
     );
 

@@ -529,7 +529,7 @@ const createClusterPopupContent = ({ links, onClose, title }) => {
   links.forEach((link) => {
     const listItem = document.createElement("li");
     link.className =
-      "block truncate px-4 py-2 text-sm text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-900 focus-visible:bg-stone-100 focus-visible:outline-none";
+      "block truncate px-4 py-2 text-sm text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-900 focus-visible:bg-stone-100 focus-visible:-outline-offset-2";
     link.title = link.textContent;
     listItem.append(link);
     list.append(listItem);

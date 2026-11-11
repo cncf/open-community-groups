@@ -75,6 +75,29 @@ fn test_events_filters_normalize_list_sets_default_date_range() {
 }
 
 #[test]
+fn test_events_filters_parse_blank_ts_query_as_missing() {
+    for (label, query) in [
+        ("empty", "ts_query="),
+        ("percent-encoded spaces", "ts_query=%20%20"),
+        ("plus-encoded space", "ts_query=+"),
+    ] {
+        // Parse a query string with a blank search query
+        let filters: SearchEventsFilters = serde_qs::from_str(query)
+            .unwrap_or_else(|err| panic!("{label}: filters to be parsed: {err}"));
+
+        // Check the blank query is treated as missing and passes validation
+        assert_eq!(
+            filters.ts_query, None,
+            "{label}: ts_query should be missing"
+        );
+        assert!(
+            filters.validate().is_ok(),
+            "{label}: filters should be valid"
+        );
+    }
+}
+
+#[test]
 fn test_events_filters_parse_legacy_include_bbox() {
     // Parse a bookmarked query string that still carries the removed key
     let filters: SearchEventsFilters =
@@ -196,6 +219,29 @@ fn test_groups_filters_normalize_drops_empty_entries() {
 }
 
 #[test]
+fn test_groups_filters_parse_blank_ts_query_as_missing() {
+    for (label, query) in [
+        ("empty", "ts_query="),
+        ("percent-encoded spaces", "ts_query=%20%20"),
+        ("plus-encoded space", "ts_query=+"),
+    ] {
+        // Parse a query string with a blank search query
+        let filters: SearchGroupsFilters = serde_qs::from_str(query)
+            .unwrap_or_else(|err| panic!("{label}: filters to be parsed: {err}"));
+
+        // Check the blank query is treated as missing and passes validation
+        assert_eq!(
+            filters.ts_query, None,
+            "{label}: ts_query should be missing"
+        );
+        assert!(
+            filters.validate().is_ok(),
+            "{label}: filters should be valid"
+        );
+    }
+}
+
+#[test]
 fn test_groups_filters_parse_legacy_include_bbox() {
     // Parse a bookmarked query string that still carries the removed key
     let filters: SearchGroupsFilters =
@@ -216,10 +262,14 @@ fn test_groups_filters_to_raw_query_keeps_custom_values_and_drops_defaults() {
         longitude: Some(-0.12),
         offset: Some(15),
         region: vec!["europe".to_string()],
-        sort_by: Some("date".to_string()),
+        sort_by: Some("name".to_string()),
         ts_query: Some("community".to_string()),
         view_mode: Some(ViewMode::List),
         ..Default::default()
+    };
+    let date_sorted = SearchGroupsFilters {
+        sort_by: Some("date".to_string()),
+        ..filters.clone()
     };
     let distance_sorted = SearchGroupsFilters {
         sort_by: Some("distance".to_string()),
@@ -228,6 +278,7 @@ fn test_groups_filters_to_raw_query_keeps_custom_values_and_drops_defaults() {
 
     // Generate raw queries
     let query = filters.to_raw_query().expect("raw query to be generated");
+    let date_sorted_query = date_sorted.to_raw_query().expect("raw query to be generated");
     let distance_sorted_query = distance_sorted.to_raw_query().expect("raw query to be generated");
 
     // Check custom values are kept (serde_qs uses bracket notation for arrays)
@@ -238,6 +289,7 @@ fn test_groups_filters_to_raw_query_keeps_custom_values_and_drops_defaults() {
     assert!(query.contains("region[0]=europe"));
     assert!(query.contains("ts_query=community"));
     assert!(query.contains("view_mode=list"));
+    assert!(date_sorted_query.contains("sort_by=date"));
     assert!(distance_sorted_query.contains("sort_by=distance"));
 
     // Check the viewer location and the default sorting are dropped

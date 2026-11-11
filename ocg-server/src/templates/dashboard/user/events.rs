@@ -4,6 +4,9 @@ use askama::Template;
 
 use crate::types::{dashboard::user::events::UserEvent, pagination};
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// List page for the user upcoming events section.

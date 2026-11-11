@@ -77,6 +77,7 @@ export class MultiSelect extends LitWrapper {
 
     this._filteredCache = { query: "", source: null, value: [] };
     this._generatedIdPrefix = "";
+    this._isRestoringFocus = false;
     this._sortedCache = { keepOrder: false, source: null, value: [] };
 
     this._combobox = new ComboboxController(this, {
@@ -104,6 +105,20 @@ export class MultiSelect extends LitWrapper {
   cleanSelected() {
     this.selected = [];
     this._combobox.setQuery("");
+  }
+
+  /**
+   * Moves focus back to a control inside the component without opening the
+   * dropdown, for focus restored by scripts rather than moved by the user.
+   * @param {HTMLElement} control Control inside the component
+   */
+  restoreFocus(control) {
+    this._isRestoringFocus = true;
+    try {
+      control.focus({ preventScroll: true });
+    } finally {
+      this._isRestoringFocus = false;
+    }
   }
 
   /**
@@ -237,10 +252,33 @@ export class MultiSelect extends LitWrapper {
   }
 
   /**
-   * Opens the dropdown when the input gets focus.
+   * Moves focus to the chip that took the removed chip's place, else to the
+   * last chip, else to the enabled search input.
+   * @param {number} index Display index of the removed chip
+   */
+  _focusAfterChipRemoval(index) {
+    const buttons = [...this.querySelectorAll("[data-multi-select-chip-remove]")];
+    (buttons[index] ?? buttons.at(-1) ?? this._searchInputElement())?.focus();
+  }
+
+  /**
+   * Clears the search query from the clear button and moves focus to the
+   * search input, since the focused clear button unrenders.
+   */
+  async _handleClearSearch() {
+    this._clearQuery();
+    await this.updateComplete;
+    this._searchInputElement()?.focus();
+  }
+
+  /**
+   * Opens the dropdown when the input gets focus, unless a script is
+   * restoring focus.
    */
   _handleFocus() {
-    this._combobox.open();
+    if (!this._isRestoringFocus) {
+      this._combobox.open();
+    }
   }
 
   /**
@@ -338,8 +376,16 @@ export class MultiSelect extends LitWrapper {
       return;
     }
 
+    // Remember where focus was, since the re-render drops the focused remove button.
+    const hadFocus = this.contains(document.activeElement);
+    const index = this._selectedOptions.findIndex((option) => option.value === value);
+
     this.selected = this.selected.filter((selectedValue) => selectedValue !== value);
     await this.updateComplete;
+    if (hadFocus && !this.contains(document.activeElement)) {
+      this._focusAfterChipRemoval(index);
+    }
+    // Dispatch after the focus move so listeners see where focus landed.
     this._dispatchSelectionChange();
   }
 
@@ -362,6 +408,7 @@ export class MultiSelect extends LitWrapper {
         <button
           type="button"
           class="inline-flex size-3 items-center justify-center rounded-full border-0 bg-transparent text-stone-700 hover:text-stone-900"
+          data-multi-select-chip-remove
           @click=${(event) => this._removeSelection(option.value, event)}
           ?disabled=${this.disabled}
           aria-label="Remove ${option.name}"
@@ -463,7 +510,7 @@ export class MultiSelect extends LitWrapper {
                       type="button"
                       class="absolute inset-y-0 end-0 flex items-center pe-3 text-stone-400 hover:text-stone-700"
                       aria-label="Clear search"
-                      @click=${() => this._clearQuery()}
+                      @click=${() => this._handleClearSearch()}
                     >
                       <div class="svg-icon size-4 icon-close bg-current" aria-hidden="true"></div>
                     </button>
@@ -583,6 +630,14 @@ export class MultiSelect extends LitWrapper {
    */
   _searchAnchorElement() {
     return this.querySelector("[data-multi-select-search]");
+  }
+
+  /**
+   * Finds the enabled search combobox input.
+   * @returns {HTMLInputElement|null}
+   */
+  _searchInputElement() {
+    return this.querySelector('[role="combobox"]:not([disabled])');
   }
 
   /**

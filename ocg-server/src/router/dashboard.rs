@@ -645,7 +645,6 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             post(dashboard::user::inbox::send_message),
         )
         // Invitations endpoints
-        .route("/invitations", get(dashboard::user::invitations::list_page))
         .route(
             "/invitations/community/{community_id}/accept",
             put(dashboard::user::invitations::accept_community_team_invitation),

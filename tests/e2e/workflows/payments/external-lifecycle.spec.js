@@ -12,6 +12,7 @@ import {
 import {
   confirmAlert,
   dismissAlert,
+  expectDialogClosed,
   navigateToPath,
   waitForActionResponse,
   waitForActionResponses,
@@ -548,9 +549,9 @@ test.describe("external payment journeys", () => {
 
     // Dismiss with Escape and restore scroll and focus to the attendee action.
     await organizerExternalGroupPage.keyboard.press("Escape");
-    await expect(dialog).toBeHidden();
-    await expect(organizerExternalGroupPage.locator("body")).not.toHaveCSS("overflow", "hidden");
-    await expect(attendeeRow.locator("[data-actions-menu] summary")).toBeFocused();
+    await expectDialogClosed(organizerExternalGroupPage, dialog, {
+      opener: attendeeRow.locator("[data-actions-menu] summary"),
+    });
   });
 
   test("@mobile keeps pending payment details within the viewport", async ({ member1Page }) => {

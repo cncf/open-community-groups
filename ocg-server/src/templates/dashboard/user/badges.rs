@@ -4,6 +4,9 @@ use askama::Template;
 
 use crate::types::badges::UserBadge;
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// Active user badges dashboard pane.

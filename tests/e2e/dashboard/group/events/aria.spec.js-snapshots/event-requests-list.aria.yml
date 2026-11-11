@@ -9,9 +9,10 @@
   - option "Requester ↓"
   - option "Requested ↑"
   - option "Requested ↓"
-- text: "Active filters Status: Pending"
-- button "Reset status filter"
-- button "Reset all"
+- group "Active filters":
+  - text: "Active filters Status: Pending"
+  - button "Reset status filter"
+  - button "Reset all"
 - text: 1 - 1 of 1 invitation request
 - table "Invitation requests":
   - rowgroup:

@@ -13,6 +13,7 @@ use crate::{
         events::{AutomaticTaxCheckError, EventsError, MockEventsManager},
         payments::{AutomaticTaxReadiness, AutomaticTaxReadinessError},
     },
+    test_util::{element_html_with, opening_tag_with},
     types::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
@@ -119,7 +120,7 @@ async fn test_add_page_success() {
     assert!(body.contains("data-section=\"contributors\""));
     assert!(body.contains("<form id=\"contributors-form\" data-event-form>"));
     let team_attribute = users_attribute(&sample_team_members());
-    let organizers_selector = selector_tag(&body, "id=\"event-organizers-selector\"");
+    let organizers_selector = opening_tag_with(&body, "id=\"event-organizers-selector\"");
     assert!(organizers_selector.contains(&format!("selected-users=\"{team_attribute}\"")));
     assert!(organizers_selector.contains(&format!("available-users=\"{team_attribute}\"")));
     assert!(organizers_selector.contains("field-name=\"organizers\""));
@@ -206,13 +207,8 @@ async fn test_list_page_waits_for_pending_cohosts_before_publishing() {
     // Check the publish action is disabled with the pending co-hosts reason
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    let publish_button = body
-        .split(&format!("id=\"publish-event-{event_id}\""))
-        .nth(1)
-        .and_then(|rest| rest.split("</button>").next())
-        .expect("publish action to be rendered");
+    let publish_button = element_html_with(&body, &format!(r#"id="publish-event-{event_id}""#));
     assert!(publish_button.contains("disabled title=\"Waiting for 2 co-host(s) to respond.\""));
-    assert!(publish_button.contains("cursor-not-allowed"));
 }
 
 #[tokio::test]
@@ -250,7 +246,7 @@ async fn test_update_page_hides_awards_and_surveys_for_canceled_events() {
     // Check organizers render without award wiring
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    let organizers_selector = selector_tag(&body, "id=\"event-organizers-selector\"");
+    let organizers_selector = opening_tag_with(&body, "id=\"event-organizers-selector\"");
     assert!(!organizers_selector.contains("can-award-badges"));
     assert!(!organizers_selector.contains("award-button-id="));
     assert!(!body.contains("event-organizers-award-button"));
@@ -296,7 +292,7 @@ async fn test_update_page_hides_contributor_awards_for_read_only_users() {
     // Check organizers render without award wiring
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    let organizers_selector = selector_tag(&body, "id=\"event-organizers-selector\"");
+    let organizers_selector = opening_tag_with(&body, "id=\"event-organizers-selector\"");
     assert!(!organizers_selector.contains("can-award-badges"));
     assert!(!organizers_selector.contains("award-button-id="));
     assert!(!body.contains("event-organizers-award-button"));
@@ -612,7 +608,7 @@ async fn test_update_page_success() {
     let organizers_attribute = users_attribute(&organizers);
     let team_attribute = users_attribute(&sample_team_members());
     assert!(body.contains("<form id=\"contributors-form\" data-event-form>"));
-    let organizers_selector = selector_tag(&body, "id=\"event-organizers-selector\"");
+    let organizers_selector = opening_tag_with(&body, "id=\"event-organizers-selector\"");
     assert!(organizers_selector.contains(&format!("selected-users=\"{organizers_attribute}\"")));
     assert!(organizers_selector.contains(&format!("available-users=\"{team_attribute}\"")));
     assert!(organizers_selector.contains("can-award-badges"));
@@ -1848,14 +1844,6 @@ fn sample_team_members() -> Vec<User> {
         name: Some("Team Organizer".to_string()),
         ..Default::default()
     }]
-}
-
-/// Returns the opening tag that contains the given attribute.
-fn selector_tag<'a>(body: &'a str, attribute: &str) -> &'a str {
-    let attribute_index = body.find(attribute).expect("attribute should be rendered");
-    let start = body[..attribute_index].rfind('<').expect("tag start should exist");
-    let end = attribute_index + body[attribute_index..].find('>').expect("tag end should exist");
-    &body[start..=end]
 }
 
 /// Builds the event editor page request.

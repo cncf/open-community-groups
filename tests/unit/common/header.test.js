@@ -12,34 +12,12 @@ import {
   dispatchHtmxAfterSwap,
   dispatchHtmxBeforeRequest,
 } from "/tests/unit/test-utils/htmx.js";
-
-/**
- * Replaces matchMedia with a phone query whose state tests can change.
- * @param {boolean} matches - Initial query state.
- * @returns {{listeners: Set<Function>, set: (value: boolean) => void}} Query controls.
- */
-const stubPhoneQuery = (matches) => {
-  const listeners = new Set();
-  const query = {
-    matches,
-    addEventListener: (_type, listener) => listeners.add(listener),
-    removeEventListener: (_type, listener) => listeners.delete(listener),
-  };
-  window.matchMedia = (text) => (text === PHONE_MEDIA_QUERY ? query : { matches: false });
-
-  return {
-    listeners,
-    set: (value) => {
-      query.matches = value;
-      [...listeners].forEach((listener) => listener({ matches: value }));
-    },
-  };
-};
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 /** Renders the phone shell around the user menu. */
 const renderSheetFixture = () => {
   const menu = `
-    <button id="user-dropdown-button" type="button">User</button>
+    <button id="user-dropdown-button" type="button" aria-expanded="false">User</button>
     <div id="user-dropdown" class="hidden account-sheet" style="position: fixed" role="menu">
       <ul class="sheet-panel sheet-body" role="none">
         <li class="sheet-head sheet-grab" role="none">
@@ -109,7 +87,7 @@ const renderSheetFixture = () => {
 /** Collects the sheet state that must not outlive the sheet. */
 const getSheetMarkers = () => ({
   ariaCurrent: document.querySelectorAll("[aria-current]").length,
-  ariaExpanded: document.querySelectorAll("[aria-expanded]").length,
+  ariaExpanded: document.querySelectorAll('[aria-expanded="true"]').length,
   drag: document.querySelectorAll("[data-sheet-drag]").length,
   inert: document.querySelectorAll("[inert]").length,
   lock: document.body.dataset.modalOpenCount ?? "0",
@@ -587,21 +565,21 @@ describe("header", () => {
   });
 
   describe("account sheet", () => {
-    const originalMatchMedia = window.matchMedia;
     const originalCloseWatcher = window.CloseWatcher;
+    let media;
     const historyRestoreEvent = () => new Event("htmx:historyRestore", { bubbles: true });
     const restoredPageshowEvent = () => new PageTransitionEvent("pageshow", { persisted: true });
 
     afterEach(() => {
       // Release any sheet state left by the test case.
       window.dispatchEvent(restoredPageshowEvent());
-      window.matchMedia = originalMatchMedia;
+      media?.restore();
       window.CloseWatcher = originalCloseWatcher;
     });
 
     it("keeps the anchored menu under a false query", () => {
       // Render the shell with the phone query off.
-      const query = stubPhoneQuery(false);
+      media = stubMatchMedia();
       const { dropdown, userButton } = renderSheetFixture();
       const addedListeners = [];
       const originalAddEventListener = document.addEventListener;
@@ -614,17 +592,17 @@ describe("header", () => {
       userButton.click();
       document.addEventListener = originalAddEventListener;
 
-      // Verify nothing sheet related was written or bound.
+      // Verify nothing sheet related was written or bound beyond the expanded state.
       expect(dropdown.classList.contains("hidden")).to.equal(false);
-      expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
-      expect(query.listeners.size).to.equal(0);
+      expect(getSheetMarkers()).to.deep.equal({ ...CLEAR_SHEET_MARKERS, ariaExpanded: 1 });
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
       expect(addedListeners).to.deep.equal([]);
       expect(document.activeElement).not.to.equal(document.getElementById("sheet-close"));
     });
 
     it("keeps the anchored menu open on a margin click", () => {
       // Open the anchored menu with the phone query off.
-      stubPhoneQuery(false);
+      media = stubMatchMedia();
       const { dropdown, userButton } = renderSheetFixture();
       userButton.click();
 
@@ -637,7 +615,7 @@ describe("header", () => {
 
     it("closes the anchored menu from Sign up without moving focus", () => {
       // Open the anchored menu with the phone query off.
-      stubPhoneQuery(false);
+      media = stubMatchMedia();
       const { dropdown, userButton } = renderSheetFixture();
       userButton.click();
 
@@ -652,7 +630,7 @@ describe("header", () => {
     it("opens with the sheet state in place", () => {
       // Render the shell on a dashboard tab.
       setLocationPath("/dashboard/user?tab=invitations");
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { close, dropdown, panel, userButton } = renderSheetFixture();
 
       // Open the sheet.
@@ -685,7 +663,7 @@ describe("header", () => {
     it("marks the row without a tab only on the page without one", () => {
       // Render the shell on the dashboard without a tab.
       setLocationPath("/dashboard/user");
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { userButton } = renderSheetFixture();
 
       // Open the sheet.
@@ -700,7 +678,7 @@ describe("header", () => {
     it("marks a row by pathname when the page has a query", () => {
       // Render the shell on a page whose row has no query.
       setLocationPath("/stats?range=30");
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { userButton } = renderSheetFixture();
 
       // Open the sheet.
@@ -730,7 +708,7 @@ describe("header", () => {
     ].forEach(([name, closeSheet]) => {
       it(`closes from the ${name} and restores focus to the opener`, () => {
         // Open the sheet.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const { dropdown, userButton } = renderSheetFixture();
         userButton.click();
 
@@ -746,7 +724,7 @@ describe("header", () => {
 
     it("keeps the sheet open while a spinner link loads", () => {
       // Open the sheet.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { dropdown, userButton } = renderSheetFixture();
       userButton.click();
 
@@ -761,7 +739,7 @@ describe("header", () => {
 
     it("traps Tab over the rendered rows, including the hidden class row", () => {
       // Open the sheet.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { close, userButton } = renderSheetFixture();
       userButton.click();
       const desktopVersion = document.getElementById("desktop-version");
@@ -792,7 +770,7 @@ describe("header", () => {
           this.destroyed = true;
         }
       };
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { dropdown, userButton } = renderSheetFixture();
       userButton.click();
 
@@ -807,29 +785,156 @@ describe("header", () => {
 
     it("releases sheet state and keeps the menu open when the query turns false", () => {
       // Open the sheet.
-      const query = stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { dropdown, userButton } = renderSheetFixture();
       userButton.click();
 
       // Rotate past md.
-      query.set(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
 
       // Verify the sheet state is gone and the menu is still up.
       expect(dropdown.classList.contains("hidden")).to.equal(false);
-      expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
-      expect(query.listeners.size).to.equal(0);
+      expect(getSheetMarkers()).to.deep.equal({ ...CLEAR_SHEET_MARKERS, ariaExpanded: 1 });
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
 
       // Verify the anchored rules are back.
       dropdown.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       expect(dropdown.classList.contains("hidden")).to.equal(false);
     });
 
+    it("releasing the sheet past md keeps aria-expanded true while the anchored menu stays open", () => {
+      // Open the sheet.
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
+      const { userButton } = renderSheetFixture();
+      userButton.click();
+
+      // Rotate past md.
+      media.setMatches(PHONE_MEDIA_QUERY, false);
+
+      // Verify the trigger still reports the anchored menu as open.
+      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
+
+      // Close the anchored menu from outside.
+      document.getElementById("outside").click();
+
+      // Verify the trigger reports it closed.
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+    });
+
+    it("desktop toggle syncs aria-expanded on open and close", () => {
+      // Render the shell with the phone query off.
+      media = stubMatchMedia();
+      const { userButton } = renderSheetFixture();
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+
+      // Open the anchored menu.
+      userButton.click();
+      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
+
+      // Close it from the trigger.
+      userButton.click();
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+    });
+
+    it("outside click, Escape and a menu link click set aria-expanded to false", () => {
+      // Render the shell with the phone query off.
+      media = stubMatchMedia();
+      const { userButton } = renderSheetFixture();
+
+      // Close the open menu from an outside click.
+      userButton.click();
+      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
+      document.getElementById("outside").click();
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+
+      // Close the open menu with Escape.
+      userButton.click();
+      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
+      document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+
+      // Close the open menu by following a link without a spinner.
+      userButton.click();
+      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
+      document.getElementById("log-in-row").click();
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+    });
+
+    it("moves focus through the anchored menu items with arrows, Home and End", () => {
+      // Render the shell with the phone query off and list the rendered items.
+      media = stubMatchMedia();
+      const { dropdown, userButton } = renderSheetFixture();
+      const pressKey = (key) =>
+        document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key }));
+
+      // ArrowDown on the trigger opens the menu at its first item.
+      userButton.focus();
+      pressKey("ArrowDown");
+      const items = [...dropdown.querySelectorAll('[role="menuitem"]')].filter(
+        (item) => item.getClientRects().length > 0,
+      );
+      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
+      expect(document.activeElement).to.equal(items[0]);
+
+      // Arrows wrap around, and Home and End jump to the ends.
+      pressKey("ArrowUp");
+      expect(document.activeElement).to.equal(items.at(-1));
+      pressKey("ArrowDown");
+      expect(document.activeElement).to.equal(items[0]);
+      pressKey("ArrowDown");
+      expect(document.activeElement).to.equal(items[1]);
+      pressKey("End");
+      expect(document.activeElement).to.equal(items.at(-1));
+      pressKey("Home");
+      expect(document.activeElement).to.equal(items[0]);
+
+      // ArrowUp on the trigger of a closed menu opens it at its last item.
+      pressKey("Escape");
+      expect(document.activeElement).to.equal(userButton);
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+      pressKey("ArrowUp");
+      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
+      expect(document.activeElement).to.equal(items.at(-1));
+    });
+
+    it("closes the anchored menu when focus moves outside it", () => {
+      // Render the shell with the phone query off and open the menu.
+      media = stubMatchMedia();
+      const { dropdown, userButton } = renderSheetFixture();
+      userButton.focus();
+      userButton.click();
+
+      // Focus moving between the trigger and the items keeps the menu open.
+      document.getElementById("stats-row").focus();
+      document.getElementById("dashboard-row").focus();
+      expect(dropdown.classList.contains("hidden")).to.equal(false);
+
+      // Focus moving to the rest of the page, as on Tab, closes it.
+      document.getElementById("logo-link").focus();
+      expect(dropdown.classList.contains("hidden")).to.equal(true);
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+    });
+
+    it('history restore resets a stale aria-expanded="true" on a hidden menu', () => {
+      // Render a snapshot whose trigger claims a menu that is hidden.
+      media = stubMatchMedia();
+      const { dropdown, userButton } = renderSheetFixture();
+      userButton.setAttribute("aria-expanded", "true");
+
+      // Restore it.
+      document.dispatchEvent(historyRestoreEvent());
+
+      // Verify the trigger matches the hidden menu.
+      expect(dropdown.classList.contains("hidden")).to.equal(true);
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+    });
+
     it("closes a menu that crossed into phone widths from its scrim", () => {
       // Open the anchored menu, then cross into phone widths.
-      const query = stubPhoneQuery(false);
+      media = stubMatchMedia();
       const { dropdown, userButton } = renderSheetFixture();
       userButton.click();
-      query.set(true);
+      media.setMatches(PHONE_MEDIA_QUERY, true);
 
       // Tap the scrim that now covers the page.
       dropdown.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -840,7 +945,7 @@ describe("header", () => {
 
     it("releases the sheet when a swap replaces it", () => {
       // Open the sheet.
-      const query = stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { userButton } = renderSheetFixture();
       userButton.click();
 
@@ -850,7 +955,7 @@ describe("header", () => {
 
       // Verify nothing is held for the sheet that left.
       expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
-      expect(query.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     });
 
     /**
@@ -864,7 +969,7 @@ describe("header", () => {
       document.getElementById("header").insertAdjacentHTML(
         "beforeend",
         `
-          <button id="user-dropdown-button" type="button">User</button>
+          <button id="user-dropdown-button" type="button" aria-expanded="false">User</button>
           <div id="user-dropdown"></div>
         `,
       );
@@ -873,29 +978,34 @@ describe("header", () => {
 
     it("releases a sheet a refetch replaced before the new node settles", () => {
       // Open the sheet from the user button, which the refetch replaces.
-      const query = stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { userButton } = renderSheetFixture();
       userButton.click();
 
       // Replace the menu.
       swapUserMenu();
 
-      // Verify nothing is held and the replacement takes focus.
+      // Verify nothing is held and the replacement takes focus. The unsettled node
+      // still shows, so its trigger reports it expanded until settling.
       const newButton = document.getElementById("user-dropdown-button");
       expect(userButton.isConnected).to.equal(false);
-      expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
-      expect(query.listeners.size).to.equal(0);
+      expect(getSheetMarkers()).to.deep.equal({ ...CLEAR_SHEET_MARKERS, ariaExpanded: 1 });
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
       expect(document.activeElement).to.equal(newButton);
 
-      // Verify the next tap opens the sheet instead of closing one nobody sees.
+      // Settle the new node the way HTMX does, restoring its rendered class.
       document.getElementById("user-dropdown").classList.add("hidden");
+      document.dispatchEvent(new Event("htmx:afterSettle", { bubbles: true }));
+      expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
+
+      // Verify the next tap opens the sheet instead of closing one nobody sees.
       newButton.click();
       expect(document.getElementById("user-dropdown").classList.contains("hidden")).to.equal(false);
     });
 
     it("does not touch focus when a swap leaves the open sheet alone", () => {
       // Open the sheet.
-      const query = stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { close, dropdown, userButton } = renderSheetFixture();
       userButton.click();
 
@@ -906,12 +1016,12 @@ describe("header", () => {
       expect(dropdown.classList.contains("hidden")).to.equal(false);
       expect(document.activeElement).to.equal(close);
       expect(document.body.dataset.modalOpenCount).to.equal("1");
-      expect(query.listeners.size).to.equal(2);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(2);
     });
 
     it("strips sheet state before HTMX saves history", () => {
       // Open the sheet.
-      const query = stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { dropdown, userButton } = renderSheetFixture();
       userButton.click();
 
@@ -921,7 +1031,7 @@ describe("header", () => {
       // Verify the snapshot carries no open state.
       expect(dropdown.classList.contains("hidden")).to.equal(true);
       expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
-      expect(query.listeners.size).to.equal(0);
+      expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     });
 
     [
@@ -930,7 +1040,7 @@ describe("header", () => {
     ].forEach(([name, restore]) => {
       it(`resets a restored open sheet from the DOM on ${name}`, () => {
         // Render a snapshot that shows an open sheet no module state knows of.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const { dropdown, userButton } = renderSheetFixture();
         dropdown.classList.remove("hidden");
         document.getElementById("main-content").inert = true;
@@ -946,7 +1056,7 @@ describe("header", () => {
 
       it(`releases an open sheet on ${name}`, () => {
         // Open the sheet.
-        stubPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const { dropdown, userButton } = renderSheetFixture();
         userButton.click();
 
@@ -961,7 +1071,7 @@ describe("header", () => {
 
     it("leaves a sheet opened before the first pageshow alone", () => {
       // Open the sheet before the page finishes loading.
-      stubPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { dropdown, userButton } = renderSheetFixture();
       userButton.click();
 
@@ -974,7 +1084,7 @@ describe("header", () => {
 
     it("leaves an open anchored menu alone on restore under a false query", () => {
       // Open the anchored menu with the phone query off.
-      stubPhoneQuery(false);
+      media = stubMatchMedia();
       const { dropdown, userButton } = renderSheetFixture();
       userButton.click();
 

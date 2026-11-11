@@ -1,6 +1,13 @@
 import { expect, test } from "../../fixtures.js";
-import { TEST_COMMUNITY_NAME, TEST_EVENT_NAMES, TEST_EVENT_SLUGS, TEST_GROUP_SLUGS } from "../../seed.js";
-import { buildE2eUrl, navigateToPath, routeEmptyBasemap } from "../../utils.js";
+import {
+  TEST_COMMUNITY_NAME,
+  TEST_COMMUNITY_NAME_2,
+  TEST_COMMUNITY_TITLE_2,
+  TEST_EVENT_NAMES,
+  TEST_EVENT_SLUGS,
+  TEST_GROUP_SLUGS,
+} from "../../seed.js";
+import { buildE2eUrl, navigateToPath, routeEmptyBasemap, waitForActionResponse } from "../../utils.js";
 
 const CLOUDFRONT_NEW_YORK_HEADERS = {
   "CloudFront-Viewer-Latitude": "40.7128",
@@ -8,6 +15,9 @@ const CLOUDFRONT_NEW_YORK_HEADERS = {
 };
 
 const DISTANCE_SORT_QUERY = "Observability";
+
+/** Normalized value of the first community's seeded "E2E Category One" group category. */
+const GROUP_CATEGORY_ONE = "e2e-category-one";
 
 const OBSERVABILITY_DISTANCE_ORDER = TEST_EVENT_NAMES.gamma;
 
@@ -41,6 +51,42 @@ test.describe("site explore location search", () => {
     const eventCards = page.locator("#cards-list article");
     await expect(eventCards).toHaveCount(OBSERVABILITY_DISTANCE_ORDER.length);
     await expect(eventCards.locator(".card-title")).toHaveText(OBSERVABILITY_DISTANCE_ORDER);
+  });
+
+  test("switching community keeps the distance filter and clears community filters", async ({ page }) => {
+    // Load explore with a viewer location, a distance and a group category of the first community.
+    await page.setExtraHTTPHeaders(CLOUDFRONT_NEW_YORK_HEADERS);
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}` +
+        `&distance=50000&group_category[0]=${GROUP_CATEGORY_ONE}`,
+    );
+    const desktopForm = page.locator("#events-form");
+    await expect(desktopForm.getByRole("checkbox", { name: "50 km" })).toBeChecked();
+    await expect(desktopForm.getByRole("checkbox", { name: "E2E Category One" })).toBeChecked();
+
+    // Select the second community and capture the section request.
+    const response = await waitForActionResponse(
+      page,
+      () => desktopForm.getByText(TEST_COMMUNITY_TITLE_2, { exact: true }).click(),
+      { method: "GET", pathname: "/explore/events-section", status: 200 },
+    );
+
+    // Verify the request keeps the distance and drops the first community's category.
+    const requestParams = new URL(response.url()).searchParams;
+    expect(requestParams.getAll("distance[]")).toEqual(["50000"]);
+    expect(requestParams.getAll("group_category[]")).toEqual([]);
+
+    // Verify the pushed URL and the re-rendered filters follow the same contract.
+    await expect(page).toHaveURL(
+      (url) =>
+        url.searchParams.get("community[0]") === TEST_COMMUNITY_NAME_2 &&
+        url.searchParams.get("distance") === "50000" &&
+        !url.searchParams.has("group_category[0]"),
+    );
+    await expect(desktopForm.getByRole("checkbox", { name: TEST_COMMUNITY_TITLE_2 })).toBeChecked();
+    await expect(desktopForm.getByRole("checkbox", { name: "50 km" })).toBeChecked();
+    await expect(desktopForm.getByRole("checkbox", { name: "E2E Category One" })).toHaveCount(0);
   });
 
   test("event map markers expose accessible links to public event pages", async ({ page }) => {

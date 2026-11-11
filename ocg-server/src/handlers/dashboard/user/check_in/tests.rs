@@ -19,6 +19,10 @@ async fn test_page_falls_back_to_username_when_name_is_blank() {
     let mut db = MockDB::new();
     expect_session_with_user(&mut db, &ids, user);
     expect_site_settings(&mut db);
+    db.expect_count_user_pending_invitations()
+        .times(1)
+        .withf(move |uid| *uid == ids.user_id)
+        .returning(|_| Ok(0));
     db.expect_count_user_unanswered_event_surveys()
         .times(1)
         .withf(move |uid| *uid == ids.user_id)

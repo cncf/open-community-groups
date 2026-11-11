@@ -2,6 +2,9 @@
 {# Variables for explore URLs #}
 {% let explore_events = "/explore?entity=events" %}
 {% let explore_groups = "/explore?entity=groups" %}
+{% let explore_in_person_events = "/explore?entity=events&kind[0]=in-person&kind[1]=hybrid" %}
+{% let explore_virtual_events = "/explore?entity=events&kind[0]=virtual&kind[1]=hybrid" %}
+{% let explore_latest_groups = "/explore?entity=groups&sort_by=date" %}
 {# End variables for explore URLs #}
 <!DOCTYPE html>
 <html lang="en" class="h-full min-h-screen">
@@ -12,30 +15,18 @@
        purpose; a module or deferred script would run after layout. Cookie and attribute names
        mirror static/js/common/viewport-mode.js. -#}
     <script>
-      if (document.cookie.split(";").some((c) => c.trim() === "ocg_viewport_mode=desktop")) {
-        document.documentElement.setAttribute("data-viewport-mode", "desktop");
-        document.querySelector('meta[name="viewport"]').setAttribute("content", "width=1280");
-      }
+      {% include "common/scripts/viewport_mode_init.js" -%}
     </script>
     {# Deployment refresh: drop the cache-busting parameter before HTMX records the page path for
        history, keeping other parameters as sent. The parameter name mirrors
        static/js/common/deployment-version.js. -#}
     <script>
-      (() => {
-        const params = location.search.slice(1).split("&").filter(Boolean);
-        const keptParams = params.filter((param) => param.split("=")[0] !== "ocg_refresh");
-        if (keptParams.length === params.length) {
-          return;
-        }
-
-        const search = keptParams.length ? `?${keptParams.join("&")}` : "";
-        history.replaceState(history.state, "", `${location.pathname}${search}${location.hash}`);
-      })();
+      {% include "common/scripts/deployment_refresh_cleanup.js" -%}
     </script>
 
     {# Page title -#}
     {% block head_title -%}
-      <title>Open Community Groups</title>
+      <title>{{ site_settings.title }}</title>
     {% endblock head_title -%}
     {# End page title -#}
     {% block head_description -%}

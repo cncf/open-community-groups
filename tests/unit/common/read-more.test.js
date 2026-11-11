@@ -2,6 +2,7 @@ import { expect, nextFrame, waitUntil } from "@open-wc/testing";
 
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 const LONG_TEXT = "Long description text. ".repeat(80);
 
@@ -19,32 +20,6 @@ class TrackedResizeObserver extends ResizeObserver {
     super.disconnect();
   }
 }
-
-/**
- * Replaces matchMedia with a phone query whose state tests can change.
- * @returns {{listeners: Set<Function>, setMatches: (next: boolean) => void}} Query controls.
- */
-const mockPhoneQuery = () => {
-  const listeners = new Set();
-  const query = {
-    addEventListener: (type, listener) => {
-      if (type === "change") {
-        listeners.add(listener);
-      }
-    },
-    matches: false,
-  };
-
-  window.matchMedia = (text) => (text === PHONE_MEDIA_QUERY ? query : { matches: false });
-
-  return {
-    listeners,
-    setMatches: (next) => {
-      query.matches = next;
-      listeners.forEach((listener) => listener({ matches: next }));
-    },
-  };
-};
 
 /**
  * Renders a read more block with the clip the phone section of styles.src.css applies.
@@ -76,18 +51,17 @@ const renderBlock = (content) => {
 const waitForOverflowing = (block) => waitUntil(() => block.hasAttribute("data-overflowing"));
 
 describe("read-more", () => {
-  const originalMatchMedia = window.matchMedia;
   const originalResizeObserver = window.ResizeObserver;
   const documentListenerTypes = [];
   let initializeReadMore;
-  let phoneQuery;
+  let media;
   let style;
 
   before(async () => {
     const originalAddEventListener = document.addEventListener;
 
     // Load the module once under a false query, recording what it attaches.
-    phoneQuery = mockPhoneQuery();
+    media = stubMatchMedia();
     window.ResizeObserver = TrackedResizeObserver;
     document.addEventListener = function (type, ...args) {
       documentListenerTypes.push(type);
@@ -105,19 +79,19 @@ describe("read-more", () => {
   });
 
   afterEach(() => {
-    phoneQuery.setMatches(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
     resetDom();
   });
 
   after(() => {
     style.remove();
-    window.matchMedia = originalMatchMedia;
+    media.restore();
     window.ResizeObserver = originalResizeObserver;
   });
 
   it("keeps one query listener and the two helper listeners at any width", () => {
     // Verify load attached only the allowed always-on listeners.
-    expect(phoneQuery.listeners.size).to.equal(1);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
     expect(documentListenerTypes.toSorted()).to.deep.equal(["htmx:historyRestore", "htmx:load"]);
   });
 
@@ -143,7 +117,7 @@ describe("read-more", () => {
     const short = renderBlock("<p>Short text.</p>");
     const long = renderBlock(`<p>${LONG_TEXT}</p>`);
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(long.block);
 
     // Verify the short block stayed without a toggle.
@@ -153,7 +127,7 @@ describe("read-more", () => {
   it("toggles the text and keeps the toggle state in step", async () => {
     const { block, toggle } = renderBlock(`<p>${LONG_TEXT}</p>`);
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(block);
 
     // Expand through the toggle.
@@ -179,7 +153,7 @@ describe("read-more", () => {
     const link = body.querySelector("a");
     link.addEventListener("click", (event) => event.preventDefault());
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(block);
 
     // Verify a tap on a link keeps its own action.
@@ -199,7 +173,7 @@ describe("read-more", () => {
   it("ignores taps on text with nothing clipped", async () => {
     const { block, body } = renderBlock("<p>Short text.</p>");
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await nextFrame();
     body.querySelector("p").click();
 
@@ -210,7 +184,7 @@ describe("read-more", () => {
   it("expands when focus lands inside clipped text", async () => {
     const { block, body, toggle } = renderBlock(`<p>${LONG_TEXT}<a href="#link">Link</a></p>`);
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(block);
     body.querySelector("a").focus();
 
@@ -222,7 +196,7 @@ describe("read-more", () => {
   it("leaves unclipped text alone on focus", async () => {
     const { block, body } = renderBlock('<p><a href="#link">Link</a></p>');
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await nextFrame();
     body.querySelector("a").focus();
 
@@ -233,7 +207,7 @@ describe("read-more", () => {
   it("measures again when a child grows behind the cap", async () => {
     const { block, body } = renderBlock("<p>Short text.</p><p>More.</p>");
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await nextFrame();
     expect(block.hasAttribute("data-overflowing")).to.equal(false);
 
@@ -246,7 +220,7 @@ describe("read-more", () => {
   it("drops the toggle when removed content ends the clipping", async () => {
     const { block, body } = renderBlock(`<p>Short text.</p><p id="late">${LONG_TEXT}</p>`);
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(block);
 
     // Remove the paragraph, as data-ocg-remove-broken-images does.
@@ -265,7 +239,7 @@ describe("read-more", () => {
     image.src = canvas.toDataURL();
     await image.decode();
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     await waitForOverflowing(block);
   });
@@ -273,12 +247,12 @@ describe("read-more", () => {
   it("leaves no state or observers after the query turns false with a block open", async () => {
     const { block, toggle } = renderBlock(`<p>${LONG_TEXT}</p>`);
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(block);
     toggle.click();
     expect(TrackedResizeObserver.live).to.equal(1);
 
-    phoneQuery.setMatches(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
 
     // Verify the state and the observer are gone.
     expect(TrackedResizeObserver.live).to.equal(0);
@@ -297,10 +271,10 @@ describe("read-more", () => {
   it("binds again when the query turns true", async () => {
     const { block, toggle } = renderBlock(`<p>${LONG_TEXT}</p>`);
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(block);
-    phoneQuery.setMatches(false);
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(block);
     toggle.click();
 
@@ -312,7 +286,7 @@ describe("read-more", () => {
   it("releases swapped-out blocks and binds their replacements once", async () => {
     const swapped = renderBlock(`<p>${LONG_TEXT}</p>`);
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(swapped.block);
 
     // Swap the content, with htmx:load firing for each new top-level node.
@@ -331,7 +305,7 @@ describe("read-more", () => {
   it("collapses open blocks before the history snapshot", async () => {
     const { block, toggle } = renderBlock(`<p>${LONG_TEXT}</p>`);
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(block);
     toggle.click();
 
@@ -344,7 +318,7 @@ describe("read-more", () => {
   });
 
   it("resets stale state from restored markup", async () => {
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     // Restore a snapshot that still carries an open, overflowing short block.
     const { block, toggle } = renderBlock("<p>Short text.</p>");
@@ -365,7 +339,7 @@ describe("read-more", () => {
   it("collapses on a bfcache restore but not on the first pageshow", async () => {
     const { block, toggle } = renderBlock(`<p>${LONG_TEXT}</p>`);
 
-    phoneQuery.setMatches(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(block);
     toggle.click();
 

@@ -15,6 +15,9 @@ use crate::{
     },
 };
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// List attendees page template for a group's event.

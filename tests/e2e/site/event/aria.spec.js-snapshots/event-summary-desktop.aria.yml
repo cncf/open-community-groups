@@ -7,4 +7,5 @@
     - /url: https://www.meetup.com/test-group/events/123456789/
   - text: "/Capacity: \\d+ \\(Remaining: \\d+\\) in-person/"
   - button "Attend event"
+  - status
   - group

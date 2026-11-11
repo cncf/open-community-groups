@@ -118,8 +118,9 @@
   },
   {
     "function": "record_payment_job_failure",
-    "reason": "Payment worker retry path after a Stripe error; e2e payment jobs never reach Stripe.",
-    "coveredBy": "pgtap:database/tests/functions/payments/record_payment_job_failure.sql"
+    "reason": "Payment worker retry path after a provider error; e2e uses fake Stripe credentials, so it is called only when the worker claims a refund job queued by refunds.spec.js (paid attendee cancellation or exhausted-refund retry) before the test cleanup deletes it, so some runs call it and others do not.",
+    "coveredBy": "pgtap:database/tests/functions/payments/record_payment_job_failure.sql",
+    "intermittent": true
   },
   {
     "function": "release_meeting_sync",

@@ -3,31 +3,8 @@ import { expect, nextFrame, waitUntil } from "@open-wc/testing";
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
-
-/**
- * Replaces matchMedia with a phone query whose state tests can change.
- * @returns {{setMatches: (next: boolean) => void}} Query controls.
- */
-const mockPhoneQuery = () => {
-  const listeners = new Set();
-  const query = {
-    addEventListener: (type, listener) => {
-      if (type === "change") {
-        listeners.add(listener);
-      }
-    },
-    matches: false,
-  };
-
-  window.matchMedia = (text) => (text === PHONE_MEDIA_QUERY ? query : { matches: false });
-
-  return {
-    setMatches: (next) => {
-      query.matches = next;
-      listeners.forEach((listener) => listener({ matches: next }));
-    },
-  };
-};
+import { dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 /**
  * Renders one button of the Events and Groups switch, which only the unpressed side can request.
@@ -53,7 +30,7 @@ const ROW_STYLE = "display: flex; column-gap: 8px; padding: 0 12px; width: 300px
 const renderExplore = (entity = "Events") => {
   document.body.innerHTML = `
     <div id="entity-section">
-      <div id="drawer-filters" class="-translate-x-full" tabindex="-1" aria-labelledby="drawer-label">
+      <div id="drawer-filters" class="-translate-x-full" tabindex="-1" inert aria-labelledby="drawer-label">
         <button id="close-filters" type="button"><div class="icon-close"></div></button>
         <form id="events-form-mobile" class="filters-form" hx-get="/explore/events-section">
           <input type="checkbox" name="kind[]" value="virtual" />
@@ -173,19 +150,19 @@ const getDependentFilter = () => getForm().querySelector("[data-dependent]").tex
 
 describe("explore page controls", () => {
   const originalFetch = globalThis.fetch;
-  const originalMatchMedia = window.matchMedia;
   let getPhoneListUrl;
   let htmx;
-  let phoneQuery;
+  let media;
   let swal;
 
   before(async () => {
-    phoneQuery = mockPhoneQuery();
+    // The module initializes on import, so one stub serves the whole file.
+    media = stubMatchMedia();
     ({ getPhoneListUrl } = await import("/static/js/community/explore/page-controls.js"));
   });
 
   after(() => {
-    window.matchMedia = originalMatchMedia;
+    media.restore();
   });
 
   beforeEach(() => {
@@ -198,7 +175,7 @@ describe("explore page controls", () => {
   afterEach(() => {
     // Leave no sheet held open for the next test.
     fireHtmx(document.body, "htmx:beforeHistorySave");
-    phoneQuery.setMatches(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
     delete document.body.dataset.modalOpenCount;
     document.body.style.overflow = "";
     globalThis.fetch = originalFetch;
@@ -230,7 +207,7 @@ describe("explore page controls", () => {
     it("leaves focus alone after a switch press", () => {
       // The switch is hidden here, but a scripted press must leave nothing for a later phone swap.
       getSwitchButton("Groups").click();
-      phoneQuery.setMatches(true);
+      media.setMatches(PHONE_MEDIA_QUERY, true);
       renderExplore("Groups");
       fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
       expect(document.activeElement.tagName).to.equal("BODY");
@@ -256,6 +233,51 @@ describe("explore page controls", () => {
       expect(swal.calls).to.have.length(0);
     });
 
+    it("restores focus to the toggled filter after a desktop section swap", async () => {
+      // Focus a sidebar Type checkbox and send its form's request.
+      const form = document.getElementById("events-form");
+      form.querySelector('input[value="hybrid"]').focus();
+      dispatchHtmxBeforeRequest(form, { elt: form });
+
+      // Replace the section, which drops focus to the body.
+      renderExplore();
+      expect(document.activeElement).to.equal(document.body);
+      fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
+
+      // Verify the re-rendered checkbox takes focus back.
+      const checkbox = document.querySelector('#events-form input[value="hybrid"]');
+      await waitUntil(() => document.activeElement === checkbox);
+    });
+
+    it("focuses the drawer's open button after a swap started from the tablet drawer", () => {
+      // Open the drawer, focus one of its filters and send its form's request.
+      openSheet();
+      getForm().querySelector('input[value="virtual"]').focus();
+      dispatchHtmxBeforeRequest(getForm(), { elt: getForm() });
+
+      // Replace the section, which closes the drawer and drops focus to the body.
+      renderExplore();
+      expect(isSheetOpen()).to.equal(false);
+      expect(document.activeElement).to.equal(document.body);
+      fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
+
+      // Verify the button that reopens the drawer takes focus.
+      expect(document.activeElement).to.equal(document.getElementById("open-filters"));
+    });
+
+    it("leaves focus alone after a drawer swap that started with focus outside the drawer", () => {
+      // Send the drawer form's request while the search input has focus.
+      document.getElementById("ts_query").focus();
+      dispatchHtmxBeforeRequest(getForm(), { elt: getForm() });
+
+      // Replace the section and settle it.
+      renderExplore();
+      fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
+
+      // Verify nothing took focus.
+      expect(document.activeElement).to.equal(document.body);
+    });
+
     it("writes no phone attribute and ignores paging swaps", () => {
       // Count scrolls on the swap target.
       const cards = document.getElementById("cards-list");
@@ -277,7 +299,7 @@ describe("explore page controls", () => {
 
   describe("on phones", () => {
     beforeEach(() => {
-      phoneQuery.setMatches(true);
+      media.setMatches(PHONE_MEDIA_QUERY, true);
     });
 
     it("syncs both forms and the search key, and restores them after a swap", () => {
@@ -521,7 +543,7 @@ describe("explore page controls", () => {
       document.getElementById("open-filters").focus();
       openSheet();
       confirmRequest(getForm());
-      phoneQuery.setMatches(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
 
       // Verify the lock, roles and attributes are gone.
       expect(isSheetOpen()).to.equal(false);
@@ -716,7 +738,7 @@ describe("explore page controls", () => {
       stubRefresh("Refreshed group filter");
       openSheet();
       await refreshCommunity();
-      phoneQuery.setMatches(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
 
       // Verify the choices went out, and a later snapshot needs no listener.
       expect(htmx.triggerCalls.at(-1)[0]).to.equal(getForm());
@@ -855,7 +877,7 @@ describe("explore page controls", () => {
     for (const [name, finish] of [
       ["its swap settles", () => swapSection()],
       ["a history restore replaces the page", () => fireHtmx(document.body, "htmx:historyRestore")],
-      ["the query turns false", () => phoneQuery.setMatches(false)],
+      ["the query turns false", () => media.setMatches(PHONE_MEDIA_QUERY, false)],
     ]) {
       it(`stops listening for a chip failure once ${name}`, () => {
         // Remove a filter and end the wait.
@@ -883,7 +905,7 @@ describe("explore page controls", () => {
       expect(document.getElementById("results").getAttribute("tabindex")).to.equal("-1");
 
       // Rotate past the phone width.
-      phoneQuery.setMatches(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
 
       // Verify the desktop tree is back.
       expect(document.getElementById("results").hasAttribute("tabindex")).to.equal(false);
@@ -971,7 +993,7 @@ describe("explore page controls", () => {
 
     it("shows every chip again when the query turns false", () => {
       // Rotate past the phone width.
-      phoneQuery.setMatches(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
 
       // Verify the card is back as served.
       expect(getShownChips()).to.have.length(3);
@@ -1118,7 +1140,7 @@ describe("explore page controls", () => {
       // Press Groups, then rotate past phone widths.
       const groups = getSwitchButton("Groups");
       groups.click();
-      phoneQuery.setMatches(false);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
 
       // Verify its failure reports nothing.
       fireHtmx(groups, "htmx:responseError");
@@ -1160,8 +1182,8 @@ describe("explore page controls", () => {
     it("forgets a switch press when the query turns false", () => {
       // Press Groups, then rotate out and back before the swap settles.
       getSwitchButton("Groups").click();
-      phoneQuery.setMatches(false);
-      phoneQuery.setMatches(true);
+      media.setMatches(PHONE_MEDIA_QUERY, false);
+      media.setMatches(PHONE_MEDIA_QUERY, true);
 
       // Verify the swap places nothing.
       renderExplore("Groups");

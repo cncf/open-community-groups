@@ -1,7 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/modals/modal-toggle-bindings.js";
-import { resetRestoredModalState } from "/static/js/common/modals/modal-lifecycle.js";
+import { resetRestoredModalState, toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 
@@ -45,6 +45,38 @@ describe("modal toggle bindings", () => {
 
     // Missing modal ids are ignored without changing body modal state.
     expect(document.body.dataset.modalOpenCount).to.equal(undefined);
+  });
+
+  it("closes a modal opened from a toggle control with Escape and returns focus to it", () => {
+    // Render the fixture and open the modal from its toggle control
+    const { modal, opener } = renderSwapFixture();
+    opener.focus();
+    opener.click();
+    expect(modal.classList.contains("hidden")).to.equal(false);
+
+    // Press Escape while the modal is open
+    const escape = pressKey("Escape");
+
+    // The modal closes and focus returns to the toggle control
+    expect(escape.defaultPrevented).to.equal(true);
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(modal.getAttribute("aria-hidden")).to.equal("true");
+    expect(document.body.dataset.modalOpenCount).to.equal("0");
+    expect(document.activeElement).to.equal(opener);
+  });
+
+  it("traps Tab navigation inside a modal opened from a toggle control", () => {
+    // Render the fixture, open the modal and focus its last control
+    const { opener } = renderSwapFixture();
+    opener.click();
+    document.getElementById("swap-submit")?.focus();
+
+    // Press Tab on the last focusable control
+    const tab = pressKey("Tab");
+
+    // Focus wraps to the first focusable control
+    expect(tab.defaultPrevented).to.equal(true);
+    expect(document.activeElement?.id).to.equal("close-swap-modal");
   });
 
   it("opens the named modal after content is swapped into its root", () => {
@@ -161,12 +193,12 @@ describe("modal toggle bindings", () => {
     const { modal, opener, root } = renderSwapFixture();
     dispatchHtmxAfterSwap(root, { requestConfig: { elt: opener } });
 
-    // Close from the toggle control and reopen without a swap
+    // Close from the toggle control and reopen without keyboard handling
     document.getElementById("close-swap-modal")?.click();
-    opener.click();
+    toggleModalVisibility(modal);
     pressKey("Escape");
 
-    // Escape no longer closes the modal opened by the toggle control
+    // Escape no longer reaches the closed modal's listeners
     expect(modal.classList.contains("hidden")).to.equal(false);
   });
 
@@ -175,12 +207,12 @@ describe("modal toggle bindings", () => {
     const { modal, opener, root } = renderSwapFixture();
     dispatchHtmxAfterSwap(root, { requestConfig: { elt: opener } });
 
-    // Close with Escape and reopen without a swap
+    // Close with Escape and reopen without keyboard handling
     pressKey("Escape");
-    opener.click();
+    toggleModalVisibility(modal);
     pressKey("Escape");
 
-    // Escape no longer closes the modal opened by the toggle control
+    // Escape no longer reaches the closed modal's listeners
     expect(modal.classList.contains("hidden")).to.equal(false);
   });
 
@@ -189,13 +221,13 @@ describe("modal toggle bindings", () => {
     const { modal, opener, root } = renderSwapFixture();
     dispatchHtmxAfterSwap(root, { requestConfig: { elt: opener } });
 
-    // Reset modal state as navigation does and reopen without a swap
+    // Reset modal state as navigation does and reopen without keyboard handling
     resetRestoredModalState(document);
     expect(modal.classList.contains("hidden")).to.equal(true);
-    opener.click();
+    toggleModalVisibility(modal);
     pressKey("Escape");
 
-    // Escape no longer closes the modal opened by the toggle control
+    // Escape no longer reaches the closed modal's listeners
     expect(modal.classList.contains("hidden")).to.equal(false);
   });
 });

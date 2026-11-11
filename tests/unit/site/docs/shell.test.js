@@ -19,8 +19,8 @@ import {
   trackAddedEventListeners,
 } from "/tests/unit/test-utils/dom.js";
 import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
-import { mockPhoneMedia } from "/tests/unit/test-utils/wake-lock.js";
 
 const SCROLL_POSITIONS_KEY = "ocg-docs-scroll-positions";
 const SCROLL_RESTORE_KEY = "ocg-docs-scroll-restore";
@@ -378,11 +378,8 @@ describe("site docs shell", () => {
   });
 
   describe("after Docsify replaces the app node", () => {
-    let originalMatchMedia;
+    let media;
     let reloads;
-
-    /** Replaces matchMedia with a phone query the test can flip. */
-    const stubPhoneQuery = (matches) => mockPhoneMedia(PHONE_MEDIA_QUERY, matches);
 
     /** Mounts docs, replaces the app node as Docsify does, then runs a later swap. */
     const mountAndSwap = async () => {
@@ -417,7 +414,6 @@ describe("site docs shell", () => {
     };
 
     beforeEach(() => {
-      originalMatchMedia = window.matchMedia;
       reloads = 0;
       setDocsReloadHandler(() => {
         reloads += 1;
@@ -426,7 +422,7 @@ describe("site docs shell", () => {
 
     afterEach(() => {
       setDocsReloadHandler(() => window.location.reload());
-      window.matchMedia = originalMatchMedia;
+      media?.restore();
       document.body.classList.remove("close");
     });
 
@@ -435,7 +431,7 @@ describe("site docs shell", () => {
       { matches: true, name: "on phones" },
     ]) {
       it(`keeps the mount through a later swap ${name}`, async () => {
-        stubPhoneQuery(matches);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: matches });
 
         await mountAndSwap();
 
@@ -485,13 +481,13 @@ describe("site docs shell", () => {
     describe("on a phone query change", () => {
       it("follows the query from a mount that outlived a swap, without reloading", async () => {
         // Load wider than the query and take a later swap, then rotate both ways.
-        const { setMatches } = stubPhoneQuery(false);
+        media = stubMatchMedia();
         await mountAndSwap();
         expect(window.$docsify.topMargin).to.equal(0);
 
-        setMatches(true);
+        media.setMatches(PHONE_MEDIA_QUERY, true);
         expect(window.$docsify.topMargin).to.equal(72);
-        setMatches(false);
+        media.setMatches(PHONE_MEDIA_QUERY, false);
         expect(window.$docsify.topMargin).to.equal(0);
         expect(reloads).to.equal(0);
       });
@@ -502,7 +498,7 @@ describe("site docs shell", () => {
         const stylesHeld = new Promise((resolve) => {
           releaseStyles = resolve;
         });
-        const { setMatches } = stubPhoneQuery(false);
+        media = stubMatchMedia();
         document.body.innerHTML = `
           <div class="ocg-docs-root">
             <div id="ocg-docs-app"></div>
@@ -519,7 +515,7 @@ describe("site docs shell", () => {
         });
         await importDocsShell();
 
-        setMatches(true);
+        media.setMatches(PHONE_MEDIA_QUERY, true);
         expect(reloads).to.equal(0);
 
         // Verify the mount picks up the phone once it finishes.
@@ -532,24 +528,24 @@ describe("site docs shell", () => {
 
       it("ignores pages without docs", async () => {
         // Leave the docs through a swap.
-        const { listeners, setMatches } = stubPhoneQuery(false);
+        media = stubMatchMedia();
         await mountAndSwap();
         document.body.innerHTML = "<div></div>";
         dispatchHtmxAfterSwap();
         await waitForMicrotask();
 
-        setMatches(true);
+        media.setMatches(PHONE_MEDIA_QUERY, true);
 
         // Verify the listener left with the mount.
-        expect(listeners.size).to.equal(0);
+        expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
         expect(reloads).to.equal(0);
       });
 
       it("keeps one query listener through unmounts and remounts", async () => {
         // Mount, leave and mount a new root.
-        const { listeners } = stubPhoneQuery(false);
+        media = stubMatchMedia();
         await mountAndSwap();
-        expect(listeners.size).to.equal(1);
+        expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
 
         document.body.innerHTML = "<div></div>";
         dispatchHtmxAfterSwap();
@@ -563,7 +559,7 @@ describe("site docs shell", () => {
         await waitForMicrotask();
         await waitForAnimationFrames(3);
 
-        expect(listeners.size).to.equal(1);
+        expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
       });
     });
 
@@ -583,7 +579,7 @@ describe("site docs shell", () => {
         { matches: true, name: "on phones" },
       ]) {
         it(`reloads ${name}, where the snapshot's markup is dead`, async () => {
-          stubPhoneQuery(matches);
+          media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: matches });
 
           await leaveAndRestore();
 

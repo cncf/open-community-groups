@@ -8,6 +8,7 @@ import {
   mountLitComponent,
   useMountedElementsCleanup,
 } from "/tests/unit/test-utils/lit.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 const IMAGES = ["https://example.com/1.png", "https://example.com/2.png", "https://example.com/3.png"];
 
@@ -84,23 +85,8 @@ const trackSwipeListeners = (lightbox) => {
 describe("images-gallery", () => {
   useMountedElementsCleanup("images-gallery");
 
-  const originalMatchMedia = window.matchMedia;
-  const phoneListeners = new Set();
+  let media;
   let phoneStyle = null;
-
-  /**
-   * Sets the phone query and tells its listeners, as a rotation does.
-   * @param {boolean} matches Next query state.
-   * @returns {void}
-   */
-  const setPhone = (matches) => {
-    window.matchMedia = (text) => ({
-      addEventListener: (_type, listener) => phoneListeners.add(listener),
-      matches: text === PHONE_MEDIA_QUERY && matches,
-      removeEventListener: (_type, listener) => phoneListeners.delete(listener),
-    });
-    [...phoneListeners].forEach((listener) => listener({ matches }));
-  };
 
   /**
    * Renders a gallery and opens its lightbox.
@@ -141,9 +127,12 @@ describe("images-gallery", () => {
     document.head.append(phoneStyle);
   };
 
+  beforeEach(() => {
+    media = stubMatchMedia();
+  });
+
   afterEach(() => {
-    window.matchMedia = originalMatchMedia;
-    phoneListeners.clear();
+    media?.restore();
     phoneStyle?.remove();
     phoneStyle = null;
   });
@@ -300,7 +289,7 @@ describe("images-gallery", () => {
 
   it("swipes between images on phones", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox } = await openLightbox();
     element._openModal(0);
 
@@ -317,7 +306,7 @@ describe("images-gallery", () => {
 
   it("ignores short and mostly vertical swipes", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox } = await openLightbox();
     element._openModal(0);
 
@@ -340,7 +329,7 @@ describe("images-gallery", () => {
 
   it("cancels the swipe when a second finger lands", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox } = await openLightbox();
     element._openModal(0);
 
@@ -362,7 +351,7 @@ describe("images-gallery", () => {
 
   it("binds no swipe for a single image or off phones", async () => {
     // A single image never binds, even on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const single = await openLightbox(IMAGES.slice(0, 1));
     const singleListeners = trackSwipeListeners(single.lightbox);
     single.element._openModal(0);
@@ -371,7 +360,7 @@ describe("images-gallery", () => {
     expect(single.element._currentIndex).to.equal(0);
 
     // A false query never binds either.
-    setPhone(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
     const { element, lightbox } = await openLightbox();
     const listeners = trackSwipeListeners(lightbox);
     element._openModal(0);
@@ -382,7 +371,7 @@ describe("images-gallery", () => {
 
   it("removes swipe listeners on close and disconnect", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox } = await openLightbox();
     const listeners = trackSwipeListeners(lightbox);
     element._openModal(0);
@@ -409,13 +398,13 @@ describe("images-gallery", () => {
 
   it("stops swiping when the query turns false", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox } = await openLightbox();
     const listeners = trackSwipeListeners(lightbox);
     element._openModal(0);
 
     // Rotating past 768px removes the listeners while the lightbox stays open.
-    setPhone(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
     expect(listeners.removed).to.deep.equal(["touchstart", "touchend"]);
     swipe(lightbox, -100);
     expect(element._currentIndex).to.equal(0);
@@ -430,7 +419,7 @@ describe("images-gallery", () => {
 
   it("opens as a named dialog on phones and closes back to the tile", async () => {
     // Open the lightbox from a tile.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { closeButton, element, lightbox, tile } = await openFromTile();
 
     // Verify the semantics and the focus entry.
@@ -442,12 +431,12 @@ describe("images-gallery", () => {
     await element.updateComplete;
     expect(readDialogAttributes(lightbox)).to.deep.equal([null, null, null]);
     expect(document.activeElement).to.equal(tile);
-    expect(phoneListeners.size).to.equal(0);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
   });
 
   it("names the dialog after the gallery title", async () => {
     // Open a gallery with its own title.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const element = await mountLitComponent("images-gallery", { images: IMAGES, title: "Summit photos" });
     element.querySelector("button").click();
 
@@ -457,7 +446,7 @@ describe("images-gallery", () => {
 
   it("returns focus to the tile on Escape", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, tile } = await openFromTile();
 
     // Close from the keyboard.
@@ -470,7 +459,7 @@ describe("images-gallery", () => {
 
   it("keeps Tab inside the lightbox on phones", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { closeButton, nextButton } = await openFromTile();
 
     // Verify Shift+Tab wraps from the first control to the last.
@@ -489,7 +478,7 @@ describe("images-gallery", () => {
 
   it("keeps the tile focused after a backdrop tap closes on mousedown", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox, tile } = await openFromTile();
 
     // Press the backdrop, which closes during the mousedown.
@@ -504,16 +493,16 @@ describe("images-gallery", () => {
 
   it("drops the dialog on rotation and still returns focus on close", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { closeButton, element, lightbox, nextButton, tile } = await openFromTile();
 
     // Rotate past the phone width.
-    setPhone(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
 
     // Verify the lightbox stays open as the plain one, holding only the query listener.
     expect(element._isModalOpen).to.equal(true);
     expect(readDialogAttributes(lightbox)).to.deep.equal([null, null, null]);
-    expect(phoneListeners.size).to.equal(1);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
 
     // Verify Tab is free again.
     nextButton.focus();
@@ -522,19 +511,19 @@ describe("images-gallery", () => {
     // Verify the close of a lightbox opened on a phone still hands focus back.
     closeButton.click();
     expect(document.activeElement).to.equal(tile);
-    expect(phoneListeners.size).to.equal(0);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
   });
 
   it("binds the dialog and swipe again when rotated back", async () => {
     // Open the lightbox on a phone, then rotate out and back.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { closeButton, element, lightbox, nextButton, tile } = await openFromTile();
-    setPhone(false);
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     // Verify the semantics, the trap and the swipe are back, with one listener of each.
     expect(readDialogAttributes(lightbox)).to.deep.equal(["dialog", "true", "Gallery"]);
-    expect(phoneListeners.size).to.equal(1);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(1);
     nextButton.focus();
     expect(pressTab().defaultPrevented).to.equal(true);
     expect(document.activeElement).to.equal(closeButton);
@@ -542,39 +531,39 @@ describe("images-gallery", () => {
     expect(element._currentIndex).to.equal(1);
 
     // Verify a second round trip stays the same, and the close releases all of it.
-    setPhone(false);
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     swipe(lightbox, -100);
     expect(element._currentIndex).to.equal(2);
     closeButton.click();
     expect(readDialogAttributes(lightbox)).to.deep.equal([null, null, null]);
-    expect(phoneListeners.size).to.equal(0);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     expect(document.activeElement).to.equal(tile);
   });
 
   it("closes before a history snapshot after a round trip, but not as the plain lightbox", async () => {
     // Open the lightbox on a phone and rotate out.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element } = await openFromTile();
-    setPhone(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
 
     // Verify the plain lightbox keeps its desktop behaviour.
     document.dispatchEvent(new CustomEvent("htmx:beforeHistorySave"));
     expect(element._isModalOpen).to.equal(true);
 
     // Verify the dialog closes again once it is back.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     document.dispatchEvent(new CustomEvent("htmx:beforeHistorySave"));
     expect(element._isModalOpen).to.equal(false);
   });
 
   it("keeps focus on a lightbox control through a rotation", async () => {
     // Move to Next, then rotate out and back.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { nextButton } = await openFromTile();
     nextButton.focus();
-    setPhone(false);
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     // Verify focus did not jump to Close.
     expect(document.activeElement).to.equal(nextButton);
@@ -582,40 +571,40 @@ describe("images-gallery", () => {
 
   it("brings focus back into the dialog when it left while rotated", async () => {
     // Rotate out, and let focus reach the page behind the plain lightbox.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { closeButton, tile } = await openFromTile();
-    setPhone(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
     tile.focus();
 
     // Rotate back and verify a modal dialog holds focus again.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     expect(document.activeElement).to.equal(closeButton);
   });
 
   it("binds no swipe for a single image on the way back", async () => {
     // Open a single image on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox } = await openLightbox(IMAGES.slice(0, 1));
     const listeners = trackSwipeListeners(lightbox);
     element._openModal(0);
 
     // Verify the round trip restores the dialog only.
-    setPhone(false);
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     expect(readDialogAttributes(lightbox)).to.deep.equal(["dialog", "true", "Gallery"]);
     expect(listeners.added).to.deep.equal([]);
   });
 
   it("releases the query listener on disconnect while rotated", async () => {
     // Open the lightbox on a phone and rotate out.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox } = await openFromTile();
-    setPhone(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
 
     // Remove the gallery, then rotate back.
     element.remove();
-    expect(phoneListeners.size).to.equal(0);
-    setPhone(true);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
 
     // Verify nothing came back.
     expect(readDialogAttributes(lightbox)).to.deep.equal([null, null, null]);
@@ -623,7 +612,7 @@ describe("images-gallery", () => {
 
   it("takes the closed lightbox out of reach on phones with one token", async () => {
     // Render the closed lightbox.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     applyPhoneInvisible();
     const { element, lightbox } = await openLightbox();
 
@@ -647,7 +636,7 @@ describe("images-gallery", () => {
 
   it("does not move focus for a lightbox closed before it rendered", async () => {
     // Open and close in the same task.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox } = await openLightbox();
     const tile = element.querySelector("button");
     tile.focus();
@@ -658,12 +647,12 @@ describe("images-gallery", () => {
     // Verify focus stays on the tile and nothing is held.
     expect(document.activeElement).to.equal(tile);
     expect(readDialogAttributes(lightbox)).to.deep.equal([null, null, null]);
-    expect(phoneListeners.size).to.equal(0);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
   });
 
   it("closes before a history snapshot", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox } = await openFromTile();
 
     // Save the page to history.
@@ -672,12 +661,12 @@ describe("images-gallery", () => {
     // Verify no open state reaches the snapshot.
     expect(element._isModalOpen).to.equal(false);
     expect(readDialogAttributes(lightbox)).to.deep.equal([null, null, null]);
-    expect(phoneListeners.size).to.equal(0);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
   });
 
   it("recovers from the shared restore of the back-forward cache", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { closeButton, element, lightbox, tile } = await openFromTile();
 
     // A first page show changes nothing.
@@ -704,7 +693,7 @@ describe("images-gallery", () => {
 
   it("releases the dialog on disconnect", async () => {
     // Open the lightbox on a phone.
-    setPhone(true);
+    media.setMatches(PHONE_MEDIA_QUERY, true);
     const { element, lightbox } = await openFromTile();
 
     // Remove the gallery while it is open.
@@ -712,14 +701,14 @@ describe("images-gallery", () => {
 
     // Verify nothing stays held.
     expect(readDialogAttributes(lightbox)).to.deep.equal([null, null, null]);
-    expect(phoneListeners.size).to.equal(0);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
     expect(element._restoreLightboxFocus).to.equal(null);
     expect(element._removePhoneQueryListener).to.equal(null);
   });
 
   it("leaves the lightbox as it is off phones", async () => {
     // Open the lightbox from a focused tile.
-    setPhone(false);
+    media.setMatches(PHONE_MEDIA_QUERY, false);
     const { element, lightbox } = await openLightbox();
     const tile = element.querySelector("button");
     tile.focus();
@@ -730,7 +719,7 @@ describe("images-gallery", () => {
     expect(readDialogAttributes(lightbox)).to.deep.equal([null, null, null]);
     expect(document.activeElement).to.equal(tile);
     expect(pressTab().defaultPrevented).to.equal(false);
-    expect(phoneListeners.size).to.equal(0);
+    expect(media.listeners(PHONE_MEDIA_QUERY).size).to.equal(0);
 
     // Verify a backdrop press keeps its default action.
     const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
@@ -739,15 +728,21 @@ describe("images-gallery", () => {
     expect(press.defaultPrevented).to.equal(false);
   });
 
-  it("gives the tile and the lightbox controls a focus ring on phones only", async () => {
+  it("gives the tile and the lightbox controls a focus ring at every width", async () => {
     const element = await mountLitComponent("images-gallery", { images: IMAGES });
 
-    // Buttons drop their outline on focus, so these focus stops would show nothing.
+    // The light ring reads on the dark overlay, and the tile outline is not a focus indicator.
     const controls = [element.querySelector("button"), ...element.querySelectorAll(".modal button")];
     expect(controls).to.have.length(4);
     controls.forEach((control) => {
-      expect(control.classList.contains("phone:focus-visible:ring-2")).to.equal(true);
-      expect(control.classList.contains("phone:focus-visible:ring-primary-300")).to.equal(true);
+      expect(control.classList.contains("focus-visible:ring-2")).to.equal(true);
+      expect(control.classList.contains("focus-visible:ring-primary-300")).to.equal(true);
+      expect(control.classList.contains("phone:focus-visible:ring-2")).to.equal(false);
+    });
+
+    // Verify the lightbox controls drop the global outline so only the ring shows.
+    controls.slice(1).forEach((control) => {
+      expect(control.classList.contains("focus-visible:outline-none")).to.equal(true);
     });
   });
 });

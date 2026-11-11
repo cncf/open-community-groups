@@ -644,10 +644,6 @@
     "path": "/dashboard/user/inbox/{inbox_conversation_id}/messages"
   },
   {
-    "method": "GET",
-    "path": "/dashboard/user/invitations"
-  },
-  {
     "method": "PUT",
     "path": "/dashboard/user/invitations/community/{community_id}/accept"
   },

@@ -3,16 +3,21 @@ import { expect } from "@open-wc/testing";
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { initializeGroupCheckInScanner } from "/static/js/dashboard/group/check-in/scanner.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
-import { mockPhoneMedia, mockWakeLock } from "/tests/unit/test-utils/wake-lock.js";
+import { mockWakeLock } from "/tests/unit/test-utils/wake-lock.js";
+
+const SOUND_MUTED_STORAGE_KEY = "ocg.checkInScannerMuted";
 
 describe("group check-in scanner controls", () => {
   beforeEach(() => {
+    localStorage.removeItem(SOUND_MUTED_STORAGE_KEY);
     resetDom();
   });
   afterEach(() => {
     window.dispatchEvent(new Event("beforeunload"));
     delete window.__OCG_E2E_QR_SCANNER__;
+    localStorage.removeItem(SOUND_MUTED_STORAGE_KEY);
     resetDom();
   });
 
@@ -20,8 +25,8 @@ describe("group check-in scanner controls", () => {
     document.body.innerHTML = `
       <section data-group-check-in-root>
         <div data-group-check-in-scanner-view>
-          <button data-group-check-in-open data-refresh-attendees-on-close data-event-id="event-a" data-event-date="Aug 24, 2026 · 9:00 AM CEST" data-event-location="Madrid" data-event-name="Event A" data-scan-url="/scan-a">A</button>
-          <button data-group-check-in-open data-event-id="event-b" data-event-date="Aug 25, 2026 · 10:00 AM CEST" data-event-location="Virtual" data-event-name="Event B" data-scan-url="/scan-b">B</button>
+          <button data-group-check-in-open data-refresh-attendees-on-close data-event-id="event-a" data-event-date="Aug 24, 2026 · 9:00 AM CEST" data-event-location="Madrid" data-event-name="Event A" data-event-timezone="UTC" data-scan-url="/scan-a">A</button>
+          <button data-group-check-in-open data-event-id="event-b" data-event-date="Aug 25, 2026 · 10:00 AM CEST" data-event-location="Virtual" data-event-name="Event B" data-event-timezone="UTC" data-scan-url="/scan-b">B</button>
         </div>
         <div id="group-check-in-scanner-modal" class="hidden" aria-hidden="true">
           <button data-group-check-in-close tabindex="-1">Overlay</button>
@@ -78,7 +83,80 @@ describe("group check-in scanner controls", () => {
     ).to.equal(false);
   });
 
-  it("renders already checked-in feedback with the site error alert style", async () => {
+  it("renders already checked-in feedback as a neutral alert with the original time", async () => {
+    // Provide a scanner that exposes its decode callback.
+    class FakeScanner {
+      static instance;
+
+      static async hasCamera() {
+        return true;
+      }
+      static async listCameras() {
+        return [];
+      }
+
+      constructor(_video, onDecode) {
+        this.onDecode = onDecode;
+        FakeScanner.instance = this;
+      }
+
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      async start() {}
+    }
+
+    const fetchMock = mockFetch({
+      response: new Response(
+        JSON.stringify({
+          attendee: { name: "Paula Webb" },
+          checked_in_at: Date.parse("2024-01-02T18:42:00Z") / 1000,
+          outcome: "already-checked-in",
+          ticket_title: "Expo Pass",
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    });
+
+    try {
+      // Scan an attendee who was already checked in on an earlier day.
+      renderFixture();
+      let refreshCount = 0;
+      document.querySelector("[data-group-check-in-root]").addEventListener("refresh-event-attendees", () => {
+        refreshCount += 1;
+      });
+      window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
+      initializeGroupCheckInScanner();
+      document.querySelector("[data-group-check-in-open]").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await FakeScanner.instance.onDecode({ data: "ocg-check-in:v1:event-a:credential" });
+
+      // Verify the result uses a compact, centered, normal-weight neutral alert;
+      // the tone classes are the script's feedback state contract.
+      const result = document.querySelector("[data-group-check-in-result]");
+      const [message, details] = result.querySelectorAll("p");
+      expect(result.classList.contains("border")).to.equal(true);
+      expect(result.classList.contains("border-stone-800")).to.equal(true);
+      expect(result.classList.contains("bg-stone-100")).to.equal(true);
+      expect(result.classList.contains("text-stone-800")).to.equal(true);
+      expect(result.classList.contains("text-center")).to.equal(true);
+      expect(message.classList.contains("text-base")).to.equal(true);
+      expect(message.classList.contains("font-normal")).to.equal(true);
+
+      // The message adds the original check-in time in the event timezone.
+      expect(message.textContent).to.equal("Already checked in · Jan 2, 6:42 PM");
+      expect(details.textContent).to.equal("Paula Webb · Expo Pass");
+
+      // Closing an unchanged session leaves the attendees list untouched.
+      document.querySelector("[data-group-check-in-close]").click();
+      expect(refreshCount).to.equal(0);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("renders plain duplicate text when the check-in time is missing", async () => {
     // Provide a scanner that exposes its decode callback.
     class FakeScanner {
       static instance;
@@ -114,34 +192,17 @@ describe("group check-in scanner controls", () => {
     });
 
     try {
-      // Scan an attendee who was already checked in.
+      // Scan an already checked-in attendee whose response has no check-in time.
       renderFixture();
-      let refreshCount = 0;
-      document.querySelector("[data-group-check-in-root]").addEventListener("refresh-event-attendees", () => {
-        refreshCount += 1;
-      });
       window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
       initializeGroupCheckInScanner();
       document.querySelector("[data-group-check-in-open]").click();
       await new Promise((resolve) => setTimeout(resolve, 0));
       await FakeScanner.instance.onDecode({ data: "ocg-check-in:v1:event-a:credential" });
 
-      // Verify the result uses a compact, centered, normal-weight error alert.
-      const result = document.querySelector("[data-group-check-in-result]");
-      const message = result.querySelector("p");
-      expect(result.classList.contains("border")).to.equal(true);
-      expect(result.classList.contains("border-red-800")).to.equal(true);
-      expect(result.classList.contains("bg-red-100")).to.equal(true);
-      expect(result.classList.contains("text-red-800")).to.equal(true);
-      expect(result.classList.contains("text-center")).to.equal(true);
-      expect(message.classList.contains("text-base")).to.equal(true);
-      expect(message.classList.contains("font-normal")).to.equal(true);
-      expect(result.textContent).to.include("Already checked in");
-      expect(result.textContent).to.include("Paula Webb · Expo Pass");
-
-      // Closing an unchanged session leaves the attendees list untouched.
-      document.querySelector("[data-group-check-in-close]").click();
-      expect(refreshCount).to.equal(0);
+      // Verify the message stays the plain duplicate text.
+      const message = document.querySelector("[data-group-check-in-result] p");
+      expect(message.textContent).to.equal("Already checked in");
     } finally {
       fetchMock.restore();
     }
@@ -514,6 +575,154 @@ describe("group check-in scanner controls", () => {
     }
   });
 
+  it("remembers muted sounds across scanner sessions", async () => {
+    // Provide a scanner that exposes its decode callback.
+    class FakeScanner {
+      static instance;
+
+      static async hasCamera() {
+        return true;
+      }
+      static async listCameras() {
+        return [];
+      }
+
+      constructor(_video, onDecode) {
+        this.onDecode = onDecode;
+        FakeScanner.instance = this;
+      }
+
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      async start() {}
+    }
+
+    // Count synthesized feedback tones.
+    let oscillatorCount = 0;
+    const OriginalAudioContext = window.AudioContext;
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: class {
+        currentTime = 0;
+        destination = {};
+
+        close() {
+          return Promise.resolve();
+        }
+        createGain() {
+          return {
+            connect: (target) => target,
+            gain: { exponentialRampToValueAtTime() {}, setValueAtTime() {} },
+          };
+        }
+        createOscillator() {
+          oscillatorCount += 1;
+          return { connect: (target) => target, frequency: {}, start() {}, stop() {} };
+        }
+        resume() {
+          return Promise.resolve();
+        }
+      },
+    });
+
+    try {
+      // Scan with sound on, then mute and close the first session.
+      renderFixture();
+      window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
+      initializeGroupCheckInScanner();
+      const trigger = document.querySelector("[data-group-check-in-open]");
+      const mute = document.querySelector("[data-group-check-in-mute]");
+      trigger.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mute.checked).to.equal(false);
+      await FakeScanner.instance.onDecode({ data: "invalid-code-a" });
+      expect(oscillatorCount).to.equal(1);
+      mute.click();
+      document.querySelector("[data-group-check-in-close]").click();
+
+      // Reopen the scanner and scan again.
+      trigger.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await FakeScanner.instance.onDecode({ data: "invalid-code-b" });
+
+      // Verify the stored preference keeps the new session muted.
+      expect(mute.checked).to.equal(true);
+      expect(localStorage.getItem(SOUND_MUTED_STORAGE_KEY)).to.equal("true");
+      expect(document.querySelector("[data-group-check-in-result]").classList.contains("hidden")).to.equal(
+        false,
+      );
+      expect(oscillatorCount).to.equal(1);
+    } finally {
+      // Restore the browser audio constructor.
+      Object.defineProperty(window, "AudioContext", {
+        configurable: true,
+        value: OriginalAudioContext,
+      });
+    }
+  });
+
+  it("starts unmuted when storage is unavailable", async () => {
+    // Provide a scanner that exposes its decode callback.
+    class FakeScanner {
+      static instance;
+
+      static async hasCamera() {
+        return true;
+      }
+      static async listCameras() {
+        return [];
+      }
+
+      constructor(_video, onDecode) {
+        this.onDecode = onDecode;
+        FakeScanner.instance = this;
+      }
+
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      async start() {}
+    }
+
+    // Make every storage read and write fail.
+    const originalGetItem = Storage.prototype.getItem;
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.getItem = () => {
+      throw new Error("Storage unavailable");
+    };
+    Storage.prototype.setItem = () => {
+      throw new Error("Storage unavailable");
+    };
+
+    try {
+      // Open the scanner and toggle sound without storage.
+      renderFixture();
+      window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
+      initializeGroupCheckInScanner();
+      document.querySelector("[data-group-check-in-open]").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const mute = document.querySelector("[data-group-check-in-mute]");
+      expect(mute.checked).to.equal(false);
+      mute.click();
+      expect(mute.checked).to.equal(true);
+      mute.click();
+      expect(mute.checked).to.equal(false);
+
+      // Verify scanning still produces feedback.
+      await FakeScanner.instance.onDecode({ data: "invalid-code" });
+      expect(document.querySelector("[data-group-check-in-result]").classList.contains("hidden")).to.equal(
+        false,
+      );
+    } finally {
+      // Restore browser storage.
+      Storage.prototype.getItem = originalGetItem;
+      Storage.prototype.setItem = originalSetItem;
+    }
+  });
+
   it("continues scanning when optional camera controls fail", async () => {
     // Provide a working decoder whose optional camera capabilities reject.
     class FakeScanner {
@@ -632,7 +841,8 @@ describe("group check-in scanner controls", () => {
       "Aug 25, 2026 · 10:00 AM CEST",
     );
     expect(document.getElementById("group-check-in-event-location").textContent).to.equal("Virtual");
-    expect(mute.checked).to.equal(false);
+    // The remembered sound preference carries into the newer session.
+    expect(mute.checked).to.equal(true);
     expect(document.activeElement).to.equal(
       document.querySelector('[data-group-check-in-close]:not([tabindex="-1"])'),
     );
@@ -966,7 +1176,7 @@ describe("group check-in scanner controls", () => {
     const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
     const openScanner = async ({ phone = true, scanner = FakeScanner } = {}) => {
-      media = mockPhoneMedia(PHONE_MEDIA_QUERY, phone);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: phone });
       renderFixture();
       window.__OCG_E2E_QR_SCANNER__ = scanner;
       initializeGroupCheckInScanner();

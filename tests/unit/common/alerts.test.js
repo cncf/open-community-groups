@@ -17,9 +17,12 @@ import {
   showSuccessAlert,
   waitForAlertToClose,
 } from "/static/js/common/alerts.js";
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
+import { VENDOR_BUNDLES } from "/__ocg__/vendor-bundles.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 describe("alerts", () => {
   const env = useDashboardTestEnv({
@@ -217,15 +220,13 @@ describe("alerts", () => {
   });
 
   it("tells a replaced deployment reload prompt apart from a closed one with the bundled SweetAlert2", async () => {
-    // Load the SweetAlert2 bundle used by the base template.
+    // Load the SweetAlert2 bundle the base template uses.
     const envSwal = globalThis.Swal;
-    const template = await (await fetch("/ocg-server/templates/common/base.html")).text();
-    const [sweetAlertPath] = template.match(/\/static\/vendor\/js\/sweetalert2\.v[\d.]+\.min\.js/);
     await new Promise((resolve, reject) => {
       const script = document.createElement("script");
       script.addEventListener("load", resolve, { once: true });
       script.addEventListener("error", reject, { once: true });
-      script.src = `/ocg-server${sweetAlertPath}`;
+      script.src = `/ocg-server${VENDOR_BUNDLES.sweetalert2}`;
       document.head.append(script);
     });
     const sweetAlert = globalThis.Sweetalert2;
@@ -566,15 +567,66 @@ describe("alerts", () => {
     expect(env.current.htmx.triggerCalls).to.deep.equal([]);
   });
 
-  describe("on phones", () => {
-    const originalMatchMedia = window.matchMedia;
+  describe("with dialogs", () => {
+    let dialogs;
+    let media;
 
     beforeEach(() => {
-      window.matchMedia = () => ({ matches: true });
+      dialogs = [];
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: false });
     });
 
     afterEach(() => {
-      window.matchMedia = originalMatchMedia;
+      dialogs.forEach((dialog) => {
+        dialog.close();
+        dialog.remove();
+      });
+      media?.restore();
+    });
+
+    /** Appends a dialog to the page and tracks it for cleanup. */
+    const appendDialog = () => {
+      const dialog = document.createElement("dialog");
+      document.body.append(dialog);
+      dialogs.push(dialog);
+      return dialog;
+    };
+
+    it("renders alerts inside the topmost open modal dialog", () => {
+      // Open two modal dialogs, the second one on top of the first.
+      appendDialog().showModal();
+      const topDialog = appendDialog();
+      topDialog.showModal();
+
+      showErrorAlert("Failed");
+
+      // Assert the alert targets the topmost dialog, the only part of the page that is not inert.
+      expect(env.current.swal.calls).to.have.length(1);
+      expect(env.current.swal.calls[0].target).to.equal(topDialog);
+      expect(env.current.swal.calls[0].topLayer).to.equal(true);
+    });
+
+    it("renders alerts on the page when no modal dialog is open", () => {
+      // Open a non-modal dialog, which leaves the rest of the page interactive.
+      appendDialog().show();
+
+      showErrorAlert("Failed");
+
+      // Assert SweetAlert keeps its default container on the page.
+      expect(env.current.swal.calls).to.have.length(1);
+      expect("target" in env.current.swal.calls[0]).to.equal(false);
+    });
+  });
+
+  describe("on phones", () => {
+    let media;
+
+    beforeEach(() => {
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
+    });
+
+    afterEach(() => {
+      media?.restore();
     });
 
     it("moves alerts to the bottom and keeps their timers", () => {

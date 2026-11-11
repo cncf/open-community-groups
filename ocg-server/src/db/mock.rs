@@ -992,6 +992,7 @@ mock! {
             actor_user_id: Uuid,
             session_proposal: &crate::types::dashboard::user::session_proposals::SessionProposalInput,
         ) -> Result<Uuid>;
+        async fn count_user_pending_invitations(&self, user_id: Uuid) -> Result<usize>;
         async fn count_user_unanswered_event_surveys(&self, user_id: Uuid) -> Result<usize>;
         async fn decline_event_admission_offer(
             &self,

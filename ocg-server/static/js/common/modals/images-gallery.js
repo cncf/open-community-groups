@@ -275,7 +275,7 @@ export class ImagesGallery extends LitWrapper {
               } phone:shrink-0 phone:snap-start"
             >
               <button
-                class="relative w-full overflow-hidden rounded-lg bg-white outline outline-offset-1 outline-1 outline-stone-300 transition-all hover:outline-primary-300 hover:shadow-sm phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300"
+                class="relative w-full overflow-hidden rounded-lg bg-white outline outline-offset-1 outline-1 outline-stone-300 transition-all hover:outline-primary-300 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-primary-300"
                 aria-label="Open ${this.altImage} image ${index + 1}"
                 @click=${() => this._openModal(index)}
               >
@@ -337,7 +337,7 @@ export class ImagesGallery extends LitWrapper {
         <div class="modal-container fixed w-full h-full z-50 overflow-y-auto">
           <!-- Close button -->
           <button
-            class="modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full bg-stone-200/75 hover:bg-stone-200/90 phone:mt-3 phone:mr-3 phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300"
+            class="modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full bg-stone-200/75 hover:bg-stone-200/90 phone:mt-3 phone:mr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
             @click=${this._closeModal}
           >
             <div class="svg-icon size-8 bg-stone-800 icon-close"></div>
@@ -385,7 +385,7 @@ export class ImagesGallery extends LitWrapper {
               <div class="absolute top-0 start-0 z-30 flex items-center justify-center h-full px-5 xl:px-10">
                 <!-- Prev button -->
                 <button
-                  class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-200/75 hover:bg-stone-200/90 focus:ring-0 focus:outline-none phone:size-11 phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300"
+                  class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-200/75 hover:bg-stone-200/90 phone:size-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                   @click=${() => this._navigateCarousel("prev")}
                 >
                   <div class="svg-icon h-4 w-2.5 bg-stone-950 icon-prev"></div>
@@ -396,7 +396,7 @@ export class ImagesGallery extends LitWrapper {
               <div class="absolute top-0 end-0 z-30 flex items-center justify-center h-full px-5 xl:px-10">
                 <!-- Next button -->
                 <button
-                  class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-200/75 hover:bg-stone-200/90 focus:ring-0 focus:outline-none phone:size-11 phone:focus-visible:ring-2 phone:focus-visible:ring-primary-300"
+                  class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-200/75 hover:bg-stone-200/90 phone:size-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                   @click=${() => this._navigateCarousel("next")}
                 >
                   <div class="svg-icon h-4 w-2.5 bg-stone-950 icon-next"></div>

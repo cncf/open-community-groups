@@ -33,6 +33,7 @@ import {
   clickTableFilterOption,
   confirmAlert,
   expectCurrentPaginationNavigation,
+  expectDialogClosed,
   navigateToEvent,
   navigateToPath,
   routeNextRequestWithQuery,
@@ -388,9 +389,9 @@ test.describe("group dashboard requests tab", () => {
       status: 200,
     });
 
-    const noResultsMessage = requestsContent.locator("div.text-xl.lg\\:text-2xl.mb-4:visible").filter({
-      hasText: "No invitation requests found matching your search.",
-    });
+    const noResultsMessage = requestsContent
+      .getByText("No invitation requests found matching your search.", { exact: true })
+      .filter({ visible: true });
 
     // Verify the filtered empty result message is shown.
     await expect(noResultsMessage.first()).toBeVisible();
@@ -1140,8 +1141,7 @@ test.describe("group dashboard requests tab", () => {
 
     // Close the modal and return focus to the visible actions disclosure.
     await answersModal.locator("#cancel-invitation-request-answers-modal").click();
-    await expect(answersModal).toBeHidden();
-    await expect(actionsButton).toBeFocused();
+    await expectDialogClosed(organizerGroupPage, answersModal, { opener: actionsButton });
   });
 
   test("viewer can review invitation request answers without managing the request", async ({
@@ -1173,8 +1173,7 @@ test.describe("group dashboard requests tab", () => {
     await expect(answersModal).toBeVisible();
     await expect(answersModal).toContainText("community programs can make technical events more welcoming");
     await groupViewerPage.keyboard.press("Escape");
-    await expect(answersModal).toBeHidden();
-    await expect(actionsButton).toBeFocused();
+    await expectDialogClosed(groupViewerPage, answersModal, { opener: actionsButton });
   });
 
   test("organizer sees sold-out guidance before accepting or reissuing requests", async ({

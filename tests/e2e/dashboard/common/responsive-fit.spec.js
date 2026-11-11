@@ -59,6 +59,7 @@ import {
 
 // Classic-scrollbar fit checks (plan §2.1): every case measures its view at the narrowest width of
 // each band with a 15px scrollbar taking room from the page, as on Windows and Linux desktops.
+// Class locators here mark the element whose layout is measured, not a user-facing handle.
 
 // Subpixel rounding allowed when comparing edges.
 const EDGE_TOLERANCE_PX = 0.5;
@@ -1185,6 +1186,7 @@ const FIT_CASES = [
       }
 
       // E5: the compact ticket and status block starts at the attendee cell content edge.
+      // e2e-locator-allow: the compact block is the measured element and has no other handle.
       const offset = await row.locator("div.mt-2.min-w-0.lg\\:hidden").evaluate((block) => {
         const cell = block.closest("td");
         const contentLeft =

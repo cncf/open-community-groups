@@ -3,7 +3,7 @@ use percent_encoding::percent_decode_str;
 use uuid::Uuid;
 
 use crate::{
-    test_util::normalize_whitespace,
+    test_util::{normalize_whitespace, opening_tag_with},
     types::{
         dashboard::community::contact::{
             CommunityContactFilterOptions, CommunityContactFilters,
@@ -13,7 +13,7 @@ use crate::{
         },
         group::{GroupRole, GroupRoleSummary},
     },
-    validation::MAX_CONTACT_FILTER_VALUES,
+    validation::{MAX_CONTACT_FILTER_VALUES, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY},
 };
 
 use super::{MultiSelectOption, Page, RecipientsSummary};
@@ -80,7 +80,7 @@ fn test_page_groups_filter_adds_subgroups_hint_to_legend() {
 
     // Render the page and isolate the groups filter tag
     let body = page.render().unwrap();
-    let tag = start_tag(&body, "community-contact-groups");
+    let tag = opening_tag_with(&body, r#"id="community-contact-groups""#);
 
     // Check the legend explains that selected groups don't bring their subgroups
     assert!(tag.contains(&format!(
@@ -92,7 +92,7 @@ fn test_page_groups_filter_adds_subgroups_hint_to_legend() {
 fn test_page_groups_filter_caps_selection_to_filter_limit() {
     // Render the page of a community without subgroups and isolate the groups filter tag
     let body = sample_page_with_group().render().unwrap();
-    let tag = start_tag(&body, "community-contact-groups");
+    let tag = opening_tag_with(&body, r#"id="community-contact-groups""#);
 
     // Check the picker caps the selection and its legend states the limit only
     assert!(tag.contains(&format!(r#"max-selected="{MAX_CONTACT_FILTER_VALUES}""#)));
@@ -106,7 +106,7 @@ fn test_page_groups_filter_caps_selection_to_filter_limit() {
 fn test_page_groups_filter_closes_after_each_pick() {
     // Render the page of a community with one group and isolate the groups filter tag
     let body = sample_page_with_group().render().unwrap();
-    let tag = start_tag(&body, "community-contact-groups");
+    let tag = opening_tag_with(&body, r#"id="community-contact-groups""#);
 
     // Check the filter is labelled, keeps the label order and closes after a pick
     assert!(body.contains(
@@ -124,7 +124,7 @@ fn test_page_groups_filter_closes_after_each_pick() {
 fn test_page_groups_filter_is_disabled_without_groups() {
     // Render the page of a community without active groups and isolate the groups filter tag
     let body = sample_page().render().unwrap();
-    let tag = start_tag(&body, "community-contact-groups");
+    let tag = opening_tag_with(&body, r#"id="community-contact-groups""#);
 
     // Check the picker is disabled and explains why, without options or a cap
     assert!(tag.contains(r#"labelledby="community-contact-groups-label""#));
@@ -133,6 +133,27 @@ fn test_page_groups_filter_is_disabled_without_groups() {
     assert!(tag.contains(r#"legend="This community has no active groups.""#));
     assert!(!tag.contains("max-selected="));
     assert!(!tag.contains("options="));
+}
+
+#[test]
+fn test_page_message_fields_cap_subject_and_body_lengths() {
+    // Render the page and isolate the subject and body field tags
+    let body = sample_page().render().unwrap();
+    let subject_tag = opening_tag_with(&body, r#"id="community-contact-subject""#);
+    let body_tag = opening_tag_with(&body, r#"id="community-contact-body""#);
+
+    // Check the subject is required and capped by the validation limit
+    assert!(subject_tag.starts_with("<input"));
+    assert!(subject_tag.contains(r#"name="subject""#));
+    assert!(subject_tag.split_whitespace().any(|token| token == "required"));
+    assert!(subject_tag.contains(&format!(r#"maxlength="{MAX_LEN_M}""#)));
+
+    // Check the body is required, capped by the validation limit and plain text
+    assert!(body_tag.starts_with("<textarea"));
+    assert!(body_tag.contains(r#"name="body""#));
+    assert!(body_tag.split_whitespace().any(|token| token == "required"));
+    assert!(body_tag.contains(&format!(r#"maxlength="{MAX_LEN_NOTIFICATION_BODY}""#)));
+    assert!(body.contains("Plain text only. No HTML formatting."));
 }
 
 #[test]
@@ -156,7 +177,7 @@ fn test_page_recipients_summary_posts_filters_only() {
 
     // Render the page and isolate the recipients summary container tag
     let body = sample_page().render().unwrap();
-    let tag = start_tag(&body, "community-contact-recipients");
+    let tag = opening_tag_with(&body, r#"id="community-contact-recipients""#);
 
     // Check previews post every filter field only, leaving the message out
     assert!(tag.contains(r#"hx-post="/dashboard/community/contact/recipients""#));
@@ -172,7 +193,7 @@ fn test_page_recipients_summary_posts_filters_only() {
 fn test_page_recipients_summary_uses_own_request_indicator() {
     // Render the page and isolate the recipients summary container tag
     let body = sample_page().render().unwrap();
-    let tag = start_tag(&body, "community-contact-recipients");
+    let tag = opening_tag_with(&body, r#"id="community-contact-recipients""#);
 
     // Check preview requests do not inherit the send button spinner
     assert!(tag.contains("hx-indicator=\"this\""));
@@ -339,11 +360,4 @@ fn sample_summary_with_people() -> CommunityContactRecipientsSummary {
         seats_count: 2,
         unmatched_groups: vec![],
     }
-}
-
-/// Returns the start tag of the element with the given identifier.
-fn start_tag<'a>(body: &'a str, id: &str) -> &'a str {
-    let start = body.find(&format!(r#"id="{id}""#)).unwrap();
-    let end = start + body[start..].find('>').unwrap();
-    &body[start..end]
 }

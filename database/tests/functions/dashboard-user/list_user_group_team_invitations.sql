@@ -41,7 +41,7 @@ select fx_group(:'groupOtherID', :'communityOtherID', :'groupCategoryOtherID', j
 
 -- Pending and accepted group invitations used by listing scenarios
 insert into group_team (group_id, user_id, role, accepted, created_at) values
-    (:'groupID', :'userID', 'admin', false, '2024-01-02 10:00:00+00'),
+    (:'groupID', :'userID', 'events-manager', false, '2024-01-02 10:00:00+00'),
     (:'groupAcceptedID', :'userID', 'admin', true, '2024-01-03 10:00:00+00'),
     (:'groupOtherID', :'userID', 'admin', false, '2024-01-04 10:00:00+00');
 
@@ -60,13 +60,15 @@ select is(
                     "group_id": "%s",
                     "group_name": "Group Three",
                     "role": "admin",
+                    "role_display_name": "Admin",
                     "created_at": 1704362400
                 },
                 {
                     "community_name": "community-one-group-team-invitations",
                     "group_id": "%s",
                     "group_name": "Group One",
-                    "role": "admin",
+                    "role": "events-manager",
+                    "role_display_name": "Events Manager",
                     "created_at": 1704189600
                 }
             ]
@@ -98,7 +100,8 @@ select is(
                     "community_name": "community-one-group-team-invitations",
                     "group_id": "%s",
                     "group_name": "Group One",
-                    "role": "admin",
+                    "role": "events-manager",
+                    "role_display_name": "Events Manager",
                     "created_at": 1704189600
                 }
             ]

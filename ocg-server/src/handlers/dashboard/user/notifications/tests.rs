@@ -465,6 +465,10 @@ fn expect_dashboard_page_with_teams(db: &mut MockDB, ids: &DashboardIds, teams: 
     expect_session_with_user(db, ids, user);
     expect_site_settings(db);
     let user_id = ids.user_id;
+    db.expect_count_user_pending_invitations()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(|_| Ok(0));
     db.expect_count_user_unanswered_event_surveys()
         .times(1)
         .withf(move |uid| *uid == user_id)

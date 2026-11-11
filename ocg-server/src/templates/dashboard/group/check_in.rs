@@ -5,6 +5,9 @@ use askama::Template;
 use crate::types::dashboard::group::check_in::GroupCheckInEvent;
 use crate::types::event::EventKind;
 
+#[cfg(test)]
+mod tests;
+
 // Pages templates.
 
 /// Group check-in event list template.

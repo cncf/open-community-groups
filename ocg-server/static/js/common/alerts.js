@@ -17,12 +17,17 @@ const REFRESH_BODY_EVENT = "refresh-body";
 /**
  * Returns common configuration options for all alert dialogs.
  * Includes positioning, styling, and custom CSS classes.
+ * While a modal dialog is open the rest of the page is inert, so alerts render
+ * inside the topmost one; callers that close or replace that dialog must do it
+ * before alerting.
  * @returns {Object} Alert configuration options for SweetAlert2
  */
 export const getCommonAlertOptions = () => {
+  const openModalDialog = getOpenModalDialog();
   return {
     position: isPhoneViewport() ? "bottom" : "top-end",
     topLayer: true,
+    ...(openModalDialog ? { target: openModalDialog } : {}),
     buttonsStyling: false,
     iconColor: "var(--color-primary-500)",
     backdrop: false,
@@ -455,5 +460,8 @@ export const waitForAlertToClose = (root = document) =>
     });
     observer.observe(root.body, { childList: true, subtree: true });
   });
+
+/** Returns the topmost open modal dialog, if any. */
+const getOpenModalDialog = () => [...document.querySelectorAll("dialog:modal")].at(-1) ?? null;
 
 initializeOnReadyAndHtmxLoad(initializePageAlerts);

@@ -3,9 +3,10 @@
   - link "Open documentation":
     - /url: /docs#/guides/user-dashboard?id=inbox-conversations-with-organizers
   - paragraph: Your conversations with group organizers.
-  - text: "Active filters Status: Answered"
-  - button "Reset status filter"
-  - button "Reset all"
+  - group "Active filters":
+    - text: "Active filters Status: Answered"
+    - button "Reset status filter"
+    - button "Reset all"
   - text: 0 conversations
   - table "Inbox conversations":
     - rowgroup:

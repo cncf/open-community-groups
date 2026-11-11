@@ -1,7 +1,8 @@
-import { expect, test } from "../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../fixtures.js";
 
 import { TEST_COMMUNITY_NAME, TEST_GROUP_NAMES, TEST_GROUP_SLUGS } from "../../seed.js";
 import {
+  expectNoDuplicateIds,
   expectPaginationNavigation,
   navigateToPath,
   routeEmptyBasemap,
@@ -12,17 +13,27 @@ import {
 const GROUP_CARD_PATHNAME = /^\/explore\/groups\/[0-9a-f-]+\/card$/;
 
 test.describe("site explore groups page", () => {
-  for (const tag of ["", " @mobile"]) {
-    test(`bare landing lists groups from every community${tag}`, async ({ page }) => {
-      // Load Explore with no community selected.
-      await navigateToPath(page, "/explore?entity=groups");
+  testAtBothWidths("bare landing lists groups from every community", async ({ page }) => {
+    // Load Explore with no community selected.
+    await navigateToPath(page, "/explore?entity=groups");
 
-      // Verify groups from both seeded communities are listed.
-      const groupCards = page.locator("#cards-list article");
-      await expect(groupCards.filter({ hasText: TEST_GROUP_NAMES.alpha })).toHaveCount(1);
-      await expect(groupCards.filter({ hasText: TEST_GROUP_NAMES.delta })).toHaveCount(1);
-    });
-  }
+    // Verify groups from both seeded communities are listed.
+    const groupCards = page.locator("#cards-list article");
+    await expect(groupCards.filter({ hasText: TEST_GROUP_NAMES.alpha })).toHaveCount(1);
+    await expect(groupCards.filter({ hasText: TEST_GROUP_NAMES.delta })).toHaveCount(1);
+  });
+
+  test("renders no duplicate ids", async ({ page }) => {
+    // Load groups for one community, so the community-dependent filters render too.
+    await navigateToPath(page, `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`);
+
+    // Wait for the Lit filters of the sidebar and the phone sheet to render.
+    await expect(page.locator("#groups-form collapsible-filter ul").first()).toBeAttached();
+    await expect(page.locator("#groups-form-mobile collapsible-filter ul").first()).toBeAttached();
+
+    // Verify the duplicated filter markup keeps every id unique.
+    await expectNoDuplicateIds(page);
+  });
 
   test("moves between group result pages and restores the first card", async ({ page }) => {
     // Paginate seeded group cards with one result per page.
@@ -81,11 +92,13 @@ test.describe("site explore groups page", () => {
       status: 200,
     });
     await expect(page.locator("#sort_selector")).toHaveValue("date");
+    await expect(page).toHaveURL(/[?&]sort_by=date(&|$)/);
 
-    // Switch to events and verify the existing search value is preserved.
-    // The entity selector renders in both drawer and sidebar, so click the
-    // desktop sidebar instance that is actually visible at this viewport.
-    await waitForActionResponse(page, () => page.locator("#explore-filters #events-button").click(), {
+    // Switch to events from the sidebar and verify the existing search value is preserved.
+    const eventsButton = page
+      .locator("#explore-filters")
+      .getByRole("button", { name: "Events", exact: true });
+    await waitForActionResponse(page, () => eventsButton.click(), {
       method: "GET",
       params: { ts_query: "Observability" },
       pathname: "/explore/events-section",
@@ -103,22 +116,23 @@ test.describe("site explore groups page", () => {
     const drawer = page.locator("#drawer-filters");
     const backdrop = page.locator("#drawer-backdrop");
     await page.getByRole("button", { name: "Open filters" }).click();
-    await expect(drawer).not.toHaveClass(/-translate-x-full/);
+    await expect(drawer).toBeVisible();
+    await expect(backdrop).toBeVisible();
     await expect(page.locator("#groups-form-mobile")).toBeAttached();
 
     // Dismiss the drawer through its backdrop and verify both become hidden.
     await backdrop.click({ position: { x: 350, y: 50 } });
-    await expect(drawer).toHaveClass(/-translate-x-full/);
-    await expect(backdrop).toHaveClass(/hidden/);
+    await expect(drawer).toBeHidden();
+    await expect(backdrop).toBeHidden();
   });
 
   test("offers Reset filters from the empty state @mobile", async ({ page }) => {
     // Load a search with no matches.
     await navigateToPath(page, "/explore?entity=groups&ts_query=No%20matching%20group");
-    const resetButton = page.getByRole("alert").getByRole("button", { name: "Reset filters" });
+    const resetButton = page.getByRole("button", { name: "Reset filters", exact: true });
     await expect(resetButton).toBeVisible();
 
-    // Reset from the alert.
+    // Reset from the empty state.
     await waitForActionResponse(page, () => resetButton.click(), {
       method: "GET",
       pathname: "/explore/groups-section",
@@ -188,12 +202,16 @@ test.describe("site explore groups page", () => {
     await expect(page.getByText(TEST_GROUP_NAMES.alpha, { exact: true })).toHaveCount(0);
 
     // Switch to the map view and wait for list controls to refresh.
-    await waitForActionResponse(page, () => page.locator('label[for="map"]').click(), {
-      method: "GET",
-      params: { view_mode: "map" },
-      pathname: "/explore/groups-section",
-      status: 200,
-    });
+    await waitForActionResponse(
+      page,
+      () => page.getByRole("radiogroup", { name: "View" }).getByText("Map", { exact: true }).click(),
+      {
+        method: "GET",
+        params: { view_mode: "map" },
+        pathname: "/explore/groups-section",
+        status: 200,
+      },
+    );
 
     // Verify map mode renders the map and hides sorting controls.
     await expect(page.locator("#map-box")).toBeVisible();

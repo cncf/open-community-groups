@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::{
     db::mock::{MockDB, expect_site_settings},
     handlers::tests::*,
+    test_util::{element_text_with, opening_tag_with},
     types::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
@@ -313,13 +314,10 @@ async fn test_page_inbox_tab_renders_list_with_open_count_badge() {
     // Check the menu badge, list and mobile notice
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
-    let inbox_menu_item = body
-        .split("href=\"/dashboard/group?tab=inbox\"")
-        .nth(1)
-        .and_then(|rest| rest.split("</a>").next())
-        .expect("inbox menu item to render");
-    assert!(inbox_menu_item.contains("Inbox"));
-    assert!(inbox_menu_item.split_whitespace().any(|token| token == "7"));
+    assert_eq!(
+        element_text_with(body, r#"href="/dashboard/group?tab=inbox""#),
+        "Inbox 7 open"
+    );
     assert!(body.contains("When do doors open?"));
     assert!(body.contains("This dashboard is not optimized yet for mobile devices"));
 }
@@ -549,6 +547,14 @@ async fn test_page_settings_tab_success() {
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("id=\"groups-form\""));
     assert!(!body.contains("Your role cannot update group settings."));
+
+    // Check the session's selected community and group reach the dashboard scripts
+    let layout = opening_tag_with(body, r#"id="dashboard-layout""#);
+    assert!(layout.contains(&format!(
+        r#"data-ocg-selected-community-id="{}""#,
+        ids.community_id
+    )));
+    assert!(layout.contains(&format!(r#"data-ocg-selected-group-id="{}""#, ids.group_id)));
 }
 
 #[tokio::test]

@@ -24,6 +24,7 @@ use crate::{
         enrollment::{AdmissionAllocationOutcome, EnrollmentError, MockEnrollmentManager},
         payments::{MockPaymentsManager, PaymentsError},
     },
+    test_util::opening_tag_with,
     types::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
@@ -1239,9 +1240,11 @@ async fn test_list_page_success() {
     assert!(body.contains("Invited"));
     assert!(body.contains("Check in attendee"));
     assert!(!body.contains("Your role cannot manage check-in"));
-    let email_actions = body.find("id=\"attendee-email-actions-button\"").unwrap();
-    let management_container = body[..email_actions].rfind("<div class=").unwrap();
-    assert!(body[management_container..email_actions].contains("hidden"));
+    let email_actions_button = opening_tag_with(body, r#"id="attendee-email-actions-button""#);
+    assert!(
+        email_actions_button
+            .contains(r#"disabled title="Your role cannot send emails to attendees.""#)
+    );
     assert!(!body.contains("id=\"open-attendee-invitation-modal\""));
 }
 

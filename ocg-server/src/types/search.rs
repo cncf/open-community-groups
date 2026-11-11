@@ -13,13 +13,16 @@ use crate::{
         pagination::{Pagination, ToRawQuery},
     },
     validation::{
-        MAX_ITEMS, MAX_LEN_M, MAX_LEN_SORT_KEY, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt,
-        valid_date_opt, valid_latitude, valid_longitude,
+        MAX_ITEMS, MAX_LEN_M, MAX_LEN_SORT_KEY, MAX_PAGINATION_LIMIT, blank_string_as_none,
+        trimmed_non_empty_opt, valid_date_opt, valid_latitude, valid_longitude,
     },
 };
 
 #[cfg(test)]
 mod tests;
+
+/// Groups sort applied when none is requested (mirrors `search_groups`).
+pub(crate) const DEFAULT_GROUPS_SORT_BY: &str = "name";
 
 /// Maximum number of items returned to draw the explore map and calendar.
 pub(crate) const EXPLORE_WIDGET_MAX_ITEMS: usize = 1000;
@@ -90,7 +93,7 @@ pub(crate) struct SearchEventsFilters {
     pub latitude: Option<f64>,
     /// Number of results per page.
     #[serde(default = "default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// User's longitude for distance-based filtering.
     #[garde(custom(valid_longitude))]
@@ -105,7 +108,8 @@ pub(crate) struct SearchEventsFilters {
     /// Sort direction for results ("asc" or "desc").
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_SORT_KEY))]
     pub sort_direction: Option<String>,
-    /// Full-text search query.
+    /// Full-text search query (blank treated as missing).
+    #[serde(default, deserialize_with = "blank_string_as_none")]
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
     /// Display mode for results (list, calendar, or map).
@@ -244,7 +248,7 @@ pub(crate) struct SearchGroupsFilters {
     pub latitude: Option<f64>,
     /// Number of results per page.
     #[serde(default = "default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// User's longitude for distance-based filtering.
     #[garde(custom(valid_longitude))]
@@ -253,10 +257,11 @@ pub(crate) struct SearchGroupsFilters {
     #[serde(default = "default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
-    /// Sort order for results.
+    /// Sort order for results ("name" by default, "date", or "distance").
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_SORT_KEY))]
     pub sort_by: Option<String>,
-    /// Full-text search query.
+    /// Full-text search query (blank treated as missing).
+    #[serde(default, deserialize_with = "blank_string_as_none")]
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
     /// Display mode for results (list or map).
@@ -270,6 +275,11 @@ impl SearchGroupsFilters {
         // Drop entries that are empty strings
         self.group_category.retain(|c| !c.is_empty());
         self.region.retain(|r| !r.is_empty());
+    }
+
+    /// Returns the requested sort, or the default one.
+    pub(crate) fn sort_by_or_default(&self) -> &str {
+        self.sort_by.as_deref().unwrap_or(DEFAULT_GROUPS_SORT_BY)
     }
 
     /// Returns whether this search depends on viewer location headers.
@@ -286,7 +296,7 @@ impl ToRawQuery for SearchGroupsFilters {
         let mut filters = self.clone();
         filters.latitude = None;
         filters.longitude = None;
-        if filters.sort_by == Some("date".to_string()) {
+        if filters.sort_by.as_deref() == Some(DEFAULT_GROUPS_SORT_BY) {
             filters.sort_by = None;
         }
 

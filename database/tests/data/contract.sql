@@ -6009,6 +6009,193 @@ insert into event_ticket_price_window (
     '00000000-0000-0000-0000-00000000f406'
 );
 
+-- ============================================================================
+-- PENDING INVITATIONS COUNT
+-- ============================================================================
+
+-- Inactive community holding the pending invitations count fixture; inactive
+-- so public listings and statistics exclude it
+insert into community (
+    active,
+    banner_mobile_url,
+    banner_url,
+    community_id,
+    description,
+    display_name,
+    logo_url,
+    name
+) values (
+    false,
+    'https://example.com/pending-invitations-community-banner-mobile.png',
+    'https://example.com/pending-invitations-community-banner.png',
+    '00000000-0000-0000-0000-00000000f501',
+    'A community used to verify the pending invitations count in Rust database contract tests',
+    'Contract Pending Invitations Community',
+    'https://example.com/pending-invitations-community-logo.png',
+    'contract-pending-invitations-community'
+);
+
+-- Group category of the pending invitations community
+insert into group_category (
+    community_id,
+    group_category_id,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000f501',
+    '00000000-0000-0000-0000-00000000f502',
+    'Pending Invitations'
+);
+
+-- Event category of the pending invitations community
+insert into event_category (
+    community_id,
+    event_category_id,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000f501',
+    '00000000-0000-0000-0000-00000000f503',
+    'Pending Invitations'
+);
+
+-- Active group hosting the offered event and the accepted team membership
+insert into "group" (
+    active,
+    community_id,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    true,
+    '00000000-0000-0000-0000-00000000f501',
+    '00000000-0000-0000-0000-00000000f502',
+    '00000000-0000-0000-0000-00000000f504',
+    'Contract Pending Invitations Group',
+    'contract-pending-invitations-group'
+);
+
+-- User with one pending team invitation, one claimable offer and one accepted
+-- team membership
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    name,
+    user_id,
+    username
+) values (
+    'contract_hash_pending_invitations_invitee',
+    'pending-invitations-invitee.contract@example.com',
+    true,
+    'Contract Pending Invitations Invitee',
+    '00000000-0000-0000-0000-00000000f505',
+    'pending-invitations-invitee'
+);
+
+-- Pending community team invitation counted for the invitee
+insert into community_team (
+    accepted,
+    community_id,
+    role,
+    user_id
+) values (
+    false,
+    '00000000-0000-0000-0000-00000000f501',
+    'viewer',
+    '00000000-0000-0000-0000-00000000f505'
+);
+
+-- Accepted group team membership excluded from the invitee's count
+insert into group_team (
+    accepted,
+    group_id,
+    role,
+    user_id,
+    "order"
+) values (
+    true,
+    '00000000-0000-0000-0000-00000000f504',
+    'viewer',
+    '00000000-0000-0000-0000-00000000f505',
+    1
+);
+
+-- Published upcoming test event accepting enrollment, offered only to the invitee
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values (
+    'An event whose only offer backs the pending invitations count contract',
+    '2099-08-30 11:00:00+00',
+    '00000000-0000-0000-0000-00000000f503',
+    '00000000-0000-0000-0000-00000000f506',
+    'virtual',
+    '00000000-0000-0000-0000-00000000f504',
+    'Contract Pending Invitations Event',
+    true,
+    'contract-pending-invitations-event',
+    '2099-08-30 10:00:00+00',
+    true,
+    'UTC'
+);
+
+-- Public tier of the pending invitations event
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    '00000000-0000-0000-0000-00000000f506',
+    '00000000-0000-0000-0000-00000000f507',
+    1,
+    10,
+    'General Admission'
+);
+
+-- Free price window of the pending invitations tier
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    0,
+    '00000000-0000-0000-0000-00000000f508',
+    '00000000-0000-0000-0000-00000000f507'
+);
+
+-- Claimable organizer offer counted for the invitee
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    source,
+    status,
+    user_id,
+
+    expires_at
+) values (
+    '00000000-0000-0000-0000-00000000f509',
+    '00000000-0000-0000-0000-00000000f506',
+    '00000000-0000-0000-0000-00000000f507',
+    'organizer_invitation',
+    'pending',
+    '00000000-0000-0000-0000-00000000f505',
+
+    '2099-08-30 09:00:00+00'
+);
+
 -- Every remaining event uses a default free tier in the contract fixture
 insert into event_ticket_type (
     event_id,

@@ -1,7 +1,8 @@
 -- Reports whether an event still accepts enrollment transitions: its group is
 -- active and the event is published, not deleted, not canceled and not over.
 -- Single home of the enrollment-active rule; lock_active_event,
--- ensure_event_is_active and list_user_event_invitations delegate to it.
+-- ensure_event_is_active, list_user_event_invitations and
+-- count_user_pending_invitations delegate to it.
 create or replace function event_accepts_enrollment(
     p_event event,
     p_group "group"

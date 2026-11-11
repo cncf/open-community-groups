@@ -169,7 +169,7 @@ test.describe("deployment refresh", () => {
     // Edit the form so it has visible pending changes.
     const eventName = uniqueName("Deployment Refresh Draft");
     await organizerGroupPage.locator("#name").fill(eventName);
-    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).toBeVisible();
     await markDocument(organizerGroupPage);
 
     // Confirm the still-open prompt; the reload is refused to keep the draft.

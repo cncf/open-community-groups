@@ -1,5 +1,20 @@
 - /children: deep-equal
 - main:
-  - text: Stats
+  - heading "Stats" [level=1]
   - paragraph: Global growth trends across all communities.
-  - text: /Groups Total \d+ Members Total \d+ Events Total \d+ Attendees Total \d+/
+  - heading "Groups" [level=2]
+  - text: /Total [\d,]+/
+  - paragraph: '/^Groups over time: went from [\d,]+ groups? in \w+ \d{4} to .+\.$/'
+  - paragraph: '/^New groups per month: [\d,]+ new groups? (in|from) .+\.$/'
+  - heading "Members" [level=2]
+  - text: /Total [\d,]+/
+  - paragraph: '/^Members over time: went from [\d,]+ members? in \w+ \d{4} to .+\.$/'
+  - paragraph: '/^New members per month: [\d,]+ new members? (in|from) .+\.$/'
+  - heading "Events" [level=2]
+  - text: /Total [\d,]+/
+  - paragraph: '/^Events over time: went from [\d,]+ events? in \w+ \d{4} to .+\.$/'
+  - paragraph: '/^New events per month: [\d,]+ new events? (in|from) .+\.$/'
+  - heading "Attendees" [level=2]
+  - text: /Total [\d,]+/
+  - paragraph: '/^Attendees over time: went from [\d,]+ attendees? in \w+ \d{4} to .+\.$/'
+  - paragraph: '/^New attendees per month: [\d,]+ new attendees? (in|from) .+\.$/'

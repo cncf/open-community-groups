@@ -33,8 +33,11 @@
 
   {% if let Some(status) = status -%}
     {# Active filters -#}
-    <div class="mt-5 flex flex-wrap items-center gap-2">
-      <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
+    <div class="mt-5 flex flex-wrap items-center gap-2"
+         role="group"
+         aria-labelledby="inbox-active-filters-label">
+      <span id="inbox-active-filters-label"
+            class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
       <form class="inline-flex"
             hx-get="{{ scope.list_url() }}"
             hx-target="#dashboard-content"

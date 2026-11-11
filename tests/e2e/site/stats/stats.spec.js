@@ -12,6 +12,14 @@ const PUBLIC_STATS_CHART_IDS = [
   "attendees-monthly-chart",
 ];
 
+/** Public stats sections in display order, with the nouns their chart summaries use. */
+const PUBLIC_STATS_SECTIONS = [
+  { key: "groups", noun: "group", title: "Groups" },
+  { key: "members", noun: "member", title: "Members" },
+  { key: "events", noun: "event", title: "Events" },
+  { key: "attendees", noun: "attendee", title: "Attendees" },
+];
+
 test.describe("site stats page", () => {
   test("renders totals and analytics chart containers", async ({ page }) => {
     // Load the public stats page before checking analytics sections.
@@ -20,58 +28,21 @@ test.describe("site stats page", () => {
     // Find the main content.
     const mainContent = page.locator("#main-content");
 
-    // Verify renders totals and analytics chart containers.
-    await expect(mainContent.getByText("Stats", { exact: true })).toBeVisible();
+    // Verify the page heading and description.
+    await expect(mainContent.getByRole("heading", { level: 1, name: "Stats" })).toBeVisible();
     await expect(
       mainContent.getByText("Global growth trends across all communities.", {
         exact: true,
       }),
     ).toBeVisible();
 
-    // Assert each expected case.
-    for (const sectionName of ["Groups", "Members", "Events", "Attendees"]) {
-      await expect(mainContent.getByText(sectionName, { exact: true }).first()).toBeVisible();
+    // Verify each section, found by its heading, holds its running and monthly slots.
+    for (const { key, title } of PUBLIC_STATS_SECTIONS) {
+      const section = statsSection(page, mainContent, title);
+      await expect(section).toHaveCount(1);
+      await expect(section.locator(`#${key}-running-chart, .chart-empty-state`).first()).toBeVisible();
+      await expect(section.locator(`#${key}-monthly-chart, .chart-empty-state`).last()).toBeVisible();
     }
-
-    // Set up groups section.
-    const groupsSection = mainContent
-      .getByText("Groups", { exact: true })
-      .first()
-      .locator("..")
-      .locator("..");
-    await expect(groupsSection.locator("#groups-running-chart, .chart-empty-state").first()).toBeVisible();
-    await expect(groupsSection.locator("#groups-monthly-chart, .chart-empty-state").last()).toBeVisible();
-
-    // Set up members section.
-    const membersSection = mainContent
-      .getByText("Members", { exact: true })
-      .first()
-      .locator("..")
-      .locator("..");
-    await expect(membersSection.locator("#members-running-chart, .chart-empty-state").first()).toBeVisible();
-    await expect(membersSection.locator("#members-monthly-chart, .chart-empty-state").last()).toBeVisible();
-
-    // Set up events section.
-    const eventsSection = mainContent
-      .getByText("Events", { exact: true })
-      .first()
-      .locator("..")
-      .locator("..");
-    await expect(eventsSection.locator("#events-running-chart, .chart-empty-state").first()).toBeVisible();
-    await expect(eventsSection.locator("#events-monthly-chart, .chart-empty-state").last()).toBeVisible();
-
-    // Set up attendees section.
-    const attendeesSection = mainContent
-      .getByText("Attendees", { exact: true })
-      .first()
-      .locator("..")
-      .locator("..");
-    await expect(
-      attendeesSection.locator("#attendees-running-chart, .chart-empty-state").first(),
-    ).toBeVisible();
-    await expect(
-      attendeesSection.locator("#attendees-monthly-chart, .chart-empty-state").last(),
-    ).toBeVisible();
 
     // Verify representative charts finish rendering or show the empty state.
     await expectChartSettled(page, "#groups-running-chart");
@@ -106,13 +77,53 @@ test.describe("site stats page", () => {
     );
   });
 
+  test("describes each rendered chart in text", async ({ page }) => {
+    // Load the public stats page before reading the chart summaries.
+    await navigateToPath(page, "/stats");
+    const mainContent = page.locator("#main-content");
+
+    // Verify each rendered chart card carries its summary and empty slots carry none.
+    const month = String.raw`\w+ \d{4}`;
+    const count = (word) => String.raw`[\d,]+ ${word}s?`;
+    let renderedCharts = 0;
+    for (const { key, noun, title } of PUBLIC_STATS_SECTIONS) {
+      const section = statsSection(page, mainContent, title);
+      const charts = [
+        {
+          id: `${key}-running-chart`,
+          summary: new RegExp(
+            String.raw`^${title} over time: went from ${count(noun)} in ${month} to ${count(noun)} in ${month}\.$`,
+          ),
+        },
+        {
+          id: `${key}-monthly-chart`,
+          summary: new RegExp(
+            String.raw`^New ${noun}s per month: ${count(`new ${noun}`)} (in ${month}|from ${month} to ${month}\. The busiest month was ${month} with [\d,]+)\.$`,
+          ),
+        },
+      ];
+      for (const { id, summary } of charts) {
+        const chart = section.locator(`#${id}`);
+        if ((await chart.count()) > 0) {
+          renderedCharts += 1;
+          await expect(chart.locator("..").getByText(summary)).toHaveCount(1);
+        } else {
+          await expect(section.getByText(summary)).toHaveCount(0);
+        }
+      }
+    }
+
+    // Verify the seeded data renders at least one described chart.
+    expect(renderedCharts).toBeGreaterThan(0);
+  });
+
   test("keeps every statistics card and chart available on mobile @mobile", async ({ page }) => {
     // Load public statistics using the mobile project viewport.
     await navigateToPath(page, "/stats");
 
     // Verify every summary card and chart slot remains available.
     const mainContent = page.locator("#main-content");
-    await expect(mainContent.getByText("Stats", { exact: true })).toBeVisible();
+    await expect(mainContent.getByRole("heading", { level: 1, name: "Stats" })).toBeVisible();
     // Each total card mixes the label with its value, so match by substring.
     await expect(mainContent.getByText("Total")).toHaveCount(4);
     await expect(mainContent.locator("section")).toHaveCount(4);
@@ -148,6 +159,12 @@ test.describe("site stats page", () => {
     expect(totalBox.x + totalBox.width).toBeCloseTo(headingBox.width - 12, 0);
   });
 });
+
+/** Returns the stats section named by its level-2 heading. */
+const statsSection = (page, mainContent, title) =>
+  mainContent.locator("section").filter({
+    has: page.getByRole("heading", { level: 2, name: title, exact: true }),
+  });
 
 /** Waits for a stats chart or its empty state to settle. */
 const expectChartSettled = async (page, selector) => {

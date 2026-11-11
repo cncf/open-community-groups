@@ -1,4 +1,4 @@
-import { expect, test } from "../../fixtures.js";
+import { expect, test, testAtBothWidths } from "../../fixtures.js";
 import { queryE2eDatabase } from "../../database.js";
 import { setupTicketOffer } from "../../data-graphs/events.js";
 import { cleanupEventEnrollment } from "../../data-graphs/invitations.js";
@@ -38,11 +38,14 @@ import {
 import {
   buildE2eUrl,
   confirmAlert,
+  expectDialogClosed,
   navigateToEvent,
   navigateToPath,
   sendCloseRequest,
   waitForActionResponse,
 } from "../../utils.js";
+
+const ATTENDANCE_CHECK_FAILED_MESSAGE = "Couldn't load your registration.";
 
 const OWNED_CHECKOUT_CANCEL_URL = "https://example.test/checkout/e2e-owned-cancel";
 
@@ -213,6 +216,57 @@ test.describe("event attendance", () => {
       await member2Page.unroute(leavePath);
     }
   });
+
+  testAtBothWidths(
+    "failed registration check offers Retry and recovers the member's state",
+    async ({ isMobile, member2Page }) => {
+      const enrollmentPath = `**/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.one}/enrollment`;
+
+      try {
+        // Fail the registration check with a network error before the page loads.
+        await member2Page.route(enrollmentPath, (route) => route.abort());
+        await navigateToEvent(
+          member2Page,
+          TEST_COMMUNITY_NAME,
+          TEST_GROUP_SLUGS.community1.alpha,
+          TEST_EVENT_SLUGS.alpha[0],
+        );
+
+        // Verify the load error and Retry replace the signed-out view.
+        const retryButton = member2Page.getByRole("button", { name: "Retry" });
+        await expect(retryButton).toBeVisible();
+        if (isMobile) {
+          const reason = member2Page.locator('[data-attendance-role="bar-reason"]');
+          await expect(reason).toHaveText(ATTENDANCE_CHECK_FAILED_MESSAGE);
+          await expect(reason).toBeVisible();
+        } else {
+          // Desktop shows the load error in the Retry popover.
+          const details = member2Page.getByRole("tooltip", { name: "Registration status" });
+          await expect(details).toBeHidden();
+          await retryButton.focus();
+          await expect(details).toBeVisible();
+          await expect(details).toContainText(ATTENDANCE_CHECK_FAILED_MESSAGE);
+          await expect(retryButton).toHaveAccessibleDescription(
+            `Registration status ${ATTENDANCE_CHECK_FAILED_MESSAGE}`,
+          );
+        }
+        await expect(getSignInButton(member2Page)).toBeHidden();
+
+        // Retry once the connection is back and verify the member's attend action returns.
+        await member2Page.unroute(enrollmentPath);
+        await waitForActionResponse(member2Page, () => retryButton.click(), {
+          method: "GET",
+          urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/enrollment`,
+        });
+        await expect(getAttendButton(member2Page)).toBeVisible();
+        await expect(getAttendButton(member2Page)).toBeEnabled();
+        await expect(retryButton).toBeHidden();
+      } finally {
+        // Remove the failure route.
+        await member2Page.unroute(enrollmentPath);
+      }
+    },
+  );
 
   test("member answers registration questions before attending", async ({ owned, pending2Page }) => {
     // Cancelling keeps the attendee and a refunded purchase, so remove the pair's enrollment rows.
@@ -1409,6 +1463,7 @@ test.describe("event action bar @mobile", () => {
     const prompt = page.locator(".swal2-popup");
     const logInButton = prompt.getByRole("button", { name: "Log in", exact: true });
     await expect(prompt).toContainText("You need to be logged in to attend this event.");
+    // swal2-bottom is SweetAlert's position API class, not a utility class.
     await expect(page.locator(".swal2-container")).toHaveClass(/swal2-bottom/);
     // Read the layout height, because Swal's entrance animation scales the box.
     const logInHeight = await logInButton.evaluate((node) =>
@@ -1588,7 +1643,7 @@ test.describe("event action bar @mobile", () => {
 
     // Swap in the longest fixed title.
     await reason.evaluate((node) => {
-      node.textContent = "You cannot change attendance because the event has already started.";
+      node.textContent = "You cannot change attendance because the event has ended.";
     });
 
     // Verify the reason clamps to two lines and the bar height never grows.
@@ -1737,8 +1792,7 @@ test.describe("event action bar @mobile", () => {
     const checkoutBox = await getCheckoutButton(member1Page).boundingBox();
     expect(checkoutBox.y).toBeLessThan(cancelBox.y);
     await sendCloseRequest(member1Page);
-    await expect(ticketModal).toBeHidden();
-    await expect(attendButton).toBeFocused();
+    await expectDialogClosed(member1Page, ticketModal, { opener: attendButton });
   });
 });
 

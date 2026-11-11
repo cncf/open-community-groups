@@ -12,10 +12,14 @@ import {
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUG,
+  TEST_SITE_TITLE,
 } from "../../seed.js";
 import { enableDesktopVersion, expectPageLayout } from "../../snapshots.js";
 import {
   buildE2eUrl,
+  expectDialogClosed,
+  expectFocusIndicator,
+  expectNoDuplicateIds,
   expectPaginationNavigation,
   futureDate,
   navigateToPath,
@@ -83,13 +87,28 @@ const trackSectionRequests = (page, pathname) => {
 };
 
 test.describe("site explore events page", () => {
+  test("renders no duplicate ids", async ({ page }) => {
+    // Load events for one community, so the Group filter renders too.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+
+    // Wait for the Lit filters of the sidebar and the phone sheet to render.
+    await expect(page.locator("#events-form collapsible-filter ul").first()).toBeAttached();
+    await expect(page.locator("#events-form-mobile collapsible-filter ul").first()).toBeAttached();
+
+    // Verify the duplicated filter markup keeps every id unique.
+    await expectNoDuplicateIds(page);
+  });
+
   test("entity switch keeps the search and a single selected community", async ({ page }) => {
     for (const { params, path } of ENTITY_SWITCH_CASES) {
       // Load the filtered events page.
       await navigateToPath(page, path);
 
       // Switch to groups from the visible sidebar and verify the values sent.
-      await waitForActionResponse(page, () => page.locator("#explore-filters #groups-button").click(), {
+      const groupsButton = page
+        .locator("#explore-filters")
+        .getByRole("button", { name: "Groups", exact: true });
+      await waitForActionResponse(page, () => groupsButton.click(), {
         method: "GET",
         params,
         pathname: "/explore/groups-section",
@@ -114,6 +133,17 @@ test.describe("site explore events page", () => {
       });
       await expect(page.locator("#groups-form-mobile")).toBeAttached();
     }
+  });
+
+  test("titles the page Explore after boosted navigation", async ({ page }) => {
+    // Load the home page, which uses the site title.
+    await navigateToPath(page, "/");
+    await expect(page).toHaveTitle(TEST_SITE_TITLE);
+
+    // Follow the boosted header link and verify the Explore title replaces it.
+    await page.getByRole("link", { name: "Explore", exact: true }).click();
+    await expect(page).toHaveURL(/\/explore/);
+    await expect(page).toHaveTitle(`Explore · ${TEST_SITE_TITLE}`);
   });
 
   test("omits free badges from explore and calendar event cards", async ({ page }) => {
@@ -351,20 +381,20 @@ test.describe("site explore events page", () => {
     }
   });
 
-  test("opens, resets, and closes the mobile filters drawer @mobile", async ({ page }) => {
+  test("opens, resets, and closes the mobile filters drawer @mobile @smoke", async ({ page }) => {
     // Load community events using the mobile project viewport.
     await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
 
     // Find the filter drawer and verify its initial hidden state.
     const drawer = page.locator("#drawer-filters");
     const backdrop = page.locator("#drawer-backdrop");
-    await expect(drawer).toHaveClass(/-translate-x-full/);
-    await expect(backdrop).toHaveClass(/hidden/);
+    await expect(drawer).toBeHidden();
+    await expect(backdrop).toBeHidden();
 
     // Open the drawer and verify its mobile form restores the URL filter.
     await page.locator("#open-filters").click();
-    await expect(drawer).not.toHaveClass(/-translate-x-full/);
-    await expect(backdrop).not.toHaveClass(/hidden/);
+    await expect(drawer).toBeVisible();
+    await expect(backdrop).toBeVisible();
     await expect(drawer.getByText("Filters", { exact: true })).toBeVisible();
     const mobileForm = page.locator("#events-form-mobile");
     await expect(mobileForm).toBeAttached();
@@ -389,8 +419,8 @@ test.describe("site explore events page", () => {
     );
     await expect(page.locator("#sort_by")).toHaveValue("date");
     await expect(page.locator("#sort_direction")).toHaveValue("asc");
-    await expect(drawer).toHaveClass(/-translate-x-full/);
-    await expect(backdrop).toHaveClass(/hidden/);
+    await expect(drawer).toBeHidden();
+    await expect(backdrop).toBeHidden();
   });
 
   test("pushes the kind filter to the URL and restores the results on back navigation @smoke", async ({
@@ -436,7 +466,8 @@ test.describe("site explore events page", () => {
     await expect(page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true })).toBeVisible();
 
     // Switch to the calendar view and wait for the results to refresh.
-    await waitForActionResponse(page, () => page.locator('label[for="calendar"]').click(), {
+    const viewSwitch = page.getByRole("radiogroup", { name: "View" });
+    await waitForActionResponse(page, () => viewSwitch.getByText("Calendar", { exact: true }).click(), {
       method: "GET",
       params: { view_mode: "calendar" },
       pathname: "/explore/events-section",
@@ -448,6 +479,130 @@ test.describe("site explore events page", () => {
     await expect(page.locator("#calendar-date")).toBeVisible();
     await expect(page.locator("#current-month-btn")).toBeVisible();
     await expect(page.locator("#sort_selector")).toHaveCount(0);
+  });
+
+  test("switches to the calendar from the keyboard and keeps focus on the view switch", async ({ page }) => {
+    // Load the events list and focus the List view radio.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    const viewSwitch = page.getByRole("radiogroup", { name: "View" });
+    const calendarRadio = viewSwitch.getByRole("radio", { name: "Calendar" });
+    await viewSwitch.getByRole("radio", { name: "List" }).focus();
+
+    // Move to the calendar with the arrow key; the radio's label draws its focus outline.
+    await expectFocusIndicator(
+      calendarRadio,
+      async () => {
+        await waitForActionResponse(page, () => page.keyboard.press("ArrowRight"), {
+          method: "GET",
+          params: { view_mode: "calendar" },
+          pathname: "/explore/events-section",
+          status: 200,
+        });
+      },
+      { indicator: page.locator('label[for="calendar"]'), outlineColor: "var(--ocg-primary)" },
+    );
+
+    // Verify the re-rendered Calendar radio is checked and keeps focus.
+    await expect(page.locator("#calendar-box")).toBeVisible();
+    await expect(calendarRadio).toBeChecked();
+    await expect(calendarRadio).toBeFocused();
+  });
+
+  test("toggles a Type filter from the keyboard and keeps focus after the swap", async ({ page }) => {
+    // Load the events list and focus the sidebar In-person checkbox.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    const inPerson = page.locator("#events-form").getByRole("checkbox", { name: "In-person" });
+    await inPerson.focus();
+
+    // Toggle it with Space and wait for the section swap.
+    await waitForActionResponse(page, () => page.keyboard.press("Space"), {
+      method: "GET",
+      params: { "kind[]": "in-person" },
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+
+    // Verify the re-rendered checkbox is checked and has focus back.
+    await expect(page).toHaveURL((url) => url.searchParams.get("kind[0]") === "in-person");
+    await expect(inPerson).toBeChecked();
+    await expect(inPerson).toBeFocused();
+  });
+
+  test("moves focus to the filters button when a tablet drawer filter swaps the section", async ({
+    page,
+  }) => {
+    // Load the events list at a tablet width and open the drawer from the keyboard.
+    await page.setViewportSize({ height: 1000, width: 820 });
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    const openFilters = page.getByRole("button", { name: "Open filters", exact: true });
+    await openFilters.focus();
+    await page.keyboard.press("Enter");
+    const drawer = page.locator("#drawer-filters");
+    await expect(drawer).toBeInViewport();
+
+    // Toggle a drawer Type checkbox with Space and wait for the section swap.
+    await drawer.getByRole("checkbox", { name: "In-person" }).focus();
+    await waitForActionResponse(page, () => page.keyboard.press("Space"), {
+      method: "GET",
+      params: { "kind[]": "in-person" },
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+
+    // Verify the swap closed the drawer and focus went to the button that reopens it.
+    await expect(page).toHaveURL((url) => url.searchParams.get("kind[0]") === "in-person");
+    await expect(drawer).not.toBeInViewport();
+    await expect(openFilters).toBeFocused();
+  });
+
+  test("keeps focus in the Group filter after removing its chip from the keyboard", async ({ page }) => {
+    // Load the events list with one selected group and focus its sidebar chip.
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}&group[0]=${TEST_GROUP_SLUG}`,
+    );
+    const eventsForm = page.locator("#events-form");
+    await eventsForm.getByRole("button", { name: `Remove ${TEST_GROUP_NAMES.alpha}` }).focus();
+
+    // Remove the chip with Enter and wait for the section swap.
+    await waitForActionResponse(page, () => page.keyboard.press("Enter"), {
+      method: "GET",
+      params: { "group[]": null },
+      pathname: "/explore/events-section",
+      status: 200,
+    });
+
+    // Verify the re-rendered Group filter search box has focus.
+    await expect(page).toHaveURL((url) => !url.searchParams.has("group[0]"));
+    await expect(eventsForm.getByRole("combobox", { name: "Group filter" })).toBeFocused();
+  });
+
+  test("names the date filters", async ({ page }) => {
+    // Load the events list.
+    await navigateToPath(page, "/explore?entity=events");
+
+    // Verify the sidebar Date group names both of its inputs.
+    const dateGroup = page.locator("#events-form").getByRole("group", { name: "Date" });
+    await expect(dateGroup.getByLabel("From", { exact: true })).toHaveAttribute("type", "date");
+    await expect(dateGroup.getByLabel("To", { exact: true })).toHaveAttribute("type", "date");
+  });
+
+  test("opens the search tips dialog and returns focus to its trigger on Escape", async ({ page }) => {
+    // Load the events list.
+    await navigateToPath(page, "/explore?entity=events");
+
+    // Open the search tips from the keyboard.
+    const trigger = page.getByRole("button", { name: "Search tips" });
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+
+    // Verify the dialog is announced by its title.
+    const dialog = page.getByRole("dialog", { name: "Search tips" });
+    await expect(dialog).toBeVisible();
+
+    // Close it with Escape and verify focus returns to the trigger.
+    await page.keyboard.press("Escape");
+    await expectDialogClosed(page, dialog, { opener: trigger });
   });
 
   test("shows a filtered empty state when no events match the search", async ({ page }) => {
@@ -483,7 +638,8 @@ test.describe("site explore events page", () => {
     ).toBeVisible();
 
     // Switch to calendar view and wait for the empty state to refresh.
-    await waitForActionResponse(page, () => page.locator('label[for="calendar"]').click(), {
+    const viewSwitch = page.getByRole("radiogroup", { name: "View" });
+    await waitForActionResponse(page, () => viewSwitch.getByText("Calendar", { exact: true }).click(), {
       method: "GET",
       params: { view_mode: "calendar" },
       pathname: "/explore/events-section",
@@ -850,7 +1006,7 @@ test.describe("site explore events page", () => {
     await popoverEvent.focus();
     const popoverTooltip = page.getByRole("tooltip");
     await expect(popoverTooltip).toContainText(`${crowdedEvents[0].name} card`);
-    await expect(popoverTooltip).toHaveClass(/(^|\s)fixed(\s|$)/);
+    await expect(popoverTooltip).toHaveCSS("position", "fixed");
     await expect(popoverTooltip).toBeInViewport({ ratio: 1 });
 
     // Scrolling the list closes the card left behind by its event.
@@ -1077,9 +1233,9 @@ test.describe("site explore events page", () => {
     expect(requests).toHaveLength(1);
     expect(new URL(requests[0]).searchParams.getAll("kind[]")).toEqual(["virtual", "hybrid"]);
     expect(await page.evaluate(() => history.length)).toBe(historyLength + 1);
-    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
-    await expect(page.locator("#open-filters")).toBeFocused();
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expectDialogClosed(page, page.getByRole("dialog", { name: "Filters" }), {
+      opener: page.locator("#open-filters"),
+    });
     await expect(getAppliedFilterChips(page)).toHaveCount(2);
   });
 
@@ -1117,8 +1273,8 @@ test.describe("site explore events page", () => {
     // Verify only the second is checked and highlighted.
     await expect(community.locator("input:checked")).toHaveCount(1);
     await expect(secondOption.locator("input")).toBeChecked();
-    await expect(secondOption).toHaveClass(/border-primary-500/);
-    await expect(firstOption).not.toHaveClass(/border-primary-500/);
+    const border = (option) => option.evaluate((element) => getComputedStyle(element).borderTopColor);
+    await expect.poll(async () => (await border(secondOption)) !== (await border(firstOption))).toBe(true);
   });
 
   test("reveals a community's filters in the sheet before applying @mobile", async ({ page }) => {
@@ -1304,19 +1460,22 @@ test.describe("site explore events page", () => {
     await expect(entitySwitch.getByRole("button", { name: "Events", pressed: true })).not.toBeFocused();
   });
 
-  test("rings an option in the sheet while its hidden checkbox has keyboard focus @mobile", async ({
+  test("outlines an option in the sheet while its hidden checkbox has keyboard focus @mobile", async ({
     page,
   }) => {
-    // Open the sheet and reach a Community option from the keyboard.
+    // Open the sheet and use the keyboard, so the next focus is keyboard focus.
     await navigateToPath(page, "/explore?entity=events");
     const sheet = await openFilterSheet(page);
     const community = sheet.locator('collapsible-filter[name="community"]');
     const option = community.locator("label").first();
+    const checkbox = option.locator("input");
     await page.keyboard.press("Tab");
-    await option.locator("input").focus();
 
     // Verify the label shows the focus its clipped checkbox cannot.
-    await expect(option).toHaveCSS("box-shadow", /0px 0px 0px 2px/);
+    await expectFocusIndicator(checkbox, () => checkbox.focus(), {
+      indicator: option,
+      outlineColor: "var(--ocg-primary)",
+    });
   });
 
   test("recovers a chip whose removal failed @mobile", async ({ page }) => {
@@ -1379,10 +1538,9 @@ test.describe("site explore events page", () => {
 
     // Verify the restored page holds no open state.
     await expect(page.locator("#events-form-mobile")).toBeAttached();
-    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
-    await expect(page.locator("#drawer-filters")).toHaveClass(/-translate-x-full/);
-    await expect(page.locator("#drawer-backdrop")).toHaveClass(/hidden/);
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expectDialogClosed(page, page.getByRole("dialog", { name: "Filters" }));
+    await expect(page.locator("#drawer-filters")).toBeHidden();
+    await expect(page.locator("#drawer-backdrop")).toBeHidden();
 
     // Verify Forward restores a closed sheet, which still opens.
     await page.goForward();
@@ -1484,9 +1642,10 @@ test.describe("site explore events page", () => {
     await page.mouse.move(box.x + 60, box.y + 212, { steps: 8 });
     await page.mouse.up();
 
-    // Verify the sheet closed and focus went back.
-    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
-    await expect(page.locator("#open-filters")).toBeFocused();
+    // Verify the sheet closed, released the page and focus went back.
+    await expectDialogClosed(page, page.getByRole("dialog", { name: "Filters" }), {
+      opener: page.locator("#open-filters"),
+    });
   });
 
   test("alerts on a failed apply and keeps the choices in the sheet @mobile", async ({ page }) => {
@@ -1534,8 +1693,7 @@ test.describe("site explore events page", () => {
     await page.setViewportSize({ height: 390, width: 844 });
 
     // Verify nothing held survives.
-    await expect(page.getByRole("dialog", { name: "Filters" })).toHaveCount(0);
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+    await expectDialogClosed(page, page.getByRole("dialog", { name: "Filters" }));
     await expect(page.locator(".filters-form[hx-sync]")).toHaveCount(0);
     await expect(page.locator("#ts_query")).not.toHaveAttribute("enterkeyhint", /.*/);
   });
@@ -1574,7 +1732,7 @@ test.describe("site explore events page", () => {
     await expect(page.locator("#sort_selector")).toBeHidden();
     await expect(page.getByText("0 results", { exact: true })).toBeVisible();
 
-    // Reset from the alert.
+    // Reset from the empty state.
     await waitForActionResponse(
       page,
       () => emptyState.getByRole("button", { name: "Reset filters" }).click(),

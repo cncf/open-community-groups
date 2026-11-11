@@ -56,6 +56,9 @@
         <div id="search-tips"
              tabindex="-1"
              aria-hidden="true"
+             aria-modal="true"
+             aria-labelledby="search-tips-title"
+             role="dialog"
              class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
           <div id="overlay-search-tips"
                data-modal-toggle="search-tips"
@@ -64,7 +67,7 @@
             <div class="modal-card rounded-lg">
               {# Modal header -#}
               <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-                <h3 class="text-xl font-semibold text-stone-900">Search tips</h3>
+                <h3 id="search-tips-title" class="text-xl font-semibold text-stone-900">Search tips</h3>
                 <button id="close-search-tips-modal"
                         type="button"
                         data-modal-toggle="search-tips"

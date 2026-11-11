@@ -45,6 +45,11 @@ test.describe("public badge verification page", () => {
     await expect(page.getByText("Valid and active", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Host" })).toBeVisible();
 
+    // Verify the desktop layout keeps the form above the result, unlike phones.
+    const form = await page.locator("form").boundingBox();
+    const result = await page.locator("[aria-live] article").boundingBox();
+    expect(result.y).toBeGreaterThanOrEqual(form.y + form.height);
+
     // Submit a revoked credential using its full public URL.
     await navigateToPath(page, "/badges/verify");
     await page

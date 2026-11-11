@@ -8,6 +8,7 @@ import {
   mountLitComponent,
   useMountedElementsCleanup,
 } from "/tests/unit/test-utils/lit.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 /** Close watcher double that records its instances. */
 class FakeCloseWatcher extends EventTarget {
@@ -24,19 +25,6 @@ class FakeCloseWatcher extends EventTarget {
     this.destroyCount += 1;
   }
 }
-
-/**
- * Replaces matchMedia with a fixed answer for the phone query.
- * @param {boolean} matches Phone query state.
- * @returns {void}
- */
-const mockPhoneQuery = (matches) => {
-  window.matchMedia = (text) => ({
-    addEventListener() {},
-    matches: text === PHONE_MEDIA_QUERY && matches,
-    removeEventListener() {},
-  });
-};
 
 /**
  * Installs navigator.share and navigator.canShare doubles.
@@ -72,14 +60,14 @@ describe("share-modal", () => {
     "clipboard",
   );
   const originalCloseWatcher = window.CloseWatcher;
-  const originalMatchMedia = window.matchMedia;
   const originalShareDescriptor = Object.getOwnPropertyDescriptor(navigator, "share");
   const originalSharer = window.Sharer;
 
   useMountedElementsCleanup("share-modal");
 
-  let swal;
   let clipboardCalls;
+  let media;
+  let swal;
 
   beforeEach(() => {
     resetDom();
@@ -98,7 +86,7 @@ describe("share-modal", () => {
 
   afterEach(() => {
     swal.restore();
-    window.matchMedia = originalMatchMedia;
+    media?.restore();
     document.getElementById("sheet-panel-fixture")?.remove();
 
     // Restore the native share API after system share tests.
@@ -227,7 +215,7 @@ describe("share-modal", () => {
         });
 
       it("calls navigator.share from the tap and leaves the modal closed on success", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const { calls, canShareCalls } = mockNativeShare();
         const element = await mountTrigger();
         const shareData = {
@@ -249,7 +237,7 @@ describe("share-modal", () => {
       });
 
       it("does nothing when the person cancels", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         mockNativeShare({
           share: async () => {
             throw new DOMException("Share canceled", "AbortError");
@@ -266,7 +254,7 @@ describe("share-modal", () => {
       });
 
       it("opens the modal after any other rejection", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         mockNativeShare({
           share: async () => {
             throw new DOMException("Share failed", "NotAllowedError");
@@ -282,7 +270,7 @@ describe("share-modal", () => {
       });
 
       it("ignores a second tap while the system sheet is open", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         let finishShare;
         const { calls } = mockNativeShare({
           share: () =>
@@ -306,7 +294,7 @@ describe("share-modal", () => {
       });
 
       it("opens no modal when the host left the page during a failed share", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         let failShare;
         mockNativeShare({
           share: () =>
@@ -328,7 +316,7 @@ describe("share-modal", () => {
       });
 
       it("opens the modal straight away without support", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const { calls } = mockNativeShare({ canShare: false });
         const element = await mountTrigger();
 
@@ -341,7 +329,7 @@ describe("share-modal", () => {
       });
 
       it("opens the modal when the browser has no canShare", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const { calls } = mockNativeShare();
         Object.defineProperty(navigator, "canShare", { configurable: true, value: undefined });
         const element = await mountTrigger();
@@ -355,7 +343,7 @@ describe("share-modal", () => {
       });
 
       it("opens the modal under a false phone query, without asking the share API", async () => {
-        mockPhoneQuery(false);
+        media = stubMatchMedia();
         const { calls, canShareCalls } = mockNativeShare();
         const element = await mountTrigger();
 
@@ -372,7 +360,7 @@ describe("share-modal", () => {
 
   for (const triggerVariant of ["button", "icon", "menu-item"]) {
     it(`keeps the modal handler on the ${triggerVariant} variant`, async () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { calls, canShareCalls } = mockNativeShare();
       const element = await mountLitComponent("share-modal", {
         triggerVariant,
@@ -428,7 +416,7 @@ describe("share-modal", () => {
     });
 
     it("binds gestures once the panel is rendered and releases them on close", async () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const element = await mountSheetFixture();
 
       // Open the sheet through the phone path.
@@ -448,7 +436,7 @@ describe("share-modal", () => {
     });
 
     it("releases gestures when the host disconnects while open", async () => {
-      mockPhoneQuery(true);
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const element = await mountSheetFixture();
 
       element._openModal();
@@ -460,7 +448,7 @@ describe("share-modal", () => {
     });
 
     it("adds no gestures under a false phone query", async () => {
-      mockPhoneQuery(false);
+      media = stubMatchMedia();
       const element = await mountSheetFixture();
 
       element._openModal();
@@ -482,7 +470,7 @@ describe("share-modal", () => {
       };
 
       it("moves focus in and returns it to the tapped trigger, which never held it", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const element = await mountSheetFixture();
         const trigger = element.querySelector("button");
         trigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -495,7 +483,7 @@ describe("share-modal", () => {
       });
 
       it("wraps Tab inside the sheet", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const element = await mountSheetFixture();
         element._openModal();
         const panel = document.body.querySelector(".sheet-panel");
@@ -512,7 +500,7 @@ describe("share-modal", () => {
       });
 
       it("returns focus to the trigger after a native share falls back to the modal", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         mockNativeShare({ share: () => Promise.reject(new DOMException("Blocked", "NotAllowedError")) });
         const element = await mountSheetFixture();
         element.triggerVariant = "pill";
@@ -526,24 +514,22 @@ describe("share-modal", () => {
         expect(document.activeElement).to.equal(trigger);
       });
 
-      it("leaves focus and Tab alone under a false phone query", async () => {
-        mockPhoneQuery(false);
+      it("wraps Tab inside the centred modal under a false phone query", async () => {
+        media = stubMatchMedia();
         const element = await mountSheetFixture();
-        const trigger = element.querySelector("button");
-        trigger.focus();
+        element.querySelector("button").click();
+        const panel = document.body.querySelector(".sheet-panel");
+        const close = panel.querySelector("button:has(> .icon-close)");
+        const copy = panel.querySelector('[aria-label="Copy link"]');
+        copy.focus();
 
-        // Open from the trigger.
-        trigger.click();
-        expect(document.activeElement).to.equal(trigger);
-
-        // Tab is not trapped: focus starts outside the panel and stays there.
+        // Tab from the last target wraps back to the close button.
         press("Tab");
-        expect(document.activeElement).to.equal(trigger);
+        expect(document.activeElement).to.equal(close);
 
-        // A close does not move focus.
-        trigger.blur();
-        press("Escape");
-        expect(document.activeElement).to.not.equal(trigger);
+        // Shift-Tab from the first target wraps to the last.
+        press("Tab", true);
+        expect(document.activeElement).to.equal(copy);
       });
     });
 
@@ -556,7 +542,7 @@ describe("share-modal", () => {
       };
 
       it("closes on a restore, so the next tap shows the sheet", async () => {
-        mockPhoneQuery(true);
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
         const element = await mountSheetFixture();
         element._openModal();
 
@@ -575,7 +561,7 @@ describe("share-modal", () => {
       });
 
       it("keeps the modal open on a restore under a false phone query", async () => {
-        mockPhoneQuery(false);
+        media = stubMatchMedia();
         const element = await mountSheetFixture();
         element._openModal();
 
@@ -584,6 +570,127 @@ describe("share-modal", () => {
         // Verify only phones change.
         expect(element._isOpen).to.equal(true);
       });
+    });
+  });
+
+  describe("centred modal focus", () => {
+    /**
+     * Names the focused control by its accessible label. Comparing labels keeps a
+     * failure readable, where comparing Lit-rendered elements stalls the reporter.
+     * @returns {string|undefined} Label or tag name of the focused element.
+     */
+    const focusedLabel = () =>
+      document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.tagName;
+
+    /**
+     * Mounts a menu item trigger inside an open actions menu.
+     * @returns {Promise<{element: HTMLElement, menu: HTMLDetailsElement}>} Share modal and menu.
+     */
+    const mountMenuFixture = async () => {
+      document.body.innerHTML = `
+        <details data-group-actions-menu open>
+          <summary aria-label="More actions">More</summary>
+        </details>
+      `;
+      const menu = document.querySelector("details");
+      const element = document.createElement("share-modal");
+      element.triggerVariant = "menu-item";
+      element.title = "Open Community Groups";
+      element.url = "/groups/cncf";
+      menu.append(element);
+      await element.updateComplete;
+
+      return { element, menu };
+    };
+
+    beforeEach(() => {
+      media = stubMatchMedia();
+    });
+
+    it("moves focus to the close button and returns it to the trigger on Escape", async () => {
+      const element = await mountLitComponent("share-modal", {
+        title: "Open Community Groups",
+        url: "/groups/cncf",
+      });
+      const trigger = element.querySelector("button");
+
+      // Open from the trigger and verify focus lands on the close button.
+      trigger.focus();
+      trigger.click();
+      expect(document.activeElement?.closest('[role="dialog"]')).to.not.equal(null);
+      expect(focusedLabel()).to.equal("Close modal");
+
+      // Escape hands focus back to the trigger.
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Escape" }),
+      );
+      expect(document.body.querySelector('[role="dialog"]')).to.equal(null);
+      expect(focusedLabel()).to.equal("Share");
+    });
+
+    it("returns focus to the menu summary when the closed menu hides the menu item", async () => {
+      const { element, menu } = await mountMenuFixture();
+
+      // Open from the menu item, which closes the menu and hides the item.
+      element.querySelector("button").click();
+      expect(menu.open).to.equal(false);
+      expect(element.querySelector("button").checkVisibility()).to.equal(false);
+      expect(focusedLabel()).to.equal("Close modal");
+
+      // Closing hands focus to the visible menu summary.
+      document.body.querySelector('[role="dialog"] [aria-label="Close modal"]').click();
+      expect(focusedLabel()).to.equal("More actions");
+    });
+
+    it("returns focus to the menu item when its menu is open again on close", async () => {
+      const { element, menu } = await mountMenuFixture();
+      element.querySelector("button").click();
+
+      // Reopen the menu behind the modal, so the item is visible again.
+      menu.open = true;
+      document.body.querySelector('[role="dialog"] [aria-label="Close modal"]').click();
+
+      expect(focusedLabel()).to.equal("Share");
+      expect(element.contains(document.activeElement)).to.equal(true);
+    });
+
+    it("keeps focus on the trigger after a backdrop mousedown closes the modal", async () => {
+      const element = await mountLitComponent("share-modal", {
+        title: "Open Community Groups",
+        url: "/groups/cncf",
+      });
+      element.querySelector("button").click();
+
+      // The backdrop closes on mousedown and cancels the default focus change.
+      const overlay = document.body.querySelector(".modal-overlay");
+      const notCanceled = overlay.dispatchEvent(
+        new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+      );
+
+      expect(notCanceled).to.equal(false);
+      expect(document.body.querySelector('[role="dialog"]')).to.equal(null);
+      expect(focusedLabel()).to.equal("Share");
+    });
+
+    it("closes before the copy alert opens, so the alert returns focus to the summary", async () => {
+      const { element } = await mountMenuFixture();
+      const alertState = [];
+      const fire = globalThis.Swal.fire;
+      globalThis.Swal.fire = (options) => {
+        alertState.push({
+          dialogOpen: document.body.querySelector('[role="dialog"]') !== null,
+          focusedLabel: focusedLabel(),
+        });
+        return fire(options);
+      };
+
+      // Copy from the modal opened through the menu item.
+      element.querySelector("button").click();
+      await element._handleCopyClick();
+
+      // Verify the alert opened after the modal closed and focus moved to the summary.
+      expect(alertState).to.deep.equal([{ dialogOpen: false, focusedLabel: "More actions" }]);
+      expect(focusedLabel()).to.equal("More actions");
     });
   });
 

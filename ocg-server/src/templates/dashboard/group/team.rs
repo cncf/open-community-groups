@@ -5,8 +5,14 @@ use askama::Template;
 use crate::types::dashboard::group::team::GroupTeamMember;
 use crate::{
     templates::helpers::user_initials,
-    types::{group::GroupRoleSummary, pagination},
+    types::{
+        group::{GroupRole, GroupRoleSummary},
+        pagination,
+    },
 };
+
+#[cfg(test)]
+mod tests;
 
 // Pages templates.
 
@@ -39,5 +45,14 @@ impl ListPage {
     /// Returns the tooltip text for disabled group team management controls.
     pub(crate) fn manage_team_disabled_message(&self) -> &str {
         self.manage_team_disabled_message.as_deref().unwrap_or("")
+    }
+
+    /// Returns the display name of a team role, falling back to its identifier.
+    pub(crate) fn role_display_name(&self, role: &GroupRole) -> String {
+        let role_id = role.to_string();
+        self.roles
+            .iter()
+            .find(|summary| summary.group_role_id == role_id)
+            .map_or(role_id, |summary| summary.display_name.clone())
     }
 }

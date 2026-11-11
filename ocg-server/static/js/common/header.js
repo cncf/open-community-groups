@@ -2,7 +2,7 @@
  * Initializes header dropdown and nav loading behavior with HTMX awareness.
  */
 import { closestElement, getElementById, isElementHidden, setElementHidden } from "/static/js/common/dom.js";
-import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import {
   focusModal,
   lockBodyScroll,
@@ -32,6 +32,8 @@ const userSheetInertSelector =
   '#main-content, #dashboard-layout, footer[role="contentinfo"], #header a[aria-label$=" homepage"], ' +
   "div:has(> #header) ~ *";
 const userSheetTriggerSelector = "#user-dropdown-button";
+// Keys that move focus between the user menu items.
+const userMenuNavigationKeys = new Set(["ArrowDown", "ArrowUp", "End", "Home"]);
 
 /**
  * Finds the header nav link that triggered an event.
@@ -185,6 +187,86 @@ const getUserSheetFocusTargets = (dropdown) =>
   );
 
 /**
+ * Returns the rendered user menu items in display order.
+ * @param {Element} dropdown - User dropdown.
+ * @returns {HTMLElement[]} Rendered menu items.
+ */
+const getUserMenuItems = (dropdown) =>
+  getUserSheetFocusTargets(dropdown).filter((target) => target.matches('[role="menuitem"]'));
+
+/**
+ * Closes the anchored user menu when focus moves from it to the rest of the
+ * page, as on Tab. The sheet keeps focus inside itself instead.
+ * @param {FocusEvent} event - Focusout event.
+ */
+const closeUserMenuOnFocusOut = (event) => {
+  const button = getElementById(document, "user-dropdown-button");
+  const dropdown = getElementById(document, "user-dropdown");
+  if (userSheetOpen || !button || !dropdown || isElementHidden(dropdown)) {
+    return;
+  }
+
+  const isMenuElement = (node) => node === button || dropdown.contains(node);
+  const nextTarget = event.relatedTarget;
+  if (!isMenuElement(event.target) || !(nextTarget instanceof Node) || isMenuElement(nextTarget)) {
+    return;
+  }
+  setUserDropdownHidden(dropdown, true);
+};
+
+/**
+ * Moves focus between the user menu items with the arrow, Home and End keys.
+ * ArrowDown and ArrowUp on the trigger open the anchored menu at its first or
+ * last item.
+ * @param {KeyboardEvent} event - Keydown event.
+ * @returns {boolean} True when the event moved focus.
+ */
+const moveUserMenuFocus = (event) => {
+  if (!userMenuNavigationKeys.has(event.key) || event.altKey || event.ctrlKey || event.metaKey) {
+    return false;
+  }
+
+  const button = getElementById(document, "user-dropdown-button");
+  const dropdown = getElementById(document, "user-dropdown");
+  if (!button || !dropdown) {
+    return false;
+  }
+
+  const fromButton = event.target === button;
+  if (fromButton) {
+    const opensAnchoredMenu = event.key === "ArrowDown" || event.key === "ArrowUp";
+    if (!opensAnchoredMenu || (isElementHidden(dropdown) && isPhoneViewport())) {
+      return false;
+    }
+  } else if (!dropdown.contains(event.target) || isElementHidden(dropdown)) {
+    return false;
+  }
+
+  // Items are measured, so the menu must be visible before they are read.
+  if (fromButton && isElementHidden(dropdown)) {
+    setUserDropdownHidden(dropdown, false);
+  }
+  const items = getUserMenuItems(dropdown);
+  if (items.length === 0) {
+    return false;
+  }
+
+  const lastIndex = items.length - 1;
+  const itemIndex = fromButton ? -1 : items.indexOf(closestElement(event.target, '[role="menuitem"]'));
+  const currentIndex = itemIndex === -1 ? null : itemIndex;
+  const nextIndex = {
+    ArrowDown: getNextLoopedIndex(currentIndex, items.length, 1, 0),
+    ArrowUp: getNextLoopedIndex(currentIndex, items.length, -1, lastIndex),
+    End: lastIndex,
+    Home: 0,
+  }[event.key];
+
+  event.preventDefault();
+  items[nextIndex].focus();
+  return true;
+};
+
+/**
  * Marks the sheet rows that lead to the current page. The menu is a shared section
  * that cannot know the page, so rows are matched by pathname and dashboard tab. A row
  * without a tab only matches a URL without one, so it never shadows the tab rows.
@@ -205,15 +287,35 @@ const markCurrentUserSheetRow = (dropdown) => {
 };
 
 /**
+ * Shows or hides the user dropdown and exposes the result on its triggers.
+ * @param {Element|null} dropdown - User dropdown.
+ * @param {boolean} hidden - Whether the dropdown should be hidden.
+ */
+const setUserDropdownHidden = (dropdown, hidden) => {
+  setElementHidden(dropdown, hidden);
+  syncUserMenuExpanded();
+};
+
+/**
+ * Mirrors the dropdown's visibility on every trigger, so a swapped, restored or
+ * stale trigger never announces a state the menu is not in.
+ */
+const syncUserMenuExpanded = () => {
+  const dropdown = getElementById(document, "user-dropdown");
+  const expanded = String(Boolean(dropdown) && !isElementHidden(dropdown));
+  document.querySelectorAll(userSheetTriggerSelector).forEach((trigger) => {
+    trigger.setAttribute("aria-expanded", expanded);
+  });
+};
+
+/**
  * Removes every sheet marker from the page, whatever module state says.
  */
 const clearUserSheetMarkers = () => {
   document.querySelectorAll(userSheetInertSelector).forEach((element) => {
     element.inert = false;
   });
-  document.querySelectorAll(userSheetTriggerSelector).forEach((trigger) => {
-    trigger.removeAttribute("aria-expanded");
-  });
+  syncUserMenuExpanded();
   document.querySelectorAll('#user-dropdown [aria-current="page"]').forEach((link) => {
     link.removeAttribute("aria-current");
   });
@@ -258,7 +360,7 @@ const handleUserSheetQueryChange = (event) => {
 const closeUserSheet = () => {
   const dropdown = getElementById(document, "user-dropdown");
   releaseUserSheet();
-  setElementHidden(dropdown, true);
+  setUserDropdownHidden(dropdown, true);
   restoreModalFocus(dropdown);
 };
 
@@ -289,12 +391,11 @@ const openUserSheet = (trigger) => {
   userSheetDropdown = dropdown;
   userSheetOpen = true;
   userSheetTrigger = trigger;
-  setElementHidden(dropdown, false);
+  setUserDropdownHidden(dropdown, false);
   lockBodyScroll();
   document.querySelectorAll(userSheetInertSelector).forEach((element) => {
     element.inert = true;
   });
-  trigger.setAttribute("aria-expanded", "true");
   markCurrentUserSheetRow(dropdown);
   focusModal(dropdown, trigger);
   releaseUserSheetGestures = bindSheetGestures(dropdown);
@@ -313,7 +414,7 @@ const resetUserSheet = () => {
   }
 
   releaseUserSheet();
-  setElementHidden(getElementById(document, "user-dropdown"), true);
+  setUserDropdownHidden(getElementById(document, "user-dropdown"), true);
   clearUserSheetMarkers();
 };
 
@@ -339,7 +440,7 @@ const ensureDocumentHandlers = () => {
       if (userSheetOpen) {
         closeUserSheet();
       } else {
-        setElementHidden(dropdown, true);
+        setUserDropdownHidden(dropdown, true);
       }
       return;
     }
@@ -359,6 +460,10 @@ const ensureDocumentHandlers = () => {
       return;
     }
 
+    if (moveUserMenuFocus(event)) {
+      return;
+    }
+
     if (!isEscapeEvent(event)) {
       return;
     }
@@ -375,12 +480,13 @@ const ensureDocumentHandlers = () => {
       return;
     }
 
-    setElementHidden(dropdown, true);
+    setUserDropdownHidden(dropdown, true);
     button.focus();
   };
 
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("click", startHeaderNavLoadingFromClick);
+  document.addEventListener("focusout", closeUserMenuOnFocusOut);
   document.addEventListener("keydown", handleKeydown);
 
   documentHandlersBound = true;
@@ -432,6 +538,8 @@ const bindLifecycleListeners = () => {
   document.addEventListener("htmx:afterRequest", clearHeaderNavLoadingFromHtmx);
   document.addEventListener("htmx:afterSwap", initUserDropdown);
   document.addEventListener("htmx:afterSwap", scrollToTopOnDashboardSwap);
+  // A swapped menu keeps the old menu's class until settling, so sync again then.
+  document.addEventListener("htmx:afterSettle", syncUserMenuExpanded);
   window.addEventListener("pageshow", restoreHeaderState);
 
   lifecycleListenersBound = true;
@@ -449,7 +557,7 @@ const toggleDropdownVisibility = (event) => {
   } else if (isPhoneViewport()) {
     openUserSheet(closestElement(event.target, userSheetTriggerSelector));
   } else {
-    setElementHidden(dropdown, !isElementHidden(dropdown));
+    setUserDropdownHidden(dropdown, !isElementHidden(dropdown));
   }
 };
 
@@ -457,6 +565,8 @@ const toggleDropdownVisibility = (event) => {
 export const initUserDropdown = () => {
   ensureDocumentHandlers();
   bindLifecycleListeners();
+  // Swapped, restored and bfcache triggers can carry a stale expanded state.
+  syncUserMenuExpanded();
 
   const button = getElementById(document, "user-dropdown-button");
   const dropdown = getElementById(document, "user-dropdown");
@@ -497,7 +607,7 @@ export const initUserDropdown = () => {
         if (userSheetOpen) {
           closeUserSheet();
         } else {
-          setElementHidden(dropdown, true);
+          setUserDropdownHidden(dropdown, true);
         }
       },
       true,

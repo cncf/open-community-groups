@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test as base, expect } from "@playwright/test";
 
@@ -612,9 +612,11 @@ const trackRouteAttribution = (context, testInfo, phase) => {
   const attributionFile = getRouteAttributionFile(testInfo);
   const origin = new URL(buildE2eUrl("/")).origin;
   const requestPhases = new WeakMap();
+  // The title path starts with the spec file. `testInfo.file` is where `test()` was called, which
+  // is this file for tests registered through `testAtBothWidths`.
   const test = {
     testId: testInfo.testId,
-    file: relative(testInfo.project.testDir, testInfo.file),
+    file: testInfo.titlePath[0],
     title: testInfo.titlePath.slice(1).join(" > "),
   };
 
@@ -661,5 +663,18 @@ export const test = base.extend({
   owned: ownedFixture,
   pageAs: pageAsFixture,
 });
+
+/**
+ * Registers one test for the desktop project and its `@mobile` twin for the phone project. The
+ * body reads the built-in `isMobile` fixture (true on `chromium-mobile-deep`) where the widths
+ * differ.
+ * @param {string} title - Desktop test title; the phone test appends ` @mobile`.
+ * @param {Parameters<typeof test>[1]} body - Test body shared by both widths.
+ * @returns {void}
+ */
+export const testAtBothWidths = (title, body) => {
+  test(title, body);
+  test(`${title} @mobile`, body);
+};
 
 export { expect };

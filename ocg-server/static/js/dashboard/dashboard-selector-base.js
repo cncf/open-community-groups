@@ -357,7 +357,7 @@ export class DashboardSelectorBase extends LitWrapper {
           type="button"
           class="${
             this._selectorConfig.selectorName
-          }-button w-full px-4 py-2 whitespace-normal min-h-10 phone:min-h-11 flex flex-col justify-center text-left focus:outline-none ${this._getOptionStatusClass(
+          }-button w-full px-4 py-2 whitespace-normal min-h-10 phone:min-h-11 flex flex-col justify-center text-left focus-visible:-outline-offset-2 ${this._getOptionStatusClass(
             isDisabled,
             isActive,
           )}"

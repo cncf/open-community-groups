@@ -105,7 +105,7 @@ describe("group check-in scan state machine", () => {
       postCredential: async () => {
         postCount += 1;
         if (postCount === 1) await firstPost;
-        return { attendee: { username: "ada" }, outcome: "already-checked-in" };
+        return { attendee: { username: "ada" }, checked_in_at: 1762731720, outcome: "already-checked-in" };
       },
       scanner: {},
       schedule: (callback) => {
@@ -122,9 +122,11 @@ describe("group check-in scan state machine", () => {
     releasePost();
     await pending;
 
-    // Verify the duplicate state uses the site's red error alert tone.
+    // Verify the duplicate state is neutral and carries the original check-in time.
     expect(feedback[0]).to.include({
-      kind: "error",
+      attendeeName: "ada",
+      checkedInAt: 1762731720,
+      kind: "neutral",
       message: "Already checked in",
     });
 
@@ -136,6 +138,27 @@ describe("group check-in scan state machine", () => {
     now = 4001;
     expect(await controller.handleDecode(credential)).to.equal(true);
     expect(postCount).to.equal(2);
+  });
+
+  it("omits the check-in time when the response has none", async () => {
+    // Create a controller whose duplicate response has no check-in time.
+    const feedback = [];
+    const sounds = [];
+    const controller = createScanStateMachine({
+      audio: { play: (kind) => sounds.push(kind) },
+      eventId,
+      onFeedback: (value) => feedback.push(value),
+      postCredential: async () => ({ attendee: { name: "Ada Lovelace" }, outcome: "already-checked-in" }),
+      scanner: {},
+      schedule: () => 1,
+    });
+    await controller.start();
+
+    // Verify the neutral duplicate feedback leaves the time undefined.
+    expect(await controller.handleDecode(credential)).to.equal(true);
+    expect(feedback[0]).to.include({ kind: "neutral", message: "Already checked in" });
+    expect(feedback[0].checkedInAt).to.equal(undefined);
+    expect(sounds).to.deep.equal(["neutral"]);
   });
 
   it("retries a failed credential after cooldown", async () => {
