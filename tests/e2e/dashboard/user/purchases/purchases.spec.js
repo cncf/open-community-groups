@@ -52,8 +52,12 @@ test.describe("user dashboard purchases", () => {
       "href",
       `/dashboard/user/purchases/${TEST_PURCHASE_DOCUMENT_IDS.purchase}/invoice`,
     );
-    await expect(creditNoteAction).toHaveAttribute("target", "_blank");
+    // Verify the credit note follows in place, so its download starts without opening a tab,
+    // and the invoice opens in a plain new tab.
+    await expect(creditNoteAction).toHaveAttribute("rel", "noreferrer");
+    await expect(creditNoteAction).not.toHaveAttribute("target", /.*/u);
     await expect(invoiceAction).toHaveAttribute("target", "_blank");
+    await expect(invoiceAction).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   test("purchase documents are private to their attendee", async ({ emptyUserPage }) => {

@@ -1,7 +1,13 @@
 import { expect, test } from "../../../fixtures.js";
 import { cleanupCredential, setupRevocableCredential } from "../../../data-graphs/badges.js";
 import { TEST_EVENT_IDS, TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
-import { expectPaginationNavigation, navigateToPath, waitForActionResponse } from "../../../utils.js";
+import {
+  expectPaginationNavigation,
+  navigateToPath,
+  resolveCssColor,
+  useTheme,
+  waitForActionResponse,
+} from "../../../utils.js";
 
 const AWARDS_PATH = "/dashboard/group?tab=awards";
 
@@ -99,6 +105,46 @@ test.describe("group badge award history", () => {
     await dashboardContent.getByRole("link", { name: "Clear all" }).click();
     await expect(dashboardContent.getByText("Status: Revoked")).toHaveCount(0);
     await expect(awardsTable.getByText("E2E Organizer One", { exact: true }).first()).toBeVisible();
+  });
+
+  test("View credential opens through a themed tab that keeps no link to the dashboard", async ({
+    organizerGroupPage,
+  }) => {
+    // Load award history in stored dark and hold the credential page back.
+    await useTheme(organizerGroupPage, { stored: "dark" });
+    await navigateToPath(organizerGroupPage, AWARDS_PATH);
+    const surface = await resolveCssColor(organizerGroupPage.locator("body"), "var(--color-surface)");
+    let releaseCredential;
+    const credentialHeld = new Promise((resolve) => {
+      releaseCredential = resolve;
+    });
+    await organizerGroupPage.context().route("**/badges/credentials/*", async (route) => {
+      await credentialHeld;
+      await route.continue();
+    });
+
+    // Follow the first credential link.
+    const credentialLink = organizerGroupPage
+      .locator("#dashboard-content")
+      .getByRole("link", { name: /^View credential:/u })
+      .first();
+    const [tab] = await Promise.all([organizerGroupPage.waitForEvent("popup"), credentialLink.click()]);
+
+    try {
+      // Verify the new tab shows the dark placeholder while the credential loads.
+      await expect(tab.getByRole("status")).toHaveText("Opening…");
+      await expect(tab.locator("body")).toHaveCSS("background-color", surface);
+    } finally {
+      releaseCredential();
+    }
+
+    // Verify the tab lands on the credential with no way back to the placeholder or the dashboard.
+    await tab.waitForURL(/\/badges\/credentials\/[0-9a-f-]+$/u);
+    await expect(tab.getByRole("heading", { level: 1 })).toBeVisible();
+    expect(await tab.evaluate(() => ({ history: window.history.length, opener: window.opener }))).toEqual({
+      history: 1,
+      opener: null,
+    });
   });
 
   test("organizer can permanently revoke an active credential with a reason", async ({
