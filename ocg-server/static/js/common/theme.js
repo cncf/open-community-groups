@@ -157,7 +157,7 @@ const applyTheme = () => {
 };
 
 /**
- * Applies the clicked theme control's choice. The menu stays open.
+ * Applies the clicked theme control's choice. The account menu closes itself (`common/header.js`).
  * @param {MouseEvent} event - Document click event.
  * @returns {void}
  */

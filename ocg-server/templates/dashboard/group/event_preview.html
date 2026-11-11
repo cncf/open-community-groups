@@ -208,7 +208,7 @@
                       {% if event.has_venue_component() -%}
                         <div class="relative h-full min-h-[108px] w-full"
                              data-event-preview-location-map>
-                          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat raster-placeholder"
+                          <div class="absolute inset-0 map-placeholder"
                                data-event-preview-location-map-fallback></div>
                           <div id="event-preview-location-map"
                                class="absolute inset-0 hidden h-full min-h-[108px] w-full"
@@ -237,8 +237,7 @@
                         </div>
                       {% else -%}
                         <div class="relative flex min-h-[108px] w-full items-center justify-center p-4 text-center">
-                          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat raster-placeholder">
-                          </div>
+                          <div class="absolute inset-0 map-placeholder"></div>
                           <div class="relative flex w-full items-center justify-center">
                             <div class="text-xl font-semibold text-stone-700">Location not provided</div>
                           </div>

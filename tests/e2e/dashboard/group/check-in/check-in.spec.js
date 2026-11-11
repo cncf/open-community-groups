@@ -122,15 +122,22 @@ test.describe("group dashboard check-in", () => {
     await expect(groupButton).toBeVisible();
     await expect(groupButton).toContainText(TEST_GROUP_NAMES.alpha);
 
-    // Open each selector and verify focus follows the drawer selectors.
+    // Open each selector and verify its dropdown shows without focusing the search input, which
+    // would raise the keyboard over the options.
     await communityButton.click();
     const communitySearch = drawer.locator("#community-search-input");
-    await expect(communitySearch).toBeFocused();
-    await communitySearch.press("Escape");
+    await expect(communitySearch).toBeVisible();
+    await expect(communitySearch).not.toBeFocused();
+    await communityButton.press("Escape");
+    await expect(communitySearch).toBeHidden();
     await expect(drawer).toBeVisible();
     await groupButton.click();
     const groupSearch = drawer.locator("#group-search-input");
-    await expect(groupSearch).toBeFocused();
+    await expect(groupSearch).toBeVisible();
+    await expect(groupSearch).not.toBeFocused();
+
+    // Verify the whole list is in view inside the sheet, down to its last option.
+    await expect(drawer.locator("#group-selector-list [role='option']").last()).toBeInViewport({ ratio: 1 });
 
     // Switch to another manageable group without leaving the Check-In URL.
     const emptyGroup = drawer.locator(`#group-option-${TEST_GROUP_IDS.community1.empty}`);
@@ -487,8 +494,8 @@ test.describe("group dashboard check-in", () => {
     // Switch back to the manageable group from the drawer.
     await organizerGroupPage.getByRole("button", { name: "Open dashboard menu" }).click();
     await drawer.locator("#group-selector-button").click();
-    await expect(drawer.locator("#group-search-input")).toBeFocused();
     const manageableGroup = drawer.locator(`#group-option-${TEST_GROUP_IDS.community1.alpha}`);
+    await expect(manageableGroup).toBeVisible();
     await waitForActionResponse(organizerGroupPage, () => manageableGroup.click(), {
       method: "PUT",
       urlEndsWith: `/dashboard/group/${TEST_GROUP_IDS.community1.alpha}/select`,

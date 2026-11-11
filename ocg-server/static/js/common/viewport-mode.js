@@ -89,7 +89,8 @@ export const setViewportModeReloadHandler = (handler) => {
  *
  * A tab loaded before the move to `localStorage` can still write the cookie.
  * This is the module's only cookie operation, and it never sets one. The
- * expiry can go one year after release, with the shim in preferences_init.js.
+ * expiry can go one year after release, with the shim in preferences_init.js:
+ * the legacy cookie was written with a 365-day Max-Age.
  * @returns {void}
  */
 const expireLegacyCookie = () => {

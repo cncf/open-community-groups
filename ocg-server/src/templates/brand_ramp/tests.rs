@@ -258,6 +258,7 @@ fn test_dark_block_covers_every_remapped_token() {
         "canvas",
         "danger-fill",
         "danger-text",
+        "plate",
         "plate-edge",
         "raised",
         "shade",
@@ -462,9 +463,10 @@ fn test_light_island_scope_mirrors_theme_static() {
         assert_eq!(theme.get(name), Some(value), "{name}");
     }
 
-    // Check islands re-declare every token the dark block overrides, except plate-edge
+    // Check islands re-declare every token the dark block overrides, except plate and plate-edge
     let dark_names: BTreeSet<&str> = dark.keys().copied().collect();
     let mut island_names: BTreeSet<&str> = scope.keys().copied().collect();
+    island_names.insert("--color-plate");
     island_names.insert("--color-plate-edge");
     assert_eq!(dark_names, island_names);
 }

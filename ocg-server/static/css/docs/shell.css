@@ -203,12 +203,14 @@
     z-index: auto;
   }
 
+  /* The bottom padding clears the fixed Contents bar (68px, its hairline and the home indicator
+     inset), since the docs page has no footer to absorb it. */
   .ocg-docs-root:has(> [data-docs-bar]) .markdown-section {
     font-size: 15px;
     line-height: 24px;
     margin: 0;
     max-width: none;
-    padding: 20px 12px 24px;
+    padding: 20px 12px calc(24px + 69px + env(safe-area-inset-bottom, 0px));
   }
 
   .ocg-docs-root:has(> [data-docs-bar]) .markdown-section :is(ol, p, ul) {
@@ -265,12 +267,15 @@
   }
 
   /* Contents sheet: Docsify's own sidebar, rising from behind the bar, which stays visible below it.
-     The header is 64px and the bar 68px plus the home indicator inset. */
+     The header is 64px and the bar 68px plus the home indicator inset. Its shadow starts with the
+     ring slot, which styles.src.css fills in dark with the thin edge every sheet draws. */
   .ocg-docs-root:has(> [data-docs-bar]) .sidebar {
     background: var(--color-raised);
     border-radius: 1rem 1rem 0 0;
     bottom: calc(68px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -8px 30px color-mix(in srgb, var(--color-shade) 18%, transparent);
+    box-shadow:
+      var(--tw-ring-shadow, 0 0 #0000),
+      0 -8px 30px color-mix(in srgb, var(--color-shade) 18%, transparent);
     height: auto;
     left: 0;
     max-height: calc(100dvh - 140px - env(safe-area-inset-bottom, 0px));

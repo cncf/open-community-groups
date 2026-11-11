@@ -34,6 +34,8 @@ const userSheetInertSelector =
 const userSheetTriggerSelector = "#user-dropdown-button";
 // Keys that move focus between the user menu items.
 const userMenuNavigationKeys = new Set(["ArrowDown", "ArrowUp", "End", "Home"]);
+// Menu choices, such as the color theme, that close the menu once picked.
+const userMenuRadioSelector = '[role="menuitemradio"]';
 
 /**
  * Finds the header nav link that triggered an event.
@@ -441,6 +443,17 @@ const ensureDocumentHandlers = () => {
         closeUserSheet();
       } else {
         setUserDropdownHidden(dropdown, true);
+      }
+      return;
+    }
+
+    // A picked choice closes the menu and hands focus back to its trigger.
+    if (closestElement(event.target, userMenuRadioSelector)) {
+      if (userSheetOpen || isPhoneViewport()) {
+        closeUserSheet();
+      } else {
+        setUserDropdownHidden(dropdown, true);
+        button.focus();
       }
       return;
     }

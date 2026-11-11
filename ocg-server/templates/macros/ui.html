@@ -112,7 +112,7 @@
 
 {# Logo -#}
 {# Used by public cards, pages, and dashboard previews for entity logos. -#}
-{# A non-empty logo_dark_url adds a dark mode sibling without the white plate; data-theme-image shows one per theme. -#}
+{# A non-empty logo_dark_url adds a dark mode sibling without the light plate; data-theme-image shows one per theme. -#}
 {% macro logo(logo_url, classes, size, logo_dark_url = "", border = true) -%}
   {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) -%}
 

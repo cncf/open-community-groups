@@ -353,17 +353,15 @@ test.describe("site header", () => {
     const themeGroup = userMenu.getByRole("group", { name: "Theme" });
     await expect(themeGroup).toBeVisible();
 
-    // Verify each label fits its segment and each segment keeps a touch target height.
+    // Verify each label fits its compact segment; touch targets are checked on the phone sheet.
     for (const name of THEME_CHOICE_NAMES) {
       const choice = themeGroup.getByRole("menuitemradio", { exact: true, name });
       await expect(choice).toBeVisible();
-      const { clientWidth, height, scrollWidth } = await choice.evaluate((element) => ({
+      const { clientWidth, scrollWidth } = await choice.evaluate((element) => ({
         clientWidth: element.clientWidth,
-        height: element.getBoundingClientRect().height,
         scrollWidth: element.scrollWidth,
       }));
       expect(scrollWidth, `${name} fits its segment`).toBeLessThanOrEqual(clientWidth);
-      expect(height, `${name} is a touch target`).toBeGreaterThanOrEqual(TOUCH_TARGET_MIN_HEIGHT_PX);
     }
   });
 

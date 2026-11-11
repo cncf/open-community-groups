@@ -6,7 +6,7 @@ const BOUNDS_PADDING_PX = 40;
 const MAPLIBRE_SCRIPT_SRC = "/static/vendor/js/maplibre-gl.v5.24.0.min.js";
 // OpenFreeMap basemap style for each color theme.
 const MAP_STYLE_URLS = {
-  dark: "https://tiles.openfreemap.org/styles/dark",
+  dark: "https://tiles.openfreemap.org/styles/fiord",
   light: "https://tiles.openfreemap.org/styles/bright",
 };
 // Keep opposite map edges distinct when MapLibre wraps longitude coordinates.

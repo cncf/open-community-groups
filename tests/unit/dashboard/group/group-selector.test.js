@@ -1,8 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/group/group-selector.js";
+import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
+import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 describe("group-selector", () => {
   let htmx;
@@ -79,6 +81,36 @@ describe("group-selector", () => {
     expect(list).to.exist;
     expect(option?.classList.contains("group-button")).to.equal(true);
     expect(document.activeElement).to.equal(searchInput);
+  });
+
+  it("reveals the dropdown without focusing the search input on phones", async () => {
+    // Render the selector with the phone query on.
+    const media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
+    const element = await renderSelector({
+      groups: [
+        { group_id: "1", name: "Platform Team", active: true },
+        { group_id: "2", name: "Cloud Native", active: true },
+      ],
+      selectedGroupId: "1",
+    });
+    const dropdown = element.querySelector("#group-selector-dropdown");
+    const scrollCalls = [];
+    dropdown.scrollIntoView = (options) => scrollCalls.push(options);
+
+    try {
+      // Open the selector.
+      element.querySelector("#group-selector-button").click();
+      await element.updateComplete;
+      await element.updateComplete;
+
+      // Verify the keyboard stays down and the dropdown scrolls into view inside the sheet.
+      expect(dropdown.classList.contains("hidden")).to.equal(false);
+      expect(document.activeElement).not.to.equal(element.querySelector("#group-search-input"));
+      expect(scrollCalls).to.deep.equal([{ block: "nearest" }]);
+    } finally {
+      // Restore mocked globals.
+      media.restore();
+    }
   });
 
   it("filters groups from the current query", async () => {

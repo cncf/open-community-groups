@@ -32,6 +32,8 @@ import { loadPublicPage, PUBLIC_PAGES } from "./public-pages.js";
 
 // Canvas the critical style paints before the stylesheet loads: the dark surface, #181514.
 const DARK_CANVAS_BACKGROUND = "rgb(24, 21, 20)";
+// Dark `plate` token, #e7e5e4: the soft backing of plates in dark.
+const DARK_PLATE_BACKGROUND = "rgb(231, 229, 228)";
 // Dark `raised` token, #201d1b: menus, popovers and sheets.
 const DARK_RAISED_BACKGROUND = "rgb(32, 29, 27)";
 // Dark `canvas` token, #0b0a09: the page shell behind content cards.
@@ -68,11 +70,16 @@ const EVENT_PAGE = PUBLIC_PAGES.find(({ name }) => name === "event");
 const FOOTER_OUTLINE = "rgb(255, 255, 255)";
 // Seeded group page, with the logo plate and the location raster placeholder.
 const GROUP_PAGE = PUBLIC_PAGES.find(({ name }) => name === "group");
-// Smallest height of a theme choice at every width, in CSS pixels.
+// Raster and opacity of the map placeholder behind "Location not provided", per color theme.
+const MAP_PLACEHOLDER = {
+  dark: { image: "/static/images/map_dark.png", opacity: "0.4" },
+  light: { image: "/static/images/map.png", opacity: "0.3" },
+};
+// Smallest height of a theme choice on touch screens, in CSS pixels.
 const MIN_CHOICE_HEIGHT_PX = 44;
 // Page whose shell is the canvas at every width, with one content card.
 const NOT_FOUND_PAGE = PUBLIC_PAGES.find(({ name }) => name === "not found");
-// Background of a light-island plate, white in both color themes.
+// Background of a plate in light; dark uses `DARK_PLATE_BACKGROUND`.
 const PLATE_BACKGROUND = "rgb(255, 255, 255)";
 // Seeded pages with entity logo plates: the logo macro plate in the summary and, further down,
 // the Tech Corp sponsor badge plate.
@@ -91,8 +98,6 @@ const PRE_PAINT_CASES = [
 ];
 // Focus outline in dark: the site's dark primary edge role, emitted by the brand ramp.
 const PRIMARY_DARK_EDGE_OUTLINE = "var(--ocg-primary-dark-edge)";
-// Opacity of the raster placeholder behind "Location not provided", per color theme.
-const RASTER_OPACITY = { dark: "0.1", light: "0.3" };
 // Image served for the injected site header logos.
 const SITE_LOGO_FILE = fileURLToPath(
   new URL("../../../../ocg-server/static/images/e2e/badges/host.png", import.meta.url),
@@ -136,11 +141,11 @@ test.describe("color theme", () => {
   });
 
   test("guest menu switches the color theme live @smoke", async ({ page }) => {
-    await expectGuestMenuLiveSwitch(page);
+    await expectGuestMenuLiveSwitch(page, { touchTargets: false });
   });
 
   test("guest account sheet switches the color theme live @mobile", async ({ page }) => {
-    await expectGuestMenuLiveSwitch(page);
+    await expectGuestMenuLiveSwitch(page, { touchTargets: true });
   });
 
   test("stored color theme applies before the body on reload @smoke", async ({ page }) => {
@@ -197,7 +202,6 @@ test.describe("color theme", () => {
     await expectCheckedChoice(choices, "dark");
     await choices.light.click();
     await expectTheme(page, "light");
-    await closeAccountMenu(page);
 
     // Go back to the home snapshot, taken while Dark was checked.
     await page.goBack();
@@ -229,7 +233,7 @@ test.describe("color theme", () => {
     const choices = getThemeChoices(page);
     await expectCheckedChoice(choices, "system");
 
-    // Pick Dark, then System.
+    // Pick Dark, then System; each pick closes the menu, which the check reopens.
     await choices.dark.click();
     await expectChoiceApplied(page, choices, { preference: "dark", stored: "dark", theme: "dark" });
     await choices.system.click();
@@ -254,6 +258,7 @@ test.describe("color theme", () => {
     await closeAccountMenu(page);
 
     // Pick System in the other tab and verify the first follows its light OS.
+    await openAccountMenu(otherPage);
     await otherChoices.system.click();
     await expectTheme(page, "light");
     await openAccountMenu(page);
@@ -278,7 +283,9 @@ test.describe("color theme", () => {
       await openAccountMenu(page);
       await choices.light.click();
       await expectTheme(page, "light");
+      await openAccountMenu(page);
       await expectCheckedChoice(choices, "light");
+      await closeAccountMenu(page);
 
       // Follow the boosted Stats link and verify the choice survives.
       await followStatsLink(page, isMobile);
@@ -381,10 +388,29 @@ test.describe("dark palette", () => {
     }
   });
 
-  test("light islands keep their light colors in stored dark", async ({ page }) => {
-    // Fail the group logo, so the broken-image handler puts its stone icon in the logo plate.
-    await page.route(`**${TEST_COMMUNITY_LOGO_URL}`, (route) => route.abort());
+  testAtBothWidths("modals draw a thin edge only in dark", async ({ page }) => {
+    // Open the event contact modal and return its card.
+    const openContactModal = async () => {
+      await loadPublicPage(page, EVENT_PAGE);
+      await page.locator("#open-contact-modal").click();
+      const panel = page.locator("#contact-modal .modal-card");
+      await expect(panel).toBeVisible();
+      return panel;
+    };
+    const edgeOffsets = "0px 0px 0px 1px";
 
+    // Verify the light modal, or sheet on phones, draws no edge.
+    expect(await readStyle(await openContactModal(), "box-shadow")).not.toContain(edgeOffsets);
+
+    // Verify stored dark adds a stone-200 hairline around it.
+    await useTheme(page, { stored: "dark" });
+    const darkPanel = await openContactModal();
+    await expectTheme(page, "dark");
+    const darkEdge = `${await readColor(page, "var(--color-stone-200)")} ${edgeOffsets}`;
+    await expect.poll(() => readStyle(darkPanel, "box-shadow")).toContain(darkEdge);
+  });
+
+  test("light islands keep their light colors in stored dark", async ({ page }) => {
     // Read the island colors in light, then in stored dark.
     const light = await readIslandColors(page);
     await useTheme(page, { stored: "dark" });
@@ -394,6 +420,34 @@ test.describe("dark palette", () => {
     // Verify the page turned dark around islands that kept their light colors.
     expect(dark.root).toBe(DARK_SURFACE_BACKGROUND);
     expect(dark.islands).toEqual(light.islands);
+  });
+
+  test("a plate whose image failed drops its white backing in stored dark", async ({ page }) => {
+    // Fail the group logo, so the broken-image handler puts its stone icon in the logo plate.
+    await page.route(`**${TEST_COMMUNITY_LOGO_URL}`, (route) => route.abort());
+    const plate = page.locator("[data-group-logo] .plate");
+    const icon = plate.locator("[data-ocg-broken-image-icon] .icon-broken-image");
+
+    // Verify light keeps the white plate behind the placeholder.
+    await loadPublicPage(page, GROUP_PAGE);
+    await expect(icon).toBeVisible();
+    await expect(plate).toHaveCSS("background-color", PLATE_BACKGROUND);
+
+    // Verify stored dark paints the plate and its frame with the light palette's deep stone, and
+    // lets the placeholder show through with its stone icon.
+    await useTheme(page, { stored: "dark" });
+    await loadPublicPage(page, GROUP_PAGE);
+    await expectTheme(page, "dark");
+    await expect(icon).toBeVisible();
+    const darkBacking = await readColor(page, "var(--ocg-light-stone-800)");
+    await expect(plate).toHaveCSS("background-color", darkBacking);
+    await expect(plate).toHaveCSS("background-clip", "border-box");
+    await expect(plate).toHaveCSS("border-top-color", TRANSPARENT_BACKGROUND);
+    await expect(plate.locator("[data-ocg-broken-image-icon]")).toHaveCSS(
+      "background-color",
+      TRANSPARENT_BACKGROUND,
+    );
+    await expect(icon).toHaveCSS("background-color", await readColor(page, "var(--ocg-light-stone-400)"));
   });
 
   test("print renders stored dark with the light colors", async ({ page }) => {
@@ -463,17 +517,19 @@ test.describe("dark palette", () => {
     });
   });
 
-  test("raster placeholder dims further in dark", async ({ page }) => {
-    // Load the group page, whose location card shows the raster placeholder, in light.
-    const placeholder = page.locator('[data-group-summary-card="location"] .raster-placeholder');
+  test("map placeholder shows one raster per color theme", async ({ page }) => {
+    // Load the group page, whose location card shows the map placeholder, in light.
+    const placeholder = page.locator('[data-group-summary-card="location"] .map-placeholder');
     await loadPublicPage(page, GROUP_PAGE);
-    await expect(placeholder).toHaveCSS("opacity", RASTER_OPACITY.light);
+    await expect(placeholder).toHaveCSS("opacity", MAP_PLACEHOLDER.light.opacity);
+    expect(await readStyle(placeholder, "background-image")).toContain(`${MAP_PLACEHOLDER.light.image}"`);
 
-    // Load it again in stored dark.
+    // Load it again in stored dark and verify the dark raster replaces the light one.
     await useTheme(page, { stored: "dark" });
     await loadPublicPage(page, GROUP_PAGE);
     await expectTheme(page, "dark");
-    await expect(placeholder).toHaveCSS("opacity", RASTER_OPACITY.dark);
+    await expect(placeholder).toHaveCSS("opacity", MAP_PLACEHOLDER.dark.opacity);
+    expect(await readStyle(placeholder, "background-image")).toContain(`${MAP_PLACEHOLDER.dark.image}"`);
   });
 });
 
@@ -560,13 +616,13 @@ test.describe("logo plates", () => {
     // Pick Dark from the account menu.
     await pickTheme(page, "dark");
 
-    // Verify dark paints the white plate with the dark plate edge.
+    // Verify dark paints the soft plate with the dark plate edge.
     const darkEdge = await readDarkPlateEdge(page);
-    await expect(platedLogo).toHaveCSS("background-color", PLATE_BACKGROUND);
+    await expect(platedLogo).toHaveCSS("background-color", DARK_PLATE_BACKGROUND);
     await expect.poll(() => readStyle(platedLogo, "box-shadow")).toContain(darkEdge);
   });
 
-  test("entity logo plates stay white and draw the dark edge in stored dark", async ({ page }) => {
+  test("entity logo plates soften and draw the dark edge in stored dark", async ({ page }) => {
     for (const { logoPlate, publicPage } of PLATE_PAGES) {
       await test.step(publicPage.name, async () => {
         // Load the page in stored light.
@@ -575,8 +631,14 @@ test.describe("logo plates", () => {
         await expectTheme(page, "light");
         const sponsorPlate = getSponsorPlate(page);
 
-        // Verify neither plate draws a shadow and the logo plate outline is light stone-300.
+        // Verify both plates are white with their artwork drawn as is, neither draws a shadow
+        // and the logo plate outline is light stone-300.
         const lightStone300 = await readColor(page, "var(--ocg-light-stone-300)");
+        await expect(logoPlate(page)).toHaveCSS("background-color", PLATE_BACKGROUND);
+        await expect(sponsorPlate).toHaveCSS("background-color", PLATE_BACKGROUND);
+        await expect(logoPlate(page)).toHaveCSS("background-clip", "border-box");
+        await expect(sponsorPlate).toHaveCSS("background-clip", "border-box");
+        await expect(sponsorPlate.locator("img")).toHaveCSS("mix-blend-mode", "normal");
         await expect(logoPlate(page)).toHaveCSS("outline-color", lightStone300);
         await expect(logoPlate(page)).toHaveCSS("box-shadow", "none");
         await expect(sponsorPlate).toHaveCSS("box-shadow", "none");
@@ -587,9 +649,16 @@ test.describe("logo plates", () => {
         await expectTheme(page, "dark");
         const darkEdge = await readDarkPlateEdge(page);
 
-        // Verify both plates stay white and draw the dark plate edge.
-        await expect(logoPlate(page)).toHaveCSS("background-color", PLATE_BACKGROUND);
-        await expect(sponsorPlate).toHaveCSS("background-color", PLATE_BACKGROUND);
+        // Verify both plates keep the soft backing only under their artwork, blended onto it,
+        // inside a see-through frame, and draw the dark plate edge.
+        await expect(logoPlate(page)).toHaveCSS("background-color", DARK_PLATE_BACKGROUND);
+        await expect(sponsorPlate).toHaveCSS("background-color", DARK_PLATE_BACKGROUND);
+        for (const plate of [logoPlate(page), sponsorPlate]) {
+          await expect(plate).toHaveCSS("background-clip", "content-box");
+          await expect(plate).toHaveCSS("border-top-color", TRANSPARENT_BACKGROUND);
+        }
+        await expect(logoPlate(page).locator("img")).toHaveCSS("mix-blend-mode", "multiply");
+        await expect(sponsorPlate.locator("img")).toHaveCSS("mix-blend-mode", "multiply");
         await expect(logoPlate(page)).toHaveCSS("outline-color", darkEdge);
         await expect.poll(() => readStyle(sponsorPlate, "box-shadow")).toContain(darkEdge);
       });
@@ -778,7 +847,7 @@ test.describe("entity dark images", () => {
     await expectTheme(page, "dark");
     await expect(groupLogo.locator("[data-theme-image]")).toHaveCount(0);
     await expect(groupLogo.locator(".plate")).toBeVisible();
-    await expect(groupLogo.locator(".plate")).toHaveCSS("background-color", PLATE_BACKGROUND);
+    await expect(groupLogo.locator(".plate")).toHaveCSS("background-color", DARK_PLATE_BACKGROUND);
     await expect(page.locator(`img[src="${orphanDarkUrl}"]`)).toHaveCount(0);
   });
 
@@ -982,8 +1051,9 @@ const expectCheckedChoice = async (choices, preference) => {
 };
 
 /**
- * Verifies a picked choice: the resolved theme, the stored key, the checked choice, and the menu
- * or account sheet still open.
+ * Verifies a picked choice: the resolved theme, the stored key, and the menu or account sheet
+ * closed with focus back on its trigger. Then reopens the menu, which stays open, and verifies
+ * the checked choice.
  * @param {import("@playwright/test").Page} page - Page under test.
  * @param {Record<string, import("@playwright/test").Locator>} choices - Theme choices.
  * @param {{ preference: string, stored: string|null, theme: string }} expected - Expected state;
@@ -991,32 +1061,39 @@ const expectCheckedChoice = async (choices, preference) => {
  * @returns {Promise<void>}
  */
 const expectChoiceApplied = async (page, choices, { preference, stored, theme }) => {
+  const { userButton, userMenu } = getAccountSheet(page);
   await expectTheme(page, theme);
   expect(await readStoredTheme(page)).toBe(stored);
+  await expect(userMenu).toBeHidden();
+  await expect(userButton).toBeFocused();
+  await openAccountMenu(page);
   await expectCheckedChoice(choices, preference);
-  await expect(getAccountSheet(page).userMenu).toBeVisible();
 };
 
 /**
  * Switches the color theme from the guest menu, the account sheet on phones, with the pointer
  * and the keyboard.
  * @param {import("@playwright/test").Page} page - Guest page.
+ * @param {{ touchTargets: boolean }} options - Whether every choice must be a full-size touch
+ *   target, as on touch screens; fine pointers get the compact segments.
  * @returns {Promise<void>}
  */
-const expectGuestMenuLiveSwitch = async (page) => {
+const expectGuestMenuLiveSwitch = async (page, { touchTargets }) => {
   // Open the guest menu.
   await navigateToPath(page, "/stats");
   await markDocument(page);
   const choices = getThemeChoices(page);
   await openAccountMenu(page);
 
-  // Verify System starts checked and every choice is a full-size target.
+  // Verify System starts checked and, on touch screens, every choice is a full-size target.
   await expectCheckedChoice(choices, "system");
-  for (const choice of Object.values(choices)) {
-    expect((await choice.boundingBox()).height).toBeGreaterThanOrEqual(MIN_CHOICE_HEIGHT_PX);
+  if (touchTargets) {
+    for (const choice of Object.values(choices)) {
+      expect((await choice.boundingBox()).height).toBeGreaterThanOrEqual(MIN_CHOICE_HEIGHT_PX);
+    }
   }
 
-  // Pick Dark, then Light; the menu stays open.
+  // Pick Dark, then Light; each pick closes the menu, which the check reopens.
   await choices.dark.click();
   await expectChoiceApplied(page, choices, { preference: "dark", stored: "dark", theme: "dark" });
   await choices.light.click();
@@ -1028,6 +1105,7 @@ const expectGuestMenuLiveSwitch = async (page) => {
   await expect(choices.dark).toBeFocused();
   await page.keyboard.press("Enter");
   await expectChoiceApplied(page, choices, { preference: "dark", stored: "dark", theme: "dark" });
+  await choices.dark.focus();
   await page.keyboard.press("Tab");
   await expect(choices.system).toBeFocused();
   await page.keyboard.press("Shift+Tab");
@@ -1126,16 +1204,16 @@ const expectTheme = async (page, theme) => {
 
 /**
  * Follows the boosted Stats link: the Main navigation link on desktop, the account sheet row on
- * phones, where the sheet is already open.
- * @param {import("@playwright/test").Page} page - Page under test.
+ * phones, where the sheet is opened first.
+ * @param {import("@playwright/test").Page} page - Page under test, with the account menu closed.
  * @param {boolean} isMobile - Whether the page runs on the phone project.
  * @returns {Promise<void>}
  */
 const followStatsLink = async (page, isMobile) => {
   if (isMobile) {
+    await openAccountMenu(page);
     await getAccountSheet(page).userMenu.getByRole("menuitem", { name: "Stats" }).click();
   } else {
-    await closeAccountMenu(page);
     await page
       .getByRole("navigation", { name: "Main navigation" })
       .getByRole("link", { name: "Stats" })
@@ -1249,7 +1327,7 @@ const openAccountMenu = async (page) => {
 };
 
 /**
- * Picks a color theme from the account menu, waits for it to apply and closes the menu.
+ * Picks a color theme from the account menu and waits for it to apply; the pick closes the menu.
  * @param {import("@playwright/test").Page} page - Page under test.
  * @param {"dark"|"light"} theme - Explicit choice to pick.
  * @returns {Promise<void>}
@@ -1258,7 +1336,7 @@ const pickTheme = async (page, theme) => {
   await openAccountMenu(page);
   await getThemeChoices(page)[theme].click();
   await expectTheme(page, theme);
-  await closeAccountMenu(page);
+  await expect(getAccountSheet(page).userMenu).toBeHidden();
 };
 
 /**
@@ -1312,16 +1390,16 @@ const readDarkPlateEdge = async (page) => {
 };
 
 /**
- * Loads the group page, waits for the broken-image icon in its logo plate, and reads the root
- * background and the colors of the light islands: the icon inside the logo plate and the
- * footer, an ink island, with its stone-shaded copy.
- * @param {import("@playwright/test").Page} page - Page whose group logo request fails.
+ * Loads the group page and reads the root background and the colors of the light islands: the
+ * stone-200 shade the sponsor badge plate resolves and the footer, an ink island, with its
+ * stone-shaded copy.
+ * @param {import("@playwright/test").Page} page - Page under test.
  * @returns {Promise<{ islands: object, root: string }>} Island colors and root background.
  */
 const readIslandColors = async (page) => {
   await loadPublicPage(page, GROUP_PAGE);
-  const icon = page.locator("[data-group-logo] [data-ocg-broken-image-icon] .icon-broken-image");
-  await expect(icon).toBeVisible();
+  const plate = getSponsorPlate(page);
+  await expect(plate).toBeAttached();
   const footer = page.getByRole("contentinfo", { name: "Site footer" });
   const readColors = (locator) =>
     locator.evaluate((element) => {
@@ -1333,7 +1411,7 @@ const readIslandColors = async (page) => {
     islands: {
       copy: await readColors(footer.locator("p", { hasText: "Powered by" })),
       footer: await readColors(footer),
-      icon: await icon.evaluate((element) => getComputedStyle(element).backgroundColor),
+      plate: await readStyle(plate, "--color-stone-200"),
     },
     root: await page.locator("html").evaluate((element) => getComputedStyle(element).backgroundColor),
   };

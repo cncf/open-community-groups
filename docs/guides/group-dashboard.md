@@ -117,7 +117,7 @@ background and follow the same size rules as their light image. Dark mode shows 
 version of the image OCG picked: a group without its own logo or banner uses the community image
 together with the community's dark mode version, while a group with its own image uses only its
 own dark mode version and never the community's. Without a dark mode version, dark mode shows the
-light image, and logos keep their white background. Emails, link previews and calendar exports
+light image, and logos sit on a light background. Emails, link previews and calendar exports
 always use the light images.
 
 Pretty URL slugs are optional. When set, OCG uses the pretty slug in generated

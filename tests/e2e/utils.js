@@ -4,11 +4,11 @@ import { expect, test } from "@playwright/test";
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
 // OpenFreeMap basemap style of each color theme (see static/js/common/location/maplibre.js).
 export const BASEMAP_STYLE_URLS = {
-  dark: "https://tiles.openfreemap.org/styles/dark",
+  dark: "https://tiles.openfreemap.org/styles/fiord",
   light: "https://tiles.openfreemap.org/styles/bright",
 };
 // Either basemap style URL, matched whole.
-const BASEMAP_STYLE_URL_PATTERN = /^https:\/\/tiles\.openfreemap\.org\/styles\/(?:bright|dark)$/;
+const BASEMAP_STYLE_URL_PATTERN = /^https:\/\/tiles\.openfreemap\.org\/styles\/(?:bright|fiord)$/;
 const NAVIGATION_ASSET_TIMEOUT_MS = 5_000;
 const NAVIGATION_RETRY_ATTEMPTS = 3;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
@@ -926,7 +926,7 @@ export const swipeHorizontally = async (page, fromX, toX, y = 300) => {
 };
 
 /**
- * Replaces the external basemap styles of both color themes (`styles/bright` and `styles/dark`)
+ * Replaces the external basemap styles of both color themes (`styles/bright` and `styles/fiord`)
  * with an empty style while keeping the real map runtime. With `attribution`, the style keeps one
  * empty source credited with that HTML, so maps render their attribution links without the network.
  */
@@ -1024,8 +1024,8 @@ export const useTheme = async (page, { stored, system } = {}) => {
 };
 
 /**
- * Picks a color theme from the account menu (the account sheet on phones), waits for it to apply
- * and closes the menu again, as a live switch without a reload.
+ * Picks a color theme from the account menu (the account sheet on phones) and waits for it to
+ * apply, as a live switch without a reload. The pick closes the menu.
  * @param {import("@playwright/test").Page} page - Page under test.
  * @param {"dark" | "light" | "system"} preference - Choice to pick.
  * @returns {Promise<void>} Resolves once the choice is applied and the menu is closed.
@@ -1038,11 +1038,12 @@ export const pickThemeFromAccountMenu = async (page, preference) => {
     .getByRole("group", { name: "Theme" })
     .getByRole("menuitemradio", { exact: true, name: THEME_CHOICE_LABELS[preference] });
   await choice.click();
-  await expect(choice).toHaveAttribute("aria-checked", "true");
+  await expect
+    .poll(() => page.evaluate((key) => window.localStorage.getItem(key), THEME_STORAGE_KEY))
+    .toBe(preference === "system" ? null : preference);
   if (preference !== "system") {
     await expect(page.locator("html")).toHaveAttribute("data-theme", preference);
   }
-  await page.keyboard.press("Escape");
   await expect(userMenu).toBeHidden();
 };
 

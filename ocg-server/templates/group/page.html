@@ -274,8 +274,7 @@
           {{ maps::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, small_overlay_text = location_text_small, modal_title = group.name|demoji) -}}
         {% else -%}
           <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-            <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat raster-placeholder">
-            </div>
+            <div class="absolute inset-0 map-placeholder"></div>
             <div class="relative flex w-full items-center justify-center">
               <div class="text-xl font-semibold text-stone-700">Location not provided</div>
             </div>
@@ -283,8 +282,7 @@
         {% endif -%}
       {% else -%}
         <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat raster-placeholder">
-          </div>
+          <div class="absolute inset-0 map-placeholder"></div>
           <div class="relative flex w-full items-center justify-center">
             <div class="text-xl font-semibold text-stone-700">Location not provided</div>
           </div>

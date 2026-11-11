@@ -99,7 +99,7 @@ it.
 
 The logo, banner and mobile banner each accept an optional dark mode version, previewed on a dark
 background. It follows the same size rules as its light image, and the public pages show it in
-dark mode in place of that image, with logos shown without their white background. A dark mode
+dark mode in place of that image, with logos shown without their light background. A dark mode
 version is used only together with its light image; without one, dark mode shows the light image.
 Emails, link previews and calendar exports always use the light images.
 

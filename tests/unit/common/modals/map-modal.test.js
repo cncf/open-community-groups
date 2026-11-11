@@ -12,7 +12,7 @@ import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mockMapLibre } from "/tests/unit/test-utils/maps.js";
 
 const BRIGHT_STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
-const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
+const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/fiord";
 
 describe("map modal", () => {
   let mapLibre;

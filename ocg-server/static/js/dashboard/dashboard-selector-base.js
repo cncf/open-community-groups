@@ -3,8 +3,9 @@ import { repeat } from "lit/directives/repeat.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
-import { buildElementId, focusElementById } from "/static/js/common/dom.js";
+import { buildElementId, focusElementById, getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
 
 /**
  * Base class for dashboard selectors that choose one item from a combobox.
@@ -49,9 +50,7 @@ export class DashboardSelectorBase extends LitWrapper {
       resetQueryOnToggle: true,
       onOpen: () => {
         this._pendingQuery = "";
-        this.updateComplete.then(() => {
-          focusElementById(this, this._domId("search-input"));
-        });
+        this.updateComplete.then(() => this._revealDropdown());
       },
       onClose: () => {
         this._pendingQuery = "";
@@ -73,6 +72,23 @@ export class DashboardSelectorBase extends LitWrapper {
   _domId(suffix) {
     const prefix = this.idPrefix || this._selectorConfig.selectorName;
     return buildElementId(prefix, suffix);
+  }
+
+  /**
+   * Hands the opened dropdown to the user. Desktop focuses the search input. Phones show the
+   * selector in the menu sheet, where focusing the input would raise the keyboard over the
+   * options, so the dropdown is scrolled into view instead.
+   * @returns {void}
+   */
+  _revealDropdown() {
+    if (!this._combobox.isOpen) {
+      return;
+    }
+    if (isPhoneViewport()) {
+      getElementById(this, this._domId("selector-dropdown"))?.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    focusElementById(this, this._domId("search-input"));
   }
 
   /**
@@ -292,7 +308,8 @@ export class DashboardSelectorBase extends LitWrapper {
         </button>
 
         <div
-          class="absolute top-14 left-0 right-0 z-10 bg-raised rounded-lg shadow-sm border border-stone-200 phone:top-[60px] ${
+          id="${this._domId("selector-dropdown")}"
+          class="absolute top-14 left-0 right-0 z-10 bg-raised rounded-lg shadow-sm border border-stone-200 phone:static phone:mt-1 ${
             this._combobox.isOpen ? "" : "hidden"
           }"
         >

@@ -280,7 +280,7 @@ export class ImageField extends LitWrapper {
     }
 
     if (this._hasImage) {
-      // Logo previews show the public white plate in dark mode, dark mode images none.
+      // Logo previews show the public light plate in dark mode, dark mode images none.
       const plateClass =
         this.imageKind === IMAGE_KIND.LOGO && !this.darkPreview ? " plate plate-ring dark:bg-plate" : "";
       return html`

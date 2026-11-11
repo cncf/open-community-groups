@@ -10,10 +10,10 @@ import {
 } from "../../../utils.js";
 import { installFakeWakeLock } from "../../group/check-in/helpers.js";
 
+// Dark `plate` token, #e7e5e4: the soft backing of plates in dark.
+const DARK_PLATE_BACKGROUND = "rgb(231, 229, 228)";
 // Raised token in light, which the credential sheet panel paints.
 const LIGHT_RAISED_BACKGROUND = "rgb(255, 255, 255)";
-// Background of a light-island plate, white in both color themes.
-const PLATE_BACKGROUND = "rgb(255, 255, 255)";
 const USER_CHECK_IN_PATH = "/dashboard/user?tab=check-in";
 
 test.describe("user dashboard check-in", () => {
@@ -212,17 +212,17 @@ test.describe("user dashboard check-in", () => {
     expect(imageBounds.y + imageBounds.height).toBeLessThanOrEqual(232);
   });
 
-  test("event card logo tile stays a white plate in stored dark", async ({ pending2Page }) => {
+  test("event card logo tile keeps a soft plate in stored dark", async ({ pending2Page }) => {
     // Load the attendee check-in dashboard in stored dark.
     await useTheme(pending2Page, { stored: "dark" });
     await navigateToPath(pending2Page, USER_CHECK_IN_PATH);
     await expectDarkTheme(pending2Page);
 
-    // Verify the event card logo tile keeps its white plate.
+    // Verify the event card logo tile sits on the soft plate.
     const eventCard = pending2Page.locator("[data-user-check-in-open]", {
       hasText: TEST_OPEN_CHECK_IN_EVENT.name,
     });
-    await expect(eventCard.locator(".plate")).toHaveCSS("background-color", PLATE_BACKGROUND);
+    await expect(eventCard.locator(".plate")).toHaveCSS("background-color", DARK_PLATE_BACKGROUND);
   });
 
   testAtBothWidths("credential sheet follows stored dark and loads the QR code", async ({ pending2Page }) => {

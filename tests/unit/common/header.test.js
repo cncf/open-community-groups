@@ -633,7 +633,7 @@ describe("header", () => {
       expect(dropdown.classList.contains("hidden")).to.equal(false);
     });
 
-    it("keeps the anchored menu open after a theme choice click", () => {
+    it("closes the anchored menu after a theme choice click and returns focus", () => {
       // Open the anchored menu with the phone query off.
       media = stubMatchMedia();
       const { dropdown, userButton } = renderSheetFixture();
@@ -642,9 +642,10 @@ describe("header", () => {
       // Pick a color theme.
       dropdown.querySelector('[data-ocg-theme-choice="dark"]').click();
 
-      // Verify the menu stays open, since only links close it.
-      expect(dropdown.classList.contains("hidden")).to.equal(false);
-      expect(userButton.getAttribute("aria-expanded")).to.equal("true");
+      // Verify the menu closes and its trigger takes focus back.
+      expect(dropdown.classList.contains("hidden")).to.equal(true);
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+      expect(document.activeElement).to.equal(userButton);
     });
 
     it("closes the anchored menu from Sign up without moving focus", () => {
@@ -771,7 +772,7 @@ describe("header", () => {
       expect(dropdown.classList.contains("hidden")).to.equal(false);
     });
 
-    it("keeps the sheet open after a theme choice click", () => {
+    it("closes the sheet after a theme choice click and returns focus", () => {
       // Open the sheet.
       media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
       const { dropdown, userButton } = renderSheetFixture();
@@ -780,9 +781,10 @@ describe("header", () => {
       // Pick a color theme.
       dropdown.querySelector('[data-ocg-theme-choice="dark"]').click();
 
-      // Verify the sheet stays up, since only its scrim and close button close it.
-      expect(dropdown.classList.contains("hidden")).to.equal(false);
-      expect(document.body.dataset.modalOpenCount).to.equal("1");
+      // Verify the sheet closes, releases the page and hands focus back to its trigger.
+      expect(dropdown.classList.contains("hidden")).to.equal(true);
+      expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
+      expect(document.activeElement).to.equal(userButton);
     });
 
     it("traps Tab over the rendered rows, including the hidden class row", () => {

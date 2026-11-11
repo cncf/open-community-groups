@@ -19,18 +19,12 @@
       }
     </style>
     {# Viewer preferences: apply the color theme and the desktop version before first paint.
-       Inline, synchronous and before the stylesheets on purpose: the classic vendor scripts
-       below wait for the stylesheets and block the parser, so on a cold CSS fetch only the
+       Inline, synchronous and before the stylesheets on purpose: on a cold CSS fetch only the
        canvas can paint early, and the inline color-scheme plus the critical style above cover
        it. Storage keys and attribute names mirror static/js/common/theme.js and
-       static/js/common/viewport-mode.js. Askama parses the included file as template source,
-       so it must hold no Askama expression, tag or comment opening delimiter. build.rs
-       rewrites every hashed asset path inside templates as a plain substring, so the file must
-       hold no static asset path, not even in a comment; it then renders identically on every
-       response. A future CSP must hash the rendered script text and never use a nonce, which
-       would make every response unique and break the shared cache. The legacy cookie shim, and
-       the legacy cookie expiry in viewport-mode.js, can go one year after release: the legacy
-       cookie was written with a 365-day Max-Age. -#}
+       static/js/common/viewport-mode.js. Askama parses the included file as template source
+       and build.rs rewrites static asset paths in templates, so the file must hold no Askama
+       opening delimiter and no static asset path, not even in a comment. -#}
     <script data-ocg-preferences>
       {% include "common/scripts/preferences_init.js" -%}
     </script>

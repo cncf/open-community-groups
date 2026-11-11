@@ -382,7 +382,7 @@ The banner and the mobile banner resolve independently, each to the first of the
 and the community that has one. Dark mode then uses the dark mode version of that same level, if
 it has one; it never takes a dark mode version from another level. The logo follows the same rule.
 Dark mode versions are optional, previewed on a dark background and follow the same size rules as
-their light image. Without one, dark mode shows the light image, and logos keep their white
+their light image. Without one, dark mode shows the light image, and logos sit on a light
 background. Copying an event copies only its own images and their dark mode versions, never the
 ones it inherits.
 

@@ -307,6 +307,23 @@ test.describe("site docs page", () => {
     await expect(page).toHaveTitle("Overview");
   });
 
+  test("page content ends above the Contents bar @mobile", async ({ page }) => {
+    // Open a docs page and scroll to its end.
+    await navigateToPath(page, "/docs");
+    const article = page.locator(".ocg-docs-root .markdown-section");
+    await expect(article.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15000 });
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+
+    // Verify the last block of the page clears the fixed bar.
+    const barBox = await page.locator("[data-docs-bar]").boundingBox();
+    await expect
+      .poll(async () => {
+        const lastBlockBox = await article.locator("> *").last().boundingBox();
+        return lastBlockBox.y + lastBlockBox.height;
+      })
+      .toBeLessThanOrEqual(barBox.y);
+  });
+
   test("Contents stays usable when the user menu lands late @mobile", async ({ page }) => {
     // Hold the user menu, whose swap must leave the mount alone.
     const releaseUserMenu = await holdUserMenu(page);
@@ -696,12 +713,15 @@ test.describe("site docs page in dark", () => {
     await expect(docsRoot).toHaveCSS("background-color", surface);
     await expect(docsRoot.locator("[data-docs-bar]")).toHaveCSS("background-color", surface);
 
-    // Open Contents and verify the sheet and its head paint the raised surface.
+    // Open Contents and verify the sheet and its head paint the raised surface, inside the thin
+    // edge every sheet draws in dark.
     const { sheet } = await openContents(page);
     const raised = await resolveCssColor(sheet, "var(--color-raised)");
     expect(raised).not.toBe(WHITE_BACKGROUND);
     await expect(sheet).toHaveCSS("background-color", raised);
     await expect(sheet.locator(".docs-sheet-head")).toHaveCSS("background-color", raised);
+    const edge = `${await resolveCssColor(sheet, "var(--color-stone-200)")} 0px 0px 0px 1px`;
+    expect(await sheet.evaluate((element) => getComputedStyle(element).boxShadow)).toContain(edge);
   });
 
   test("the docs switch the color theme live", async ({ page }) => {

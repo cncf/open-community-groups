@@ -259,7 +259,7 @@ export class SponsorsSection extends LitWrapper {
         @mouseover=${() => (this.activeIndex = index)}
       >
         <div
-          class="plate plate-ring relative flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-plate border border-stone-200 overflow-hidden"
+          class="plate plate-ring relative flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-plate border border-stone-200 p-[3px] overflow-hidden"
         >
           <img
             src=${option.logo_url}
@@ -388,7 +388,7 @@ export class SponsorsSection extends LitWrapper {
                         class="inline-flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-surface p-4 w-full"
                       >
                         <div
-                          class="plate plate-ring relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-plate border border-stone-200 overflow-hidden"
+                          class="plate plate-ring relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-plate border border-stone-200 p-[3px] overflow-hidden"
                         >
                           <img
                             src=${s.logo_url}
@@ -440,7 +440,7 @@ export class SponsorsSection extends LitWrapper {
                     <div class="text-lg font-semibold text-stone-900 mb-4">Add sponsor level</div>
                     <div class="flex items-center gap-3 mb-4">
                       <div
-                        class="plate plate-ring relative flex items-center justify-center size-10 shrink-0 rounded-lg bg-plate border border-stone-200 overflow-hidden"
+                        class="plate plate-ring relative flex items-center justify-center size-10 shrink-0 rounded-lg bg-plate border border-stone-200 p-[3px] overflow-hidden"
                       >
                         <img
                           src=${this.pendingSponsor?.logo_url || ""}

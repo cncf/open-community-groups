@@ -313,6 +313,7 @@
       --color-canvas: #0b0a09;
       --color-surface: #181514;
       --color-raised: #201d1b;
+      --color-plate: #e7e5e4;
       --color-plate-edge: #4e4946;
       --color-shade: #000;
       --color-danger-fill: #e7000b;
@@ -352,9 +353,10 @@
   }
   /* theme-lint: tokens-end */
 
-  /* Light islands: plates (fixed white backings for third-party imagery) and ink (fixed dark
-     stages) re-declare every token the dark block overrides, except plate-edge, from light
-     sources. Each declaration matches @theme static, so the rule is a no-op in light. */
+  /* Light islands: plates (fixed light backings for third-party imagery, white in light and a
+     soft stone in dark) and ink (fixed dark stages) re-declare every token the dark block
+     overrides, except plate and plate-edge, from light sources. Each declaration matches
+     @theme static, so the rule is a no-op in light. */
   /* theme-lint: tokens-start light-island scope, re-declared from light sources */
   :where(.plate, .ink) {
     --color-stone-50: var(--ocg-light-stone-50);
@@ -861,8 +863,31 @@
     @apply min-h-0 overflow-x-hidden overflow-y-auto;
   }
 
-  /* Shared raster placeholders (map and virtual event images) under location panels. Dimmer
-     in dark, so the bright rasters do not glow on the dark surface. */
+  /* Dark only: a thin edge sets modal cards and sheets apart from the dimmed page, like the
+     SweetAlert popup. It fills Tailwind's ring slot, which their shadows already compose; the
+     docs Contents sheet (docs/shell.css) reads the slot in its own shadow. */
+  .modal-card,
+  .sheet-panel,
+  .ocg-docs-root .sidebar {
+    @variant dark {
+      --tw-ring-shadow: 0 0 0 1px var(--color-stone-200);
+    }
+  }
+
+  /* World map under location panels without coordinates: one raster per color theme, rendered
+     from the same OpenFreeMap styles as the live maps (bright and fiord). */
+  .map-placeholder {
+    @apply bg-cover bg-center bg-no-repeat opacity-30;
+    background-image: url('/static/images/map.png');
+
+    @variant dark {
+      background-image: url('/static/images/map_dark.png');
+      opacity: 0.4;
+    }
+  }
+
+  /* Virtual event image under location panels. Dimmer in dark, so the bright raster does not
+     glow on the dark surface. */
   .raster-placeholder {
     @apply opacity-30;
 
@@ -880,6 +905,65 @@
       box-shadow:
         var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow),
         var(--tw-ring-shadow), var(--tw-shadow);
+    }
+  }
+
+  /* Soft plates: the dark backing is a light stone rather than white (plate token), and artwork
+     multiplies onto it, so a logo exported on white blends in instead of showing a white box.
+     The backing sits only under the artwork. The frame around it, a border in the plate's own
+     colors and any padding, lets the page show through like the gallery mat, with the plate's
+     outline or ring as its edge. !important beats the border color utilities. */
+  .plate:not(img) {
+    @variant dark {
+      background-clip: content-box;
+
+      &:is(.border-plate, .border-stone-200) {
+        border-color: transparent !important;
+      }
+
+      & img {
+        mix-blend-mode: multiply;
+      }
+    }
+  }
+
+  /* The floating advertisement covers page content, so its frame stays opaque in dark. */
+  [data-ad-banner="floating"] > .plate {
+    @variant dark {
+      background-image:
+        linear-gradient(var(--color-plate), var(--color-plate)),
+        linear-gradient(var(--color-stone-800), var(--color-stone-800));
+      background-clip: content-box, border-box;
+    }
+  }
+
+  /* A plate with no artwork, none set or an image that failed, backs nothing, so dark drops its
+     light backing. Plates keep the light palette, whose deep stone-800 sits close to the dark
+     page: the whole plate takes it, frame included, and the placeholder icon shows on it.
+     !important beats the plate's own background utilities. */
+  .plate:not(img, :has(img)),
+  .plate:has([data-ocg-broken-image-icon]) {
+    @variant dark {
+      background-color: var(--color-stone-800) !important;
+      background-clip: border-box;
+
+      & [data-ocg-broken-image-icon] {
+        background-color: transparent !important;
+      }
+    }
+  }
+
+  /* Check-in code: its white quiet zone reads as a plate on the dark sheet, so dark rounds its
+     corners and sets the caption off it. */
+  #user-check-in-qr-image {
+    @variant dark {
+      @apply rounded-lg;
+    }
+  }
+
+  [data-user-check-in-qr-caption] {
+    @variant dark {
+      @apply mt-2;
     }
   }
 
@@ -926,6 +1010,15 @@
       background-color: var(--color-plate);
       box-shadow:
         0 0 0 4px var(--color-plate),
+        0 0 0 5px var(--color-plate-edge);
+    }
+  }
+
+  /* A broken site logo follows the plates whose image failed, padding included. */
+  [data-site-logo="plated"]:has([data-ocg-broken-image-icon]) {
+    @variant dark {
+      box-shadow:
+        0 0 0 4px var(--color-stone-800),
         0 0 0 5px var(--color-plate-edge);
     }
   }
@@ -1117,7 +1210,9 @@ button:disabled {
 
   /* Bottom sheet */
   .sheet-panel {
-    box-shadow: 0 -8px 30px color-mix(in srgb, var(--color-shade) 18%, transparent);
+    box-shadow:
+      var(--tw-ring-shadow),
+      0 -8px 30px color-mix(in srgb, var(--color-shade) 18%, transparent);
     @apply fixed inset-x-0 bottom-0 z-[1] max-h-[calc(100dvh-4rem)] w-auto max-w-none flex-col rounded-t-2xl rounded-b-none bg-raised pb-[env(safe-area-inset-bottom)] motion-safe:animate-[sheet-up_200ms_ease-out];
   }
 

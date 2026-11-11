@@ -40,7 +40,7 @@ const EVENT = {
 const RESULTS_ERROR_MESSAGE =
   "Something went wrong loading results. Please try again later.";
 const BRIGHT_STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
-const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
+const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/fiord";
 const LOCATIONS_SOURCE_ID = "explore-locations";
 
 /** Builds a successful search or card response. */

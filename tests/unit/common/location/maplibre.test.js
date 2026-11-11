@@ -11,7 +11,7 @@ import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockMapLibre } from "/tests/unit/test-utils/maps.js";
 
 const BRIGHT_STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
-const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
+const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/fiord";
 
 /**
  * Stores a color theme choice and announces it, as theme.js does after a switch.

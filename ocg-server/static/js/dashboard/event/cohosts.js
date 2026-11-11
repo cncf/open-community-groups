@@ -510,7 +510,7 @@ export class CohostsSelector extends LitWrapper {
     const hasDarkLogo = Boolean(group.logo_url && group.logo_dark_url);
     const plate = html`
       <div
-        class="plate plate-ring relative flex ${wrapperSize} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-stone-200 bg-plate"
+        class="plate plate-ring relative flex ${wrapperSize} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-stone-200 bg-plate p-[3px]"
         data-theme-image=${hasDarkLogo ? "light" : nothing}
       >
         ${
