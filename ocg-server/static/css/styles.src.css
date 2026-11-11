@@ -865,12 +865,22 @@
 
   /* Dark only: a thin edge sets modal cards and sheets apart from the dimmed page, like the
      SweetAlert popup. It fills Tailwind's ring slot, which their shadows already compose; the
-     docs Contents sheet (docs/shell.css) reads the slot in its own shadow. */
+     docs Contents sheet (docs/shell.css) reads the slot in its own shadow. A sheet panel takes
+     the edge as a dialog panel at any width and as a bottom sheet on phones only, so a desktop
+     layout built on the same element, such as the dashboard sidebar, stays edgeless. */
   .modal-card,
-  .sheet-panel,
+  [role="dialog"] > .sheet-panel,
   .ocg-docs-root .sidebar {
     @variant dark {
       --tw-ring-shadow: 0 0 0 1px var(--color-stone-200);
+    }
+  }
+
+  .sheet-panel {
+    @variant phone {
+      @variant dark {
+        --tw-ring-shadow: 0 0 0 1px var(--color-stone-200);
+      }
     }
   }
 
@@ -998,10 +1008,25 @@
     }
   }
 
-  /* Site header logo variants (common/header.html and common/badge_header.html), shown and
-     hidden by their data-theme-image pair. */
+  /* Site header logo (common/header.html and common/badge_header.html): a fixed slot, sized for
+     2388x605 artwork, so the header never moves while the image loads or follows the color
+     theme. Logos of other proportions are contained in it, left aligned. Width and height are
+     both explicit: with aspect-ratio, Safari grows the slot to the image's natural width.
+     Paired logos are shown and hidden by their data-theme-image pair. */
   [data-site-logo] {
-    display: inline-flex;
+    --site-logo-height: 2.5rem;
+
+    @apply inline-flex flex-none;
+    width: calc(var(--site-logo-height) * 2388 / 605);
+    height: var(--site-logo-height);
+
+    @variant sm {
+      --site-logo-height: 42px;
+    }
+
+    & img {
+      @apply size-full min-w-0 object-contain object-left;
+    }
   }
 
   [data-site-logo="plated"] {

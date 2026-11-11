@@ -195,6 +195,31 @@ describe("breadcrumb-nav", () => {
     }
   });
 
+  it("holds each banner's place with its natural size before the image loads", async () => {
+    // Render both banners with their dark mode variants.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+      bannerUrl: "/img/banner-desktop.png",
+      bannerDarkUrl: "/img/banner-desktop-dark.png",
+      bannerMobileUrl: "/img/banner-mobile.png",
+      bannerMobileDarkUrl: "/img/banner-mobile-dark.png",
+    });
+
+    // Verify every image carries the natural banner size, which the browser turns into the
+    // ratio that reserves its height while nothing has loaded.
+    for (const [src, width] of [
+      ["/img/banner-desktop.png", "2428"],
+      ["/img/banner-desktop-dark.png", "2428"],
+      ["/img/banner-mobile.png", "1220"],
+      ["/img/banner-mobile-dark.png", "1220"],
+    ]) {
+      const img = element.querySelector(`img[src="${src}"]`);
+      expect(img.getAttribute("width"), src).to.equal(width);
+      expect(img.getAttribute("height"), src).to.equal("192");
+      expect(getComputedStyle(img).aspectRatio, src).to.equal(`auto ${width} / 192`);
+    }
+  });
+
   it("shows a placeholder when a banner image fails to load", async () => {
     // Render the breadcrumb navigation with both responsive banners.
     const element = await mountLitComponent("breadcrumb-nav", {
