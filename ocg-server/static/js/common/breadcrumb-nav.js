@@ -114,6 +114,11 @@ export class BreadcrumbNav extends LitWrapper {
     }
   }
 
+  /**
+   * Toggles the mobile dropdown from its trigger or from the mobile banner above
+   * it, which is a second, pointer-only way to reach the same dropdown.
+   * @param {MouseEvent} event - The click event
+   */
   _toggleDropdown(event) {
     event.stopPropagation();
     this._isOpen = !this._isOpen;
@@ -321,11 +326,13 @@ export class BreadcrumbNav extends LitWrapper {
           ${
             this.bannerMobileUrl
               ? html`
+                  <!-- Mobile banner: a tap toggles the dropdown below, like its trigger -->
                   <div
                     class="w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg phone:block ${
                       this.fullBleed ? "phone:rounded-none" : ""
                     }"
                     data-banner-aspect="${getBannerAspect(MOBILE_BANNER_SIZE)}"
+                    @click="${this._toggleDropdown}"
                   >
                     ${this._renderBannerImages(this.bannerMobileUrl, this.bannerMobileDarkUrl, MOBILE_BANNER_SIZE)}
                   </div>

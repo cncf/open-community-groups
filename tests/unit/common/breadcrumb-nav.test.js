@@ -426,4 +426,32 @@ describe("breadcrumb-nav", () => {
     element._handleDocumentClick({ target: dropdown });
     expect(element._isOpen).to.equal(true);
   });
+
+  it("toggles the dropdown from the mobile banner and its placeholder only", async () => {
+    // Render the breadcrumb navigation with both responsive banners.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+      bannerUrl: "/img/banner-desktop.png",
+      bannerMobileUrl: "/img/banner-mobile.png",
+    });
+    const trigger = element.querySelector("[data-breadcrumb-trigger]");
+    const mobileImage = element.querySelector('img[src="/img/banner-mobile.png"]');
+    const desktopImage = element.querySelector('img[src="/img/banner-desktop.png"]');
+
+    // Click the mobile banner image and verify the dropdown opens and stays open.
+    mobileImage.click();
+    await element.updateComplete;
+    expect(trigger.getAttribute("aria-expanded")).to.equal("true");
+
+    // Fail the image and click its placeholder to close the dropdown.
+    mobileImage.dispatchEvent(new Event("error"));
+    mobileImage.parentElement.click();
+    await element.updateComplete;
+    expect(trigger.getAttribute("aria-expanded")).to.equal("false");
+
+    // Verify the desktop banner leaves the dropdown alone.
+    desktopImage.click();
+    await element.updateComplete;
+    expect(trigger.getAttribute("aria-expanded")).to.equal("false");
+  });
 });
