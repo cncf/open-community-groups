@@ -40,6 +40,29 @@ test.describe("group membership", () => {
     );
   });
 
+  test("guest join prompt opens without flashing the page", async ({ page }) => {
+    // Load the public group and wait for the guest membership state.
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+    const signInButton = getSignInButton(page);
+    await expect(signInButton).toBeVisible();
+
+    // Record the background of the alert's page-sized container as soon as it is inserted.
+    await page.evaluate(() => {
+      new MutationObserver((_, observer) => {
+        const container = document.querySelector(".swal2-container");
+        if (container) {
+          window.ocgAlertContainerBackground = getComputedStyle(container).backgroundColor;
+          observer.disconnect();
+        }
+      }).observe(document.body, { childList: true });
+    });
+    await signInButton.click();
+    await expect(page.locator(".swal2-popup")).toBeVisible();
+
+    // Verify the container starts transparent instead of the opaque popover default.
+    expect(await page.evaluate(() => window.ocgAlertContainerBackground)).toBe("rgba(0, 0, 0, 0)");
+  });
+
   test("guests send no membership check and keep the header logo", async ({ page }) => {
     // Record membership checks before the group loads.
     const membershipChecks = [];

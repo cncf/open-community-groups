@@ -39,9 +39,7 @@ pub struct SiteSettings {
     pub copyright_notice: Option<String>,
     /// URL to the small icon displayed in browser tabs and bookmarks.
     pub favicon_url: Option<String>,
-    /// URL to the logo image shown in the page footer. A site that pairs a
-    /// `header_logo_dark_url` with its `header_logo_url` shows that dark logo
-    /// in the footer instead.
+    /// URL to the logo image shown in the page footer.
     pub footer_logo_url: Option<String>,
     /// URL to the logo image shown in dark mode in the header logo slot, at
     /// the same size as `header_logo_url`. Without it, dark mode shows the
