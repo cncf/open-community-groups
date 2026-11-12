@@ -124,16 +124,19 @@
           {{ header::account_sheet_head() -}}
 
           <li class="border-b border-stone-200 mb-2 pb-2" role="none">
-            <div class="flex flex-col px-4 py-2 phone:relative phone:min-h-11 phone:justify-center phone:ps-[4.25rem] phone:pe-3">
-              <div class="not-phone:hidden absolute start-3 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-primary-edge bg-raised text-base font-semibold uppercase text-primary-fg-hover"
-                   aria-hidden="true">
-                {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
+            <div class="px-4 py-2 phone:px-3 phone:pt-5">
+              {# Phones centre the names on the avatar, so the account link sits below both. -#}
+              <div class="flex flex-col phone:relative phone:min-h-11 phone:justify-center phone:ps-14">
+                <div class="not-phone:hidden absolute start-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-primary-edge bg-raised text-base font-semibold uppercase text-primary-fg-hover"
+                     aria-hidden="true">
+                  {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
+                </div>
+                <div class="font-medium text-sm/6 truncate text-stone-700 mb-3 phone:mb-0 phone:text-base">{{ user.username|assigned_or("") }}</div>
+                <div class="text-xs/4 truncate phone:empty:hidden phone:text-sm">{{ user.name|assigned_or("") }}</div>
               </div>
-              <div class="font-medium text-sm/6 truncate text-stone-700 mb-3 phone:has-[+:empty]:mb-0 phone:text-base">{{ user.username|assigned_or("") }}</div>
-              <div class="text-xs/4 truncate phone:empty:hidden phone:text-sm">{{ user.name|assigned_or("") }}</div>
               {% if let Some(auth_provider) = &user.auth_provider -%}
                 {% if auth_provider == "linuxfoundation" -%}
-                  <a class="text-xs/6 text-stone-500 flex items-center mt-3 phone:min-h-11"
+                  <a class="text-xs/6 text-stone-500 flex items-center mt-3 phone:mt-1 phone:-mb-1.5 phone:min-h-11"
                      href="https://openprofile.dev"
                      target="_blank"
                      rel="noopener noreferrer">
