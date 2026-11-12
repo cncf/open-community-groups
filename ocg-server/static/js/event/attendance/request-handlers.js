@@ -1,4 +1,5 @@
 import { handleHtmxResponse, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import { loadPage } from "/static/js/common/page-loading.js";
 import {
   getAttendanceContainer,
   getAttendanceControl,
@@ -50,7 +51,7 @@ const PRIMARY_ACTION_CONFIG = {
     errorMessage: "Something went wrong registering for this event. Please try again later.",
     onSuccess: (response, target) => {
       if (response?.redirect_url) {
-        window.location.assign(response.redirect_url);
+        loadPage(response.redirect_url);
         return false;
       }
 
@@ -396,7 +397,7 @@ const handleCheckoutAfterRequest = (event) => {
   closeTicketModal(container);
 
   if (response?.redirect_url) {
-    window.location.assign(response.redirect_url);
+    loadPage(response.redirect_url);
     return;
   }
 

@@ -565,6 +565,14 @@
     @apply phone:max-w-[calc(100%-0.25rem)]!;
   }
 
+  /* Alerts open in the top layer (topLayer in common/alerts.js), which makes the page-sized
+     container a popover. Browsers paint popovers with an opaque canvas color by default, and the
+     container fades its background, so the whole page would flash before the alert shows. This
+     layered rule only replaces that default: SweetAlert2's own backdrop rules still win. */
+  .swal2-container[popover] {
+    @apply bg-transparent;
+  }
+
   .ocg-swal-popup > .swal2-icon {
     @apply mt-0! mb-5!;
   }
@@ -982,7 +990,8 @@
      img inside a plate). These rules only hide, so the element's own display utilities apply
      when it shows. The dark hide conditions are the exact complement of the dark variant, so
      exactly one image of a pair shows: print and light islands (.plate, .ink) show the light
-     one. The dark img is lazy, so it is only fetched once shown. */
+     one. The dark img is lazy, so it is only fetched once shown; the site header logos are the
+     exception and both load as plain images. */
   [data-theme-image="light"] {
     @variant dark {
       display: none !important;
@@ -1012,7 +1021,8 @@
      2388x605 artwork, so the header never moves while the image loads or follows the color
      theme. Logos of other proportions are contained in it, left aligned. Width and height are
      both explicit: with aspect-ratio, Safari grows the slot to the image's natural width.
-     Paired logos are shown and hidden by their data-theme-image pair. */
+     Paired logos are shown and hidden by their data-theme-image pair, and both load as plain
+     images so the one shown is there on first paint. */
   [data-site-logo] {
     --site-logo-height: 2.5rem;
 
@@ -1131,7 +1141,8 @@ button:disabled {
  * one need a higher specificity. Primitives that set display use :not(.hidden).
  *
  * Stacking ladder: strip 21, breadcrumb dropdown 25, header 30, CTA 40, existing modals
- * 50-1000, drawers and sheets 1100, map modal 1200, Lit modals 1300, Swal top layer.
+ * 50-1000, drawers and sheets 1100, map modal 1200, Lit modals 1300, page loading bar 1400,
+ * Swal top layer.
  */
 @utility btn-fill {
   @apply bg-primary-fill text-on-primary border-primary-edge;
@@ -1156,16 +1167,6 @@ button:disabled {
   }
 }
 
-@keyframes tap-bar-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
 @variant phone {
   /* Header shell */
   html {
@@ -1174,35 +1175,6 @@ button:disabled {
 
   html:has(.cta-bar:not(.hidden, [data-phone-bar="hidden"])) {
     scroll-padding-bottom: 5.5rem;
-  }
-
-  /* Tap progress bar: desktop's nav loading bar, shown after the same 120ms delay. */
-  body:has(a.htmx-request, form[hx-boost].htmx-request) #header::after {
-    content: "";
-    position: absolute;
-    right: 0;
-    bottom: -1px;
-    left: 0;
-    height: 2px;
-    background-image: linear-gradient(
-      90deg,
-      var(--color-primary-fg) 0%,
-      var(--color-primary-fg) 36%,
-      var(--color-stone-200) 50%,
-      var(--color-primary-fg) 64%,
-      var(--color-primary-fg) 100%
-    );
-    background-position: 110% 0;
-    background-size: 260% 100%;
-    opacity: 0;
-    pointer-events: none;
-    animation:
-      tap-bar-in 1ms linear 120ms forwards,
-      header-nav-loading 1.1s ease-in-out infinite;
-
-    @variant motion-reduce {
-      animation: tap-bar-in 1ms linear 120ms forwards;
-    }
   }
 
   /* Section heading */
@@ -1430,6 +1402,11 @@ button:disabled {
     @apply size-[18px];
   }
 
+  /* Section labels read a touch larger in the sheet. */
+  .account-sheet .title-preheader {
+    @apply text-[0.7rem]/3;
+  }
+
   /* The reorder puts the theme row directly under the Docs row and its hairline. */
   .account-sheet ul:has(.account-sheet-cta) li.account-sheet-theme {
     @apply mt-0 border-t-0 pt-0;
@@ -1591,14 +1568,11 @@ button:disabled {
     @apply relative min-h-0 shrink-0 overflow-visible whitespace-nowrap px-3.5 py-[5px] text-[13px]/[18px] font-normal normal-case tracking-normal after:absolute after:-inset-x-1 after:-inset-y-2;
   }
 
-  /* Read more: the fade is the toggle. A tap on the clipped text expands it, and the neutral pill
-     floats over the fade until it moves under the expanded text. */
-  .read-more {
-    @apply relative;
-  }
-
+  /* Read more: collapsed text ends under its tenth line and the neutral pill sits below it. A tap
+     on the clipped text expands it too. read-more.js sets --read-more-clip, because headings and
+     margins move the tenth line off the 10lh fallback. */
   .read-more:not([data-expanded]) .read-more-body {
-    max-height: 7lh;
+    max-height: var(--read-more-clip, 10lh);
     @apply overflow-hidden;
   }
 
@@ -1606,12 +1580,7 @@ button:disabled {
     @apply max-h-16;
   }
 
-  /* The pill covers the last line, so the fade spans two. Headings and margins can land the clip
-     mid-line, which the fade hides as well. */
   .read-more[data-overflowing]:not([data-expanded]) .read-more-body {
-    /* theme-lint: tokens-start shadow, mask or transparent edge, kept for light parity */
-    mask-image: linear-gradient(to bottom, black calc(100% - 2.5lh), transparent calc(100% - 0.5lh));
-    /* theme-lint: tokens-end */
     @apply cursor-pointer;
   }
 
@@ -1625,10 +1594,6 @@ button:disabled {
 
   .read-more[data-overflowing] .read-more-toggle {
     @apply mt-3 flex w-fit;
-  }
-
-  .read-more[data-overflowing]:not([data-expanded]) .read-more-toggle {
-    @apply absolute bottom-0 left-0 mt-0;
   }
 
   .read-more-toggle > .svg-icon {
@@ -2773,3 +2738,66 @@ input:placeholder-shown {
 }
 
 /* End header nav loading */
+
+/* Page loading bar */
+
+@keyframes page-loading-bar-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Below lg the header nav links are hidden, so navigation shows desktop's nav loading bar on
+ * the top edge of the viewport instead, after the same 120ms delay. It is drawn on the root, so
+ * it survives body swaps, needs no header and stays above sheets and modals.
+ */
+@variant max-lg {
+  html::after {
+    --page-loading-bar-animation:
+      page-loading-bar-in 1ms linear 120ms forwards, header-nav-loading 1.1s ease-in-out infinite;
+
+    content: "";
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 1400;
+    height: 2px;
+    background-image: linear-gradient(
+      90deg,
+      var(--color-primary-fg) 0%,
+      var(--color-primary-fg) 36%,
+      var(--color-stone-200) 50%,
+      var(--color-primary-fg) 64%,
+      var(--color-primary-fg) 100%
+    );
+    background-position: 110% 0;
+    background-size: 260% 100%;
+    opacity: 0;
+    pointer-events: none;
+
+    @variant motion-reduce {
+      --page-loading-bar-animation: page-loading-bar-in 1ms linear 120ms forwards;
+    }
+  }
+
+  /* Links carry the htmx request class while they load; common/page-loading.js marks the root
+     when a navigation replaces the document. */
+  html:is([data-page-loading], :has(a.htmx-request))::after {
+    animation: var(--page-loading-bar-animation);
+  }
+}
+
+@variant phone {
+  /* Phones keep the dashboard spinner inside the closed menu sheet, so the bar stands in. */
+  html:has(#dashboard-spinner.htmx-request)::after {
+    animation: var(--page-loading-bar-animation);
+  }
+}
+
+/* End page loading bar */

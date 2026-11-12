@@ -12,6 +12,8 @@
       {# Logo -#}
       {% if path != "/" %}
         <a href="/"
+           hx-boost="true"
+           hx-target="body"
            aria-label="Go to homepage"
            class="inline-flex phone:min-w-0
                   {% if shows_phone_title %}phone:hidden{% endif %}">
@@ -23,25 +25,20 @@
            hx-preserve>
         {% if let Some(url) = &site_settings.header_logo_url -%}
           {% if let Some(dark_url) = &site_settings.header_logo_dark_url -%}
-            {# Both logos are lazy, so the hidden one is never requested; the inline script makes
-               the one the color theme shows eager as soon as the header is parsed or swapped in. -#}
+            {# Both logos are plain images, so the browser fetches them early and the one the
+               color theme shows is there on first paint. CSS hides the other one. -#}
             <span class="relative" data-site-logo="light" data-theme-image="light">
               <img class="z-1"
                    data-ocg-broken-image-bg-class="bg-transparent"
                    src="{{ url }}"
-                   alt="{{ site_settings.title }} logo"
-                   loading="lazy" />
+                   alt="{{ site_settings.title }} logo" />
             </span>
             <span class="relative" data-site-logo="dark" data-theme-image="dark">
               <img class="z-1"
                    data-ocg-broken-image-bg-class="bg-transparent"
                    src="{{ dark_url }}"
-                   alt="{{ site_settings.title }} logo"
-                   loading="lazy" />
+                   alt="{{ site_settings.title }} logo" />
             </span>
-            <script>
-              {% include "common/scripts/site_logo_init.js" -%}
-            </script>
           {% else -%}
             <span class="relative plate" data-site-logo="plated">
               <img class="z-1"
@@ -56,6 +53,8 @@
       {# The title gets its own link so the link name can include the visible text. -#}
       {% if shows_phone_title -%}
         <a href="/"
+           hx-boost="true"
+           hx-target="body"
            aria-label="Go to {{ site_settings.title }} homepage"
            class="not-phone:hidden flex items-center min-w-0 h-11 me-3">
           <span class="truncate text-lg font-semibold text-stone-900">{{ site_settings.title }}</span>

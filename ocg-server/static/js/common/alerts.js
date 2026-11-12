@@ -5,6 +5,7 @@ import {
   markDatasetReady,
 } from "/static/js/common/dom.js";
 import { getHtmxTriggerNames } from "/static/js/common/htmx-triggers.js";
+import { loadPage } from "/static/js/common/page-loading.js";
 import { isPhoneViewport } from "/static/js/common/phone-viewport.js";
 import { THEME_CHANGE_EVENT } from "/static/js/common/theme.js";
 import { escapeHtml } from "/static/js/common/trusted-html.js";
@@ -346,7 +347,7 @@ export const showSigninPrompt = async (actionText, path) => {
     ...getCommonAlertOptions(),
   });
   if (result?.isConfirmed) {
-    window.location.assign(loginUrl);
+    loadPage(loginUrl);
   }
 };
 

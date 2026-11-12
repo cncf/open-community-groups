@@ -353,10 +353,11 @@ test.describe("site header", () => {
     const themeGroup = userMenu.getByRole("group", { name: "Theme" });
     await expect(themeGroup).toBeVisible();
 
-    // Verify each label fits its compact segment; touch targets are checked on the phone sheet.
+    // Verify each segment shows only its label, which fits; touch targets are checked on the phone sheet.
     for (const name of THEME_CHOICE_NAMES) {
       const choice = themeGroup.getByRole("menuitemradio", { exact: true, name });
       await expect(choice).toBeVisible();
+      await expect(choice.locator(".svg-icon")).toBeHidden();
       const { clientWidth, scrollWidth } = await choice.evaluate((element) => ({
         clientWidth: element.clientWidth,
         scrollWidth: element.scrollWidth,
@@ -660,33 +661,6 @@ test.describe("site header", () => {
     expect(await getCloseWatcherCount(page)).toBe(1);
   });
 
-  test("tap progress bar shows while a boosted link loads @mobile", async ({ page }) => {
-    // Hold the card's response so the bar outlasts its delay.
-    await navigateToSiteHome(page);
-    const card = page.getByRole("main").locator('a[hx-boost="true"][href*="/group/"]').first();
-    const { pathname } = new URL(await card.evaluate((element) => element.href));
-    let releaseResponse;
-    const responseHeld = new Promise((resolve) => {
-      releaseResponse = resolve;
-    });
-    await page.route(
-      (url) => url.pathname === pathname,
-      async (route) => {
-        await responseHeld;
-        await route.continue();
-      },
-    );
-
-    // Verify the bar appears on the header's bottom edge.
-    await card.tap();
-    await expect.poll(() => getHeaderBar(page)).toEqual({ content: '""', height: "2px", opacity: "1" });
-
-    // Verify it clears once the page arrives.
-    releaseResponse();
-    await expect(page).toHaveURL(new RegExp(`${pathname}$`, "u"));
-    await expect.poll(async () => (await getHeaderBar(page)).content).toBe("none");
-  });
-
   test("phone header shows the site title @mobile", async ({ page }) => {
     // Load a public page without a header logo.
     await navigateToPath(page, "/stats");
@@ -811,10 +785,12 @@ test.describe("site header", () => {
     expect(logIn.height).toBe(44);
     expect(signUp.height).toBe(44);
 
-    // Verify each theme choice keeps a touch target height.
+    // Verify each theme choice shows its icon in the sheet and keeps a touch target height.
     for (const name of THEME_CHOICE_NAMES) {
-      const choice = await themeGroup.getByRole("menuitemradio", { exact: true, name }).boundingBox();
-      expect(choice.height, `${name} is a touch target`).toBeGreaterThanOrEqual(TOUCH_TARGET_MIN_HEIGHT_PX);
+      const choice = themeGroup.getByRole("menuitemradio", { exact: true, name });
+      await expect(choice.locator(".svg-icon")).toBeVisible();
+      const { height } = await choice.boundingBox();
+      expect(height, `${name} is a touch target`).toBeGreaterThanOrEqual(TOUCH_TARGET_MIN_HEIGHT_PX);
     }
   });
 
@@ -994,13 +970,6 @@ test.describe("site header", () => {
     await expectAccountSheetReleased(member1Page, { opener: userButton });
   });
 });
-
-/** Reads the tap progress bar drawn on the header's ::after. */
-const getHeaderBar = (page) =>
-  page.evaluate(() => {
-    const { content, height, opacity } = getComputedStyle(document.getElementById("header"), "::after");
-    return { content, height, opacity };
-  });
 
 /** Counts every CloseWatcher the page creates from its first script on. */
 const countCloseWatchers = (page) =>

@@ -157,57 +157,10 @@ const runDeploymentRefreshScript = (scriptBody, href) => {
   return replacedUrls;
 };
 
-/**
- * Runs the inline site logo initializer right after a lazy light and dark logo pair, as the site
- * header renders it, inside an isolated same-origin frame, then returns each logo's loading mode.
- * @param {string} scriptBody - Initializer source.
- * @param {string|null} theme - `data-theme` value of the frame root, or null for none.
- * @returns {{ dark: string, light: string }} Loading mode of each logo image.
- */
-const runSiteLogoScript = (scriptBody, theme) => {
-  // Create an isolated frame with the logo pair; the images have no source, so nothing loads.
-  const frame = document.createElement("iframe");
-  document.body.append(frame);
-  const frameDocument = frame.contentDocument;
-  frameDocument.open();
-  frameDocument.write(`
-    <!DOCTYPE html>
-    <html>
-      <head></head>
-      <body>
-        <div id="logos">
-          <span data-site-logo="light" data-theme-image="light"><img alt="" loading="lazy" /></span>
-          <span data-site-logo="dark" data-theme-image="dark"><img alt="" loading="lazy" /></span>
-        </div>
-      </body>
-    </html>
-  `);
-  frameDocument.close();
-  if (theme !== null) {
-    frameDocument.documentElement.setAttribute("data-theme", theme);
-  }
-
-  // Insert the source after the pair as a real classic script so it runs synchronously.
-  const script = frameDocument.createElement("script");
-  script.textContent = scriptBody;
-  frameDocument.getElementById("logos").append(script);
-
-  // Capture the loading modes before removing the frame.
-  const result = Object.fromEntries(
-    ["dark", "light"].map((variant) => [
-      variant,
-      frameDocument.querySelector(`[data-site-logo="${variant}"] img`).getAttribute("loading"),
-    ]),
-  );
-  frame.remove();
-
-  return result;
-};
-
 describe("common inline head scripts", () => {
   it("contains no Askama delimiters in any included head script", async () => {
     // Verify every file the templates include is free of Askama delimiters.
-    const includedFiles = ["deployment_refresh_cleanup.js", "preferences_init.js", "site_logo_init.js"];
+    const includedFiles = ["deployment_refresh_cleanup.js", "preferences_init.js"];
     for (const fileName of includedFiles) {
       const body = await loadInlineScript(fileName);
       ["{{", "{%", "{#"].forEach((delimiter) => {
@@ -250,16 +203,6 @@ describe("common inline head scripts", () => {
         `blocked storage, OS dark ${prefersDark}`,
       ).to.deep.equal(expectedPreferencesState({ colorScheme: theme, theme }));
     });
-  });
-
-  it("makes only the site logo of the color theme eager", async () => {
-    // Load the initializer source.
-    const body = await loadInlineScript("site_logo_init.js");
-
-    // Verify dark makes the dark logo eager and anything else the light one.
-    expect(runSiteLogoScript(body, "dark")).to.deep.equal({ dark: "eager", light: "lazy" });
-    expect(runSiteLogoScript(body, "light")).to.deep.equal({ dark: "lazy", light: "eager" });
-    expect(runSiteLogoScript(body, null)).to.deep.equal({ dark: "lazy", light: "eager" });
   });
 
   it("applies the stored desktop version without touching cookies", async () => {

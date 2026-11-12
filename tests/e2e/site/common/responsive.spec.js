@@ -11,6 +11,8 @@ const BREAKPOINTS = [
   { name: "xl", width: 1280 },
   { name: "2xl", width: 1536 },
 ];
+// Pages whose content runs down to the footer on phones.
+const PAGE_END_NAMES = ["home", "community", "group", "event"];
 // Narrow, common and large phones, at their own heights.
 const PHONE_SIZES = [
   { height: 568, width: 320 },
@@ -69,6 +71,22 @@ test.describe("phone sizes", () => {
         expect(contentHeight).toBeGreaterThanOrEqual(size.height / 2);
       });
     }
+  }
+});
+
+test.describe("phone page end", () => {
+  for (const publicPage of PUBLIC_PAGES.filter(({ name }) => PAGE_END_NAMES.includes(name))) {
+    test(`${publicPage.name} ends as far above the footer as the footer pads its logo @mobile`, async ({
+      page,
+    }) => {
+      // Load the seeded public page.
+      await loadPublicPage(page, publicPage);
+
+      // Verify the last section sits the footer's own top padding above it.
+      const { contentGap, footerPadding } = await page.evaluate(measurePageEnd);
+      expect(footerPadding).toBeGreaterThan(0);
+      expect(Math.round(contentGap)).toBe(footerPadding);
+    });
   }
 });
 
@@ -137,6 +155,23 @@ const measureContentHeight = () => {
     Math.max(0, ...getHeights(".section-strip")) -
     Math.max(0, ...getHeights(".cta-bar"))
   );
+};
+
+/**
+ * Measures the space under the last content section and the footer's top padding, runs in the page.
+ * @returns {{contentGap: number, footerPadding: number}} Sizes in pixels.
+ */
+const measurePageEnd = () => {
+  const footer = document.querySelector("footer[role=contentinfo]");
+  const sectionBottoms = [...document.querySelectorAll("#main-content .section-strip")]
+    .map((strip) => strip.parentElement)
+    .filter((section) => section.getClientRects().length > 0)
+    .map((section) => section.getBoundingClientRect().bottom);
+
+  return {
+    contentGap: footer.getBoundingClientRect().top - Math.max(...sectionBottoms),
+    footerPadding: Number.parseFloat(getComputedStyle(footer.firstElementChild).paddingTop),
+  };
 };
 
 /**

@@ -21,12 +21,12 @@ fn test_verify_page_header_renders_logo_variants_for_configured_urls() {
                 (
                     r#"<span class="relative" data-site-logo="light" data-theme-image="light">"#,
                     light_url,
-                    true,
+                    false,
                 ),
                 (
                     r#"<span class="relative" data-site-logo="dark" data-theme-image="dark">"#,
                     dark_url,
-                    true,
+                    false,
                 ),
             ],
         ),

@@ -10,7 +10,9 @@ import {
   handleDashboardContextConfigRequest,
   handleDeclarativeHtmxResponse,
   handleHtmxExcludeConfigRequest,
+  handleLoginRequiredConfirm,
   handleNotFoundBeforeSwap,
+  handlePreserveBeforeSwap,
   getDeclarativeHtmxResponseElement,
   isSuccessfulRefreshBodyResponse,
   registerHtmxNoEmptyValuesExtensions,
@@ -218,6 +220,79 @@ describe("htmx extensions", () => {
     // Unmarked 404 responses stay on the default HTMX error path.
     expect(event.detail.shouldSwap).to.equal(false);
     expect(event.detail.isError).to.equal(true);
+  });
+
+  it("keeps hx-preserve only in responses that replace the whole body", () => {
+    // Build a full page whose header logo is preserved across navigations.
+    const logo = '<div id="site-logo" class="logo"\n     hx-preserve><img alt="" /></div>';
+    const page = `${logo}<p data-hx-preserve="true">Kept</p>`;
+    const strippedPage = '<div id="site-logo" class="logo"><img alt="" /></div><p>Kept</p>';
+    const checker = document.createElement("div");
+    checker.setAttribute("hx-swap", "none ignoreTitle:true");
+    document.body.append(checker);
+
+    // Setup swap cases: (label, event detail, preserved)
+    const cases = [
+      ["body swap", { target: document.body }, true],
+      ["fragment swap", { target: checker }, false],
+      ["discarded body swap", { requestConfig: { elt: checker }, target: document.body }, false],
+      ["body swap discarded by the response", { swapOverride: "none", target: document.body }, false],
+    ];
+
+    for (const [label, detail, preserved] of cases) {
+      // Apply the preserve policy to the response.
+      const event = { detail: { ...detail, serverResponse: page } };
+      handlePreserveBeforeSwap(event);
+
+      // Only whole-body swaps keep the marker that lets HTMX move the live logo.
+      expect(event.detail.serverResponse, label).to.equal(preserved ? page : strippedPage);
+    }
+  });
+
+  it("holds login-required requests until the login state is known", async () => {
+    // Render a login-required request element and a regular one.
+    document.body.innerHTML = `
+      <div id="menu"></div>
+      <div id="checker" data-ocg-requires-login></div>
+      <div id="regular"></div>
+    `;
+    const menu = document.getElementById("menu");
+    const confirmRequest = (elementId) => {
+      const request = { issued: 0 };
+      const issueRequest = () => {
+        request.issued += 1;
+      };
+      request.event = new CustomEvent("htmx:confirm", {
+        cancelable: true,
+        detail: { elt: document.getElementById(elementId), issueRequest },
+      });
+      handleLoginRequiredConfirm(request.event);
+
+      return request;
+    };
+
+    // Regular requests are left to HTMX.
+    const regular = confirmRequest("regular");
+    expect(regular.event.defaultPrevented).to.equal(false);
+
+    // Setup login cases: (menu markup, requests issued)
+    const cases = [
+      ['<button id="user-dropdown-button" data-logged-in="false"></button>', 0],
+      ['<button id="user-dropdown-button" data-logged-in="true"></button>', 1],
+      ["", 1],
+    ];
+
+    for (const [menuMarkup, issued] of cases) {
+      // Hold the request while the login state resolves.
+      menu.innerHTML = menuMarkup;
+      const request = confirmRequest("checker");
+      expect(request.event.defaultPrevented, menuMarkup).to.equal(true);
+      expect(request.issued, menuMarkup).to.equal(0);
+      await waitForDelay();
+
+      // Only logged-out visitors lose the request.
+      expect(request.issued, menuMarkup).to.equal(issued);
+    }
   });
 
   it("adds the loaded commit SHA to htmx request headers", () => {
@@ -945,6 +1020,7 @@ describe("htmx extensions", () => {
 
     // All shared response handlers are registered on the event root.
     expect(listeners).to.deep.equal([
+      ["htmx:confirm", handleLoginRequiredConfirm],
       ["htmx:configRequest", handleCommitShaConfigRequest],
       ["htmx:configRequest", handleDashboardContextConfigRequest],
       ["htmx:configRequest", handleHtmxExcludeConfigRequest],
@@ -954,6 +1030,7 @@ describe("htmx extensions", () => {
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
       ["htmx:beforeSwap", handleDashboardContextBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+      ["htmx:beforeSwap", handlePreserveBeforeSwap],
       ["htmx:beforeSwap", handleDeclarativeHtmxResponse],
       ["htmx:afterRequest", handleDeclarativeHtmxResponse],
     ]);
@@ -972,6 +1049,7 @@ describe("htmx extensions", () => {
 
     // The root receives one copy of each shared response handler.
     expect(listeners).to.deep.equal([
+      ["htmx:confirm", handleLoginRequiredConfirm],
       ["htmx:configRequest", handleCommitShaConfigRequest],
       ["htmx:configRequest", handleDashboardContextConfigRequest],
       ["htmx:configRequest", handleHtmxExcludeConfigRequest],
@@ -981,6 +1059,7 @@ describe("htmx extensions", () => {
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
       ["htmx:beforeSwap", handleDashboardContextBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+      ["htmx:beforeSwap", handlePreserveBeforeSwap],
       ["htmx:beforeSwap", handleDeclarativeHtmxResponse],
       ["htmx:afterRequest", handleDeclarativeHtmxResponse],
     ]);

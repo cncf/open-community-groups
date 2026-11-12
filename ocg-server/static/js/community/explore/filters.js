@@ -1,4 +1,5 @@
 import { getElementById, setElementHidden } from "/static/js/common/dom.js";
+import { loadPage } from "/static/js/common/page-loading.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 const EXPLORE_SECTION_ID = "entity-section";
@@ -257,7 +258,7 @@ export const searchOnEnter = (e, formId) => {
       const value = target?.value || "";
       if (value !== "") {
         const params = new URLSearchParams({ ts_query: value });
-        document.location.href = `/explore?${params.toString()}`;
+        loadPage(`/explore?${params.toString()}`);
       }
     }
     target?.blur?.();

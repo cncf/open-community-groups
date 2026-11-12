@@ -539,8 +539,11 @@
 {# End refund request button and rejection reason -#}
 
 {# Attendance checker -#}
+{# Logged-out visitors never send this check: the shared HTMX hooks drop requests marked
+   data-ocg-requires-login, and attendance.js shows the signed-out state instead. -#}
 <div id="attendance-checker-{{ attendance_instance }}"
      data-attendance-role="attendance-checker"
+     data-ocg-requires-login
      class="hidden"
      hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"
      hx-trigger="load, attendance-changed from:body"

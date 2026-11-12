@@ -383,6 +383,29 @@ test.describe("event attendance", () => {
     await expect(getAttendButton(page)).toBeDisabled();
   });
 
+  test("signed-out visitors send no registration check and keep the header logo", async ({ page }) => {
+    // Record registration checks before the event loads.
+    const registrationChecks = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.endsWith("/enrollment")) {
+        registrationChecks.push(request.url());
+      }
+    });
+    await navigateToEvent(
+      page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+
+    // Verify the signed-out action shows without asking the server.
+    await expect(getSignInButton(page)).toBeVisible();
+    expect(registrationChecks).toEqual([]);
+
+    // Verify the header keeps its logo slot, which a log-in redirect used to take away.
+    await expect(page.locator("#header #site-logo")).toBeAttached();
+  });
+
   test("required registration questions block an empty submission", async ({ pending2Page }) => {
     // Load the event with required registration questions.
     await navigateToEvent(

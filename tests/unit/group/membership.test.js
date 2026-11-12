@@ -6,6 +6,7 @@ import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import {
   dispatchHtmxAfterRequest,
   dispatchHtmxBeforeRequest,
+  dispatchHtmxLoad,
 } from "/tests/unit/test-utils/htmx.js";
 
 // Render the component fixture. The hidden rule matches the app styles, so a
@@ -80,6 +81,43 @@ describe("group membership", () => {
     expect(signinButton.classList.contains("hidden")).to.equal(false);
     expect(joinButton.classList.contains("hidden")).to.equal(true);
     expect(leaveButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("shows the sign-in action without a membership check when logged out", async () => {
+    // Render the loading fixture below a user menu that reports a logged-out visitor.
+    const { loadingButton, signinButton, joinButton } = renderMembershipDom();
+    loadingButton.classList.remove("hidden");
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      '<button id="user-dropdown-button" data-logged-in="false"></button>',
+    );
+
+    // Initialize the container, as HTMX does after loading it.
+    dispatchHtmxLoad();
+    await waitForMicrotask();
+
+    // Verify the sign-in action replaces the loading state with no response.
+    expect(signinButton.classList.contains("hidden")).to.equal(false);
+    expect(loadingButton.classList.contains("hidden")).to.equal(true);
+    expect(joinButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("keeps the loading state for logged-in users until the membership check answers", async () => {
+    // Render the loading fixture below a user menu that reports a logged-in user.
+    const { loadingButton, signinButton } = renderMembershipDom();
+    loadingButton.classList.remove("hidden");
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      '<button id="user-dropdown-button" data-logged-in="true"></button>',
+    );
+
+    // Initialize the container, as HTMX does after loading it.
+    dispatchHtmxLoad();
+    await waitForMicrotask();
+
+    // Verify the container still waits for the membership response.
+    expect(loadingButton.classList.contains("hidden")).to.equal(false);
+    expect(signinButton.classList.contains("hidden")).to.equal(true);
   });
 
   it("shows loading state before a join request and restores the button on failure", () => {

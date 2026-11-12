@@ -114,6 +114,11 @@ export class BreadcrumbNav extends LitWrapper {
     }
   }
 
+  /**
+   * Toggles the mobile dropdown from its trigger or from the mobile banner above
+   * it, which is a second, pointer-only way to reach the same dropdown.
+   * @param {MouseEvent} event - The click event
+   */
   _toggleDropdown(event) {
     event.stopPropagation();
     this._isOpen = !this._isOpen;
@@ -321,11 +326,13 @@ export class BreadcrumbNav extends LitWrapper {
           ${
             this.bannerMobileUrl
               ? html`
+                  <!-- Mobile banner: a tap toggles the dropdown below, like its trigger -->
                   <div
                     class="w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg phone:block ${
                       this.fullBleed ? "phone:rounded-none" : ""
                     }"
                     data-banner-aspect="${getBannerAspect(MOBILE_BANNER_SIZE)}"
+                    @click="${this._toggleDropdown}"
                   >
                     ${this._renderBannerImages(this.bannerMobileUrl, this.bannerMobileDarkUrl, MOBILE_BANNER_SIZE)}
                   </div>
@@ -360,11 +367,17 @@ export class BreadcrumbNav extends LitWrapper {
               >
                 <div class="svg-icon size-4 bg-stone-400 icon-tree-list"></div>
                 <span class="text-stone-600 truncate flex-1 text-left">${currentItem.label}</span>
-                <div
-                  class="svg-icon size-3 bg-stone-400 icon-caret-down transition-transform duration-200 motion-reduce:transition-none ${
-                    this._isOpen ? "rotate-180" : ""
-                  }"
-                ></div>
+                <!-- Tap cue: a mini button on phones, decorative since the whole row is the trigger -->
+                <span
+                  class="btn-primary-outline-anchor btn-mini size-7 shrink-0 p-0 not-phone:contents"
+                  aria-hidden="true"
+                >
+                  <div
+                    class="svg-icon size-3 bg-stone-400 icon-caret-down transition-transform duration-200 motion-reduce:transition-none phone:bg-current ${
+                      this._isOpen ? "rotate-180" : ""
+                    }"
+                  ></div>
+                </span>
               </button>
               <div
                 id="${this._dropdownId}"

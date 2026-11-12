@@ -195,6 +195,26 @@ describe("breadcrumb-nav", () => {
     }
   });
 
+  it("frames the trigger caret as a decorative mini button on phones only", async () => {
+    // Render the breadcrumb navigation with a mobile dropdown trigger.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+    });
+
+    // Collect the caret and the tap cue around it.
+    const caret = element.querySelector("[data-breadcrumb-trigger] .icon-caret-down");
+    const tapCue = caret.parentElement;
+
+    // Verify the cue is a mini button on phones and leaves no box elsewhere.
+    expect(tapCue.classList.contains("btn-mini")).to.equal(true);
+    expect(tapCue.classList.contains("not-phone:contents")).to.equal(true);
+    expect(caret.classList.contains("phone:bg-current")).to.equal(true);
+
+    // Verify the cue stays decorative, so the trigger remains the only control.
+    expect(tapCue.tagName).to.equal("SPAN");
+    expect(tapCue.getAttribute("aria-hidden")).to.equal("true");
+  });
+
   it("holds each banner's place with its natural size before the image loads", async () => {
     // Render both banners with their dark mode variants.
     const element = await mountLitComponent("breadcrumb-nav", {
@@ -405,5 +425,33 @@ describe("breadcrumb-nav", () => {
     // Keep the dropdown open when the document click starts inside the menu.
     element._handleDocumentClick({ target: dropdown });
     expect(element._isOpen).to.equal(true);
+  });
+
+  it("toggles the dropdown from the mobile banner and its placeholder only", async () => {
+    // Render the breadcrumb navigation with both responsive banners.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+      bannerUrl: "/img/banner-desktop.png",
+      bannerMobileUrl: "/img/banner-mobile.png",
+    });
+    const trigger = element.querySelector("[data-breadcrumb-trigger]");
+    const mobileImage = element.querySelector('img[src="/img/banner-mobile.png"]');
+    const desktopImage = element.querySelector('img[src="/img/banner-desktop.png"]');
+
+    // Click the mobile banner image and verify the dropdown opens and stays open.
+    mobileImage.click();
+    await element.updateComplete;
+    expect(trigger.getAttribute("aria-expanded")).to.equal("true");
+
+    // Fail the image and click its placeholder to close the dropdown.
+    mobileImage.dispatchEvent(new Event("error"));
+    mobileImage.parentElement.click();
+    await element.updateComplete;
+    expect(trigger.getAttribute("aria-expanded")).to.equal("false");
+
+    // Verify the desktop banner leaves the dropdown alone.
+    desktopImage.click();
+    await element.updateComplete;
+    expect(trigger.getAttribute("aria-expanded")).to.equal("false");
   });
 });

@@ -120,19 +120,47 @@ describe("user-info-modal", () => {
       expect(link?.classList.contains("phone:size-11")).to.equal(true);
     });
 
-    it("uses the small title-row pill for openprofile.dev, which clears the grabber", async () => {
+    it("shows the openprofile.dev link after the profile text on phones and in the title row elsewhere", async () => {
       const element = await mountLitComponent("user-info-modal");
+      const provider = { linuxfoundation: { username: "ada-lf" } };
 
+      /**
+       * Returns the single phone link, after checking it and the title-row link.
+       * @returns {HTMLAnchorElement} Phone link.
+       */
+      const getPhoneLink = () => {
+        const headLink = element.querySelector('.sheet-head a[href*="openprofile.dev"]');
+        expect(headLink?.classList.contains("btn-primary-outline-anchor")).to.equal(true);
+        expect(headLink?.classList.contains("phone:hidden")).to.equal(true);
+
+        const phoneLinks = element.querySelectorAll('.sheet-body a[href*="openprofile.dev"]');
+        expect(phoneLinks).to.have.length(1);
+        expect(phoneLinks[0].classList.contains("btn-primary-outline-anchor")).to.equal(true);
+        expect(phoneLinks[0].classList.contains("pill-link")).to.equal(true);
+        expect(phoneLinks[0].parentElement.classList.contains("not-phone:hidden")).to.equal(true);
+        return phoneLinks[0];
+      };
+
+      // A bio is followed by the link.
+      await openProfile(element, { bio: "Wrote the first program.", name: "Ada Lovelace", provider, username: "ada" });
+      expect(getPhoneLink().parentElement.previousElementSibling?.textContent).to.include("Wrote the first program.");
+
+      // Without a bio the link takes its place, above the social links.
       await openProfile(element, {
         name: "Ada Lovelace",
-        provider: { linuxfoundation: { username: "ada-lf" } },
+        provider,
         username: "ada",
+        websiteUrl: "https://example.com",
       });
+      expect(getPhoneLink().parentElement.nextElementSibling?.textContent).to.include("Connect");
 
-      // Verify the link sits in the head and keeps its desktop button classes.
-      const link = element.querySelector('.sheet-head a[href*="openprofile.dev"]');
-      expect(link?.classList.contains("btn-primary-outline-anchor")).to.equal(true);
-      expect(link?.classList.contains("pill-link")).to.equal(true);
+      // An empty profile shows the link inside the placeholder.
+      await openProfile(element, { name: "Ada Lovelace", provider, username: "ada" });
+      expect(getPhoneLink().parentElement.parentElement?.textContent).to.include("Profile not completed");
+
+      // A profile without a Linux Foundation account renders neither link.
+      await openProfile(element, { name: "Grace Hopper", username: "grace" });
+      expect(element.querySelector('a[href*="openprofile.dev"]')).to.equal(null);
     });
 
     it("binds gestures after Lit renders and closes through the real button", async () => {

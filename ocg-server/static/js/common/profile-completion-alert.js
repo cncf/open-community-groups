@@ -4,6 +4,7 @@ import {
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
 } from "/static/js/common/dom.js";
+import { loadPage } from "/static/js/common/page-loading.js";
 
 export const PROFILE_COMPLETION_URL = "/dashboard/user?tab=account";
 
@@ -67,10 +68,7 @@ export const shouldPromptForProfileCompletion = (trigger) => {
  * @param {(url: string) => void} [options.navigateTo] Navigation callback.
  * @returns {boolean} Whether the prompt was displayed.
  */
-export const showProfileCompletionAlert = ({
-  trigger,
-  navigateTo = (url) => window.location.assign(url),
-} = {}) => {
+export const showProfileCompletionAlert = ({ trigger, navigateTo = loadPage } = {}) => {
   if (!shouldPromptForProfileCompletion(trigger) || typeof globalThis.Swal?.fire !== "function") {
     return false;
   }
@@ -111,7 +109,7 @@ export const showProfileCompletionFeedbackAlert = ({
   trigger,
   message,
   icon = "info",
-  navigateTo = (url) => window.location.assign(url),
+  navigateTo = loadPage,
 } = {}) => {
   if (!message || !shouldPromptForProfileCompletion(trigger) || typeof globalThis.Swal?.fire !== "function") {
     return false;
@@ -149,9 +147,7 @@ export const showProfileCompletionFeedbackAlert = ({
  * @param {(url: string) => void} [options.navigateTo] Navigation callback.
  * @returns {boolean} Whether the prompt was displayed.
  */
-export const showLoginProfileCompletionAlert = ({
-  navigateTo = (url) => window.location.assign(url),
-} = {}) => {
+export const showLoginProfileCompletionAlert = ({ navigateTo = loadPage } = {}) => {
   if (getUserProfileCompleteValue() !== "false" || typeof globalThis.Swal?.fire !== "function") {
     return false;
   }

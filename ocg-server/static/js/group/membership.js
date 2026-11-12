@@ -12,6 +12,7 @@ import {
   markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
+import { resolveUserLoggedIn } from "/static/js/common/user-session.js";
 import { isSuccessfulXHR, parseJsonText } from "/static/js/common/utils.js";
 
 const MEMBERSHIP_CONTAINER_SELECTOR = "#membership-container";
@@ -34,6 +35,9 @@ const ACTION_BUTTON_IDS = ["signin-btn", "join-btn", "leave-btn"];
 
 // Container dataset key marking a join or leave request whose focus is pending.
 const ACTION_PENDING_KEY = "membershipActionPending";
+
+/** Containers whose logged-out state was already looked up. */
+const sessionCheckedContainers = new WeakSet();
 
 /**
  * Returns all membership containers within a root node.
@@ -58,11 +62,23 @@ const getMembershipContainers = (root) => {
 };
 
 /**
- * Initializes membership container state.
+ * Initializes membership container state. Logged-out visitors send no membership
+ * check, so their container shows the sign-in action as soon as the login state
+ * is known.
  * @param {HTMLElement} container - Membership container element
  */
 const initializeMembershipContainer = (container) => {
   markDatasetReady(container, "membershipReady");
+
+  if (sessionCheckedContainers.has(container)) {
+    return;
+  }
+  sessionCheckedContainers.add(container);
+  resolveUserLoggedIn().then((loggedIn) => {
+    if (loggedIn === false && container.isConnected) {
+      showMembershipState(container, null);
+    }
+  });
 };
 
 /**
@@ -80,30 +96,8 @@ const handleMembershipCheckResponse = (event) => {
     return;
   }
 
-  const loadingButton = getElementById(container, "loading-btn");
-  const signinButton = getElementById(container, "signin-btn");
-  const joinButton = getElementById(container, "join-btn");
-  const leaveButton = getElementById(container, "leave-btn");
-
-  if (!loadingButton || !signinButton || !joinButton || !leaveButton) {
-    return;
-  }
-
-  setElementHidden(loadingButton, true);
-  setElementHidden(signinButton, true);
-  setElementHidden(joinButton, true);
-  setElementHidden(leaveButton, true);
-
   const xhr = event.detail?.xhr;
-  const response = isSuccessfulXHR(xhr) ? parseJsonText(xhr.responseText, null) : null;
-
-  let visibleButton = signinButton;
-  if (response) {
-    visibleButton = response.is_member ? leaveButton : joinButton;
-  }
-  setElementHidden(visibleButton, false);
-
-  restoreActionFocus(container);
+  showMembershipState(container, isSuccessfulXHR(xhr) ? parseJsonText(xhr.responseText, null) : null);
 };
 
 /**
@@ -204,6 +198,36 @@ const restoreActionFocus = async (container) => {
     (button) => button && !isElementHidden(button),
   );
   actionButton?.focus();
+};
+
+/**
+ * Shows the membership action that matches a check response: leave for members,
+ * join for other logged-in users, and sign in when there is no usable response.
+ * @param {HTMLElement} container - Membership container element
+ * @param {{is_member: boolean}|null} response - Parsed membership response
+ */
+const showMembershipState = (container, response) => {
+  const loadingButton = getElementById(container, "loading-btn");
+  const signinButton = getElementById(container, "signin-btn");
+  const joinButton = getElementById(container, "join-btn");
+  const leaveButton = getElementById(container, "leave-btn");
+
+  if (!loadingButton || !signinButton || !joinButton || !leaveButton) {
+    return;
+  }
+
+  setElementHidden(loadingButton, true);
+  setElementHidden(signinButton, true);
+  setElementHidden(joinButton, true);
+  setElementHidden(leaveButton, true);
+
+  let visibleButton = signinButton;
+  if (response) {
+    visibleButton = response.is_member ? leaveButton : joinButton;
+  }
+  setElementHidden(visibleButton, false);
+
+  restoreActionFocus(container);
 };
 
 /**

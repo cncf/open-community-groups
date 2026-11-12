@@ -2,12 +2,15 @@
 <footer class="ink flex-none bg-ink text-center text-on-fill lg:text-left [&_:focus-visible]:outline-on-fill dark:border-t dark:border-plate-edge"
         role="contentinfo"
         aria-label="Site footer">
-  {# Phones space the logo, GitHub icon, rule and copy by the 28px bottom padding; the gap and padding around the icon leave room for its 8px hover padding. -#}
+  {# Phones space the logo, GitHub icon, rule and copy by the 28px bottom padding; the gap and padding around the icon leave room for its 8px hover padding. The home, community, group and event pages leave the same 28px under their content. -#}
   <div class="px-8 py-7 lg:px-16 lg:py-12">
     <div class="pb-8 sm:pb-10 text-center md:text-left phone:pb-5">
       <div class="flex flex-col justify-between items-center gap-6 md:flex-row phone:gap-5">
-        {# Footer logo -#}
-        {% if let Some(footer_logo_url) = &self.site_settings.footer_logo_url -%}
+        {# Footer logo: the header's dark logo when the site pairs one with its header logo, as
+           the footer is dark in every theme; otherwise the footer logo. -#}
+        {% let header_logo_dark = self.site_settings.header_logo_url.as_ref().and(self.site_settings.header_logo_dark_url.as_ref()) -%}
+        {% let footer_logo = header_logo_dark.or(self.site_settings.footer_logo_url.as_ref()) -%}
+        {% if let Some(footer_logo_url) = footer_logo -%}
           <div class="inline-flex">
             <img class="w-auto max-w-[518px] h-[48px]"
                  width="auto"
