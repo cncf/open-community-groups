@@ -565,6 +565,14 @@
     @apply phone:max-w-[calc(100%-0.25rem)]!;
   }
 
+  /* Alerts open in the top layer (topLayer in common/alerts.js), which makes the page-sized
+     container a popover. Browsers paint popovers with an opaque canvas color by default, and the
+     container fades its background, so the whole page would flash before the alert shows. This
+     layered rule only replaces that default: SweetAlert2's own backdrop rules still win. */
+  .swal2-container[popover] {
+    @apply bg-transparent;
+  }
+
   .ocg-swal-popup > .swal2-icon {
     @apply mt-0! mb-5!;
   }
@@ -982,7 +990,8 @@
      img inside a plate). These rules only hide, so the element's own display utilities apply
      when it shows. The dark hide conditions are the exact complement of the dark variant, so
      exactly one image of a pair shows: print and light islands (.plate, .ink) show the light
-     one. The dark img is lazy, so it is only fetched once shown. */
+     one. The dark img is lazy, so it is only fetched once shown; the site header logos are the
+     exception and both load as plain images. */
   [data-theme-image="light"] {
     @variant dark {
       display: none !important;
@@ -1012,7 +1021,8 @@
      2388x605 artwork, so the header never moves while the image loads or follows the color
      theme. Logos of other proportions are contained in it, left aligned. Width and height are
      both explicit: with aspect-ratio, Safari grows the slot to the image's natural width.
-     Paired logos are shown and hidden by their data-theme-image pair. */
+     Paired logos are shown and hidden by their data-theme-image pair, and both load as plain
+     images so the one shown is there on first paint. */
   [data-site-logo] {
     --site-logo-height: 2.5rem;
 

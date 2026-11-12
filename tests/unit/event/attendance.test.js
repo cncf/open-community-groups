@@ -8,6 +8,7 @@ import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import {
   dispatchHtmxAfterRequest,
   dispatchHtmxBeforeRequest,
+  dispatchHtmxLoad,
 } from "/tests/unit/test-utils/htmx.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
@@ -448,6 +449,39 @@ describe("event attendance", () => {
       );
       expect(checkStatus.textContent, `${status}`).to.equal("");
     });
+  });
+
+  it("shows the signed-out view without a registration check when logged out", async () => {
+    // Render the fixture below a user menu that reports a logged-out visitor.
+    const { retryButton, signinButton } = renderAttendanceDom();
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      '<button id="user-dropdown-button" data-logged-in="false"></button>',
+    );
+
+    // Initialize the container, as HTMX does after loading it.
+    dispatchHtmxLoad();
+    await waitForMicrotask();
+
+    // Verify the sign-in action shows with no response to render.
+    expect(signinButton.classList.contains("hidden")).to.equal(false);
+    expect(retryButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("waits for the registration check when a user is logged in", async () => {
+    // Render the fixture below a user menu that reports a logged-in user.
+    const { signinButton } = renderAttendanceDom();
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      '<button id="user-dropdown-button" data-logged-in="true"></button>',
+    );
+
+    // Initialize the container, as HTMX does after loading it.
+    dispatchHtmxLoad();
+    await waitForMicrotask();
+
+    // Verify nothing is rendered before the registration check answers.
+    expect(signinButton.classList.contains("hidden")).to.equal(true);
   });
 
   it("Retry shows the loading state and checks registration again", async () => {

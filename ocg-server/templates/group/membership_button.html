@@ -42,7 +42,10 @@
   {# End leave button -#}
 
   {# Membership checker -#}
+  {# Logged-out visitors never send this check: the shared HTMX hooks drop requests marked
+     data-ocg-requires-login, and membership.js shows the sign-in action instead. -#}
   <div id="membership-checker"
+       data-ocg-requires-login
        hx-get="/{{ group.community.name }}/group/{{ group.group_id }}/membership"
        hx-trigger="load, membership-changed from:body"
        hx-swap="none ignoreTitle:true"></div>

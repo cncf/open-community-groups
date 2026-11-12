@@ -7,18 +7,13 @@
        aria-label="Go to {{ site_settings.title }} homepage">
       {% if let Some(url) = &site_settings.header_logo_url -%}
         {% if let Some(dark_url) = &site_settings.header_logo_dark_url -%}
-          {# Lazy pair and inline script, as in common/header.html -#}
+          {# Plain image pair, as in common/header.html -#}
           <span class="relative" data-site-logo="light" data-theme-image="light">
-            <img src="{{ url }}" alt="{{ site_settings.title }} logo" loading="lazy">
+            <img src="{{ url }}" alt="{{ site_settings.title }} logo">
           </span>
           <span class="relative" data-site-logo="dark" data-theme-image="dark">
-            <img src="{{ dark_url }}"
-                 alt="{{ site_settings.title }} logo"
-                 loading="lazy">
+            <img src="{{ dark_url }}" alt="{{ site_settings.title }} logo">
           </span>
-          <script>
-            {% include "common/scripts/site_logo_init.js" -%}
-          </script>
         {% else -%}
           <span class="relative plate" data-site-logo="plated">
             <img src="{{ url }}" alt="{{ site_settings.title }} logo">

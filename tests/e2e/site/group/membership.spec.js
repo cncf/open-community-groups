@@ -40,6 +40,24 @@ test.describe("group membership", () => {
     );
   });
 
+  test("guests send no membership check and keep the header logo", async ({ page }) => {
+    // Record membership checks before the group loads.
+    const membershipChecks = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.endsWith("/membership")) {
+        membershipChecks.push(request.url());
+      }
+    });
+    await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
+
+    // Verify the guest action shows without asking the server.
+    await expect(getSignInButton(page)).toBeVisible();
+    expect(membershipChecks).toEqual([]);
+
+    // Verify the header keeps its logo slot, which a log-in redirect used to take away.
+    await expect(page.locator("#header #site-logo")).toBeAttached();
+  });
+
   testAtBothWidths(
     "guest join prompt paints the raised token with dark text in dark",
     async ({ isMobile, page }) => {

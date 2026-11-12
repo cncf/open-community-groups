@@ -10,6 +10,7 @@ import {
   reloadIfDeploymentChanged,
 } from "/static/js/common/deployment-version.js";
 import { hasHtmxTrigger } from "/static/js/common/htmx-triggers.js";
+import { resolveUserLoggedIn } from "/static/js/common/user-session.js";
 
 // Tracks event roots already wired so repeated initialization stays idempotent.
 const responseHandlerRoots = new WeakSet();
@@ -20,6 +21,12 @@ const REFRESH_BODY_TRIGGER = "refresh-body";
 const BODY_REFRESH_SUCCESS_TIMEOUT_MS = 10000;
 const HTMX_EXCLUDE_SELECTOR = "[hx-exclude], [data-hx-exclude]";
 const HTMX_KEEP_EMPTY_SELECTOR = "[data-hx-keep-empty]";
+// Matches the hx-preserve attribute in response markup, with or without a value.
+const HTMX_PRESERVE_ATTRIBUTE_PATTERN =
+  /\s+(?:data-)?hx-preserve(?:=(?:"[^"]*"|'[^']*'|[^\s>]*))?(?=[\s/>])/gi;
+const HTMX_SWAP_SELECTOR = "[hx-swap], [data-hx-swap]";
+// Requests that only serve logged-in users, such as enrollment and membership checks.
+const LOGIN_REQUIRED_SELECTOR = "[data-ocg-requires-login]";
 
 /**
  * Finds the closest response owner from whichever element HTMX exposes.
@@ -174,6 +181,49 @@ export const handleNotFoundBeforeSwap = (event) => {
 
   event.detail.shouldSwap = true;
   event.detail.isError = false;
+};
+
+/**
+ * Keeps hx-preserve for whole-body swaps only. HTMX pulls a preserved element
+ * out of the page before it knows whether the response will be inserted, so a
+ * full page answering a fragment or a discarded request, such as a log-in
+ * redirect or an error page, would take the header logo with it.
+ * @param {CustomEvent} event HTMX beforeSwap event.
+ * @param {Document} root Document whose body is the whole-page swap target.
+ * @returns {void}
+ */
+export const handlePreserveBeforeSwap = (event, root = document) => {
+  const detail = event.detail;
+  if (typeof detail?.serverResponse !== "string" || !detail.serverResponse.includes("hx-preserve")) {
+    return;
+  }
+
+  if (detail.target === root.body && !isDiscardedSwap(detail)) {
+    return;
+  }
+
+  detail.serverResponse = detail.serverResponse.replace(HTMX_PRESERVE_ATTRIBUTE_PATTERN, "");
+};
+
+/**
+ * Holds requests that only serve logged-in users until the login state is
+ * known, and drops them for logged-out visitors. The server would answer those
+ * with a redirect to the log-in page, which the page cannot use.
+ * @param {CustomEvent} event HTMX confirm event.
+ * @returns {void}
+ */
+export const handleLoginRequiredConfirm = (event) => {
+  const requestElement = event.detail?.elt;
+  if (!(requestElement instanceof Element) || !requestElement.matches(LOGIN_REQUIRED_SELECTOR)) {
+    return;
+  }
+
+  event.preventDefault();
+  resolveUserLoggedIn().then((loggedIn) => {
+    if (loggedIn !== false && requestElement.isConnected) {
+      event.detail.issueRequest();
+    }
+  });
 };
 
 /**
@@ -410,6 +460,7 @@ export const registerHtmxResponseHandlers = (root = document) => {
     return;
   }
 
+  eventRoot.addEventListener("htmx:confirm", handleLoginRequiredConfirm);
   eventRoot.addEventListener("htmx:configRequest", handleCommitShaConfigRequest);
   eventRoot.addEventListener("htmx:configRequest", handleDashboardContextConfigRequest);
   eventRoot.addEventListener("htmx:configRequest", handleHtmxExcludeConfigRequest);
@@ -419,6 +470,7 @@ export const registerHtmxResponseHandlers = (root = document) => {
   eventRoot.addEventListener("htmx:beforeSwap", handleCommitShaBeforeSwap);
   eventRoot.addEventListener("htmx:beforeSwap", handleDashboardContextBeforeSwap);
   eventRoot.addEventListener("htmx:beforeSwap", handleNotFoundBeforeSwap);
+  eventRoot.addEventListener("htmx:beforeSwap", handlePreserveBeforeSwap);
   eventRoot.addEventListener("htmx:beforeSwap", handleDeclarativeHtmxResponse);
   eventRoot.addEventListener("htmx:afterRequest", handleDeclarativeHtmxResponse);
   responseHandlerRoots.add(eventRoot);
@@ -434,3 +486,18 @@ export const registerHtmxResponseHandlers = (root = document) => {
 const getDeploymentRefreshOptions = (event) => ({
   background: !event.detail?.requestConfig?.triggeringEvent,
 });
+
+/**
+ * Checks whether HTMX discards a response instead of inserting it: a response
+ * override or the hx-swap the request element inherits asks for no swap.
+ * @param {object} detail HTMX beforeSwap event detail.
+ * @returns {boolean} True when the swap style is none.
+ */
+const isDiscardedSwap = (detail) => {
+  const requestElement = detail.requestConfig?.elt;
+  const swapOwner = requestElement instanceof Element ? requestElement.closest(HTMX_SWAP_SELECTOR) : null;
+  const inheritedSwap = swapOwner?.getAttribute("hx-swap") ?? swapOwner?.dataset.hxSwap;
+  const swap = detail.swapOverride || inheritedSwap || "";
+
+  return swap.trim().split(/\s+/)[0] === "none";
+};

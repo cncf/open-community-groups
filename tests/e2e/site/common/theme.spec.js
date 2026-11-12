@@ -548,7 +548,7 @@ test.describe("dark palette", () => {
 });
 
 test.describe("logo plates", () => {
-  test("site header shows one logo per theme and fetches the dark logo only in dark", async ({ page }) => {
+  test("site header shows one logo per theme and loads both up front", async ({ page }) => {
     // Serve both logos, counting the dark logo requests, and load a page in light.
     await routeSiteLogo(page, SITE_LOGO_URLS.light);
     const countDarkRequests = await routeSiteLogo(page, SITE_LOGO_URLS.dark);
@@ -563,28 +563,30 @@ test.describe("logo plates", () => {
     const darkLogo = getSiteLogo(page, "dark");
     const lightLogo = getSiteLogo(page, "light");
 
-    // Verify light shows only the loaded light logo and never requests the dark one.
+    // Verify light shows only the light logo, with the dark one loaded behind it.
     await expect(getVisibleSiteLogos(page)).toHaveCount(1);
     await expect(lightLogo).toBeVisible();
     await expect(darkLogo).toBeHidden();
     await expectImageLoaded(lightLogo.locator("img"));
-    expect(countDarkRequests()).toBe(0);
+    await expectImageLoaded(darkLogo.locator("img"));
+    const darkRequests = countDarkRequests();
+    expect(darkRequests).toBeGreaterThan(0);
 
     // Pick Dark from the account menu.
     await pickTheme(page, "dark");
 
-    // Verify dark loads and shows only the dark logo, with no broken-image placeholder.
+    // Verify dark shows only the dark logo, already loaded, with no broken-image placeholder.
     await expect(darkLogo).toBeVisible();
     await expect(lightLogo).toBeHidden();
     await expect(getVisibleSiteLogos(page)).toHaveCount(1);
     await expectImageLoaded(darkLogo.locator("img"));
-    expect(countDarkRequests()).toBeGreaterThan(0);
+    expect(countDarkRequests()).toBe(darkRequests);
     await expect(page.locator("#header [data-ocg-broken-image-icon]")).toHaveCount(0);
   });
 
   test("site header keeps the logo slot size while the dark logo loads", async ({ page }) => {
-    // Serve the light logo, counting its requests, hold the dark one and load in stored dark.
-    const countLightRequests = await routeSiteLogo(page, SITE_LOGO_URLS.light);
+    // Serve the light logo, hold the dark one and load in stored dark.
+    await routeSiteLogo(page, SITE_LOGO_URLS.light);
     const { promise: heldDarkLogo, resolve: holdDarkLogo } = Promise.withResolvers();
     await page.route(`**${SITE_LOGO_URLS.dark}`, holdDarkLogo, { times: 1 });
     await useTheme(page, { stored: "dark" });
@@ -607,11 +609,10 @@ test.describe("logo plates", () => {
     // Release the dark logo.
     await darkLogoRoute.fulfill({ path: SITE_LOGO_FILE });
 
-    // Verify the loaded logo keeps the slot's box and the hidden light logo is never requested.
+    // Verify the loaded logo keeps the slot's box.
     await expectImageLoaded(darkLogo.locator("img"));
     expect(await darkLogo.boundingBox()).toEqual(heldBox);
     expect(await darkLogo.locator("img").boundingBox()).toEqual(heldBox);
-    expect(countLightRequests()).toBe(0);
   });
 
   test("site header keeps the loaded logo across boosted navigation", async ({ isMobile, page }) => {
@@ -1071,9 +1072,8 @@ const buildLevelImages = (level) => {
 
 /**
  * Builds the markup `common/header.html` renders for one site header logo variant: a wrapper
- * with the logo image, lazy in the light and dark pair. The pair wrappers carry their
- * `data-theme-image`, which shows the one matching the theme. The header's inline script, which
- * makes the shown logo eager, is not part of the markup.
+ * with the logo image. The pair wrappers carry their `data-theme-image`, which shows the one
+ * matching the theme.
  * @param {"dark"|"light"|"plated"} variant - Logo variant, the `data-site-logo` value.
  * @param {string} src - Image URL.
  * @returns {string} Wrapper markup.
@@ -1081,11 +1081,10 @@ const buildLevelImages = (level) => {
 const buildSiteLogo = (variant, src) => {
   const wrapperClass = variant === "plated" ? "relative plate" : "relative";
   const themeImage = variant === "plated" ? "" : ` data-theme-image="${variant}"`;
-  const loading = variant === "plated" ? "" : ' loading="lazy"';
   return (
     `<span class="${wrapperClass}" data-site-logo="${variant}"${themeImage}>` +
     '<img class="z-1" data-ocg-broken-image-bg-class="bg-transparent" ' +
-    `src="${src}" alt="${TEST_SITE_TITLE} logo"${loading}>` +
+    `src="${src}" alt="${TEST_SITE_TITLE} logo">` +
     "</span>"
   );
 };
