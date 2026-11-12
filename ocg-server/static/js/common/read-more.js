@@ -1,7 +1,11 @@
 import { initializeMatchingRoots, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import { isPhoneViewport, PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 
+// Custom property that ends a collapsed body under its last shown line.
+const CLIP_HEIGHT_PROPERTY = "--read-more-clip";
 const COLLAPSED_LABEL = "Read more";
+// Lines of text a collapsed body shows; styles.src.css falls back to the same count.
+const COLLAPSED_LINES = 10;
 const EXPANDED_LABEL = "Read less";
 // Taps on these keep their own action instead of expanding the text.
 const INTERACTIVE_SELECTOR = "a, button, input, label, select, summary, textarea";
@@ -36,7 +40,7 @@ export const initializeReadMore = (root = document) => {
 
 /**
  * Binds one block. The observer's first callback sets `data-overflowing`. A tap
- * on the clipped text expands it, so the fade works as part of the toggle.
+ * on the clipped text expands it, like the toggle.
  * @param {Element} block Read more block.
  * @returns {void}
  */
@@ -46,15 +50,30 @@ const bindBlock = (block) => {
   }
 
   const body = block.querySelector(".read-more-body");
+  const toggle = block.querySelector(".read-more-toggle");
   const listeners = new AbortController();
   const { signal } = listeners;
-  // The body keeps its capped height while clipped, so late images only resize its children.
+  // Only the children are observed. Late images resize them, while each measure resizes the
+  // body, which the observer would report as a loop.
   const observer = new ResizeObserver(() => measureBlock(block, body));
+  const mutations = new MutationObserver((records) => {
+    records.forEach(({ addedNodes, removedNodes }) => {
+      getElements(removedNodes).forEach((element) => observer.unobserve(element));
+      getElements(addedNodes).forEach((element) => observer.observe(element));
+    });
+    measureBlock(block, body);
+  });
 
   setExpanded(block, false);
-  block
-    .querySelector(".read-more-toggle")
-    .addEventListener("click", () => setExpanded(block, !block.hasAttribute("data-expanded")), { signal });
+  toggle.addEventListener(
+    "click",
+    () => {
+      setExpanded(block, !block.hasAttribute("data-expanded"));
+      // Lines can move while the text is open, so a collapse measures again.
+      measureBlock(block, body);
+    },
+    { signal },
+  );
   body.addEventListener(
     "click",
     (event) => {
@@ -77,10 +96,12 @@ const bindBlock = (block) => {
     },
     { signal },
   );
-  [body, ...body.children].forEach((element) => observer.observe(element));
+  [...body.children].forEach((element) => observer.observe(element));
+  mutations.observe(body, { childList: true });
 
   boundBlocks.set(block, () => {
     listeners.abort();
+    mutations.disconnect();
     observer.disconnect();
   });
 };
@@ -117,6 +138,69 @@ const collapseAllBlocks = () => {
 };
 
 /**
+ * Finds the height that ends a collapsed body under its last shown line.
+ * @param {Element} body Read more body.
+ * @returns {number|null} Height in pixels, or null when every line of text is shown.
+ */
+const getClipHeight = (body) => {
+  const lines = getTextLines(body, COLLAPSED_LINES + 1);
+  if (lines.length <= COLLAPSED_LINES) {
+    return null;
+  }
+
+  const lastLine = lines[COLLAPSED_LINES - 1];
+  const nextLine = lines[COLLAPSED_LINES];
+  // A line box reaches half a line height below the center of its text. Without a numeric line
+  // height the text's own bottom edge is the cut. Whole pixels absorb uneven half-leading.
+  const lineHeight = Number.parseFloat(getComputedStyle(body).lineHeight) || 0;
+  const lineBoxBottom = (lastLine.top + lastLine.bottom + lineHeight) / 2;
+  const clipBottom = Math.max(lastLine.bottom, Math.min(lineBoxBottom, nextLine.top));
+
+  return Math.round(clipBottom - body.getBoundingClientRect().top);
+};
+
+/**
+ * Keeps the elements of a node list.
+ * @param {NodeList} nodes Nodes to filter.
+ * @returns {Element[]} Element nodes.
+ */
+const getElements = (nodes) => [...nodes].filter((node) => node instanceof Element);
+
+/**
+ * Collects the lines of text in a body from the top, reading where the text is
+ * laid out rather than where it is clipped.
+ * @param {Element} body Read more body.
+ * @param {number} limit Lines to complete before stopping.
+ * @returns {{bottom: number, top: number}[]} Vertical extent of each line.
+ */
+const getTextLines = (body, limit) => {
+  const lines = [];
+  const range = document.createRange();
+  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+
+  // A line is complete once the next one starts, so collect one past the limit.
+  while (lines.length <= limit && walker.nextNode()) {
+    range.selectNodeContents(walker.currentNode);
+    for (const { bottom, height, top } of range.getClientRects()) {
+      const line = lines.at(-1);
+
+      if (height === 0) {
+        continue;
+      }
+      // A fragment centered inside the last line continues it.
+      if (line && (top + bottom) / 2 < line.bottom) {
+        line.bottom = Math.max(line.bottom, bottom);
+        line.top = Math.min(line.top, top);
+      } else {
+        lines.push({ bottom, top });
+      }
+    }
+  }
+
+  return lines;
+};
+
+/**
  * Follows the phone query: binds when it turns true, releases when it turns false.
  * @param {MediaQueryListEvent} event Query change event.
  * @returns {void}
@@ -138,8 +222,9 @@ const isCappedImage = (image) =>
   image.getBoundingClientRect().height >= parseFloat(getComputedStyle(image).maxHeight);
 
 /**
- * Shows the toggle only when the collapsed body hides something. An expanded
- * body has no cap to measure against, so it keeps its last result.
+ * Ends the collapsed body under its last shown line, and shows the toggle only
+ * when that hides something. An expanded body has no cap to measure against, so
+ * it keeps its last result.
  * @param {Element} block Read more block.
  * @param {Element} body Clipped body.
  * @returns {void}
@@ -149,8 +234,10 @@ const measureBlock = (block, body) => {
     return;
   }
 
-  const overflowing =
-    body.scrollHeight > body.clientHeight || [...body.querySelectorAll("img")].some(isCappedImage);
+  const clipHeight = getClipHeight(body);
+  const overflowing = clipHeight !== null || [...body.querySelectorAll("img")].some(isCappedImage);
+
+  body.style.setProperty(CLIP_HEIGHT_PROPERTY, clipHeight === null ? "none" : `${clipHeight}px`);
   block.toggleAttribute("data-overflowing", overflowing);
 };
 
@@ -166,11 +253,12 @@ const releaseAllBlocks = () => {
     releaseBlock(block);
     setExpanded(block, false);
     block.removeAttribute("data-overflowing");
+    block.querySelector(".read-more-body").style.removeProperty(CLIP_HEIGHT_PROPERTY);
   });
 };
 
 /**
- * Removes a block's listeners and observer.
+ * Removes a block's listeners and observers.
  * @param {Element} block Read more block.
  * @returns {void}
  */

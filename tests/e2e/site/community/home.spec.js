@@ -438,15 +438,18 @@ test.describe("community home page", () => {
       await expect(description).toContainText(TEST_COMMUNITY_DESCRIPTION);
       await expect(toggle).toBeHidden();
 
-      // Grow the description past seven lines.
+      // Grow the description past ten lines.
       await description.evaluate((element) => {
         element.firstElementChild.textContent = "Long community description. ".repeat(40);
       });
 
-      // Verify it clips at seven lines behind the toggle, whose hit area reaches the touch minimum.
+      // Verify it shows ten full lines above the toggle, whose hit area reaches the touch minimum.
       await expect(toggle).toBeVisible();
       await expect(toggle).toHaveAttribute("aria-expanded", "false");
-      expect(await description.evaluate((element) => element.clientHeight)).toBe(168);
+      expect(await description.evaluate((element) => element.clientHeight)).toBe(240);
+      const descriptionBox = await description.boundingBox();
+      const toggleBox = await toggle.boundingBox();
+      expect(toggleBox.y - (descriptionBox.y + descriptionBox.height)).toBeCloseTo(12, 1);
       const hitAreaHeight = await toggle.evaluate((element) =>
         Number.parseFloat(getComputedStyle(element, "::after").height),
       );
@@ -456,28 +459,26 @@ test.describe("community home page", () => {
       await toggle.click();
       const collapse = page.getByRole("button", { name: "Read less" });
       await expect(collapse).toHaveAttribute("aria-expanded", "true");
-      expect(await description.evaluate((element) => element.clientHeight)).toBeGreaterThan(168);
+      expect(await description.evaluate((element) => element.clientHeight)).toBeGreaterThan(240);
       await collapse.click();
       await expect(toggle).toHaveAttribute("aria-expanded", "false");
-      expect(await description.evaluate((element) => element.clientHeight)).toBe(168);
+      expect(await description.evaluate((element) => element.clientHeight)).toBe(240);
     });
 
-    test("read more fades the clipped edge and drops a leading margin", async ({ page }) => {
+    test("read more ends under a full line and drops a leading margin", async ({ page }) => {
       const description = page.locator(".community-description");
       const toggle = page.getByRole("button", { name: "Read more" });
 
-      // Lead the description with a heading and grow it past seven lines.
+      // Lead the description with a heading and grow it past ten lines.
       await description.evaluate((element) => {
         element.innerHTML = `<h2>Heading</h2><p>${"Long community description. ".repeat(40)}</p>`;
       });
       await expect(toggle).toBeVisible();
 
-      // Verify the heading starts at the top and the clip edge fades.
+      // Verify the heading starts at the top and the clip ends under the tenth line: the 28px
+      // heading, its 8px margin and nine 24px lines.
       await expect(description.locator("h2")).toHaveCSS("margin-top", "0px");
-      await expect(description).toHaveCSS("mask-image", /linear-gradient/);
-
-      // Verify the open text carries no fade.
-      await toggle.click();
+      expect(await description.evaluate((element) => element.clientHeight)).toBe(252);
       await expect(description).toHaveCSS("mask-image", "none");
     });
 

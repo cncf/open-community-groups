@@ -360,11 +360,17 @@ export class BreadcrumbNav extends LitWrapper {
               >
                 <div class="svg-icon size-4 bg-stone-400 icon-tree-list"></div>
                 <span class="text-stone-600 truncate flex-1 text-left">${currentItem.label}</span>
-                <div
-                  class="svg-icon size-3 bg-stone-400 icon-caret-down transition-transform duration-200 motion-reduce:transition-none ${
-                    this._isOpen ? "rotate-180" : ""
-                  }"
-                ></div>
+                <!-- Tap cue: a mini button on phones, decorative since the whole row is the trigger -->
+                <span
+                  class="btn-primary-outline-anchor btn-mini size-7 shrink-0 p-0 not-phone:contents"
+                  aria-hidden="true"
+                >
+                  <div
+                    class="svg-icon size-3 bg-stone-400 icon-caret-down transition-transform duration-200 motion-reduce:transition-none phone:bg-current ${
+                      this._isOpen ? "rotate-180" : ""
+                    }"
+                  ></div>
+                </span>
               </button>
               <div
                 id="${this._dropdownId}"

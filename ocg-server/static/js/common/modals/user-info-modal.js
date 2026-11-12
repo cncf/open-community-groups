@@ -333,7 +333,16 @@ export class UserInfoModal extends LitWrapper {
     return html` <div class="mt-1 text-sm text-stone-600 sm:mt-2 sm:text-base">${parts.join(" at ")}</div> `;
   }
 
-  _renderLinuxFoundationLink() {
+  /**
+   * Renders the openprofile.dev link for one of its slots. The title row and one body
+   * slot render, and CSS shows one of them: the title row, or the body slot on phones,
+   * where the sheet's title row has no room for the link. On phones the link follows
+   * the bio or the placeholder text, or stands in for the bio above the social links.
+   * @param {"head"|"after-text"|"no-text"} slot - Slot that renders the link
+   * @returns {TemplateResult|string} Link template or empty string
+   * @private
+   */
+  _renderLinuxFoundationLink(slot) {
     const linuxFoundationUsername = this._userData?.provider?.linuxfoundation?.username?.trim();
 
     if (!linuxFoundationUsername) {
@@ -341,18 +350,24 @@ export class UserInfoModal extends LitWrapper {
     }
 
     const openProfileUrl = `https://openprofile.dev/profile/${encodeURIComponent(linuxFoundationUsername)}`;
-
-    return html`
+    const slotClasses = slot === "head" ? "h-10 md:h-[30px] phone:hidden" : "pill-link";
+    const link = html`
       <a
         href=${openProfileUrl}
         target="_blank"
         rel="noopener noreferrer"
-        class="group btn-primary-outline-anchor inline-flex max-w-full items-center justify-center gap-2 h-10 md:h-[30px] pill-link phone:h-auto"
+        class="group btn-primary-outline-anchor inline-flex max-w-full items-center justify-center gap-2 ${slotClasses}"
       >
         <span>openprofile.dev</span>
         <div class="svg-icon size-3 icon-external-link"></div>
       </a>
     `;
+
+    if (slot === "head") {
+      return link;
+    }
+
+    return html`<div class="not-phone:hidden ${slot === "after-text" ? "mt-4" : ""}">${link}</div>`;
   }
 
   _renderProfilePlaceholder(bio, socialLinks) {
@@ -366,6 +381,7 @@ export class UserInfoModal extends LitWrapper {
       >
         <div class="text-base text-stone-600 mb-3 sm:text-lg">Profile not completed</div>
         <p class="text-sm text-stone-600">This user hasn’t finished setting up their profile yet.</p>
+        ${this._renderLinuxFoundationLink("after-text")}
       </div>
     `;
   }
@@ -406,7 +422,7 @@ export class UserInfoModal extends LitWrapper {
               <div
                 class="flex shrink-0 items-center gap-3 sm:gap-5 sm:pe-2 phone:ms-auto phone:gap-2 phone:pe-0"
               >
-                ${this._renderLinuxFoundationLink()}
+                ${this._renderLinuxFoundationLink("head")}
                 <button
                   type="button"
                   class="group shrink-0 text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-10 h-10 inline-flex justify-center items-center"
@@ -448,9 +464,11 @@ export class UserInfoModal extends LitWrapper {
                             : html`<div>${bio}</div>`
                         }
                       </div>
+                      ${this._renderLinuxFoundationLink("after-text")}
                     `
                   : ""
               }
+              ${!bio && socialLinks.length > 0 ? this._renderLinuxFoundationLink("no-text") : ""}
               ${this._renderProfilePlaceholder(bio, socialLinks)} ${this._renderSocialLinks(socialLinks)}
               ${this._renderBadges(socialLinks.length > 0)}
             </div>

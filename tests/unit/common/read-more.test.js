@@ -4,6 +4,7 @@ import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
+const CLIP_HEIGHT_PROPERTY = "--read-more-clip";
 const LONG_TEXT = "Long description text. ".repeat(80);
 
 /** ResizeObserver double that counts live instances. */
@@ -20,6 +21,18 @@ class TrackedResizeObserver extends ResizeObserver {
     super.disconnect();
   }
 }
+
+/**
+ * Builds one-line paragraphs with a bottom margin.
+ * @param {number} count Paragraphs to build.
+ * @param {string} margin Bottom margin of each paragraph.
+ * @returns {string} Paragraph markup.
+ */
+const buildLines = (count, margin) => {
+  const lines = Array.from({ length: count }, (_, index) => `Line ${index + 1}`);
+
+  return lines.map((line) => `<p style="margin: 0 0 ${margin};">${line}</p>`).join("");
+};
 
 /**
  * Renders a read more block with the clip the phone section of styles.src.css applies.
@@ -72,7 +85,12 @@ describe("read-more", () => {
 
     style = document.createElement("style");
     style.textContent = `
-      .read-more:not([data-expanded]) .read-more-body { max-height: 3lh; overflow: hidden; }
+      .read-more { width: 20rem; }
+      .read-more-body { line-height: 20px; }
+      .read-more:not([data-expanded]) .read-more-body {
+        max-height: var(${CLIP_HEIGHT_PROPERTY}, 10lh);
+        overflow: hidden;
+      }
       .read-more:not([data-expanded]) .read-more-body img { max-height: 4rem; }
     `;
     document.head.append(style);
@@ -122,6 +140,48 @@ describe("read-more", () => {
 
     // Verify the short block stayed without a toggle.
     expect(short.block.hasAttribute("data-overflowing")).to.equal(false);
+  });
+
+  it("ends collapsed text under its tenth line, whatever the spacing", async () => {
+    const { block, body } = renderBlock(buildLines(12, "7px"));
+    const paragraphs = body.querySelectorAll("p");
+
+    media.setMatches(PHONE_MEDIA_QUERY, true);
+    await waitForOverflowing(block);
+
+    // Verify the clip sits between the tenth line and the next one.
+    const { bottom } = body.getBoundingClientRect();
+    expect(bottom).to.be.closeTo(paragraphs[9].getBoundingClientRect().top + 20, 1);
+    expect(paragraphs[10].getBoundingClientRect().top).to.be.at.least(bottom);
+  });
+
+  it("shows ten lines in full even past the fallback height", async () => {
+    const { block, body } = renderBlock(buildLines(10, "3lh"));
+
+    media.setMatches(PHONE_MEDIA_QUERY, true);
+    await waitUntil(() => body.style.getPropertyValue(CLIP_HEIGHT_PROPERTY) === "none");
+
+    // Verify nothing is clipped, so there is nothing to expand.
+    expect(block.hasAttribute("data-overflowing")).to.equal(false);
+    expect(body.scrollHeight).to.equal(body.clientHeight);
+  });
+
+  it("measures again when the text collapses", async () => {
+    const { block, body, toggle } = renderBlock(`<p>${LONG_TEXT}</p>`);
+
+    media.setMatches(PHONE_MEDIA_QUERY, true);
+    await waitForOverflowing(block);
+
+    // Shorten the text while it is open, when measuring is paused.
+    toggle.click();
+    body.querySelector("p").textContent = "Short text.";
+    await nextFrame();
+    expect(block.hasAttribute("data-overflowing")).to.equal(true);
+
+    // Verify the collapse reads the text as it is now.
+    toggle.click();
+    expect(block.hasAttribute("data-overflowing")).to.equal(false);
+    expect(body.style.getPropertyValue(CLIP_HEIGHT_PROPERTY)).to.equal("none");
   });
 
   it("toggles the text and keeps the toggle state in step", async () => {
@@ -245,7 +305,7 @@ describe("read-more", () => {
   });
 
   it("leaves no state or observers after the query turns false with a block open", async () => {
-    const { block, toggle } = renderBlock(`<p>${LONG_TEXT}</p>`);
+    const { block, body, toggle } = renderBlock(`<p>${LONG_TEXT}</p>`);
 
     media.setMatches(PHONE_MEDIA_QUERY, true);
     await waitForOverflowing(block);
@@ -258,6 +318,7 @@ describe("read-more", () => {
     expect(TrackedResizeObserver.live).to.equal(0);
     expect(block.hasAttribute("data-expanded")).to.equal(false);
     expect(block.hasAttribute("data-overflowing")).to.equal(false);
+    expect(body.style.getPropertyValue(CLIP_HEIGHT_PROPERTY)).to.equal("");
     expect(toggle.getAttribute("aria-expanded")).to.equal("false");
     expect(toggle.textContent).to.equal("Read more");
 

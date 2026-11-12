@@ -195,6 +195,26 @@ describe("breadcrumb-nav", () => {
     }
   });
 
+  it("frames the trigger caret as a decorative mini button on phones only", async () => {
+    // Render the breadcrumb navigation with a mobile dropdown trigger.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+    });
+
+    // Collect the caret and the tap cue around it.
+    const caret = element.querySelector("[data-breadcrumb-trigger] .icon-caret-down");
+    const tapCue = caret.parentElement;
+
+    // Verify the cue is a mini button on phones and leaves no box elsewhere.
+    expect(tapCue.classList.contains("btn-mini")).to.equal(true);
+    expect(tapCue.classList.contains("not-phone:contents")).to.equal(true);
+    expect(caret.classList.contains("phone:bg-current")).to.equal(true);
+
+    // Verify the cue stays decorative, so the trigger remains the only control.
+    expect(tapCue.tagName).to.equal("SPAN");
+    expect(tapCue.getAttribute("aria-hidden")).to.equal("true");
+  });
+
   it("holds each banner's place with its natural size before the image loads", async () => {
     // Render both banners with their dark mode variants.
     const element = await mountLitComponent("breadcrumb-nav", {
