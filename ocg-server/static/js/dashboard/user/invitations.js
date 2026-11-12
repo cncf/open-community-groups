@@ -4,6 +4,7 @@ import { closestElement, getElementById, isElementHidden, markDatasetReady } fro
 import { hasHtmxTrigger } from "/static/js/common/htmx-triggers.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { toggleModalVisibility, trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
+import { loadPage } from "/static/js/common/page-loading.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 import { isSuccessfulXHR, parseJsonText } from "/static/js/common/utils.js";
 
@@ -93,7 +94,7 @@ const handleAfterRequest = (event) => {
 
     if (response?.redirect_url) {
       // Paid claims hand control to the provider checkout page.
-      window.location.assign(response.redirect_url);
+      loadPage(response.redirect_url);
       return;
     }
 

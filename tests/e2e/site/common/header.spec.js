@@ -661,33 +661,6 @@ test.describe("site header", () => {
     expect(await getCloseWatcherCount(page)).toBe(1);
   });
 
-  test("tap progress bar shows while a boosted link loads @mobile", async ({ page }) => {
-    // Hold the card's response so the bar outlasts its delay.
-    await navigateToSiteHome(page);
-    const card = page.getByRole("main").locator('a[hx-boost="true"][href*="/group/"]').first();
-    const { pathname } = new URL(await card.evaluate((element) => element.href));
-    let releaseResponse;
-    const responseHeld = new Promise((resolve) => {
-      releaseResponse = resolve;
-    });
-    await page.route(
-      (url) => url.pathname === pathname,
-      async (route) => {
-        await responseHeld;
-        await route.continue();
-      },
-    );
-
-    // Verify the bar appears on the header's bottom edge.
-    await card.tap();
-    await expect.poll(() => getHeaderBar(page)).toEqual({ content: '""', height: "2px", opacity: "1" });
-
-    // Verify it clears once the page arrives.
-    releaseResponse();
-    await expect(page).toHaveURL(new RegExp(`${pathname}$`, "u"));
-    await expect.poll(async () => (await getHeaderBar(page)).content).toBe("none");
-  });
-
   test("phone header shows the site title @mobile", async ({ page }) => {
     // Load a public page without a header logo.
     await navigateToPath(page, "/stats");
@@ -997,13 +970,6 @@ test.describe("site header", () => {
     await expectAccountSheetReleased(member1Page, { opener: userButton });
   });
 });
-
-/** Reads the tap progress bar drawn on the header's ::after. */
-const getHeaderBar = (page) =>
-  page.evaluate(() => {
-    const { content, height, opacity } = getComputedStyle(document.getElementById("header"), "::after");
-    return { content, height, opacity };
-  });
 
 /** Counts every CloseWatcher the page creates from its first script on. */
 const countCloseWatchers = (page) =>

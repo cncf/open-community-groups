@@ -24,6 +24,8 @@ let userSheetPhoneQuery = null;
 let userSheetTrigger = null;
 
 const headerNavLinkSelector = "[data-header-nav-link]";
+// Class that shows the loading underline on a header nav link.
+const headerNavLinkPendingClass = "header-nav-link-pending";
 /** Wait before showing nav loading so quick HTMX requests can finish without flicker. */
 const headerNavLinkPendingDelayMs = 120;
 const userSheetCloseSelector = ".sheet-head button";
@@ -56,7 +58,8 @@ const getHeaderNavLinkFromEvent = (event) => {
 };
 
 /**
- * Clears the pending loading state from the desktop header nav link.
+ * Clears the pending loading state from the desktop header nav links. Reads the DOM,
+ * because a restored history snapshot can show a pending link no variable knows of.
  */
 const clearHeaderNavLoading = () => {
   if (pendingHeaderNavLinkTimer) {
@@ -64,13 +67,11 @@ const clearHeaderNavLoading = () => {
     pendingHeaderNavLinkTimer = null;
   }
 
-  if (!pendingHeaderNavLink) {
-    return;
-  }
-
-  pendingHeaderNavLink.classList.remove("header-nav-link-pending");
-  pendingHeaderNavLink.removeAttribute("aria-busy");
   pendingHeaderNavLink = null;
+  document.querySelectorAll(`.${headerNavLinkPendingClass}`).forEach((link) => {
+    link.classList.remove(headerNavLinkPendingClass);
+    link.removeAttribute("aria-busy");
+  });
 };
 
 /**
@@ -134,7 +135,7 @@ const queueHeaderNavLoading = (link) => {
       return;
     }
 
-    link.classList.add("header-nav-link-pending");
+    link.classList.add(headerNavLinkPendingClass);
     link.setAttribute("aria-busy", "true");
     pendingHeaderNavLinkTimer = null;
   }, headerNavLinkPendingDelayMs);
@@ -547,6 +548,8 @@ const bindLifecycleListeners = () => {
   }
 
   document.addEventListener("htmx:historyRestore", restoreHeaderState);
+  // A snapshot saved while a link loads would show it loading again once restored.
+  document.addEventListener("htmx:beforeHistorySave", clearHeaderLoading);
   document.addEventListener("htmx:beforeRequest", startHeaderNavLoadingFromHtmx);
   document.addEventListener("htmx:afterRequest", clearHeaderNavLoadingFromHtmx);
   document.addEventListener("htmx:afterSwap", initUserDropdown);

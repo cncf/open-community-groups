@@ -1131,7 +1131,8 @@ button:disabled {
  * one need a higher specificity. Primitives that set display use :not(.hidden).
  *
  * Stacking ladder: strip 21, breadcrumb dropdown 25, header 30, CTA 40, existing modals
- * 50-1000, drawers and sheets 1100, map modal 1200, Lit modals 1300, Swal top layer.
+ * 50-1000, drawers and sheets 1100, map modal 1200, Lit modals 1300, page loading bar 1400,
+ * Swal top layer.
  */
 @utility btn-fill {
   @apply bg-primary-fill text-on-primary border-primary-edge;
@@ -1156,16 +1157,6 @@ button:disabled {
   }
 }
 
-@keyframes tap-bar-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
 @variant phone {
   /* Header shell */
   html {
@@ -1174,35 +1165,6 @@ button:disabled {
 
   html:has(.cta-bar:not(.hidden, [data-phone-bar="hidden"])) {
     scroll-padding-bottom: 5.5rem;
-  }
-
-  /* Tap progress bar: desktop's nav loading bar, shown after the same 120ms delay. */
-  body:has(a.htmx-request, form[hx-boost].htmx-request) #header::after {
-    content: "";
-    position: absolute;
-    right: 0;
-    bottom: -1px;
-    left: 0;
-    height: 2px;
-    background-image: linear-gradient(
-      90deg,
-      var(--color-primary-fg) 0%,
-      var(--color-primary-fg) 36%,
-      var(--color-stone-200) 50%,
-      var(--color-primary-fg) 64%,
-      var(--color-primary-fg) 100%
-    );
-    background-position: 110% 0;
-    background-size: 260% 100%;
-    opacity: 0;
-    pointer-events: none;
-    animation:
-      tap-bar-in 1ms linear 120ms forwards,
-      header-nav-loading 1.1s ease-in-out infinite;
-
-    @variant motion-reduce {
-      animation: tap-bar-in 1ms linear 120ms forwards;
-    }
   }
 
   /* Section heading */
@@ -2766,3 +2728,66 @@ input:placeholder-shown {
 }
 
 /* End header nav loading */
+
+/* Page loading bar */
+
+@keyframes page-loading-bar-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Below lg the header nav links are hidden, so navigation shows desktop's nav loading bar on
+ * the top edge of the viewport instead, after the same 120ms delay. It is drawn on the root, so
+ * it survives body swaps, needs no header and stays above sheets and modals.
+ */
+@variant max-lg {
+  html::after {
+    --page-loading-bar-animation:
+      page-loading-bar-in 1ms linear 120ms forwards, header-nav-loading 1.1s ease-in-out infinite;
+
+    content: "";
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 1400;
+    height: 2px;
+    background-image: linear-gradient(
+      90deg,
+      var(--color-primary-fg) 0%,
+      var(--color-primary-fg) 36%,
+      var(--color-stone-200) 50%,
+      var(--color-primary-fg) 64%,
+      var(--color-primary-fg) 100%
+    );
+    background-position: 110% 0;
+    background-size: 260% 100%;
+    opacity: 0;
+    pointer-events: none;
+
+    @variant motion-reduce {
+      --page-loading-bar-animation: page-loading-bar-in 1ms linear 120ms forwards;
+    }
+  }
+
+  /* Links carry the htmx request class while they load; common/page-loading.js marks the root
+     when a navigation replaces the document. */
+  html:is([data-page-loading], :has(a.htmx-request))::after {
+    animation: var(--page-loading-bar-animation);
+  }
+}
+
+@variant phone {
+  /* Phones keep the dashboard spinner inside the closed menu sheet, so the bar stands in. */
+  html:has(#dashboard-spinner.htmx-request)::after {
+    animation: var(--page-loading-bar-animation);
+  }
+}
+
+/* End page loading bar */

@@ -12,6 +12,8 @@
       {# Logo -#}
       {% if path != "/" %}
         <a href="/"
+           hx-boost="true"
+           hx-target="body"
            aria-label="Go to homepage"
            class="inline-flex phone:min-w-0
                   {% if shows_phone_title %}phone:hidden{% endif %}">
@@ -56,6 +58,8 @@
       {# The title gets its own link so the link name can include the visible text. -#}
       {% if shows_phone_title -%}
         <a href="/"
+           hx-boost="true"
+           hx-target="body"
            aria-label="Go to {{ site_settings.title }} homepage"
            class="not-phone:hidden flex items-center min-w-0 h-11 me-3">
           <span class="truncate text-lg font-semibold text-stone-900">{{ site_settings.title }}</span>

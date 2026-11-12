@@ -2,6 +2,7 @@ import { showConfirmAlert, showSigninPrompt } from "/static/js/common/alerts.js"
 import { closestElement, isElementHidden } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
+import { loadPage } from "/static/js/common/page-loading.js";
 import {
   ATTENDANCE_CONTAINER_SELECTOR,
   getAttendanceContainer,
@@ -227,5 +228,5 @@ const openResumeUrl = (url, openInNewTab) => {
     return;
   }
 
-  window.location.assign(url);
+  loadPage(url);
 };

@@ -88,17 +88,13 @@ describe("explore filters", () => {
   });
 
   it("redirects escaped text searches when pressing enter outside a form", () => {
-    // Prepare assigned URLs for redirecting to explore with special characters.
-    const assignedUrls = [];
+    // Prepare loaded URLs for redirecting to explore with special characters.
+    const loadedUrls = [];
     const executeSearchOnEnter = new Function(
-      "document",
+      "loadPage",
       `const searchOnEnter = ${searchOnEnter.toString()}; return searchOnEnter;`,
-    )({
-      location: {
-        set href(url) {
-          assignedUrls.push(url);
-        },
-      },
+    )((url) => {
+      loadedUrls.push(url);
     });
 
     // Press Enter in a search input without a form target.
@@ -111,7 +107,7 @@ describe("explore filters", () => {
     });
 
     // Submitted search text is escaped in the explore redirect.
-    expect(assignedUrls).to.deep.equal(["/explore?ts_query=cloud+%26+native%3F"]);
+    expect(loadedUrls).to.deep.equal(["/explore?ts_query=cloud+%26+native%3F"]);
   });
 
   it("blurs the search input when enter search is delegated from document", () => {

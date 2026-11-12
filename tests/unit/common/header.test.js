@@ -584,6 +584,58 @@ describe("header", () => {
     expect(link.hasAttribute("aria-busy")).to.equal(false);
   });
 
+  it("clears nav loading before HTMX saves a history snapshot", async () => {
+    // Build the DOM fixture with user dropdown button, user dropdown, and explore link.
+    document.body.innerHTML = `
+      <button id="user-dropdown-button" type="button">User</button>
+      <div id="user-dropdown" class="hidden"></div>
+      <a id="explore-link" href="/explore" hx-boost="true" data-header-nav-link>
+        Explore
+      </a>
+    `;
+
+    // Wire header nav loading handlers and let a boosted request show loading.
+    initUserDropdown();
+    const link = document.getElementById("explore-link");
+    dispatchHtmxBeforeRequest(link, { elt: link });
+    await new Promise((resolve) => setTimeout(resolve, 140));
+    expect(link.classList.contains("header-nav-link-pending")).to.equal(true);
+
+    // Save the page to history while the request is still running.
+    document.body.dispatchEvent(new Event("htmx:beforeHistorySave", { bubbles: true }));
+
+    // The snapshot is taken from a link that is no longer marked busy.
+    expect(link.classList.contains("header-nav-link-pending")).to.equal(false);
+    expect(link.hasAttribute("aria-busy")).to.equal(false);
+  });
+
+  it("clears nav loading kept by a restored history snapshot", () => {
+    // Build a restored page whose explore link was saved while loading.
+    document.body.innerHTML = `
+      <button id="user-dropdown-button" type="button">User</button>
+      <div id="user-dropdown" class="hidden"></div>
+      <a
+        id="explore-link"
+        href="/explore"
+        hx-boost="true"
+        data-header-nav-link
+        class="header-nav-link-pending"
+        aria-busy="true"
+      >
+        Explore
+      </a>
+    `;
+
+    // Wire header handlers and restore the page from history.
+    initUserDropdown();
+    document.dispatchEvent(new Event("htmx:historyRestore", { bubbles: true }));
+
+    // The restored link is no longer marked busy.
+    const link = document.getElementById("explore-link");
+    expect(link.classList.contains("header-nav-link-pending")).to.equal(false);
+    expect(link.hasAttribute("aria-busy")).to.equal(false);
+  });
+
   describe("account sheet", () => {
     const originalCloseWatcher = window.CloseWatcher;
     let media;

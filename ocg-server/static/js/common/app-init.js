@@ -16,6 +16,7 @@ import {
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
 import { initializeNavigationState } from "/static/js/common/navigation-state.js";
+import { initializePageLoading } from "/static/js/common/page-loading.js";
 import "/static/js/common/cohosts-line.js";
 import "/static/js/common/media/broken-images.js";
 import "/static/js/common/profile-completion-alert.js";
@@ -29,6 +30,8 @@ registerHtmxResponseHandlers(document);
 initializeOnReadyAndHtmxLoad(localizeCurrencyElements);
 // Clear transient dashboard state across HTMX and browser navigation.
 initializeNavigationState();
+// Show the page loading bar while a link or form replaces the document.
+initializePageLoading();
 // Release pending reload guards when a page comes back from the back/forward cache.
 initializeDashboardContextState();
 initializeDeploymentReloadState();

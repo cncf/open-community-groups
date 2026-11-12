@@ -52,10 +52,11 @@ test.describe("user dashboard purchases", () => {
       "href",
       `/dashboard/user/purchases/${TEST_PURCHASE_DOCUMENT_IDS.purchase}/invoice`,
     );
-    // Verify the credit note follows in place, so its download starts without opening a tab,
-    // and the invoice opens in a plain new tab.
+    // Verify the credit note follows in place, so its download starts without opening a tab
+    // or showing the page loading bar, and the invoice opens in a plain new tab.
     await expect(creditNoteAction).toHaveAttribute("rel", "noreferrer");
     await expect(creditNoteAction).not.toHaveAttribute("target", /.*/u);
+    await expect(creditNoteAction).toHaveAttribute("data-page-loading-ignore", "");
     await expect(invoiceAction).toHaveAttribute("target", "_blank");
     await expect(invoiceAction).toHaveAttribute("rel", "noopener noreferrer");
   });

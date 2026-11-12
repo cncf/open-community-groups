@@ -58,6 +58,8 @@
                           {% if carousel %}phone:flex phone:w-[calc(100%-3.5rem)] phone:shrink-0 phone:snap-start phone:flex-col phone:gap-3{% endif %}">
                 {% for community in communities_page -%}
                   <a href="/{{ community.name }}"
+                     hx-boost="true"
+                     hx-target="body"
                      class="relative block overflow-hidden rounded-lg border border-stone-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 after:content-[''] after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:transition-shadow after:duration-200 hover:after:shadow-[inset_0_0_0_1px_var(--color-stone-300)] motion-reduce:after:transition-none">
                     <div class="aspect-[61/12] phone:aspect-[1220/192]">
                       <img class="w-full h-full object-cover"

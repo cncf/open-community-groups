@@ -8,6 +8,7 @@ import {
   processDeploymentRefresh,
   waitForDeploymentReloadRelease,
 } from "/static/js/common/deployment-version.js";
+import { loadPage } from "/static/js/common/page-loading.js";
 
 /**
  * Fetches a resource and follows server-provided browser redirects.
@@ -45,7 +46,7 @@ export const ocgFetch = async (input, init = {}) => {
 
   const redirectUrl = response.headers?.get?.("X-OCG-Redirect");
   if (redirectUrl) {
-    window.location.assign(redirectUrl);
+    loadPage(redirectUrl);
     throw new Error("Browser redirect requested by server.");
   }
 
