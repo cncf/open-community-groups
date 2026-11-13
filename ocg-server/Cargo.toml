@@ -33,6 +33,7 @@ hex = { workspace = true }
 hmac = { workspace = true }
 icalendar = { workspace = true }
 image = { workspace = true }
+ipnet = { workspace = true }
 iref = { workspace = true }
 lettre = { workspace = true }
 markdown = { workspace = true }

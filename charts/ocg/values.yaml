@@ -241,6 +241,24 @@ server:
         - profile
         - email
 
+  # Rate limiting for unauthenticated routes (limits apply per pod)
+  rateLimit:
+    enabled: false
+    # observe | enforce (observe only logs would-be rejections)
+    mode: observe
+    clientIp:
+      # Required when enabled: peer | header
+      source: ""
+      # Header carrying the client address (header source only)
+      header: x-forwarded-for
+      # Proxy CIDRs or IPs (header source only). Empty asserts that pods are reachable only
+      # through the proxy; the rightmost header entry is then the client
+      trustedProxies: []
+    # Budget overrides: <limitName>: { burst: <requests>, periodSecs: <seconds> }
+    # Limits: badgeVerify, exploreSearch, externalAuth, logIn, logInFailures, signUp,
+    # verifyEmail, views
+    limits: {}
+
   # Optional list of hostnames that should redirect to baseUrl
   redirectHosts: []
 

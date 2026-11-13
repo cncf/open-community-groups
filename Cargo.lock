@@ -4121,6 +4121,7 @@ dependencies = [
  "hmac 0.13.0",
  "icalendar",
  "image",
+ "ipnet",
  "iref",
  "lettre",
  "markdown",

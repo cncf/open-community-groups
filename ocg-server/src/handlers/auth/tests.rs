@@ -1,12 +1,16 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+    time::Instant,
+};
 
 use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
-    extract::Query,
+    extract::{ConnectInfo, Query},
     http::{
-        HeaderValue, StatusCode,
-        header::{CACHE_CONTROL, COOKIE, LOCATION, SET_COOKIE},
+        HeaderValue, Request, StatusCode,
+        header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, LOCATION, RETRY_AFTER, SET_COOKIE},
     },
     response::IntoResponse,
 };
@@ -22,7 +26,10 @@ use crate::{
         AUTH_PROVIDER_KEY, EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR,
         EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR, OAuth2ProviderDetails, OidcProviderDetails,
     },
-    config::{HttpServerConfig, LoginOptions, OAuth2Provider},
+    config::{
+        HttpServerConfig, LoginOptions, OAuth2Provider, RateLimitBudget, RateLimitBudgets,
+        RateLimitMode,
+    },
     db::{
         DynDB,
         mock::{MockDB, expect_site_settings},
@@ -31,8 +38,11 @@ use crate::{
         extractors::{OAuth2, Oidc},
         tests::*,
     },
-    router::CACHE_CONTROL_PRIVATE_NO_STORE,
-    services::notifications::MockNotificationsManager,
+    router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE},
+    services::{
+        notifications::MockNotificationsManager,
+        rate_limit::{Limit, RateLimiter, client_ip::ClientKey},
+    },
     test_util::{element_html_with, opening_tag_with},
 };
 
@@ -334,6 +344,398 @@ async fn test_log_in_validation_error() {
         parts.headers.get(LOCATION),
         Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
     );
+}
+
+#[tokio::test]
+async fn test_log_in_backend_error_refunds_failure_reservation() {
+    // Setup database mock with a failing user lookup
+    let session_id = session::Id::default();
+    let mut db = MockDB::new();
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
+    db.expect_get_user_by_username()
+        .times(1)
+        .withf(move |username| username == "test-user")
+        .returning(|_| Err(anyhow!("db error")));
+    db.expect_update_session().never();
+
+    // Setup router with an enforcing limiter allowing one failure per pair
+    let rate_limiter = log_in_failures_rate_limiter(RateLimitMode::Enforce);
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+
+    // Send a log in request that hits the backend error
+    let request = log_in_request(session_id, "username=test-user&password=secret-password");
+    let (parts, bytes) = send(router, request).await;
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::UNAUTHORIZED);
+
+    // Check the next failed attempt for the pair is still allowed
+    rate_limiter
+        .log_in_failure_limit(LOG_IN_CLIENT)
+        .reserve("test-user", Instant::now())
+        .expect("failed attempt to be allowed after the refund")
+        .record_failure();
+    let window = rate_limiter.take_window();
+    let failures = window.limit(Limit::LogInFailures);
+    assert_eq!(failures.requests, 2);
+    assert_eq!(failures.over_limit, 0);
+}
+
+#[tokio::test]
+async fn test_log_in_backend_error_refunds_failure_reservation_in_observe_mode() {
+    // Setup database mock with a failing user lookup
+    let session_id = session::Id::default();
+    let mut db = MockDB::new();
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
+    db.expect_get_user_by_username()
+        .times(1)
+        .withf(move |username| username == "test-user")
+        .returning(|_| Err(anyhow!("db error")));
+    db.expect_update_session().never();
+
+    // Setup router with an observing limiter allowing one failure per pair
+    let rate_limiter = log_in_failures_rate_limiter(RateLimitMode::Observe);
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+
+    // Send a log in request that hits the backend error
+    let request = log_in_request(session_id, "username=test-user&password=secret-password");
+    let (parts, bytes) = send(router, request).await;
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::UNAUTHORIZED);
+
+    // Check the next failed attempt for the pair is not over the limit
+    rate_limiter
+        .log_in_failure_limit(LOG_IN_CLIENT)
+        .reserve("test-user", Instant::now())
+        .expect("observe mode to never refuse a reservation")
+        .record_failure();
+    let window = rate_limiter.take_window();
+    let failures = window.limit(Limit::LogInFailures);
+    assert_eq!(failures.requests, 2);
+    assert_eq!(failures.over_limit, 0);
+}
+
+#[tokio::test]
+async fn test_log_in_observe_mode_never_rejects_failures() {
+    // Setup database mock for two failed attempts with the same session
+    let session_id = session::Id::default();
+    let session_record = sample_empty_session_record(session_id);
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(2)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_username()
+        .times(2)
+        .withf(move |username| username == "test-user")
+        .returning(|_| Ok(None));
+    db.expect_update_session()
+        .times(2)
+        .withf(move |record| {
+            message_matches(
+                record,
+                "Invalid credentials. Please make sure you have verified your email address.",
+            )
+        })
+        .returning(|_| Ok(()));
+
+    // Setup router with an observing limiter allowing one failure per pair
+    let rate_limiter = log_in_failures_rate_limiter(RateLimitMode::Observe);
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+
+    // Send two log in requests with invalid credentials
+    let first_request = log_in_request(session_id, "username=test-user&password=wrong");
+    let (first_parts, first_bytes) = send(router.clone(), first_request).await;
+    let second_request = log_in_request(session_id, "username=test-user&password=wrong");
+    let (second_parts, second_bytes) = send(router, second_request).await;
+
+    // Check both attempts show the log in page again
+    for (parts, bytes) in [(&first_parts, &first_bytes), (&second_parts, &second_bytes)] {
+        assert_empty_response(parts, bytes, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION),
+            Some(&HeaderValue::from_static(LOG_IN_URL)),
+        );
+    }
+
+    // Check the second attempt was counted as over the limit
+    let window = rate_limiter.take_window();
+    let failures = window.limit(Limit::LogInFailures);
+    assert_eq!(failures.requests, 2);
+    assert_eq!(failures.over_limit, 1);
+}
+
+#[tokio::test]
+async fn test_log_in_observe_mode_skips_failure_limit_over_the_log_in_limit() {
+    // Setup database mock for two failed attempts with the same session
+    let session_id = session::Id::default();
+    let session_record = sample_empty_session_record(session_id);
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(2)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_username()
+        .times(2)
+        .withf(move |username| username == "test-user")
+        .returning(|_| Ok(None));
+    db.expect_update_session().times(2).returning(|_| Ok(()));
+
+    // Setup router with an observing limiter allowing one log in per client
+    let rate_limiter = sample_rate_limiter(
+        RateLimitBudgets {
+            log_in: RateLimitBudget {
+                burst: 1,
+                period_secs: 3600,
+            },
+            ..RateLimitBudgets::default()
+        },
+        RateLimitMode::Observe,
+    );
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+
+    // Send two log in requests with invalid credentials
+    let first_request = log_in_request(session_id, "username=test-user&password=wrong");
+    let (first_parts, _) = send(router.clone(), first_request).await;
+    let second_request = log_in_request(session_id, "username=test-user&password=wrong");
+    let (second_parts, _) = send(router, second_request).await;
+
+    // Check both attempts reached the handler
+    assert_eq!(first_parts.status, StatusCode::SEE_OTHER);
+    assert_eq!(second_parts.status, StatusCode::SEE_OTHER);
+
+    // Check the attempt over the log in limit was not counted as a failed log in, as enforce
+    // mode would have rejected it before the failed log in limit
+    let window = rate_limiter.take_window();
+    let log_in = window.limit(Limit::LogIn);
+    assert_eq!(log_in.requests, 2);
+    assert_eq!(log_in.over_limit, 1);
+    let failures = window.limit(Limit::LogInFailures);
+    assert_eq!(failures.requests, 1);
+    assert_eq!(failures.over_limit, 0);
+}
+
+#[tokio::test]
+async fn test_log_in_rejects_exhausted_failures_without_authenticating() {
+    // Setup database mock allowing only the session read
+    let session_id = session::Id::default();
+    let mut db = MockDB::new();
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
+    db.expect_get_user_by_username().never();
+    db.expect_create_session().never();
+    db.expect_delete_session().never();
+    db.expect_update_session().never();
+
+    // Setup router with an enforcing limiter allowing one failure per pair
+    let rate_limiter = log_in_failures_rate_limiter(RateLimitMode::Enforce);
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+
+    // Spend the failed attempt budget of the pair
+    rate_limiter
+        .log_in_failure_limit(LOG_IN_CLIENT)
+        .reserve("test-user", Instant::now())
+        .expect("first failed attempt to be allowed")
+        .record_failure();
+
+    // Send a log in request for the exhausted pair
+    let request = log_in_request(session_id, "username=test-user&password=secret-password");
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the plain-text rejection is returned
+    assert_eq!(parts.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(parts.headers.get(RETRY_AFTER).unwrap(), "3600");
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_NO_STORE
+    );
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        "text/plain; charset=utf-8"
+    );
+    assert!(!parts.headers.contains_key(SET_COOKIE));
+    assert_eq!(
+        bytes,
+        "Too many requests from your network. Please wait 60 minutes and try again."
+    );
+}
+
+#[tokio::test]
+async fn test_log_in_rejects_second_failure_with_burst_of_one() {
+    // Setup database mock for two attempts with the same session, one authenticated
+    let session_id = session::Id::default();
+    let session_record = sample_empty_session_record(session_id);
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(2)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_username()
+        .times(1)
+        .withf(move |username| username == "test-user")
+        .returning(|_| Ok(None));
+    db.expect_update_session()
+        .times(1)
+        .withf(move |record| {
+            message_matches(
+                record,
+                "Invalid credentials. Please make sure you have verified your email address.",
+            )
+        })
+        .returning(|_| Ok(()));
+
+    // Setup router with an enforcing limiter allowing one failure per pair
+    let rate_limiter = log_in_failures_rate_limiter(RateLimitMode::Enforce);
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+
+    // Send a first log in request with invalid credentials
+    let first_request = log_in_request(session_id, "username=test-user&password=wrong");
+    let (first_parts, first_bytes) = send(router.clone(), first_request).await;
+
+    // Check the first failure shows the log in page again
+    assert_empty_response(&first_parts, &first_bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        first_parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
+    );
+
+    // Send a second log in request with invalid credentials
+    let second_request = log_in_request(session_id, "username=test-user&password=wrong");
+    let (second_parts, second_bytes) = send(router, second_request).await;
+
+    // Check the second failure is rejected
+    assert_eq!(second_parts.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(second_parts.headers.get(RETRY_AFTER).unwrap(), "3600");
+    assert_eq!(
+        second_bytes,
+        "Too many requests from your network. Please wait 60 minutes and try again."
+    );
+
+    // Check both attempts were counted and the second one rejected
+    let window = rate_limiter.take_window();
+    let failures = window.limit(Limit::LogInFailures);
+    assert_eq!(failures.requests, 2);
+    assert_eq!(failures.over_limit, 1);
+}
+
+#[tokio::test]
+async fn test_log_in_success_refunds_failure_reservation() {
+    // Setup identifiers and data structures
+    let ids = DashboardIds::new();
+    let user = auth::User {
+        password: Some(password_auth::generate_hash("secret-password")),
+        ..sample_auth_user(ids.user_id, "hash")
+    };
+
+    // Setup database mock for a successful log in
+    let mut db = MockDB::new();
+    expect_successful_log_in(&mut db, &ids, user);
+
+    // Setup router with an enforcing limiter allowing one failure per pair
+    let rate_limiter = log_in_failures_rate_limiter(RateLimitMode::Enforce);
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+
+    // Send a log in request with valid credentials
+    let request = log_in_request(
+        ids.session_id,
+        "username=test-user&password=secret-password",
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the user is logged in
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert!(parts.headers.contains_key(SET_COOKIE));
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/")),
+    );
+
+    // Check the next failed attempt for the pair is still allowed
+    rate_limiter
+        .log_in_failure_limit(LOG_IN_CLIENT)
+        .reserve("test-user", Instant::now())
+        .expect("failed attempt to be allowed after the refund")
+        .record_failure();
+    let window = rate_limiter.take_window();
+    let failures = window.limit(Limit::LogInFailures);
+    assert_eq!(failures.requests, 2);
+    assert_eq!(failures.over_limit, 0);
+}
+
+#[tokio::test]
+async fn test_log_in_success_refunds_failure_reservation_in_observe_mode() {
+    // Setup identifiers and data structures
+    let ids = DashboardIds::new();
+    let user = auth::User {
+        password: Some(password_auth::generate_hash("secret-password")),
+        ..sample_auth_user(ids.user_id, "hash")
+    };
+
+    // Setup database mock for a successful log in
+    let mut db = MockDB::new();
+    expect_successful_log_in(&mut db, &ids, user);
+
+    // Setup router with an observing limiter allowing one failure per pair
+    let rate_limiter = log_in_failures_rate_limiter(RateLimitMode::Observe);
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+
+    // Send a log in request with valid credentials
+    let request = log_in_request(
+        ids.session_id,
+        "username=test-user&password=secret-password",
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the user is logged in
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert!(parts.headers.contains_key(SET_COOKIE));
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/")),
+    );
+
+    // Check the next failed attempt for the pair is not over the limit
+    rate_limiter
+        .log_in_failure_limit(LOG_IN_CLIENT)
+        .reserve("test-user", Instant::now())
+        .expect("observe mode to never refuse a reservation")
+        .record_failure();
+    let window = rate_limiter.take_window();
+    let failures = window.limit(Limit::LogInFailures);
+    assert_eq!(failures.requests, 2);
+    assert_eq!(failures.over_limit, 0);
 }
 
 #[tokio::test]
@@ -1680,6 +2082,9 @@ fn test_sanitize_next_url() {
 
 // Helpers.
 
+/// Client key of the peer that sends log in requests built by `log_in_request`.
+const LOG_IN_CLIENT: ClientKey = ClientKey::V4([203, 0, 113, 7]);
+
 /// Account details update route.
 const UPDATE_DETAILS_URL: &str = "/dashboard/account/update/details";
 
@@ -1795,6 +2200,36 @@ fn email_login_cfg() -> HttpServerConfig {
     }
 }
 
+/// Expects the session reads and writes of a successful email log in by the user.
+fn expect_successful_log_in(db: &mut MockDB, ids: &DashboardIds, user: auth::User) {
+    let ids = *ids;
+    expect_stored_session(db, sample_empty_session_record(ids.session_id));
+    db.expect_get_user_by_username()
+        .times(1)
+        .withf(move |username| username == "test-user")
+        .returning(move |_| Ok(Some(user.clone())));
+    db.expect_delete_session()
+        .times(1)
+        .withf(move |id| *id == ids.session_id)
+        .returning(|_| Ok(()));
+    db.expect_create_session()
+        .times(1)
+        .withf(move |record| {
+            session_record_contains_auth_provider(record, AUTH_PROVIDER_EMAIL)
+                && session_record_contains_selected_group(record, ids.group_id)
+        })
+        .returning(|_| Ok(()));
+    db.expect_list_user_groups()
+        .times(1)
+        .withf(move |uid| uid == &ids.user_id)
+        .returning(move |_| {
+            Ok(sample_user_groups_by_community(
+                ids.community_id,
+                ids.group_id,
+            ))
+        });
+}
+
 /// Server configuration with GitHub log in enabled.
 fn github_login_cfg() -> HttpServerConfig {
     let mut server_cfg = HttpServerConfig::default();
@@ -1807,6 +2242,31 @@ fn linuxfoundation_login_cfg() -> HttpServerConfig {
     let mut server_cfg = HttpServerConfig::default();
     server_cfg.login.linuxfoundation = true;
     server_cfg
+}
+
+/// Rate limiter keyed by the TCP peer that allows one failed log in per client
+/// and username per hour, with the default budgets for every other limit.
+fn log_in_failures_rate_limiter(mode: RateLimitMode) -> Arc<RateLimiter> {
+    sample_rate_limiter(
+        RateLimitBudgets {
+            log_in_failures: RateLimitBudget {
+                burst: 1,
+                period_secs: 3600,
+            },
+            ..RateLimitBudgets::default()
+        },
+        mode,
+    )
+}
+
+/// Builds a log in form request with the session cookie, sent from the peer
+/// whose client key is `LOG_IN_CLIENT`.
+fn log_in_request(session_id: session::Id, body: &'static str) -> Request<Body> {
+    let mut request = form_request("POST", LOG_IN_URL, session_id, body);
+    request
+        .extensions_mut()
+        .insert(ConnectInfo(SocketAddr::from(([203, 0, 113, 7], 40_000))));
+    request
 }
 
 /// Returns the value of the query string parameter.

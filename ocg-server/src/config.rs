@@ -9,16 +9,19 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt,
+    net::IpAddr,
     path::PathBuf,
     time::Duration,
 };
 
 use anyhow::{Result, bail};
+use axum::http::{HeaderName, header::FORWARDED};
 use figment::{
     Figment,
     providers::{Env, Format, Serialized, Yaml},
 };
 use garde::rules::email::parse_email;
+use ipnet::{IpNet, Ipv4Net};
 use ocg_common::config::{DbConfig, LogConfig};
 use serde::{Deserialize, Serialize};
 use ssi_jwk::{JWK, Params};
@@ -34,11 +37,44 @@ use crate::types::{
 #[cfg(test)]
 pub(crate) mod tests;
 
+/// Default rate limit budget for badge verification.
+const DEFAULT_BADGE_VERIFY_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 30,
+    period_secs: 300,
+};
+
+/// Default header carrying the client address for the header source.
+const DEFAULT_CLIENT_IP_HEADER: &str = "x-forwarded-for";
+
 /// Default connection deadline in seconds for outbound clients.
 const DEFAULT_CONNECT_TIMEOUT_SECS: u64 = 10;
 
+/// Default rate limit budget for explore searches.
+const DEFAULT_EXPLORE_SEARCH_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 300,
+    period_secs: 150,
+};
+
+/// Default rate limit budget for external authentication redirects and callbacks.
+const DEFAULT_EXTERNAL_AUTH_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 300,
+    period_secs: 150,
+};
+
 /// Default organizer-confirmation window in hours for external payments.
 const DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS: i32 = 72;
+
+/// Default rate limit budget for log-in attempts per client address.
+const DEFAULT_LOG_IN_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 300,
+    period_secs: 300,
+};
+
+/// Default rate limit budget for failed log-ins per client address and username.
+const DEFAULT_LOG_IN_FAILURES_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 10,
+    period_secs: 900,
+};
 
 /// Default maximum organizer-confirmation window in hours for external payments.
 const DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS: i32 = 336;
@@ -49,8 +85,35 @@ const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
 /// Default grace period in seconds granted to background workers on shutdown.
 const DEFAULT_SHUTDOWN_GRACE_PERIOD_SECS: u64 = 30;
 
+/// Default rate limit budget for sign-ups.
+const DEFAULT_SIGN_UP_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 100,
+    period_secs: 1200,
+};
+
+/// Default rate limit budget for email verification links.
+const DEFAULT_VERIFY_EMAIL_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 100,
+    period_secs: 1200,
+};
+
+/// Default rate limit budget for page view beacons.
+const DEFAULT_VIEWS_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 600,
+    period_secs: 600,
+};
+
 /// Maximum platform fee expressed in basis points (99.99% of the amount).
 const MAX_PLATFORM_FEE_BPS: u16 = 9_999;
+
+/// Maximum number of requests a rate limit budget may allow at once.
+const MAX_RATE_LIMIT_BURST: u32 = 100_000;
+
+/// Maximum time in seconds a rate limit budget may take to refill its burst.
+const MAX_RATE_LIMIT_PERIOD_SECS: u64 = 86_400;
+
+/// Maximum number of entries accepted in the trusted proxies list.
+const MAX_TRUSTED_PROXIES: usize = 1_024;
 
 /// Placeholder used when formatting sensitive configuration values.
 const REDACTED_CONFIG_VALUE: &str = "[redacted]";
@@ -585,6 +648,8 @@ pub(crate) struct HttpServerConfig {
     ///
     /// Defaults to the available parallelism of the host.
     pub max_blocking_concurrency: Option<usize>,
+    /// Optional rate limiting for unauthenticated routes; absent disables it.
+    pub rate_limit: Option<RateLimitConfig>,
     /// Optional list of hostnames that should redirect to `base_url`.
     pub redirect_hosts: Option<Vec<String>>,
     /// Grace period in seconds granted to background workers on shutdown.
@@ -613,6 +678,11 @@ impl HttpServerConfig {
         // Reject a bound that would never let CPU-heavy work run
         if self.max_blocking_concurrency == Some(0) {
             bail!("server.max_blocking_concurrency must be >= 1");
+        }
+
+        // Validate the optional rate limiting section
+        if let Some(rate_limit_cfg) = &self.rate_limit {
+            rate_limit_cfg.validate()?;
         }
 
         Ok(())
@@ -843,7 +913,221 @@ impl fmt::Debug for OidcProviderConfig {
     }
 }
 
+/// Rate limiting configuration for unauthenticated routes.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RateLimitConfig {
+    /// How the client address is resolved.
+    pub client_ip: ClientIpConfig,
+
+    /// Budget overrides for individual limits.
+    #[serde(default)]
+    pub limits: RateLimitBudgets,
+    /// Whether limits are applied or only observed.
+    #[serde(default)]
+    pub mode: RateLimitMode,
+}
+
+impl RateLimitConfig {
+    /// Validate the client IP source settings and every budget.
+    fn validate(&self) -> Result<()> {
+        // Validate the header name and trust list used by the header source
+        if let ClientIpConfig::Header(header_cfg) = &self.client_ip {
+            header_cfg.header_name()?;
+            header_cfg.trusted_networks()?;
+        }
+
+        // Validate the effective budget of every limit
+        self.limits.validate()?;
+
+        Ok(())
+    }
+}
+
+/// Source of the address used as the client key.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(tag = "source", rename_all = "snake_case")]
+pub(crate) enum ClientIpConfig {
+    /// Read the client address from a request header set by a proxy.
+    Header(ClientIpHeaderConfig),
+    /// Use the TCP peer address as the client address.
+    Peer(ClientIpPeerConfig),
+}
+
+/// Header source settings.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ClientIpHeaderConfig {
+    /// Header carrying the client address.
+    #[serde(default = "default_client_ip_header")]
+    pub header: String,
+    /// Proxy networks (CIDRs or bare IPs) skipped when walking the header.
+    #[serde(default)]
+    pub trusted_proxies: Vec<String>,
+}
+
+impl ClientIpHeaderConfig {
+    /// Returns the validated name of the header carrying the client address.
+    pub(crate) fn header_name(&self) -> Result<HeaderName> {
+        // Reject names the header map cannot represent
+        if self.header.is_empty() {
+            bail!("server.rate_limit.client_ip.header cannot be empty");
+        }
+        let Ok(header_name) = HeaderName::from_bytes(self.header.as_bytes()) else {
+            bail!(
+                "server.rate_limit.client_ip.header '{}' is not a valid header name",
+                self.header
+            );
+        };
+
+        // Reject the structured header whose element syntax the resolver does not parse
+        if header_name == FORWARDED {
+            bail!(
+                "server.rate_limit.client_ip.header cannot be 'forwarded': RFC 7239 syntax is not supported"
+            );
+        }
+
+        Ok(header_name)
+    }
+
+    /// Returns the validated trusted proxy networks.
+    ///
+    /// Bare addresses become single-address networks (/32 or /128). Entries
+    /// with host bits set, catch-all networks and IPv4-mapped IPv6 networks are
+    /// rejected, because peers are unwrapped to IPv4 before matching.
+    pub(crate) fn trusted_networks(&self) -> Result<Vec<IpNet>> {
+        // Bound the list so trust checks stay cheap
+        if self.trusted_proxies.len() > MAX_TRUSTED_PROXIES {
+            bail!(
+                "server.rate_limit.client_ip.trusted_proxies cannot have more than {MAX_TRUSTED_PROXIES} entries"
+            );
+        }
+
+        // Parse and validate every entry
+        self.trusted_proxies
+            .iter()
+            .map(|entry| parse_trusted_network(entry))
+            .collect()
+    }
+}
+
+/// Peer source settings.
+///
+/// No options; rejects keys that belong to the header source.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ClientIpPeerConfig {}
+
+/// Whether rate limits are applied or only observed.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum RateLimitMode {
+    /// Reject requests over the limit.
+    Enforce,
+    /// Record would-be rejections without rejecting any request.
+    #[default]
+    Observe,
+}
+
+/// Effective budget of every limit.
+///
+/// Each configured entry replaces the whole default budget of that limit.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(default, deny_unknown_fields)]
+pub(crate) struct RateLimitBudgets {
+    /// Budget for badge verification.
+    pub badge_verify: RateLimitBudget,
+    /// Budget for explore searches.
+    pub explore_search: RateLimitBudget,
+    /// Budget for external authentication redirects and callbacks.
+    pub external_auth: RateLimitBudget,
+    /// Budget for log-in attempts per client address.
+    pub log_in: RateLimitBudget,
+    /// Budget for failed log-ins per client address and username.
+    pub log_in_failures: RateLimitBudget,
+    /// Budget for sign-ups.
+    pub sign_up: RateLimitBudget,
+    /// Budget for email verification links.
+    pub verify_email: RateLimitBudget,
+    /// Budget for page view beacons.
+    pub views: RateLimitBudget,
+}
+
+impl RateLimitBudgets {
+    /// Validate the budget of every limit.
+    fn validate(&self) -> Result<()> {
+        // Check each budget under its configuration key
+        let budgets = [
+            ("badge_verify", &self.badge_verify),
+            ("explore_search", &self.explore_search),
+            ("external_auth", &self.external_auth),
+            ("log_in", &self.log_in),
+            ("log_in_failures", &self.log_in_failures),
+            ("sign_up", &self.sign_up),
+            ("verify_email", &self.verify_email),
+            ("views", &self.views),
+        ];
+        for (limit, budget) in budgets {
+            budget.validate(limit)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Default for RateLimitBudgets {
+    fn default() -> Self {
+        Self {
+            badge_verify: DEFAULT_BADGE_VERIFY_BUDGET,
+            explore_search: DEFAULT_EXPLORE_SEARCH_BUDGET,
+            external_auth: DEFAULT_EXTERNAL_AUTH_BUDGET,
+            log_in: DEFAULT_LOG_IN_BUDGET,
+            log_in_failures: DEFAULT_LOG_IN_FAILURES_BUDGET,
+            sign_up: DEFAULT_SIGN_UP_BUDGET,
+            verify_email: DEFAULT_VERIFY_EMAIL_BUDGET,
+            views: DEFAULT_VIEWS_BUDGET,
+        }
+    }
+}
+
+/// Budget of one limit.
+///
+/// A key can make at most `burst + t * burst / period_secs` requests in `t`
+/// seconds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RateLimitBudget {
+    /// Requests a key with no recent traffic may make at once.
+    pub burst: u32,
+    /// Seconds needed to refill the whole burst.
+    pub period_secs: u64,
+}
+
+impl RateLimitBudget {
+    /// Validate the budget bounds under the named limit.
+    fn validate(&self, limit: &str) -> Result<()> {
+        if !(1..=MAX_RATE_LIMIT_BURST).contains(&self.burst) {
+            bail!(
+                "server.rate_limit.limits.{limit}.burst must be between 1 and {MAX_RATE_LIMIT_BURST}"
+            );
+        }
+
+        if !(1..=MAX_RATE_LIMIT_PERIOD_SECS).contains(&self.period_secs) {
+            bail!(
+                "server.rate_limit.limits.{limit}.period_secs must be between 1 and {MAX_RATE_LIMIT_PERIOD_SECS}"
+            );
+        }
+
+        Ok(())
+    }
+}
+
 // Helpers.
+
+/// Default client IP header used when the config omits it.
+fn default_client_ip_header() -> String {
+    DEFAULT_CLIENT_IP_HEADER.to_string()
+}
 
 /// Default connection deadline used when the config omits it.
 fn default_connect_timeout_secs() -> u64 {
@@ -868,6 +1152,55 @@ fn default_request_timeout_secs() -> u64 {
 /// Default shutdown grace period used when the config omits it.
 fn default_shutdown_grace_period_secs() -> u64 {
     DEFAULT_SHUTDOWN_GRACE_PERIOD_SECS
+}
+
+/// Parse one trusted proxy entry into a network.
+fn parse_trusted_network(entry: &str) -> Result<IpNet> {
+    // Accept a CIDR or a bare address, which becomes a single-address network
+    let network = match entry.parse::<IpNet>() {
+        Ok(network) => network,
+        Err(_) => match entry.parse::<IpAddr>() {
+            Ok(addr) => IpNet::from(addr),
+            Err(_) => bail!(
+                "server.rate_limit.client_ip.trusted_proxies entry '{entry}' is not a valid CIDR or IP address"
+            ),
+        },
+    };
+
+    // Reject catch-all networks, which would let any client choose its own key
+    if network.prefix_len() == 0 {
+        bail!(
+            "server.rate_limit.client_ip.trusted_proxies entry '{entry}' would trust every address"
+        );
+    }
+
+    // Reject host bits so the configured network matches what is enforced
+    if network != network.trunc() {
+        bail!(
+            "server.rate_limit.client_ip.trusted_proxies entry '{entry}' has host bits set; use '{}'",
+            network.trunc()
+        );
+    }
+
+    // Reject IPv4-mapped networks, which never match because peers are unwrapped first
+    if let IpNet::V6(v6_network) = network
+        && let Some(v4_addr) = v6_network.addr().to_ipv4_mapped()
+    {
+        let v4_network = Ipv4Net::new(v4_addr, v6_network.prefix_len().saturating_sub(96))?;
+
+        // Report a mapped catch-all as one instead of suggesting a rejected form
+        if v4_network.prefix_len() == 0 {
+            bail!(
+                "server.rate_limit.client_ip.trusted_proxies entry '{entry}' would trust every address"
+            );
+        }
+
+        bail!(
+            "server.rate_limit.client_ip.trusted_proxies entry '{entry}' is an IPv4-mapped IPv6 network; use the IPv4 form '{v4_network}'"
+        );
+    }
+
+    Ok(network)
 }
 
 /// Validate a stable badge verification key identifier.

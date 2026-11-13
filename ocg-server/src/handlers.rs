@@ -36,6 +36,8 @@ pub(crate) mod images;
 pub(crate) mod meetings;
 /// Payments handlers.
 pub(crate) mod payments;
+/// Rate limit responses.
+pub(crate) mod rate_limit;
 /// Global site handlers.
 pub(crate) mod site;
 /// Shared tests helpers for handlers modules.
