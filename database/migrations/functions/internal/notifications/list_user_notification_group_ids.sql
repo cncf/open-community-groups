@@ -24,10 +24,9 @@ returns uuid[] as $$
 
             union
 
-            select s.event_id
-            from session_speaker ss
-            join session s using (session_id)
-            where ss.user_id = p_user_id
+            select ssp.event_id
+            from session_speakers() ssp
+            where ssp.user_id = p_user_id
         ),
         -- Collect groups connected through membership, teams, and events
         connected_groups as (

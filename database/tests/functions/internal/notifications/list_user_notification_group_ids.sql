@@ -32,6 +32,12 @@ select plan(2);
 \set inactiveGroupMemberUserID '9e020000-0000-0000-0000-000000000012'
 \set memberGroupID '9e020000-0000-0000-0000-000000000021'
 \set pendingTeamGroupID '9e020000-0000-0000-0000-000000000022'
+\set proposalAuthorUserID '9e020000-0000-0000-0000-00000000002a'
+\set proposalID '9e020000-0000-0000-0000-00000000002b'
+\set proposalSessionID '9e020000-0000-0000-0000-00000000002c'
+\set proposalSpeakerEventID '9e020000-0000-0000-0000-00000000002d'
+\set proposalSpeakerGroupID '9e020000-0000-0000-0000-00000000002e'
+\set proposalSubmissionID '9e020000-0000-0000-0000-00000000002f'
 \set sessionID '9e020000-0000-0000-0000-000000000023'
 \set sessionSpeakerEventID '9e020000-0000-0000-0000-000000000024'
 \set sessionSpeakerGroupID '9e020000-0000-0000-0000-000000000025'
@@ -50,6 +56,15 @@ select fx_community(:'communityID');
 -- Inactive community containing an excluded group
 select fx_community(:'inactiveCommunityID', jsonb_build_object('active', false));
 
+-- Separate user connected only through the inactive group
+select fx_user(:'inactiveGroupMemberUserID');
+
+-- Author of the CFS proposal co-spoken by the listed user
+select fx_user(:'proposalAuthorUserID');
+
+-- User whose connected groups are listed
+select fx_user(:'userID');
+
 -- Event category used by event-connected groups
 select fx_event_category(:'eventCategoryID', :'communityID');
 
@@ -59,11 +74,24 @@ select fx_group_category(:'groupCategoryID', :'communityID');
 -- Group category used by the inactive-community group
 select fx_group_category(:'inactiveCommunityGroupCategoryID', :'inactiveCommunityID');
 
--- User whose connected groups are listed
-select fx_user(:'userID');
-
--- Separate user connected only through the inactive group
-select fx_user(:'inactiveGroupMemberUserID');
+-- CFS proposal co-spoken by the listed user
+insert into session_proposal (
+    session_proposal_id,
+    description,
+    duration,
+    session_proposal_level_id,
+    title,
+    user_id,
+    co_speaker_user_id
+) values (
+    :'proposalID',
+    'Proposal description',
+    interval '30 minutes',
+    'beginner',
+    'Proposal',
+    :'proposalAuthorUserID',
+    :'userID'
+);
 
 -- Group connected through accepted team membership
 select fx_group(:'acceptedTeamGroupID', :'communityID', :'groupCategoryID');
@@ -106,6 +134,9 @@ select fx_group(:'memberGroupID', :'communityID', :'groupCategoryID');
 -- Pending team group excluded from the result
 select fx_group(:'pendingTeamGroupID', :'communityID', :'groupCategoryID');
 
+-- Group connected through speaking at a session linked to a CFS proposal
+select fx_group(:'proposalSpeakerGroupID', :'communityID', :'groupCategoryID');
+
 -- Group connected through session speaking
 select fx_group(:'sessionSpeakerGroupID', :'communityID', :'groupCategoryID');
 
@@ -121,22 +152,14 @@ select fx_event(:'deletedEventID', :'deletedEventGroupID', :'eventCategoryID', j
 -- Event connected through event speaker
 select fx_event(:'eventSpeakerEventID', :'eventSpeakerGroupID', :'eventCategoryID');
 
+-- Event connected through a session linked to a CFS proposal
+select fx_event(:'proposalSpeakerEventID', :'proposalSpeakerGroupID', :'eventCategoryID');
+
 -- Event connected through session speaker
 select fx_event(:'sessionSpeakerEventID', :'sessionSpeakerGroupID', :'eventCategoryID');
 
 -- Event connected through waitlist
 select fx_event(:'waitlistEventID', :'waitlistGroupID', :'eventCategoryID');
-
--- Ticket type required by the waitlist row
-select fx_event_ticket_type(:'ticketTypeID', :'waitlistEventID');
-
--- Accepted team membership connection
-insert into group_team (group_id, user_id, accepted, role)
-values (:'acceptedTeamGroupID', :'userID', true, 'admin');
-
--- Pending team membership excluded from connections
-insert into group_team (group_id, user_id, accepted, role)
-values (:'pendingTeamGroupID', :'userID', false, 'admin');
 
 -- Direct group membership connection
 insert into group_member (group_id, user_id)
@@ -154,6 +177,18 @@ values (:'inactiveGroupID', :'userID');
 insert into group_member (group_id, user_id)
 values (:'inactiveGroupID', :'inactiveGroupMemberUserID');
 
+-- Accepted team membership connection
+insert into group_team (group_id, user_id, accepted, role)
+values (:'acceptedTeamGroupID', :'userID', true, 'admin');
+
+-- Pending team membership excluded from connections
+insert into group_team (group_id, user_id, accepted, role)
+values (:'pendingTeamGroupID', :'userID', false, 'admin');
+
+-- Approved submission of the CFS proposal co-spoken by the listed user
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values (:'proposalSubmissionID', :'proposalSpeakerEventID', :'proposalID', 'approved');
+
 -- Attendee connection to the event owner and approved co-host groups
 insert into event_attendee (event_id, user_id, status)
 values (:'attendeeEventID', :'userID', 'confirmed');
@@ -161,22 +196,6 @@ values (:'attendeeEventID', :'userID', 'confirmed');
 -- Attendee row on a deleted event excluded from connections
 insert into event_attendee (event_id, user_id, status)
 values (:'deletedEventID', :'userID', 'confirmed');
-
--- Waitlist connection to an event owner group
-insert into event_waitlist (event_id, event_ticket_type_id, user_id)
-values (:'waitlistEventID', :'ticketTypeID', :'userID');
-
--- Event speaker connection to an event owner group
-insert into event_speaker (event_id, user_id)
-values (:'eventSpeakerEventID', :'userID');
-
--- Session row for the session speaker connection
-insert into session (event_id, name, session_id, session_kind_id, starts_at)
-values (:'sessionSpeakerEventID', 'Notification Preferences', :'sessionID', 'in-person', '2030-01-01 10:00:00+00');
-
--- Session speaker connection to an event owner group
-insert into session_speaker (session_id, user_id)
-values (:'sessionID', :'userID');
 
 -- Approved co-host group connected through the attended event
 insert into event_cohost (approved_at, event_cohost_status_id, event_id, group_id)
@@ -194,6 +213,29 @@ values ('pending', :'attendeeEventID', :'cohostPendingGroupID');
 insert into event_cohost (event_cohost_status_id, event_id, group_id)
 values ('rejected', :'attendeeEventID', :'cohostRejectedGroupID');
 
+-- Event speaker connection to an event owner group
+insert into event_speaker (event_id, user_id)
+values (:'eventSpeakerEventID', :'userID');
+
+-- Ticket type required by the waitlist row
+select fx_event_ticket_type(:'ticketTypeID', :'waitlistEventID');
+
+-- Session row for the session speaker connection
+insert into session (event_id, name, session_id, session_kind_id, starts_at)
+values (:'sessionSpeakerEventID', 'Notification Preferences', :'sessionID', 'in-person', '2030-01-01 10:00:00+00');
+
+-- Waitlist connection to an event owner group
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (:'waitlistEventID', :'ticketTypeID', :'userID');
+
+-- Session linked to the CFS proposal, without assigned speakers
+insert into session (cfs_submission_id, event_id, name, session_id, session_kind_id, starts_at)
+values (:'proposalSubmissionID', :'proposalSpeakerEventID', 'Proposal Session', :'proposalSessionID', 'in-person', '2030-01-01 10:00:00+00');
+
+-- Session speaker connection to an event owner group
+insert into session_speaker (session_id, user_id)
+values (:'sessionID', :'userID');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -208,7 +250,8 @@ select is(
         :'eventSpeakerGroupID',
         :'memberGroupID',
         :'sessionSpeakerGroupID',
-        :'waitlistGroupID'
+        :'waitlistGroupID',
+        :'proposalSpeakerGroupID'
     ]::uuid[],
     'Should return every available connected group once'
 );

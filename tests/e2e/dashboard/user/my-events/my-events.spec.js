@@ -23,6 +23,9 @@ import {
 } from "../../../utils.js";
 import { getAttendButton, getLeaveButton, waitForAttendanceState } from "../../../site/event/helpers.js";
 
+// Seeded event with a session linked to member one's approved CFS submission.
+const CFS_EVENT_NAME = "Event With Active CFS";
+
 // Lists every upcoming event on one page so owned events are found regardless of seeded rows.
 const MY_EVENTS_ALL_PATH = "/dashboard/user?tab=events&limit=100";
 
@@ -57,6 +60,19 @@ test.describe("user dashboard my events view", () => {
     // Assert how many matching elements are shown.
     await expect(dashboardContent.getByText("Past Event For Filtering")).toHaveCount(0);
     await expect(dashboardContent.getByText(TEST_EVENT_NAMES.beta[0])).toHaveCount(0);
+  });
+
+  test("my events lists the speaker role for a session linked to a CFS submission", async ({
+    member1Page,
+  }) => {
+    // Load every upcoming event of the member who authored the linked proposal.
+    await navigateToPath(member1Page, MY_EVENTS_ALL_PATH);
+    const dashboardContent = member1Page.locator("#dashboard-content");
+
+    // Verify the event of the linked session lists the member as a speaker only.
+    const cfsEventRow = dashboardContent.locator("tr", { hasText: CFS_EVENT_NAME });
+    await expect(cfsEventRow).toContainText("Speaker");
+    await expect(cfsEventRow).not.toContainText("Attendee");
   });
 
   test("my events leaves surveys to the Surveys tab", async ({ member1Page }) => {

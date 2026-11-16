@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(27);
+select plan(30);
 
 -- ============================================================================
 -- VARIABLES
@@ -26,6 +26,9 @@ select plan(27);
 \set crossOtherEventID '3a340000-0000-0000-0000-00000000000e'
 \set crossOtherLabelID '3a340000-0000-0000-0000-00000000000f'
 \set crossSessionID '3a340000-0000-0000-0000-000000000010'
+\set emptySpeakersEventID '3a340000-0000-0000-0000-00000000003d'
+\set emptySpeakersProposalID '3a340000-0000-0000-0000-00000000003e'
+\set emptySpeakersSubmissionID '3a340000-0000-0000-0000-00000000003f'
 \set eventCategoryID '3a340000-0000-0000-0000-000000000011'
 \set eventID '3a340000-0000-0000-0000-000000000012'
 \set groupCategoryID '3a340000-0000-0000-0000-000000000013'
@@ -57,6 +60,9 @@ select plan(27);
 \set replaceSessionID '3a340000-0000-0000-0000-00000000002d'
 \set session1ID '3a340000-0000-0000-0000-00000000002e'
 \set session2ID '3a340000-0000-0000-0000-00000000002f'
+\set speakersLinkedEventID '3a340000-0000-0000-0000-00000000003a'
+\set speakersLinkedProposalID '3a340000-0000-0000-0000-00000000003b'
+\set speakersLinkedSubmissionID '3a340000-0000-0000-0000-00000000003c'
 \set unlinkedEventID '3a340000-0000-0000-0000-000000000030'
 \set unlinkedFormerProposalID '3a340000-0000-0000-0000-000000000031'
 \set unlinkedFormerSessionID '3a340000-0000-0000-0000-000000000032'
@@ -121,6 +127,23 @@ insert into session_proposal (
     interval '30 minutes',
     'beginner',
     'Copy',
+    :'user1ID'
+);
+
+-- Proposal linked to a new session submitted with an empty speaker list
+insert into session_proposal (
+    session_proposal_id,
+    description,
+    duration,
+    session_proposal_level_id,
+    title,
+    user_id
+) values (
+    :'emptySpeakersProposalID',
+    'Empty Speakers description',
+    interval '30 minutes',
+    'beginner',
+    'Empty Speakers',
     :'user1ID'
 );
 
@@ -192,6 +215,23 @@ insert into session_proposal (
     :'user1ID'
 );
 
+-- Proposal linked to a new session submitted with speakers
+insert into session_proposal (
+    session_proposal_id,
+    description,
+    duration,
+    session_proposal_level_id,
+    title,
+    user_id
+) values (
+    :'speakersLinkedProposalID',
+    'Speakers Linked description',
+    interval '30 minutes',
+    'beginner',
+    'Speakers Linked',
+    :'user1ID'
+);
+
 -- Proposal unlinked from its session
 insert into session_proposal (
     session_proposal_id,
@@ -224,6 +264,9 @@ select fx_event(:'crossEventID', :'groupID', :'eventCategoryID');
 -- Event owning the label rejected for another event
 select fx_event(:'crossOtherEventID', :'groupID', :'eventCategoryID');
 
+-- Event accepting an empty speaker list for a linked session
+select fx_event(:'emptySpeakersEventID', :'groupID', :'eventCategoryID');
+
 -- Event whose sessions and speakers are synchronized
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', '2030-01-01 17:00:00+00',
@@ -243,6 +286,9 @@ select fx_event(:'relinkEventID', :'groupID', :'eventCategoryID');
 -- Event replacing session labels with submitted label IDs
 select fx_event(:'replaceEventID', :'groupID', :'eventCategoryID');
 
+-- Event rejecting speakers for a linked session
+select fx_event(:'speakersLinkedEventID', :'groupID', :'eventCategoryID');
+
 -- Event keeping the labels of unlinked sessions
 select fx_event(:'unlinkedEventID', :'groupID', :'eventCategoryID');
 
@@ -253,6 +299,10 @@ values (:'clearLinkedSubmissionID', :'clearEventID', :'clearLinkedProposalID', '
 -- Approved submission whose labels are copied to a new session
 insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
 values (:'copySubmissionID', :'copyEventID', :'copyProposalID', 'approved');
+
+-- Approved submission linked to a new session submitted with an empty speaker list
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values (:'emptySpeakersSubmissionID', :'emptySpeakersEventID', :'emptySpeakersProposalID', 'approved');
 
 -- Approved submission linked to an unchanged session
 insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
@@ -269,6 +319,10 @@ values (:'relinkNewSubmissionID', :'relinkEventID', :'relinkNewProposalID', 'app
 -- Approved submission previously linked to a session
 insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
 values (:'relinkOldSubmissionID', :'relinkEventID', :'relinkOldProposalID', 'approved');
+
+-- Approved submission linked to a new session submitted with speakers
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values (:'speakersLinkedSubmissionID', :'speakersLinkedEventID', :'speakersLinkedProposalID', 'approved');
 
 -- Approved submission unlinked from its session
 insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
@@ -437,6 +491,42 @@ values (:'session2ID', :'user2ID', false);
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should accept an empty speaker list for sessions linked to a CFS submission
+select lives_ok(
+    format(
+        $$select sync_event_sessions(
+            %L::uuid,
+            %L::jsonb,
+            (select e from event e where e.event_id = %L::uuid)
+        )$$,
+        :'emptySpeakersEventID',
+        jsonb_build_object(
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'cfs_submission_id', :'emptySpeakersSubmissionID'::uuid,
+                    'kind', 'in-person',
+                    'name', 'Empty Speakers',
+                    'speakers', jsonb_build_array(),
+                    'starts_at', '2030-01-01T10:00:00'
+                )
+            ),
+            'timezone', 'UTC'
+        ),
+        :'emptySpeakersEventID'
+    ),
+    'Should accept an empty speaker list for sessions linked to a CFS submission'
+);
+select is(
+    (
+        select count(*)
+        from session s
+        where s.cfs_submission_id = :'emptySpeakersSubmissionID'
+        and s.event_id = :'emptySpeakersEventID'
+    ),
+    1::bigint,
+    'Should insert the linked session submitted with an empty speaker list'
+);
 
 -- Should clear session labels for empty submitted label IDs
 select lives_ok(
@@ -674,6 +764,39 @@ select throws_ok(
     'OCG01',
     'invalid event labels',
     'Should reject session label IDs from another event'
+);
+
+-- Should reject speakers for sessions linked to a CFS submission
+select throws_ok(
+    format(
+        $$select sync_event_sessions(
+            %L::uuid,
+            %L::jsonb,
+            (select e from event e where e.event_id = %L::uuid)
+        )$$,
+        :'speakersLinkedEventID',
+        jsonb_build_object(
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'cfs_submission_id', :'speakersLinkedSubmissionID'::uuid,
+                    'kind', 'in-person',
+                    'name', 'Speakers Linked',
+                    'speakers', jsonb_build_array(
+                        jsonb_build_object(
+                            'featured', false,
+                            'user_id', :'user3ID'::uuid
+                        )
+                    ),
+                    'starts_at', '2030-01-01T10:00:00'
+                )
+            ),
+            'timezone', 'UTC'
+        ),
+        :'speakersLinkedEventID'
+    ),
+    'OCG01',
+    'sessions linked to a cfs submission cannot have speakers',
+    'Should reject speakers for sessions linked to a CFS submission'
 );
 
 -- Should replace labels of re-linked sessions with the new submission labels

@@ -270,31 +270,18 @@ returns json as $$
                                     where sl.session_id = s.session_id
                                 )
                             ),
-                            'speakers', coalesce(
-                                -- Prefer the speakers assigned to the session
-                                (
-                                    select jsonb_agg(
-                                        public_user_profile(u) || jsonb_build_object('featured', ss.featured)
-                                        order by ss.featured desc, u.name
-                                    )
-                                    from session_speaker ss
-                                    join "user" u using (user_id)
-                                    where ss.session_id = s.session_id
-                                ),
-                                -- Fall back to the speakers of the linked session proposal
-                                (
-                                    select jsonb_agg(
-                                        public_user_profile(u) || jsonb_build_object('featured', false)
-                                        order by
-                                            -- List the proposal author before the co-speaker
-                                            case when u.user_id = sp.user_id then 0 else 1 end,
-                                            u.name
-                                    )
-                                    from "user" u
-                                    where u.user_id in (sp.user_id, sp.co_speaker_user_id)
-                                ),
-                                -- Default to no speakers
-                                '[]'::jsonb
+                            -- Include the assigned or linked proposal speakers
+                            'speakers', (
+                                select coalesce(
+                                    jsonb_agg(
+                                        public_user_profile(u) || jsonb_build_object('featured', ssp.featured)
+                                        order by ssp.featured desc, ssp.sort_order, u.name
+                                    ),
+                                    '[]'::jsonb
+                                )
+                                from session_speakers() ssp
+                                join "user" u on u.user_id = ssp.user_id
+                                where ssp.session_id = s.session_id
                             )
                         )) as session_json
                     from session s

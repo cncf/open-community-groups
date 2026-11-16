@@ -203,11 +203,10 @@ returns json as $$
 
                 union all
 
-                -- Session speaker
-                select s.event_id, 'speaker'
-                from session_speaker ss
-                join session s using (session_id)
-                where ss.user_id = p_user_id
+                -- Session speaker, assigned or from the linked proposal
+                select ssp.event_id, 'speaker'
+                from session_speakers() ssp
+                where ssp.user_id = p_user_id
             ) r
         ),
         -- Aggregate roles per event
