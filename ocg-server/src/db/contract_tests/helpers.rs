@@ -1093,6 +1093,11 @@ pub(super) const fn session_id() -> Uuid {
     uuid!("00000000-0000-0000-0000-00000000c051")
 }
 
+/// Returns the session used to verify event updates lock sessions before reading them.
+pub(super) const fn session_lock_session_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c053")
+}
+
 /// Returns the session proposal identifier used by the contract fixture.
 pub(super) const fn session_proposal_id() -> Uuid {
     uuid!("00000000-0000-0000-0000-00000000c0c1")

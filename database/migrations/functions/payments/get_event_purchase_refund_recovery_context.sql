@@ -32,4 +32,4 @@ begin
     -- Return the stable app-facing contract
     return v_context;
 end;
-$$ language plpgsql;
+$$ language plpgsql stable;

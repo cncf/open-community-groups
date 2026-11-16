@@ -97,11 +97,10 @@ begin
     end if;
 
     -- Count allocated inventory before deciding whether the ticket is sold out
-    select get_event_ticket_type_allocated_seat_count(
+    v_allocated_seat_count := get_event_ticket_type_allocated_seat_count(
         p_event_id,
         p_event_ticket_type_id
-    )
-    into v_allocated_seat_count;
+    );
 
     -- Report sold-out ticket types after counting allocated inventory
     if p_admission_offer_id is null

@@ -43,4 +43,4 @@ begin
         raise exception 'duplicate label ids' using errcode = 'OCG01';
     end if;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

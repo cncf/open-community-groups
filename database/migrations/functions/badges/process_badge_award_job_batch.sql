@@ -15,7 +15,7 @@ declare
     v_is_complete boolean;
     v_job badge_award_job%rowtype;
     v_next_recipient_offset integer;
-    v_notification_recipient_ids uuid[] := '{}';
+    v_notification_recipient_ids uuid[] := array[]::uuid[];
     v_recipient_user_id uuid;
     v_remaining_count integer;
     v_skipped_count integer := 0;
@@ -175,6 +175,7 @@ begin
         where ub.revoked_at is null
         and ub.user_id = v_recipient_user_id;
 
+        -- Issue the credential with its reserved status list slot
         insert into user_badge (
             badge_status_list_id,
             display_order,

@@ -93,7 +93,7 @@ begin
 
         -- Count the requested recipients who are verified event attendees,
         -- hosts, organizers, or speakers
-        select count(*)
+        select count(*)::integer
         into v_eligible_recipient_count
         from "user" u
         where u.email_verified = true
@@ -135,7 +135,7 @@ begin
     -- Validate accepted group team members when no event scopes the award
     else
         -- Count the requested recipients who are verified accepted team members
-        select count(*)
+        select count(*)::integer
         into v_eligible_recipient_count
         from group_team gt
         join "user" u using (user_id)

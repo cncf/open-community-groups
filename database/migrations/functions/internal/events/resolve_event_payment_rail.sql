@@ -48,4 +48,4 @@ begin
     -- Return the rail and the adjusted payload
     return query select v_external_mode, v_resolved;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

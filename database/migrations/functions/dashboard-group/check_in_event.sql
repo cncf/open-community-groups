@@ -9,12 +9,10 @@ create or replace function check_in_event(
 )
 returns boolean as $$
 declare
-    v_event_id uuid;
     v_transitioned boolean;
 begin
     -- Lock the event and validate it is available in the selected group
-    select e.event_id
-    into v_event_id
+    perform 1
     from event e
     join "group" g using (group_id)
     where e.event_id = p_event_id

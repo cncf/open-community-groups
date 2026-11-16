@@ -77,4 +77,4 @@ begin
     )
     );
 end
-$$ language plpgsql set plan_cache_mode = force_custom_plan;
+$$ language plpgsql stable set plan_cache_mode = force_custom_plan;

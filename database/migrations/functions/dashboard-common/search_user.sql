@@ -4,6 +4,7 @@
 create or replace function search_user(p_query text)
 returns jsonb as $$
 begin
+    -- Return up to five matching verified users ordered by username
     return (
         select coalesce(jsonb_agg(row_to_json(t)::jsonb order by t.username), '[]'::jsonb)
         from (
@@ -27,4 +28,4 @@ begin
         ) t
     );
 end;
-$$ language plpgsql set plan_cache_mode = force_custom_plan;
+$$ language plpgsql stable set plan_cache_mode = force_custom_plan;

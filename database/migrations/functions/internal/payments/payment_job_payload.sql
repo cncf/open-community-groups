@@ -41,6 +41,7 @@ begin
                 raise exception 'application-fee adjustment is missing provider context';
             end if;
 
+            -- Return the provider context of the fee adjustment
             return jsonb_build_object(
                 'application_fee_adjustment', jsonb_build_object(
                     'amount_minor', v_adjustment.amount_minor,
@@ -78,6 +79,7 @@ begin
                 raise exception 'credit note is missing provider context';
             end if;
 
+            -- Return the provider context of the credit note
             return jsonb_build_object(
                 'credit_note', jsonb_build_object(
                     'amount_minor', v_credit_note.amount_minor,
@@ -114,6 +116,7 @@ begin
                 raise exception 'event purchase is missing connected seller account';
             end if;
 
+            -- Return the refund with its provider and notification context
             return jsonb_build_object(
                 'refund', event_purchase_refund_to_json(v_refund, p_job)
                     || jsonb_strip_nulls(jsonb_build_object(
@@ -129,4 +132,4 @@ begin
             raise exception 'payment job kind has no worker payload';
     end case;
 end;
-$$ language plpgsql;
+$$ language plpgsql stable;

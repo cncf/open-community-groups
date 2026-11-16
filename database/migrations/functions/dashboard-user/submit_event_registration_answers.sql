@@ -37,14 +37,14 @@ begin
     perform validate_questionnaire_answers_payload(v_event.registration_questions, p_registration_answers);
 
     -- Active checkout holds may finish answering questions after public registration closes
-    select exists (
+    v_has_active_checkout_hold := exists (
         select 1
         from event_purchase ep
         where ep.event_id = p_event_id
         and ep.user_id = p_actor_user_id
         and ep.status = 'pending'
         and ep.hold_expires_at > current_timestamp
-    ) into v_has_active_checkout_hold;
+    );
 
     -- Lock the attendee row before storing answers
     select ea.manually_invited

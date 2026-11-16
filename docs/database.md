@@ -307,6 +307,10 @@ less context, not that the caller became shorter.
   `just db-lint` checks this. A `stable` reader sees its calling statement's
   snapshot, so a write and a `stable` read of its result run in separate
   statements.
+- A `language plpgsql` function declares `stable` or `immutable` under the
+  same rules whenever its body allows it, and passes `plpgsql_check` with no
+  errors, warnings, or performance warnings.
+  `tests/schema/07_plpgsql_check.sql` checks both for every function.
 - A helper whose result must reflect rows locked by a statement is evaluated
   in a statement after the lock, never inside the locking statement. A
   `stable` function there reads the statement's pre-wait snapshot. The same
@@ -395,13 +399,14 @@ fixtures after the migrations; the application loader never loads them.
 
 The numbered files in `tests/schema/` assert the catalog: tables and
 extensions, columns, keys, indexes, functions and triggers, constraints and
-reference data. `tests/schema/constraints/` exercises what the catalog cannot
-show: check predicates, unique and partial unique indexes, composite foreign
-keys, and `on delete` actions. Each constraint test is named after the table
-whose constraints it exercises (`just db-lint` checks the name) and proves
-the accepted and rejected writes directly. A constraint enforced by a trigger
-function is tested under `tests/functions/triggers/` instead. Every migration
-updates the relevant files.
+reference data. The last one runs the `plpgsql_check` static analyzer over
+every `language plpgsql` function. `tests/schema/constraints/` exercises what
+the catalog cannot show: check predicates, unique and partial unique indexes,
+composite foreign keys, and `on delete` actions. Each constraint test is named
+after the table whose constraints it exercises (`just db-lint` checks the
+name) and proves the accepted and rejected writes directly. A constraint
+enforced by a trigger function is tested under `tests/functions/triggers/`
+instead. Every migration updates the relevant files.
 
 ### Migration tests
 
@@ -437,5 +442,6 @@ just db-migration-test 0081
 just db-migration-tests
 ```
 
-`just db-tests` recreates the test database, installs the fixtures, and runs
-`pg_prove` with one job per CPU; CI runs the same suite with `--jobs 4`.
+`just db-tests` recreates the test database with the `pgtap` and
+`plpgsql_check` extensions, installs the fixtures, and runs `pg_prove` with
+one job per CPU; CI runs the same suite with `--jobs 4`.

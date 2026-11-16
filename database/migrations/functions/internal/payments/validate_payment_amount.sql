@@ -62,7 +62,7 @@ begin
         when 'USD' then 50
         when 'ZAR' then 50
         else null
-    end;
+    end::bigint;
 
     -- Reject paid amounts below the configured minimum
     if v_min_amount_minor is not null and p_amount_minor < v_min_amount_minor then
@@ -85,4 +85,4 @@ begin
         raise exception 'payment amount exceeds Stripe maximum charge amount' using errcode = 'OCG01';
     end if;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

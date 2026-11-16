@@ -200,4 +200,4 @@ begin
         end if;
     end loop;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

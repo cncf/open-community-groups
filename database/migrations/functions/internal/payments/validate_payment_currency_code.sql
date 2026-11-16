@@ -18,4 +18,4 @@ begin
         raise exception 'payment_currency_code must be a supported currency code' using errcode = 'OCG01';
     end if;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

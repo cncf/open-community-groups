@@ -27,7 +27,7 @@ begin
     end if;
 
     -- Insert group with unique slug generation and collision retry
-    loop
+    while v_retries < v_max_retries loop
         -- Generate a candidate slug for the new group
         v_slug := generate_slug(7);
 
@@ -42,11 +42,6 @@ begin
             )
         ) then
             v_retries := v_retries + 1;
-
-            -- Give up after exhausting the retry budget
-            if v_retries >= v_max_retries then
-                raise exception 'failed to generate unique slug after % attempts', v_max_retries;
-            end if;
             continue;
         end if;
 
@@ -143,12 +138,10 @@ begin
             -- Retry slug generation when a collision occurs
             when unique_violation then
                 v_retries := v_retries + 1;
-
-                -- Give up after exhausting the retry budget
-                if v_retries >= v_max_retries then
-                    raise exception 'failed to generate unique slug after % attempts', v_max_retries;
-                end if;
         end;
     end loop;
+
+    -- Give up after exhausting the retry budget
+    raise exception 'failed to generate unique slug after % attempts', v_max_retries;
 end;
 $$ language plpgsql;
