@@ -15,6 +15,13 @@
 -- timestamps are Unix milliseconds. Month buckets and their 'YYYY-MM' labels
 -- are taken at UTC, so they do not depend on the session time zone.
 -- Category/region breakdowns use entity names as keys.
+--
+-- Members and attendees are counted once per UTC month, category, region and
+-- reporting period, and every breakdown sums those counts.
+--
+-- JIT is off: on large deployments the row estimates put this body above
+-- jit_above_cost, and compiling its many expressions costs more than it saves,
+-- including on the largest deployment measured.
 create or replace function get_community_stats(p_community_id uuid)
 returns json as $$
 -- Resolve the community and reporting windows
@@ -62,16 +69,18 @@ filtered_groups as (
         and g.active = true
         and g.deleted = false
 ),
--- Select members of the active groups
-members as (
+-- Count members of the active groups by month, category, region and period
+member_buckets as (
     select
-        gm.group_id,
-        gm.created_at,
         fg.group_category_id,
         fg.region_id,
-        timezone('UTC', date_trunc('month', gm.created_at at time zone 'UTC')) as created_month
+        timezone('UTC', date_trunc('month', gm.created_at at time zone 'UTC')) as created_month,
+        gm.created_at >= p.period_start as in_period,
+        count(*)::int as count
     from group_member gm
     join filtered_groups fg on fg.group_id = gm.group_id
+    cross join params p
+    group by 1, 2, 3, 4
 ),
 -- Select published non-test events of the active groups that were not canceled
 events as (
@@ -105,18 +114,20 @@ events_with_start as (
     from events
     where starts_at is not null
 ),
--- Select confirmed attendees of the selected events
-attendees as (
+-- Count confirmed attendees of the selected events by month, category, region and period
+attendee_buckets as (
     select
-        ea.event_id,
-        ea.created_at,
         e.event_category_id,
         e.group_category_id,
         e.region_id,
-        timezone('UTC', date_trunc('month', ea.created_at at time zone 'UTC')) as created_month
+        timezone('UTC', date_trunc('month', ea.created_at at time zone 'UTC')) as created_month,
+        ea.created_at >= p.period_start as in_period,
+        count(*)::int as count
     from event_attendee ea
     join events e on e.event_id = ea.event_id
+    cross join params p
     where ea.status = 'confirmed'
+    group by 1, 2, 3, 4, 5
 ),
 -- Sum event page views by day into parallel arrays
 event_view_days as (
@@ -168,8 +179,8 @@ domain_running_total_counts as (
     select
         'members' as domain,
         m.created_month as bucket_start,
-        count(*)::int as count
-    from members m
+        sum(m.count)::int as count
+    from member_buckets m
     group by m.created_month
 
     union all
@@ -186,8 +197,8 @@ domain_running_total_counts as (
     select
         'attendees' as domain,
         a.created_month as bucket_start,
-        count(*)::int as count
-    from attendees a
+        sum(a.count)::int as count
+    from attendee_buckets a
     group by a.created_month
 ),
 -- Count each domain by UTC month label within the reporting period
@@ -205,9 +216,9 @@ domain_monthly_counts as (
     select
         'members' as domain,
         to_char(m.created_month at time zone 'UTC', 'YYYY-MM') as label,
-        count(*)::int as count
-    from members m
-    join params p on m.created_at >= p.period_start
+        sum(m.count)::int as count
+    from member_buckets m
+    where m.in_period
     group by to_char(m.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
@@ -225,9 +236,9 @@ domain_monthly_counts as (
     select
         'attendees' as domain,
         to_char(a.created_month at time zone 'UTC', 'YYYY-MM') as label,
-        count(*)::int as count
-    from attendees a
-    join params p on a.created_at >= p.period_start
+        sum(a.count)::int as count
+    from attendee_buckets a
+    where a.in_period
     group by to_char(a.created_month at time zone 'UTC', 'YYYY-MM')
 ),
 -- Count each domain by category or region and month for the running totals
@@ -261,8 +272,8 @@ dimension_running_total_counts as (
         'category' as dimension,
         gc.name as series_name,
         m.created_month as bucket_start,
-        count(*)::int as count
-    from members m
+        sum(m.count)::int as count
+    from member_buckets m
     join group_categories gc on gc.group_category_id = m.group_category_id
     group by gc.name, m.created_month
 
@@ -273,8 +284,8 @@ dimension_running_total_counts as (
         'region' as dimension,
         r.name as series_name,
         m.created_month as bucket_start,
-        count(*)::int as count
-    from members m
+        sum(m.count)::int as count
+    from member_buckets m
     join regions r on r.region_id = m.region_id
     group by r.name, m.created_month
 
@@ -321,8 +332,8 @@ dimension_running_total_counts as (
         'event_category' as dimension,
         ec.name as series_name,
         a.created_month as bucket_start,
-        count(*)::int as count
-    from attendees a
+        sum(a.count)::int as count
+    from attendee_buckets a
     join event_categories ec on ec.event_category_id = a.event_category_id
     group by ec.name, a.created_month
 
@@ -333,8 +344,8 @@ dimension_running_total_counts as (
         'group_category' as dimension,
         gc.name as series_name,
         a.created_month as bucket_start,
-        count(*)::int as count
-    from attendees a
+        sum(a.count)::int as count
+    from attendee_buckets a
     join group_categories gc on gc.group_category_id = a.group_category_id
     group by gc.name, a.created_month
 
@@ -345,8 +356,8 @@ dimension_running_total_counts as (
         'group_region' as dimension,
         r.name as series_name,
         a.created_month as bucket_start,
-        count(*)::int as count
-    from attendees a
+        sum(a.count)::int as count
+    from attendee_buckets a
     join regions r on r.region_id = a.region_id
     group by r.name, a.created_month
 ),
@@ -383,10 +394,10 @@ dimension_monthly_counts as (
         'category' as dimension,
         gc.name as series_name,
         to_char(m.created_month at time zone 'UTC', 'YYYY-MM') as label,
-        count(*)::int as count
-    from members m
-    join params p on m.created_at >= p.period_start
+        sum(m.count)::int as count
+    from member_buckets m
     join group_categories gc on gc.group_category_id = m.group_category_id
+    where m.in_period
     group by gc.name, to_char(m.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
@@ -396,10 +407,10 @@ dimension_monthly_counts as (
         'region' as dimension,
         r.name as series_name,
         to_char(m.created_month at time zone 'UTC', 'YYYY-MM') as label,
-        count(*)::int as count
-    from members m
-    join params p on m.created_at >= p.period_start
+        sum(m.count)::int as count
+    from member_buckets m
     join regions r on r.region_id = m.region_id
+    where m.in_period
     group by r.name, to_char(m.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
@@ -448,10 +459,10 @@ dimension_monthly_counts as (
         'event_category' as dimension,
         ec.name as series_name,
         to_char(a.created_month at time zone 'UTC', 'YYYY-MM') as label,
-        count(*)::int as count
-    from attendees a
-    join params p on a.created_at >= p.period_start
+        sum(a.count)::int as count
+    from attendee_buckets a
     join event_categories ec on ec.event_category_id = a.event_category_id
+    where a.in_period
     group by ec.name, to_char(a.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
@@ -461,10 +472,10 @@ dimension_monthly_counts as (
         'group_category' as dimension,
         gc.name as series_name,
         to_char(a.created_month at time zone 'UTC', 'YYYY-MM') as label,
-        count(*)::int as count
-    from attendees a
-    join params p on a.created_at >= p.period_start
+        sum(a.count)::int as count
+    from attendee_buckets a
     join group_categories gc on gc.group_category_id = a.group_category_id
+    where a.in_period
     group by gc.name, to_char(a.created_month at time zone 'UTC', 'YYYY-MM')
 
     union all
@@ -474,10 +485,10 @@ dimension_monthly_counts as (
         'group_region' as dimension,
         r.name as series_name,
         to_char(a.created_month at time zone 'UTC', 'YYYY-MM') as label,
-        count(*)::int as count
-    from attendees a
-    join params p on a.created_at >= p.period_start
+        sum(a.count)::int as count
+    from attendee_buckets a
     join regions r on r.region_id = a.region_id
+    where a.in_period
     group by r.name, to_char(a.created_month at time zone 'UTC', 'YYYY-MM')
 ),
 -- Build the page views block of each scope, the total one from all scopes
@@ -580,14 +591,14 @@ select json_strip_nulls(json_build_object(
     -- MEMBERS STATISTICS
     -- ========================================================================
     'members', json_build_object(
-        'total', (select count(*)::int from members),
+        'total', (select coalesce(sum(m.count), 0)::int from member_buckets m),
         'total_by_category', coalesce((
             select json_agg(json_build_array(gc.name, stats.count) order by gc.name)
             from (
                 select
                     m.group_category_id,
-                    count(*)::int as count
-                from members m
+                    sum(m.count)::int as count
+                from member_buckets m
                 group by m.group_category_id
             ) stats
             join group_categories gc on gc.group_category_id = stats.group_category_id
@@ -597,8 +608,8 @@ select json_strip_nulls(json_build_object(
             from (
                 select
                     m.region_id,
-                    count(*)::int as count
-                from members m
+                    sum(m.count)::int as count
+                from member_buckets m
                 group by m.region_id
             ) stats
             join regions r on r.region_id = stats.region_id
@@ -727,14 +738,14 @@ select json_strip_nulls(json_build_object(
     -- ATTENDEES STATISTICS
     -- ========================================================================
     'attendees', json_build_object(
-        'total', (select count(*)::int from attendees),
+        'total', (select coalesce(sum(a.count), 0)::int from attendee_buckets a),
         'total_by_event_category', coalesce((
             select json_agg(json_build_array(ec.name, stats.count) order by ec.name)
             from (
                 select
                     a.event_category_id,
-                    count(*)::int as count
-                from attendees a
+                    sum(a.count)::int as count
+                from attendee_buckets a
                 group by a.event_category_id
             ) stats
             join event_categories ec on ec.event_category_id = stats.event_category_id
@@ -744,8 +755,8 @@ select json_strip_nulls(json_build_object(
             from (
                 select
                     a.group_category_id,
-                    count(*)::int as count
-                from attendees a
+                    sum(a.count)::int as count
+                from attendee_buckets a
                 group by a.group_category_id
             ) stats
             join group_categories gc on gc.group_category_id = stats.group_category_id
@@ -755,8 +766,8 @@ select json_strip_nulls(json_build_object(
             from (
                 select
                     a.region_id,
-                    count(*)::int as count
-                from attendees a
+                    sum(a.count)::int as count
+                from attendee_buckets a
                 group by a.region_id
             ) stats
             join regions r on r.region_id = stats.region_id
@@ -820,4 +831,4 @@ select json_strip_nulls(json_build_object(
     )
 ))
 from page_view_blocks pvb;
-$$ language sql stable;
+$$ language sql stable set jit = off;

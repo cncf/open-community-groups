@@ -23,16 +23,9 @@ returns json as $$
         -- Apply group ownership plus all requested award filters
         filtered as (
             select
-                ub as award,
                 ub.awarded_at,
-                ub.user_badge_id,
-
-                e.name as event_name,
-                coalesce(u.name, u.username) as recipient_name,
-                u.username as recipient_username
+                ub.user_badge_id
             from user_badge ub
-            left join event e on e.event_id = ub.event_id
-            left join "user" u on u.user_id = ub.user_id
             cross join filters f
             where ub.group_id = p_group_id
             and (f.badge_id_value is null or ub.badge_id = f.badge_id_value)
@@ -48,8 +41,15 @@ returns json as $$
             and (
                 f.query_value is null
                 or ub.snapshot->>'name' ilike '%' || escape_ilike_pattern(f.query_value) || '%'
-                or coalesce(u.name, '') ilike '%' || escape_ilike_pattern(f.query_value) || '%'
-                or coalesce(u.username, '') ilike '%' || escape_ilike_pattern(f.query_value) || '%'
+                or exists (
+                    select 1
+                    from "user" u
+                    where u.user_id = ub.user_id
+                    and (
+                        coalesce(u.name, '') ilike '%' || escape_ilike_pattern(f.query_value) || '%'
+                        or coalesce(u.username, '') ilike '%' || escape_ilike_pattern(f.query_value) || '%'
+                    )
+                )
             )
         ),
         -- Select the requested page in stable newest-first order
@@ -64,16 +64,20 @@ returns json as $$
     select json_build_object(
         'awards', coalesce(
             (
+                -- Load award, event and recipient details for the page rows only
                 select json_agg(
-                    user_badge_json(page.award, false)
+                    user_badge_json(ub, false)
                     || jsonb_build_object(
-                        'event_name', page.event_name,
-                        'recipient_name', page.recipient_name,
-                        'recipient_username', page.recipient_username
+                        'event_name', e.name,
+                        'recipient_name', coalesce(u.name, u.username),
+                        'recipient_username', u.username
                     )
                     order by page.awarded_at desc, page.user_badge_id desc
                 )
                 from page
+                join user_badge ub on ub.user_badge_id = page.user_badge_id
+                left join event e on e.event_id = ub.event_id
+                left join "user" u on u.user_id = ub.user_id
             ),
             '[]'::json
         ),
@@ -98,10 +102,13 @@ returns json as $$
                 -- Direct group source first, then event sources by name
                 select json_agg(row_to_json(source) order by source.event_id is not null, source.name, source.event_id)
                 from (
-                    select distinct e.name, e.event_id
-                    from user_badge ub
-                    join event e on e.event_id = ub.event_id
-                    where ub.group_id = p_group_id
+                    select e.name, e.event_id
+                    from event e
+                    where e.event_id in (
+                        select ub.event_id
+                        from user_badge ub
+                        where ub.group_id = p_group_id
+                    )
                     union all
                     select 'Group' as name, null::uuid as event_id
                     where exists (

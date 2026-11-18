@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -152,6 +152,21 @@ insert into event_purchase (
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should cache a generic plan per connection
+select is(
+    (
+        select
+            l.lanname = 'plpgsql'
+            and p.proconfig = array['plan_cache_mode=force_generic_plan']
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'list_event_ticket_types(uuid)'::regprocedure
+    ),
+    true,
+    'Should cache a generic plan per connection'
+);
 
 -- Should list ticket types with normalized prices and inventory
 select is(

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(24);
+select plan(27);
 
 -- Reproduce a server whose default text search config is not simple
 set local default_text_search_config = 'pg_catalog.english';
@@ -390,6 +390,37 @@ select ok(
     'Should leave distances empty unless sorting by distance'
 );
 
+-- Should match a bbox spanning both poles
+select set_eq(
+    $$
+        select event_id
+        from search_events_matches('{
+            "bbox_ne_lat": 90.0,
+            "bbox_ne_lon": -122.0,
+            "bbox_sw_lat": -90.0,
+            "bbox_sw_lon": -123.0
+        }'::jsonb)
+    $$,
+    array[:'eventLocatedID', :'eventOnsiteID', :'eventVirtualID']::uuid[],
+    'Should match a bbox spanning both poles'
+);
+
+-- Should match a world-wide bbox as a longitude/latitude rectangle
+select set_eq(
+    $$
+        select event_id
+        from search_events_matches('{
+            "bbox_ne_lat": 85.0,
+            "bbox_ne_lon": 180.0,
+            "bbox_sw_lat": -85.0,
+            "bbox_sw_lon": -180.0,
+            "community": ["sem-community"]
+        }'::jsonb)
+    $$,
+    array[:'eventHybridID', :'eventLocatedID', :'eventOnsiteID', :'eventVirtualID']::uuid[],
+    'Should match a world-wide bbox as a longitude/latitude rectangle'
+);
+
 -- Should match all groups when the group selection is empty
 select set_eq(
     $$select event_id from search_events_matches('{"community": ["sem-community"], "group": []}'::jsonb)$$,
@@ -433,6 +464,21 @@ select set_eq(
     $$,
     array[:'eventVirtualID']::uuid[],
     'Should match words whose english stem differs from the stored lexeme'
+);
+
+-- Should not match locations beyond the bbox top edge
+select is_empty(
+    $$
+        select event_id
+        from search_events_matches('{
+            "bbox_ne_lat": 51.4,
+            "bbox_ne_lon": 10.0,
+            "bbox_sw_lat": 30.0,
+            "bbox_sw_lon": -10.0,
+            "community": ["sem-community"]
+        }'::jsonb)
+    $$,
+    'Should not match locations beyond the bbox top edge'
 );
 
 -- Should return every visible event without filters

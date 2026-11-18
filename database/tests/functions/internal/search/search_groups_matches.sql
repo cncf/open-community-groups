@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(17);
 
 -- Reproduce a server whose default text search config is not simple
 set local default_text_search_config = 'pg_catalog.english';
@@ -265,6 +265,57 @@ select ok(
         where distance is not null
     ),
     'Should leave distances empty unless sorting by distance'
+);
+
+-- Should match a bbox spanning both poles
+select set_eq(
+    $$
+        select group_id
+        from search_groups_matches('{
+            "bbox_ne_lat": 90.0,
+            "bbox_ne_lon": -122.0,
+            "bbox_sw_lat": -90.0,
+            "bbox_sw_lon": -123.0
+        }'::jsonb)
+    $$,
+    array[:'groupSanFranciscoID']::uuid[],
+    'Should match a bbox spanning both poles'
+);
+
+-- Should match a world-wide bbox as a longitude/latitude rectangle
+select set_eq(
+    $$
+        select group_id
+        from search_groups_matches('{
+            "bbox_ne_lat": 85.0,
+            "bbox_ne_lon": 180.0,
+            "bbox_sw_lat": -85.0,
+            "bbox_sw_lon": -180.0
+        }'::jsonb)
+    $$,
+    array[
+        :'groupAustinID',
+        :'groupLondonID',
+        :'groupNewYorkID',
+        :'groupOtherID',
+        :'groupSanFranciscoID'
+    ]::uuid[],
+    'Should match a world-wide bbox as a longitude/latitude rectangle'
+);
+
+-- Should match inverted longitudes as the planar rectangle between them
+select set_eq(
+    $$
+        select group_id
+        from search_groups_matches('{
+            "bbox_ne_lat": 45.0,
+            "bbox_ne_lon": -100.0,
+            "bbox_sw_lat": 25.0,
+            "bbox_sw_lon": 100.0
+        }'::jsonb)
+    $$,
+    array[:'groupAustinID', :'groupNewYorkID', :'groupOtherID']::uuid[],
+    'Should match inverted longitudes as the planar rectangle between them'
 );
 
 -- Should match stop words as prefixes

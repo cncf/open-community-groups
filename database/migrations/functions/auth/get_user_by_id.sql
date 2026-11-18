@@ -1,62 +1,68 @@
 -- get_user_by_id returns user information by user ID.
 -- If p_include_password is true, the password field is included in the response.
+-- Uses PL/pgSQL so each connection caches its plan instead of planning the
+-- SQL-language body on every authenticated request.
 create or replace function get_user_by_id(
     p_user_id uuid,
     p_include_password boolean
 )
 returns json as $$
+begin
     -- Build user payload with optional and computed fields
-    select json_strip_nulls(json_build_object(
-        -- Include core identity fields
-        'auth_hash', auth_hash,
-        'email', email,
-        'email_verified', email_verified,
-        'name', name,
-        'user_id', user_id,
-        'username', username,
+    return (
+        select json_strip_nulls(json_build_object(
+            -- Include core identity fields
+            'auth_hash', auth_hash,
+            'email', email,
+            'email_verified', email_verified,
+            'name', name,
+            'user_id', user_id,
+            'username', username,
 
-        -- Include optional profile fields
-        'bio', bio,
-        'bluesky_url', bluesky_url,
-        'city', city,
-        'company', company,
-        'country', country,
-        'facebook_url', facebook_url,
-        'github_url', github_url,
-        'has_password', case when password is not null then true else null end,
-        'interests', interests,
-        'linkedin_url', linkedin_url,
-        'password', case when p_include_password then password else null end,
-        'photo_url', photo_url,
-        'provider', provider,
-        'timezone', timezone,
-        'title', title,
-        'twitter_url', twitter_url,
-        'website_url', website_url,
+            -- Include optional profile fields
+            'bio', bio,
+            'bluesky_url', bluesky_url,
+            'city', city,
+            'company', company,
+            'country', country,
+            'facebook_url', facebook_url,
+            'github_url', github_url,
+            'has_password', case when password is not null then true else null end,
+            'interests', interests,
+            'linkedin_url', linkedin_url,
+            'password', case when p_include_password then password else null end,
+            'photo_url', photo_url,
+            'provider', provider,
+            'timezone', timezone,
+            'title', title,
+            'twitter_url', twitter_url,
+            'website_url', website_url,
 
-        -- Include computed membership flags
-        'belongs_to_any_group_team', exists (
-            select 1
-            from group_team gt
-            join "group" g on g.group_id = gt.group_id
-            where gt.user_id = u.user_id
-            and gt.accepted = true
-            and g.deleted = false
-        ) or exists (
-            select 1
-            from community_team ct
-            join "group" g on g.community_id = ct.community_id
-            where ct.user_id = u.user_id
-            and ct.accepted = true
-            and g.deleted = false
-        ),
-        'belongs_to_community_team', exists (
-            select 1
-            from community_team ct
-            where ct.user_id = u.user_id
-            and ct.accepted = true
-        )
-    ))
-    from "user" u
-    where u.user_id = p_user_id;
-$$ language sql stable;
+            -- Include computed membership flags
+            'belongs_to_any_group_team', exists (
+                select 1
+                from group_team gt
+                join "group" g on g.group_id = gt.group_id
+                where gt.user_id = u.user_id
+                and gt.accepted = true
+                and g.deleted = false
+            ) or exists (
+                select 1
+                from community_team ct
+                join "group" g on g.community_id = ct.community_id
+                where ct.user_id = u.user_id
+                and ct.accepted = true
+                and g.deleted = false
+            ),
+            'belongs_to_community_team', exists (
+                select 1
+                from community_team ct
+                where ct.user_id = u.user_id
+                and ct.accepted = true
+            )
+        ))
+        from "user" u
+        where u.user_id = p_user_id
+    );
+end;
+$$ language plpgsql stable;

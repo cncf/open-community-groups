@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,11 @@ select plan(9);
 \set groupID 'b1090000-0000-0000-0000-000000000004'
 \set recipientActiveID 'b1090000-0000-0000-0000-000000000005'
 \set recipientRevokedID 'b1090000-0000-0000-0000-000000000006'
+\set repeatedSourceEventID 'b1090000-0000-0000-0000-000000000012'
+\set repeatedSourceGroupID 'b1090000-0000-0000-0000-000000000013'
+\set repeatedSourceStatusListID 'b1090000-0000-0000-0000-000000000014'
+\set repeatedSourceUserBadge1ID 'b1090000-0000-0000-0000-000000000015'
+\set repeatedSourceUserBadge2ID 'b1090000-0000-0000-0000-000000000016'
 \set statusListID 'b1090000-0000-0000-0000-000000000007'
 \set userBadgeActiveID 'b1090000-0000-0000-0000-000000000010'
 \set userBadgeRevokedID 'b1090000-0000-0000-0000-000000000011'
@@ -27,29 +32,32 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Active and revoked recipients used by history filters
+-- Community that owns the history
+select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
+
+-- Active recipient used by history filters
 select fx_user(:'recipientActiveID', jsonb_build_object(
     'name', 'Active Recipient',
     'username', 'history-active'
 ));
+
+-- Revoked recipient used by history filters
 select fx_user(:'recipientRevokedID', jsonb_build_object(
     'name', 'Revoked Recipient',
     'username', 'history-revoked'
 ));
 
--- Community that owns the history
-select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
-
--- Baseline group categories, event categories and groups
-select fx_group_category(:'groupCategoryID', :'communityID');
+-- Event category of the award source events
 select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category of the history groups
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group that owns the history
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Event represented by one award source
-select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'description', 'Description',
-    'name', 'History Event'
-));
+-- Group whose awards share one event source
+select fx_group(:'repeatedSourceGroupID', :'communityID', :'groupCategoryID');
 
 -- Renamed badge definition represented by an older award snapshot
 insert into badge (badge_id, criteria, description, group_id, image_file_name, name)
@@ -58,6 +66,22 @@ values (:'badgeID', 'Criteria', 'Description', :'groupID', 'history.png', 'Renam
 -- Status list shared by the history rows
 insert into badge_status_list (badge_status_list_id, group_id)
 values (:'statusListID', :'groupID');
+
+-- Status list of the repeated source group
+insert into badge_status_list (badge_status_list_id, group_id)
+values (:'repeatedSourceStatusListID', :'repeatedSourceGroupID');
+
+-- Event represented by one award source
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Description',
+    'name', 'History Event'
+));
+
+-- Event shared by every award of the repeated source group
+select fx_event(:'repeatedSourceEventID', :'repeatedSourceGroupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Description',
+    'name', 'Repeated Source Event'
+));
 
 -- Active and revoked history rows
 insert into user_badge (
@@ -92,6 +116,36 @@ insert into user_badge (
         null,
         'policy violation',
         '2026-02-03 00:00:00+00',
+        :'recipientRevokedID'
+    );
+
+-- Awards of two recipients from the same event source
+insert into user_badge (
+    user_badge_id, awarded_at, badge_status_list_id, display_order, group_id, is_listed, snapshot, status_list_index,
+    event_id, user_id
+) values
+    (
+        :'repeatedSourceUserBadge1ID',
+        '2026-03-01 00:00:00+00',
+        :'repeatedSourceStatusListID',
+        0,
+        :'repeatedSourceGroupID',
+        true,
+        '{"name":"Repeated Source Badge"}',
+        1,
+        :'repeatedSourceEventID',
+        :'recipientActiveID'
+    ),
+    (
+        :'repeatedSourceUserBadge2ID',
+        '2026-03-02 00:00:00+00',
+        :'repeatedSourceStatusListID',
+        0,
+        :'repeatedSourceGroupID',
+        true,
+        '{"name":"Repeated Source Badge"}',
+        2,
+        :'repeatedSourceEventID',
         :'recipientRevokedID'
     );
 
@@ -254,6 +308,15 @@ select is(
     'Should list active and revoked history'
 );
 
+-- Should list each event source once
+select is(
+    list_awarded_badges(:'repeatedSourceGroupID', '{}')::jsonb->'sources',
+    jsonb_build_array(
+        jsonb_build_object('name', 'Repeated Source Event', 'event_id', :'repeatedSourceEventID'::uuid)
+    ),
+    'Should list each event source once'
+);
+
 -- Should return complete badge-filter options outside pagination
 select is(
     list_awarded_badges(:'groupID', '{"limit":1}')::jsonb->'badges',
@@ -333,6 +396,19 @@ select is(
         'total', 1
     ),
     'Should search recipient and badge names'
+);
+
+-- Should search recipient usernames
+select is(
+    (
+        select jsonb_build_object(
+            'ids', jsonb_path_query_array(r, '$.awards[*].user_badge_id'),
+            'total', r->'total'
+        )
+        from (select list_awarded_badges(:'groupID', '{"query":"history-revoked"}')::jsonb as r) t
+    ),
+    jsonb_build_object('ids', jsonb_build_array(:'userBadgeRevokedID'::uuid), 'total', 1),
+    'Should search recipient usernames'
 );
 
 -- ============================================================================

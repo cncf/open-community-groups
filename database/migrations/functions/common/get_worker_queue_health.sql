@@ -13,16 +13,27 @@ returns json as $$
             from badge_award_job baj
             where baj.status in ('pending', 'processing')
         ),
-        -- Summarize the notification delivery queue
+        -- Summarize the notification delivery queue, reading each status
+        -- through its own partial index
         notifications as (
             select
-                count(*) filter (where n.delivery_status = 'pending')::bigint as pending,
-                count(*) filter (where n.delivery_status = 'processing')::bigint as processing,
+                (
+                    select count(*)
+                    from notification n
+                    where n.delivery_status = 'pending'
+                )::bigint as pending,
+                (
+                    select count(*)
+                    from notification n
+                    where n.delivery_status = 'processing'
+                )::bigint as processing,
                 floor(extract(
-                    epoch from current_timestamp - min(n.created_at) filter (where n.delivery_status = 'pending')
+                    epoch from current_timestamp - (
+                        select min(n.created_at)
+                        from notification n
+                        where n.delivery_status = 'pending'
+                    )
                 ))::bigint as oldest_pending_age_secs
-            from notification n
-            where n.delivery_status in ('pending', 'processing')
         ),
         -- Summarize the durable payment job queue
         payment_jobs as (

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -32,6 +32,13 @@ select plan(8);
 \set groupCategory2ID '2c0d0000-0000-0000-0000-000000000019'
 \set groupCategory3ID '2c0d0000-0000-0000-0000-000000000020'
 \set inactiveGroupID '2c0d0000-0000-0000-0000-000000000033'
+\set periodCommunityID '2c0d0000-0000-0000-0000-000000000035'
+\set periodEventCategoryID '2c0d0000-0000-0000-0000-000000000036'
+\set periodGroupCategoryID '2c0d0000-0000-0000-0000-000000000037'
+\set periodGroupID '2c0d0000-0000-0000-0000-000000000038'
+\set periodOldEventID '2c0d0000-0000-0000-0000-000000000039'
+\set periodRecentEventID '2c0d0000-0000-0000-0000-000000000040'
+\set periodRegionID '2c0d0000-0000-0000-0000-000000000041'
 \set region1ID '2c0d0000-0000-0000-0000-000000000021'
 \set region2ID '2c0d0000-0000-0000-0000-000000000022'
 \set region3ID '2c0d0000-0000-0000-0000-000000000023'
@@ -50,54 +57,111 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Requested community and another community whose rows must be excluded
+-- Other community whose rows must be excluded
 select fx_community(:'community2ID');
+
+-- Requested community
 select fx_community(:'communityID');
 
--- Group categories
-select fx_group_category(:'groupCategory1ID', :'communityID', jsonb_build_object('name', 'AI/ML'));
-select fx_group_category(:'groupCategory2ID', :'communityID', jsonb_build_object('name', 'Cloud Native'));
-select fx_group_category(:'groupCategory3ID', :'community2ID');
+-- Community whose members and attendees straddle the reporting period start
+select fx_community(:'periodCommunityID');
 
--- Event categories
-select fx_event_category(:'eventCategory1ID', :'communityID', jsonb_build_object('name', 'Conference'));
-select fx_event_category(:'eventCategory2ID', :'communityID', jsonb_build_object('name', 'Meetup'));
-
--- Users
+-- User in group1, the inactive group, event1, event5 and the old period rows
 select fx_user(:'user1ID', jsonb_build_object('username', 'user1-community-stats'));
+
+-- User in group1, event1, event5 and the recent period rows
 select fx_user(:'user2ID', jsonb_build_object('username', 'user2-community-stats'));
+
+-- User in group1, event1 and event6
 select fx_user(:'user3ID', jsonb_build_object('username', 'user3-community-stats'));
+
+-- User in group2, event2 and the unpublished event
 select fx_user(:'user4ID', jsonb_build_object('username', 'user4-community-stats'));
+
+-- User in group2, event2 and the test event
 select fx_user(:'user5ID', jsonb_build_object('username', 'user5-community-stats'));
+
+-- User in group3 and event3
 select fx_user(:'user6ID', jsonb_build_object('username', 'user6-community-stats'));
+
+-- User in group3 and event3
 select fx_user(:'user7ID', jsonb_build_object('username', 'user7'));
+
+-- User in group4 and event4
 select fx_user(:'user8ID', jsonb_build_object('username', 'user8'));
 
--- Regions
+-- Community page views, including excluded views of the other community
+insert into community_views (day, community_id, total) values
+    (
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months',
+        :'communityID',
+        11
+    ),
+    (
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months',
+        :'communityID',
+        9
+    ),
+    (current_date, :'communityID', 5),
+    (
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months',
+        :'community2ID',
+        99
+    );
+
+-- Conference event category of the requested community
+select fx_event_category(:'eventCategory1ID', :'communityID', jsonb_build_object('name', 'Conference'));
+
+-- Meetup event category of the requested community
+select fx_event_category(:'eventCategory2ID', :'communityID', jsonb_build_object('name', 'Meetup'));
+
+-- Event category of the period community
+select fx_event_category(:'periodEventCategoryID', :'periodCommunityID', jsonb_build_object('name', 'Period Meetup'));
+
+-- AI/ML group category of the requested community
+select fx_group_category(:'groupCategory1ID', :'communityID', jsonb_build_object('name', 'AI/ML'));
+
+-- Cloud Native group category of the requested community
+select fx_group_category(:'groupCategory2ID', :'communityID', jsonb_build_object('name', 'Cloud Native'));
+
+-- Group category of the other community
+select fx_group_category(:'groupCategory3ID', :'community2ID');
+
+-- Group category of the period community
+select fx_group_category(:'periodGroupCategoryID', :'periodCommunityID', jsonb_build_object('name', 'Period Category'));
+
+-- Regions of the requested, other and period communities
 insert into region (region_id, community_id, name, "order") values
     (:'region1ID', :'communityID', 'Europe', 1),
     (:'region2ID', :'communityID', 'North America', 2),
-    (:'region3ID', :'community2ID', 'South America', 1);
+    (:'region3ID', :'community2ID', 'South America', 1),
+    (:'periodRegionID', :'periodCommunityID', 'Period Region', 1);
 
--- Active groups of the requested community created in month_10, month_9, month_7 and month_5
+-- Active group of the requested community created in month_10
 select fx_group(:'group1ID', :'communityID', :'groupCategory1ID', jsonb_build_object(
     'active', true,
     'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months'
         + interval '15 days',
     'region_id', :'region1ID'
 ));
+
+-- Active group of the requested community created in month_9
 select fx_group(:'group2ID', :'communityID', :'groupCategory1ID', jsonb_build_object(
     'active', true,
     'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months'
         + interval '15 days',
     'region_id', :'region2ID'
 ));
+
+-- Active group of the requested community created in month_7
 select fx_group(:'group3ID', :'communityID', :'groupCategory2ID', jsonb_build_object(
     'active', true,
     'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months'
         + interval '15 days',
     'region_id', :'region1ID'
 ));
+
+-- Active group of the requested community created in month_5
 select fx_group(:'group4ID', :'communityID', :'groupCategory2ID', jsonb_build_object(
     'active', true,
     'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months'
@@ -121,7 +185,90 @@ select fx_group(:'inactiveGroupID', :'communityID', :'groupCategory1ID', jsonb_b
     'region_id', :'region1ID'
 ));
 
--- Group members
+-- Active group of the period community created before the reporting period
+select fx_group(:'periodGroupID', :'periodCommunityID', :'periodGroupCategoryID', jsonb_build_object(
+    'active', true,
+    'created_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 years',
+    'region_id', :'periodRegionID'
+));
+
+-- Published event of group1 starting in month_10
+select fx_event(:'event1ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months'
+        + interval '15 days'
+));
+
+-- Published event of group1 starting in month_8
+select fx_event(:'event2ID', :'group1ID', :'eventCategory2ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months'
+        + interval '15 days'
+));
+
+-- Published event of group2 starting in month_6
+select fx_event(:'event3ID', :'group2ID', :'eventCategory1ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '6 months'
+        + interval '15 days'
+));
+
+-- Published event of group3 starting in month_4
+select fx_event(:'event4ID', :'group3ID', :'eventCategory2ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months'
+        + interval '15 days'
+));
+
+-- Published event of group3 starting in month_3
+select fx_event(:'event5ID', :'group3ID', :'eventCategory1ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months'
+        + interval '15 days'
+));
+
+-- Published event of group4 starting in month_2
+select fx_event(:'event6ID', :'group4ID', :'eventCategory2ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months'
+        + interval '15 days'
+));
+
+-- Unpublished event whose attendees and views must be excluded
+select fx_event(:'event7ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'published', false,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month'
+        + interval '15 days'
+));
+
+-- Canceled event excluded from event stats whose page views still count
+select fx_event(:'event8ID', :'group2ID', :'eventCategory2ID', jsonb_build_object(
+    'canceled', true,
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days'
+));
+
+-- Test event whose attendees and views must be excluded
+select fx_event(:'testEventID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months'
+        + interval '10 days',
+    'test_event', true
+));
+
+-- Published event of the period community starting before the reporting period
+select fx_event(:'periodOldEventID', :'periodGroupID', :'periodEventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 years' + interval '15 days'
+));
+
+-- Published event of the period community starting in month_1
+select fx_event(:'periodRecentEventID', :'periodGroupID', :'periodEventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '15 days'
+));
+
+-- Group members of the requested community
 -- Members join across different months:
 -- month_11: user1 joins group1 (AI/ML, Europe)
 -- month_10: user2 joins group1 (AI/ML, Europe)
@@ -188,74 +335,51 @@ insert into group_member (group_id, user_id, created_at) values
             + interval '25 days'
     );
 
--- Published events of active groups starting in month_10, month_8, month_6, month_4, month_3 and month_2
-select fx_event(:'event1ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
-    'published', true,
-    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months'
-        + interval '15 days'
-));
-select fx_event(:'event2ID', :'group1ID', :'eventCategory2ID', jsonb_build_object(
-    'published', true,
-    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months'
-        + interval '15 days'
-));
-select fx_event(:'event3ID', :'group2ID', :'eventCategory1ID', jsonb_build_object(
-    'published', true,
-    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '6 months'
-        + interval '15 days'
-));
-select fx_event(:'event4ID', :'group3ID', :'eventCategory2ID', jsonb_build_object(
-    'published', true,
-    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months'
-        + interval '15 days'
-));
-select fx_event(:'event5ID', :'group3ID', :'eventCategory1ID', jsonb_build_object(
-    'published', true,
-    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months'
-        + interval '15 days'
-));
-select fx_event(:'event6ID', :'group4ID', :'eventCategory2ID', jsonb_build_object(
-    'published', true,
-    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months'
-        + interval '15 days'
-));
+-- Period community members joining before the reporting period and in month_1
+insert into group_member (group_id, user_id, created_at) values
+    (
+        :'periodGroupID',
+        :'user1ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 years'
+            + interval '10 days'
+    ),
+    (
+        :'periodGroupID',
+        :'user2ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month'
+            + interval '10 days'
+    );
 
--- Unpublished event whose attendees and views must be excluded
-select fx_event(:'event7ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
-    'published', false,
-    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month'
-        + interval '15 days'
-));
+-- Group page views, including excluded views of the inactive group and the other community
+insert into group_views (day, group_id, total) values
+    (
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months',
+        :'group1ID',
+        10
+    ),
+    (
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months',
+        :'group2ID',
+        8
+    ),
+    (
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months',
+        :'group3ID',
+        6
+    ),
+    (current_date, :'group4ID', 4),
+    (
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months',
+        :'group5ID',
+        99
+    ),
+    (
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months',
+        :'inactiveGroupID',
+        50
+    );
 
--- Canceled event excluded from event stats whose page views still count
-select fx_event(:'event8ID', :'group2ID', :'eventCategory2ID', jsonb_build_object(
-    'canceled', true,
-    'published', true,
-    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days'
-));
-
--- Test event whose attendees and views must be excluded
-select fx_event(:'testEventID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
-    'published', true,
-    'starts_at', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months'
-        + interval '10 days',
-    'test_event', true
-));
-
--- Approved co-host credit that must not affect owner-scoped community stats
-insert into event_cohost (
-    approved_at,
-    event_cohost_status_id,
-    event_id,
-    group_id
-) values (
-    current_timestamp,
-    'approved',
-    :'event1ID',
-    :'group2ID'
-);
-
--- Event attendees (in the same months as the events they attend)
+-- Event attendees of the requested community (in the same months as the events they attend)
 -- event1 (month_10): 3 attendees
 -- event2 (month_8): 2 attendees
 -- event3 (month_6): 2 attendees
@@ -343,34 +467,33 @@ insert into event_attendee (event_id, user_id, created_at) values
             + interval '2 days'
     );
 
--- Group page views, including excluded views of the inactive group and the other community
-insert into group_views (day, group_id, total) values
+-- Period community attendees registering before the reporting period and in month_1
+insert into event_attendee (event_id, user_id, created_at) values
     (
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months',
-        :'group1ID',
-        10
+        :'periodOldEventID',
+        :'user1ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 years'
+            + interval '10 days'
     ),
     (
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months',
-        :'group2ID',
-        8
-    ),
-    (
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months',
-        :'group3ID',
-        6
-    ),
-    (current_date, :'group4ID', 4),
-    (
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months',
-        :'group5ID',
-        99
-    ),
-    (
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months',
-        :'inactiveGroupID',
-        50
+        :'periodRecentEventID',
+        :'user2ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month'
+            + interval '10 days'
     );
+
+-- Approved co-host credit that must not affect owner-scoped community stats
+insert into event_cohost (
+    approved_at,
+    event_cohost_status_id,
+    event_id,
+    group_id
+) values (
+    current_timestamp,
+    'approved',
+    :'event1ID',
+    :'group2ID'
+);
 
 -- Event page views, including excluded views of the unpublished event and the test event
 insert into event_views (day, event_id, total) values
@@ -408,28 +531,70 @@ insert into event_views (day, event_id, total) values
     (current_date, :'event8ID', 3),
     (current_date, :'testEventID', 30);
 
--- Community page views, including excluded views of the other community
-insert into community_views (day, community_id, total) values
-    (
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months',
-        :'communityID',
-        11
-    ),
-    (
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months',
-        :'communityID',
-        9
-    ),
-    (current_date, :'communityID', 5),
-    (
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months',
-        :'community2ID',
-        99
-    );
-
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should count members and attendees before the reporting period only in all-time stats
+select is(
+    (
+        select jsonb_build_object(
+            'attendees', s->'attendees',
+            'members', s->'members'
+        )
+        from (select get_community_stats(:'periodCommunityID'::uuid)::jsonb as s) stats
+    ),
+    (
+        -- Month buckets of the seeded rows relative to current_timestamp at UTC
+        with months as (
+            select
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 years' as m36,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' as m1
+        ),
+        -- Running totals that include the row before the reporting period
+        running as (
+            select jsonb_build_array(
+                jsonb_build_array((extract(epoch from m36 at time zone 'UTC') * 1000)::bigint, 1),
+                jsonb_build_array((extract(epoch from m1 at time zone 'UTC') * 1000)::bigint, 2)
+            ) as total
+            from months
+        ),
+        -- Monthly counts limited to the reporting period
+        monthly as (
+            select jsonb_build_array(jsonb_build_array(to_char(m1, 'YYYY-MM'), 1)) as counts
+            from months
+        )
+        select jsonb_build_object(
+            'attendees', jsonb_build_object(
+                'total', 2,
+                'total_by_event_category', jsonb_build_array(jsonb_build_array('Period Meetup', 2)),
+                'total_by_group_category', jsonb_build_array(jsonb_build_array('Period Category', 2)),
+                'total_by_group_region', jsonb_build_array(jsonb_build_array('Period Region', 2)),
+                'running_total', r.total,
+                'running_total_by_event_category', jsonb_build_object('Period Meetup', r.total),
+                'running_total_by_group_category', jsonb_build_object('Period Category', r.total),
+                'running_total_by_group_region', jsonb_build_object('Period Region', r.total),
+                'per_month', m.counts,
+                'per_month_by_event_category', jsonb_build_object('Period Meetup', m.counts),
+                'per_month_by_group_category', jsonb_build_object('Period Category', m.counts),
+                'per_month_by_group_region', jsonb_build_object('Period Region', m.counts)
+            ),
+            'members', jsonb_build_object(
+                'total', 2,
+                'total_by_category', jsonb_build_array(jsonb_build_array('Period Category', 2)),
+                'total_by_region', jsonb_build_array(jsonb_build_array('Period Region', 2)),
+                'running_total', r.total,
+                'running_total_by_category', jsonb_build_object('Period Category', r.total),
+                'running_total_by_region', jsonb_build_object('Period Region', r.total),
+                'per_month', m.counts,
+                'per_month_by_category', jsonb_build_object('Period Category', m.counts),
+                'per_month_by_region', jsonb_build_object('Period Region', m.counts)
+            )
+        )
+        from running r, monthly m
+    ),
+    'Should count members and attendees before the reporting period only in all-time stats'
+);
 
 -- Should return attendee stats excluding attendees of test and unpublished events
 select is(
@@ -1065,6 +1230,21 @@ select is(
     }
     $$::jsonb,
     'Should return empty stats for unknown community'
+);
+
+-- Should run without JIT
+select is(
+    (
+        select
+            l.lanname = 'sql'
+            and p.proconfig = array['jit=off']
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'get_community_stats(uuid)'::regprocedure
+    ),
+    true,
+    'Should run without JIT'
 );
 
 -- ============================================================================

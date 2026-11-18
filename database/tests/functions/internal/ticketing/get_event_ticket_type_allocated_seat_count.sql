@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -383,6 +383,21 @@ insert into event_purchase (
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should cache a generic plan per connection
+select is(
+    (
+        select
+            l.lanname = 'plpgsql'
+            and p.proconfig = array['plan_cache_mode=force_generic_plan']
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'get_event_ticket_type_allocated_seat_count(uuid, uuid)'::regprocedure
+    ),
+    true,
+    'Should cache a generic plan per connection'
+);
 
 -- Should count active offers and purchases without expired offers or duplicate linked holds
 select is(

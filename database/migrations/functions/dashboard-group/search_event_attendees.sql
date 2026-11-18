@@ -210,6 +210,32 @@ returns json as $$
             select r.user_id
             from event_custom_notification_recipients(p_group_id, p_event_id) r
         ),
+        -- Latest seat-holding, pending or refunded purchase of each user
+        latest_purchases as (
+            select distinct on (user_id)
+                event_purchase_id,
+                amount_minor,
+                charge_model,
+                currency_code,
+                event_ticket_type_id,
+                status as purchase_status,
+                ticket_title,
+                user_id,
+
+                completed_at,
+                discount_code,
+                external_payment_details,
+                external_payment_marked_by_user_id,
+                hold_expires_at,
+                event_purchase as purchase_row
+            from event_purchase
+            where event_id = p_event_id
+            and (
+                event_purchase_holds_seat(status)
+                or status in ('pending', 'refunded')
+            )
+            order by user_id, created_at desc, event_purchase_id desc
+        ),
         -- Select visible attendee and invitation rows
         base_attendees as (
             select
@@ -268,40 +294,14 @@ returns json as $$
                 u.tsdoc,
                 u.title,
 
-                exists (
-                    select 1
+                er.user_id in (
+                    select rc.user_id
                     from email_recipients rc
-                    where rc.user_id = er.user_id
                 ) as can_receive_attendee_email
             from enrollment_rows er
             join event e on e.event_id = er.event_id
             join "user" u on u.user_id = er.user_id
-            left join lateral (
-                select
-                    event_purchase_id,
-                    amount_minor,
-                    charge_model,
-                    currency_code,
-                    event_ticket_type_id,
-                    status as purchase_status,
-                    ticket_title,
-
-                    completed_at,
-                    discount_code,
-                    external_payment_details,
-                    external_payment_marked_by_user_id,
-                    hold_expires_at,
-                    event_purchase as purchase_row
-                from event_purchase
-                where event_id = er.event_id
-                and user_id = er.user_id
-                and (
-                    event_purchase_holds_seat(status)
-                    or status in ('pending', 'refunded')
-                )
-                order by created_at desc, event_purchase_id desc
-                limit 1
-            ) ep on true
+            left join latest_purchases ep on ep.user_id = er.user_id
             left join lateral (
                 select status
                 from event_refund_request

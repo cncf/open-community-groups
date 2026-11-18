@@ -8,6 +8,7 @@ use cached::{Cached, async_sync::RwLock};
 use deadpool_postgres::{Client, Pool};
 use serde::de::DeserializeOwned;
 use tokio_postgres::{
+    Statement,
     error::SqlState,
     types::{FromSql, Json, ToSql},
 };
@@ -318,29 +319,36 @@ impl PgExecutor for PgClient<'_> {
     /// [`PgExecutor::client`].
     async fn client(&self) -> Result<PgClient<'_>> {
         let client = match self {
-            Self::Pooled(client) => &**client,
-            Self::Pinned(client) => *client,
+            Self::Borrowed(client) => PgClient::Borrowed(client),
+            Self::Pinned(client) => PgClient::Pinned(client),
+            Self::Pooled(client) => PgClient::Borrowed(client),
         };
 
-        Ok(PgClient::Pinned(client))
+        Ok(client)
     }
 }
 
 /// `PostgreSQL` client used for one database operation.
+///
+/// Every statement is prepared through the connection's statement cache, so
+/// repeated calls on a connection skip parsing and planning the statement.
 pub(crate) enum PgClient<'a> {
-    /// Client checked out from the pool for this operation.
-    Pooled(Box<Client>),
+    /// Client borrowed from an operation that checked it out from the pool,
+    /// outside any unit of work.
+    Borrowed(&'a Client),
     /// Client pinned to an open unit of work.
     Pinned(&'a Client),
+    /// Client checked out from the pool for this operation.
+    Pooled(Box<Client>),
 }
 
 impl PgClient<'_> {
     /// Executes a SQL statement.
     pub(crate) async fn execute(&self, sql: &str, params: &[&(dyn ToSql + Sync)]) -> Result<u64> {
-        match self {
-            Self::Pooled(client) => Ok(client.execute(sql, params).await?),
-            Self::Pinned(client) => Ok(client.execute(sql, params).await?),
-        }
+        self.run_cached(sql, |client, statement| async move {
+            client.execute(&statement, params).await
+        })
+        .await
     }
 
     /// Executes a SQL query.
@@ -349,10 +357,10 @@ impl PgClient<'_> {
         sql: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Vec<tokio_postgres::Row>> {
-        match self {
-            Self::Pooled(client) => Ok(client.query(sql, params).await?),
-            Self::Pinned(client) => Ok(client.query(sql, params).await?),
-        }
+        self.run_cached(sql, |client, statement| async move {
+            client.query(&statement, params).await
+        })
+        .await
     }
 
     /// Fetches exactly one SQL row.
@@ -361,10 +369,10 @@ impl PgClient<'_> {
         sql: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<tokio_postgres::Row> {
-        match self {
-            Self::Pooled(client) => Ok(client.query_one(sql, params).await?),
-            Self::Pinned(client) => Ok(client.query_one(sql, params).await?),
-        }
+        self.run_cached(sql, |client, statement| async move {
+            client.query_one(&statement, params).await
+        })
+        .await
     }
 
     /// Fetches at most one SQL row.
@@ -373,10 +381,60 @@ impl PgClient<'_> {
         sql: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Option<tokio_postgres::Row>> {
+        self.run_cached(sql, |client, statement| async move {
+            client.query_opt(&statement, params).await
+        })
+        .await
+    }
+
+    /// Returns the pooled connection behind this client.
+    fn connection(&self) -> &Client {
         match self {
-            Self::Pooled(client) => Ok(client.query_opt(sql, params).await?),
-            Self::Pinned(client) => Ok(client.query_opt(sql, params).await?),
+            Self::Borrowed(client) | Self::Pinned(client) => client,
+            Self::Pooled(client) => client,
         }
+    }
+
+    /// Runs a SQL statement prepared through the connection's statement cache.
+    ///
+    /// A cached statement goes stale when a migration changes the result type
+    /// of what it reads, and the server then rejects it with SQLSTATE `0A000`
+    /// ("cached plan must not change result type"). The statement is evicted so
+    /// later calls on the connection prepare it again. Outside a unit of work
+    /// the rejected statement ran in its own implicit transaction, which the
+    /// server rolled back, so the call is retried once with a fresh statement.
+    /// Inside a unit of work the rejection aborted the transaction, so the
+    /// error is propagated.
+    async fn run_cached<'c, T, F, Fut>(&'c self, sql: &str, run: F) -> Result<T>
+    where
+        F: Fn(&'c Client, Statement) -> Fut,
+        Fut: Future<Output = Result<T, tokio_postgres::Error>>,
+    {
+        let client = self.connection();
+
+        // Run the statement prepared through the connection's cache
+        let statement = client.prepare_cached(sql).await?;
+        let err = match run(client, statement).await {
+            Ok(value) => return Ok(value),
+            Err(err) => err,
+        };
+
+        // Propagate any error other than a stale cached statement
+        if err.code() != Some(&SqlState::FEATURE_NOT_SUPPORTED) {
+            return Err(err.into());
+        }
+
+        // Evict the stale statement so later calls on this connection prepare it again
+        client.statement_cache.remove(sql, &[]);
+
+        // Propagate the error when the rejection aborted the unit of work
+        if matches!(self, Self::Pinned(_)) {
+            return Err(err.into());
+        }
+
+        // Retry once outside a unit of work with a freshly prepared statement
+        let statement = client.prepare_cached(sql).await?;
+        Ok(run(client, statement).await?)
     }
 }
 

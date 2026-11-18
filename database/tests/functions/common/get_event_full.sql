@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(30);
+select plan(31);
 
 -- ============================================================================
 -- VARIABLES
@@ -1355,6 +1355,21 @@ select fx_event_ticket_price_window(:'ticketPriceWindowID', :'ticketTypeID', jso
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should cache a generic plan per connection
+select is(
+    (
+        select
+            l.lanname = 'plpgsql'
+            and p.proconfig = array['plan_cache_mode=force_generic_plan']
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'get_event_full(uuid, uuid, uuid)'::regprocedure
+    ),
+    true,
+    'Should cache a generic plan per connection'
+);
 
 -- Should return complete event JSON
 select is(

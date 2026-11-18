@@ -1,114 +1,123 @@
 -- Returns summary information about an event.
+-- Uses PL/pgSQL with `force_generic_plan` so each connection caches its plan:
+-- per-request reads such as get_event_summary_by_id and per-row wrappers such
+-- as get_event_summary_dashboard would otherwise plan the SQL-language body on
+-- every call (PostgreSQL 17 and earlier). The setting also keeps a caller's
+-- `force_custom_plan` from planning it on every call.
 create or replace function get_event_summary(
     p_community_id uuid,
     p_group_id uuid,
     p_event_id uuid
 )
 returns json as $$
+begin
     -- Build event summary payload; this call passes 94 of the 100
     -- json_build_object arguments, so split it with jsonb concatenation like
     -- get_event_full before adding more keys
-    select json_strip_nulls(json_build_object(
-        -- Include core summary fields
-        'canceled', e.canceled,
-        'community_display_name', c.display_name,
-        'community_name', c.name,
-        'cohosts', event_cohosts_json(e.event_id),
-        'event_id', e.event_id,
-        'group_category_name', gc.name,
-        'group_name', g.name,
-        'group_slug', g.slug,
-        'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
-        -- Report whether another live event shares the series
-        'has_related_events', exists (
-            select 1
-            from event related_event
-            where related_event.event_series_id = e.event_series_id
-            and related_event.event_id <> e.event_id
-            and related_event.deleted = false
-        ),
-        'kind', e.event_kind_id,
-        'name', e.name,
-        'published', e.published,
-        'slug', e.slug,
-        'test_event', e.test_event,
-        'timezone', e.timezone,
+    return (
+        select json_strip_nulls(json_build_object(
+            -- Include core summary fields
+            'canceled', e.canceled,
+            'community_display_name', c.display_name,
+            'community_name', c.name,
+            'cohosts', event_cohosts_json(e.event_id),
+            'event_id', e.event_id,
+            'group_category_name', gc.name,
+            'group_name', g.name,
+            'group_slug', g.slug,
+            'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
+            -- Report whether another live event shares the series
+            'has_related_events', exists (
+                select 1
+                from event related_event
+                where related_event.event_series_id = e.event_series_id
+                and related_event.event_id <> e.event_id
+                and related_event.deleted = false
+            ),
+            'kind', e.event_kind_id,
+            'name', e.name,
+            'published', e.published,
+            'slug', e.slug,
+            'test_event', e.test_event,
+            'timezone', e.timezone,
 
-        -- Include optional event details
-        'attendee_approval_required', e.attendee_approval_required,
-        'capacity', e.capacity,
-        'description_short', e.description_short,
-        'ends_at', epoch_seconds(e.ends_at),
-        'event_series_id', e.event_series_id,
-        'group_slug_pretty', g.slug_pretty,
-        'has_external_payment', nullif(e.external_payment_url is not null, false),
-        'latitude', st_y(e.location::geometry),
-        -- Pair the dark logo with the level that provides the light logo
-        'logo_dark_url', paired_dark_image_url(
-            e.logo_url, e.logo_dark_url,
-            g.logo_url, g.logo_dark_url,
-            c.logo_url, c.logo_dark_url
-        ),
-        'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
-        'longitude', st_x(e.location::geometry),
-        'meeting_join_instructions', e.meeting_join_instructions,
-        -- Show the provider link only while the automatic meeting is requested
-        'meeting_join_url', case
-            -- Use the provider link of a requested meeting
-            when e.meeting_requested
-            then m_event.join_url
-            -- Otherwise use the stored manual link
-            else e.meeting_join_url
-        end,
-        -- Show the provider password only alongside a link to the provider meeting
-        'meeting_password', case
-            -- Use the provider password of a requested meeting
-            when e.meeting_requested
-            then m_event.password
-            -- Keep the provider password of a manual link to the provider meeting
-            when e.meeting_join_url = m_event.join_url
-            then m_event.password
-            -- Otherwise hide the password of an unrelated or missing link
-            else null
-        end,
-        'meeting_provider', e.meeting_provider_id,
-        'payment_currency_code', e.payment_currency_code,
-        'registration_ends_at', epoch_seconds(e.registration_ends_at),
-        'registration_starts_at', epoch_seconds(e.registration_starts_at),
-        'starts_at', epoch_seconds(e.starts_at),
-        'ticket_types', list_public_event_ticket_types(e.event_id),
-        'venue_address', e.venue_address,
-        'venue_city', e.venue_city,
-        'venue_country_code', e.venue_country_code,
-        'venue_country_name', e.venue_country_name,
-        'venue_name', e.venue_name,
-        'venue_state_code', e.venue_state_code,
-        'venue_state_name', e.venue_state_name,
-        'venue_zip_code', e.venue_zip_code,
-        'waitlist_count', coalesce(ew.waitlist_count, 0),
-        'waitlist_enabled', e.waitlist_enabled,
+            -- Include optional event details
+            'attendee_approval_required', e.attendee_approval_required,
+            'capacity', e.capacity,
+            'description_short', e.description_short,
+            'ends_at', epoch_seconds(e.ends_at),
+            'event_series_id', e.event_series_id,
+            'group_slug_pretty', g.slug_pretty,
+            'has_external_payment', nullif(e.external_payment_url is not null, false),
+            'latitude', st_y(e.location::geometry),
+            -- Pair the dark logo with the level that provides the light logo
+            'logo_dark_url', paired_dark_image_url(
+                e.logo_url, e.logo_dark_url,
+                g.logo_url, g.logo_dark_url,
+                c.logo_url, c.logo_dark_url
+            ),
+            'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
+            'longitude', st_x(e.location::geometry),
+            'meeting_join_instructions', e.meeting_join_instructions,
+            -- Show the provider link only while the automatic meeting is requested
+            'meeting_join_url', case
+                -- Use the provider link of a requested meeting
+                when e.meeting_requested
+                then m_event.join_url
+                -- Otherwise use the stored manual link
+                else e.meeting_join_url
+            end,
+            -- Show the provider password only alongside a link to the provider meeting
+            'meeting_password', case
+                -- Use the provider password of a requested meeting
+                when e.meeting_requested
+                then m_event.password
+                -- Keep the provider password of a manual link to the provider meeting
+                when e.meeting_join_url = m_event.join_url
+                then m_event.password
+                -- Otherwise hide the password of an unrelated or missing link
+                else null
+            end,
+            'meeting_provider', e.meeting_provider_id,
+            'payment_currency_code', e.payment_currency_code,
+            'registration_ends_at', epoch_seconds(e.registration_ends_at),
+            'registration_starts_at', epoch_seconds(e.registration_starts_at),
+            'starts_at', epoch_seconds(e.starts_at),
+            'ticket_types', list_public_event_ticket_types(e.event_id),
+            'venue_address', e.venue_address,
+            'venue_city', e.venue_city,
+            'venue_country_code', e.venue_country_code,
+            'venue_country_name', e.venue_country_name,
+            'venue_name', e.venue_name,
+            'venue_state_code', e.venue_state_code,
+            'venue_state_name', e.venue_state_name,
+            'venue_zip_code', e.venue_zip_code,
+            'waitlist_count', coalesce(ew.waitlist_count, 0),
+            'waitlist_enabled', e.waitlist_enabled,
 
-        -- Include computed capacity values
-        'remaining_capacity',
-            case
-                -- Leave remaining capacity unset for unlimited events
-                when e.capacity is null then null
-                -- Otherwise subtract occupied seats without going negative
-                else greatest(e.capacity - coalesce(ea.attendee_count, 0), 0)
-            end
-    )) as json_data
-    from event e
-    join "group" g using (group_id)
-    join community c on c.community_id = g.community_id
-    join group_category gc on g.group_category_id = gc.group_category_id
-    left join meeting m_event on m_event.event_id = e.event_id
-    cross join lateral get_event_occupied_seat_count(e.event_id) as ea(attendee_count)
-    cross join lateral (
-        select count(*)::int as waitlist_count
-        from event_waitlist ewl
-        where ewl.event_id = e.event_id
-    ) ew
-    where e.event_id = p_event_id
-    and g.group_id = p_group_id
-    and g.community_id = p_community_id;
-$$ language sql stable;
+            -- Include computed capacity values
+            'remaining_capacity',
+                case
+                    -- Leave remaining capacity unset for unlimited events
+                    when e.capacity is null then null
+                    -- Otherwise subtract occupied seats without going negative
+                    else greatest(e.capacity - coalesce(ea.attendee_count, 0), 0)
+                end
+        )) as json_data
+        from event e
+        join "group" g using (group_id)
+        join community c on c.community_id = g.community_id
+        join group_category gc on g.group_category_id = gc.group_category_id
+        left join meeting m_event on m_event.event_id = e.event_id
+        cross join lateral get_event_occupied_seat_count(e.event_id) as ea(attendee_count)
+        cross join lateral (
+            select count(*)::int as waitlist_count
+            from event_waitlist ewl
+            where ewl.event_id = e.event_id
+        ) ew
+        where e.event_id = p_event_id
+        and g.group_id = p_group_id
+        and g.community_id = p_community_id
+    );
+end;
+$$ language plpgsql stable set plan_cache_mode = force_generic_plan;

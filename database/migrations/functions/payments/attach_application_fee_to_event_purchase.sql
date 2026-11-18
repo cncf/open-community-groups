@@ -10,35 +10,40 @@ returns void as $$
 declare
     v_purchase event_purchase;
 begin
-    -- Validate the required provider context and application-fee amount
+    -- Reject fees without the required provider context
     if nullif(btrim(p_connected_seller_id), '') is null
        or nullif(btrim(p_provider_charge_id), '') is null
        or nullif(btrim(p_provider_application_fee_id), '') is null then
         raise exception 'application fee is missing provider context';
     end if;
 
+    -- Reject missing or non-positive application-fee amounts
     if p_amount_minor is null or p_amount_minor <= 0 then
         raise exception 'application fee amount must be positive';
     end if;
 
     -- Lock and load the purchase through its immutable direct-charge scope
+    -- (a direct charge belongs to the seller account, which keys the charge index)
     select ep.*
     into v_purchase
     from event_purchase ep
     where ep.payment_provider_id = p_provider
     and ep.connected_seller_id = p_connected_seller_id
+    and ep.provider_object_account_id = p_connected_seller_id
     and ep.provider_charge_id = p_provider_charge_id
     for update;
 
+    -- Reject fees without a matching direct-charge purchase
     if not found then
         raise exception 'direct-charge purchase not found for application fee';
     end if;
 
-    -- Validate the purchase snapshot and idempotent provider attachment
+    -- Reject fees whose amount differs from the purchase snapshot
     if v_purchase.provisional_platform_fee_amount_minor <> p_amount_minor then
         raise exception 'application fee amount does not match the purchase';
     end if;
 
+    -- Reject a different application fee once one is attached
     if v_purchase.provider_application_fee_id is not null
        and v_purchase.provider_application_fee_id <> p_provider_application_fee_id then
         raise exception 'purchase has a different provider application fee';

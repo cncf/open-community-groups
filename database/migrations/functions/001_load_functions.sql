@@ -10,8 +10,6 @@
 {{ template "internal/badges/normalize_badge_image_file_name.sql" }}
 {{ template "internal/badges/user_badge_json.sql" }}
 
-{{ template "internal/images/paired_dark_image_url.sql" }} -- Dependency for event_cohosts_json
-
 {{ template "internal/cohosts/close_event_cohosts.sql" }}
 {{ template "internal/cohosts/event_cohosts_json.sql" }}
 {{ template "internal/cohosts/event_has_pending_cohosts.sql" }}
@@ -91,6 +89,8 @@
 {{ template "internal/groups/list_group_page_events.sql" }}
 {{ template "internal/groups/lock_active_group.sql" }}
 {{ template "internal/groups/user_is_group_team_member.sql" }}
+
+{{ template "internal/images/paired_dark_image_url.sql" }}
 
 {{ template "internal/inbox/append_inbox_message.sql" }}
 {{ template "internal/inbox/inbox_conversation_status_for_message_kind.sql" }}
@@ -297,15 +297,15 @@
 {{ template "common/get_badge_status_list.sql" }}
 {{ template "common/get_community_full.sql" }}
 {{ template "common/get_community_summary.sql" }}
-{{ template "common/get_group_summary.sql" }} -- Dependency for get_event_full and get_group_full
 {{ template "common/get_event_full.sql" }}
 {{ template "internal/events/get_public_event_full.sql" }} -- Depends on get_event_full
 {{ template "common/get_event_summary.sql" }}
-{{ template "common/list_group_organizers.sql" }} -- Dependency for get_group_full
 {{ template "common/get_group_full.sql" }}
+{{ template "common/get_group_summary.sql" }}
 {{ template "common/get_public_user_badge.sql" }}
 {{ template "common/get_worker_queue_health.sql" }}
 {{ template "common/list_event_labels.sql" }}
+{{ template "common/list_group_organizers.sql" }}
 {{ template "common/list_user_public_badges.sql" }}
 {{ template "common/search_events.sql" }}
 {{ template "common/search_groups.sql" }}
@@ -447,7 +447,7 @@
 {{ template "dashboard-group/update_group_sponsor_featured.sql" }}
 {{ template "dashboard-group/update_group_team_member_role.sql" }}
 
-{{ template "event/get_event_registration_questions.sql" }} -- Dependency for list_user_events and list_user_event_invitations
+{{ template "event/get_event_registration_questions.sql" }} -- Dependency for list_user_event_invitations
 {{ template "dashboard-user/accept_community_team_invitation.sql" }}
 {{ template "dashboard-user/accept_group_team_invitation.sql" }}
 {{ template "dashboard-user/accept_session_proposal_co_speaker_invitation.sql" }}

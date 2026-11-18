@@ -289,7 +289,7 @@ less context, not that the caller became shorter.
 - Simple reads and projections use `language sql`. Validation, branching,
   mutation, loops, exception handling, and locking use `language plpgsql`.
 - A read uses `language plpgsql` instead when a measurement shows it is
-  faster, for one of two planner reasons:
+  faster, for one of three planner reasons:
   - Parallel query: the final statement of a `language sql` function that
     returns a single value runs with a row limit, which disables parallel
     workers; a PL/pgSQL `return (select ...)` runs to completion and can use
@@ -298,9 +298,25 @@ less context, not that the caller became shorter.
     argument values, so a `like` prefix, a pagination bound, or a selective
     filter cannot steer the plan. PL/pgSQL with
     `set plan_cache_mode = force_custom_plan` plans each call with the
-    actual values.
+    actual values. Functions called from it inherit the setting.
+  - Plan caching (PostgreSQL 17 and earlier): a `language sql` function that
+    is not inlined is planned again each time the statement that calls it
+    runs. A read called from Rust is therefore planned on every request, and
+    a helper called from another function's body is planned each time that
+    body runs, once per row when the caller runs per row. A read on a
+    per-request path that spends most of its time planning, or such a
+    helper, uses PL/pgSQL, which caches its plans per connection. It sets
+    `plan_cache_mode = force_generic_plan`, so the cached plan is
+    argument-free, as the plan of a `language sql` body is, and a caller's
+    `force_custom_plan` does not reach it; a short key lookup may keep the
+    default mode. A function evaluated for many rows of one statement is
+    planned only once for that statement, so there PL/pgSQL gains nothing
+    and adds a small cost to each call.
 - The function's header comment states which reason applies; the
   measurement belongs in the pull request.
+- A read declares `set jit = off` when a measurement shows that JIT
+  compilation costs more than it saves on the largest deployment measured;
+  the header comment says so and the measurement belongs in the pull request.
 - Every `language sql` function declares its volatility: `stable` for reads,
   `immutable` for pure expressions of its arguments with only immutable
   callees, and `volatile` for writes, locks and volatile builtins.

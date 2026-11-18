@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(23);
+select plan(24);
 
 -- ============================================================================
 -- VARIABLES
@@ -553,6 +553,21 @@ values (:'eventID', :'mainTicketTypeID', :'waitlistUserID');
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should cache a generic plan per connection
+select is(
+    (
+        select
+            l.lanname = 'plpgsql'
+            and p.proconfig = array['plan_cache_mode=force_generic_plan']
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'get_event_summary(uuid, uuid, uuid)'::regprocedure
+    ),
+    true,
+    'Should cache a generic plan per connection'
+);
 
 -- Should return correct event summary data as JSON
 select is(

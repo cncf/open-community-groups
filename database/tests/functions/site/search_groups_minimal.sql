@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -122,6 +122,19 @@ from generate_series(1, 101) i;
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should bound a single match by its location
+select is(
+    search_groups_minimal('{
+        "bbox_ne_lat": 41.0,
+        "bbox_ne_lon": -3.0,
+        "bbox_sw_lat": 40.0,
+        "bbox_sw_lon": -4.0,
+        "community": ["sgc-community"]
+    }'::jsonb, 1000)::jsonb->'bbox',
+    '{"ne_lat": 40.4168, "ne_lon": -3.7038, "sw_lat": 40.4168, "sw_lon": -3.7038}'::jsonb,
+    'Should bound a single match by its location'
+);
 
 -- Should bound every match beyond the limit
 select is(

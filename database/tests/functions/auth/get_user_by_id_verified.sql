@@ -1,9 +1,11 @@
+-- Tests loading verified users by identifier.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -57,6 +59,21 @@ select is(
     get_user_by_id_verified(:'nonExistentUserID'::uuid)::jsonb,
     null::jsonb,
     'Should return null when user does not exist'
+);
+
+-- Should run as PL/pgSQL with the default plan cache mode
+select is(
+    (
+        select
+            l.lanname = 'plpgsql'
+            and p.proconfig is null
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'get_user_by_id_verified(uuid)'::regprocedure
+    ),
+    true,
+    'Should run as PL/pgSQL with the default plan cache mode'
 );
 
 -- ============================================================================

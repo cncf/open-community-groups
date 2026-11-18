@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -115,6 +115,21 @@ insert into event_cohost (approved_at, event_cohost_status_id, event_id, group_i
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should cache a generic plan per connection
+select is(
+    (
+        select
+            l.lanname = 'plpgsql'
+            and p.proconfig = array['plan_cache_mode=force_generic_plan']
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'get_group_upcoming_events(uuid, text, text[], int)'::regprocedure
+    ),
+    true,
+    'Should cache a generic plan per connection'
+);
 
 -- Should order tied future events by event ID
 select is(

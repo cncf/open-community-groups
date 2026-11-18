@@ -4,7 +4,8 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use deadpool_postgres::{
-    Config as DeadpoolDbConfig, Manager, ManagerConfig, Pool, PoolConfig, RecyclingMethod, Runtime,
+    Config as DeadpoolDbConfig, Hook, Manager, ManagerConfig, Pool, PoolConfig, RecyclingMethod,
+    Runtime,
 };
 use tokio_postgres::{
     Config as PgConfig, Socket,
@@ -29,7 +30,8 @@ const DB_POOL_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
 /// `idle_in_transaction_session_timeout` closes sessions whose transaction was
 /// left open. Both are cancelled server-side, so the statement or transaction
 /// is rolled back before the client observes the error. Startup options are the
-/// session defaults, so they survive `DISCARD ALL` when connections are recycled.
+/// session defaults, so they survive the session reset run when connections are
+/// recycled.
 const DB_SESSION_OPTIONS: &str =
     "-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000";
 
@@ -63,13 +65,22 @@ where
     let pg_cfg = pg_config_with_defaults(&cfg)?;
 
     // Build the pool from the resulting configuration
-    let manager = Manager::from_config(pg_cfg, tls, cfg.get_manager_config());
-    let pool = Pool::builder(manager)
+    let manager_cfg = cfg.get_manager_config();
+    let clears_statement_cache = recycle_may_deallocate_statements(&manager_cfg.recycling_method);
+    let manager = Manager::from_config(pg_cfg, tls, manager_cfg);
+    let mut builder = Pool::builder(manager)
         .config(cfg.get_pool_config())
-        .runtime(Runtime::Tokio1)
-        .build()?;
+        .runtime(Runtime::Tokio1);
 
-    Ok(pool)
+    // Drop cached statements a custom recycle query may have deallocated
+    if clears_statement_cache {
+        builder = builder.post_recycle(Hook::sync_fn(|client, _| {
+            client.statement_cache.clear();
+            Ok(())
+        }));
+    }
+
+    Ok(builder.build()?)
 }
 
 /// Apply server defaults to the database pool configuration.
@@ -121,6 +132,15 @@ fn pg_config_with_defaults(cfg: &DeadpoolDbConfig) -> Result<PgConfig> {
     }
 
     Ok(pg_cfg)
+}
+
+/// Returns whether recycling with this method may deallocate prepared statements.
+///
+/// The built-in methods never deallocate them. A custom recycle query is
+/// arbitrary SQL, such as `DISCARD ALL`, so the connection's statement cache is
+/// cleared after every custom recycle instead of parsing the query.
+fn recycle_may_deallocate_statements(method: &RecyclingMethod) -> bool {
+    matches!(method, RecyclingMethod::Custom(_))
 }
 
 #[cfg(test)]
@@ -204,5 +224,24 @@ mod tests {
         );
         assert_eq!(pg_cfg.get_keepalives_retries(), Some(9));
         assert_eq!(pg_cfg.get_tcp_user_timeout(), Some(&Duration::from_secs(5)));
+    }
+
+    #[test]
+    fn test_recycle_may_deallocate_statements_only_for_custom_queries() {
+        let cases = [
+            (RecyclingMethod::Clean, false),
+            (RecyclingMethod::Custom("DISCARD ALL".to_string()), true),
+            (RecyclingMethod::Custom("select 1".to_string()), true),
+            (RecyclingMethod::Fast, false),
+            (RecyclingMethod::Verified, false),
+        ];
+
+        for (method, expected) in cases {
+            assert_eq!(
+                recycle_may_deallocate_statements(&method),
+                expected,
+                "{method:?}"
+            );
+        }
     }
 }

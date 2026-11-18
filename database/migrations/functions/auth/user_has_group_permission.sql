@@ -1,11 +1,16 @@
 -- Checks whether a user has a group permission.
+-- Uses PL/pgSQL so each connection caches its plan instead of planning the
+-- SQL-language body on each of the permission checks of a group dashboard
+-- request.
 create or replace function user_has_group_permission(
     p_community_id uuid,
     p_group_id uuid,
     p_user_id uuid,
     p_permission text
 ) returns boolean as $$
-    select exists (
+begin
+    -- Grant through the user's group team role or community team role
+    return exists (
         select 1
         from group_team gt
         join "group" g on g.group_id = gt.group_id
@@ -34,4 +39,5 @@ create or replace function user_has_group_permission(
           and ct.accepted = true
           and crgp.group_permission_id = p_permission
     );
-$$ language sql stable;
+end;
+$$ language plpgsql stable;

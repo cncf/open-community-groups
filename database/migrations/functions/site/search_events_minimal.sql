@@ -4,17 +4,12 @@
 -- bbox are eligible, and the returned bbox bounds their locations.
 create or replace function search_events_minimal(p_filters jsonb, p_limit int)
 returns json as $$
+    -- Keep the matches eligible for the view, leaving the bbox to the matcher
     with eligible as (
         select m.*
         from search_events_matches(p_filters) m
         where p_filters->>'view_mode' is distinct from 'map'
-        or (
-            m.location is not null
-            and (
-                search_bbox_envelope(p_filters) is null
-                or st_intersects(m.location, search_bbox_envelope(p_filters))
-            )
-        )
+        or m.location is not null
     ),
     -- Summarize every eligible event before the cap
     stats as (
@@ -22,7 +17,7 @@ returns json as $$
             count(*)::bigint as total,
             case
                 when p_filters->>'view_mode' = 'map' then
-                    search_bbox_json(st_envelope(st_union(st_envelope(location::geometry))))
+                    search_bbox_json(st_extent(location::geometry)::geometry)
             end as bbox
         from eligible
     ),

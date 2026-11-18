@@ -31,8 +31,28 @@ begin
 
     -- Build the requested page together with the total
     with
-        -- Conversations visible in the requested scope
+        -- Conversations visible in the requested scope, with one branch per
+        -- scope so the cached generic plan keeps each scope on its own index
         scoped as (
+            -- Group scope: hide spam unless the status filter asks for it
+            select
+                ic.created_at,
+                ic.event_id,
+                ic.group_id,
+                ic.inbox_conversation_id,
+                ic.inbox_conversation_status_id,
+                ic.last_message_at,
+                ic.user_id
+            from inbox_conversation ic
+            where ic.group_id = p_group_id
+            and (
+                ic.inbox_conversation_status_id = v_status
+                or (v_status is null and ic.inbox_conversation_status_id <> 'spam')
+            )
+
+            union all
+
+            -- User scope: skip conversations of deleted groups
             select
                 ic.created_at,
                 ic.event_id,
@@ -43,15 +63,9 @@ begin
                 ic.user_id
             from inbox_conversation ic
             join "group" g on g.group_id = ic.group_id
-            where (p_group_id is null or ic.group_id = p_group_id)
-            and (p_user_id is null or (ic.user_id = p_user_id and g.deleted = false))
-            and (
-                ic.inbox_conversation_status_id = v_status
-                or (
-                    v_status is null
-                    and (p_group_id is null or ic.inbox_conversation_status_id <> 'spam')
-                )
-            )
+            where ic.user_id = p_user_id
+            and g.deleted = false
+            and (v_status is null or ic.inbox_conversation_status_id = v_status)
         ),
         -- Count rows before pagination
         totals as (
@@ -84,7 +98,9 @@ begin
                             'status', p.inbox_conversation_status_id,
 
                             'event', case
+                                -- Omit the event of a conversation that has none
                                 when e.event_id is null then null
+                                -- Summarize the event the conversation is about
                                 else jsonb_build_object(
                                     'event_id', e.event_id,
                                     'is_public', is_event_public(e, g),
@@ -94,7 +110,9 @@ begin
                         ))
                         || jsonb_build_object(
                             'user', case
+                                -- Keep a null user when the conversation's user was deleted
                                 when u.user_id is null then null
+                                -- Summarize the user in the conversation
                                 else public_user_summary(u)
                             end
                         )

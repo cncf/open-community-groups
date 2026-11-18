@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,8 @@ select plan(20);
 \set attendeeDraftTicketTypeID 'd3010000-0000-0000-0000-000000000049'
 \set auditDraftEventID 'd3010000-0000-0000-0000-000000000004'
 \set auditDraftTicketTypeID 'd3010000-0000-0000-0000-000000000050'
+\set auditResourceDraftEventID 'd3010000-0000-0000-0000-000000000059'
+\set auditResourceDraftTicketTypeID 'd3010000-0000-0000-0000-000000000060'
 \set canceledEventID 'd3010000-0000-0000-0000-000000000005'
 \set canceledTicketTypeID 'd3010000-0000-0000-0000-000000000051'
 \set communityID 'd3010000-0000-0000-0000-000000000006'
@@ -74,23 +76,31 @@ select plan(20);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories and groups
+-- Community owning the eligibility scenarios
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
--- Groups used to verify ownership boundaries
+-- Organizer who sends the offer, publishes the audited drafts and recovers the refund
+select fx_user(:'actorID', jsonb_build_object('username', 'actor-get-event-delete-eligibility'));
+
+-- User who attends, requests, waits and purchases
+select fx_user(:'userID', jsonb_build_object('username', 'user-get-event-delete-eligibility'));
+
+-- Event category of the scenario events
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category of the groups
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group owning the scenario events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
     'name', 'Group',
     'slug', 'group'
 ));
 
--- Users referenced by attendance, purchase, and recovery fixtures
-select fx_user(:'actorID', jsonb_build_object('username', 'actor-get-event-delete-eligibility'));
-select fx_user(:'userID', jsonb_build_object('username', 'user-get-event-delete-eligibility'));
+-- Group that does not own the scenario events
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
--- Events representing every lifecycle and dependency eligibility branch
+-- Published upcoming event that is still active
 select fx_event(:'activeEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', now() + interval '1 day 1 hour',
     'event_kind_id', 'virtual',
@@ -98,8 +108,17 @@ select fx_event(:'activeEventID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'slug', 'active',
     'starts_at', now() + interval '1 day'
 ));
+
+-- Draft with an attendee
 select fx_event(:'attendeeDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+
+-- Draft with a publication audit row
 select fx_event(:'auditDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+
+-- Draft whose publication audit row carries only the resource key
+select fx_event(:'auditResourceDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+
+-- Canceled event without pending work
 select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
     'ends_at', now() + interval '1 day 1 hour',
@@ -108,12 +127,24 @@ select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_
     'slug', 'canceled',
     'starts_at', now() + interval '1 day'
 ));
+
+-- Deleted event
+select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'deleted_at', current_timestamp,
+    'event_kind_id', 'virtual',
+    'slug', 'deleted'
+));
+
+-- Unused draft that was never published
 select fx_event(:'draftEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'description', 'Draft',
     'event_kind_id', 'virtual',
     'name', 'Draft',
     'slug', 'draft'
 ));
+
+-- Canceled event with an unresolved durable refund
 select fx_event(:'durableEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
     'ends_at', now() + interval '1 day 1 hour',
@@ -121,6 +152,8 @@ select fx_event(:'durableEventID', :'groupID', :'eventCategoryID', jsonb_build_o
     'published', true,
     'starts_at', now() + interval '1 day'
 ));
+
+-- Canceled event whose pending checkout hold expired
 select fx_event(:'expiredPendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
     'ends_at', now() + interval '1 day 1 hour',
@@ -128,46 +161,8 @@ select fx_event(:'expiredPendingEventID', :'groupID', :'eventCategoryID', jsonb_
     'published', true,
     'starts_at', now() + interval '1 day'
 ));
-select fx_event(:'invitationDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
-select fx_event(:'offerDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
-select fx_event(:'pastEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', now() - interval '1 hour',
-    'event_kind_id', 'virtual',
-    'published', true,
-    'slug', 'past',
-    'starts_at', now() - interval '2 hours'
-));
-select fx_event(:'pendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'ends_at', now() + interval '1 day 1 hour',
-    'event_kind_id', 'virtual',
-    'published', true,
-    'starts_at', now() + interval '1 day'
-));
-select fx_event(:'providerPendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'ends_at', now() + interval '1 day 1 hour',
-    'event_kind_id', 'virtual',
-    'published', true,
-    'starts_at', now() + interval '1 day'
-));
-select fx_event(:'purchaseDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
-select fx_event(:'recoveredEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'ends_at', now() + interval '1 day 1 hour',
-    'event_kind_id', 'virtual',
-    'published', true,
-    'starts_at', now() + interval '1 day'
-));
-select fx_event(:'waitlistDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
--- Events covering deleted, finalized-refund, and prior-publication eligibility
-select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'deleted_at', current_timestamp,
-    'event_kind_id', 'virtual',
-    'slug', 'deleted'
-));
+-- Canceled event with a finalized durable refund
 select fx_event(:'finalizedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'canceled', true,
     'ends_at', now() + interval '1 day 1 hour',
@@ -176,42 +171,117 @@ select fx_event(:'finalizedEventID', :'groupID', :'eventCategoryID', jsonb_build
     'published_at', current_timestamp,
     'starts_at', now() + interval '1 day'
 ));
+
+-- Unpublished event that keeps its publication timestamp
 select fx_event(:'historicalDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
     'published_at', current_timestamp
 ));
 
--- Unpriced admission tier for every event, referenced by the enrollment and purchase rows
+-- Draft with an invitation request
+select fx_event(:'invitationDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+
+-- Draft with an active admission offer
+select fx_event(:'offerDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+
+-- Published event that already ended
+select fx_event(:'pastEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'slug', 'past',
+    'starts_at', now() - interval '2 hours'
+));
+
+-- Canceled event with a pending purchase
+select fx_event(:'pendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+
+-- Canceled event with an attached provider checkout
+select fx_event(:'providerPendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+
+-- Draft with a purchase
+select fx_event(:'purchaseDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+
+-- Canceled event with a recovered terminal refund
+select fx_event(:'recoveredEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+
+-- Draft with a waitlist entry
+select fx_event(:'waitlistDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+
+-- Admission tier of the active event
 select fx_event_ticket_type(:'activeTicketTypeID', :'activeEventID');
+
+-- Admission tier of the draft with an attendee
 select fx_event_ticket_type(:'attendeeDraftTicketTypeID', :'attendeeDraftEventID');
+
+-- Admission tier of the draft with a publication audit row
 select fx_event_ticket_type(:'auditDraftTicketTypeID', :'auditDraftEventID');
+
+-- Admission tier of the draft with a resource-keyed publication audit row
+select fx_event_ticket_type(:'auditResourceDraftTicketTypeID', :'auditResourceDraftEventID');
+
+-- Admission tier of the canceled event
 select fx_event_ticket_type(:'canceledTicketTypeID', :'canceledEventID');
+
+-- Admission tier of the deleted event
 select fx_event_ticket_type(:'deletedTicketTypeID', :'deletedEventID');
+
+-- Admission tier of the unused draft
 select fx_event_ticket_type(:'draftTicketTypeID', :'draftEventID');
+
+-- Admission tier of the event with an unresolved durable refund
 select fx_event_ticket_type(:'durableTicketTypeID', :'durableEventID');
+
+-- Admission tier of the event with an expired checkout hold
 select fx_event_ticket_type(:'expiredPendingTicketTypeID', :'expiredPendingEventID');
+
+-- Admission tier of the event with a finalized durable refund
 select fx_event_ticket_type(:'finalizedTicketTypeID', :'finalizedEventID');
+
+-- Admission tier of the unpublished event with a publication timestamp
 select fx_event_ticket_type(:'historicalDraftTicketTypeID', :'historicalDraftEventID');
+
+-- Admission tier of the draft with an invitation request
 select fx_event_ticket_type(:'invitationDraftTicketTypeID', :'invitationDraftEventID');
+
+-- Admission tier of the draft with an active admission offer
 select fx_event_ticket_type(:'offerDraftTicketTypeID', :'offerDraftEventID');
+
+-- Admission tier of the past event
 select fx_event_ticket_type(:'pastTicketTypeID', :'pastEventID');
+
+-- Admission tier of the event with a pending purchase
 select fx_event_ticket_type(:'pendingTicketTypeID', :'pendingEventID');
+
+-- Admission tier of the event with an attached provider checkout
 select fx_event_ticket_type(:'providerPendingTicketTypeID', :'providerPendingEventID');
+
+-- Admission tier of the draft with a purchase
 select fx_event_ticket_type(:'purchaseDraftTicketTypeID', :'purchaseDraftEventID');
+
+-- Admission tier of the event with a recovered terminal refund
 select fx_event_ticket_type(:'recoveredTicketTypeID', :'recoveredEventID');
+
+-- Admission tier of the draft with a waitlist entry
 select fx_event_ticket_type(:'waitlistDraftTicketTypeID', :'waitlistDraftEventID');
-
--- Attendee that makes an unpublished draft ineligible for direct deletion
-insert into event_attendee (event_id, user_id)
-values (:'attendeeDraftEventID', :'userID');
-
--- Invitation request that makes an unpublished draft ineligible for direct deletion
-insert into event_invitation_request (event_id, event_ticket_type_id, user_id)
-values (
-    :'invitationDraftEventID',
-    :'invitationDraftTicketTypeID',
-    :'userID'
-);
 
 -- Active organizer offer that makes an unpublished draft ineligible for deletion
 insert into admission_offer (
@@ -240,14 +310,6 @@ insert into admission_offer (
     :'userID'
 );
 
--- Waitlist entry that makes an unpublished draft ineligible for direct deletion
-insert into event_waitlist (event_id, event_ticket_type_id, user_id)
-values (
-    :'waitlistDraftEventID',
-    :'waitlistDraftTicketTypeID',
-    :'userID'
-);
-
 -- Publication audit history that makes an unpublished draft ineligible for direct deletion
 insert into audit_log (
     action,
@@ -265,6 +327,35 @@ insert into audit_log (
     :'groupID',
     :'auditDraftEventID',
     'event'
+);
+
+-- Publication audit history that identifies its draft through the resource key only
+insert into audit_log (
+    action,
+    actor_user_id,
+    community_id,
+    group_id,
+    resource_id,
+    resource_type
+) values (
+    'event_published',
+    :'actorID',
+    :'communityID',
+    :'groupID',
+    :'auditResourceDraftEventID',
+    'event'
+);
+
+-- Attendee that makes an unpublished draft ineligible for direct deletion
+insert into event_attendee (event_id, user_id)
+values (:'attendeeDraftEventID', :'userID');
+
+-- Invitation request that makes an unpublished draft ineligible for direct deletion
+insert into event_invitation_request (event_id, event_ticket_type_id, user_id)
+values (
+    :'invitationDraftEventID',
+    :'invitationDraftTicketTypeID',
+    :'userID'
 );
 
 -- Purchases representing pending, historical, unresolved, and recovered work
@@ -292,6 +383,14 @@ insert into event_purchase (
     (0, 'USD', :'purchaseDraftEventID', :'purchaseDraftPurchaseID', :'purchaseDraftTicketTypeID', 'completed', 'Draft', :'userID', null, 'stripe', null, 'pi_draft', null),
     (0, 'USD', :'recoveredEventID', :'recoveredPurchaseID', :'recoveredTicketTypeID', 'refunded', 'Recovered', :'userID', null, 'stripe', null, 'pi_recovered', current_timestamp);
 
+-- Waitlist entry that makes an unpublished draft ineligible for direct deletion
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'waitlistDraftEventID',
+    :'waitlistDraftTicketTypeID',
+    :'userID'
+);
+
 -- Durable refund job that blocks deletion until provider work settles
 insert into payment_job (
     event_purchase_id,
@@ -309,25 +408,23 @@ insert into payment_job (
     'pending'
 );
 
--- Durable refund that blocks deletion until provider work settles
-insert into event_purchase_refund (
-    amount_minor,
-    currency_code,
+-- Finalized refund job that no longer blocks deletion
+insert into payment_job (
+    completed_at,
     event_purchase_id,
-    event_purchase_refund_id,
+    idempotency_key,
     kind,
     payment_job_id,
     payment_provider_id,
     status
 ) values (
-    2500,
-    'USD',
-    :'durablePurchaseID',
-    :'durableRefundID',
-    'event-cancellation',
-    :'durableRefundJobID',
+    current_timestamp,
+    :'finalizedPurchaseID',
+    'delete-eligibility-finalized-refund-d301',
+    'event-purchase-refund',
+    :'finalizedRefundJobID',
     'stripe',
-    'provider-pending'
+    'completed'
 );
 
 -- Recovered terminal refund job that no longer blocks deletion
@@ -357,50 +454,25 @@ insert into payment_job (
     'completed'
 );
 
--- Recovered terminal refund that no longer blocks deletion
+-- Durable refund that blocks deletion until provider work settles
 insert into event_purchase_refund (
     amount_minor,
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    finalized_at,
-    kind,
-    payment_job_id,
-    payment_provider_id,
-    provider_refund_id,
-    status,
-    terminal_failure
-) values (
-    2500,
-    'USD',
-    :'recoveredPurchaseID',
-    :'recoveredRefundID',
-    current_timestamp,
-    'event-cancellation',
-    :'recoveredRefundJobID',
-    'stripe',
-    're_recovered',
-    'provider-failed',
-    true
-);
-
--- Finalized refund job that no longer blocks deletion
-insert into payment_job (
-    completed_at,
-    event_purchase_id,
-    idempotency_key,
     kind,
     payment_job_id,
     payment_provider_id,
     status
 ) values (
-    current_timestamp,
-    :'finalizedPurchaseID',
-    'delete-eligibility-finalized-refund-d301',
-    'event-purchase-refund',
-    :'finalizedRefundJobID',
+    2500,
+    'USD',
+    :'durablePurchaseID',
+    :'durableRefundID',
+    'event-cancellation',
+    :'durableRefundJobID',
     'stripe',
-    'completed'
+    'provider-pending'
 );
 
 -- Finalized refund that no longer blocks deletion
@@ -428,6 +500,33 @@ insert into event_purchase_refund (
     're_finalized',
     current_timestamp,
     'finalized'
+);
+
+-- Recovered terminal refund that no longer blocks deletion
+insert into event_purchase_refund (
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    event_purchase_refund_id,
+    finalized_at,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    provider_refund_id,
+    status,
+    terminal_failure
+) values (
+    2500,
+    'USD',
+    :'recoveredPurchaseID',
+    :'recoveredRefundID',
+    current_timestamp,
+    'event-cancellation',
+    :'recoveredRefundJobID',
+    'stripe',
+    're_recovered',
+    'provider-failed',
+    true
 );
 
 -- ============================================================================
@@ -502,6 +601,13 @@ select is(
     get_event_delete_eligibility(:'groupID', :'auditDraftEventID'),
     'cancel-first',
     'Should require cancellation for a draft with a publication audit'
+);
+
+-- Should require cancellation for a draft with a publication audit keyed by resource only
+select is(
+    get_event_delete_eligibility(:'groupID', :'auditResourceDraftEventID'),
+    'cancel-first',
+    'Should require cancellation for a draft with a publication audit keyed by resource only'
 );
 
 -- Should require cancellation for a draft with a purchase

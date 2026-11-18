@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(40);
+select plan(41);
 
 -- ============================================================================
 -- VARIABLES
@@ -60,6 +60,12 @@ select plan(40);
 \set lapsedExternalHoldPurchaseID '3a2e0000-0000-0000-0000-000000000092'
 \set lapsedExternalHoldTicketTypeID '3a2e0000-0000-0000-0000-000000000093'
 \set lapsedExternalHoldUserID '3a2e0000-0000-0000-0000-000000000094'
+\set latestPurchaseEventID '3a2e0000-0000-0000-0000-00000000009d'
+\set latestPurchaseExpiredID '3a2e0000-0000-0000-0000-00000000009e'
+\set latestPurchaseNewerRefundedID '3a2e0000-0000-0000-0000-00000000009f'
+\set latestPurchaseOlderRefundedID '3a2e0000-0000-0000-0000-0000000000a0'
+\set latestPurchaseTicketTypeID '3a2e0000-0000-0000-0000-0000000000a1'
+\set latestPurchaseUserID '3a2e0000-0000-0000-0000-0000000000a2'
 \set missingEventID '3a2e0000-0000-0000-0000-000000000015'
 \set pendingCheckoutUserID '3a2e0000-0000-0000-0000-000000000024'
 \set pendingInvitationOfferID '3a2e0000-0000-0000-0000-000000000063'
@@ -175,6 +181,9 @@ select fx_user(:'rankingQuestionsUserID');
 -- User holding a lapsed external hold without attendance
 select fx_user(:'lapsedExternalHoldUserID');
 
+-- User with several purchases for the same event
+select fx_user(:'latestPurchaseUserID');
+
 -- Event category
 select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
 
@@ -242,6 +251,13 @@ select fx_event(:'eventExternalID', :'groupID', :'eventCategoryID', jsonb_build_
 -- External-marked event whose only enrollment is a lapsed external hold
 select fx_event(:'lapsedExternalHoldEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'external_payment_url', 'https://pay.example.test/lapsed',
+    'published', true,
+    'starts_at', '2030-01-01 10:00:00+00'
+));
+
+-- External-marked event whose attendee holds several purchases
+select fx_event(:'latestPurchaseEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/latest',
     'published', true,
     'starts_at', '2030-01-01 10:00:00+00'
 ));
@@ -442,6 +458,23 @@ insert into event_attendee (
 insert into event_attendee (created_at, event_id, status, user_id)
 values ('2024-02-01 00:00:00+00', :'rankingQuestionsEventID', 'registration-questions-pending', :'rankingQuestionsUserID');
 
+-- Canceled attendance of the user with several purchases
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-03-06 00:00:00+00',
+    :'latestPurchaseUserID',
+    '2024-03-01 00:00:00+00',
+    :'latestPurchaseEventID',
+    'attendance-canceled',
+    :'latestPurchaseUserID'
+);
+
 -- Discount codes
 insert into event_discount_code (
     event_discount_code_id,
@@ -492,6 +525,9 @@ select fx_event_ticket_type(:'eventExternalTicketTypeID', :'eventExternalID', js
 
 -- Ticket type for the lapsed external hold event
 select fx_event_ticket_type(:'lapsedExternalHoldTicketTypeID', :'lapsedExternalHoldEventID');
+
+-- Ticket type for the several purchases event
+select fx_event_ticket_type(:'latestPurchaseTicketTypeID', :'latestPurchaseEventID');
 
 -- Ticket type for the declined offer ranking event
 select fx_event_ticket_type(:'rankingConfirmedTicketTypeID', :'rankingConfirmedEventID');
@@ -1119,6 +1155,77 @@ insert into event_purchase (
     'External admission',
     :'lapsedExternalHoldUserID'
 );
+
+-- Refunded, refunded again and newer expired external purchases of one user
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id,
+
+    completed_at,
+    hold_expires_at,
+    refunded_at
+) values
+    (
+        5000,
+        'external',
+        '2024-03-01 00:00:00+00',
+        'KRW',
+        :'latestPurchaseEventID',
+        :'latestPurchaseOlderRefundedID',
+        :'latestPurchaseTicketTypeID',
+        0,
+        0,
+        'refunded',
+        'External admission',
+        :'latestPurchaseUserID',
+        '2024-03-01 01:00:00+00',
+        null,
+        '2024-03-02 00:00:00+00'
+    ),
+    (
+        5000,
+        'external',
+        '2024-03-05 00:00:00+00',
+        'KRW',
+        :'latestPurchaseEventID',
+        :'latestPurchaseNewerRefundedID',
+        :'latestPurchaseTicketTypeID',
+        0,
+        0,
+        'refunded',
+        'External admission',
+        :'latestPurchaseUserID',
+        '2024-03-05 01:00:00+00',
+        null,
+        '2024-03-06 00:00:00+00'
+    ),
+    (
+        5000,
+        'external',
+        '2024-03-10 00:00:00+00',
+        'KRW',
+        :'latestPurchaseEventID',
+        :'latestPurchaseExpiredID',
+        :'latestPurchaseTicketTypeID',
+        0,
+        0,
+        'expired',
+        'External admission',
+        :'latestPurchaseUserID',
+        null,
+        '2024-03-11 00:00:00+00',
+        null
+    );
 
 -- Refund requests
 insert into event_refund_request (
@@ -2036,6 +2143,32 @@ select ok(
         where (attendee#>>'{user,user_id}')::uuid = :'externalReregisterUserID'::uuid
     ),
     'Should expose payment-pending after re-registering over an attendance-canceled row'
+);
+
+-- Should expose the latest seat-holding, pending or refunded purchase of each attendee
+select is(
+    (
+        select jsonb_build_object(
+            'enrollment_status', data#>>'{attendees,0,enrollment_status}',
+            'event_purchase_id', data#>>'{attendees,0,event_purchase_id}',
+            'total', (data->>'total')::int,
+            'user_id', data#>>'{attendees,0,user,user_id}'
+        )
+        from (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'latestPurchaseEventID'::uuid,
+                '{"limit": 50, "offset": 0, "status": "all"}'::jsonb
+            )::jsonb as data
+        ) result
+    ),
+    jsonb_build_object(
+        'enrollment_status', 'attendance-canceled',
+        'event_purchase_id', :'latestPurchaseNewerRefundedID',
+        'total', 1,
+        'user_id', :'latestPurchaseUserID'
+    ),
+    'Should expose the latest seat-holding, pending or refunded purchase of each attendee'
 );
 
 -- Should keep a confirmed attendee ahead of a replacement external hold

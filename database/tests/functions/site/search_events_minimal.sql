@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -333,6 +333,22 @@ select is(
     ),
     jsonb_build_array(:'eventMapInsideID', :'eventMapOutsideID'),
     'Should exclude events located only through their group in map mode'
+);
+
+-- Should include every located event in a world-wide bbox in map mode
+select is(
+    (
+        search_events_minimal('{
+            "bbox_ne_lat": 85.0,
+            "bbox_ne_lon": 180.0,
+            "bbox_sw_lat": -85.0,
+            "bbox_sw_lon": -180.0,
+            "community": ["sec-community"],
+            "view_mode": "map"
+        }'::jsonb, 1000)::jsonb->>'total'
+    )::int,
+    1104,
+    'Should include every located event in a world-wide bbox in map mode'
 );
 
 -- Should include only events with their own location inside the bbox in map mode
