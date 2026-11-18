@@ -2,7 +2,14 @@
 
 use std::time::Duration;
 
-use deadpool_postgres::{Config as DeadpoolDbConfig, ManagerConfig, PoolConfig, RecyclingMethod};
+use anyhow::{Context, Result};
+use deadpool_postgres::{
+    Config as DeadpoolDbConfig, Manager, ManagerConfig, Pool, PoolConfig, RecyclingMethod, Runtime,
+};
+use tokio_postgres::{
+    Config as PgConfig, Socket,
+    tls::{MakeTlsConnect, TlsConnect},
+};
 
 /// Default timeout for establishing a new database connection.
 const DB_POOL_CREATE_TIMEOUT: Duration = Duration::from_secs(10);
@@ -26,8 +33,47 @@ const DB_POOL_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
 const DB_SESSION_OPTIONS: &str =
     "-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000";
 
+/// Default idle time before the first TCP keepalive probe is sent.
+const DB_TCP_KEEPALIVES_IDLE: Duration = Duration::from_secs(30);
+
+/// Default interval between TCP keepalive probes.
+const DB_TCP_KEEPALIVES_INTERVAL: Duration = Duration::from_secs(10);
+
+/// Default number of unanswered TCP keepalive probes before the connection is closed.
+const DB_TCP_KEEPALIVES_RETRIES: u32 = 3;
+
+/// Default time transmitted data may stay unacknowledged before the connection
+/// is closed.
+///
+/// Together with the keepalive defaults it bounds how long a caller waits on a
+/// connection whose network path died without closing it. Acknowledged
+/// statements are unaffected, however long the server takes to answer them.
+const DB_TCP_USER_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Create the database pool, applying server defaults to its configuration.
+pub(crate) fn create_pool<T>(cfg: &DeadpoolDbConfig, tls: T) -> Result<Pool>
+where
+    T: MakeTlsConnect<Socket> + Clone + Send + Sync + 'static,
+    T::Stream: Send + Sync,
+    T::TlsConnect: Send + Sync,
+    <T::TlsConnect as TlsConnect<Socket>>::Future: Send,
+{
+    // Apply the defaults the deployment config leaves unset
+    let cfg = config_with_defaults(cfg);
+    let pg_cfg = pg_config_with_defaults(&cfg)?;
+
+    // Build the pool from the resulting configuration
+    let manager = Manager::from_config(pg_cfg, tls, cfg.get_manager_config());
+    let pool = Pool::builder(manager)
+        .config(cfg.get_pool_config())
+        .runtime(Runtime::Tokio1)
+        .build()?;
+
+    Ok(pool)
+}
+
 /// Apply server defaults to the database pool configuration.
-pub(crate) fn config_with_defaults(cfg: &DeadpoolDbConfig) -> DeadpoolDbConfig {
+fn config_with_defaults(cfg: &DeadpoolDbConfig) -> DeadpoolDbConfig {
     let mut cfg = cfg.clone();
 
     // Reset session state when recycling connections
@@ -45,6 +91,36 @@ pub(crate) fn config_with_defaults(cfg: &DeadpoolDbConfig) -> DeadpoolDbConfig {
     pool_cfg.timeouts.wait.get_or_insert(DB_POOL_WAIT_TIMEOUT);
 
     cfg
+}
+
+/// Build the connection configuration, applying server defaults to its socket
+/// bounds.
+///
+/// The pool configuration only carries some of the socket options as fields;
+/// the rest can only come from its connection string. The defaults are
+/// therefore applied to the resolved connection configuration.
+fn pg_config_with_defaults(cfg: &DeadpoolDbConfig) -> Result<PgConfig> {
+    let mut pg_cfg = cfg
+        .get_pg_config()
+        .context("invalid database connection configuration")?;
+
+    // Probe idle connections early when deployment config keeps the driver default
+    if pg_cfg.get_keepalives_idle() == PgConfig::new().get_keepalives_idle() {
+        pg_cfg.keepalives_idle(DB_TCP_KEEPALIVES_IDLE);
+    }
+    if pg_cfg.get_keepalives_interval().is_none() {
+        pg_cfg.keepalives_interval(DB_TCP_KEEPALIVES_INTERVAL);
+    }
+    if pg_cfg.get_keepalives_retries().is_none() {
+        pg_cfg.keepalives_retries(DB_TCP_KEEPALIVES_RETRIES);
+    }
+
+    // Bound unacknowledged data when deployment config does not override it
+    if pg_cfg.get_tcp_user_timeout().is_none() {
+        pg_cfg.tcp_user_timeout(DB_TCP_USER_TIMEOUT);
+    }
+
+    Ok(pg_cfg)
 }
 
 #[cfg(test)]
@@ -91,5 +167,42 @@ mod tests {
         assert_eq!(pool.timeouts.create, Some(Duration::from_secs(12)));
         assert_eq!(pool.timeouts.recycle, Some(Duration::from_secs(11)));
         assert_eq!(pool.timeouts.wait, Some(Duration::from_secs(10)));
+    }
+
+    #[test]
+    fn test_pg_config_with_defaults_applies_missing_defaults() {
+        let mut cfg = DeadpoolDbConfig::new();
+        cfg.dbname = Some("ocg".to_string());
+
+        let pg_cfg = pg_config_with_defaults(&cfg).expect("connection config should be valid");
+
+        assert_eq!(pg_cfg.get_keepalives_idle(), DB_TCP_KEEPALIVES_IDLE);
+        assert_eq!(
+            pg_cfg.get_keepalives_interval(),
+            Some(DB_TCP_KEEPALIVES_INTERVAL)
+        );
+        assert_eq!(
+            pg_cfg.get_keepalives_retries(),
+            Some(DB_TCP_KEEPALIVES_RETRIES)
+        );
+        assert_eq!(pg_cfg.get_tcp_user_timeout(), Some(&DB_TCP_USER_TIMEOUT));
+    }
+
+    #[test]
+    fn test_pg_config_with_defaults_preserves_configured_values() {
+        let mut cfg = DeadpoolDbConfig::new();
+        cfg.dbname = Some("ocg".to_string());
+        cfg.keepalives_idle = Some(Duration::from_secs(45));
+        cfg.url = Some("keepalives_interval=7 keepalives_retries=9 tcp_user_timeout=5".to_string());
+
+        let pg_cfg = pg_config_with_defaults(&cfg).expect("connection config should be valid");
+
+        assert_eq!(pg_cfg.get_keepalives_idle(), Duration::from_secs(45));
+        assert_eq!(
+            pg_cfg.get_keepalives_interval(),
+            Some(Duration::from_secs(7))
+        );
+        assert_eq!(pg_cfg.get_keepalives_retries(), Some(9));
+        assert_eq!(pg_cfg.get_tcp_user_timeout(), Some(&Duration::from_secs(5)));
     }
 }

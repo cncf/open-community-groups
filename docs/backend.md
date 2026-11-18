@@ -405,9 +405,10 @@ client. Every HTTP client is built once through `util::build_http_client`
 from an `HttpClientConfig`, whose request deadline covers the whole exchange
 including the response body. SMTP has separate connect and send deadlines
 applied by the email sender. PostgreSQL connections get the pool `create`,
-`wait`, and `recycle` timeouts plus server-enforced `statement_timeout` and
-`idle_in_transaction_session_timeout` session defaults set in
-`db::pool::config_with_defaults`; a path that legitimately needs longer
+`wait`, and `recycle` timeouts, TCP keepalive and user-timeout socket bounds
+that close a connection whose network path died, plus server-enforced
+`statement_timeout` and `idle_in_transaction_session_timeout` session
+defaults, all applied in `db::pool`; a path that legitimately needs longer
 raises the limit with `set local statement_timeout` inside its own
 transaction.
 

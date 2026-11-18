@@ -13,7 +13,6 @@ use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc};
 use activity_tracker::ActivityTrackerDB;
 use anyhow::{Context, Result};
 use clap::Parser;
-use deadpool_postgres::Runtime;
 use ocg_common::{
     db::tls_connector,
     runtime::{setup_logging, shutdown_signal_with_drain},
@@ -250,8 +249,7 @@ fn setup_db(cfg: &Config) -> Result<Arc<PgDB>> {
     let connector = tls_connector(cfg.db.tls.as_ref())?;
 
     // Create the Postgres connection pool and wrap it in our database abstraction
-    let db_cfg = db_pool::config_with_defaults(&cfg.db.connection);
-    let pool = db_cfg.create_pool(Some(Runtime::Tokio1), connector)?;
+    let pool = db_pool::create_pool(&cfg.db.connection, connector)?;
     let db = Arc::new(PgDB::new(pool));
 
     Ok(db)
