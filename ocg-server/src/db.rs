@@ -176,12 +176,16 @@ impl PgDB {
 impl DB for PgDB {
     /// [`DB::begin`].
     async fn begin(&self) -> Result<DynDBUnitOfWork> {
-        let client = self.pool.get().await?;
+        // Hand the client to the unit of work before opening the transaction,
+        // so a call cancelled mid-flight rolls back instead of returning the
+        // client to the pool inside it
+        let uow = PgUnitOfWork {
+            client: Some(self.pool.get().await?),
+        };
+        let client = uow.client.as_ref().context("unit of work has already completed")?;
         client.batch_execute("begin").await?;
 
-        Ok(Box::new(PgUnitOfWork {
-            client: Some(client),
-        }))
+        Ok(Box::new(uow))
     }
 }
 
