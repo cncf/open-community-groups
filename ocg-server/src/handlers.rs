@@ -6,7 +6,7 @@
 use anyhow::{Context, Result};
 use axum::http::{
     HeaderMap, HeaderName, HeaderValue,
-    header::{ORIGIN, REFERER},
+    header::{ACCEPT, ORIGIN, REFERER},
 };
 use reqwest::Url;
 
@@ -46,6 +46,28 @@ pub(crate) mod tests;
 
 /// Maximum number of gallery images rendered on public pages.
 pub(crate) const MAX_PUBLIC_GALLERY_IMAGES: usize = 50;
+
+/// Returns whether the request's Accept header lists the media type with a nonzero quality.
+///
+/// Wildcards do not match: the client must name the media type.
+pub(crate) fn accepts_media_type(headers: &HeaderMap, media_type: &str) -> bool {
+    headers
+        .get_all(ACCEPT)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .flat_map(|value| value.split(','))
+        .any(|item| {
+            let mut parts = item.split(';').map(str::trim);
+            let supported = parts
+                .next()
+                .is_some_and(|candidate| candidate.eq_ignore_ascii_case(media_type));
+            let quality = parts
+                .filter_map(|parameter| parameter.split_once('='))
+                .find(|(name, _)| name.trim().eq_ignore_ascii_case("q"))
+                .map_or(1.0, |(_, value)| value.trim().parse::<f32>().unwrap_or(0.0));
+            supported && quality > 0.0
+        })
+}
 
 /// Extends public shared-cache headers with additional dynamic headers.
 pub(crate) fn extend_public_shared_cache_headers(
@@ -121,6 +143,38 @@ mod helpers_tests {
     };
 
     use super::*;
+
+    #[test]
+    fn test_accepts_media_type() {
+        // Setup labeled Accept headers with the expected match for text/html
+        let cases = [
+            ("exact match", Some("text/html"), true),
+            ("case-insensitive match", Some("TEXT/HTML"), true),
+            (
+                "list with other types",
+                Some("application/json, text/html;q=0.9, */*;q=0.8"),
+                true,
+            ),
+            ("zero quality", Some("text/html;q=0"), false),
+            ("unparsable quality", Some("text/html;q=high"), false),
+            ("any type wildcard", Some("*/*"), false),
+            ("subtype wildcard", Some("text/*"), false),
+            ("absent", None, false),
+        ];
+
+        // Check each Accept header resolves the expected match
+        for (case, accept, expected) in cases {
+            let mut headers = HeaderMap::new();
+            if let Some(accept) = accept {
+                headers.insert(ACCEPT, HeaderValue::from_static(accept));
+            }
+            assert_eq!(
+                accepts_media_type(&headers, "text/html"),
+                expected,
+                "{case}"
+            );
+        }
+    }
 
     #[test]
     fn test_extend_public_shared_cache_headers_rejects_invalid_extra_headers() {

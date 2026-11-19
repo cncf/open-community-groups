@@ -17,14 +17,17 @@ import {
 import { enableDesktopVersion, expectPageLayout } from "../../snapshots.js";
 import {
   buildE2eUrl,
+  dismissAlert,
   expectDarkTheme,
   expectDialogClosed,
   expectFocusIndicator,
   expectNoDuplicateIds,
   expectPaginationNavigation,
+  fulfillRateLimited,
   futureDate,
   navigateToPath,
   pickThemeFromAccountMenu,
+  RATE_LIMIT_MESSAGE,
   resolveCssColor,
   uniqueName,
   useTheme,
@@ -57,8 +60,35 @@ const ENTITY_SWITCH_CASES = [
   },
 ];
 
+// Paths and route patterns of the explore requests the failure tests reject.
+const EVENTS_RESULTS_SECTION_PATHNAME = "/explore/events-results-section";
+const EVENTS_RESULTS_SECTION_ROUTE = "**/explore/events-results-section?**";
+const EVENTS_SECTION_PATHNAME = "/explore/events-section";
+const EVENTS_SECTION_ROUTE = "**/explore/events-section?**";
+const GROUPS_SECTION_PATHNAME = "/explore/groups-section";
+const GROUPS_SECTION_ROUTE = "**/explore/groups-section*";
+
+// Alert shown when an explore request fails without the server's wait message.
+const RESULTS_ERROR_MESSAGE = "Something went wrong loading results. Please try again later.";
+
 // Date filter values `SearchEventsFilters` rejects: unparsable, out-of-range and non-`YYYY` years.
 const INVALID_DATE_FILTERS = ["not-a-date", "2031-13-45", "2031/01/15", "0000-01-01", "-5000-01-01"];
+
+/**
+ * Counts the alerts the page fires from now on, including ones a later alert replaces.
+ * Call it after the page loads, because the SweetAlert2 script defines `Swal` on load.
+ * @param {import("@playwright/test").Page} page - Playwright page.
+ * @returns {Promise<void>} Resolves once the counter is installed.
+ */
+const countAlerts = (page) =>
+  page.evaluate(() => {
+    const fire = window.Swal.fire.bind(window.Swal);
+    window.__ocgAlertCount = 0;
+    window.Swal.fire = (...args) => {
+      window.__ocgAlertCount += 1;
+      return fire(...args);
+    };
+  });
 
 /** Selects the applied filter chips of the phone chip row. */
 const getAppliedFilterChips = (page) =>
@@ -71,6 +101,9 @@ const getEntitySwitch = (page) => page.getByRole("group", { name: "Show" });
 const getFilterOption = (filter, value) =>
   filter.locator("label").filter({ has: filter.page().locator(`input[value="${value}"]`) });
 
+/** Answers a routed explore request with the server's rate limit rejection. */
+const limitRequest = (route) => fulfillRateLimited(route);
+
 /** Opens the phone filter sheet and returns it. */
 const openFilterSheet = async (page) => {
   await page.locator("#open-filters").click();
@@ -78,6 +111,9 @@ const openFilterSheet = async (page) => {
   await expect(page.getByRole("dialog", { name: "Filters" })).toBeVisible();
   return sheet;
 };
+
+/** Reads how many alerts the page fired since `countAlerts` was called. */
+const readAlertCount = (page) => page.evaluate(() => window.__ocgAlertCount);
 
 /**
  * Reads the painted fill and edge of a calendar event.
@@ -578,6 +614,212 @@ test.describe("site explore events page", () => {
     await expect(page).toHaveURL((url) => url.searchParams.get("kind[0]") === "in-person");
     await expect(drawer).not.toBeInViewport();
     await expect(openFilters).toBeFocused();
+  });
+
+  test("puts a rate-limited filter back after one request and leaves it out of the next", async ({
+    page,
+  }) => {
+    // Load community events and count the section requests from now on.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    const requests = trackSectionRequests(page, EVENTS_SECTION_PATHNAME);
+    const desktopForm = page.locator("#events-form");
+    const inPerson = desktopForm.getByRole("checkbox", { name: "In-person" });
+
+    // Tick a type while the server rejects the request over its rate limit.
+    await page.route(EVENTS_SECTION_ROUTE, limitRequest);
+    await waitForActionResponse(page, () => desktopForm.getByText("In-person", { exact: true }).click(), {
+      method: "GET",
+      params: { "kind[]": "in-person" },
+      pathname: EVENTS_SECTION_PATHNAME,
+      status: 429,
+    });
+    await dismissAlert(page, { message: RATE_LIMIT_MESSAGE });
+
+    // Verify the box, the results and the URL show the applied state after a single request.
+    await expect(inPerson).not.toBeChecked();
+    for (const name of TEST_EVENT_NAMES.alpha) {
+      await expect(page.getByText(name, { exact: true })).toBeVisible();
+    }
+    await expect(page).not.toHaveURL(/kind/);
+    expect(requests).toHaveLength(1);
+
+    // Verify the next request carries only the new type once the server is back.
+    await page.unroute(EVENTS_SECTION_ROUTE, limitRequest);
+    const response = await waitForActionResponse(
+      page,
+      () => desktopForm.getByText("Virtual", { exact: true }).click(),
+      { method: "GET", pathname: EVENTS_SECTION_PATHNAME, status: 200 },
+    );
+    expect(new URL(response.url()).searchParams.getAll("kind[]")).toEqual(["virtual"]);
+  });
+
+  test("drops a replaced filter request silently and reports only the newer one", async ({ page }) => {
+    // Load community events, count the section requests and alerts from now on.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    const requests = trackSectionRequests(page, EVENTS_SECTION_PATHNAME);
+    await countAlerts(page);
+    const desktopForm = page.locator("#events-form");
+
+    // Hold the first section request and reject the next one over the rate limit.
+    let releaseFirstRequest;
+    const firstRequestHeld = new Promise((resolve) => {
+      releaseFirstRequest = resolve;
+    });
+    let routedRequests = 0;
+    await page.route(EVENTS_SECTION_ROUTE, async (route) => {
+      routedRequests += 1;
+      if (routedRequests > 1) {
+        await limitRequest(route);
+        return;
+      }
+      await firstRequestHeld;
+      // The page aborted this request, so the route can no longer be answered.
+      await route.fulfill({ body: "", status: 200 }).catch(() => {});
+    });
+
+    // Tick a type and wait until its request is in flight.
+    const isSectionRequest = (request) => new URL(request.url()).pathname === EVENTS_SECTION_PATHNAME;
+    const firstRequestFailed = page.waitForEvent("requestfailed", isSectionRequest);
+    await Promise.all([
+      page.waitForRequest(isSectionRequest),
+      desktopForm.getByText("In-person", { exact: true }).click(),
+    ]);
+
+    // Tick another type, which replaces the held request, and let the held route go.
+    const response = await waitForActionResponse(
+      page,
+      () => desktopForm.getByText("Virtual", { exact: true }).click(),
+      { method: "GET", pathname: EVENTS_SECTION_PATHNAME, status: 429 },
+    );
+    releaseFirstRequest();
+
+    // Verify the first request was aborted and the second carried both types.
+    expect((await firstRequestFailed).failure()?.errorText).toBe("net::ERR_ABORTED");
+    expect(new URL(response.url()).searchParams.getAll("kind[]")).toEqual(["in-person", "virtual"]);
+    expect(requests).toHaveLength(2);
+
+    // Verify one rate limit alert and the applied state on both boxes and the URL.
+    await dismissAlert(page, { message: RATE_LIMIT_MESSAGE });
+    expect(await readAlertCount(page)).toBe(1);
+    await expect(desktopForm.getByRole("checkbox", { name: "In-person" })).not.toBeChecked();
+    await expect(desktopForm.getByRole("checkbox", { name: "Virtual" })).not.toBeChecked();
+    await expect(page).not.toHaveURL(/kind/);
+  });
+
+  test("puts the applied search and sort back when the server rate-limits them", async ({ page }) => {
+    // Load a search that matches the seeded events, so the sort control shows.
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}&ts_query=Upcoming`,
+    );
+    const search = page.locator("#ts_query");
+    const sortSelector = page.locator("#sort_selector");
+    await expect(search).toHaveValue("Upcoming");
+    const appliedSort = await sortSelector.inputValue();
+    const appliedDirection = await page.locator("#sort_direction").inputValue();
+    await page.route(EVENTS_SECTION_ROUTE, limitRequest);
+
+    // Search other text with Enter and verify the applied text comes back.
+    await search.fill("Observability");
+    await waitForActionResponse(page, () => search.press("Enter"), {
+      method: "GET",
+      params: { ts_query: "Observability" },
+      pathname: EVENTS_SECTION_PATHNAME,
+      status: 429,
+    });
+    await dismissAlert(page, { message: RATE_LIMIT_MESSAGE });
+    await expect(search).toHaveValue("Upcoming");
+
+    // Change the sort and verify the selector and its hidden inputs come back.
+    await waitForActionResponse(page, () => sortSelector.selectOption("date-desc"), {
+      method: "GET",
+      params: { sort_direction: "desc" },
+      pathname: EVENTS_SECTION_PATHNAME,
+      status: 429,
+    });
+    await dismissAlert(page, { message: RATE_LIMIT_MESSAGE });
+    await expect(sortSelector).toHaveValue(appliedSort);
+    await expect(page.locator("#sort_direction")).toHaveValue(appliedDirection);
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get("ts_query") === "Upcoming" && !url.searchParams.has("sort_direction"),
+    );
+  });
+
+  test("shows the generic results message for a rate limit page without the server's marker", async ({
+    page,
+  }) => {
+    // Answer the section request with an HTML 429, as a proxy would.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    await page.route(EVENTS_SECTION_ROUTE, (route) =>
+      route.fulfill({
+        body: "<!DOCTYPE html><title>Too many requests</title><p>Proxy limit reached</p>",
+        contentType: "text/html; charset=utf-8",
+        status: 429,
+      }),
+    );
+
+    // Tick a type and verify the alert keeps the proxy page out.
+    const desktopForm = page.locator("#events-form");
+    await waitForActionResponse(page, () => desktopForm.getByText("In-person", { exact: true }).click(), {
+      method: "GET",
+      pathname: EVENTS_SECTION_PATHNAME,
+      status: 429,
+    });
+    await expect(page.locator(".swal2-popup")).not.toContainText("Proxy limit reached");
+    await dismissAlert(page, { message: RESULTS_ERROR_MESSAGE });
+    await expect(desktopForm.getByRole("checkbox", { name: "In-person" })).not.toBeChecked();
+  });
+
+  test("stays on events when a rate-limited Groups press fails", async ({ page }) => {
+    // Load community events and reject the Groups section request.
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    await page.route(GROUPS_SECTION_ROUTE, limitRequest);
+
+    // Press Groups in the sidebar.
+    const groupsButton = page
+      .locator("#explore-filters")
+      .getByRole("button", { name: "Groups", exact: true });
+    await waitForActionResponse(page, () => groupsButton.click(), {
+      method: "GET",
+      pathname: GROUPS_SECTION_PATHNAME,
+      status: 429,
+    });
+    await dismissAlert(page, { message: RATE_LIMIT_MESSAGE });
+
+    // Verify the switch, the URL and the results still show events.
+    await expect(groupsButton).toBeVisible();
+    await expect(page).toHaveURL((url) => url.searchParams.get("entity") === "events");
+    await expect(page.locator("#events-form")).toBeAttached();
+    await expect(page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true })).toBeVisible();
+  });
+
+  test("keeps the tablet drawer open on the applied state when a filter is rate-limited", async ({
+    page,
+  }) => {
+    // Load the events list at a tablet width and open the drawer.
+    await page.setViewportSize({ height: 1000, width: 900 });
+    await navigateToPath(page, `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`);
+    await page.getByRole("button", { name: "Open filters", exact: true }).click();
+    const drawer = page.locator("#drawer-filters");
+    await expect(drawer).toBeInViewport();
+    await page.route(EVENTS_SECTION_ROUTE, limitRequest);
+    await countAlerts(page);
+
+    // Toggle a drawer Type checkbox while the server rejects the request.
+    const inPerson = drawer.getByRole("checkbox", { name: "In-person" });
+    await inPerson.focus();
+    await waitForActionResponse(page, () => page.keyboard.press("Space"), {
+      method: "GET",
+      params: { "kind[]": "in-person" },
+      pathname: EVENTS_SECTION_PATHNAME,
+      status: 429,
+    });
+
+    // Verify one alert, and the drawer stays open with the box unticked.
+    await dismissAlert(page, { message: RATE_LIMIT_MESSAGE });
+    expect(await readAlertCount(page)).toBe(1);
+    await expect(drawer).toBeInViewport();
+    await expect(inPerson).not.toBeChecked();
   });
 
   test("keeps focus in the Group filter after removing its chip from the keyboard", async ({ page }) => {
@@ -1590,6 +1832,43 @@ test.describe("site explore events page", () => {
     await expect(page.locator("#explore-filter-status")).toContainText("Removed filter Virtual");
   });
 
+  test("keeps the chips after a rate-limited Reset and removes one chip afterwards @mobile", async ({
+    page,
+  }) => {
+    // Load two chips and reject the section request.
+    await navigateToPath(page, "/explore?entity=events&kind[0]=virtual&kind[1]=hybrid");
+    const chips = getAppliedFilterChips(page);
+    await expect(chips).toHaveCount(2);
+    await page.route(EVENTS_SECTION_ROUTE, limitRequest);
+
+    // Reset from the Active filters card.
+    await waitForActionResponse(
+      page,
+      () => page.getByRole("button", { name: "Reset", exact: true }).click(),
+      {
+        method: "GET",
+        pathname: EVENTS_SECTION_PATHNAME,
+        status: 429,
+      },
+    );
+    await dismissAlert(page, { message: RATE_LIMIT_MESSAGE });
+
+    // Verify the chips and the URL stay, and nothing read as reset.
+    await expect(chips).toHaveCount(2);
+    await expect(page).toHaveURL((url) => url.searchParams.get("kind[0]") === "virtual");
+    await expect(page.locator("#explore-filter-status")).toHaveText("");
+
+    // Verify a chip removes only its own filter once the server is back.
+    await page.unroute(EVENTS_SECTION_ROUTE, limitRequest);
+    const response = await waitForActionResponse(
+      page,
+      () => page.getByRole("button", { name: "Remove filter Virtual" }).click(),
+      { method: "GET", pathname: EVENTS_SECTION_PATHNAME, status: 200 },
+    );
+    expect(new URL(response.url()).searchParams.getAll("kind[]")).toEqual(["hybrid"]);
+    await expect(chips).toHaveCount(1);
+  });
+
   test("restores a closed sheet when Back leaves an open one @mobile", async ({ page }) => {
     // Build a history entry to go back to.
     await navigateToPath(page, "/explore?entity=events");
@@ -1715,20 +1994,44 @@ test.describe("site explore events page", () => {
     });
   });
 
-  test("alerts on a failed apply and keeps the choices in the sheet @mobile", async ({ page }) => {
-    // Fail the section request.
+  test("alerts on a failed apply, keeps the choices, and drops them when closed without a retry @mobile", async ({
+    page,
+  }) => {
+    // Reject the section request over the rate limit and count the requests.
     await navigateToPath(page, "/explore?entity=events");
-    await page.route("**/explore/events-section?**", (route) => route.fulfill({ status: 500, body: "" }));
+    const requests = trackSectionRequests(page, EVENTS_SECTION_PATHNAME);
+    await page.route(EVENTS_SECTION_ROUTE, limitRequest);
 
     // Apply a change.
     const sheet = await openFilterSheet(page);
+    const virtual = sheet.locator('input[name="kind[]"][value="virtual"]');
     await sheet.locator("label").filter({ hasText: "Virtual" }).click();
-    await sheet.getByRole("button", { name: "Show results" }).click();
+    await waitForActionResponse(page, () => sheet.getByRole("button", { name: "Show results" }).click(), {
+      method: "GET",
+      pathname: EVENTS_SECTION_PATHNAME,
+      status: 429,
+    });
 
-    // Verify the alert shows above the sheet, and the choice stays.
+    // Verify the server's message shows above the sheet, and the choice stays ready for a retry.
     await expect(page.locator(".swal2-popup")).toBeVisible();
     await expect(page.getByRole("dialog", { name: "Filters" })).toBeAttached();
-    await expect(sheet.locator('input[name="kind[]"][value="virtual"]')).toBeChecked();
+    await dismissAlert(page, { message: RATE_LIMIT_MESSAGE });
+    await expect(virtual).toBeChecked();
+    await expect(sheet.getByRole("button", { name: "Show results" })).toBeEnabled();
+    expect(requests).toHaveLength(1);
+
+    // Close the sheet with X and verify it reopens on the applied state.
+    await sheet.getByRole("button", { name: "Close filters" }).click();
+    await expectDialogClosed(page, page.getByRole("dialog", { name: "Filters" }), {
+      opener: page.locator("#open-filters"),
+    });
+    await openFilterSheet(page);
+    await expect(virtual).not.toBeChecked();
+
+    // Verify closing it again sends nothing.
+    await sheet.getByRole("button", { name: "Close filters" }).click();
+    await expectDialogClosed(page, page.getByRole("dialog", { name: "Filters" }));
+    expect(requests).toHaveLength(1);
   });
 
   test("leaves the calendar for the list when a rotation reaches phone width @mobile", async ({ page }) => {
@@ -1753,15 +2056,15 @@ test.describe("site explore events page", () => {
   }) => {
     // Open the sheet on a phone.
     await navigateToPath(page, "/explore?entity=events");
-    await expect(page.locator(".filters-form").first()).toHaveAttribute("hx-sync", /#entity-section/);
+    await expect(page.locator("#ts_query")).toHaveAttribute("enterkeyhint", /.+/);
     await openFilterSheet(page);
 
     // Rotate past the phone width.
     await page.setViewportSize({ height: 390, width: 844 });
 
-    // Verify nothing held survives.
+    // Verify nothing held survives, while both forms keep the request sync of their markup.
     await expectDialogClosed(page, page.getByRole("dialog", { name: "Filters" }));
-    await expect(page.locator(".filters-form[hx-sync]")).toHaveCount(0);
+    await expect(page.locator(".filters-form:not([hx-sync])")).toHaveCount(0);
     await expect(page.locator("#ts_query")).not.toHaveAttribute("enterkeyhint", /.*/);
   });
 
@@ -1789,6 +2092,29 @@ test.describe("site explore events page", () => {
       })
       .toBeGreaterThanOrEqual(0);
     await expect.poll(async () => (await firstCard.boundingBox()).y).toBeLessThan(160);
+  });
+
+  test("alerts when a rate-limited page of results fails and keeps the current page @mobile", async ({
+    page,
+  }) => {
+    // Load a paged list and reject the next page.
+    await navigateToPath(page, "/explore?entity=events&limit=3&offset=0");
+    const cardTitles = page.locator("#cards-list article .card-title");
+    const firstTitle = await cardTitles.first().innerText();
+    await page.route(EVENTS_RESULTS_SECTION_ROUTE, limitRequest);
+
+    // Go to the next page.
+    const nextLink = page.locator(".pagination").getByRole("link", { name: "Next" });
+    await waitForActionResponse(page, () => nextLink.click(), {
+      method: "GET",
+      pathname: EVENTS_RESULTS_SECTION_PATHNAME,
+      status: 429,
+    });
+
+    // Verify the server's message, and the same cards and pager stay.
+    await dismissAlert(page, { message: RATE_LIMIT_MESSAGE });
+    await expect(cardTitles.first()).toHaveText(firstTitle);
+    await expect(nextLink).toBeVisible();
   });
 
   test("offers Reset filters from the filtered empty state @mobile", async ({ page }) => {
@@ -1897,7 +2223,6 @@ test.describe("site explore events page", () => {
     await expect(getEntitySwitch(page)).toHaveCount(0);
     await expect(page.getByRole("group", { name: "Applied filters" })).toHaveCount(0);
     await expect(page.locator(".section-strip-results")).not.toHaveCSS("position", "sticky");
-    await expect(page.locator(".filters-form[hx-sync]")).toHaveCount(0);
     await expect(page.locator("#ts_query")).not.toHaveAttribute("enterkeyhint", /.*/);
   });
 

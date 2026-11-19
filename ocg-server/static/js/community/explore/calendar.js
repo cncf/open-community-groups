@@ -362,6 +362,13 @@ export class Calendar {
   }
 
   /**
+   * Writes the displayed month into every date input, as calendar navigation does.
+   */
+  syncDateInputs() {
+    if (this.fullCalendar) updateDateInput(this.fullCalendar.getDate());
+  }
+
+  /**
    * Releases the calendar instance, pending requests, cards, and listeners.
    */
   teardown() {

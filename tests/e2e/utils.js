@@ -14,6 +14,8 @@ const NAVIGATION_RETRY_ATTEMPTS = 3;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
 const HTMX_SETTLE_TIMEOUT_MS = 10_000;
 const ACTION_RESPONSE_BODY_PREVIEW_CHARS = 2_000;
+// Wait message of a rate limit rejection, in the server's wording (see handlers/rate_limit.rs).
+export const RATE_LIMIT_MESSAGE = "Too many requests from your network. Please wait 2 minutes and try again.";
 // Total time to open a table filter menu and click one of its options.
 const TABLE_FILTER_MENU_TIMEOUT_MS = 10_000;
 // Wait for a table filter option before reopening its menu and trying again.
@@ -924,6 +926,22 @@ export const swipeHorizontally = async (page, fromX, toX, y = 300) => {
   await session.send("Input.dispatchTouchEvent", { touchPoints: [], type: "touchEnd" });
   await session.detach();
 };
+
+/**
+ * Answers a routed request as the server does when it is over a rate limit: a plain-text 429
+ * carrying the marker header that lets the frontend show the wait message. The rate limiter is
+ * off in e2e, so specs mock the rejection.
+ * @param {import("@playwright/test").Route} route - Intercepted request.
+ * @param {{ message?: string }} [options] - Wait message sent as the body.
+ * @returns {Promise<void>} Resolves once the response is fulfilled.
+ */
+export const fulfillRateLimited = (route, { message = RATE_LIMIT_MESSAGE } = {}) =>
+  route.fulfill({
+    body: message,
+    contentType: "text/plain; charset=utf-8",
+    headers: { "cache-control": "no-store", "retry-after": "120", "x-ocg-rate-limited": "true" },
+    status: 429,
+  });
 
 /**
  * Replaces the external basemap styles of both color themes (`styles/bright` and `styles/fiord`)

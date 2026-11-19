@@ -573,14 +573,6 @@ async fn enforce_browser_same_origin(
     }
 }
 
-/// Returns whether a request header has the string value `true`.
-fn header_value_is_true(headers: &axum::http::HeaderMap, header_name: &str) -> bool {
-    headers
-        .get(header_name)
-        .and_then(|value| value.to_str().ok())
-        .is_some_and(|value| value.eq_ignore_ascii_case("true"))
-}
-
 /// Inserts the current commit SHA response header.
 fn insert_commit_sha_header(headers: &mut axum::http::HeaderMap) {
     headers.insert(
@@ -707,6 +699,14 @@ async fn strip_cookies_from_public_responses(
 }
 
 // Helpers.
+
+/// Returns whether a request header has the string value `true`.
+pub(crate) fn header_value_is_true(headers: &axum::http::HeaderMap, header_name: &str) -> bool {
+    headers
+        .get(header_name)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.eq_ignore_ascii_case("true"))
+}
 
 /// Returns the `serde_qs` configuration for query string parsing.
 pub(crate) fn serde_qs_config() -> serde_qs::Config {

@@ -198,6 +198,28 @@ const getUserMenuItems = (dropdown) =>
   getUserSheetFocusTargets(dropdown).filter((target) => target.matches('[role="menuitem"]'));
 
 /**
+ * Closes the menu when a navigation it started fails, before the shared handler alerts. Spinner
+ * links keep the menu open until the swap, which never comes then.
+ * @param {CustomEvent} event - HTMX response error, send error or timeout event.
+ */
+const closeUserDropdownAfterFailedNavigation = (event) => {
+  if (event.detail?.boosted !== true) {
+    return;
+  }
+
+  if (userSheetOpen) {
+    closeUserSheet();
+    return;
+  }
+
+  const dropdown = getElementById(document, "user-dropdown");
+  if (dropdown && !isElementHidden(dropdown)) {
+    setUserDropdownHidden(dropdown, true);
+    getElementById(document, "user-dropdown-button")?.focus();
+  }
+};
+
+/**
  * Closes the anchored user menu when focus moves from it to the rest of the
  * page, as on Tab. The sheet keeps focus inside itself instead.
  * @param {FocusEvent} event - Focusout event.
@@ -628,6 +650,10 @@ export const initUserDropdown = () => {
       },
       true,
     );
+    // Error events bubble through the menu before they reach the document's alert handler.
+    ["htmx:responseError", "htmx:sendError", "htmx:timeout"].forEach((type) => {
+      dropdown.addEventListener(type, closeUserDropdownAfterFailedNavigation);
+    });
     dropdown.__ocgCloseOnLinkBound = true;
   }
 };

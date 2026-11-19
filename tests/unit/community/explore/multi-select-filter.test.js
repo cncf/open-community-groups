@@ -230,4 +230,33 @@ describe("multi-select-filter", () => {
     expect(document.activeElement?.getAttribute("aria-label")).to.equal("Remove AI");
     expect(focusKeysOnChange).to.deep.equal(["chip:ai"]);
   });
+
+  it("restores a selection without the values missing from the options and without events", async () => {
+    // Render the filter with a selection the user has since changed.
+    const element = await mountLitComponent("multi-select-filter", {
+      title: "Group",
+      name: "group",
+      options: [
+        { value: "cloud", name: "Cloud" },
+        { value: "ai", name: "AI" },
+      ],
+      selected: ["cloud"],
+    });
+    const events = [];
+    element.addEventListener("filter-change", () => events.push("filter-change"));
+    element.addEventListener("change", () => events.push("change"));
+
+    // Restore a selection that names a group outside the options.
+    element.restoreSelected(["ai", "outside"]);
+    await element.updateComplete;
+    await waitForMicrotask();
+    await element.updateComplete;
+
+    // Verify only known values come back and nothing asks for a request.
+    expect(element.selected).to.deep.equal(["ai"]);
+    expect([...element.querySelectorAll('input[type="hidden"]')].map((input) => input.value)).to.deep.equal([
+      "ai",
+    ]);
+    expect(events).to.deep.equal([]);
+  });
 });

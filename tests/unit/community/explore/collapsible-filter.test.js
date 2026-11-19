@@ -277,6 +277,84 @@ describe("collapsible-filter", () => {
     expect(community.selected).to.deep.equal([]);
     expect(cleanCalls).to.deep.equal(["region"]);
   });
+
+  it("tells the form about an option change through filter-change only", async () => {
+    // Render the filter inside a form that records both events.
+    const element = await mountInForm("events-form", {
+      name: "region",
+      options: [{ value: "emea", name: "EMEA" }],
+    });
+    const form = element.closest("form");
+    const events = [];
+    form.addEventListener("change", () => events.push("change"));
+    form.addEventListener("filter-change", () => events.push("filter-change"));
+
+    // Tick the option.
+    element.querySelector('input[value="emea"]').click();
+    await element.updateComplete;
+    await element.updateComplete;
+
+    // Verify the form hears one filter-change and no native change.
+    expect(element.selected).to.deep.equal(["emea"]);
+    expect(events).to.deep.equal(["filter-change"]);
+  });
+
+  describe("restoreSelected", () => {
+    it("puts back a scalar selection past the visible items, checked and expanded", async () => {
+      // Render a collapsed filter with nothing selected.
+      const element = await mountInForm("events-form", {
+        name: "distance",
+        options: [
+          { value: "1000", name: "1 km" },
+          { value: "5000", name: "5 km" },
+          { value: "10000", name: "10 km" },
+        ],
+        maxVisibleItems: 1,
+      });
+      const events = [];
+      element.closest("form").addEventListener("change", () => events.push("change"));
+      element.closest("form").addEventListener("filter-change", () => events.push("filter-change"));
+      expect(element.querySelector('input[value="10000"]')).to.equal(null);
+
+      // Restore the selection the server rendered as a number.
+      await element.restoreSelected(10000);
+
+      // Verify the option is rendered, checked and submitted, with no event sent.
+      const input = element.querySelector('input[value="10000"]');
+      expect(element.selected).to.deep.equal(["10000"]);
+      expect(element.isCollapsed).to.equal(false);
+      expect(input?.checked).to.equal(true);
+      expect([...new FormData(element.closest("form")).getAll("distance[]")]).to.deep.equal(["10000"]);
+      expect(events).to.deep.equal([]);
+    });
+
+    it("checks a single selection option again after an untick off phones", async () => {
+      // Render a selected single selection filter.
+      const element = await mountLitComponent("collapsible-filter", {
+        name: "community",
+        options: [
+          { value: "one", name: "One" },
+          { value: "two", name: "Two" },
+        ],
+        selected: ["one"],
+        singleSelection: true,
+      });
+      const input = element.querySelector('input[value="one"]');
+
+      // Untick the selected option, which keeps the selection off phones.
+      input.click();
+      await element.updateComplete;
+      expect(input.checked).to.equal(false);
+      expect(element.selected).to.deep.equal(["one"]);
+
+      // Restore the applied selection.
+      await element.restoreSelected(["one"]);
+
+      // Verify the checkbox matches the selection again.
+      expect(input.checked).to.equal(true);
+      expect(element.querySelector('input[value="two"]').checked).to.equal(false);
+    });
+  });
 });
 
 /**

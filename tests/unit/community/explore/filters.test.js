@@ -10,6 +10,7 @@ import {
   openFiltersDrawer,
   resetFilters,
   resetDateFiltersOnCalendarViewMode,
+  restoreAppliedFilterValues,
   searchOnEnter,
   triggerChangeOnForm,
   unckeckAllKinds,
@@ -358,5 +359,174 @@ describe("explore filters", () => {
     document.querySelector('input[name="ts_query"]').value = "";
     document.querySelector('input[name="date_to"]').value = "2099-12-31";
     expect(hasActiveCalendarFilters("events-form")).to.equal(true);
+  });
+
+  describe("restoreAppliedFilterValues", () => {
+    it("puts each native control kind back to the value its markup declares", () => {
+      // Render the applied controls as the server does.
+      document.body.innerHTML = `
+        <div id="root">
+          <input type="checkbox" name="kind[]" value="virtual" checked />
+          <input type="checkbox" name="kind[]" value="in-person" />
+          <input type="radio" name="view_mode" value="list" checked />
+          <input type="radio" name="view_mode" value="map" />
+          <select id="declared-select">
+            <option value="a">A</option>
+            <option value="b" selected>B</option>
+            <option value="c">C</option>
+          </select>
+          <select id="fallback-select">
+            <option value="x">X</option>
+            <option value="y">Y</option>
+          </select>
+          <input id="text-input" type="text" value="kubecon" />
+          <input id="search-input" type="search" value="cloud" />
+          <input id="date-input" type="date" value="2025-03-01" />
+        </div>
+      `;
+      const root = document.getElementById("root");
+      const [virtualKind, inPersonKind] = root.querySelectorAll('input[name="kind[]"]');
+      const [listMode, mapMode] = root.querySelectorAll('input[name="view_mode"]');
+      const declaredSelect = document.getElementById("declared-select");
+      const fallbackSelect = document.getElementById("fallback-select");
+      const textInput = document.getElementById("text-input");
+      const searchInput = document.getElementById("search-input");
+      const dateInput = document.getElementById("date-input");
+
+      // Change every control as the user would before a failed request.
+      virtualKind.checked = false;
+      inPersonKind.checked = true;
+      mapMode.checked = true;
+      declaredSelect.value = "c";
+      fallbackSelect.value = "y";
+      textInput.value = "rust";
+      searchInput.value = "";
+      dateInput.value = "2025-04-01";
+
+      restoreAppliedFilterValues(root);
+
+      // Verify every control shows the applied value again.
+      expect(virtualKind.checked).to.equal(true);
+      expect(inPersonKind.checked).to.equal(false);
+      expect(listMode.checked).to.equal(true);
+      expect(mapMode.checked).to.equal(false);
+      expect(declaredSelect.value).to.equal("b");
+      expect(fallbackSelect.value).to.equal("x");
+      expect(textInput.value).to.equal("kubecon");
+      expect(searchInput.value).to.equal("cloud");
+      expect(dateInput.value).to.equal("2025-03-01");
+    });
+
+    it("restores custom filters from their selected attribute", () => {
+      // Render one filter with a restore method and one without it.
+      document.body.innerHTML = `
+        <div id="root">
+          <collapsible-filter selected='["cncf"]'></collapsible-filter>
+          <multi-select-filter selected='["group-a","group-b"]'></multi-select-filter>
+          <multi-select-filter id="empty-filter"></multi-select-filter>
+        </div>
+      `;
+      const collapsible = document.querySelector("collapsible-filter");
+      const [multiSelect, emptyFilter] = document.querySelectorAll("multi-select-filter");
+      const restoreCalls = [];
+      collapsible.restoreSelected = (values) => restoreCalls.push(values);
+      multiSelect.selected = ["group-c"];
+      emptyFilter.selected = ["group-d"];
+
+      restoreAppliedFilterValues(document.getElementById("root"));
+
+      // Verify each filter gets the selection the server rendered.
+      expect(restoreCalls).to.deep.equal([["cncf"]]);
+      expect(multiSelect.selected).to.deep.equal(["group-a", "group-b"]);
+      expect(emptyFilter.selected).to.deep.equal([]);
+    });
+
+    it("leaves hidden inputs alone except the sort inputs, which follow the restored selector", () => {
+      // Render the sort controls and a hidden calendar date.
+      document.body.innerHTML = `
+        <div id="root">
+          <select id="sort_selector">
+            <option value="date-asc">Date (asc)</option>
+            <option value="date-desc" selected>Date (desc)</option>
+          </select>
+          <input type="hidden" id="sort_by" name="sort_by" value="date" />
+          <input type="hidden" id="sort_direction" name="sort_direction" value="desc" />
+          <input type="hidden" name="date_from" value="2025-03-01" />
+        </div>
+      `;
+      const selector = document.getElementById("sort_selector");
+      const dateFrom = document.querySelector('input[name="date_from"]');
+
+      // Change the sort and the hidden date as a failed request would leave them.
+      selector.value = "date-asc";
+      updateSortInputsFromSelector(selector, "sort_by", "sort_direction");
+      dateFrom.value = "2025-04-01";
+
+      restoreAppliedFilterValues(document.getElementById("root"));
+
+      // Verify the sort inputs follow the selector and the hidden date stays.
+      expect(selector.value).to.equal("date-desc");
+      expect(document.getElementById("sort_by")?.value).to.equal("date");
+      expect(document.getElementById("sort_direction")?.value).to.equal("desc");
+      expect(dateFrom.value).to.equal("2025-04-01");
+    });
+
+    it("skips native inputs inside custom filters and the kept subtree", () => {
+      // Render a custom filter with its own input and a kept sheet form.
+      document.body.innerHTML = `
+        <div id="root">
+          <collapsible-filter selected="[]">
+            <input type="checkbox" name="region[]" value="europe" />
+          </collapsible-filter>
+          <div id="sheet">
+            <input type="checkbox" name="kind[]" value="virtual" />
+            <multi-select-filter selected='["group-a"]'></multi-select-filter>
+          </div>
+        </div>
+      `;
+      const collapsible = document.querySelector("collapsible-filter");
+      const filterInput = collapsible.querySelector("input");
+      const sheetKind = document.querySelector('#sheet input[name="kind[]"]');
+      const sheetFilter = document.querySelector("#sheet multi-select-filter");
+      collapsible.restoreSelected = () => {};
+      filterInput.checked = true;
+      sheetKind.checked = true;
+      sheetFilter.selected = ["group-b"];
+
+      restoreAppliedFilterValues(document.getElementById("root"), {
+        keep: document.getElementById("sheet"),
+      });
+
+      // Verify the filter input and the kept subtree keep their state.
+      expect(filterInput.checked).to.equal(true);
+      expect(sheetKind.checked).to.equal(true);
+      expect(sheetFilter.selected).to.deep.equal(["group-b"]);
+    });
+
+    it("dispatches no change, input or filter-change event", () => {
+      // Render changed controls under a listening root.
+      document.body.innerHTML = `
+        <form id="root">
+          <input type="checkbox" name="kind[]" value="virtual" checked />
+          <input type="text" name="ts_query" value="kubecon" />
+          <select name="sort"><option value="a" selected>A</option><option value="b">B</option></select>
+          <multi-select-filter selected='["group-a"]'></multi-select-filter>
+        </form>
+      `;
+      const root = document.getElementById("root");
+      root.querySelector('input[type="checkbox"]').checked = false;
+      root.querySelector('input[type="text"]').value = "rust";
+      root.querySelector("select").value = "b";
+      const events = [];
+      ["change", "input", "filter-change"].forEach((type) => {
+        root.addEventListener(type, () => events.push(type), true);
+      });
+
+      restoreAppliedFilterValues(root);
+
+      // Verify the restore stays silent, so no request leaves.
+      expect(events).to.deep.equal([]);
+      expect(htmx.triggerCalls).to.have.length(0);
+    });
   });
 });

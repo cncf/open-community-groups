@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use axum::{
     Extension, Form,
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_messages::Messages;
@@ -175,6 +175,7 @@ pub(crate) async fn user_menu_section(
 /// reserved for the client and username before authenticating and kept only
 /// when the credentials are invalid.
 #[instrument(skip_all)]
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn log_in(
     mut auth_session: AuthSession,
     messages: Messages,
@@ -182,6 +183,7 @@ pub(crate) async fn log_in(
     log_in_failure_limit: Option<Extension<LogInFailureLimit>>,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
+    headers: HeaderMap,
     Form(login_form): Form<LoginForm>,
 ) -> Result<Response, HandlerError> {
     // Sanitize next url
@@ -198,7 +200,9 @@ pub(crate) async fn log_in(
     let reservation = match log_in_failure_limit {
         Some(Extension(limit)) => match limit.reserve(&login_form.username, Instant::now()) {
             Ok(reservation) => Some(reservation),
-            Err(RateLimited { retry_after }) => return Ok(too_many_requests(retry_after)),
+            Err(RateLimited { retry_after }) => {
+                return Ok(too_many_requests(&headers, retry_after));
+            }
         },
         None => None,
     };

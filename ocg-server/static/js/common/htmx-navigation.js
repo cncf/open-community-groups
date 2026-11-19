@@ -19,8 +19,9 @@ export const navigateWithHtmx = (url) => {
   anchor.href = url;
   anchor.setAttribute("hx-boost", "true");
   anchor.style.display = "none";
-  // A body swap removes the anchor with the old page; this covers requests that fail.
-  anchor.addEventListener("htmx:afterRequest", removeAnchor, { signal });
+  // A body swap removes the anchor with the old page; this covers requests that fail. Removal
+  // waits for the events HTMX sends right after this one, so they still reach the document.
+  anchor.addEventListener("htmx:afterRequest", () => queueMicrotask(removeAnchor), { signal });
   // A snapshot saved while the request runs would bring the anchor back once restored.
   document.addEventListener("htmx:beforeHistorySave", removeAnchor, { signal });
 

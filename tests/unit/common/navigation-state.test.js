@@ -128,6 +128,124 @@ describe("navigation state", () => {
     expect(document.querySelector("[data-actions-menu]").open).to.equal(true);
   });
 
+  [
+    ["page", () => document.body],
+    ["dashboard layout", () => document.getElementById("dashboard-layout")],
+  ].forEach(([name, getTarget]) => {
+    describe(`for a ${name} swap`, () => {
+      beforeEach(() => {
+        // Build an open menu, an open modal and a locked page beside the dashboard layout.
+        document.body.innerHTML = `
+          <div id="dashboard-layout"></div>
+          <details data-actions-menu open><summary>Actions</summary></details>
+          <div role="dialog" aria-modal="true" aria-hidden="false"></div>
+        `;
+        document.body.dataset.modalOpenCount = "1";
+        document.body.style.overflow = "hidden";
+        initializeNavigationState();
+      });
+
+      // Dispatch a navigation beforeSwap with the given outcome from the swap target.
+      const dispatchBeforeSwap = (detail) => {
+        const target = getTarget();
+        target.dispatchEvent(
+          new CustomEvent("htmx:beforeSwap", {
+            bubbles: true,
+            detail: { target, ...detail },
+          }),
+        );
+      };
+
+      it("keeps the alert, menus, dialogs and scroll lock when the navigation fails", () => {
+        // Start the swap of a failed request, which HTMX will not perform.
+        dispatchBeforeSwap({ isError: true, shouldSwap: false });
+
+        // The page the failure leaves in place keeps its overlays.
+        expect(swalCloseCount).to.equal(0);
+        expect(document.querySelector("[data-actions-menu]").open).to.equal(true);
+        expect(document.querySelector('[role="dialog"]').getAttribute("aria-hidden")).to.equal("false");
+        expect(document.body.dataset.modalOpenCount).to.equal("1");
+        expect(document.body.style.overflow).to.equal("hidden");
+      });
+
+      [
+        ["a marked not found page", { isError: false, shouldSwap: true }],
+        ["a no content refresh", { isError: false, shouldSwap: false }],
+      ].forEach(([outcome, detail]) => {
+        it(`dismisses the overlays before ${outcome}`, () => {
+          // Start the swap of a request that did not fail.
+          dispatchBeforeSwap(detail);
+
+          // Navigation cleanup runs as for any other navigation.
+          expect(swalCloseCount).to.equal(1);
+          expect(document.querySelector("[data-actions-menu]").open).to.equal(false);
+          expect(document.querySelector('[role="dialog"]').classList.contains("hidden")).to.equal(true);
+          expect(document.body.style.overflow).to.equal("");
+        });
+      });
+    });
+  });
+
+  it("reloads the page once when a history cache miss fails to load", () => {
+    // Register navigation state with an observable reload.
+    let reloads = 0;
+    initializeNavigationState({
+      reloadPage: () => {
+        reloads += 1;
+      },
+    });
+
+    // Fail the refetch of a page missing from the HTMX history cache.
+    document.body.dispatchEvent(new CustomEvent("htmx:historyCacheMissLoadError", { bubbles: true }));
+
+    // The page is loaded again from the server, once.
+    expect(reloads).to.equal(1);
+  });
+
+  [
+    ["reloads the page once when a history cache miss refetch has a network error", "error", 1],
+    ["does not reload the page when a history cache miss refetch loads", "load", 0],
+  ].forEach(([name, outcome, expectedReloads]) => {
+    it(name, () => {
+      // Register navigation state with an observable reload.
+      let reloads = 0;
+      initializeNavigationState({
+        reloadPage: () => {
+          reloads += 1;
+        },
+      });
+
+      // Start the refetch of a page missing from the HTMX history cache.
+      const xhr = new EventTarget();
+      document.body.dispatchEvent(
+        new CustomEvent("htmx:historyCacheMiss", { bubbles: true, detail: { path: "/", xhr } }),
+      );
+
+      // Finish the refetch, then repeat the outcome to prove the listener runs once.
+      xhr.dispatchEvent(new Event(outcome));
+      xhr.dispatchEvent(new Event(outcome));
+
+      // Only a network error loads the page again from the server, once.
+      expect(reloads).to.equal(expectedReloads);
+    });
+  });
+
+  it("does not reload the page after a history restore", () => {
+    // Register navigation state with an observable reload.
+    let reloads = 0;
+    initializeNavigationState({
+      reloadPage: () => {
+        reloads += 1;
+      },
+    });
+
+    // Restore a page from HTMX history.
+    document.body.dispatchEvent(new CustomEvent("htmx:historyRestore", { bubbles: true }));
+
+    // A restored page needs no reload.
+    expect(reloads).to.equal(0);
+  });
+
   it("clears loading classes retained by a history snapshot", () => {
     // Build a restored fragment with request classes on its root and child.
     const root = document.createElement("section");

@@ -87,22 +87,7 @@
        shades in styles.css, and dark primary roles, read by the dark block.
        It sets only --ocg-* names. -#}
     {% let brand_ramp = crate::templates::brand_ramp::BrandRamp::from_theme(&site_settings.theme) -%}
-    <style>
-      :root {
-        {% for (shade, value) in brand_ramp.light -%}
-          --ocg-primary-light-{{ shade }}: {{ value }};
-        {% endfor -%}
-        --ocg-primary-dark-edge: {{ brand_ramp.dark.edge }};
-        --ocg-primary-dark-edge-soft: {{ brand_ramp.dark.edge_soft }};
-        --ocg-primary-dark-fg: {{ brand_ramp.dark.fg }};
-        --ocg-primary-dark-fg-bright: {{ brand_ramp.dark.fg_bright }};
-        --ocg-primary-dark-fg-brighter: {{ brand_ramp.dark.fg_brighter }};
-        --ocg-primary-dark-fill: {{ brand_ramp.dark.fill }};
-        --ocg-primary-dark-fill-deep: {{ brand_ramp.dark.fill_deep }};
-        --ocg-primary-dark-tint: {{ brand_ramp.dark.tint }};
-        --ocg-primary-dark-tint-strong: {{ brand_ramp.dark.tint_strong }};
-      }
-    </style>
+    {% include "common/brand_ramp_style.html" %}
 
     {# End styles -#}
 

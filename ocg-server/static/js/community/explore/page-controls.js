@@ -6,6 +6,7 @@ import {
   openFiltersDrawer,
   resetDateFiltersOnCalendarViewMode,
   resetFilters,
+  restoreAppliedFilterValues,
   searchOnEnter,
   triggerChangeOnForm,
   unckeckAllKinds,
@@ -38,6 +39,7 @@ import {
   ExploreFetchError,
   isAbortError,
   reportFetchError,
+  reportRequestError,
 } from "/static/js/community/explore/results.js";
 
 const EXPLORE_CONTROLS_READY_KEY = "exploreControlsReady";
@@ -71,7 +73,12 @@ const DRAWER_FILTERS_ID = "drawer-filters";
 const ENTITY_SECTION_ID = "entity-section";
 const ENTITY_SWITCH_PRESSED_SELECTOR = '[role="group"][aria-label="Show"] [aria-pressed="true"]';
 const ENTITY_SWITCH_REQUEST_SELECTOR = '[role="group"][aria-label="Show"] button[hx-get]';
-const FILTER_SECTION_SYNC = "closest #entity-section:replace";
+const EXPLORE_RESULTS_HEADER_ID = "explore-results-header";
+const FILTER_SHEET_STATUS = Object.freeze({
+  applying: "applying",
+  editing: "editing",
+  failed: "failed",
+});
 const FILTER_STATUS_ID = "explore-filter-status";
 const OPEN_FILTERS_ID = "open-filters";
 const RESULTS_EMPTY_SELECTOR = "[data-results-empty]";
@@ -86,6 +93,8 @@ let appliedFiltersExpanded = false;
 let calendarModule = null;
 
 // Phone filter sheet held open, or null. Teardown keys on this, never on the viewport width.
+// `pending` marks choices the results do not reflect yet; they live only while the sheet is open.
+// `status` is editing, applying (its request is in flight) or failed (that request failed).
 let filterSheet = null;
 
 // Focus to place once the next section swap settles.
@@ -96,10 +105,6 @@ let filterFocus = null;
 
 // Whether focus was in the tablet drawer's form when it sent the pending request.
 let drawerFilterFocus = false;
-
-// Drawers holding choices the results do not reflect yet. A swap replaces the drawer, so
-// entries clear themselves.
-const pendingDrawers = new WeakSet();
 
 // Filters a refresh took out of the sheet's form, kept for the history snapshot. A swap replaces
 // the form, so entries clear themselves.
@@ -212,9 +217,6 @@ const handleExploreClick = (event) => {
   const entitySwitch = closestElement(event.target, ENTITY_SWITCH_REQUEST_SELECTOR);
   if (entitySwitch && isPhoneViewport()) {
     settleFocus = { switchLabel: entitySwitch.textContent.trim() };
-    document.addEventListener("htmx:responseError", handleEntitySwitchRequestEnd);
-    document.addEventListener("htmx:sendAbort", handleEntitySwitchRequestEnd);
-    document.addEventListener("htmx:sendError", handleEntitySwitchRequestEnd);
     return;
   }
 
@@ -322,7 +324,6 @@ const handleExploreHistoryRestore = async () => {
   if (isPhoneViewport()) {
     resetFilterSheet();
     releaseChipRemoval();
-    releaseEntitySwitchPress();
     if (applyPhoneViewMode()) {
       return;
     }
@@ -451,6 +452,9 @@ const initializeExploreControls = (root = document) => {
   root.addEventListener("htmx:historyRestore", handleExploreHistoryRestore);
   root.addEventListener("htmx:beforeRequest", handleFilterFocusCapture);
   root.addEventListener("htmx:afterSettle", handleFilterFocusRestore);
+  root.addEventListener("htmx:responseError", handleSectionRequestError);
+  root.addEventListener("htmx:sendError", handleSectionRequestError);
+  root.addEventListener("htmx:timeout", handleSectionRequestError);
   initializePhoneControls();
   if (applyPhoneViewMode()) {
     return;
@@ -466,7 +470,7 @@ const applyFilterSheet = () => {
   const { drawer, refreshRequest } = filterSheet;
   const form = drawer.querySelector(FILTER_FORM_SELECTOR);
 
-  filterSheet.applying = true;
+  filterSheet.status = FILTER_SHEET_STATUS.applying;
   refreshRequest.cancel();
   setFilterSheetBusy(drawer, false);
   setApplyFiltersDisabled(drawer, true);
@@ -508,50 +512,43 @@ const announceFilterChange = (message) => {
 };
 
 /**
- * Reads the filter values of a form, to put them back if a removal fails.
- * @param {HTMLFormElement} form - Form holding the applied state
- * @returns {Function} Puts the values back
- */
-const captureFilterValues = (form) => {
-  const filters = [...form.querySelectorAll("collapsible-filter, multi-select-filter")].map((filter) => [
-    filter,
-    filter.selected,
-  ]);
-  const inputs = [...form.querySelectorAll("input[type=checkbox], input[type=radio]")].map((input) => [
-    input,
-    input.checked,
-  ]);
-
-  return () => {
-    filters.forEach(([filter, selected]) => {
-      filter.selected = selected;
-    });
-    inputs.forEach(([input, checked]) => {
-      input.checked = checked;
-    });
-  };
-};
-
-/**
  * Closes the phone filter sheet, applying pending choices first. The sheet then stays open
- * until the swap replaces it, so a failed request keeps the choices on screen.
+ * until the swap replaces it, so a failed request keeps the choices on screen. After a failed
+ * apply only Show results tries again: any other close drops the choices.
  * @param {object} [options] - Close options
  * @param {boolean} [options.retry=false] - Whether to apply again after a failed request
  */
 const closeFilterSheet = ({ retry = false } = {}) => {
-  if (!filterSheet || filterSheet.applying) {
+  if (!filterSheet || filterSheet.status === FILTER_SHEET_STATUS.applying) {
     return;
   }
 
-  const { drawer, failed } = filterSheet;
-  if (pendingDrawers.has(drawer) && (retry || !failed)) {
+  const { drawer, pending, status } = filterSheet;
+  if (pending && (retry || status !== FILTER_SHEET_STATUS.failed)) {
     applyFilterSheet();
     return;
   }
 
   releaseFilterSheet();
+  // A failed apply closed without a retry: the sheet reopens on the applied state
+  if (status === FILTER_SHEET_STATUS.failed) {
+    discardFilterSheetChoices(drawer);
+  }
   settleFocus = null;
   restoreModalFocus(drawer);
+};
+
+/**
+ * Drops the unapplied choices of a sheet closed without a retry, so it reopens on the applied
+ * state and closing it again sends nothing.
+ * @param {HTMLElement} drawer - Released sheet element
+ */
+const discardFilterSheetChoices = (drawer) => {
+  restoreAppliedFilters();
+  const form = drawer.querySelector(FILTER_FORM_SELECTOR);
+  if (form) {
+    restoreAppliedFilterValues(form);
+  }
 };
 
 /**
@@ -674,41 +671,6 @@ const getFilterFormQuery = (form) => {
 };
 
 /**
- * Recovers from a failed chip removal: the form returns to the applied state, so the chip works
- * again and the next request cannot carry the removal. An open sheet reports the failure itself.
- * @param {CustomEvent} event - HTMX error event
- */
-const handleChipRemovalError = (event) => {
-  if (!closestElement(event.target, FILTER_FORM_SELECTOR)) {
-    return;
-  }
-
-  const { restoreFilterValues } = chipRemoval;
-  releaseChipRemoval();
-  settleFocus = null;
-  restoreFilterValues();
-  if (!filterSheet) {
-    reportFetchError({});
-  }
-};
-
-/**
- * Ends a switch press whose request will not swap, reporting a failure. The page stays on the side
- * it shows, focus stays on the pressed button, and an open sheet reports the failure itself.
- * @param {CustomEvent} event - HTMX error or abort event
- */
-const handleEntitySwitchRequestEnd = (event) => {
-  if (!closestElement(event.target, ENTITY_SWITCH_REQUEST_SELECTOR)) {
-    return;
-  }
-
-  releaseEntitySwitchPress();
-  if (event.type !== "htmx:sendAbort" && !filterSheet) {
-    reportFetchError({});
-  }
-};
-
-/**
  * Remembers the sidebar filter control that has focus when its form sends a request, because
  * the section swap replaces the control and htmx only restores focus by id. The tablet drawer
  * comes back closed from the swap, so its form only records that focus was inside it. Any other
@@ -761,8 +723,9 @@ const handleFilterSheetConfirm = (event) => {
   }
 
   event.preventDefault();
-  pendingDrawers.add(filterSheet.drawer);
-  filterSheet.failed = false;
+  // A new choice after a failed apply is a new attempt
+  filterSheet.pending = true;
+  filterSheet.status = FILTER_SHEET_STATUS.editing;
 
   // A refresh in flight left this choice out, and its markup would drop it.
   if (event.target.getAttribute("aria-busy") === "true") {
@@ -771,29 +734,27 @@ const handleFilterSheetConfirm = (event) => {
 };
 
 /**
- * Reports a failed section request. The sheet stays open and keeps its choices.
- * @param {CustomEvent} event - HTMX error event
+ * Closes the filter sheet before a history snapshot. An apply in flight keeps its choices and
+ * the focus return to Filters, as its own swap settles them. Otherwise paging pushed the URL and
+ * kept the drawer, so no section swap returns focus, and choices no request carries are dropped
+ * once the clone is taken, so the sheet reopens on the applied state.
  */
-const handleFilterSheetError = (event) => {
-  if (!filterSheet || !closestElement(event.target, `#${ENTITY_SECTION_ID}`)) {
+const handleFilterSheetHistorySave = () => {
+  const { drawer, pending, status } = filterSheet;
+  releaseFilterSheet();
+  if (status === FILTER_SHEET_STATUS.applying) {
     return;
   }
 
-  reportFetchError({});
-  if (!filterSheet.applying) {
-    return;
-  }
-
-  const { drawer, unbindGestures } = filterSheet;
   settleFocus = null;
-  filterSheet.applying = false;
-  filterSheet.failed = true;
-  setApplyFiltersDisabled(drawer, false);
-  document.addEventListener("htmx:confirm", handleFilterSheetConfirm);
-
-  // A close request uses up the watcher, so Back needs a new one.
-  unbindGestures();
-  filterSheet.unbindGestures = bindSheetGestures(drawer);
+  if (pending) {
+    // Runs after the snapshot's own microtask has put the pending choices back
+    queueMicrotask(() => {
+      if (drawer.isConnected) {
+        discardFilterSheetChoices(drawer);
+      }
+    });
+  }
 };
 
 /**
@@ -816,12 +777,19 @@ const handleFilterSheetKeydown = (event) => {
 };
 
 /**
- * Resets the filter sheet when the browser restores the page from its back-forward cache.
+ * Resets the filter sheet when the browser restores the page from its back-forward cache, and
+ * drops the choices it held, so it reopens on the applied state.
  * @param {PageTransitionEvent} event - Page show event
  */
 const handleFilterSheetPageShow = (event) => {
-  if (event.persisted) {
-    resetFilterSheet();
+  if (!event.persisted || !filterSheet) {
+    return;
+  }
+
+  const { drawer, pending } = filterSheet;
+  resetFilterSheet();
+  if (pending) {
+    discardFilterSheetChoices(drawer);
   }
 };
 
@@ -849,7 +817,6 @@ const handlePhoneAfterSettle = (event) => {
     releaseChipRemoval();
     setPhoneAttributes();
     placeSettleFocus();
-    releaseEntitySwitchPress();
   }
 };
 
@@ -873,10 +840,40 @@ const handlePhoneQueryChange = (event) => {
   leaveFilterSheet();
   restoreAppliedFilters();
   releaseChipRemoval();
-  releaseEntitySwitchPress();
   settleFocus = null;
   appliedFiltersExpanded = false;
   removePhoneAttributes();
+};
+
+/**
+ * Owns every failed request for the results section, on every viewport: the controls return to
+ * the applied state and the failure is reported once, with the server's wait message when it is
+ * one. An aborted request stays silent because the request that replaced it reports. A request
+ * whose element a later swap removed never reaches this listener, so it cannot restore over
+ * newer results.
+ * @param {CustomEvent} event - HTMX response error, send error or timeout event
+ */
+const handleSectionRequestError = (event) => {
+  const { target, xhr } = event.detail ?? {};
+  if (!(target instanceof Element)) {
+    return;
+  }
+
+  // Paging changes no control, so there is nothing to restore
+  if (target.id === CARDS_LIST_ID) {
+    reportRequestError(xhr);
+    return;
+  }
+  if (target.id !== ENTITY_SECTION_ID) {
+    return;
+  }
+
+  const failedApply = filterSheet?.status === FILTER_SHEET_STATUS.applying;
+  restoreAppliedState();
+  if (failedApply) {
+    markFilterSheetFailed();
+  }
+  reportRequestError(xhr);
 };
 
 /**
@@ -902,20 +899,39 @@ const initializePhoneControls = () => {
 };
 
 /**
- * Closes the sheet when the phone layout goes away, keeping its pending choices.
+ * Closes the sheet when the phone layout goes away. Pending choices are applied, unless their
+ * apply already failed: those are dropped, as a close without a retry drops them. An apply in
+ * flight goes on, and its failure is handled as any other section failure.
  */
 const leaveFilterSheet = () => {
   if (!filterSheet) {
     return;
   }
 
-  const { applying, drawer } = filterSheet;
+  const { drawer, pending, status } = filterSheet;
   const form = drawer.querySelector(FILTER_FORM_SELECTOR);
   releaseFilterSheet();
   restoreModalFocus(drawer);
-  if (pendingDrawers.has(drawer) && !applying) {
+  if (status === FILTER_SHEET_STATUS.failed) {
+    discardFilterSheetChoices(drawer);
+  } else if (pending && status === FILTER_SHEET_STATUS.editing) {
     triggerChangeOnForm(form.id);
   }
+};
+
+/**
+ * Lets the sheet try again after its apply failed: Show results works, and new choices are held
+ * back again.
+ */
+const markFilterSheetFailed = () => {
+  const { drawer, unbindGestures } = filterSheet;
+  filterSheet.status = FILTER_SHEET_STATUS.failed;
+  setApplyFiltersDisabled(drawer, false);
+  document.addEventListener("htmx:confirm", handleFilterSheetConfirm);
+
+  // A close request uses up the watcher, so Back needs a new one.
+  unbindGestures();
+  filterSheet.unbindGestures = bindSheetGestures(drawer);
 };
 
 /**
@@ -933,17 +949,15 @@ const openFilterSheet = (trigger) => {
   setFilterSheetSemantics(drawer, true);
   focusModal(drawer, trigger);
   filterSheet = {
-    applying: false,
     drawer,
-    failed: false,
+    pending: false,
     refreshRequest: createLatestRequest(),
+    status: FILTER_SHEET_STATUS.editing,
     unbindGestures: bindSheetGestures(drawer),
     unbindKeyboard: bindModalDismissListeners({ onKeydown: handleFilterSheetKeydown }),
   };
-  document.addEventListener("htmx:beforeHistorySave", releaseFilterSheet);
+  document.addEventListener("htmx:beforeHistorySave", handleFilterSheetHistorySave);
   document.addEventListener("htmx:confirm", handleFilterSheetConfirm);
-  document.addEventListener("htmx:responseError", handleFilterSheetError);
-  document.addEventListener("htmx:sendError", handleFilterSheetError);
   window.addEventListener("pageshow", handleFilterSheetPageShow);
 };
 
@@ -1018,6 +1032,7 @@ const refreshFilterSheetForm = async (form) => {
     const response = await ocgFetch(`${path}?${getFilterFormQuery(form)}`, { signal });
     if (!response.ok) {
       throw new ExploreFetchError(`Failed to refresh filters (status ${response.status})`, {
+        headers: response.headers,
         responseText: await response.text().catch(() => ""),
         status: response.status,
       });
@@ -1039,24 +1054,10 @@ const refreshFilterSheetForm = async (form) => {
 };
 
 /**
- * Stops waiting for chip removals, once their swap settled or their request failed.
+ * Forgets the tapped chips, once their swap settled, their request failed or the page changed.
  */
 const releaseChipRemoval = () => {
   chipRemoval = null;
-  document.removeEventListener("htmx:responseError", handleChipRemovalError);
-  document.removeEventListener("htmx:sendError", handleChipRemovalError);
-};
-
-/**
- * Stops waiting for a switch press, once its swap settled or its request ended without one.
- */
-const releaseEntitySwitchPress = () => {
-  document.removeEventListener("htmx:responseError", handleEntitySwitchRequestEnd);
-  document.removeEventListener("htmx:sendAbort", handleEntitySwitchRequestEnd);
-  document.removeEventListener("htmx:sendError", handleEntitySwitchRequestEnd);
-  if (settleFocus?.switchLabel) {
-    settleFocus = null;
-  }
 };
 
 /**
@@ -1073,10 +1074,8 @@ const releaseFilterSheet = () => {
   refreshRequest.cancel();
   unbindKeyboard();
   unbindGestures();
-  document.removeEventListener("htmx:beforeHistorySave", releaseFilterSheet);
+  document.removeEventListener("htmx:beforeHistorySave", handleFilterSheetHistorySave);
   document.removeEventListener("htmx:confirm", handleFilterSheetConfirm);
-  document.removeEventListener("htmx:responseError", handleFilterSheetError);
-  document.removeEventListener("htmx:sendError", handleFilterSheetError);
   window.removeEventListener("pageshow", handleFilterSheetPageShow);
   setFilterSheetBusy(drawer, false);
   setApplyFiltersDisabled(drawer, false);
@@ -1098,12 +1097,7 @@ const removeAppliedFilter = (chip, formId) => {
     return;
   }
 
-  if (!chipRemoval) {
-    chipRemoval = { chips: new Set(), restoreFilterValues: captureFilterValues(form) };
-    document.addEventListener("htmx:responseError", handleChipRemovalError);
-    document.addEventListener("htmx:sendError", handleChipRemovalError);
-  }
-
+  chipRemoval ??= { chips: new Set() };
   settleFocus = {
     chipIndex: [...document.querySelectorAll(APPLIED_FILTER_SELECTOR)].indexOf(chip),
     chipLabel: chip.textContent.trim(),
@@ -1117,7 +1111,6 @@ const removeAppliedFilter = (chip, formId) => {
  * Removes the attributes set on shared nodes for phones.
  */
 const removePhoneAttributes = () => {
-  document.querySelectorAll(FILTER_FORM_SELECTOR).forEach((form) => form.removeAttribute("hx-sync"));
   getElementById(document, RESULTS_ID)?.removeAttribute("tabindex");
   getElementById(document, SEARCH_INPUT_ID)?.removeAttribute("enterkeyhint");
   showAllAppliedFilters();
@@ -1179,6 +1172,30 @@ const restoreAppliedFilters = () => {
 
   appliedFilterNodes.delete(form);
   placeFiltersAroundCommunity(form, nodes);
+};
+
+/**
+ * Puts the section's controls back to the state the server last rendered, after a request that
+ * failed. This drops the change the user just made on purpose: the results, count, chips and URL
+ * still show the applied state, and the next request must not carry a change that failed.
+ * An open phone sheet keeps its choices, so Show results can retry them.
+ */
+const restoreAppliedState = () => {
+  const keep = filterSheet?.drawer ?? null;
+  // A closed sheet drops what a refresh put in it
+  if (!keep) {
+    restoreAppliedFilters();
+  }
+  [...document.querySelectorAll(FILTER_FORM_SELECTOR), getElementById(document, EXPLORE_RESULTS_HEADER_ID)]
+    .filter(Boolean)
+    .forEach((root) => restoreAppliedFilterValues(root, { keep }));
+  syncCalendarDates();
+
+  // Drop the state tied to the failed action
+  settleFocus = null;
+  releaseChipRemoval();
+  filterFocus = null;
+  drawerFilterFocus = false;
 };
 
 /**
@@ -1268,16 +1285,21 @@ const setFilterSheetSemantics = (drawer, open) => {
 };
 
 /**
- * Sets the attributes phones need on shared nodes, at init and after every swap. Both forms get
- * the sync, because chips act on the hidden desktop form: a second chip tap replaces the first
- * request instead of being lost. The Active filters chips are fitted on one line.
+ * Sets the attributes phones need on shared nodes, at init and after every swap: the search key
+ * hint, and the Active filters chips fitted on one line.
  */
 const setPhoneAttributes = () => {
-  document.querySelectorAll(FILTER_FORM_SELECTOR).forEach((form) => {
-    form.setAttribute("hx-sync", FILTER_SECTION_SYNC);
-  });
   getElementById(document, SEARCH_INPUT_ID)?.setAttribute("enterkeyhint", SEARCH_KEY_HINT);
   fitAppliedFilters();
+};
+
+/**
+ * Puts the hidden date inputs back on the month the calendar shows, when it shows one.
+ */
+const syncCalendarDates = () => {
+  if (document.querySelector(CALENDAR_DATA_SELECTOR)) {
+    calendarModule?.Calendar._instance?.syncDateInputs();
+  }
 };
 
 initializeExploreControls();

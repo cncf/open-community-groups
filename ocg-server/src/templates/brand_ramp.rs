@@ -6,6 +6,8 @@
 //! `styles.src.css` read the light shades, with the azure ramp as their
 //! fallback, and the dark block reads the dark roles.
 
+use std::sync::LazyLock;
+
 use cached::cached;
 
 use crate::types::site::Theme;
@@ -44,6 +46,10 @@ pub(crate) const DARK_RAISED: &str = "#201d1b";
 
 /// Dark `surface` color, mirroring the dark block in `styles.src.css`.
 pub(crate) const DARK_SURFACE: &str = "#181514";
+
+/// Ramp of the default theme, solved on first use.
+static DEFAULT_RAMP: LazyLock<BrandRamp> =
+    LazyLock::new(|| BrandRamp::from_theme(&Theme::default()));
 
 /// Highest chroma of `edge_soft`.
 const EDGE_SOFT_MAX_CHROMA: f64 = 0.10;
@@ -92,6 +98,12 @@ pub(crate) struct BrandRamp {
 }
 
 impl BrandRamp {
+    /// Returns the ramp of the default theme, solved once, for pages rendered
+    /// without site settings.
+    pub(crate) fn default_ramp() -> &'static Self {
+        &DEFAULT_RAMP
+    }
+
     /// Builds the brand ramp from the site theme.
     ///
     /// Each standard shade takes the palette value verbatim when present, even

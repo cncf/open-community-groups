@@ -10,7 +10,7 @@ use axum::{
     extract::{ConnectInfo, Query},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, LOCATION, RETRY_AFTER, SET_COOKIE},
+        header::{ACCEPT, CACHE_CONTROL, CONTENT_TYPE, COOKIE, LOCATION, RETRY_AFTER, SET_COOKIE},
     },
     response::IntoResponse,
 };
@@ -530,6 +530,61 @@ async fn test_log_in_observe_mode_skips_failure_limit_over_the_log_in_limit() {
     let failures = window.limit(Limit::LogInFailures);
     assert_eq!(failures.requests, 1);
     assert_eq!(failures.over_limit, 0);
+}
+
+#[tokio::test]
+async fn test_log_in_rejects_exhausted_failures_with_the_page_for_browser_forms() {
+    // Setup database mock allowing only the session read
+    let session_id = session::Id::default();
+    let mut db = MockDB::new();
+    expect_stored_session(&mut db, sample_empty_session_record(session_id));
+    db.expect_get_user_by_username().never();
+    db.expect_create_session().never();
+    db.expect_delete_session().never();
+    db.expect_update_session().never();
+
+    // Setup router with an enforcing limiter allowing one failure per pair
+    let rate_limiter = log_in_failures_rate_limiter(RateLimitMode::Enforce);
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+
+    // Spend the failed attempt budget of the pair
+    rate_limiter
+        .log_in_failure_limit(LOG_IN_CLIENT)
+        .reserve("test-user", Instant::now())
+        .expect("first failed attempt to be allowed")
+        .record_failure();
+
+    // Send a browser form submission for the exhausted pair
+    let mut request = log_in_request(session_id, "username=test-user&password=secret-password");
+    request.headers_mut().insert(
+        ACCEPT,
+        HeaderValue::from_static("text/html,application/xhtml+xml,*/*;q=0.8"),
+    );
+    request
+        .headers_mut()
+        .insert("sec-fetch-mode", HeaderValue::from_static("navigate"));
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the uncacheable page is returned without writing the session
+    assert_eq!(parts.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(parts.headers.get(RETRY_AFTER).unwrap(), "3600");
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_NO_STORE
+    );
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        "text/html; charset=utf-8"
+    );
+    assert!(!parts.headers.contains_key(SET_COOKIE));
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(
+        body.contains("Too many requests from your network. Please wait 60 minutes and try again.")
+    );
 }
 
 #[tokio::test]

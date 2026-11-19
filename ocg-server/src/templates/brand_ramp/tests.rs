@@ -360,6 +360,20 @@ fn test_dark_variant_applies_on_screen_only() {
 }
 
 #[test]
+fn test_default_ramp_matches_default_theme() {
+    // Build the default ramp and the ramp of the default theme
+    let default_ramp = BrandRamp::default_ramp();
+    let expected = BrandRamp::from_theme(&Theme::default());
+
+    // Check both ramps carry the same shades and roles
+    assert_eq!(default_ramp.light, expected.light);
+    assert_eq!(role_values(&default_ramp.dark), role_values(&expected.dark));
+
+    // Check every call shares the ramp solved once
+    assert!(std::ptr::eq(default_ramp, BrandRamp::default_ramp()));
+}
+
+#[test]
 fn test_from_theme_pins_azure_dark_roles() {
     // Setup role cases from the default theme: (role, solved value, expected value)
     let dark = BrandRamp::from_theme(&Theme::default()).dark;

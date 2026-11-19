@@ -12,7 +12,7 @@ use axum::{
     extract::ConnectInfo,
     http::{
         Method, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, ORIGIN, RETRY_AFTER, SET_COOKIE},
+        header::{ACCEPT, CACHE_CONTROL, CONTENT_TYPE, ORIGIN, RETRY_AFTER, SET_COOKIE},
     },
     middleware,
     routing::{get, post},
@@ -24,9 +24,12 @@ use crate::{
     activity_tracker::{Activity, MockActivityTracker},
     config::{HttpServerConfig, LoginOptions, RateLimitBudget, RateLimitBudgets, RateLimitMode},
     db::mock::MockDB,
-    handlers::tests::{
-        TestRouterBuilder, authenticated_request, request, sample_rate_limiter, sample_server_cfg,
-        send,
+    handlers::{
+        rate_limit::RATE_LIMITED_HEADER,
+        tests::{
+            TestRouterBuilder, authenticated_request, request, sample_rate_limiter,
+            sample_server_cfg, send,
+        },
     },
     router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE},
     services::rate_limit::{IpLimit, Limit, LogInFailureLimit, RateLimiter, client_ip::ClientKey},
@@ -40,6 +43,9 @@ const ALL_LOGIN_OPTIONS: LoginOptions = LoginOptions {
     github: true,
     linuxfoundation: true,
 };
+
+/// Accept header a browser sends on a document navigation.
+const BROWSER_ACCEPT: &str = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 
 /// TCP peer address of the test client.
 const CLIENT_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 7)), 40_000);
@@ -139,8 +145,91 @@ async fn test_limit_requests_answers_exhausted_keys_before_the_session_layers() 
                     "text/plain; charset=utf-8",
                     "{case} {variant}"
                 );
+                assert_eq!(
+                    parts.headers.get(RATE_LIMITED_HEADER).unwrap(),
+                    "true",
+                    "{case} {variant}"
+                );
                 assert_eq!(bytes, PERIOD_REJECTION_BODY, "{case} {variant}");
             }
+
+            // Check the rejection wrote no session
+            assert!(parts.headers.get(SET_COOKIE).is_none(), "{case} {variant}");
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_limit_requests_answers_exhausted_navigations_with_the_page_before_the_session_layers()
+{
+    for route in LIMITED_ROUTES
+        .into_iter()
+        .filter(|route| route.limit != IpLimit::Views)
+    {
+        // Setup the route's request method and case label
+        let method = match route.method {
+            RouteMethod::Get => "GET",
+            RouteMethod::Post => "POST",
+        };
+        let case = format!("{method} {}", route.path);
+
+        // Setup the router with a database that expects no calls
+        let rate_limiter = sample_rate_limiter(single_request_budgets(), RateLimitMode::Enforce);
+        let router = TestRouterBuilder::new(MockDB::new())
+            .with_rate_limiter(rate_limiter.clone())
+            .with_server_cfg(site_server_cfg())
+            .build()
+            .await;
+
+        // Spend the only token of the client for the route's limit
+        let verdict = rate_limiter.check(route.limit, CLIENT_KEY, Instant::now());
+        assert_eq!(verdict, Verdict::Allow, "{case}");
+
+        // Run same-origin browser navigations from the client, with and without a session cookie
+        let uri = concrete_uri(route.path);
+        let requests = [
+            ("without a session cookie", request(method, &uri)),
+            (
+                "with a session cookie",
+                authenticated_request(method, &uri, session::Id::default()),
+            ),
+        ];
+        for (variant, request) in requests {
+            let request = request
+                .header(ACCEPT, BROWSER_ACCEPT)
+                .header(ORIGIN, SITE_ORIGIN)
+                .header("sec-fetch-mode", "navigate")
+                .body(Body::empty())
+                .unwrap();
+            let (parts, bytes) = send(router.clone(), with_client(request)).await;
+
+            // Check the rejection is the uncacheable page, without the plain-text marker
+            assert_eq!(
+                parts.status,
+                StatusCode::TOO_MANY_REQUESTS,
+                "{case} {variant}"
+            );
+            assert_eq!(
+                parts.headers.get(RETRY_AFTER).unwrap(),
+                PERIOD_SECS.to_string().as_str(),
+                "{case} {variant}"
+            );
+            assert_eq!(
+                parts.headers.get(CACHE_CONTROL).unwrap(),
+                CACHE_CONTROL_NO_STORE,
+                "{case} {variant}"
+            );
+            assert_eq!(
+                parts.headers.get(CONTENT_TYPE).unwrap(),
+                "text/html; charset=utf-8",
+                "{case} {variant}"
+            );
+            assert!(
+                parts.headers.get(RATE_LIMITED_HEADER).is_none(),
+                "{case} {variant}"
+            );
+            let body = String::from_utf8(bytes.to_vec()).unwrap();
+            assert!(body.contains(PERIOD_REJECTION_BODY), "{case} {variant}");
 
             // Check the rejection wrote no session
             assert!(parts.headers.get(SET_COOKIE).is_none(), "{case} {variant}");

@@ -231,7 +231,7 @@ pub(super) async fn limit_requests(
     if let Verdict::Reject { retry_after } = verdict {
         return match limit {
             IpLimit::Views => StatusCode::NO_CONTENT.into_response(),
-            _ => too_many_requests(retry_after),
+            _ => too_many_requests(request.headers(), retry_after),
         };
     }
 
