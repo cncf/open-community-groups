@@ -174,9 +174,10 @@ impl Config {
         // Validate database transport security before starting dependent services
         self.db.validate()?;
 
-        // Validate operational bounds owned by the server and email sections
+        // Validate operational bounds owned by the server, email, and image storage sections
         self.server.validate()?;
         self.email.smtp.validate()?;
+        self.images.validate()?;
 
         // Require badge signing because public credentials and status lists are always mounted
         let badges_cfg = self
@@ -246,6 +247,16 @@ pub(crate) enum ImageStorageConfig {
     S3(ImageStorageConfigS3),
 }
 
+impl ImageStorageConfig {
+    /// Validate the configured image storage provider.
+    fn validate(&self) -> Result<()> {
+        match self {
+            Self::Db => Ok(()),
+            Self::S3(cfg) => cfg.validate(),
+        }
+    }
+}
+
 /// Configuration for S3-compatible image storage providers.
 #[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct ImageStorageConfigS3 {
@@ -258,10 +269,41 @@ pub(crate) struct ImageStorageConfigS3 {
     /// Secret access key used for authentication.
     pub secret_access_key: String,
 
+    /// Deadline in seconds for establishing an S3 connection.
+    #[serde(default = "default_connect_timeout_secs")]
+    pub connect_timeout_secs: u64,
     /// Optional custom endpoint to support non-AWS providers.
     pub endpoint: Option<String>,
     /// Use path-style requests for compatibility with certain providers.
     pub force_path_style: Option<bool>,
+    /// Deadline in seconds for one complete S3 request, including the response body.
+    #[serde(default = "default_request_timeout_secs")]
+    pub request_timeout_secs: u64,
+}
+
+impl ImageStorageConfigS3 {
+    /// Returns the deadline for establishing an S3 connection.
+    pub(crate) fn connect_timeout(&self) -> Duration {
+        Duration::from_secs(self.connect_timeout_secs)
+    }
+
+    /// Returns the deadline for one complete S3 request, including the response body.
+    pub(crate) fn request_timeout(&self) -> Duration {
+        Duration::from_secs(self.request_timeout_secs)
+    }
+
+    /// Validate S3 image storage deadlines.
+    fn validate(&self) -> Result<()> {
+        if self.connect_timeout_secs == 0 {
+            bail!("images.connect_timeout_secs must be >= 1");
+        }
+
+        if self.request_timeout_secs == 0 {
+            bail!("images.request_timeout_secs must be >= 1");
+        }
+
+        Ok(())
+    }
 }
 
 impl fmt::Debug for ImageStorageConfigS3 {
@@ -271,8 +313,10 @@ impl fmt::Debug for ImageStorageConfigS3 {
             .field("bucket", &self.bucket)
             .field("region", &self.region)
             .field("secret_access_key", &REDACTED_CONFIG_VALUE)
+            .field("connect_timeout_secs", &self.connect_timeout_secs)
             .field("endpoint", &self.endpoint)
             .field("force_path_style", &self.force_path_style)
+            .field("request_timeout_secs", &self.request_timeout_secs)
             .finish()
     }
 }

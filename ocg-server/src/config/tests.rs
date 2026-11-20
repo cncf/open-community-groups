@@ -378,6 +378,57 @@ fn test_http_server_config_rejects_zero_max_blocking_concurrency() {
 }
 
 #[test]
+fn test_image_storage_config_s3_defaults_deadlines() {
+    // Setup an S3 image storage section that omits both deadlines
+    let cfg: ImageStorageConfig = serde_json::from_value(json!({
+        "provider": "s3",
+        "access_key_id": "s3-access-key-id",
+        "bucket": "images",
+        "region": "eu-west-1",
+        "secret_access_key": "s3-sensitive-value",
+    }))
+    .unwrap();
+
+    // Check the documented defaults apply and pass validation
+    let ImageStorageConfig::S3(s3_cfg) = cfg else {
+        panic!("expected S3 image storage configuration");
+    };
+    assert_eq!(s3_cfg.connect_timeout(), Duration::from_secs(10));
+    assert_eq!(s3_cfg.request_timeout(), Duration::from_secs(30));
+    assert!(s3_cfg.validate().is_ok());
+}
+
+#[test]
+fn test_image_storage_config_s3_rejects_zero_timeouts() {
+    type Change = fn(&mut ImageStorageConfigS3);
+
+    // (case, setting change, expected error)
+    let cases: [(&str, Change, &str); 2] = [
+        (
+            "zero connect timeout",
+            |cfg| cfg.connect_timeout_secs = 0,
+            "images.connect_timeout_secs must be >= 1",
+        ),
+        (
+            "zero request timeout",
+            |cfg| cfg.request_timeout_secs = 0,
+            "images.request_timeout_secs must be >= 1",
+        ),
+    ];
+
+    for (case, change, expected) in cases {
+        let mut cfg = sample_config();
+        let ImageStorageConfig::S3(s3_cfg) = &mut cfg.images else {
+            unreachable!();
+        };
+        change(s3_cfg);
+
+        // Check root startup validation rejects the zero deadline
+        assert_eq!(cfg.validate().unwrap_err().to_string(), expected, "{case}");
+    }
+}
+
+#[test]
 fn test_meetings_config_meeting_limits_by_provider_includes_zoom_limits() {
     let meetings_cfg = sample_config().meetings.unwrap();
 
@@ -1008,14 +1059,7 @@ fn sample_config() -> Config {
             },
             rcpts_whitelist: None,
         },
-        images: ImageStorageConfig::S3(ImageStorageConfigS3 {
-            access_key_id: "s3-access-key-id".to_string(),
-            bucket: "images".to_string(),
-            region: "eu-west-1".to_string(),
-            secret_access_key: "s3-sensitive-value".to_string(),
-            endpoint: Some("https://s3.example.test".to_string()),
-            force_path_style: Some(true),
-        }),
+        images: sample_image_storage_s3_config(),
         log: LogConfig {
             format: LogFormat::Json,
         },
@@ -1097,6 +1141,21 @@ fn sample_http_server_config_value() -> serde_json::Value {
         },
         "oauth2": {},
         "oidc": {},
+    })
+}
+
+/// Sample S3 image storage configuration using default outbound deadlines.
+fn sample_image_storage_s3_config() -> ImageStorageConfig {
+    ImageStorageConfig::S3(ImageStorageConfigS3 {
+        access_key_id: "s3-access-key-id".to_string(),
+        bucket: "images".to_string(),
+        region: "eu-west-1".to_string(),
+        secret_access_key: "s3-sensitive-value".to_string(),
+
+        connect_timeout_secs: DEFAULT_CONNECT_TIMEOUT_SECS,
+        endpoint: Some("https://s3.example.test".to_string()),
+        force_path_style: Some(true),
+        request_timeout_secs: DEFAULT_REQUEST_TIMEOUT_SECS,
     })
 }
 
