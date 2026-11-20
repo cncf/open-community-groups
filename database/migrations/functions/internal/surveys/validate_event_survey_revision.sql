@@ -11,4 +11,4 @@ begin
         raise exception 'the survey changed; review and try again' using errcode = 'OCG01';
     end if;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

@@ -194,12 +194,11 @@ begin
         return 'pending-payment';
     end if;
 
-    -- Return available seats to the handler-owned checkout fast path
-    select get_event_ticket_type_allocated_seat_count(
+    -- Count the seats already allocated in the resolved tier
+    v_ticket_allocated_count := get_event_ticket_type_allocated_seat_count(
         p_event_id,
         p_event_ticket_type_id
-    )
-    into v_ticket_allocated_count;
+    );
 
     -- Route into checkout when capacity remains
     if v_ticket_allocated_count < v_ticket_seats_total then

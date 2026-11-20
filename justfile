@@ -123,10 +123,10 @@ db-contract-tests: db-recreate-tests-contract
 db-create:
     just pg createdb {{ pg_conn }} {{ db_name }}
 
-# Create test database with pgtap extension.
+# Create test database with pgtap and plpgsql_check extensions.
 db-create-tests:
     just pg createdb {{ pg_conn }} {{ db_name_tests }}
-    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests }} -c "CREATE EXTENSION IF NOT EXISTS pgtap"
+    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests }} -c "CREATE EXTENSION IF NOT EXISTS pgtap" -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check"
 
 # Create contract test database.
 db-create-tests-contract:

@@ -14,7 +14,7 @@ create or replace function sync_event_sessions(
 )
 returns void as $$
 declare
-    v_processed_session_ids uuid[] := '{}';
+    v_processed_session_ids uuid[] := array[]::uuid[];
     v_session jsonb;
     v_session_before session;
     v_session_cfs_submission_id uuid;
@@ -52,12 +52,14 @@ begin
         if v_session->>'session_id' is not null then
             v_session_id := (v_session->>'session_id')::uuid;
 
-            -- Load the stored session for the meeting sync checks
+            -- Lock and load the stored session so the meeting sync checks
+            -- read it, and its meetings, after any concurrent session writer
             select s.*
             into v_session_before
             from session s
             where s.session_id = v_session_id
-            and s.event_id = p_event_id;
+            and s.event_id = p_event_id
+            for update of s;
 
             -- Reject sessions that belong to another event
             if not found then

@@ -12,7 +12,7 @@ declare
     v_additional_occurrences int := (p_recurrence->>'additional_occurrences')::int;
     v_event jsonb;
     v_event_id uuid;
-    v_event_ids uuid[] := '{}';
+    v_event_ids uuid[] := array[]::uuid[];
     v_event_series_id uuid;
     v_first_event jsonb;
     v_pattern text := p_recurrence->>'pattern';

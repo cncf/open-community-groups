@@ -51,4 +51,4 @@ begin
     -- Return the deduplicated event ids
     return v_event_ids;
 end;
-$$ language plpgsql;
+$$ language plpgsql stable;

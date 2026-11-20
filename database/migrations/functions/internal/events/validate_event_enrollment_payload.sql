@@ -10,4 +10,4 @@ begin
         raise exception 'approval-required events cannot enable waitlist' using errcode = 'OCG01';
     end if;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

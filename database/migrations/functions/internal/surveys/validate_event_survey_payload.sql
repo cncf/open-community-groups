@@ -104,4 +104,4 @@ begin
         p_payload->'questions',
         btrim(p_payload->>'title');
 end;
-$$ language plpgsql;
+$$ language plpgsql stable;

@@ -23,4 +23,4 @@ begin
         and u.email_verified = true
     );
 end;
-$$ language plpgsql;
+$$ language plpgsql stable;

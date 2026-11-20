@@ -28,4 +28,4 @@ begin
         raise exception 'registration ends_at cannot be after event starts_at' using errcode = 'OCG01';
     end if;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

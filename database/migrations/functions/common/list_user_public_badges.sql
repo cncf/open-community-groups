@@ -51,4 +51,4 @@ begin
 
     return v_badges;
 end;
-$$ language plpgsql;
+$$ language plpgsql stable;

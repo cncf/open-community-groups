@@ -27,4 +27,4 @@ begin
     -- Return the durable provider and local finalization state
     return event_purchase_refund_to_json(v_refund, v_job);
 end;
-$$ language plpgsql;
+$$ language plpgsql stable;

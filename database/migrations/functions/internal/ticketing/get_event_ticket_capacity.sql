@@ -13,4 +13,4 @@ begin
         from jsonb_array_elements(p_ticket_types) as ticket_types(ticket_type)
     );
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

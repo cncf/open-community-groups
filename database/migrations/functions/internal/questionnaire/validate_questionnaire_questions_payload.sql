@@ -42,6 +42,8 @@ begin
         if v_question_id = any(v_question_ids) then
             raise exception 'questionnaire question ids must be unique' using errcode = 'OCG01';
         end if;
+
+        -- Track the identifier for later uniqueness checks
         v_question_ids := array_append(v_question_ids, v_question_id);
 
         -- Require a non-blank string prompt
@@ -51,8 +53,10 @@ begin
             raise exception 'questionnaire question prompt is required' using errcode = 'OCG01';
         end if;
 
-        -- Require a supported string kind
+        -- Read the question kind
         v_kind := v_question->>'kind';
+
+        -- Require a supported string kind
         if jsonb_typeof(v_question->'kind') is distinct from 'string'
             or v_kind not in ('free-text', 'multi-select', 'single-select')
         then
@@ -64,8 +68,10 @@ begin
             raise exception 'questionnaire question required must be a boolean' using errcode = 'OCG01';
         end if;
 
-        -- Require options to be an array when present
+        -- Default missing options to an empty list
         v_options := coalesce(v_question->'options', '[]'::jsonb);
+
+        -- Require options to be an array when present
         if jsonb_typeof(v_options) <> 'array' then
             raise exception 'questionnaire question options must be an array' using errcode = 'OCG01';
         end if;
@@ -80,8 +86,10 @@ begin
             raise exception 'select questionnaire questions require options' using errcode = 'OCG01';
         end if;
 
-        -- Validate each option definition
+        -- Reset option identifiers tracked for this question
         v_option_ids := array[]::uuid[];
+
+        -- Validate each option definition
         for v_option in select jsonb_array_elements(v_options)
         loop
             -- Reject option entries that are not objects
@@ -107,6 +115,8 @@ begin
             if v_option_id = any(v_option_ids) then
                 raise exception 'questionnaire question option ids must be unique per question' using errcode = 'OCG01';
             end if;
+
+            -- Track the identifier for later uniqueness checks
             v_option_ids := array_append(v_option_ids, v_option_id);
 
             -- Require a non-blank string label
@@ -118,4 +128,4 @@ begin
         end loop;
     end loop;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

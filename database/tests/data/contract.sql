@@ -2345,6 +2345,23 @@ where ett.event_id in (
     '00000000-0000-0000-0000-00000000c122'
 );
 
+-- Session of the second group lock event used to verify the session row lock
+insert into session (
+    ends_at,
+    event_id,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
+    '2099-08-04 10:45:00+00',
+    '00000000-0000-0000-0000-00000000c122',
+    'Contract Session Lock Session',
+    '00000000-0000-0000-0000-00000000c053',
+    'virtual',
+    '2099-08-04 10:15:00+00'
+);
+
 -- Published event used to verify cancellation locks serialize RSVP
 insert into event (
     capacity,

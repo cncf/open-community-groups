@@ -41,4 +41,4 @@ begin
         raise exception 'provider application fee does not match the purchase';
     end if;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

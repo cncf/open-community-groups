@@ -37,7 +37,7 @@ begin
     -- Validate event capacity against attendee count for existing events
     if p_existing_event_id is not null and v_capacity is not null then
         -- Count the seats already occupied by attendees
-        select get_event_occupied_seat_count(p_existing_event_id) into v_attendee_count;
+        v_attendee_count := get_event_occupied_seat_count(p_existing_event_id);
 
         -- Manual occupied seats are organizer-controlled overbooked seats, so they offset the attendee floor
         select count(*)::int

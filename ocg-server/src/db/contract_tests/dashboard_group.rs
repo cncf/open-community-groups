@@ -2958,6 +2958,85 @@ async fn db_contracts_update_event_syncs_submitted_organizers() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_update_event_reads_session_after_session_lock() -> Result<()> {
+    // Setup blocker, updater, and probe connections
+    let pool = contract_tests_pool()?;
+    let blocker_client = pool.get().await?;
+    let probe_client = pool.get().await?;
+    let updater_client = pool.get().await?;
+    let blocker_backend_pid = backend_pid(&blocker_client).await?;
+    let updater_backend_pid = backend_pid(&updater_client).await?;
+
+    // Setup an update that keeps the session and omits its recording flag
+    let mut event_payload =
+        contract_event_input("Contract Group Lock Event Two Updated", 4).to_db_payload()?;
+    event_payload["sessions"] = serde_json::json!([{
+        "ends_at": "2099-08-04T10:45:00",
+        "kind": "virtual",
+        "name": "Contract Session Lock Session",
+        "session_id": session_lock_session_id(),
+        "starts_at": "2099-08-04T10:15:00",
+    }]);
+    let event_payload = Json(event_payload);
+
+    // Publish the session recording while holding the session row lock
+    blocker_client.batch_execute("begin").await?;
+    blocker_client
+        .execute(
+            "update session set meeting_recording_published = true where session_id = $1::uuid",
+            &[&session_lock_session_id()],
+        )
+        .await?;
+
+    // Start updating the event while the recording change is still uncommitted,
+    // rolling the update back so the fixture event keeps its seeded state
+    updater_client.batch_execute("begin").await?;
+    let update = tokio::spawn(async move {
+        let updated = updater_client
+            .query_one(
+                "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+                &[
+                    &organizer_id(),
+                    &claim_group_id(),
+                    &group_lock_second_event_id(),
+                    &event_payload,
+                ],
+            )
+            .await;
+        let recording_published = updater_client
+            .query_one(
+                "select meeting_recording_published from session where session_id = $1::uuid",
+                &[&session_lock_session_id()],
+            )
+            .await;
+        updater_client.batch_execute("rollback").await?;
+        updated?;
+        anyhow::Ok(recording_published?.get::<_, bool>(0))
+    });
+    let blocked =
+        wait_for_backend_blocker(&probe_client, blocker_backend_pid, updater_backend_pid).await;
+
+    // Commit the change so the waiting update observes it
+    blocker_client.batch_execute("commit").await?;
+    let recording_published = update.await?;
+
+    // Restore the shared session fixture before any check can fail
+    probe_client
+        .execute(
+            "update session set meeting_recording_published = false where session_id = $1::uuid",
+            &[&session_lock_session_id()],
+        )
+        .await?;
+
+    // Check the update kept the recording flag it read after the session lock
+    blocked?;
+    assert!(recording_published?);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_update_event_serializes_same_group_mutations() -> Result<()> {
     // Setup two event updates targeting different events in the same group
     let db = contract_tests_db()?;

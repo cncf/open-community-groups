@@ -34,4 +34,4 @@ begin
         false,
         p_admission_offer.ticket_title;
 end;
-$$ language plpgsql;
+$$ language plpgsql immutable;

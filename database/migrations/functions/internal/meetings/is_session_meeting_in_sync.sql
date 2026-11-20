@@ -78,7 +78,12 @@ begin
 
     -- Schedule deletion work when a requested meeting is no longer requested
     if v_after_meeting_requested is distinct from true then
-        return case when v_before_meeting_requested = true then false else null end;
+        return case
+            -- Report pending deletion work for a previously requested meeting
+            when v_before_meeting_requested = true then false
+            -- Leave never requested meetings without sync state
+            else null
+        end;
     end if;
 
     -- Schedule deletion work when a session with a meeting becomes in-person
@@ -105,4 +110,4 @@ begin
         and v_before_starts_at is not distinct from v_after_starts_at
         and p_before_event.timezone = v_after_timezone;
 end;
-$$ language plpgsql;
+$$ language plpgsql stable;
