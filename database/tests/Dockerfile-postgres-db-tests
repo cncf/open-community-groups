@@ -7,5 +7,5 @@ RUN cd pgtap && make && make install && cd ..
 
 # Build final image
 FROM postgres:16
-RUN apt-get update && apt-get install -y postgis postgresql-16-postgis-3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y postgis postgresql-16-plpgsql-check postgresql-16-postgis-3 && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/share/postgresql/16/extension/pgtap* /usr/share/postgresql/16/extension/
