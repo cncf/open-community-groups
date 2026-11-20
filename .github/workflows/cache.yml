@@ -2,9 +2,10 @@ name: Warm caches
 
 # Populates the default-branch caches that PR runs (including stacked PRs) restore from.
 # Rust cache keys only depend on Cargo.lock / Cargo.toml / .cargo config / the toolchain and
-# CARGO* env set in the workflows, and the Playwright cache key only depends on the OS release
-# and the e2e package-lock, so this only needs to run when the paths below change. The cache
-# keys, env and install commands below must match ci.yml and e2e.yml.
+# CARGO* env set in the workflows, and the npm cache key only depends on the e2e package-lock,
+# so this only needs to run when the paths below change. The cache keys and env below must match
+# ci.yml and e2e.yml. Cache keys do not carry the runner image, so each Rust job runs on the same
+# runner as the jobs that restore its cache.
 
 on:
   push:
@@ -31,8 +32,7 @@ env:
 
 jobs:
   clippy:
-    runs-on:
-      labels: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -52,8 +52,7 @@ jobs:
         run: cargo clippy --all-targets --all-features -- --deny warnings
 
   test:
-    runs-on:
-      labels: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-8-cores
     env:
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
@@ -74,8 +73,7 @@ jobs:
         run: cargo test --no-run
 
   e2e-server:
-    runs-on:
-      labels: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-8-cores
     env:
       CARGO_PROFILE_DEV_DEBUG: 0
     steps:
@@ -95,19 +93,9 @@ jobs:
       - name: Build e2e server binary
         run: cargo build --bin ocg-server
 
-  playwright-browsers:
-    # Same runner as the e2e.yml jobs that restore these caches.
-    runs-on:
-      labels: ubuntu-latest-16-cores
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # The functional and repeat jobs in e2e.yml.
-          - browsers: chromium
-          # The smoke job in e2e.yml (cache keys cannot contain spaces).
-          - browsers: firefox webkit
-            browsers_key: firefox-webkit
+  # The npm cache of the e2e jobs in e2e.yml.
+  e2e-npm:
+    runs-on: ubuntu-latest-4-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -120,18 +108,3 @@ jobs:
       - name: Install Node.js dependencies
         working-directory: tests/e2e
         run: npm ci
-      - name: Get OS version
-        id: os
-        # Browser builds depend on the OS release, so it is part of the cache key.
-        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT"
-      - name: Restore Playwright browsers cache
-        id: playwright-cache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-${{ steps.os.outputs.version }}-playwright-${{ matrix.browsers_key || matrix.browsers }}-${{ hashFiles('tests/e2e/package-lock.json') }}
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        working-directory: tests/e2e
-        # Headless chromium projects only need the headless shell build (the flag only affects chromium).
-        run: npx playwright install --only-shell ${{ matrix.browsers }}

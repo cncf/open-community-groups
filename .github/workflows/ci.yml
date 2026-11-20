@@ -18,7 +18,7 @@ jobs:
   changes:
     permissions:
       pull-requests: read
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     outputs:
       database: ${{ steps.filter.outputs.database }}
       database_contracts: ${{ steps.filter.outputs.database_contracts }}
@@ -96,8 +96,7 @@ jobs:
     if: needs.changes.outputs.dependencies == 'true'
     permissions:
       contents: read
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -113,8 +112,7 @@ jobs:
   check-js-files-format:
     needs: changes
     if: needs.changes.outputs.javascript == 'true'
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -134,8 +132,7 @@ jobs:
   lint-theme-colors:
     needs: changes
     if: needs.changes.outputs.theme == 'true'
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -151,8 +148,7 @@ jobs:
   lint-server:
     needs: changes
     if: needs.changes.outputs.server == 'true'
-    runs-on:
-      labels: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -175,8 +171,7 @@ jobs:
   lint-markdown-files:
     needs: changes
     if: needs.changes.outputs.markdown == 'true'
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -188,8 +183,7 @@ jobs:
   lint-templates:
     needs: changes
     if: needs.changes.outputs.templates == 'true'
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -205,8 +199,7 @@ jobs:
   test-server:
     needs: changes
     if: needs.changes.outputs.server == 'true'
-    runs-on:
-      labels: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-8-cores
     env:
       # Keep in sync with test-database-contracts and cache.yml (part of the cache key).
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
@@ -229,7 +222,7 @@ jobs:
   test-database:
     needs: changes
     if: needs.changes.outputs.database == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     permissions:
       contents: read
       packages: read
@@ -266,7 +259,7 @@ jobs:
   test-database-migrations:
     needs: changes
     if: needs.changes.outputs.database == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     permissions:
       contents: read
       packages: read
@@ -320,8 +313,7 @@ jobs:
   test-database-contracts:
     needs: changes
     if: needs.changes.outputs.database_contracts == 'true'
-    runs-on:
-      labels: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-8-cores
     permissions:
       contents: read
       packages: read
@@ -381,8 +373,7 @@ jobs:
   test-frontend:
     needs: changes
     if: needs.changes.outputs.javascript == 'true'
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v6

@@ -34,7 +34,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     outputs:
       e2e: ${{ steps.filter.outputs.e2e || steps.manual.outputs.e2e }}
       repeat_count: ${{ steps.repeat.outputs.repeat_count || '0' }}
@@ -86,8 +86,7 @@ jobs:
   build-server:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.e2e == 'true'
-    runs-on:
-      labels: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-8-cores
     permissions:
       contents: read
     env:
@@ -134,8 +133,9 @@ jobs:
       - changes
       - build-server
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.changes.outputs.e2e == 'true')
-    runs-on:
-      labels: ubuntu-latest-16-cores
+    # The only job that keeps more than 8 cores busy (six stacks); the other e2e jobs run one or
+    # two stacks.
+    runs-on: ubuntu-latest-16-cores
     strategy:
       fail-fast: false
       matrix:
@@ -187,29 +187,10 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
-      - name: Get OS version
-        id: os
-        # Browser builds depend on the OS release, so it is part of the cache key.
-        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Restore Playwright browsers cache
-        id: playwright-cache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          # Same key as the other chromium jobs; keep the key and install flags in sync with cache.yml.
-          key: ${{ runner.os }}-${{ steps.os.outputs.version }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
-
       - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
         working-directory: tests/e2e
         # Headless chromium projects only need the headless shell build.
         run: npx playwright install --with-deps --only-shell chromium
-
-      - name: Install Playwright system dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        working-directory: tests/e2e
-        run: npx playwright install-deps chromium
 
       - name: Install tern
         uses: ./.github/actions/install-tern
@@ -228,6 +209,8 @@ jobs:
       - name: Verify e2e server artifact
         run: |
           test -x ./target/debug/ocg-server || chmod +x ./target/debug/ocg-server
+          # Fails here, not in the suite, when this runner's image cannot load the binary.
+          ./target/debug/ocg-server --version
           ls ocg-server/dist/static/css/*.css >/dev/null
 
       - name: Run functional suite
@@ -256,8 +239,8 @@ jobs:
       - changes
       - build-server
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.changes.outputs.e2e == 'true')
-    runs-on:
-      labels: ubuntu-latest-16-cores
+    # Two stacks running WebKit/Firefox plus two debug servers and Postgres contend on 4 cores.
+    runs-on: ubuntu-latest-8-cores
     permissions:
       contents: read
     services:
@@ -300,28 +283,9 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
-      - name: Get OS version
-        id: os
-        # Browser builds depend on the OS release, so it is part of the cache key.
-        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Restore Playwright browsers cache
-        id: playwright-cache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          # Keep the key in sync with cache.yml, which warms this cache on main.
-          key: ${{ runner.os }}-${{ steps.os.outputs.version }}-playwright-firefox-webkit-${{ hashFiles('tests/e2e/package-lock.json') }}
-
       - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
         working-directory: tests/e2e
         run: npx playwright install --with-deps firefox webkit
-
-      - name: Install Playwright system dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        working-directory: tests/e2e
-        run: npx playwright install-deps firefox webkit
 
       - name: Install tern
         uses: ./.github/actions/install-tern
@@ -340,6 +304,8 @@ jobs:
       - name: Verify e2e server artifact
         run: |
           test -x ./target/debug/ocg-server || chmod +x ./target/debug/ocg-server
+          # Fails here, not in the suite, when this runner's image cannot load the binary.
+          ./target/debug/ocg-server --version
           ls ocg-server/dist/static/css/*.css >/dev/null
 
       - name: Run Firefox and WebKit smoke tests
@@ -366,8 +332,7 @@ jobs:
       - changes
       - build-server
     if: github.event_name == 'pull_request' && fromJSON(needs.changes.outputs.repeat_count) > 0
-    runs-on:
-      labels: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-4-cores
     strategy:
       fail-fast: false
       matrix:
@@ -414,28 +379,9 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
-      - name: Get OS version
-        id: os
-        # Browser builds depend on the OS release, so it is part of the cache key.
-        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Restore Playwright browsers cache
-        id: playwright-cache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          # Same key as the functional job and cache.yml.
-          key: ${{ runner.os }}-${{ steps.os.outputs.version }}-playwright-chromium-${{ hashFiles('tests/e2e/package-lock.json') }}
-
       - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
         working-directory: tests/e2e
         run: npx playwright install --with-deps --only-shell chromium
-
-      - name: Install Playwright system dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        working-directory: tests/e2e
-        run: npx playwright install-deps chromium
 
       - name: Install tern
         uses: ./.github/actions/install-tern
@@ -453,6 +399,8 @@ jobs:
       - name: Verify e2e server artifact
         run: |
           test -x ./target/debug/ocg-server || chmod +x ./target/debug/ocg-server
+          # Fails here, not in the suite, when this runner's image cannot load the binary.
+          ./target/debug/ocg-server --version
           ls ocg-server/dist/static/css/*.css >/dev/null
 
       - name: Repeat changed specs
@@ -486,7 +434,7 @@ jobs:
       - functional
       - smoke
     if: ${{ !cancelled() && (needs.functional.result != 'skipped' || needs.smoke.result != 'skipped') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     permissions:
       contents: read
     steps:
