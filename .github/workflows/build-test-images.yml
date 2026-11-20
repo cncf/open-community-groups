@@ -1,0 +1,80 @@
+name: Build test images
+
+# Builds and pushes the database test images used by ci.yml to GHCR when their Dockerfiles
+# or this workflow change on main, or when triggered manually from main.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build-test-images.yml'
+      - 'database/tests/Dockerfile-db-tests'
+      - 'database/tests/Dockerfile-postgres-db-tests'
+  workflow_dispatch:
+    inputs:
+      db_tests:
+        description: Build and push db-tests image
+        type: boolean
+        default: true
+      postgres_db_tests:
+        description: Build and push postgres-db-tests image
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  build-db-tests-image:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.db_tests)
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest-4-cores
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Login to GitHub Container Registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Build and push db-tests image
+        run: |
+          image="ghcr.io/$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')/db-tests"
+          docker build \
+            -f database/tests/Dockerfile-db-tests \
+            -t "${image}:${GITHUB_SHA}" \
+            -t "${image}:latest" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            database/tests
+          docker push "${image}:${GITHUB_SHA}"
+          docker push "${image}:latest"
+
+  build-postgres-db-tests-image:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.postgres_db_tests)
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest-4-cores
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Login to GitHub Container Registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Build and push postgres-db-tests image
+        run: |
+          image="ghcr.io/$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')/postgres-db-tests"
+          docker build \
+            -f database/tests/Dockerfile-postgres-db-tests \
+            -t "${image}:${GITHUB_SHA}" \
+            -t "${image}:latest" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            database/tests
+          docker push "${image}:${GITHUB_SHA}"
+          docker push "${image}:latest"
