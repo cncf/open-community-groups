@@ -511,6 +511,7 @@ select set_eq(
         ('search_user(p_query text)'),
         ('session_meeting_sync_payload(p_session session, p_delete boolean)'),
         ('session_proposal_json(p_session_proposal session_proposal)'),
+        ('session_speakers()'),
         ('set_meeting_auto_end_check_outcome(p_claimed_at timestamp with time zone, p_meeting_id uuid, p_outcome text)'),
         ('set_meeting_error(p_error text, p_event_id uuid, p_meeting_id uuid, p_session_id uuid, p_sync_claimed_at timestamp with time zone, p_sync_state_hash text)'),
         ('sign_up_user(p_user jsonb, p_email_verified boolean, p_verification_code uuid, p_verification_template_data jsonb)'),

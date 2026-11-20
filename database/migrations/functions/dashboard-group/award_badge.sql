@@ -34,6 +34,7 @@ begin
     and g.deleted = false
     for share of g;
 
+    -- Reject groups outside the community or already deleted
     if not found then
         raise exception 'group not found' using errcode = 'OCG01';
     end if;
@@ -44,10 +45,12 @@ begin
     from "user"
     where user_id = p_actor_user_id;
 
+    -- Reject an unknown actor
     if not found then
         raise exception 'badge actor not found';
     end if;
 
+    -- Lock the badge definition owned by the group
     select *
     into v_badge
     from badge
@@ -55,21 +58,24 @@ begin
     and group_id = p_group_id
     for share;
 
+    -- Reject badges outside the group
     if not found then
         raise exception 'badge not found' using errcode = 'OCG01';
     end if;
 
-    -- Normalize duplicates before validating the complete requested set
+    -- Reject an empty request or null recipient identifiers
     if p_user_ids is null
        or cardinality(p_user_ids) = 0
        or array_position(p_user_ids, null) is not null then
         raise exception 'badge recipients cannot be empty' using errcode = 'OCG01';
     end if;
 
+    -- Normalize duplicates before validating the complete requested set
     select array_agg(distinct recipients.user_id order by recipients.user_id)
     into v_recipient_user_ids
     from unnest(p_user_ids) as recipients(user_id);
 
+    -- Validate event attendees and contributors when an event scopes the award
     if p_event_id is not null then
         -- Lock the active event that defines contributor and attendee eligibility
         perform 1
@@ -80,6 +86,7 @@ begin
         and deleted = false
         for share;
 
+        -- Reject events outside the group, canceled, or deleted
         if not found then
             raise exception 'event not found' using errcode = 'OCG01';
         end if;
@@ -119,12 +126,13 @@ begin
             )
             or exists (
                 select 1
-                from session_speaker ss
-                join session s using (session_id)
-                where s.event_id = p_event_id
-                and ss.user_id = u.user_id
+                from session_speakers() ssp
+                where ssp.event_id = p_event_id
+                and ssp.user_id = u.user_id
             )
         );
+
+    -- Validate accepted group team members when no event scopes the award
     else
         -- Count the requested recipients who are verified accepted team members
         select count(*)
@@ -137,6 +145,7 @@ begin
         and u.user_id = any(v_recipient_user_ids);
     end if;
 
+    -- Reject the request when any recipient is not eligible
     if v_eligible_recipient_count <> cardinality(v_recipient_user_ids) then
         raise exception 'badge recipient is not eligible' using errcode = 'OCG01';
     end if;
@@ -180,11 +189,13 @@ begin
         and bajr.user_id = recipients.user_id
     );
 
+    -- Count the requested recipients skipped as holders or owned work
     v_skipped_count := cardinality(v_recipient_user_ids)
         - cardinality(v_accepted_recipient_ids);
 
     -- Persist one durable handoff when issuance work remains
     if cardinality(v_accepted_recipient_ids) > 0 then
+        -- Record the award job with its definition snapshot and counts
         insert into badge_award_job (
             accepted_count,
             actor_username,
@@ -212,6 +223,7 @@ begin
         )
         returning badge_award_job_id into v_job_id;
 
+        -- Record the accepted recipients in their processing order
         insert into badge_award_job_recipient (
             badge_award_job_id,
             position,

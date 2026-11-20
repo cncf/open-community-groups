@@ -69,6 +69,7 @@
 {{ template "internal/events/resolve_event_payload.sql" }}
 {{ template "internal/events/resolve_event_payment_rail.sql" }}
 {{ template "internal/events/respond_session_proposal_co_speaker_invitation.sql" }}
+{{ template "internal/events/session_speakers.sql" }}
 {{ template "internal/events/sync_cfs_submission_labels.sql" }}
 {{ template "internal/events/sync_event_hosts_speakers_sponsors.sql" }}
 {{ template "internal/events/sync_event_labels.sql" }}

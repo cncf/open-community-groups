@@ -88,7 +88,8 @@ Each row includes:
 - Event location.
 - Event date and time.
 - Your participation roles in that event (`Attendee`, `Event offer`, `Host`,
-  `Organizer`, `Speaker`, or multiple roles).
+  `Organizer`, `Speaker`, or multiple roles). `Speaker` includes sessions linked to your approved
+  call-for-speakers submission, whether you are the proposal's author or its co-speaker.
 - Your attendance status when action is still needed, such as `Payment pending` or
   `Registration pending`.
 - A `Refund rejected` badge and the organizer's full reason when a refund request was rejected. A

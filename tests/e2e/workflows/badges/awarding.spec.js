@@ -17,6 +17,9 @@ import { submitBadgeAward } from "./helpers.js";
 
 const BADGE_AWARD_SETTLE_TIMEOUT_MS = 45_000;
 
+// Seeded event with a session linked to member one's approved CFS submission.
+const CFS_EVENT_NAME = "Event With Active CFS";
+
 const HOST_BADGE_ID = "babababa-baba-baba-baba-babababab001";
 
 test.describe("group badge awarding", () => {
@@ -131,6 +134,51 @@ test.describe("group badge awarding", () => {
         .getByRole("radiogroup", { name: "Badge" }),
     ).toBeVisible();
     await closeAwardDialog(organizerGroupPage);
+  });
+
+  test("session-speaker row awards a badge to a CFS proposal speaker", async ({
+    organizerGroupPage,
+    owned,
+  }) => {
+    // The award job poll below allows up to 45s for the badges worker, beyond the default test budget.
+    test.setTimeout(120_000);
+
+    // Create a badge nobody holds yet. Owned cleanups run in reverse: jobs, then credentials.
+    const badge = setupBadgeDefinition({ groupId: TEST_GROUP_IDS.community1.alpha });
+    const statusList = setupBadgeStatusList({ groupId: TEST_GROUP_IDS.community1.alpha });
+    owned.defer(() =>
+      cleanupCredential({
+        badgeCreated: badge.badgeCreated,
+        badgeId: badge.badgeId,
+        badgeStatusListId: statusList.badgeStatusListId,
+      }),
+    );
+    owned.defer(() => cleanupBadgeAwardJobs({ badgeId: badge.badgeId }));
+
+    // Open the Contributors tab of the event whose session comes from member one's proposal.
+    await openEventUpdateFormByName(organizerGroupPage, CFS_EVENT_NAME, TEST_EVENT_IDS.alpha.cfsSummit);
+    await organizerGroupPage.locator('button[data-section="contributors"]').click();
+
+    // Award the proposal author from the session-speaker row and verify the request recipients.
+    const sessionSpeakerRow = organizerGroupPage.locator("session-speakers-table tr", {
+      hasText: "E2E Member One",
+    });
+    await sessionSpeakerRow
+      .locator('summary[aria-label="Open session speaker actions for E2E Member One"]')
+      .click();
+    const award = await submitBadgeAward(
+      organizerGroupPage,
+      () => sessionSpeakerRow.getByRole("menuitem", { name: "Award badge" }).click(),
+      badge.badgeId,
+    );
+    expect(award).toEqual({
+      badge_id: badge.badgeId,
+      event_id: TEST_EVENT_IDS.alpha.cfsSummit,
+      user_ids: [TEST_USER_IDS.member1],
+    });
+
+    // Wait for the queued award before the owned cleanups remove its generated rows.
+    await waitForSettledAwardJobs(badge.badgeId);
   });
 
   test("organizer row and bulk awards send the event organizers", async ({ organizerGroupPage, owned }) => {

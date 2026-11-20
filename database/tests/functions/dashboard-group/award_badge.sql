@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(36);
+select plan(37);
 
 -- ============================================================================
 -- VARIABLES
@@ -32,6 +32,11 @@ select plan(36);
 \set otherEventOrganizerID 'b1080000-0000-0000-0000-000000000024'
 \set outsideOrganizerID 'b1080000-0000-0000-0000-000000000025'
 \set outsiderID 'b1080000-0000-0000-0000-000000000016'
+\set proposalAuthorID 'b1080000-0000-0000-0000-000000000030'
+\set proposalCoSpeakerID 'b1080000-0000-0000-0000-000000000031'
+\set proposalID 'b1080000-0000-0000-0000-000000000032'
+\set proposalSessionID 'b1080000-0000-0000-0000-000000000033'
+\set proposalSubmissionID 'b1080000-0000-0000-0000-000000000034'
 \set removedOrganizerEventID 'b1080000-0000-0000-0000-000000000026'
 \set removedOrganizerID 'b1080000-0000-0000-0000-000000000027'
 \set sessionID 'b1080000-0000-0000-0000-000000000017'
@@ -45,6 +50,59 @@ select plan(36);
 -- SEED DATA
 -- ============================================================================
 
+-- Community containing the issuing group
+select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
+
+-- Badge manager awarding the badges
+select fx_user(:'actorID', jsonb_build_object('username', 'actor-award-badge'));
+
+-- Confirmed attendee who has not checked in
+select fx_user(:'attendeeID');
+
+-- Confirmed attendee who checked in
+select fx_user(:'checkedInID');
+
+-- Host of the award event
+select fx_user(:'eventHostID');
+
+-- Organizer of the award event on the group team
+select fx_user(:'eventOrganizerID');
+
+-- Event-level speaker of the award event
+select fx_user(:'eventSpeakerID');
+
+-- Group member without an event role or team membership
+select fx_user(:'groupMemberID');
+
+-- First organizer awarded together with another organizer
+select fx_user(:'multiOrganizer1ID');
+
+-- Second organizer awarded together with another organizer
+select fx_user(:'multiOrganizer2ID');
+
+-- Organizer of another event only
+select fx_user(:'otherEventOrganizerID');
+
+-- Organizer of the award event outside the group team
+select fx_user(:'outsideOrganizerID');
+
+-- Pending group team member
+select fx_user(:'outsiderID');
+
+-- Author of the CFS proposal linked to an award event session
+select fx_user(:'proposalAuthorID');
+
+-- Co-speaker of the CFS proposal linked to an award event session
+select fx_user(:'proposalCoSpeakerID');
+
+-- Organizer removed from their event before the award
+select fx_user(:'removedOrganizerID');
+
+-- Speaker assigned to an award event session
+select fx_user(:'sessionSpeakerID');
+
+-- Accepted group team member who does not organize the award event
+select fx_user(:'teamMemberID');
 
 -- Unverified checked-in attendee excluded from every award scope
 select fx_user(:'unverifiedID', jsonb_build_object('email_verified', false));
@@ -52,36 +110,37 @@ select fx_user(:'unverifiedID', jsonb_build_object('email_verified', false));
 -- Unverified event organizer excluded from event awards
 select fx_user(:'unverifiedOrganizerID', jsonb_build_object('email_verified', false));
 
--- Community containing the issuing group
-select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
-
--- Baseline categories, users and groups
-select fx_group_category(:'groupCategoryID', :'communityID');
+-- Event category used by the award events
 select fx_event_category(:'eventCategoryID', :'communityID');
-select fx_user(:'actorID', jsonb_build_object('username', 'actor-award-badge'));
-select fx_user(:'attendeeID');
-select fx_user(:'checkedInID');
-select fx_user(:'eventHostID');
-select fx_user(:'eventOrganizerID');
-select fx_user(:'eventSpeakerID');
-select fx_user(:'groupMemberID');
-select fx_user(:'multiOrganizer1ID');
-select fx_user(:'multiOrganizer2ID');
-select fx_user(:'otherEventOrganizerID');
-select fx_user(:'outsideOrganizerID');
-select fx_user(:'outsiderID');
-select fx_user(:'removedOrganizerID');
-select fx_user(:'sessionSpeakerID');
-select fx_user(:'teamMemberID');
+
+-- Group category used by the issuing group
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- CFS proposal whose author and co-speaker speak at the linked session
+insert into session_proposal (
+    session_proposal_id,
+    description,
+    duration,
+    session_proposal_level_id,
+    title,
+    user_id,
+    co_speaker_user_id
+) values (
+    :'proposalID',
+    'Proposal description',
+    interval '30 minutes',
+    'beginner',
+    'Proposal',
+    :'proposalAuthorID',
+    :'proposalCoSpeakerID'
+);
+
+-- Group issuing the badges
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Badge manager, accepted team recipients, and pending recipient roles
-insert into group_team (accepted, group_id, role, user_id)
-values
-    (true, :'groupID', 'events-manager', :'actorID'),
-    (true, :'groupID', 'viewer', :'eventOrganizerID'),
-    (false, :'groupID', 'viewer', :'outsiderID'),
-    (true, :'groupID', 'viewer', :'teamMemberID');
+-- Definition used for immutable award snapshots
+insert into badge (badge_id, criteria, description, group_id, image_file_name, name)
+values (:'badgeID', 'Check in', 'Attended Award Event', :'groupID', 'attendee.png', 'Attendee');
 
 -- Active event providing the recipient context
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -103,6 +162,22 @@ select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_obj
 
 -- Active event whose organizer is removed before the award
 select fx_event(:'removedOrganizerEventID', :'groupID', :'eventCategoryID', jsonb_build_object('description', 'Description'));
+
+-- Group member intentionally ineligible without an event
+insert into group_member (group_id, user_id)
+values (:'groupID', :'groupMemberID');
+
+-- Badge manager, accepted team recipients, and pending recipient roles
+insert into group_team (accepted, group_id, role, user_id)
+values
+    (true, :'groupID', 'events-manager', :'actorID'),
+    (true, :'groupID', 'viewer', :'eventOrganizerID'),
+    (false, :'groupID', 'viewer', :'outsiderID'),
+    (true, :'groupID', 'viewer', :'teamMemberID');
+
+-- Approved submission of the CFS proposal to the award event
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values (:'proposalSubmissionID', :'eventID', :'proposalID', 'approved');
 
 -- Confirmed attendees covering registered, checked-in, and unverified states
 insert into event_attendee (checked_in, event_id, status, user_id)
@@ -140,17 +215,13 @@ values (:'eventID', false, :'eventSpeakerID');
 insert into session (event_id, name, session_id, session_kind_id, starts_at)
 values (:'eventID', 'Award Session', :'sessionID', 'hybrid', '2026-01-01 10:00:00+00');
 
+-- Session linked to the CFS proposal, without assigned speakers
+insert into session (cfs_submission_id, event_id, name, session_id, session_kind_id, starts_at)
+values (:'proposalSubmissionID', :'eventID', 'Proposal Session', :'proposalSessionID', 'hybrid', '2026-01-01 11:00:00+00');
+
 -- Session speaker eligible for a single award
 insert into session_speaker (featured, session_id, user_id)
 values (false, :'sessionID', :'sessionSpeakerID');
-
--- Group member intentionally ineligible without an event
-insert into group_member (group_id, user_id)
-values (:'groupID', :'groupMemberID');
-
--- Definition used for immutable award snapshots
-insert into badge (badge_id, criteria, description, group_id, image_file_name, name)
-values (:'badgeID', 'Check in', 'Attended Award Event', :'groupID', 'attendee.png', 'Attendee');
 
 -- Test helper that drains every currently due one-batch award job
 create function test_process_badge_award_jobs()
@@ -372,6 +443,21 @@ select is(
     )::jsonb,
     '{"queued_count":1,"skipped_count":0}'::jsonb,
     'Should award a session speaker'
+);
+select test_process_badge_award_jobs();
+
+-- Should award the CFS proposal speakers of a linked session
+select is(
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'proposalAuthorID'::uuid, :'proposalCoSpeakerID'::uuid],
+        :'eventID'
+    )::jsonb,
+    '{"queued_count":2,"skipped_count":0}'::jsonb,
+    'Should award the CFS proposal speakers of a linked session'
 );
 select test_process_badge_award_jobs();
 

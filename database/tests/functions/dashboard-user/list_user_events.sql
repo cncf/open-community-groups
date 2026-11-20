@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -62,6 +62,11 @@ select plan(19);
 \set livePriceUserID '4a0c0000-0000-0000-0000-000000000048'
 \set organizerOnlyUserID '4a0c0000-0000-0000-0000-000000000055'
 \set pendingInvitationOfferID '4a0c0000-0000-0000-0000-000000000036'
+\set proposalAuthorUserID '4a0c0000-0000-0000-0000-000000000072'
+\set proposalCoSpeakerUserID '4a0c0000-0000-0000-0000-000000000073'
+\set proposalID '4a0c0000-0000-0000-0000-000000000074'
+\set proposalSessionID '4a0c0000-0000-0000-0000-000000000075'
+\set proposalSubmissionID '4a0c0000-0000-0000-0000-000000000076'
 \set questionsAttendeeUserID '4a0c0000-0000-0000-0000-000000000024'
 \set questionsCheckoutExpiredPurchaseID '4a0c0000-0000-0000-0000-000000000025'
 \set questionsCheckoutExpiredUserID '4a0c0000-0000-0000-0000-000000000026'
@@ -111,6 +116,12 @@ select fx_user(:'livePriceUserID');
 -- User listed only as an event organizer
 select fx_user(:'organizerOnlyUserID');
 
+-- Author of the CFS proposal linked to a session
+select fx_user(:'proposalAuthorUserID');
+
+-- Co-speaker of the CFS proposal linked to a session
+select fx_user(:'proposalCoSpeakerUserID');
+
 -- Confirmed attendee of the registration-questions event
 select fx_user(:'questionsAttendeeUserID');
 
@@ -146,6 +157,25 @@ select fx_event_category(:'eventCategoryID', :'communityID');
 
 -- Group category of the listed groups
 select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- CFS proposal whose co-speaker speaks at the linked session
+insert into session_proposal (
+    session_proposal_id,
+    description,
+    duration,
+    session_proposal_level_id,
+    title,
+    user_id,
+    co_speaker_user_id
+) values (
+    :'proposalID',
+    'Proposal description',
+    interval '30 minutes',
+    'beginner',
+    'Proposal',
+    :'proposalAuthorUserID',
+    :'proposalCoSpeakerUserID'
+);
 
 -- Group owning the listed events
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
@@ -242,6 +272,10 @@ select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_bui
 -- Accepted team member joining after the group events were created
 insert into group_team (accepted, group_id, role, user_id)
 values (true, :'groupID', 'viewer', :'teamMemberUserID');
+
+-- Approved submission of the CFS proposal to the second upcoming event
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values (:'proposalSubmissionID', :'eventBID', :'proposalID', 'approved');
 
 -- Confirmed attendance of the user across visible and hidden events, of the
 -- reattended user on the first event, and of the paid and rebooked users on
@@ -461,6 +495,10 @@ select fx_event_ticket_price_window(:'eventQuestionsPriceWindowID', :'eventQuest
 
 -- Current free price of the unpublished event tier
 select fx_event_ticket_price_window(:'eventUnpublishedPriceWindowID', :'eventUnpublishedTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Session linked to the CFS proposal, without assigned speakers
+insert into session (session_id, cfs_submission_id, event_id, name, session_kind_id, starts_at)
+values (:'proposalSessionID', :'proposalSubmissionID', :'eventBID', 'Proposal Session', 'virtual', '2099-01-11 11:00:00+00');
 
 -- Session speaker relationships included in the user's event list
 insert into session_speaker (session_id, user_id, featured) values
@@ -984,6 +1022,26 @@ select is(
         'Questions admission'
     ),
     'Should include active organizer ticket offers without labeling recipients as attendees'
+);
+
+-- Should list a CFS proposal co-speaker event with the speaker role
+select is(
+    (
+        select jsonb_build_object(
+            'event_id', listed->'events'->0->'event'->>'event_id',
+            'roles', listed->'events'->0->'roles',
+            'total', listed->'total'
+        )
+        from (
+            select list_user_events(:'proposalCoSpeakerUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb as listed
+        ) result
+    ),
+    jsonb_build_object(
+        'event_id', :'eventBID',
+        'roles', jsonb_build_array('speaker'),
+        'total', 1
+    ),
+    'Should list a CFS proposal co-speaker event with the speaker role'
 );
 
 -- Should list an organizer-only event with the organizer role

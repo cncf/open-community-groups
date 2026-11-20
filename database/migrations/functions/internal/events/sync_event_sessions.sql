@@ -1,6 +1,8 @@
 -- Synchronizes the sessions, session speakers and session labels of an event
 -- with the update payload: existing sessions are updated (their meeting sync
 -- state derived from the stored row), new ones inserted, omitted ones removed.
+-- Sessions linked to a CFS submission take their speakers from the linked
+-- proposal, so the payload cannot assign them speakers.
 -- Submitted label IDs replace a session's labels; when they are omitted, a
 -- session that is new or newly linked to a CFS submission copies that
 -- submission's labels, and any other session keeps its labels. The prior
@@ -39,6 +41,12 @@ begin
         v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
         v_session_meeting_hosts := jsonb_text_array(v_session->'meeting_hosts');
         v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
+
+        -- Reject speakers for sessions whose speakers come from the linked proposal
+        if v_session_cfs_submission_id is not null
+           and jsonb_array_length(coalesce(v_session->'speakers', '[]'::jsonb)) > 0 then
+            raise exception 'sessions linked to a cfs submission cannot have speakers' using errcode = 'OCG01';
+        end if;
 
         -- Update an existing session from its stored row
         if v_session->>'session_id' is not null then

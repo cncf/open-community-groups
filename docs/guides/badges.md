@@ -82,7 +82,8 @@ The event's Contributors tab offers equivalent actions for contributors:
 
 - A host, organizer, or event-level speaker row can award a badge to that contributor.
 - A session-level speaker row can award a badge to that speaker. Session assignments are edited
-  from the Sessions tab.
+  from the Sessions tab. A session linked to an approved call-for-speakers submission lists the
+  proposal's author and co-speaker as its speakers.
 - The `Award badge` button next to the `Hosts` heading awards every current host.
 - The `Award badge` button next to the `Organizers` heading awards every current event organizer.
 - `Award badge to all speakers` combines and deduplicates event-level and session-level speakers.
@@ -104,12 +105,13 @@ Pending team invitations are not eligible.
 #### Eligibility and Processing
 
 For an event award, every recipient must currently be a confirmed attendee, event host, event
-organizer, event-level speaker, or session-level speaker. Event organizers are the people listed in
-the event's Contributors tab. They are added from the group team, but stay listed, and eligible,
-after leaving it. For an award without an event, every recipient must be an accepted member of that
-group's team. Canceled events cannot issue awards. Eligibility is checked when the award is
-requested: removing someone from the event afterwards neither revokes a badge they already hold nor
-cancels an award that is still queued.
+organizer, event-level speaker, or session-level speaker. Session-level speakers include the author
+and co-speaker of the proposal behind a session linked to a call-for-speakers submission. Event
+organizers are the people listed in the event's Contributors tab. They are added from the group
+team, but stay listed, and eligible, after leaving it. For an award without an event, every
+recipient must be an accepted member of that group's team. Canceled events cannot issue awards.
+Eligibility is checked when the award is requested: removing someone from the event afterwards
+neither revokes a badge they already hold nor cancels an award that is still queued.
 
 OCG validates the complete recipient list before awarding the badge. If any recipient is
 ineligible, nobody in that request receives it. Each user can hold one active award of a badge:
