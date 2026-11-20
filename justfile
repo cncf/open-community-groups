@@ -170,9 +170,10 @@ db-init data_dir:
 db-install-tests-fixtures:
     @for file in "{{ source_dir }}"/database/tests/fixtures/*.sql; do PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests }} -q -v ON_ERROR_STOP=1 -f "$file" || exit 1; done
 
-# Check database layer conventions (trigger function ownership).
+# Check database layer conventions and verify lint rules.
 db-lint:
     sh "{{ source_dir }}/database/scripts/lint.sh"
+    sh "{{ source_dir }}/database/scripts/lint-test.sh"
 
 # Load e2e seed data into e2e test database.
 db-load-tests-e2e-data: e2e-db-guard
