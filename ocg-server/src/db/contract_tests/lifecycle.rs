@@ -15,6 +15,40 @@ use super::helpers::*;
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_unit_of_work_cancelled_begin_releases_clean_connection() -> Result<()> {
+    // Setup a warm single-connection pool so the next borrower reuses the same connection
+    let mut cfg = contract_tests_config()?;
+    cfg.pool = Some(PoolConfig::new(1));
+    let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls)?;
+    let db = PgDB::new(pool.clone());
+    drop(pool.get().await?);
+
+    // Poll begin once so it sends its statement, then drop it before the reply arrives
+    let mut begin = db.begin();
+    tokio::select! {
+        biased;
+        result = &mut begin => panic!("begin should still be awaiting its reply: {}", result.is_ok()),
+        () = std::future::ready(()) => {}
+    }
+    assert_eq!(pool.status().available, 0);
+    drop(begin);
+
+    // Check the next borrower gets the connection outside any transaction
+    let client = pool.get().await?;
+    let pid: i32 = client.query_one("select pg_backend_pid()", &[]).await?.get(0);
+    let state: String = contract_tests_db()?
+        .fetch_scalar_one(
+            "select state from pg_stat_activity where pid = $1::int4",
+            &[&pid],
+        )
+        .await?;
+    assert_eq!(state, "idle");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_unit_of_work_commit_failure_persists_nothing() -> Result<()> {
     // Setup a unit of work whose deferred constraint fires at commit
     let db = contract_tests_db()?;
