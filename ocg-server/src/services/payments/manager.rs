@@ -234,11 +234,7 @@ impl PgPaymentsManager {
         &self,
         payments_provider: DynPaymentsProvider,
     ) -> PaymentsWebhookReconciler {
-        PaymentsWebhookReconciler::new(
-            self.db.clone(),
-            self.notification_composer.clone(),
-            payments_provider,
-        )
+        PaymentsWebhookReconciler::new(self.db.clone(), payments_provider, self.server_cfg.clone())
     }
 }
 

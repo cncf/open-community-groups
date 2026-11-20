@@ -355,9 +355,8 @@ attach the fee to its connected-account charge before fee adjustments run.
 Direct-charge Checkout, invoice, and refund events belong on the Connect
 destination.
 
-Subscribing extra events is not recommended. Valid platform events that OCG
-does not use are acknowledged and ignored; unsupported Connect events are
-rejected so an incomplete event subscription remains visible.
+Subscribing extra events is not recommended. Valid platform and Connect events
+that OCG does not use are logged, acknowledged, and ignored.
 
 References:
 

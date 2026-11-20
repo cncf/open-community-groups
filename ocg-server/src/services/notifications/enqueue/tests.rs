@@ -11,8 +11,8 @@ use crate::{
     templates::notifications::{
         EventCanceled, EventCohostInvitation, EventCohostRemoved, EventCohostResponded,
         EventPaidConfigured, EventPublished, EventRescheduled, EventSeriesCanceled,
-        EventSeriesPublished, InboxMessageReceived, InboxReplyReceived, SpeakerSeriesWelcome,
-        SpeakerWelcome,
+        EventSeriesPublished, EventWelcome, InboxMessageReceived, InboxReplyReceived,
+        SpeakerSeriesWelcome, SpeakerWelcome,
     },
     types::{
         dashboard::community::contact::{CommunityContactFilters, RegionFilterValue},
@@ -1756,6 +1756,123 @@ async fn test_enqueue_event_rescheduled_notification_skips_unpublished_events() 
     )
     .await
     .unwrap();
+}
+
+#[tokio::test]
+async fn test_enqueue_event_welcome_notification_builds_payload_and_attachment() {
+    for (case, include_dashboard_link, expected_dashboard_link) in [
+        ("without dashboard link", false, None),
+        (
+            "with dashboard link",
+            true,
+            Some("https://example.test/dashboard/user?tab=events".to_string()),
+        ),
+    ] {
+        // Setup identifiers, event summary, and database expectations
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let user_id = Uuid::new_v4();
+        let event = sample_event_summary(event_id);
+        let mut db = MockDB::new();
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event.clone()));
+        expect_site_settings(&mut db);
+        let notifications = capture_enqueued(&mut db, 1);
+
+        // Enqueue the welcome notification on the supplied database handle
+        enqueue_event_welcome_notification(
+            &db,
+            &sample_server_cfg("https://example.test/"),
+            community_id,
+            event_id,
+            user_id,
+            include_dashboard_link,
+        )
+        .await
+        .unwrap_or_else(|err| panic!("{case}: {err:#}"));
+
+        // Check recipient, template payload, and calendar attachment
+        let notifications = enqueued(&notifications);
+        let notification = find_notification(&notifications, &NotificationKind::EventWelcome);
+        assert_eq!(notification.recipients, vec![user_id], "{case}");
+        assert_eq!(notification.attachments.len(), 1, "{case}");
+        assert_eq!(
+            notification.attachments[0].content_type, "text/calendar; charset=utf-8",
+            "{case}"
+        );
+        let template: EventWelcome = template_of(notification);
+        assert_eq!(template.event.event_id, event_id, "{case}");
+        assert_eq!(
+            template.link, "https://example.test/test-community/group/def5678/event/ghi9abc",
+            "{case}"
+        );
+        assert_eq!(template.dashboard_link, expected_dashboard_link, "{case}");
+        assert_eq!(
+            template.theme.primary_color,
+            sample_site_settings().theme.primary_color,
+            "{case}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_enqueue_event_welcome_notification_propagates_context_failure() {
+    // Setup a context load failure and forbid enqueueing without context
+    let mut db = MockDB::new();
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .returning(|_, _| Err(anyhow!("event unavailable")));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_enqueue_notification().never();
+
+    // Run the workflow
+    let err = enqueue_event_welcome_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        false,
+    )
+    .await
+    .expect_err("context load failure should propagate");
+
+    // Check the context failure propagates
+    assert_eq!(err.to_string(), "event unavailable");
+}
+
+#[tokio::test]
+async fn test_enqueue_event_welcome_notification_propagates_enqueue_failure() {
+    // Setup a valid context and a failing notification insert
+    let event_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id);
+    let mut db = MockDB::new();
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .returning(move |_, _| Ok(event.clone()));
+    expect_site_settings(&mut db);
+    db.expect_enqueue_notification()
+        .times(1)
+        .returning(|_| Err(anyhow!("queue unavailable")));
+
+    // Run the workflow
+    let err = enqueue_event_welcome_notification(
+        &db,
+        &sample_server_cfg("https://example.test/"),
+        Uuid::new_v4(),
+        event_id,
+        Uuid::new_v4(),
+        false,
+    )
+    .await
+    .expect_err("enqueue failure should propagate");
+
+    // Check the enqueue failure propagates so callers can roll back
+    assert_eq!(err.to_string(), "queue unavailable");
 }
 
 #[tokio::test]

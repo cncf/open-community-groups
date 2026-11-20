@@ -1,26 +1,31 @@
 //! Payments webhook reconciliation helpers.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use tracing::warn;
 use uuid::Uuid;
 
 use crate::{
+    config::HttpServerConfig,
     db::{
-        DynDB,
+        DBExt, DynDB,
         payments::{
             EventPurchaseRefund, EventPurchaseRefundStatus,
             ReconcileEventPurchaseForCheckoutSessionInput, ReconcileEventPurchaseResult,
         },
     },
-    services::payments::{
-        DynPaymentsProvider, FindRefundInput, GetCheckoutFinancialContextInput,
-        PaymentsWebhookEvent, RefundPaymentResult, RefundPaymentStatus,
-        notification_composer::PaymentsNotificationComposer,
-        refund_recorder::{RecordedProviderRefund, persist_provider_refund_result},
+    services::{
+        notifications::enqueue::enqueue_event_welcome_notification,
+        payments::{
+            DynPaymentsProvider, FindRefundInput, GetCheckoutFinancialContextInput,
+            PaymentsWebhookEvent, RefundPaymentResult, RefundPaymentStatus,
+            refund_recorder::{RecordedProviderRefund, persist_provider_refund_result},
+        },
     },
     types::payments::{EventPurchaseStatus, EventPurchaseSummary, PaymentProvider},
 };
 
+#[cfg(test)]
+mod contract_tests;
 #[cfg(test)]
 mod tests;
 
@@ -29,23 +34,23 @@ mod tests;
 pub(super) struct PaymentsWebhookReconciler {
     /// Database handle for payment reconciliation.
     db: DynDB,
-    /// Shared notification helper for completed purchases.
-    notification_composer: PaymentsNotificationComposer,
     /// Provider adapter used to reconcile payment events.
     payments_provider: DynPaymentsProvider,
+    /// Server configuration used to build notification links and attachments.
+    server_cfg: HttpServerConfig,
 }
 
 impl PaymentsWebhookReconciler {
     /// Creates a new payments webhook reconciler.
     pub(super) fn new(
         db: DynDB,
-        notification_composer: PaymentsNotificationComposer,
         payments_provider: DynPaymentsProvider,
+        server_cfg: HttpServerConfig,
     ) -> Self {
         Self {
             db,
-            notification_composer,
             payments_provider,
+            server_cfg,
         }
     }
 
@@ -201,39 +206,60 @@ impl PaymentsWebhookReconciler {
             })
             .await?;
 
-        // Reconcile the provider checkout session with the current local purchase state
-        match self
-            .db
-            .reconcile_event_purchase_for_checkout_session(
-                &ReconcileEventPurchaseForCheckoutSessionInput {
-                    payment_provider: self.payments_provider.provider(),
-                    provider_charge_id: financial_context.provider_charge_id,
-                    provider_object_account_id,
-                    provider_payment_reference: financial_context.provider_payment_reference,
-                    provider_session_id: provider_session_id.to_string(),
-                    provider_total_minor: financial_context.provider_total_minor,
-                    tax_amount_minor: financial_context.tax_amount_minor,
+        // Build the reconciliation input from the authoritative provider context
+        let reconcile_input = ReconcileEventPurchaseForCheckoutSessionInput {
+            payment_provider: self.payments_provider.provider(),
+            provider_charge_id: financial_context.provider_charge_id,
+            provider_object_account_id: provider_object_account_id.clone(),
+            provider_payment_reference: financial_context.provider_payment_reference,
+            provider_session_id: provider_session_id.to_string(),
+            provider_total_minor: financial_context.provider_total_minor,
+            tax_amount_minor: financial_context.tax_amount_minor,
 
-                    provider_application_fee_id: financial_context.provider_application_fee_id,
-                },
-            )
+            provider_application_fee_id: financial_context.provider_application_fee_id,
+        };
+        let server_cfg = self.server_cfg.clone();
+
+        // Reconcile the checkout and enqueue its welcome email atomically
+        self.db
+            .as_ref()
+            .transaction(|tx| {
+                Box::pin(async move {
+                    // Reconcile local purchase state first so replayed or no-op
+                    // deliveries skip notification context lookups
+                    let result = tx
+                        .reconcile_event_purchase_for_checkout_session(&reconcile_input)
+                        .await
+                        .context("failed to reconcile checkout purchase")?;
+
+                    // Enqueue the attendee welcome email on the same transaction
+                    // only when checkout completion transitions local state
+                    if let ReconcileEventPurchaseResult::Completed(completed_purchase) = result {
+                        enqueue_event_welcome_notification(
+                            tx,
+                            &server_cfg,
+                            completed_purchase.community_id,
+                            completed_purchase.event_id,
+                            completed_purchase.user_id,
+                            false,
+                        )
+                        .await
+                        .context("failed to enqueue checkout welcome notification")?;
+                    }
+
+                    Ok(())
+                })
+            })
             .await
-        {
-            Ok(ReconcileEventPurchaseResult::Completed(completed_purchase)) => {
-                // Notify the attendee after the purchase is finalized locally
-                self.notification_composer
-                    .enqueue_checkout_completed_notification(completed_purchase)
-                    .await;
-                Ok(())
-            }
-            Ok(ReconcileEventPurchaseResult::Noop | ReconcileEventPurchaseResult::RefundQueued) => {
-                Ok(())
-            }
-            Err(err) => {
-                warn!(error = %format_args!("{err:#}"), "failed to reconcile purchase");
-                Err(err)
-            }
-        }
+            .map_err(|err| {
+                warn!(
+                    error = %format_args!("{err:#}"),
+                    %provider_object_account_id,
+                    %provider_session_id,
+                    "failed to complete checkout webhook transaction"
+                );
+                err
+            })
     }
 
     /// Reconciles a provider refund lifecycle event with its durable local record.

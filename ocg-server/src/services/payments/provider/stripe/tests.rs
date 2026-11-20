@@ -2875,9 +2875,9 @@ fn test_verify_and_parse_webhook_rejects_invalid_connected_payloads() {
             "Stripe webhook payload is missing object data",
         ),
         (
-            "unsupported event type",
-            r#"{"account":"acct_test_123","livemode":false,"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123","payment_intent":"pi_test_123"}}}"#.to_string(),
-            "unsupported Stripe webhook event: payment_intent.succeeded",
+            "malformed payload object on handled event",
+            r#"{"account":"acct_test_123","livemode":false,"type":"checkout.session.completed","data":{"object":{"object":"checkout.session"}}}"#.to_string(),
+            "error parsing Stripe webhook object: missing field `id`",
         ),
         (
             "refund missing amount",
@@ -2961,25 +2961,122 @@ fn test_verify_and_parse_webhook_rejects_invalid_signature_headers() {
 }
 
 #[test]
-fn test_verify_and_parse_webhook_returns_noop_for_unsupported_platform_events() {
-    // Setup a valid platform event that does not belong to payment reconciliation
+fn test_verify_and_parse_webhook_rejects_unverified_unknown_connected_events() {
+    // Setup unknown Connect events that fail signature, replay-window, account, or mode checks
     let provider = sample_stripe_provider();
-    let body =
-        r#"{"livemode":false,"type":"account.updated","data":{"object":{"id":"acct_test_123"}}}"#;
-    let signature_header =
-        sample_signature_header_with_secret(body, Utc::now().timestamp(), "whsec_test");
+    let now = Utc::now().timestamp();
+    let ten_minutes = TimeDelta::minutes(10).num_seconds();
+    let valid_body = r#"{"account":"acct_test_123","livemode":false,"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123"}}}"#;
+    let missing_account_body = r#"{"livemode":false,"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123"}}}"#;
+    let live_mode_body = r#"{"account":"acct_test_123","livemode":true,"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123"}}}"#;
+    let cases = [
+        (
+            "invalid signature",
+            valid_body,
+            format!("t={now},v1=invalid"),
+            "invalid Stripe webhook signature",
+        ),
+        (
+            "stale timestamp",
+            valid_body,
+            sample_signature_header(valid_body, now - ten_minutes),
+            "stale Stripe webhook timestamp",
+        ),
+        (
+            "missing connected account",
+            missing_account_body,
+            sample_signature_header(missing_account_body, now),
+            "Stripe Connect webhook is missing connected account",
+        ),
+        (
+            "mismatched mode",
+            live_mode_body,
+            sample_signature_header(live_mode_body, now),
+            "Stripe webhook mode does not match payments configuration",
+        ),
+    ];
 
-    // Verify the event through the platform endpoint
-    let webhook_event = PaymentsProvider::verify_and_parse_webhook(
-        &provider,
-        PaymentsWebhookEndpoint::PlatformAccount,
-        &sample_webhook_headers(&signature_header),
-        body,
-    )
-    .expect("irrelevant platform event to verify");
+    for (case, body, signature_header, expected) in cases {
+        // Verify the unknown Connect event through the connected-account boundary
+        let Err(err) = PaymentsProvider::verify_and_parse_webhook(
+            &provider,
+            PaymentsWebhookEndpoint::ConnectedAccount,
+            &sample_webhook_headers(&signature_header),
+            body,
+        ) else {
+            panic!("{case}: expected unknown Connect event to fail verification");
+        };
 
-    // Check valid irrelevant platform deliveries are acknowledged without retries
-    assert_eq!(webhook_event, PaymentsWebhookEvent::Noop);
+        // Check verification failed before returning a no-op
+        assert_eq!(err.to_string(), expected, "{case}");
+    }
+}
+
+#[test]
+fn test_verify_and_parse_webhook_returns_noop_for_unsupported_connected_events() {
+    // Setup signed connected-account events that do not participate in reconciliation
+    let provider = sample_stripe_provider();
+    let cases = [
+        (
+            "payment intent event",
+            r#"{"account":"acct_test_123","livemode":false,"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123","payment_intent":"pi_test_123"}}}"#,
+        ),
+        (
+            "balance event without object id",
+            r#"{"account":"acct_test_123","livemode":false,"type":"balance.available","data":{"object":{"object":"balance","available":[]}}}"#,
+        ),
+        (
+            "platform-only event on connected endpoint",
+            r#"{"account":"acct_test_123","livemode":false,"type":"application_fee.created","data":{"object":{"id":"fee_test_123","account":"acct_test_123","amount":62,"charge":"ch_test_123"}}}"#,
+        ),
+    ];
+
+    for (case, body) in cases {
+        // Sign and verify the connected-account event
+        let signature_header = sample_signature_header(body, Utc::now().timestamp());
+        let webhook_event = PaymentsProvider::verify_and_parse_webhook(
+            &provider,
+            PaymentsWebhookEndpoint::ConnectedAccount,
+            &sample_webhook_headers(&signature_header),
+            body,
+        )
+        .unwrap_or_else(|err| panic!("{case}: {err:#}"));
+
+        // Check valid unhandled Connect deliveries are acknowledged without retries
+        assert_eq!(webhook_event, PaymentsWebhookEvent::Noop, "{case}");
+    }
+}
+
+#[test]
+fn test_verify_and_parse_webhook_returns_noop_for_unsupported_platform_events() {
+    // Setup valid platform events that do not belong to platform reconciliation
+    let provider = sample_stripe_provider();
+    let cases = [
+        (
+            "account event",
+            r#"{"livemode":false,"type":"account.updated","data":{"object":{"id":"acct_test_123"}}}"#,
+        ),
+        (
+            "connect-only checkout event without connected account",
+            r#"{"livemode":false,"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123"}}}"#,
+        ),
+    ];
+
+    for (case, body) in cases {
+        // Sign and verify the event through the platform endpoint
+        let signature_header =
+            sample_signature_header_with_secret(body, Utc::now().timestamp(), "whsec_test");
+        let webhook_event = PaymentsProvider::verify_and_parse_webhook(
+            &provider,
+            PaymentsWebhookEndpoint::PlatformAccount,
+            &sample_webhook_headers(&signature_header),
+            body,
+        )
+        .unwrap_or_else(|err| panic!("{case}: {err:#}"));
+
+        // Check valid irrelevant platform deliveries are acknowledged without retries
+        assert_eq!(webhook_event, PaymentsWebhookEvent::Noop, "{case}");
+    }
 }
 
 // Helpers.
