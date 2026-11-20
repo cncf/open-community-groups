@@ -6,11 +6,11 @@ use anyhow::{Result, anyhow};
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use chrono::{DateTime, Utc};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
-use reqwest::Client as HttpClient;
+use reqwest::{Client as HttpClient, RequestBuilder, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use tokio::{sync::Mutex, time::sleep};
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::{
     config::MeetingsZoomConfig,
@@ -19,6 +19,9 @@ use crate::{
 };
 
 use super::MeetingProviderError;
+
+#[cfg(test)]
+mod tests;
 
 /// Zoom client error code for "meeting does not exist".
 pub(crate) const ZOOM_MEETING_NOT_FOUND: i32 = 3001;
@@ -91,30 +94,15 @@ impl ZoomClient {
     ) -> Result<ZoomMeeting, ZoomClientError> {
         trace!("zoom client: create meeting");
 
-        // Get access token and build the request URL
-        let token = self
-            .get_token()
-            .await
-            .map_err(|e| ZoomClientError::Token(e.to_string()))?;
+        // Build the request URL and send the authenticated request
         let encoded_host_user_id = utf8_percent_encode(host_user_id, NON_ALPHANUMERIC).to_string();
         let url = format!(
             "{}/users/{encoded_host_user_id}/meetings",
             self.api_base_url
         );
-
-        // Send the request once a request slot is available
-        self.wait_for_request_slot().await;
         let response = self
-            .http_client
-            .post(&url)
-            .bearer_auth(token)
-            .json(req)
-            .send()
-            .await
-            .map_err(|e| ZoomClientError::Network(e.to_string()))?;
-        if !response.status().is_success() {
-            return Err(ZoomClientError::from_response(response).await);
-        }
+            .send_authenticated_request(|| self.http_client.post(&url).json(req))
+            .await?;
 
         // Parse the created meeting
         response
@@ -128,25 +116,10 @@ impl ZoomClient {
     pub(crate) async fn delete_meeting(&self, meeting_id: i64) -> Result<(), ZoomClientError> {
         trace!("zoom client: delete meeting");
 
-        // Get access token and build the request URL
-        let token = self
-            .get_token()
-            .await
-            .map_err(|e| ZoomClientError::Token(e.to_string()))?;
+        // Build the request URL and send the authenticated request
         let url = format!("{}/meetings/{meeting_id}", self.api_base_url);
-
-        // Send the request once a request slot is available
-        self.wait_for_request_slot().await;
-        let response = self
-            .http_client
-            .delete(&url)
-            .bearer_auth(token)
-            .send()
-            .await
-            .map_err(|e| ZoomClientError::Network(e.to_string()))?;
-        if !response.status().is_success() {
-            return Err(ZoomClientError::from_response(response).await);
-        }
+        self.send_authenticated_request(|| self.http_client.delete(&url))
+            .await?;
 
         Ok(())
     }
@@ -156,27 +129,11 @@ impl ZoomClient {
     pub(crate) async fn end_meeting(&self, meeting_id: i64) -> Result<(), ZoomClientError> {
         trace!("zoom client: end meeting");
 
-        // Get access token and build the status transition request
-        let token = self
-            .get_token()
-            .await
-            .map_err(|e| ZoomClientError::Token(e.to_string()))?;
+        // Build the status transition request and send it
         let url = format!("{}/meetings/{meeting_id}/status", self.api_base_url);
         let req = UpdateMeetingStatusRequest { action: "end" };
-
-        // Send the request once a request slot is available
-        self.wait_for_request_slot().await;
-        let response = self
-            .http_client
-            .put(&url)
-            .bearer_auth(token)
-            .json(&req)
-            .send()
-            .await
-            .map_err(|e| ZoomClientError::Network(e.to_string()))?;
-        if !response.status().is_success() {
-            return Err(ZoomClientError::from_response(response).await);
-        }
+        self.send_authenticated_request(|| self.http_client.put(&url).json(&req))
+            .await?;
 
         Ok(())
     }
@@ -189,25 +146,9 @@ impl ZoomClient {
     ) -> Result<ZoomMeeting, ZoomClientError> {
         trace!("zoom client: get meeting");
 
-        // Get access token and build the request URL
-        let token = self
-            .get_token()
-            .await
-            .map_err(|e| ZoomClientError::Token(e.to_string()))?;
+        // Build the request URL and send the authenticated request
         let url = format!("{}/meetings/{meeting_id}", self.api_base_url);
-
-        // Send the request once a request slot is available
-        self.wait_for_request_slot().await;
-        let response = self
-            .http_client
-            .get(&url)
-            .bearer_auth(token)
-            .send()
-            .await
-            .map_err(|e| ZoomClientError::Network(e.to_string()))?;
-        if !response.status().is_success() {
-            return Err(ZoomClientError::from_response(response).await);
-        }
+        let response = self.send_authenticated_request(|| self.http_client.get(&url)).await?;
 
         // Parse the meeting
         response
@@ -225,12 +166,6 @@ impl ZoomClient {
     ) -> Result<ListMeetingsResponse, ZoomClientError> {
         trace!("zoom client: list meetings");
 
-        // Get access token
-        let token = self
-            .get_token()
-            .await
-            .map_err(|e| ZoomClientError::Token(e.to_string()))?;
-
         // Build the request URL with pagination query parameters
         let encoded_host_user_id = utf8_percent_encode(host_user_id, NON_ALPHANUMERIC).to_string();
         let mut query = vec![
@@ -247,18 +182,8 @@ impl ZoomClient {
             self.api_base_url
         );
 
-        // Send the request once a request slot is available
-        self.wait_for_request_slot().await;
-        let response = self
-            .http_client
-            .get(&url)
-            .bearer_auth(token)
-            .send()
-            .await
-            .map_err(|e| ZoomClientError::Network(e.to_string()))?;
-        if !response.status().is_success() {
-            return Err(ZoomClientError::from_response(response).await);
-        }
+        // Send the authenticated request
+        let response = self.send_authenticated_request(|| self.http_client.get(&url)).await?;
 
         // Parse the meetings page
         response
@@ -276,26 +201,10 @@ impl ZoomClient {
     ) -> Result<(), ZoomClientError> {
         trace!("zoom client: update meeting");
 
-        // Get access token and build the request URL
-        let token = self
-            .get_token()
-            .await
-            .map_err(|e| ZoomClientError::Token(e.to_string()))?;
+        // Build the request URL and send the authenticated request
         let url = format!("{}/meetings/{meeting_id}", self.api_base_url);
-
-        // Send the request once a request slot is available
-        self.wait_for_request_slot().await;
-        let response = self
-            .http_client
-            .patch(&url)
-            .bearer_auth(token)
-            .json(req)
-            .send()
-            .await
-            .map_err(|e| ZoomClientError::Network(e.to_string()))?;
-        if !response.status().is_success() {
-            return Err(ZoomClientError::from_response(response).await);
-        }
+        self.send_authenticated_request(|| self.http_client.patch(&url).json(req))
+            .await?;
 
         Ok(())
     }
@@ -357,6 +266,60 @@ impl ZoomClient {
         *token_guard = Some(new_token);
 
         Ok(access_token)
+    }
+
+    /// Clear the cached token if it still matches the token that failed authentication.
+    async fn invalidate_token(&self, failed_token: &str) {
+        let mut token_guard = self.token.lock().await;
+        if token_guard
+            .as_ref()
+            .is_some_and(|cached| cached.access_token == failed_token)
+        {
+            *token_guard = None;
+        }
+    }
+
+    /// Send an authenticated Zoom API request, refreshing the token and retrying once on 401.
+    async fn send_authenticated_request(
+        &self,
+        build_request: impl Fn() -> RequestBuilder,
+    ) -> Result<Response, ZoomClientError> {
+        let mut retried = false;
+        loop {
+            // Acquire a cached or fresh access token
+            let token = self
+                .get_token()
+                .await
+                .map_err(|e| ZoomClientError::Token(e.to_string()))?;
+
+            // Send the request once a request slot is available
+            self.wait_for_request_slot().await;
+            let response = build_request()
+                .bearer_auth(&token)
+                .send()
+                .await
+                .map_err(|e| ZoomClientError::Network(e.to_string()))?;
+
+            // Return successful responses directly
+            if response.status().is_success() {
+                return Ok(response);
+            }
+
+            // Invalidate the rejected token and retry once with a fresh one
+            if response.status() == StatusCode::UNAUTHORIZED && !retried {
+                let error: ZoomClientErrorResponse = response.json().await.unwrap_or_default();
+                debug!(
+                    code = error.code,
+                    message = %error.message,
+                    "zoom client: unauthorized response, invalidating token and retrying",
+                );
+                self.invalidate_token(&token).await;
+                retried = true;
+                continue;
+            }
+
+            return Err(ZoomClientError::from_response(response).await);
+        }
     }
 
     /// Wait until the next Zoom HTTP request can start.
@@ -587,7 +550,7 @@ impl From<ZoomClientError> for MeetingProviderError {
 
 impl ZoomClientError {
     /// Create error from HTTP response status and body.
-    async fn from_response(response: reqwest::Response) -> Self {
+    async fn from_response(response: Response) -> Self {
         // Parse Retry-After header before consuming response body
         let retry_after = response
             .headers()
@@ -601,11 +564,9 @@ impl ZoomClientError {
         let error: ZoomClientErrorResponse = response.json().await.unwrap_or_default();
 
         // Determine error type based on status code
-        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        if status == StatusCode::TOO_MANY_REQUESTS {
             Self::RateLimit { retry_after }
-        } else if status == reqwest::StatusCode::UNAUTHORIZED
-            || status == reqwest::StatusCode::FORBIDDEN
-        {
+        } else if status == StatusCode::UNAUTHORIZED || status == StatusCode::FORBIDDEN {
             // Auth errors are retryable (token may have expired)
             Self::Token(format!("{} - {}", error.code, error.message))
         } else if status.is_client_error() {
@@ -669,151 +630,5 @@ fn default_meeting_settings(recording_requested: Option<bool>) -> MeetingSetting
         mute_upon_entry: Some(true),
         participant_video: Some(false),
         waiting_room: Some(false),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::time::Duration;
-
-    use axum::http::{self, StatusCode, header::RETRY_AFTER};
-    use serde_json::json;
-
-    use crate::{services::meetings::MeetingProviderError, types::meetings::Meeting};
-
-    use super::{
-        CreateMeetingRequest, MAX_DURATION_MINUTES, MIN_DURATION_MINUTES, Minutes,
-        UpdateMeetingRequest, ZoomClientError,
-    };
-
-    #[test]
-    fn test_meeting_requests_map_recording_preference_to_auto_recording() {
-        let cases = [
-            ("recording requested", Some(true), "cloud"),
-            ("recording preference unset", None, "cloud"),
-            ("recording declined", Some(false), "none"),
-        ];
-        for (case, recording_requested, auto_recording) in cases {
-            let meeting = Meeting {
-                recording_requested,
-                ..Default::default()
-            };
-
-            // Check create and update requests apply the same recording setting
-            let create = serde_json::to_value(CreateMeetingRequest::try_from(&meeting).unwrap());
-            assert_eq!(
-                create.unwrap()["settings"]["auto_recording"],
-                json!(auto_recording),
-                "{case} create"
-            );
-            let update = serde_json::to_value(UpdateMeetingRequest::try_from(&meeting).unwrap());
-            assert_eq!(
-                update.unwrap()["settings"]["auto_recording"],
-                json!(auto_recording),
-                "{case} update"
-            );
-        }
-    }
-
-    #[tokio::test]
-    async fn test_from_response_classifies_status_into_provider_errors() {
-        let cases = [
-            (
-                "rate limited with retry-after",
-                StatusCode::TOO_MANY_REQUESTS,
-                Some("45"),
-                json!({}),
-                "rate limit exceeded (retry after 45s)",
-                Some(Duration::from_secs(45)),
-            ),
-            (
-                "rate limited without retry-after",
-                StatusCode::TOO_MANY_REQUESTS,
-                None,
-                json!({}),
-                "rate limit exceeded (retry after 60s)",
-                Some(Duration::from_mins(1)),
-            ),
-            (
-                "unauthorized",
-                StatusCode::UNAUTHORIZED,
-                None,
-                json!({"code": 124, "message": "Invalid access token"}),
-                "provider token error: 124 - Invalid access token",
-                None,
-            ),
-            (
-                "forbidden",
-                StatusCode::FORBIDDEN,
-                None,
-                json!({"code": 200, "message": "No permission"}),
-                "provider token error: 200 - No permission",
-                None,
-            ),
-            (
-                "other client error",
-                StatusCode::NOT_FOUND,
-                None,
-                json!({"code": 1001, "message": "User does not exist"}),
-                "provider client error: 1001: User does not exist",
-                None,
-            ),
-            (
-                "meeting not found",
-                StatusCode::NOT_FOUND,
-                None,
-                json!({"code": 3001, "message": "Meeting does not exist"}),
-                "meeting not found",
-                None,
-            ),
-            (
-                "server error without a body",
-                StatusCode::SERVICE_UNAVAILABLE,
-                None,
-                json!(null),
-                "provider server error: 0: ",
-                None,
-            ),
-        ];
-        for (case, status, retry_after_header, body, message, retry_after) in cases {
-            // Build the response the Zoom API would return
-            let mut response = http::Response::builder().status(status);
-            if let Some(retry_after_header) = retry_after_header {
-                response = response.header(RETRY_AFTER, retry_after_header);
-            }
-            let response = reqwest::Response::from(response.body(body.to_string()).unwrap());
-
-            // Check the provider error it maps to
-            let err = MeetingProviderError::from(ZoomClientError::from_response(response).await);
-            assert_eq!(err.to_string(), message, "{case}");
-            assert_eq!(err.retry_after(), retry_after, "{case}");
-        }
-    }
-
-    #[test]
-    fn test_minutes_try_from_duration_enforces_provider_bounds() {
-        let cases = [
-            ("below minimum", MIN_DURATION_MINUTES - 1, false),
-            ("minimum", MIN_DURATION_MINUTES, true),
-            ("maximum", MAX_DURATION_MINUTES, true),
-            ("above maximum", MAX_DURATION_MINUTES + 1, false),
-        ];
-        for (case, minutes, accepted) in cases {
-            let duration = Duration::from_mins(u64::try_from(minutes).unwrap());
-            match Minutes::try_from_duration(duration) {
-                Ok(Minutes(converted)) => {
-                    assert!(accepted, "{case}");
-                    assert_eq!(converted, minutes, "{case}");
-                }
-                Err(err) => {
-                    assert!(!accepted, "{case}");
-                    assert_eq!(
-                        err.to_string(),
-                        format!("invalid meeting duration: {minutes} minutes"),
-                        "{case}"
-                    );
-                }
-            }
-        }
     }
 }
