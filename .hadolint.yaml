@@ -1,0 +1,10 @@
+failure-threshold: warning
+ignored:
+  # Distro package mirrors rotate versions on security updates, so pinning OS
+  # packages in apk/apt commands breaks builds.
+  - DL3008
+  - DL3018
+  # Pre-existing warnings in database Dockerfiles (tracked for cleanup with
+  # database Dockerfile pinning and PostgreSQL 17 updates).
+  - DL3003
+  - DL3062
