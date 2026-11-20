@@ -360,6 +360,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment> {
         #[cached(
+            max_size = 500,
             ttl_secs = 7200,
             key = "Uuid",
             convert = "{ attachment_id }",
