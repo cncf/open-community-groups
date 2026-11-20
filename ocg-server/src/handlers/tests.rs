@@ -4,6 +4,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, LazyLock},
+    time::Instant,
 };
 
 use axum::{
@@ -27,7 +28,10 @@ use uuid::Uuid;
 use crate::{
     activity_tracker::DynActivityTracker,
     auth::User as AuthUser,
-    config::{BadgesConfig, HttpServerConfig, PaymentsConfig},
+    config::{
+        BadgesConfig, ClientIpConfig, ClientIpPeerConfig, HttpServerConfig, PaymentsConfig,
+        RateLimitBudgets, RateLimitConfig, RateLimitMode,
+    },
     db::{DynDB, mock::MockDB},
     handlers::auth::session_context::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
@@ -39,6 +43,7 @@ use crate::{
         inbox::{DynInboxManager, MockInboxManager},
         notifications::{DynNotificationsManager, MockNotificationsManager},
         payments::{DynPaymentsManager, MockPaymentsManager},
+        rate_limit::RateLimiter,
     },
     test_util::opening_tag_with,
     types::{
@@ -870,6 +875,23 @@ pub(crate) fn sample_pending_co_speaker_invitation(
     }
 }
 
+/// Sample rate limiter keyed by the TCP peer, with the given budgets and mode.
+///
+/// Requests reach it with a resolved client only when they carry a
+/// `ConnectInfo<SocketAddr>` extension.
+pub(crate) fn sample_rate_limiter(
+    limits: RateLimitBudgets,
+    mode: RateLimitMode,
+) -> Arc<RateLimiter> {
+    let cfg = RateLimitConfig {
+        client_ip: ClientIpConfig::Peer(ClientIpPeerConfig {}),
+
+        limits,
+        mode,
+    };
+    Arc::new(RateLimiter::new(&cfg, Instant::now()).expect("sample rate limit config to be valid"))
+}
+
 /// Sample minimal search output for events.
 pub(crate) fn sample_search_events_minimal_output(
     event_id: Uuid,
@@ -1140,6 +1162,7 @@ pub(crate) struct TestRouterBuilder {
     notifications_manager: Option<MockNotificationsManager>,
     payments_cfg: Option<PaymentsConfig>,
     payments_manager: Option<MockPaymentsManager>,
+    rate_limiter: Option<Arc<RateLimiter>>,
     server_cfg: Option<HttpServerConfig>,
 }
 
@@ -1162,11 +1185,14 @@ impl TestRouterBuilder {
             notifications_manager: None,
             payments_cfg: None,
             payments_manager: None,
+            rate_limiter: None,
             server_cfg: None,
         }
     }
 
     /// Builds the application router with the configured options.
+    ///
+    /// Rate limiting is off unless a limiter was set.
     pub(crate) async fn build(self) -> Router {
         let db: DynDB = Arc::new(*self.db);
         let activity_tracker: DynActivityTracker =
@@ -1203,6 +1229,7 @@ impl TestRouterBuilder {
             self.payments_cfg,
             payments_manager,
             nm,
+            self.rate_limiter,
             &server_cfg,
             CancellationToken::new(),
         )
@@ -1270,6 +1297,12 @@ impl TestRouterBuilder {
     /// Sets a custom payments manager.
     pub(crate) fn with_payments_manager(mut self, payments_manager: MockPaymentsManager) -> Self {
         self.payments_manager = Some(payments_manager);
+        self
+    }
+
+    /// Enables rate limiting with the given limiter.
+    pub(crate) fn with_rate_limiter(mut self, rate_limiter: Arc<RateLimiter>) -> Self {
+        self.rate_limiter = Some(rate_limiter);
         self
     }
 

@@ -120,6 +120,7 @@
         <button hx-get='/explore/events-section'
                 hx-trigger="click"
                 hx-target="#entity-section"
+                hx-sync="closest #entity-section:replace"
                 hx-indicator="[data-loading-filters], #loading-filters-mobile"
                 hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
                 class="inline-flex items-center justify-between w-full p-3 bg-surface border border-stone-200 rounded-l-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
@@ -150,6 +151,7 @@
         <button hx-get='/explore/groups-section'
                 hx-trigger="click"
                 hx-target="#entity-section"
+                hx-sync="closest #entity-section:replace"
                 hx-indicator="[data-loading-filters], #loading-filters-mobile"
                 hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
                 class="inline-flex items-center justify-between w-full p-3 bg-surface border border-stone-200 rounded-r-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
@@ -176,6 +178,7 @@
             hx-get='/explore/events-section'
             hx-trigger="click"
             hx-target="#entity-section"
+            hx-sync="closest #entity-section:replace"
             hx-indicator="[data-loading-filters], #loading-filters-mobile"
             hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
             class="inline-flex h-11 items-center justify-center gap-1.5 rounded-l-lg border border-stone-200 bg-surface px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-halo">
@@ -202,6 +205,7 @@
             hx-get='/explore/groups-section'
             hx-trigger="click"
             hx-target="#entity-section"
+            hx-sync="closest #entity-section:replace"
             hx-indicator="[data-loading-filters], #loading-filters-mobile"
             hx-vals='{{ entity_vals(community = community, ts_query = ts_query) }}'
             class="-ms-px inline-flex h-11 items-center justify-center gap-1.5 rounded-r-lg border border-stone-200 bg-surface px-3 text-sm text-stone-500 phone:focus-visible:relative phone:focus-visible:ring-2 phone:focus-visible:ring-primary-halo">

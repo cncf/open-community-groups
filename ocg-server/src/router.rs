@@ -4,6 +4,7 @@
 //! and static file handling.
 
 mod dashboard;
+mod rate_limit;
 mod route_hits;
 
 #[cfg(test)]
@@ -16,7 +17,7 @@ use axum::{
     Router,
     extract::{FromRef, MatchedPath, Request, State as AxumState},
     http::{
-        HeaderName, HeaderValue, Method, StatusCode, Uri,
+        HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri,
         header::{CACHE_CONTROL, CONTENT_TYPE, HOST, ORIGIN, REFERER, SET_COOKIE, VARY},
     },
     middleware::{self, Next},
@@ -54,8 +55,11 @@ use crate::{
         inbox::DynInboxManager,
         notifications::DynNotificationsManager,
         payments::DynPaymentsManager,
+        rate_limit::RateLimiter,
     },
 };
+
+use self::rate_limit::RateLimitLayerState;
 
 /// Cache-Control header value for immutable public assets.
 #[cfg(any(not(debug_assertions), test))]
@@ -160,7 +164,7 @@ pub(crate) struct State {
 /// Configures and returns the application router.
 ///
 /// Sets up all routes, middleware layers, and shared state. Optionally adds basic
-/// authentication if configured.
+/// authentication if configured, and rate limiting when a limiter is given.
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::too_many_arguments)]
 #[instrument(skip_all)]
@@ -175,6 +179,7 @@ pub(crate) async fn setup(
     payments_cfg: Option<PaymentsConfig>,
     payments_manager: DynPaymentsManager,
     notifications_manager: DynNotificationsManager,
+    rate_limiter: Option<Arc<RateLimiter>>,
     server_cfg: &HttpServerConfig,
     shutdown_drain: CancellationToken,
 ) -> Result<Router> {
@@ -425,9 +430,22 @@ pub(crate) async fn setup(
         );
     }
 
+    // Wrap the routes in the messages and session layers
+    router = router.layer(MessagesManagerLayer).layer(auth_layer);
+
+    // Limit unauthenticated routes outside the session layers, when configured
+    if let Some(rate_limiter) = rate_limiter {
+        let rate_limit_state = Arc::new(RateLimitLayerState {
+            rate_limiter,
+            server_cfg: server_cfg.clone(),
+        });
+        router = router.layer(middleware::from_fn_with_state(
+            rate_limit_state,
+            rate_limit::limit_requests,
+        ));
+    }
+
     router = router
-        .layer(MessagesManagerLayer)
-        .layer(auth_layer)
         .layer(middleware::from_fn(strip_cookies_from_public_responses))
         .layer(
             // Assign a request id, open the request span carrying it, and echo it in the response
@@ -538,65 +556,21 @@ async fn enforce_browser_same_origin(
     request: Request,
     next: Next,
 ) -> axum::response::Response {
-    // Allow methods that cannot mutate application state
-    if matches!(
-        *request.method(),
-        Method::GET | Method::HEAD | Method::OPTIONS | Method::TRACE
-    ) {
-        return next.run(request).await;
-    }
-
-    // Reject explicit cross-site browser requests
-    let fetch_site = request
-        .headers()
-        .get("sec-fetch-site")
-        .map(|value| value.to_str().ok());
-    if fetch_site
-        .flatten()
-        .is_some_and(|value| value.eq_ignore_ascii_case("cross-site"))
-    {
-        return StatusCode::FORBIDDEN.into_response();
-    }
-
-    // Apply Fetch Metadata policy when origin headers are absent
-    let has_explicit_origin =
-        request.headers().contains_key(ORIGIN) || request.headers().contains_key(REFERER);
-    if !has_explicit_origin {
-        let allowed = match fetch_site {
-            None => true,
-            Some(Some(value)) if value.eq_ignore_ascii_case("same-origin") => true,
-            Some(_) => false,
-        };
-        return if allowed {
-            next.run(request).await
-        } else {
-            StatusCode::FORBIDDEN.into_response()
-        };
-    }
-
-    // Compare explicit browser origin evidence with the configured site
-    let origin_matches = match request_headers_match_site_origin(&server_cfg, request.headers()) {
-        Ok(origin_matches) => origin_matches,
+    // Check the request's same-origin evidence
+    let allowed = match browser_request_allowed(&server_cfg, request.method(), request.headers()) {
+        Ok(allowed) => allowed,
         Err(err) => {
             error!(error = %format_args!("{err:#}"), "error checking request origin");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 
-    // Require explicit origin evidence to match the configured site
-    if origin_matches {
+    // Run the handler only for allowed requests
+    if allowed {
         next.run(request).await
     } else {
         StatusCode::FORBIDDEN.into_response()
     }
-}
-
-/// Returns whether a request header has the string value `true`.
-fn header_value_is_true(headers: &axum::http::HeaderMap, header_name: &str) -> bool {
-    headers
-        .get(header_name)
-        .and_then(|value| value.to_str().ok())
-        .is_some_and(|value| value.eq_ignore_ascii_case("true"))
 }
 
 /// Inserts the current commit SHA response header.
@@ -726,9 +700,58 @@ async fn strip_cookies_from_public_responses(
 
 // Helpers.
 
+/// Returns whether a request header has the string value `true`.
+pub(crate) fn header_value_is_true(headers: &axum::http::HeaderMap, header_name: &str) -> bool {
+    headers
+        .get(header_name)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.eq_ignore_ascii_case("true"))
+}
+
 /// Returns the `serde_qs` configuration for query string parsing.
 pub(crate) fn serde_qs_config() -> serde_qs::Config {
     serde_qs::Config::new().max_depth(6).use_form_encoding(true)
+}
+
+/// Returns whether a browser request carries trustworthy same-origin evidence.
+///
+/// Methods that cannot mutate application state are always allowed. Fails
+/// only when the configured `base_url` cannot be used for the origin check.
+fn browser_request_allowed(
+    server_cfg: &HttpServerConfig,
+    method: &Method,
+    headers: &HeaderMap,
+) -> Result<bool> {
+    // Allow methods that cannot mutate application state
+    if matches!(
+        *method,
+        Method::GET | Method::HEAD | Method::OPTIONS | Method::TRACE
+    ) {
+        return Ok(true);
+    }
+
+    // Reject explicit cross-site browser requests
+    let fetch_site = headers.get("sec-fetch-site").map(|value| value.to_str().ok());
+    if fetch_site
+        .flatten()
+        .is_some_and(|value| value.eq_ignore_ascii_case("cross-site"))
+    {
+        return Ok(false);
+    }
+
+    // Apply Fetch Metadata policy when origin headers are absent
+    let has_explicit_origin = headers.contains_key(ORIGIN) || headers.contains_key(REFERER);
+    if !has_explicit_origin {
+        let allowed = match fetch_site {
+            None => true,
+            Some(Some(value)) if value.eq_ignore_ascii_case("same-origin") => true,
+            Some(_) => false,
+        };
+        return Ok(allowed);
+    }
+
+    // Require explicit browser origin evidence to match the configured site
+    request_headers_match_site_origin(server_cfg, headers)
 }
 
 /// Opens the request span, carrying the request id so downstream log lines can be correlated.

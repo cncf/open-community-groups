@@ -8,7 +8,7 @@
 // Deep ssi/json-ld generic futures in badge verification exceed the default.
 #![recursion_limit = "256"]
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use activity_tracker::ActivityTrackerDB;
 use anyhow::{Context, Result};
@@ -37,6 +37,7 @@ use crate::{
             DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider,
             start_payment_workers,
         },
+        rate_limit::{self, RateLimiter},
         workers::{BackgroundTasks, queue_health},
     },
     types::meetings::MeetingProvider,
@@ -120,6 +121,9 @@ async fn main() -> Result<()> {
         &background_tasks,
     );
 
+    // Setup rate limiting and its summary worker, when configured
+    let rate_limiter = rate_limit::setup(cfg.server.rate_limit.as_ref(), &background_tasks)?;
+
     // Start the health reporter last so its reports cover every worker
     queue_health::start(&workers_db, background_tasks.registry(), &background_tasks);
 
@@ -159,6 +163,7 @@ async fn main() -> Result<()> {
         cfg.payments.clone(),
         payments_manager,
         notifications_manager,
+        rate_limiter,
         &cfg.server,
     )
     .await?;
@@ -182,6 +187,7 @@ async fn run_server(
     payments_cfg: Option<PaymentsConfig>,
     payments_manager: DynPaymentsManager,
     notifications_manager: Arc<PgNotificationsManager>,
+    rate_limiter: Option<Arc<RateLimiter>>,
     server_cfg: &HttpServerConfig,
 ) -> Result<()> {
     // Build the router before binding the TCP listener
@@ -197,19 +203,23 @@ async fn run_server(
         payments_cfg,
         payments_manager,
         notifications_manager,
+        rate_limiter,
         server_cfg,
         shutdown_drain.clone(),
     )
     .await?;
     let listener = TcpListener::bind(&server_cfg.addr).await?;
 
-    // Serve requests until a graceful shutdown signal arrives
+    // Serve requests with their peer address until a graceful shutdown signal arrives
     info!("server started");
     info!(%server_cfg.addr, "listening");
 
-    if let Err(err) = axum::serve(listener, router)
-        .with_graceful_shutdown(shutdown_signal_with_drain(shutdown_drain))
-        .await
+    if let Err(err) = axum::serve(
+        listener,
+        router.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal_with_drain(shutdown_drain))
+    .await
     {
         error!(error = %format_args!("{err:#}"), "server error");
         return Err(err.into());

@@ -1,10 +1,21 @@
 import { expect, nextFrame, waitUntil } from "@open-wc/testing";
 
 import { PHONE_MEDIA_QUERY } from "/static/js/common/phone-viewport.js";
+import { Calendar } from "/static/js/community/explore/calendar.js";
+import { updateDateInput } from "/static/js/community/explore/filters.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
-import { dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
+import {
+  createRateLimitedXhr,
+  createXhr,
+  dispatchHtmxBeforeRequest,
+  dispatchHtmxRequestError,
+  RATE_LIMIT_MESSAGE,
+} from "/tests/unit/test-utils/htmx.js";
 import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
+
+const RESULTS_ERROR_MESSAGE = "Something went wrong loading results. Please try again later.";
+const SECTION_SYNC = "closest #entity-section:replace";
 
 /**
  * Renders one button of the Events and Groups switch, which only the unpressed side can request.
@@ -14,9 +25,30 @@ import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
  */
 const renderSwitchButton = (label, entity) => {
   const pressed = label === entity;
-  const request = pressed ? "" : `hx-get="/explore/${label.toLowerCase()}-section"`;
+  const request = pressed ? "" : `hx-get="/explore/${label.toLowerCase()}-section" hx-sync="${SECTION_SYNC}"`;
   return `<button type="button" aria-pressed="${pressed}" ${request}>${label}</button>`;
 };
+
+/**
+ * Renders the date inputs of a filter form, visible in list view and hidden in calendar view.
+ * @param {string} view View mode.
+ * @returns {string} Date inputs markup.
+ */
+const renderDateInputs = (view) =>
+  view === "calendar"
+    ? `<input type="hidden" name="date_from" value="2026-04-01" />
+       <input type="hidden" name="date_to" value="2026-04-30" />`
+    : `<input type="date" name="date_from" value="2026-01-01" />
+       <input type="date" name="date_to" value="2026-12-31" />`;
+
+/**
+ * Renders one view mode radio.
+ * @param {string} value View mode value.
+ * @param {string} view Applied view mode.
+ * @returns {string} Radio markup.
+ */
+const renderViewModeRadio = (value, view) =>
+  `<input type="radio" id="${value}" name="view_mode" value="${value}" ${value === view ? "checked" : ""} />`;
 
 // Unit tests load no stylesheet, so the Active filters row and its items get fixed sizes: its
 // 300px holds the 70px toggle and the 120px and 60px chips, but not the 140px one with them.
@@ -24,39 +56,62 @@ const CHIP_STYLE = "box-sizing: border-box; flex: none; padding: 0";
 const ROW_STYLE = "display: flex; column-gap: 8px; padding: 0 12px; width: 300px";
 
 /**
- * Renders the Explore shell the page controls act on.
+ * Renders the Explore shell the page controls act on, holding the applied state the server
+ * rendered in its markup.
  * @param {string} [entity="Events"] Selected entity label.
+ * @param {object} [applied] Applied state.
+ * @param {string} [applied.query="kubecon"] Applied text search.
+ * @param {string} [applied.view="list"] Applied view mode.
  */
-const renderExplore = (entity = "Events") => {
+const renderExplore = (entity = "Events", { query = "kubecon", view = "list" } = {}) => {
   document.body.innerHTML = `
     <div id="entity-section">
       <div id="drawer-filters" class="-translate-x-full" tabindex="-1" inert aria-labelledby="drawer-label">
         <button id="close-filters" type="button"><div class="icon-close"></div></button>
-        <form id="events-form-mobile" class="filters-form" hx-get="/explore/events-section">
+        <form id="events-form-mobile" class="filters-form" hx-get="/explore/events-section" hx-sync="${SECTION_SYNC}">
           <input type="checkbox" name="kind[]" value="virtual" />
-          <collapsible-filter name="community"><input type="checkbox" name="community[]" value="one" /></collapsible-filter>
+          <collapsible-filter name="community" selected="[]"><input type="checkbox" name="community[]" value="one" /></collapsible-filter>
           <div data-dependent>Old group filter</div>
+          ${renderDateInputs(view)}
         </form>
         <button class="reset-filters" type="button">Reset</button>
         <button type="button" data-apply-filters>Show results</button>
       </div>
       <div id="drawer-backdrop" class="hidden"></div>
       <div id="explore-filters">
-        <form id="events-form" class="filters-form">
+        <button type="button" data-entity-radio hx-get="/explore/groups-section" hx-sync="${SECTION_SYNC}">Groups</button>
+        <form id="events-form" class="filters-form" hx-sync="${SECTION_SYNC}">
           <input type="checkbox" name="kind[]" value="virtual" checked />
           <input type="checkbox" name="kind[]" value="hybrid" checked />
-          <multi-select-filter name="group">
+          <multi-select-filter name="group" selected='["alpha"]'>
             <input type="hidden" name="group[]" value="alpha" />
             <button type="button" aria-label="Remove Alpha group"></button>
           </multi-select-filter>
+          ${renderDateInputs(view)}
         </form>
       </div>
-      <button id="open-filters" type="button"></button>
-      <div role="group" aria-label="Show">
-        ${renderSwitchButton("Events", entity)}
-        ${renderSwitchButton("Groups", entity)}
+      <div id="explore-results-header">
+        <button id="open-filters" type="button"></button>
+        <div role="group" aria-label="Show">
+          ${renderSwitchButton("Events", entity)}
+          ${renderSwitchButton("Groups", entity)}
+        </div>
+        <input id="ts_query" name="ts_query" value="${query}" />
+        <button id="search-btn" type="button">Search</button>
+        <button id="clean-search" type="button">Clear</button>
+        <div id="view-mode-controls">
+          ${renderViewModeRadio("list", view)}
+          ${renderViewModeRadio("calendar", view)}
+          ${renderViewModeRadio("map", view)}
+        </div>
+        <select id="sort_selector">
+          <option value="date-asc">Date (soonest)</option>
+          <option value="date-desc" selected>Date (latest)</option>
+        </select>
+        <input type="hidden" id="sort_by" name="sort_by" value="date" />
+        <input type="hidden" id="sort_direction" name="sort_direction" value="desc" />
       </div>
-      <input id="ts_query" name="ts_query" />
+      ${view === "calendar" ? '<script type="application/json" data-explore-calendar-data>{}</script>' : ""}
       <div data-applied-filters>
         <button class="reset-filters" type="button">Reset</button>
         <div style="${ROW_STYLE}">
@@ -92,16 +147,30 @@ const confirmRequest = (element) =>
  */
 const fireHtmx = (element, type) => element.dispatchEvent(new CustomEvent(type, { bubbles: true }));
 
-/** Replaces the section's markup, as a successful swap does. */
-const swapSection = () => {
+/**
+ * Replaces the section's markup, as a successful swap does.
+ * @param {object} [applied] Applied state of the new markup.
+ */
+const swapSection = (applied) => {
   const section = document.getElementById("entity-section");
   fireHtmx(document.body, "htmx:beforeHistorySave");
-  renderExplore();
+  renderExplore("Events", applied);
   fireHtmx(document.getElementById("entity-section") ?? section, "htmx:afterSettle");
 };
 
+/**
+ * Fails a request of the results section, as htmx reports it from the requesting element.
+ * @param {Element} element Requesting element.
+ * @param {string} [type="htmx:responseError"] Error event type.
+ * @param {object} [xhr] Failed request.
+ */
+const failSectionRequest = (element, type = "htmx:responseError", xhr = createXhr({ status: 500 })) =>
+  dispatchHtmxRequestError(element, type, { target: document.getElementById("entity-section"), xhr });
+
 const getDrawer = () => document.getElementById("drawer-filters");
 const getForm = () => document.getElementById("events-form-mobile");
+const getDesktopForm = () => document.getElementById("events-form");
+const getSearch = () => document.getElementById("ts_query");
 
 /**
  * Finds a button of the Events and Groups switch.
@@ -213,24 +282,16 @@ describe("explore page controls", () => {
       expect(document.activeElement.tagName).to.equal("BODY");
     });
 
-    it("holds no listener for a switch press and reports nothing", () => {
-      // Record what the document binds during a press.
-      const added = [];
-      const { addEventListener } = document;
-      document.addEventListener = function add(type, ...rest) {
-        added.push(type);
-        return addEventListener.call(this, type, ...rest);
-      };
-
+    it("reports a failed switch press off phones once", () => {
       // Press the switch and fail its request.
       const groups = getSwitchButton("Groups");
       groups.click();
-      fireHtmx(groups, "htmx:responseError");
-      document.addEventListener = addEventListener;
+      failSectionRequest(groups);
 
-      // Verify nothing was bound, and nothing was reported.
-      expect(added).to.deep.equal([]);
-      expect(swal.calls).to.have.length(0);
+      // Verify one alert, and the side shown stays pressed.
+      expect(swal.calls).to.have.length(1);
+      expect(swal.calls[0].text).to.equal(RESULTS_ERROR_MESSAGE);
+      expect(getSwitchButton("Events").getAttribute("aria-pressed")).to.equal("true");
     });
 
     it("restores focus to the toggled filter after a desktop section swap", async () => {
@@ -290,9 +351,10 @@ describe("explore page controls", () => {
       fireHtmx(cards, "htmx:afterSettle");
       fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
 
-      // Verify nothing was written or scrolled.
+      // Verify nothing was written or scrolled, and the markup keeps its own sync.
       expect(scrolls).to.equal(0);
-      expect(document.querySelector("[hx-sync]")).to.equal(null);
+      expect(getForm().getAttribute("hx-sync")).to.equal(SECTION_SYNC);
+      expect(getDesktopForm().getAttribute("hx-sync")).to.equal(SECTION_SYNC);
       expect(document.getElementById("ts_query").hasAttribute("enterkeyhint")).to.equal(false);
     });
   });
@@ -302,19 +364,21 @@ describe("explore page controls", () => {
       media.setMatches(PHONE_MEDIA_QUERY, true);
     });
 
-    it("syncs both forms and the search key, and restores them after a swap", () => {
-      // Verify the writes from the phone branch.
-      const sync = "closest #entity-section:replace";
-      expect(getForm().getAttribute("hx-sync")).to.equal(sync);
-      expect(document.getElementById("events-form").getAttribute("hx-sync")).to.equal(sync);
+    it("sets the search key, restores it after a swap, and keeps the markup's sync", () => {
+      // Verify the write from the phone branch.
       expect(document.getElementById("ts_query").getAttribute("enterkeyhint")).to.equal("search");
 
-      // Verify a section swap brings them back.
+      // Verify a section swap brings it back.
       renderExplore();
-      expect(getForm().hasAttribute("hx-sync")).to.equal(false);
+      expect(document.getElementById("ts_query").hasAttribute("enterkeyhint")).to.equal(false);
       fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
-      expect(getForm().getAttribute("hx-sync")).to.equal(sync);
       expect(document.getElementById("ts_query").getAttribute("enterkeyhint")).to.equal("search");
+
+      // Verify leaving phones keeps the sync the markup carries.
+      media.setMatches(PHONE_MEDIA_QUERY, false);
+      expect(getForm().getAttribute("hx-sync")).to.equal(SECTION_SYNC);
+      expect(getDesktopForm().getAttribute("hx-sync")).to.equal(SECTION_SYNC);
+      expect(getSwitchButton("Groups").getAttribute("hx-sync")).to.equal(SECTION_SYNC);
     });
 
     it("opens as a modal sheet and closes back to the opener", () => {
@@ -420,16 +484,19 @@ describe("explore page controls", () => {
       expect(confirmRequest(document.getElementById("events-form"))).to.equal(true);
     });
 
-    it("reports a failed apply and keeps the choices on screen", () => {
-      // Apply a pending change and fail its request.
+    it("puts the applied state back once the sheet closes without a retry", () => {
+      // Tick a type in the sheet, apply it and fail its request with a rate limit.
       openSheet();
+      const virtual = getForm().querySelector('input[value="virtual"]');
+      virtual.checked = true;
       confirmRequest(getForm());
       document.querySelector("[data-apply-filters]").click();
-      fireHtmx(getForm(), "htmx:responseError");
+      failSectionRequest(getForm(), "htmx:responseError", createRateLimitedXhr());
 
-      // Verify the alert, the open sheet and a usable button.
-      expect(swal.calls).to.have.length(1);
+      // Verify the server's alert, the open sheet with the choice kept and a usable button.
+      expect(swal.calls.map((call) => call.text)).to.deep.equal([RATE_LIMIT_MESSAGE]);
       expect(isSheetOpen()).to.equal(true);
+      expect(virtual.checked).to.equal(true);
       expect(document.querySelector("[data-apply-filters]").disabled).to.equal(false);
 
       // Verify the next close lets the person out, instead of failing again.
@@ -437,10 +504,11 @@ describe("explore page controls", () => {
       expect(isSheetOpen()).to.equal(false);
       expect(htmx.triggerCalls).to.have.length(1);
 
-      // Verify reopening keeps the pending choices, so closing tries again.
+      // Verify reopening shows the applied state, so closing sends nothing.
       openSheet();
+      expect(virtual.checked).to.equal(false);
       document.getElementById("close-filters").click();
-      expect(htmx.triggerCalls).to.have.length(2);
+      expect(htmx.triggerCalls).to.have.length(1);
     });
 
     it("applies a new choice made after a failed apply on close", () => {
@@ -448,7 +516,7 @@ describe("explore page controls", () => {
       openSheet();
       confirmRequest(getForm());
       document.querySelector("[data-apply-filters]").click();
-      fireHtmx(getForm(), "htmx:responseError");
+      failSectionRequest(getForm());
 
       // Change something else, held back by the guard, and close.
       expect(confirmRequest(getForm())).to.equal(false);
@@ -463,7 +531,7 @@ describe("explore page controls", () => {
       openSheet();
       confirmRequest(getForm());
       document.querySelector("[data-apply-filters]").click();
-      fireHtmx(getForm(), "htmx:sendError");
+      failSectionRequest(getForm(), "htmx:sendError", createXhr({ status: 0 }));
 
       // Tap Show results again.
       document.querySelector("[data-apply-filters]").click();
@@ -484,6 +552,28 @@ describe("explore page controls", () => {
       expect(getDrawer().hasAttribute("aria-modal")).to.equal(false);
       expect(document.getElementById("drawer-backdrop").classList.contains("hidden")).to.equal(true);
       expect(document.body.style.overflow).to.equal("");
+      expect(htmx.triggerCalls).to.have.length(0);
+    });
+
+    it("drops held choices when paging closes the sheet, so reopening shows the applied state", async () => {
+      // Tick a type in the sheet, then let a paging snapshot close it.
+      openSheet();
+      const virtual = getForm().querySelector('input[value="virtual"]');
+      virtual.checked = true;
+      confirmRequest(getForm());
+      fireHtmx(document.body, "htmx:beforeHistorySave");
+      await Promise.resolve();
+
+      // Verify the choice is gone and a later section swap moves no focus.
+      expect(isSheetOpen()).to.equal(false);
+      expect(virtual.checked).to.equal(false);
+      fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
+      expect(document.activeElement === document.getElementById("open-filters")).to.equal(false);
+
+      // Verify reopening and closing sends nothing.
+      openSheet();
+      expect(virtual.checked).to.equal(false);
+      document.querySelector("[data-apply-filters]").click();
       expect(htmx.triggerCalls).to.have.length(0);
     });
 
@@ -508,25 +598,29 @@ describe("explore page controls", () => {
 
     it("syncs phone attributes on a history restore, which no settle follows", () => {
       // Restore a snapshot taken above the phone width.
-      document.querySelectorAll(".filters-form").forEach((form) => form.removeAttribute("hx-sync"));
       document.getElementById("ts_query").removeAttribute("enterkeyhint");
       fireHtmx(document.body, "htmx:historyRestore");
 
-      // Verify a second chip tap would still replace the first.
-      document.querySelectorAll(".filters-form").forEach((form) => {
-        expect(form.getAttribute("hx-sync")).to.equal("closest #entity-section:replace");
-      });
+      // Verify the search key is back and the markup keeps its sync.
       expect(document.getElementById("ts_query").getAttribute("enterkeyhint")).to.equal("search");
+      document.querySelectorAll(".filters-form").forEach((form) => {
+        expect(form.getAttribute("hx-sync")).to.equal(SECTION_SYNC);
+      });
     });
 
-    it("resets the sheet when the back-forward cache restores the page", () => {
-      // Open the sheet and restore the page.
+    it("resets the sheet and drops its choices when the back-forward cache restores the page", () => {
+      // Open the sheet, leave a pending choice and restore the page.
       openSheet();
+      const virtual = getForm().querySelector('input[value="virtual"]');
+      virtual.checked = true;
+      confirmRequest(getForm());
       window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
 
-      // Verify the sheet released everything.
+      // Verify the sheet released everything and shows the applied state, with no request.
       expect(isSheetOpen()).to.equal(false);
       expect(document.body.style.overflow).to.equal("");
+      expect(virtual.checked).to.equal(false);
+      expect(htmx.triggerCalls).to.have.length(0);
     });
 
     it("ignores the first page show of a slow page", () => {
@@ -545,11 +639,11 @@ describe("explore page controls", () => {
       confirmRequest(getForm());
       media.setMatches(PHONE_MEDIA_QUERY, false);
 
-      // Verify the lock, roles and attributes are gone.
+      // Verify the lock, roles and phone attributes are gone, and the markup keeps its sync.
       expect(isSheetOpen()).to.equal(false);
       expect(document.body.style.overflow).to.equal("");
       expect(getDrawer().hasAttribute("role")).to.equal(false);
-      expect(document.querySelector("[hx-sync]")).to.equal(null);
+      expect(getForm().getAttribute("hx-sync")).to.equal(SECTION_SYNC);
       expect(document.getElementById("ts_query").hasAttribute("enterkeyhint")).to.equal(false);
       expect(getForm().hasAttribute("aria-busy")).to.equal(false);
       expect(document.activeElement).to.equal(document.getElementById("open-filters"));
@@ -686,6 +780,18 @@ describe("explore page controls", () => {
       expect(isSheetOpen()).to.equal(true);
     });
 
+    it("shows the server's wait message for a rate-limited refresh", async () => {
+      // Rate limit the refresh.
+      globalThis.fetch = async () =>
+        new Response(RATE_LIMIT_MESSAGE, { status: 429, headers: { "X-OCG-Rate-Limited": "true" } });
+      openSheet();
+      await refreshCommunity();
+
+      // Verify the alert carries the server's message and nothing was replaced.
+      expect(swal.calls.map((call) => call.text)).to.deep.equal([RATE_LIMIT_MESSAGE]);
+      expect(getDependentFilter()).to.equal("Old group filter");
+    });
+
     it("keeps the applied filters in a history snapshot after a refresh", async () => {
       // Refresh the form for a community, twice.
       const appliedFilters = [...getForm().childNodes].filter((node) => node.nodeType === Node.ELEMENT_NODE);
@@ -707,30 +813,46 @@ describe("explore page controls", () => {
       expect(isSheetOpen()).to.equal(false);
     });
 
-    it("keeps the refreshed filters on screen after a failed apply", async () => {
+    it("keeps the refreshed filters in the open sheet after a failed apply and drops them on close", async () => {
       // Refresh the form, then fail the apply.
+      const appliedFilters = [...getForm().childNodes];
       stubRefresh("Refreshed group filter");
       openSheet();
       await refreshCommunity();
+      confirmRequest(getForm());
       document.querySelector("[data-apply-filters]").click();
-      fireHtmx(getForm(), "htmx:responseError");
+      failSectionRequest(getForm());
 
-      // Verify the choices stay, in the sheet and after closing it.
+      // Verify the choices stay while the sheet is open.
       expect(getDependentFilter()).to.equal("Refreshed group filter");
+
+      // Verify closing puts the applied nodes back, in their order.
       document.getElementById("close-filters").click();
-      expect(getDependentFilter()).to.equal("Refreshed group filter");
-
-      // Verify an unrelated request still snapshots the applied filters.
-      fireHtmx(document.body, "htmx:beforeHistorySave");
+      expect([...getForm().childNodes]).to.deep.equal(appliedFilters);
       expect(getDependentFilter()).to.equal("Old group filter");
 
-      // Verify paging, which keeps the form, gets the pending choices back after the clone.
+      // Verify paging, which keeps the form, no longer brings the pending choices back.
+      fireHtmx(document.body, "htmx:beforeHistorySave");
       await Promise.resolve();
-      expect(getDependentFilter()).to.equal("Refreshed group filter");
-
-      // Verify the next snapshot still holds the applied filters.
-      fireHtmx(document.body, "htmx:beforeHistorySave");
       expect(getDependentFilter()).to.equal("Old group filter");
+    });
+
+    it("drops the choices of a failed apply on rotation and sends nothing", () => {
+      // Tick a type in the sheet, apply it and fail its request.
+      openSheet();
+      const virtual = getForm().querySelector('input[value="virtual"]');
+      virtual.checked = true;
+      confirmRequest(getForm());
+      document.querySelector("[data-apply-filters]").click();
+      failSectionRequest(getForm());
+
+      // Rotate past the phone width.
+      media.setMatches(PHONE_MEDIA_QUERY, false);
+
+      // Verify the drawer shows the applied state and only the failed apply went out.
+      expect(isSheetOpen()).to.equal(false);
+      expect(virtual.checked).to.equal(false);
+      expect(htmx.triggerCalls).to.have.length(1);
     });
 
     it("restores the applied filters after a rotation sends the refreshed ones", async () => {
@@ -794,7 +916,7 @@ describe("explore page controls", () => {
         const control = form.querySelector('input[value="virtual"]');
         const chip = document.querySelector('[data-applied-filter-value="virtual"]');
         chip.click();
-        fireHtmx(form, type);
+        failSectionRequest(form, type);
 
         // Verify the alert, and the control back in step with the chip.
         expect(swal.calls).to.have.length(1);
@@ -827,7 +949,7 @@ describe("explore page controls", () => {
       expect(filter.selected).to.deep.equal([]);
 
       // Fail the request.
-      fireHtmx(form, "htmx:responseError");
+      failSectionRequest(form);
 
       // Verify the form holds the applied state again.
       expect(filter.selected).to.deep.equal(["alpha"]);
@@ -841,22 +963,26 @@ describe("explore page controls", () => {
       document.querySelector('[data-applied-filter-value="hybrid"]').click();
 
       // Fail the request that is left.
-      fireHtmx(form, "htmx:responseError");
+      failSectionRequest(form);
 
       // Verify one alert, and both filters back.
       expect(swal.calls).to.have.length(1);
       expect(form.querySelectorAll("input:checked")).to.have.length(2);
     });
 
-    it("keeps a chip removal pending through a failure elsewhere in the section", () => {
+    it("keeps a chip removal pending through a failed paging request", () => {
       // Remove a filter, then fail a paging request.
       const control = document.getElementById("events-form").querySelector('input[value="virtual"]');
       const chip = document.querySelector('[data-applied-filter-value="virtual"]');
       chip.click();
-      fireHtmx(document.getElementById("cards-list"), "htmx:responseError");
+      const cards = document.getElementById("cards-list");
+      dispatchHtmxRequestError(cards, "htmx:responseError", {
+        target: cards,
+        xhr: createXhr({ status: 500 }),
+      });
 
-      // Verify the removal stands, and a repeat tap still cannot undo it.
-      expect(swal.calls).to.have.length(0);
+      // Verify the paging alert, the removal standing, and a repeat tap that still cannot undo it.
+      expect(swal.calls).to.have.length(1);
       expect(control.checked).to.equal(false);
       chip.click();
       expect(control.checked).to.equal(false);
@@ -867,28 +993,30 @@ describe("explore page controls", () => {
       const form = document.getElementById("events-form");
       document.querySelector('[data-applied-filter-value="virtual"]').click();
       openSheet();
-      fireHtmx(form, "htmx:responseError");
+      failSectionRequest(form);
 
-      // Verify the sheet's own report is the only one.
+      // Verify one report, the form back in step with the chips and the sheet left open.
       expect(swal.calls).to.have.length(1);
       expect(form.querySelector('input[value="virtual"]').checked).to.equal(true);
+      expect(isSheetOpen()).to.equal(true);
     });
 
     for (const [name, finish] of [
-      ["its swap settles", () => swapSection()],
-      ["a history restore replaces the page", () => fireHtmx(document.body, "htmx:historyRestore")],
-      ["the query turns false", () => media.setMatches(PHONE_MEDIA_QUERY, false)],
+      ["settle", () => fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle")],
+      ["history restore", () => fireHtmx(document.body, "htmx:historyRestore")],
+      ["rotation", () => media.setMatches(PHONE_MEDIA_QUERY, false)],
     ]) {
-      it(`stops listening for a chip failure once ${name}`, () => {
+      it(`forgets tapped chips on ${name}`, () => {
         // Remove a filter and end the wait.
-        const control = document.getElementById("events-form").querySelector('input[value="virtual"]');
         document.querySelector('[data-applied-filter-value="virtual"]').click();
         finish();
-        control.checked = false;
 
-        // Verify a later failure neither alerts nor touches the form.
-        fireHtmx(document.getElementById("events-form"), "htmx:responseError");
-        expect(swal.calls).to.have.length(0);
+        // Show the filter as applied again.
+        const control = document.getElementById("events-form").querySelector('input[value="virtual"]');
+        control.checked = true;
+
+        // Verify the same chip removes it again.
+        document.querySelector('[data-applied-filter-value="virtual"]').click();
         expect(control.checked).to.equal(false);
       });
     }
@@ -1065,22 +1193,18 @@ describe("explore page controls", () => {
       expect(document.activeElement.tagName).to.equal("BODY");
     });
 
-    ["htmx:responseError", "htmx:sendError"].forEach((type) => {
+    ["htmx:responseError", "htmx:sendError", "htmx:timeout"].forEach((type) => {
       it(`reports a switch press that ends in ${type} once`, () => {
         // Press Groups and fail its request.
         const groups = getSwitchButton("Groups");
         groups.focus();
         groups.click();
-        fireHtmx(groups, type);
+        failSectionRequest(groups, type);
 
-        // Verify the alert shows and the press stays where it was.
+        // Verify one alert, no focus moved, and the press stays where it was.
         expect(swal.calls).to.have.length(1);
         expect(document.activeElement).to.equal(groups);
         expect(getSwitchButton("Events").getAttribute("aria-pressed")).to.equal("true");
-
-        // Verify the listeners went with the press.
-        fireHtmx(groups, type);
-        expect(swal.calls).to.have.length(1);
 
         // Verify a later swap of that side places nothing.
         renderExplore("Groups");
@@ -1093,80 +1217,36 @@ describe("explore page controls", () => {
       // Fail the same press twice.
       const groups = getSwitchButton("Groups");
       groups.click();
-      fireHtmx(groups, "htmx:responseError");
+      failSectionRequest(groups);
       groups.click();
-      fireHtmx(groups, "htmx:responseError");
+      failSectionRequest(groups);
 
       // Verify each failure was reported.
       expect(swal.calls).to.have.length(2);
     });
 
-    it("waits through errors of other requests during a switch press", () => {
-      // Press Groups, and fail a paging request meanwhile.
+    it("stays silent for an aborted switch press", () => {
+      // Press Groups and abort its request, as a newer section request does.
       const groups = getSwitchButton("Groups");
       groups.click();
-      fireHtmx(document.getElementById("cards-list"), "htmx:responseError");
-      expect(swal.calls).to.have.length(0);
+      dispatchHtmxRequestError(groups, "htmx:sendAbort", {
+        target: document.getElementById("entity-section"),
+      });
 
-      // Verify the press still reports its own failure.
-      fireHtmx(groups, "htmx:responseError");
-      expect(swal.calls).to.have.length(1);
-    });
-
-    it("stays silent for an aborted switch press and lets it go", () => {
-      // Press Groups and abort its request.
-      const groups = getSwitchButton("Groups");
-      groups.click();
-      fireHtmx(groups, "htmx:sendAbort");
-      expect(swal.calls).to.have.length(0);
-
-      // Verify nothing is held for a late error.
-      fireHtmx(groups, "htmx:responseError");
+      // Verify nothing was reported.
       expect(swal.calls).to.have.length(0);
     });
 
-    it("stops waiting for a switch press once its swap settles", () => {
-      // Press Groups and settle the swap.
-      getSwitchButton("Groups").click();
-      renderExplore("Groups");
-      fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
-
-      // Verify a later failure of the switch reports nothing.
-      fireHtmx(getSwitchButton("Events"), "htmx:responseError");
-      expect(swal.calls).to.have.length(0);
-    });
-
-    it("stops waiting for a switch press when the query turns false", () => {
-      // Press Groups, then rotate past phone widths.
-      const groups = getSwitchButton("Groups");
-      groups.click();
-      media.setMatches(PHONE_MEDIA_QUERY, false);
-
-      // Verify its failure reports nothing.
-      fireHtmx(groups, "htmx:responseError");
-      expect(swal.calls).to.have.length(0);
-    });
-
-    it("stops waiting for a switch press on a history restore", () => {
-      // Press Groups, then go Back.
-      const groups = getSwitchButton("Groups");
-      groups.click();
-      fireHtmx(document.body, "htmx:historyRestore");
-
-      // Verify its failure reports nothing.
-      fireHtmx(groups, "htmx:responseError");
-      expect(swal.calls).to.have.length(0);
-    });
-
-    it("leaves a failed switch press under an open sheet to the sheet", () => {
+    it("reports a failed switch press under an open sheet once", () => {
       // Open the sheet, then fail a press reached around it.
       openSheet();
       const groups = getSwitchButton("Groups");
       groups.click();
-      fireHtmx(groups, "htmx:responseError");
+      failSectionRequest(groups);
 
-      // Verify the failure reports once.
+      // Verify the failure reports once and the sheet stays.
       expect(swal.calls).to.have.length(1);
+      expect(isSheetOpen()).to.equal(true);
     });
 
     it("places no focus for the side already pressed", () => {
@@ -1205,6 +1285,306 @@ describe("explore page controls", () => {
 
       // Verify the results were brought back into view.
       expect(scrolls).to.equal(1);
+    });
+  });
+
+  describe("after a failed section request", () => {
+    const FAILURES = [
+      ["htmx:responseError", "a rate limit", () => createRateLimitedXhr(), RATE_LIMIT_MESSAGE],
+      ["htmx:responseError", "a server error", () => createXhr({ status: 500 }), RESULTS_ERROR_MESSAGE],
+      ["htmx:sendError", "no answer", () => createXhr({ status: 0 }), RESULTS_ERROR_MESSAGE],
+      ["htmx:timeout", "no answer", () => createXhr({ status: 0 }), RESULTS_ERROR_MESSAGE],
+    ];
+
+    /** Reads every control the applied state covers. */
+    const readControls = () => ({
+      desktopKinds: [...getDesktopForm().querySelectorAll('input[name="kind[]"]')].map(
+        (input) => input.checked,
+      ),
+      drawerKinds: [...getForm().querySelectorAll('input[name="kind[]"]')].map((input) => input.checked),
+      dates: [...document.querySelectorAll('input[name="date_from"], input[name="date_to"]')].map(
+        (input) => input.value,
+      ),
+      search: getSearch().value,
+      sort: [
+        document.getElementById("sort_selector").value,
+        document.getElementById("sort_by").value,
+        document.getElementById("sort_direction").value,
+      ],
+      viewMode: document.querySelector('input[name="view_mode"]:checked')?.value,
+    });
+
+    /** Fires a change event from a control, as the browser does after user input. */
+    const change = (control) => control.dispatchEvent(new Event("change", { bubbles: true }));
+
+    // Each action changes controls and leaves the element whose request then fails.
+    const ACTIONS = [
+      {
+        name: "a sidebar checkbox",
+        act: () => {
+          const hybrid = getDesktopForm().querySelector('input[value="hybrid"]');
+          hybrid.focus();
+          hybrid.checked = false;
+          return getDesktopForm();
+        },
+      },
+      {
+        name: "a search on Enter",
+        act: () => {
+          getSearch().focus();
+          getSearch().value = "rust";
+          getSearch().dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+          return getDesktopForm();
+        },
+      },
+      {
+        name: "the search button",
+        act: () => {
+          getSearch().value = "rust";
+          document.getElementById("search-btn").focus();
+          document.getElementById("search-btn").click();
+          return getDesktopForm();
+        },
+      },
+      {
+        name: "the clear search button",
+        act: () => {
+          document.getElementById("clean-search").focus();
+          document.getElementById("clean-search").click();
+          return getDesktopForm();
+        },
+      },
+      {
+        name: "a sort change",
+        act: () => {
+          const selector = document.getElementById("sort_selector");
+          selector.focus();
+          selector.value = "date-asc";
+          change(selector);
+          return getDesktopForm();
+        },
+      },
+      {
+        name: "a date change",
+        act: () => {
+          const dateFrom = getDesktopForm().querySelector('input[name="date_from"]');
+          dateFrom.focus();
+          dateFrom.value = "2026-06-01";
+          change(dateFrom);
+          return getDesktopForm();
+        },
+      },
+      {
+        name: "a view mode switch",
+        act: () => {
+          const map = document.getElementById("map");
+          map.focus();
+          map.checked = true;
+          change(map);
+          return getDesktopForm();
+        },
+      },
+      {
+        name: "a sidebar Reset",
+        act: async () => {
+          document.querySelector(".reset-filters").click();
+          await waitUntil(() => htmx.triggerCalls.length > 0);
+          return getDesktopForm();
+        },
+      },
+      {
+        name: "a sidebar switch press",
+        act: () => {
+          const radio = document.querySelector("[data-entity-radio]");
+          radio.focus();
+          radio.click();
+          return radio;
+        },
+      },
+      {
+        name: "a phone switch press",
+        act: () => {
+          const groups = getSwitchButton("Groups");
+          groups.focus();
+          groups.click();
+          return groups;
+        },
+      },
+    ];
+
+    for (const phone of [false, true]) {
+      describe(phone ? "on phones" : "off phones", () => {
+        beforeEach(() => {
+          media.setMatches(PHONE_MEDIA_QUERY, phone);
+        });
+
+        for (const { act, name } of ACTIONS) {
+          for (const [type, answer, createFailedXhr, message] of FAILURES) {
+            it(`puts the applied state back after ${name} ends in ${type} with ${answer}`, async () => {
+              // Read the applied state, then change the controls and fail the request.
+              const applied = readControls();
+              const requester = await act();
+              const focused = document.activeElement;
+              failSectionRequest(requester, type, createFailedXhr());
+
+              // Verify the controls, one alert with the expected text, focus and a silent status.
+              expect(readControls()).to.deep.equal(applied);
+              expect(swal.calls.map((call) => call.text)).to.deep.equal([message]);
+              expect(document.activeElement).to.equal(focused);
+              expect(document.getElementById("explore-filter-status").textContent).to.equal("");
+            });
+          }
+        }
+      });
+    }
+
+    it("puts the tablet drawer back and keeps it open", () => {
+      // Open the drawer off phones and tick one of its types.
+      openSheet();
+      const virtual = getForm().querySelector('input[value="virtual"]');
+      virtual.checked = true;
+
+      // Fail the drawer form's request.
+      failSectionRequest(getForm());
+
+      // Verify the drawer shows the applied state and stays open, with one alert.
+      expect(virtual.checked).to.equal(false);
+      expect(isSheetOpen()).to.equal(true);
+      expect(swal.calls).to.have.length(1);
+    });
+
+    it("puts both forms and the shared controls back after a desktop form failure", () => {
+      // Change the drawer, the sidebar and the search.
+      getForm().querySelector('input[value="virtual"]').checked = true;
+      getDesktopForm().querySelector('input[value="virtual"]').checked = false;
+      getSearch().value = "rust";
+
+      // Fail the sidebar form's request.
+      failSectionRequest(getDesktopForm());
+
+      // Verify every control shows the applied state.
+      expect(getForm().querySelector('input[value="virtual"]').checked).to.equal(false);
+      expect(getDesktopForm().querySelector('input[value="virtual"]').checked).to.equal(true);
+      expect(getSearch().value).to.equal("kubecon");
+    });
+
+    it("puts back the state of the last successful swap", () => {
+      // Settle a swap that applied a new search, then change it.
+      swapSection({ query: "cloud" });
+      getSearch().value = "rust";
+
+      // Fail the next request.
+      failSectionRequest(getDesktopForm());
+
+      // Verify the search shows what the swap applied.
+      expect(getSearch().value).to.equal("cloud");
+    });
+
+    it("puts back the state of a history restore", () => {
+      // Restore a page that applied another search, then change it.
+      renderExplore("Events", { query: "history" });
+      fireHtmx(document.body, "htmx:historyRestore");
+      getSearch().value = "rust";
+
+      // Fail the next request.
+      failSectionRequest(getDesktopForm());
+
+      // Verify the search shows what the restored page applied.
+      expect(getSearch().value).to.equal("history");
+    });
+
+    it("puts the hidden dates back on the calendar month after a failed view switch", async () => {
+      // Load a calendar view whose instance writes the month it shows.
+      const calendar = {
+        destroy() {},
+        initialized: false,
+        initialize() {
+          this.initialized = true;
+        },
+        syncDateInputs: () => updateDateInput(new Date(2026, 3, 15)),
+      };
+      Calendar._instance = calendar;
+      renderExplore("Events", { view: "calendar" });
+      const section = document.getElementById("entity-section");
+      fireHtmx(section, "htmx:afterSwap");
+      await waitUntil(() => calendar.initialized);
+
+      try {
+        // Switch to the list, which clears the hidden dates, and fail the request.
+        const list = document.getElementById("list");
+        list.checked = true;
+        change(list);
+        expect(getDesktopForm().querySelector('input[name="date_from"]').value).to.equal("");
+        failSectionRequest(getDesktopForm());
+
+        // Verify the calendar view and its month are back.
+        expect(document.querySelector('input[name="view_mode"]:checked').value).to.equal("calendar");
+        document.querySelectorAll('input[name="date_from"]').forEach((input) => {
+          expect(input.value).to.equal("2026-04-01");
+        });
+        document.querySelectorAll('input[name="date_to"]').forEach((input) => {
+          expect(input.value).to.equal("2026-04-30");
+        });
+      } finally {
+        Calendar._instance = null;
+      }
+    });
+
+    it("stays silent and changes nothing on an aborted request", () => {
+      // Change the search and abort its request.
+      getSearch().value = "rust";
+      dispatchHtmxRequestError(getDesktopForm(), "htmx:sendAbort", {
+        target: document.getElementById("entity-section"),
+      });
+
+      // Verify nothing was reported or restored.
+      expect(swal.calls).to.have.length(0);
+      expect(getSearch().value).to.equal("rust");
+    });
+
+    it("alerts once for a failed paging request and restores nothing", () => {
+      // Change the search, then fail a paging request.
+      getSearch().value = "rust";
+      const cards = document.getElementById("cards-list");
+      dispatchHtmxRequestError(cards, "htmx:responseError", { target: cards, xhr: createRateLimitedXhr() });
+
+      // Verify the server's alert and the change left alone.
+      expect(swal.calls.map((call) => call.text)).to.deep.equal([RATE_LIMIT_MESSAGE]);
+      expect(getSearch().value).to.equal("rust");
+    });
+
+    it("ignores failures of requests outside the results section", () => {
+      // Change the search, then fail a request that targets the page body.
+      getSearch().value = "rust";
+      dispatchHtmxRequestError(document.body, "htmx:responseError", {
+        boosted: true,
+        target: document.body,
+        xhr: createXhr({ status: 500 }),
+      });
+
+      // Verify nothing was reported or restored.
+      expect(swal.calls).to.have.length(0);
+      expect(getSearch().value).to.equal("rust");
+    });
+
+    it("puts a failed phone card Reset back in step with the chips and forgets its focus", async () => {
+      // Reset from the phone card.
+      media.setMatches(PHONE_MEDIA_QUERY, true);
+      document.querySelector("[data-applied-filters] .reset-filters").click();
+      await waitUntil(() => htmx.triggerCalls.length > 0);
+
+      // Fail its request.
+      failSectionRequest(getDesktopForm());
+
+      // Verify the desktop form, search and sort match the chips again.
+      expect(getDesktopForm().querySelectorAll('input[name="kind[]"]:checked')).to.have.length(2);
+      expect(getSearch().value).to.equal("kubecon");
+      expect(document.getElementById("sort_selector").value).to.equal("date-desc");
+
+      // Verify the next unrelated settle neither focuses Filters nor announces a reset.
+      fireHtmx(document.getElementById("entity-section"), "htmx:afterSettle");
+      expect(document.activeElement).to.not.equal(document.getElementById("open-filters"));
+      expect(document.getElementById("explore-filter-status").textContent).to.equal("");
     });
   });
 

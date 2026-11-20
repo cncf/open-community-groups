@@ -2,9 +2,11 @@ import { getElementById, setElementHidden } from "/static/js/common/dom.js";
 import { loadPage } from "/static/js/common/page-loading.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
+const CUSTOM_FILTER_SELECTOR = "collapsible-filter, multi-select-filter";
 const EXPLORE_SECTION_ID = "entity-section";
 const DATE_FROM_FIELD_NAME = "date_from";
 const DATE_TO_FIELD_NAME = "date_to";
+const RESTORE_SKIPPED_INPUT_TYPES = new Set(["button", "file", "hidden", "image", "reset", "submit"]);
 const TEXT_SEARCH_INPUT_SELECTOR = 'input[name="ts_query"]';
 export const FILTER_CHANGE_EVENT = "filter-change";
 
@@ -180,6 +182,41 @@ export const resetDateFiltersOnCalendarViewMode = (formOrId) => {
   inputs.forEach((input) => {
     input.value = "";
   });
+};
+
+/**
+ * Puts the controls under a root back to the values the server rendered: custom filters to
+ * their `selected` attribute and native controls to their default state. Hidden inputs have no
+ * reliable default, so the sort inputs follow the restored selector and calendar dates are left
+ * to the calendar. Fires no event, so no request leaves, and replaces no node, so focus stays.
+ * @param {Element} root - Element holding the controls
+ * @param {object} [options]
+ * @param {Element|null} [options.keep] - Subtree left as it is (the open phone sheet)
+ */
+export const restoreAppliedFilterValues = (root, { keep = null } = {}) => {
+  const isKept = (element) => Boolean(keep?.contains(element));
+
+  // Custom filters render their own inputs from the selection
+  root.querySelectorAll(CUSTOM_FILTER_SELECTOR).forEach((filter) => {
+    if (isKept(filter)) return;
+    const values = parseJsonAttribute(filter.getAttribute("selected"), []);
+    if (typeof filter.restoreSelected === "function") {
+      filter.restoreSelected(values);
+    } else {
+      filter.selected = values;
+    }
+  });
+
+  root.querySelectorAll("input, select").forEach((control) => {
+    if (isKept(control) || control.closest(CUSTOM_FILTER_SELECTOR)) return;
+    if (RESTORE_SKIPPED_INPUT_TYPES.has(control.type)) return;
+    restoreControlDefault(control);
+  });
+
+  const sortSelector = root.querySelector("#sort_selector");
+  if (sortSelector) {
+    updateSortInputsFromSelector(sortSelector, "sort_by", "sort_direction");
+  }
 };
 
 /**
@@ -383,5 +420,20 @@ export const unckeckAllKinds = () => {
     kinds.forEach((el) => {
       el.checked = false;
     });
+  }
+};
+
+/**
+ * Puts a native control back to the state its markup declares.
+ * @param {HTMLInputElement|HTMLSelectElement} control - Control to restore
+ */
+const restoreControlDefault = (control) => {
+  if (control instanceof HTMLSelectElement) {
+    const defaultIndex = [...control.options].findIndex((option) => option.defaultSelected);
+    control.selectedIndex = Math.max(defaultIndex, 0);
+  } else if (control.type === "checkbox" || control.type === "radio") {
+    control.checked = control.defaultChecked;
+  } else {
+    control.value = control.defaultValue;
   }
 };

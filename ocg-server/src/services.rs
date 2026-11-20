@@ -30,5 +30,8 @@ pub(crate) mod notifications;
 /// Payments service module.
 pub(crate) mod payments;
 
+/// Rate limiting service module.
+pub(crate) mod rate_limit;
+
 /// Shared background worker helpers module.
 pub(crate) mod workers;

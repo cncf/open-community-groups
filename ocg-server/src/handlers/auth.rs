@@ -3,15 +3,15 @@
 //! The dashboard authorization middleware lives in `middleware` and the
 //! session dashboard context helpers in `session_context`.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Instant};
 
 use askama::Template;
 use async_trait::async_trait;
 use axum::{
-    Form,
+    Extension, Form,
     extract::{Path, Query, State},
-    http::StatusCode,
-    response::{Html, IntoResponse, Redirect},
+    http::{HeaderMap, StatusCode},
+    response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_messages::Messages;
 use garde::Validate;
@@ -33,9 +33,12 @@ use crate::{
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, OAuth2, Oidc, ValidatedForm, ValidatedFormQs},
+        rate_limit::too_many_requests,
     },
     services::{
-        blocking::BlockingExecutor, notifications::payloads::build_email_verification_notification,
+        blocking::BlockingExecutor,
+        notifications::payloads::build_email_verification_notification,
+        rate_limit::{LogInFailureLimit, RateLimited},
     },
     templates::{self, PageId, auth::UserMenuState},
     types::user::{UserDetailsInput, UserPasswordInput},
@@ -167,15 +170,22 @@ pub(crate) async fn user_menu_section(
 // Actions handlers.
 
 /// Handler that logs the user in.
+///
+/// When the rate limiter provides a failed log-in limit, a failed attempt is
+/// reserved for the client and username before authenticating and kept only
+/// when the credentials are invalid.
 #[instrument(skip_all)]
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn log_in(
     mut auth_session: AuthSession,
     messages: Messages,
     session: Session,
+    log_in_failure_limit: Option<Extension<LogInFailureLimit>>,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
+    headers: HeaderMap,
     Form(login_form): Form<LoginForm>,
-) -> Result<impl IntoResponse, HandlerError> {
+) -> Result<Response, HandlerError> {
     // Sanitize next url
     let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
 
@@ -183,10 +193,21 @@ pub(crate) async fn log_in(
     if let Err(e) = login_form.validate() {
         messages.error(e.to_string());
         let log_in_url = get_log_in_url(next_url.as_deref());
-        return Ok(Redirect::to(&log_in_url));
+        return Ok(Redirect::to(&log_in_url).into_response());
     }
 
-    // Authenticate user
+    // Reserve a failed attempt before authenticating, rejecting an exhausted pair
+    let reservation = match log_in_failure_limit {
+        Some(Extension(limit)) => match limit.reserve(&login_form.username, Instant::now()) {
+            Ok(reservation) => Some(reservation),
+            Err(RateLimited { retry_after }) => {
+                return Ok(too_many_requests(&headers, retry_after));
+            }
+        },
+        None => None,
+    };
+
+    // Authenticate user; a backend error drops the reservation, refunding it
     let creds = PasswordCredentials {
         password: login_form.password,
         username: login_form.username,
@@ -196,11 +217,19 @@ pub(crate) async fn log_in(
         .await
         .map_err(|_| HandlerError::Auth)?
     else {
+        // Keep the reserved attempt as a failure
+        if let Some(reservation) = reservation {
+            reservation.record_failure();
+        }
+
         messages
             .error("Invalid credentials. Please make sure you have verified your email address.");
         let log_in_url = get_log_in_url(next_url.as_deref());
-        return Ok(Redirect::to(&log_in_url));
+        return Ok(Redirect::to(&log_in_url).into_response());
     };
+
+    // Refund the reserved attempt, since the credentials were valid
+    drop(reservation);
 
     // Log user in
     auth_session.login(&user).await.map_err(|_| HandlerError::Auth)?;
@@ -212,7 +241,7 @@ pub(crate) async fn log_in(
     track_auth_provider(&session, AUTH_PROVIDER_EMAIL).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
-    Ok(Redirect::to(next_url))
+    Ok(Redirect::to(next_url).into_response())
 }
 
 /// Handler that logs the user out.

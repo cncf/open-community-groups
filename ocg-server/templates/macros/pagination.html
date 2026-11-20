@@ -2,7 +2,7 @@
 
 {# Navigation links -#}
 {# Used by explore results and dashboard list pages for pagination controls. -#}
-{% macro navigation_links(links, hx_target, hx_swap = "", hx_indicator = "", spinner_id_prefix = "pagination") -%}
+{% macro navigation_links(links, hx_target, hx_swap = "", hx_sync = "", hx_indicator = "", spinner_id_prefix = "pagination") -%}
   {% let first_spinner_id = spinner_id_prefix.to_string() + "first-spinner" -%}
   {% let prev_spinner_id = spinner_id_prefix.to_string() + "prev-spinner" -%}
   {% let next_spinner_id = spinner_id_prefix.to_string() + "next-spinner" -%}
@@ -18,6 +18,7 @@
            hx-get="{{ first.hx_url }}"
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
+           {%- if hx_sync != "" %} hx-sync="{{ hx_sync }}"{% endif %}
            hx-indicator="#{{ first_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
            class="group relative overflow-hidden cursor-pointer inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-primary-fg bg-transparent border border-primary-edge rounded-s-full hover:bg-primary-fill hover:text-on-primary transition-colors focus:z-10 focus:bg-primary-fill focus:text-on-primary max-sm:hidden phone:hidden">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
@@ -43,6 +44,7 @@
            hx-get="{{ prev.hx_url }}"
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
+           {%- if hx_sync != "" %} hx-sync="{{ hx_sync }}"{% endif %}
            hx-indicator="#{{ prev_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
            class="group relative overflow-hidden cursor-pointer inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-primary-fg bg-transparent border-t border-b border-e border-primary-edge hover:bg-primary-fill hover:text-on-primary transition-colors focus:z-10 focus:bg-primary-fill focus:text-on-primary max-sm:rounded-s-full max-sm:border-s phone:min-h-11 phone:rounded-s-full phone:border-s">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
@@ -72,6 +74,7 @@
            hx-get="{{ next.hx_url }}"
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
+           {%- if hx_sync != "" %} hx-sync="{{ hx_sync }}"{% endif %}
            hx-indicator="#{{ next_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
            class="group relative overflow-hidden cursor-pointer inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-primary-fg bg-transparent border-t border-b border-s border-primary-edge hover:bg-primary-fill hover:text-on-primary transition-colors focus:z-10 focus:bg-primary-fill focus:text-on-primary max-sm:rounded-e-full max-sm:border-e phone:min-h-11 phone:rounded-e-full phone:border-e">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">
@@ -97,6 +100,7 @@
            hx-get="{{ last.hx_url }}"
            hx-target="{{ hx_target }}"
            {% if hx_swap != "" %}hx-swap="{{ hx_swap }}"{% endif %}
+           {%- if hx_sync != "" %} hx-sync="{{ hx_sync }}"{% endif %}
            hx-indicator="#{{ last_spinner_id }} {% if hx_indicator != "" %}, {{ hx_indicator }}{% endif %}"
            class="group relative overflow-hidden cursor-pointer inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-primary-fg bg-transparent border border-primary-edge rounded-e-full hover:bg-primary-fill hover:text-on-primary transition-colors focus:z-10 focus:bg-primary-fill focus:text-on-primary max-sm:hidden phone:hidden">
           <span class="inline-flex items-center group-[.htmx-request]:invisible">

@@ -1,5 +1,6 @@
 use deadpool_postgres::Config as DeadpoolDbConfig;
 use ocg_common::config::LogFormat;
+use serde_json::json;
 
 use super::*;
 
@@ -65,6 +66,36 @@ fn test_badges_config_rejects_invalid_keys() {
         };
 
         assert_eq!(cfg.validate().unwrap_err().to_string(), expected, "{case}");
+    }
+}
+
+#[test]
+fn test_client_ip_header_config_trusted_networks_accepts_valid_entries() {
+    // (case, entry, expected network)
+    let cases = [
+        ("bare IPv4 address", "192.0.2.10", "192.0.2.10/32"),
+        ("bare IPv6 address", "2001:db8::10", "2001:db8::10/128"),
+        ("IPv4 network", "10.0.0.0/8", "10.0.0.0/8"),
+        ("IPv6 network", "2001:db8::/32", "2001:db8::/32"),
+        (
+            "IPv4 single-address network",
+            "198.51.100.7/32",
+            "198.51.100.7/32",
+        ),
+    ];
+
+    for (case, entry, expected) in cases {
+        let cfg = ClientIpHeaderConfig {
+            header: DEFAULT_CLIENT_IP_HEADER.to_string(),
+            trusted_proxies: vec![entry.to_string()],
+        };
+
+        // Check the entry becomes the expected network
+        assert_eq!(
+            cfg.trusted_networks().expect(case),
+            vec![expected.parse::<IpNet>().unwrap()],
+            "{case}"
+        );
     }
 }
 
@@ -310,6 +341,30 @@ fn test_http_server_config_deserializes_image_hotlinking() {
 }
 
 #[test]
+fn test_http_server_config_deserializes_without_rate_limit() {
+    // Setup a server section that omits the rate limiting section
+    let cfg: HttpServerConfig = serde_json::from_value(sample_http_server_config_value()).unwrap();
+
+    // Check rate limiting stays disabled
+    assert_eq!(cfg.rate_limit, None);
+}
+
+#[test]
+fn test_http_server_config_rejects_invalid_rate_limit() {
+    // Setup a server section with an invalid rate limit budget
+    let mut cfg = sample_config().server;
+    let mut rate_limit_cfg = sample_rate_limit_config();
+    rate_limit_cfg.limits.views.burst = 0;
+    cfg.rate_limit = Some(rate_limit_cfg);
+
+    // Check the server section validates the rate limiting section
+    assert_eq!(
+        cfg.validate().unwrap_err().to_string(),
+        "server.rate_limit.limits.views.burst must be between 1 and 100000"
+    );
+}
+
+#[test]
 fn test_http_server_config_rejects_zero_max_blocking_concurrency() {
     // Setup a server section with a zero blocking bound
     let mut cfg = sample_config().server;
@@ -433,6 +488,381 @@ fn test_payments_config_requires_stripe_fields() {
 }
 
 #[test]
+fn test_rate_limit_config_accepts_valid_settings() {
+    // (case, rate limit section)
+    let cases = [
+        ("peer source", json!({ "client_ip": { "source": "peer" } })),
+        (
+            "header source without trusted proxies",
+            json!({ "client_ip": { "source": "header", "trusted_proxies": [] } }),
+        ),
+        (
+            "single-value header",
+            json!({ "client_ip": { "source": "header", "header": "CF-Connecting-IP" } }),
+        ),
+        (
+            "bare IP trusted proxies",
+            json!({
+                "client_ip": {
+                    "source": "header",
+                    "trusted_proxies": ["192.0.2.10", "2001:db8::10"],
+                },
+            }),
+        ),
+        (
+            "maximum trusted proxies",
+            json!({
+                "client_ip": { "source": "header", "trusted_proxies": trusted_proxies(1_024) },
+            }),
+        ),
+        (
+            "minimum budget",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "views": { "burst": 1, "period_secs": 1 } },
+            }),
+        ),
+        (
+            "maximum budget",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "log_in": { "burst": 100_000, "period_secs": 86_400 } },
+            }),
+        ),
+        (
+            "enforce mode",
+            json!({ "client_ip": { "source": "peer" }, "mode": "enforce" }),
+        ),
+    ];
+
+    for (case, value) in cases {
+        let cfg: RateLimitConfig = serde_json::from_value(value).expect(case);
+
+        // Check the section passes validation
+        assert!(cfg.validate().is_ok(), "{case}");
+    }
+}
+
+#[test]
+fn test_rate_limit_config_defaults_optional_settings() {
+    // Setup a header source section that omits every optional setting
+    let cfg: RateLimitConfig =
+        serde_json::from_value(json!({ "client_ip": { "source": "header" } })).unwrap();
+
+    // Check the header source defaults
+    let ClientIpConfig::Header(header_cfg) = &cfg.client_ip else {
+        panic!("expected the header source");
+    };
+    assert_eq!(header_cfg.header, "x-forwarded-for");
+    assert_eq!(header_cfg.header_name().unwrap(), "x-forwarded-for");
+    assert_eq!(header_cfg.trusted_proxies, Vec::<String>::new());
+    assert_eq!(header_cfg.trusted_networks().unwrap(), Vec::<IpNet>::new());
+
+    // Check the mode and budget defaults
+    assert_eq!(cfg.mode, RateLimitMode::Observe);
+    assert_eq!(cfg.limits, RateLimitBudgets::default());
+    assert_eq!(
+        cfg.limits,
+        RateLimitBudgets {
+            badge_verify: budget(30, 300),
+            explore_search: budget(300, 150),
+            external_auth: budget(300, 150),
+            log_in: budget(300, 300),
+            log_in_failures: budget(10, 900),
+            sign_up: budget(100, 1200),
+            verify_email: budget(100, 1200),
+            views: budget(600, 600),
+        }
+    );
+    assert!(cfg.validate().is_ok());
+}
+
+#[test]
+fn test_rate_limit_config_override_merging() {
+    // Setup a file that defines one budget
+    let file = r"
+server:
+  rate_limit:
+    client_ip:
+      source: peer
+    limits:
+      views:
+        burst: 50
+        period_secs: 60
+";
+
+    // (case, override key, override value as an environment string, expected limits, expected mode)
+    let cases = [
+        (
+            "mode override",
+            "server.rate_limit.mode",
+            "enforce",
+            RateLimitBudgets {
+                views: budget(50, 60),
+                ..RateLimitBudgets::default()
+            },
+            RateLimitMode::Enforce,
+        ),
+        (
+            "one field of a budget the file defines",
+            "server.rate_limit.limits.views.burst",
+            "75",
+            RateLimitBudgets {
+                views: budget(75, 60),
+                ..RateLimitBudgets::default()
+            },
+            RateLimitMode::Observe,
+        ),
+    ];
+
+    for (case, key, value, expected_limits, expected_mode) in cases {
+        // Merge the override over the file and extract the section
+        let cfg: RateLimitConfig = Figment::from(Yaml::string(file))
+            .merge(Serialized::default(key, env_value(value)))
+            .extract_inner("server.rate_limit")
+            .expect(case);
+
+        // Check only the overridden field changed
+        assert_eq!(
+            cfg.client_ip,
+            ClientIpConfig::Peer(ClientIpPeerConfig {}),
+            "{case}"
+        );
+        assert_eq!(cfg.limits, expected_limits, "{case}");
+        assert_eq!(cfg.mode, expected_mode, "{case}");
+    }
+}
+
+#[test]
+fn test_rate_limit_config_override_merging_rejects_incomplete_sections() {
+    // (case, file contents, override key, override value as an environment string, expected error)
+    let cases = [
+        (
+            "one field of a budget the file does not define",
+            "server:\n  rate_limit:\n    client_ip:\n      source: peer\n",
+            "server.rate_limit.limits.log_in.burst",
+            "5",
+            "missing field `period_secs`",
+        ),
+        (
+            "mode without a file section",
+            "server:\n  addr: 127.0.0.1:9000\n",
+            "server.rate_limit.mode",
+            "enforce",
+            "missing field `client_ip`",
+        ),
+    ];
+
+    for (case, file, key, value, expected) in cases {
+        // Merge the override over the file and extract the section
+        let result = Figment::from(Yaml::string(file))
+            .merge(Serialized::default(key, env_value(value)))
+            .extract_inner::<RateLimitConfig>("server.rate_limit");
+
+        // Check the built-in defaults do not complete the section
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains(expected), "{case}: {error}");
+    }
+}
+
+#[test]
+#[allow(clippy::too_many_lines)]
+fn test_rate_limit_config_rejects_invalid_settings() {
+    // (case, rate limit section, expected error)
+    let cases = [
+        (
+            "zero burst",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "views": { "burst": 0, "period_secs": 60 } },
+            }),
+            "server.rate_limit.limits.views.burst must be between 1 and 100000",
+        ),
+        (
+            "oversized burst",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "log_in": { "burst": 100_001, "period_secs": 60 } },
+            }),
+            "server.rate_limit.limits.log_in.burst must be between 1 and 100000",
+        ),
+        (
+            "zero period",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "sign_up": { "burst": 10, "period_secs": 0 } },
+            }),
+            "server.rate_limit.limits.sign_up.period_secs must be between 1 and 86400",
+        ),
+        (
+            "oversized period",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "log_in_failures": { "burst": 10, "period_secs": 86_401 } },
+            }),
+            "server.rate_limit.limits.log_in_failures.period_secs must be between 1 and 86400",
+        ),
+        (
+            "partial budget",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "badge_verify": { "burst": 10 } },
+            }),
+            "missing field `period_secs`",
+        ),
+        (
+            "bad CIDR",
+            header_source_with_trusted_proxies(&["10.0.0.0/33"]),
+            "server.rate_limit.client_ip.trusted_proxies entry '10.0.0.0/33' is not a valid CIDR or IP address",
+        ),
+        (
+            "unparseable entry",
+            header_source_with_trusted_proxies(&["proxy.example.test"]),
+            "server.rate_limit.client_ip.trusted_proxies entry 'proxy.example.test' is not a valid CIDR or IP address",
+        ),
+        (
+            "IPv4 host bits set",
+            header_source_with_trusted_proxies(&["10.1.2.3/8"]),
+            "server.rate_limit.client_ip.trusted_proxies entry '10.1.2.3/8' has host bits set; use '10.0.0.0/8'",
+        ),
+        (
+            "IPv6 host bits set",
+            header_source_with_trusted_proxies(&["2001:db8::1/32"]),
+            "server.rate_limit.client_ip.trusted_proxies entry '2001:db8::1/32' has host bits set; use '2001:db8::/32'",
+        ),
+        (
+            "IPv4 catch-all",
+            header_source_with_trusted_proxies(&["0.0.0.0/0"]),
+            "server.rate_limit.client_ip.trusted_proxies entry '0.0.0.0/0' would trust every address",
+        ),
+        (
+            "IPv6 catch-all",
+            header_source_with_trusted_proxies(&["::/0"]),
+            "server.rate_limit.client_ip.trusted_proxies entry '::/0' would trust every address",
+        ),
+        (
+            "IPv4-mapped catch-all",
+            header_source_with_trusted_proxies(&["::ffff:0:0/96"]),
+            "server.rate_limit.client_ip.trusted_proxies entry '::ffff:0:0/96' would trust every address",
+        ),
+        (
+            "IPv4-mapped network",
+            header_source_with_trusted_proxies(&["::ffff:10.0.0.0/104"]),
+            "server.rate_limit.client_ip.trusted_proxies entry '::ffff:10.0.0.0/104' is an IPv4-mapped IPv6 network; use the IPv4 form '10.0.0.0/8'",
+        ),
+        (
+            "IPv4-mapped bare address",
+            header_source_with_trusted_proxies(&["::ffff:192.0.2.10"]),
+            "server.rate_limit.client_ip.trusted_proxies entry '::ffff:192.0.2.10' is an IPv4-mapped IPv6 network; use the IPv4 form '192.0.2.10/32'",
+        ),
+        (
+            "more than 1024 trusted proxies",
+            json!({
+                "client_ip": { "source": "header", "trusted_proxies": trusted_proxies(1_025) },
+            }),
+            "server.rate_limit.client_ip.trusted_proxies cannot have more than 1024 entries",
+        ),
+        (
+            "empty header name",
+            json!({ "client_ip": { "source": "header", "header": "" } }),
+            "server.rate_limit.client_ip.header cannot be empty",
+        ),
+        (
+            "invalid header name",
+            json!({ "client_ip": { "source": "header", "header": "x forwarded for" } }),
+            "server.rate_limit.client_ip.header 'x forwarded for' is not a valid header name",
+        ),
+        (
+            "forwarded header name",
+            json!({ "client_ip": { "source": "header", "header": "Forwarded" } }),
+            "server.rate_limit.client_ip.header cannot be 'forwarded': RFC 7239 syntax is not supported",
+        ),
+    ];
+
+    for (case, value, expected) in cases {
+        // Deserialize and validate the section
+        let result = serde_json::from_value::<RateLimitConfig>(value)
+            .map_err(anyhow::Error::from)
+            .and_then(|cfg| cfg.validate());
+
+        // Check the rejection names the offending key
+        assert_eq!(result.unwrap_err().to_string(), expected, "{case}");
+    }
+}
+
+#[test]
+fn test_rate_limit_config_rejects_malformed_sections() {
+    // (case, rate limit section, expected error)
+    let cases = [
+        (
+            "unknown key in section",
+            json!({ "client_ip": { "source": "peer" }, "extra": true }),
+            "unknown field `extra`",
+        ),
+        (
+            "unknown key in header source",
+            json!({ "client_ip": { "source": "header", "extra": true } }),
+            "unknown field `extra`",
+        ),
+        (
+            "unknown limit",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "log_out": { "burst": 1, "period_secs": 1 } },
+            }),
+            "unknown field `log_out`",
+        ),
+        (
+            "unknown key in budget",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "views": { "burst": 1, "period_secs": 1, "extra": 1 } },
+            }),
+            "unknown field `extra`",
+        ),
+        (
+            "header under peer source",
+            json!({ "client_ip": { "source": "peer", "header": "x-real-ip" } }),
+            "unknown field `header`",
+        ),
+        (
+            "trusted proxies under peer source",
+            json!({ "client_ip": { "source": "peer", "trusted_proxies": [] } }),
+            "unknown field `trusted_proxies`",
+        ),
+        (
+            "missing client ip",
+            json!({ "mode": "observe" }),
+            "missing field `client_ip`",
+        ),
+        (
+            "missing source",
+            json!({ "client_ip": { "header": "x-forwarded-for" } }),
+            "missing field `source`",
+        ),
+        (
+            "unknown source",
+            json!({ "client_ip": { "source": "proxy_protocol" } }),
+            "unknown variant `proxy_protocol`",
+        ),
+        (
+            "unknown mode",
+            json!({ "client_ip": { "source": "peer" }, "mode": "block" }),
+            "unknown variant `block`",
+        ),
+    ];
+
+    for (case, value, expected) in cases {
+        let error = serde_json::from_value::<RateLimitConfig>(value)
+            .unwrap_err()
+            .to_string();
+
+        // Check deserialization rejects the section
+        assert!(error.contains(expected), "{case}: {error}");
+    }
+}
+
+#[test]
 fn test_smtp_config_defaults_deadlines() {
     // Setup an SMTP section that omits both deadlines
     let cfg: SmtpConfig = serde_json::from_value(serde_json::json!({
@@ -522,6 +952,19 @@ pub(crate) fn sample_zoom_meetings_cfg(webhook_secret_token: &str) -> MeetingsCo
 
 // Helpers.
 
+fn budget(burst: u32, period_secs: u64) -> RateLimitBudget {
+    RateLimitBudget { burst, period_secs }
+}
+
+/// Parses an override value the way the environment provider parses variables.
+fn env_value(value: &str) -> figment::value::Value {
+    value.parse().expect("parsing a figment value to be infallible")
+}
+
+fn header_source_with_trusted_proxies(trusted_proxies: &[&str]) -> serde_json::Value {
+    json!({ "client_ip": { "source": "header", "trusted_proxies": trusted_proxies } })
+}
+
 fn sample_config() -> Config {
     let badge_signing_key = JWK::generate_ed25519().unwrap();
     let mut oauth2 = HashMap::new();
@@ -598,6 +1041,7 @@ fn sample_config() -> Config {
             cookie: None,
             http_client: HttpClientConfig::default(),
             max_blocking_concurrency: None,
+            rate_limit: None,
             redirect_hosts: None,
             shutdown_grace_period_secs: DEFAULT_SHUTDOWN_GRACE_PERIOD_SECS,
         },
@@ -656,6 +1100,15 @@ fn sample_http_server_config_value() -> serde_json::Value {
     })
 }
 
+fn sample_rate_limit_config() -> RateLimitConfig {
+    RateLimitConfig {
+        client_ip: ClientIpConfig::Peer(ClientIpPeerConfig {}),
+
+        limits: RateLimitBudgets::default(),
+        mode: RateLimitMode::Observe,
+    }
+}
+
 fn sample_stripe_config_value() -> serde_json::Value {
     serde_json::json!({
         "provider": "stripe",
@@ -681,4 +1134,10 @@ fn sensitive_values() -> [&'static str; 11] {
         "zoom-client-sensitive-value",
         "zoom-webhook-sensitive-value",
     ]
+}
+
+fn trusted_proxies(count: u32) -> Vec<String> {
+    (0..count)
+        .map(|index| format!("10.{}.{}.0/24", index / 256, index % 256))
+        .collect()
 }

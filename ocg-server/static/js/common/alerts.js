@@ -15,6 +15,8 @@ const PAGE_ALERT_SELECTOR = "[data-page-alert]";
 const PAGE_ALERT_READY_KEY = "pageAlertReady";
 const BACKEND_FLASH_REFRESH_TRIGGERS = new Set(["refresh-user-dashboard-content"]);
 const REFRESH_BODY_EVENT = "refresh-body";
+// Header marking a plain-text rate limit rejection whose body is safe to show.
+const RATE_LIMITED_HEADER = "X-OCG-Rate-Limited";
 // Success icon parts SweetAlert2 paints with the popup background to mask the ring.
 const SUCCESS_ICON_MASK_SELECTOR = "[class^=swal2-success-circular-line], .swal2-success-fix";
 
@@ -49,6 +51,30 @@ export const getCommonAlertOptions = () => {
     },
   };
 };
+
+/**
+ * Returns the wait message of a plain-text rate limit rejection sent by this server. A 429
+ * without the server's marker (an HTML page, a proxy or a CDN) never has its body shown.
+ * @param {XMLHttpRequest|{status?: number, responseText?: string, getResponseHeader?: Function}|null|undefined} xhr - Failed request
+ * @returns {string} Server message, or an empty string
+ */
+export const getRateLimitMessage = (xhr) => {
+  if (xhr?.status !== 429 || typeof xhr.getResponseHeader !== "function") {
+    return "";
+  }
+  if (xhr.getResponseHeader(RATE_LIMITED_HEADER) !== "true") {
+    return "";
+  }
+  return xhr.responseText?.trim() ?? "";
+};
+
+/**
+ * Returns whether an error alert with this exact text is already on screen.
+ * @param {string} message - Alert text
+ * @returns {boolean} Whether the same alert is visible
+ */
+export const isErrorAlertShown = (message) =>
+  Boolean(globalThis.Swal?.isVisible?.() && globalThis.Swal.getHtmlContainer?.()?.textContent === message);
 
 /**
  * Displays a success alert with the given message.
@@ -240,6 +266,7 @@ const refreshBodyAfterHtmxSettle = () => {
  * Handles common HTMX response patterns and displays alerts.
  * Returns true on success (2xx), false otherwise.
  * Forced-refresh intercepts are 2xx but are not successful mutations.
+ * A 429 carrying the server's marker shows the server's wait message instead of `errorMessage`.
  * @param {Object} params
  * @param {XMLHttpRequest} params.xhr
  * @param {string} params.successMessage
@@ -275,6 +302,16 @@ export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
   if (xhr.status === 403) {
     scrollToDashboardTop();
     showErrorAlert(buildForbiddenMessage(errorMessage));
+    return false;
+  }
+
+  const rateLimitMessage = getRateLimitMessage(xhr);
+  if (rateLimitMessage) {
+    // Repeated rejections (map pans, double reports) keep one alert on screen
+    if (!isErrorAlertShown(rateLimitMessage)) {
+      scrollToDashboardTop();
+      showErrorAlert(rateLimitMessage);
+    }
     return false;
   }
 

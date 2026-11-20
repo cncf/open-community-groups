@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import {
   createNoEmptyValuesExtension,
+  handleBoostedNavigationError,
   handleCommitShaBeforeOnLoad,
   handleCommitShaBeforeSwap,
   handleCommitShaConfigRequest,
@@ -36,6 +37,12 @@ import {
   resetDeploymentReloadState,
   setDeploymentReloadHandler,
 } from "/static/js/common/deployment-version.js";
+import {
+  createRateLimitedXhr,
+  createXhr,
+  dispatchHtmxRequestError,
+  RATE_LIMIT_MESSAGE,
+} from "/tests/unit/test-utils/htmx.js";
 
 // Convert form data into comparable entries.
 const formDataToEntries = (formData) => Array.from(formData.entries());
@@ -44,6 +51,23 @@ const waitForDelay = (delay = 0) => new Promise((resolve) => setTimeout(resolve,
 // Set the loaded commit SHA meta tag for deployment header checks.
 const setLoadedCommitSha = (commitSha) => {
   document.head.innerHTML = `<meta name="ocg-commit-sha" content="${commitSha}">`;
+};
+
+const NAVIGATION_ERROR_MESSAGE = "Something went wrong loading the page. Please try again later.";
+
+// Dispatch a failed HTMX request from a link wired to the boosted navigation handler. An
+// explicit `boosted: undefined` stays undefined, as htmx leaves it on requests it did not boost.
+const failNavigation = (type, options = {}) => {
+  const { boosted, link, xhr } = { boosted: true, link: document.createElement("a"), ...options };
+  link.addEventListener(type, handleBoostedNavigationError);
+  dispatchHtmxRequestError(link, type, { boosted, target: document.body, xhr });
+  link.removeEventListener(type, handleBoostedNavigationError);
+};
+
+// Let the mocked SweetAlert report its last alert as the one on screen.
+const keepAlertsVisible = (swal) => {
+  globalThis.Swal.isVisible = () => swal.calls.length > 0;
+  globalThis.Swal.getHtmlContainer = () => ({ textContent: swal.calls.at(-1)?.text });
 };
 
 describe("htmx extensions", () => {
@@ -1007,6 +1031,102 @@ describe("htmx extensions", () => {
     ).to.equal(form);
   });
 
+  it("reports a boosted navigation rejected over a rate limit with the server's message", () => {
+    // Fail a boosted navigation with a marked rate limit rejection.
+    failNavigation("htmx:responseError", { xhr: createRateLimitedXhr() });
+
+    // The server's wait message is shown as plain text.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({ icon: "error", text: RATE_LIMIT_MESSAGE });
+    expect(swal.calls[0]).not.to.have.property("html");
+  });
+
+  [
+    ["a server error", "htmx:responseError", createXhr({ status: 500, responseText: "Internal error" })],
+    ["a forbidden response", "htmx:responseError", createXhr({ status: 403, responseText: "Forbidden" })],
+    [
+      "a rate limit rejection without the server's marker",
+      "htmx:responseError",
+      createXhr({
+        status: 429,
+        responseText: "<html>Slow down</html>",
+        headers: { "Content-Type": "text/html" },
+      }),
+    ],
+    ["a network error", "htmx:sendError", createXhr({ status: 0 })],
+    ["a timeout", "htmx:timeout", createXhr({ status: 0 })],
+  ].forEach(([name, type, xhr]) => {
+    it(`reports a boosted navigation that failed with ${name} with the generic message`, () => {
+      // Fail a boosted navigation.
+      failNavigation(type, { xhr });
+
+      // The generic navigation message is shown once.
+      expect(swal.calls).to.have.length(1);
+      expect(swal.calls[0]).to.include({ icon: "error", text: NAVIGATION_ERROR_MESSAGE });
+    });
+  });
+
+  ["htmx:responseError", "htmx:sendError", "htmx:timeout"].forEach((type) => {
+    it(`ignores ${type} from a request hx-boost did not issue`, () => {
+      // Fail an explicit HTMX request.
+      failNavigation(type, { boosted: undefined, xhr: createRateLimitedXhr() });
+
+      // The request's own owner reports it, so nothing is shown here.
+      expect(swal.calls).to.have.length(0);
+    });
+  });
+
+  it("leaves a boosted navigation failure a declarative owner reported to that owner", () => {
+    // Build a boosted link inside a declarative response owner.
+    const form = document.createElement("form");
+    form.dataset.htmxResponse = "";
+    form.dataset.errorMessage = "Save failed.";
+    const link = document.createElement("a");
+    form.append(link);
+    const xhr = createXhr({ status: 500 });
+
+    // The owner reports the response before HTMX sends the error event.
+    handleDeclarativeHtmxResponse({ detail: { elt: link, xhr } });
+    failNavigation("htmx:responseError", { link, xhr });
+
+    // Only the owner's alert is shown.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({ text: "Save failed." });
+  });
+
+  it("stays silent on a boosted navigation failure while a deployment reload is pending", () => {
+    // Request a deployment reload from a response sent by a newer commit.
+    setLoadedCommitSha("abc123");
+    setDeploymentReloadHandler(() => {});
+    handleCommitShaBeforeSwap({
+      detail: {
+        shouldSwap: true,
+        xhr: {
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
+        },
+      },
+    });
+
+    // Fail a boosted navigation while the page reloads.
+    failNavigation("htmx:sendError", { xhr: createXhr({ status: 0 }) });
+
+    // The reload replaces the page, so no alert is shown.
+    expect(swal.calls).to.have.length(0);
+  });
+
+  it("keeps one alert on screen when a replayed boosted navigation fails the same way", () => {
+    // Fail a boosted navigation and keep its alert on screen.
+    keepAlertsVisible(swal);
+    failNavigation("htmx:responseError", { xhr: createRateLimitedXhr() });
+
+    // Fail the replayed click with the same rejection.
+    failNavigation("htmx:responseError", { xhr: createRateLimitedXhr() });
+
+    // The visible alert is not fired again.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({ text: RATE_LIMIT_MESSAGE });
+  });
+
   it("registers the shared htmx response handlers", () => {
     // Capture listeners added to the event root.
     const listeners = [];
@@ -1033,6 +1153,9 @@ describe("htmx extensions", () => {
       ["htmx:beforeSwap", handlePreserveBeforeSwap],
       ["htmx:beforeSwap", handleDeclarativeHtmxResponse],
       ["htmx:afterRequest", handleDeclarativeHtmxResponse],
+      ["htmx:responseError", handleBoostedNavigationError],
+      ["htmx:sendError", handleBoostedNavigationError],
+      ["htmx:timeout", handleBoostedNavigationError],
     ]);
   });
 
@@ -1062,6 +1185,9 @@ describe("htmx extensions", () => {
       ["htmx:beforeSwap", handlePreserveBeforeSwap],
       ["htmx:beforeSwap", handleDeclarativeHtmxResponse],
       ["htmx:afterRequest", handleDeclarativeHtmxResponse],
+      ["htmx:responseError", handleBoostedNavigationError],
+      ["htmx:sendError", handleBoostedNavigationError],
+      ["htmx:timeout", handleBoostedNavigationError],
     ]);
   });
 

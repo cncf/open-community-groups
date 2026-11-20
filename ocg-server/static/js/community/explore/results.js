@@ -15,12 +15,14 @@ export class ExploreFetchError extends Error {
    * @param {string} message - Error message
    * @param {object} [details] - Failure details
    * @param {unknown} [details.cause] - Underlying error
+   * @param {Headers|null} [details.headers] - Response headers of a failed request
    * @param {string} [details.responseText] - Response body of a failed request
    * @param {number|null} [details.status] - HTTP status of a failed request
    */
-  constructor(message, { cause, responseText = "", status = null } = {}) {
+  constructor(message, { cause, headers = null, responseText = "", status = null } = {}) {
     super(message, { cause });
     this.name = "ExploreFetchError";
+    this.headers = headers;
     this.responseText = responseText;
     this.status = status;
   }
@@ -79,6 +81,7 @@ export const fetchWidgetData = async (entity, params, { signal } = {}) => {
   if (!response.ok) {
     const responseText = await response.text().catch(() => "");
     throw new ExploreFetchError(`Failed to fetch ${entity} data (status ${response.status})`, {
+      headers: response.headers,
       responseText,
       status: response.status,
     });
@@ -107,8 +110,23 @@ export const isAbortError = (error) => error?.name === "AbortError";
  */
 export const reportFetchError = (error) => {
   if (isAbortError(error)) return;
-  const xhr = error?.status ? { status: error.status, responseText: error.responseText || "" } : null;
-  handleHtmxResponse({ xhr, successMessage: "", errorMessage: RESULTS_ERROR_MESSAGE });
+  const xhr = error?.status
+    ? {
+        getResponseHeader: (name) => error.headers?.get?.(name) ?? null,
+        responseText: error.responseText || "",
+        status: error.status,
+      }
+    : null;
+  reportRequestError(xhr);
+};
+
+/**
+ * Shows the results error alert for a failed explore request, with the server's wait message
+ * when it rejected the request over a rate limit.
+ * @param {XMLHttpRequest|object|null|undefined} xhr - Failed request, or null when none answered
+ */
+export const reportRequestError = (xhr) => {
+  handleHtmxResponse({ xhr: xhr ?? null, successMessage: "", errorMessage: RESULTS_ERROR_MESSAGE });
 };
 
 /**

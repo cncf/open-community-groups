@@ -37,6 +37,7 @@
         hx-get='/explore/{{ entity }}-section'
         hx-trigger="change"
         hx-target="#entity-section"
+        hx-sync="closest #entity-section:replace"
         hx-indicator="[data-loading-filters], #loading-filters-mobile"
         hx-include="[name='ts_query'], [name='sort_by'], {% if entity == Entity::Events %}[name='sort_direction'],{% endif %} #view-mode-controls input[name='view_mode']:checked"
         hx-ext="no-empty-vals">
@@ -80,6 +81,7 @@
           hx-get='/explore/{{ entity }}-section'
           hx-trigger="change"
           hx-target="#entity-section"
+          hx-sync="closest #entity-section:replace"
           hx-indicator="[data-loading-filters], #loading-filters-mobile"
           hx-include="[name='ts_query'], [name='sort_by'], {% if entity == Entity::Events %}[name='sort_direction'],{% endif %} #view-mode-controls input[name='view_mode']:checked"
           hx-ext="no-empty-vals">

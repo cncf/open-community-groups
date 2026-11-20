@@ -49,16 +49,31 @@ export const restoreNavigationState = () => {
   clearRestoredLoadingState(document);
 };
 
-/** Registers shared cleanup for dashboard and full-page navigation. */
-export const initializeNavigationState = () => {
+/**
+ * Registers shared cleanup for dashboard and full-page navigation. A Back or Forward to a page
+ * missing from the HTMX history cache whose refetch fails, with an error status or a network
+ * error, reloads that page from the server.
+ * @param {{reloadPage?: () => void}} [options] Page reload, replaceable in tests.
+ */
+export const initializeNavigationState = ({ reloadPage = () => window.location.reload() } = {}) => {
   document.addEventListener("htmx:beforeSwap", (event) => {
-    if (isNavigationSwap(event)) {
-      // A swap requested by a marked refresher keeps the alert
-      const requester = event.detail?.requestConfig?.elt;
-      const isRefresh = requester instanceof Element && requester.matches(KEEPS_ALERTS_SELECTOR);
-      dismissNavigationOverlays({ refreshedView: isRefresh ? event.detail?.target : undefined });
+    if (!isNavigationSwap(event)) {
+      return;
     }
+    // A failed navigation keeps the page, so its alert, menus, dialogs and scroll lock stay too
+    if (event.detail?.isError && !event.detail.shouldSwap) {
+      return;
+    }
+    // A swap requested by a marked refresher keeps the alert
+    const requester = event.detail?.requestConfig?.elt;
+    const isRefresh = requester instanceof Element && requester.matches(KEEPS_ALERTS_SELECTOR);
+    dismissNavigationOverlays({ refreshedView: isRefresh ? event.detail?.target : undefined });
   });
+  // HTMX reports only a refetch error status, so a network failure is caught on the refetch itself
+  document.addEventListener("htmx:historyCacheMiss", (event) => {
+    event.detail?.xhr?.addEventListener("error", () => reloadPage(), { once: true });
+  });
+  document.addEventListener("htmx:historyCacheMissLoadError", () => reloadPage());
   document.addEventListener("htmx:historyRestore", restoreNavigationState);
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) {

@@ -5,7 +5,7 @@ use axum::{
     Json,
     extract::{Multipart, Path, Query, State},
     http::{
-        HeaderMap, StatusCode, Uri, header::ACCEPT, header::CACHE_CONTROL, header::CONTENT_TYPE,
+        HeaderMap, StatusCode, Uri, header::CACHE_CONTROL, header::CONTENT_TYPE,
         header::RETRY_AFTER,
     },
     response::{Html, IntoResponse, Response},
@@ -19,7 +19,7 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{error::HandlerError, extend_public_shared_cache_headers},
+    handlers::{accepts_media_type, error::HandlerError, extend_public_shared_cache_headers},
     router::{CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
     services::badges::{
         BadgesManagerError, CID_CONTEXT_URL, DynBadgesManager, MULTIKEY_CONTEXT_URL,
@@ -286,22 +286,7 @@ pub(crate) struct UserProfileBadgesQuery {
 
 /// Return whether the client requested the JSON-LD credential representation.
 fn accepts_credential(headers: &HeaderMap) -> bool {
-    headers
-        .get_all(ACCEPT)
-        .iter()
-        .filter_map(|value| value.to_str().ok())
-        .flat_map(|value| value.split(','))
-        .any(|item| {
-            let mut parts = item.split(';').map(str::trim);
-            let supported = parts.next().is_some_and(|media_type| {
-                media_type.eq_ignore_ascii_case("application/vc+ld+json")
-            });
-            let quality = parts
-                .filter_map(|parameter| parameter.split_once('='))
-                .find(|(name, _)| name.trim().eq_ignore_ascii_case("q"))
-                .map_or(1.0, |(_, value)| value.trim().parse::<f32>().unwrap_or(0.0));
-            supported && quality > 0.0
-        })
+    accepts_media_type(headers, "application/vc+ld+json")
 }
 
 /// Render the verification page with an optional result.

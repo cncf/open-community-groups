@@ -25,6 +25,16 @@ export class MultiSelectFilter extends MultiSelect {
   }
 
   /**
+   * Puts back a selection without user interaction. Values missing from the options are left out,
+   * as the first render already pruned them, so pruning finds nothing and no event is dispatched.
+   * @param {string[]} values - Selected option values
+   */
+  restoreSelected(values) {
+    const optionValues = new Set(this.options.map((option) => option.value));
+    this.selected = values.filter((value) => optionValues.has(value));
+  }
+
+  /**
    * Emits a selection change event for page-level filter handling.
    */
   _dispatchSelectionChange() {

@@ -66,6 +66,26 @@ export class CollapsibleFilter extends LitWrapper {
   }
 
   /**
+   * Puts back a selection without user interaction, keeping every selected option rendered so it
+   * is submitted. Dispatches no event.
+   * @param {string[]} values - Selected option values
+   * @returns {Promise<void>} Resolves once the option checkboxes match the selection
+   */
+  async restoreSelected(values) {
+    this.selected = values;
+    this._prepareSelected();
+    this._checkMaxVisibleItems();
+    this._filterOptions();
+    this._checkExpandIfHiddenSelected();
+    // Lit writes `.checked` only when the bound value changes, so a box the user unticked in
+    // single selection (where `selected` did not change) would stay unticked
+    await this.updateComplete;
+    this.querySelectorAll(`input[name="${this.name}[]"]`).forEach((input) => {
+      input.checked = this.selected.includes(input.value);
+    });
+  }
+
+  /**
    * Clears the filters marked data-community-dependent in the parent form.
    * @private
    */
@@ -310,7 +330,10 @@ export class CollapsibleFilter extends LitWrapper {
                   name="${this.name}[]"
                   value=${opt.value}
                   .checked=${this.selected.includes(opt.value)}
-                  @change=${() => this._onSelect(opt.value)}
+                  @change=${(event) => {
+                    event.stopPropagation();
+                    this._onSelect(opt.value);
+                  }}
                   class="sr-only"
                 />
                 <div

@@ -10,3 +10,5 @@ pub(crate) mod home;
 pub(crate) mod not_found;
 /// Templates for the stats page.
 pub(crate) mod stats;
+/// Templates for the too many requests page.
+pub(crate) mod too_many_requests;

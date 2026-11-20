@@ -7,6 +7,7 @@ import {
   fetchWidgetData,
   isAbortError,
   reportFetchError,
+  reportRequestError,
   updateResults,
   updateResultsFromSummary,
 } from "/static/js/community/explore/results.js";
@@ -18,6 +19,7 @@ import {
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
+import { createRateLimitedXhr, createXhr, RATE_LIMIT_MESSAGE } from "/tests/unit/test-utils/htmx.js";
 import { mockMapLibre } from "/tests/unit/test-utils/maps.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
@@ -530,7 +532,9 @@ describe("explore helpers", () => {
 
   it("wraps server error responses without alerts", async () => {
     // Mock the error response.
+    const headers = new Headers({ "Content-Type": "text/plain" });
     fetchMock.setImpl(async () => ({
+      headers,
       ok: false,
       status: 500,
       text: async () => "Internal error",
@@ -544,12 +548,38 @@ describe("explore helpers", () => {
       thrownError = error;
     }
 
-    // The typed error keeps the status and body, and no alert is shown.
+    // The typed error keeps the status, headers and body, and no alert is shown.
     expect(thrownError).to.be.instanceOf(ExploreFetchError);
     expect(thrownError.message).to.equal("Failed to fetch groups data (status 500)");
     expect(thrownError.status).to.equal(500);
+    expect(thrownError.headers).to.equal(headers);
     expect(thrownError.responseText).to.equal("Internal error");
     expect(swal.calls).to.have.length(0);
+  });
+
+  it("reports a rate limited widget request with the server's wait message", async () => {
+    // Reject the request the way the server rejects a client over its rate limit.
+    fetchMock.setImpl(
+      async () =>
+        new Response(RATE_LIMIT_MESSAGE, {
+          status: 429,
+          headers: { "Content-Type": "text/plain; charset=utf-8", "X-OCG-Rate-Limited": "true" },
+        }),
+    );
+
+    // Run the fetch call and report its failure.
+    let thrownError = null;
+    try {
+      await fetchWidgetData("events", "kind=conference");
+    } catch (error) {
+      thrownError = error;
+    }
+    reportFetchError(thrownError);
+
+    // The error carries the response headers and the alert shows the server text.
+    expect(thrownError).to.be.instanceOf(ExploreFetchError);
+    expect(thrownError.headers.get("X-OCG-Rate-Limited")).to.equal("true");
+    expect(swal.calls.map((call) => call.text)).to.deep.equal([RATE_LIMIT_MESSAGE]);
   });
 
   it("wraps invalid json responses without alerts", async () => {
@@ -587,5 +617,61 @@ describe("explore helpers", () => {
     // Each failure shows the results error alert.
     expect(swal.calls).to.have.length(2);
     expect(swal.calls.map((call) => call.text)).to.deep.equal([RESULTS_ERROR_MESSAGE, RESULTS_ERROR_MESSAGE]);
+  });
+
+  it("keeps the response headers of failed widget requests", () => {
+    // Build failures with and without response headers.
+    const headers = new Headers({ "X-OCG-Rate-Limited": "true" });
+    const withHeaders = new ExploreFetchError("Failed", { headers, responseText: "Wait", status: 429 });
+    const withoutHeaders = new ExploreFetchError("Failed", { status: 500 });
+
+    // Headers are kept as given and default to null.
+    expect(withHeaders.headers).to.equal(headers);
+    expect(withoutHeaders.headers).to.equal(null);
+  });
+
+  it("reports rate limited fetch failures with the server text only when marked", () => {
+    // Report a marked 429, an unmarked 429 and a 429 whose error has no headers.
+    reportFetchError(
+      new ExploreFetchError("Failed", {
+        headers: new Headers({ "X-OCG-Rate-Limited": "true" }),
+        responseText: `${RATE_LIMIT_MESSAGE}\n`,
+        status: 429,
+      }),
+    );
+    reportFetchError(
+      new ExploreFetchError("Failed", {
+        headers: new Headers({ "Content-Type": "text/html" }),
+        responseText: "<html><body>Rate limited by proxy</body></html>",
+        status: 429,
+      }),
+    );
+    reportFetchError({ responseText: RATE_LIMIT_MESSAGE, status: 429 });
+
+    // Only the marked rejection shows the server text.
+    expect(swal.calls.map((call) => call.text)).to.deep.equal([
+      RATE_LIMIT_MESSAGE,
+      RESULTS_ERROR_MESSAGE,
+      RESULTS_ERROR_MESSAGE,
+    ]);
+    expect(swal.calls.some((call) => "html" in call)).to.equal(false);
+  });
+
+  it("reports failed explore requests through the results alert", () => {
+    // Report a marked 429, a server error, a network error and a request with no xhr.
+    reportRequestError(createRateLimitedXhr());
+    reportRequestError(createXhr({ status: 500, responseText: "Internal error" }));
+    reportRequestError(createXhr({ status: 0 }));
+    reportRequestError(null);
+    reportRequestError(undefined);
+
+    // Only the rate limit rejection shows the server text.
+    expect(swal.calls.map((call) => call.text)).to.deep.equal([
+      RATE_LIMIT_MESSAGE,
+      RESULTS_ERROR_MESSAGE,
+      RESULTS_ERROR_MESSAGE,
+      RESULTS_ERROR_MESSAGE,
+      RESULTS_ERROR_MESSAGE,
+    ]);
   });
 });

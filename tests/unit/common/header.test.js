@@ -8,9 +8,12 @@ import {
   mockScrollTo,
 } from "/tests/unit/test-utils/dom.js";
 import {
+  createRateLimitedXhr,
+  createXhr,
   dispatchHtmxAfterRequest,
   dispatchHtmxAfterSwap,
   dispatchHtmxBeforeRequest,
+  dispatchHtmxRequestError,
 } from "/tests/unit/test-utils/htmx.js";
 import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
@@ -26,7 +29,7 @@ const renderSheetFixture = () => {
           </button>
         </li>
         <li role="none">
-          <a id="stats-row" href="/stats" role="menuitem"><span class="hx-spinner"></span>Stats</a>
+          <a id="stats-row" href="/stats" hx-boost="true" role="menuitem"><span class="hx-spinner"></span>Stats</a>
         </li>
         <li role="none">
           <a id="dashboard-row" href="/dashboard/user" role="menuitem">
@@ -445,6 +448,41 @@ describe("header", () => {
     expect(link.hasAttribute("aria-busy")).to.equal(false);
   });
 
+  [
+    ["a response error", ["htmx:responseError", "htmx:afterRequest"], createXhr({ status: 500 })],
+    ["a send error", ["htmx:afterRequest", "htmx:sendError"], createXhr({ status: 0 })],
+    ["a timeout", ["htmx:afterRequest", "htmx:timeout"], createXhr({ status: 0 })],
+  ].forEach(([name, events, xhr]) => {
+    it(`clears nav loading when a boosted header nav request ends with ${name}`, async () => {
+      // Build the DOM fixture with user dropdown button, user dropdown, and explore link.
+      document.body.innerHTML = `
+        <button id="user-dropdown-button" type="button">User</button>
+        <div id="user-dropdown" class="hidden"></div>
+        <a id="explore-link" href="/explore" hx-boost="true" data-header-nav-link>Explore</a>
+      `;
+      initUserDropdown();
+
+      // Start the boosted request and wait until the link shows loading.
+      const link = document.getElementById("explore-link");
+      dispatchHtmxBeforeRequest(link, { elt: link });
+      await new Promise((resolve) => setTimeout(resolve, 140));
+      expect(link.classList.contains("header-nav-link-pending")).to.equal(true);
+
+      // End the request with the events HTMX sends for this failure, in its order.
+      events.forEach((type) => {
+        if (type === "htmx:afterRequest") {
+          dispatchHtmxAfterRequest(link, { elt: link, status: xhr.status });
+        } else {
+          dispatchHtmxRequestError(link, type, { boosted: true, target: document.body, xhr });
+        }
+      });
+
+      // The link is no longer marked busy.
+      expect(link.classList.contains("header-nav-link-pending")).to.equal(false);
+      expect(link.hasAttribute("aria-busy")).to.equal(false);
+    });
+  });
+
   it("keeps loading when a different header nav request finishes", async () => {
     // Build the DOM fixture with user dropdown button, user dropdown, and explore link.
     document.body.innerHTML = `
@@ -822,6 +860,82 @@ describe("header", () => {
 
       // Verify the sheet stays up until the swap.
       expect(dropdown.classList.contains("hidden")).to.equal(false);
+    });
+
+    ["htmx:responseError", "htmx:sendError", "htmx:timeout"].forEach((type) => {
+      it(`closes the sheet before the alert when a spinner link navigation ends with ${type}`, () => {
+        // Open the sheet and follow a boosted spinner link.
+        media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
+        const { dropdown, userButton } = renderSheetFixture();
+        userButton.click();
+        const link = document.getElementById("stats-row");
+        document.addEventListener("click", (event) => event.preventDefault(), { once: true });
+        link.click();
+
+        // Record what a document listener, such as the shared alert handler, finds.
+        const seenByDocument = [];
+        const recordSheet = () => {
+          seenByDocument.push({ hidden: dropdown.classList.contains("hidden"), ...getSheetMarkers() });
+        };
+        document.addEventListener(type, recordSheet);
+        try {
+          // Fail the navigation.
+          dispatchHtmxRequestError(link, type, {
+            boosted: true,
+            target: document.body,
+            xhr: createRateLimitedXhr(),
+          });
+        } finally {
+          document.removeEventListener(type, recordSheet);
+        }
+
+        // Verify the sheet released everything first and focus went back to its trigger.
+        expect(seenByDocument).to.deep.equal([{ hidden: true, ...CLEAR_SHEET_MARKERS }]);
+        expect(dropdown.classList.contains("hidden")).to.equal(true);
+        expect(getSheetMarkers()).to.deep.equal(CLEAR_SHEET_MARKERS);
+        expect(document.activeElement).to.equal(userButton);
+      });
+    });
+
+    it("closes the anchored menu and focuses its button when a spinner link navigation fails", () => {
+      // Open the anchored menu with the phone query off and follow a boosted spinner link.
+      media = stubMatchMedia();
+      const { dropdown, userButton } = renderSheetFixture();
+      userButton.click();
+      const link = document.getElementById("stats-row");
+      document.addEventListener("click", (event) => event.preventDefault(), { once: true });
+      link.click();
+      expect(dropdown.classList.contains("hidden")).to.equal(false);
+
+      // Fail the navigation.
+      dispatchHtmxRequestError(link, "htmx:responseError", {
+        boosted: true,
+        target: document.body,
+        xhr: createXhr({ status: 500 }),
+      });
+
+      // Verify the menu closes and its trigger takes focus.
+      expect(dropdown.classList.contains("hidden")).to.equal(true);
+      expect(userButton.getAttribute("aria-expanded")).to.equal("false");
+      expect(document.activeElement).to.equal(userButton);
+    });
+
+    it("keeps the sheet open when a request hx-boost did not issue fails inside it", () => {
+      // Open the sheet.
+      media = stubMatchMedia({ [PHONE_MEDIA_QUERY]: true });
+      const { close, dropdown, userButton } = renderSheetFixture();
+      userButton.click();
+
+      // Fail a request the menu loads by itself.
+      dispatchHtmxRequestError(document.getElementById("dashboard-row"), "htmx:responseError", {
+        target: dropdown,
+        xhr: createXhr({ status: 500 }),
+      });
+
+      // Verify the sheet and focus are untouched.
+      expect(dropdown.classList.contains("hidden")).to.equal(false);
+      expect(document.body.dataset.modalOpenCount).to.equal("1");
+      expect(document.activeElement).to.equal(close);
     });
 
     it("closes the sheet after a theme choice click and returns focus", () => {

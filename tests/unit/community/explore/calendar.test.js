@@ -375,6 +375,41 @@ describe("community explore calendar", () => {
     expect(getNotice().hidden).to.equal(true);
   });
 
+  it("writes the displayed month into every date input", async () => {
+    // Render the calendar beside a second form with stale dates.
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `<form id="events-form-mobile">
+        <input type="hidden" name="date_from" value="2026-06-01" />
+        <input type="hidden" name="date_to" value="2026-06-30" />
+      </form>`,
+    );
+    const calendar = await renderCalendar({ events: [] });
+
+    calendar.syncDateInputs();
+
+    // Verify both forms carry the month the calendar shows.
+    expect(
+      [...document.querySelectorAll('input[name="date_from"]')].map((input) => input.value),
+    ).to.deep.equal(["2026-04-01", "2026-04-01"]);
+    expect([...document.querySelectorAll('input[name="date_to"]')].map((input) => input.value)).to.deep.equal(
+      ["2026-04-30", "2026-04-30"],
+    );
+    expect(fetchMock.calls).to.have.length(0);
+  });
+
+  it("leaves the date inputs alone before FullCalendar exists", () => {
+    // Create the calendar without waiting for its script.
+    const calendar = new Calendar({ events: [] });
+    expect(calendar.fullCalendar).to.equal(null);
+
+    calendar.syncDateInputs();
+
+    // Verify the inputs keep their values.
+    expect(document.querySelector('input[name="date_from"]')?.value).to.equal("");
+    expect(document.querySelector('input[name="date_to"]')?.value).to.equal("");
+  });
+
   it("clears loading and reports an error when month data cannot load", async () => {
     // Fail the month request of the live calendar.
     fetchMock.setImpl(async () => statusResponse(500));

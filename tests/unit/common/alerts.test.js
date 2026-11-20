@@ -5,8 +5,10 @@ import {
   confirmAction,
   confirmSeriesAction,
   getCommonAlertOptions,
+  getRateLimitMessage,
   handleHtmxResponse,
   initializePageAlerts,
+  isErrorAlertShown,
   shouldRefreshBodyForBackendFlash,
   showConfirmAlert,
   showDeploymentReloadPrompt,
@@ -22,7 +24,12 @@ import { THEME_CHANGE_EVENT } from "/static/js/common/theme.js";
 import { VENDOR_BUNDLES } from "/__ocg__/vendor-bundles.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
+import {
+  createRateLimitedXhr,
+  createXhr,
+  dispatchHtmxLoad,
+  RATE_LIMIT_MESSAGE,
+} from "/tests/unit/test-utils/htmx.js";
 import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
 describe("alerts", () => {
@@ -336,6 +343,145 @@ describe("alerts", () => {
       { top: 0, behavior: "auto" },
       { top: 0, behavior: "auto" },
     ]);
+  });
+
+  it("shows the server's wait message for a marked rate limit rejection", () => {
+    // Handle a marked 429 whose body carries surrounding whitespace.
+    const result = handleHtmxResponse({
+      xhr: createRateLimitedXhr(`  ${RATE_LIMIT_MESSAGE}\n`),
+      successMessage: "",
+      errorMessage: "Save failed. Please try again later.",
+    });
+
+    // Assert the trimmed server sentence replaces the caller's message, as plain text.
+    expect(result).to.equal(false);
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({ text: RATE_LIMIT_MESSAGE, icon: "error" });
+    expect("html" in env.current.swal.calls[0]).to.equal(false);
+    expect(env.current.scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
+  });
+
+  it("shows the caller's message for rate limit rejections without the server's marker", () => {
+    // Handle an unmarked text 429, an HTML 429 and a 429 fixture without header access.
+    const rejections = [
+      createXhr({ status: 429, responseText: RATE_LIMIT_MESSAGE }),
+      createXhr({
+        status: 429,
+        responseText: "<html><body>Rate limited by proxy</body></html>",
+        headers: { "Content-Type": "text/html" },
+      }),
+      createXhr({
+        status: 429,
+        responseText: RATE_LIMIT_MESSAGE,
+        headers: { "X-OCG-Rate-Limited": "false" },
+      }),
+      { status: 429, responseText: RATE_LIMIT_MESSAGE },
+    ];
+    rejections.forEach((xhr) => {
+      expect(handleHtmxResponse({ xhr, successMessage: "", errorMessage: "Save failed" })).to.equal(false);
+    });
+
+    // Assert every rejection shows the caller's generic message.
+    expect(env.current.swal.calls.map(({ text }) => text)).to.deep.equal([
+      "Save failed",
+      "Save failed",
+      "Save failed",
+      "Save failed",
+    ]);
+  });
+
+  it("keeps markup in a marked rate limit rejection as text", () => {
+    // Handle a marked 429 whose body is markup.
+    handleHtmxResponse({
+      xhr: createRateLimitedXhr("<img src=x onerror=alert(1)>"),
+      successMessage: "",
+      errorMessage: "Save failed",
+    });
+
+    // Assert the body is passed as text, never as HTML.
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0].text).to.equal("<img src=x onerror=alert(1)>");
+    expect("html" in env.current.swal.calls[0]).to.equal(false);
+  });
+
+  it("keeps one rate limit alert on screen for repeated rejections", () => {
+    // Show the server's wait message in a visible alert.
+    const htmlContainer = document.createElement("div");
+    htmlContainer.textContent = RATE_LIMIT_MESSAGE;
+    globalThis.Swal.isVisible = () => true;
+    globalThis.Swal.getHtmlContainer = () => htmlContainer;
+
+    // Handle the same rejection again.
+    const result = handleHtmxResponse({
+      xhr: createRateLimitedXhr(),
+      successMessage: "",
+      errorMessage: "Save failed",
+    });
+
+    // Assert the visible alert is neither fired again nor scrolled to.
+    expect(result).to.equal(false);
+    expect(env.current.swal.calls).to.have.length(0);
+    expect(env.current.scrollToMock.calls).to.deep.equal([]);
+
+    // A different visible alert does not hide the wait message.
+    htmlContainer.textContent = "Saved";
+    handleHtmxResponse({ xhr: createRateLimitedXhr(), successMessage: "", errorMessage: "Save failed" });
+    expect(env.current.swal.calls.map(({ text }) => text)).to.deep.equal([RATE_LIMIT_MESSAGE]);
+  });
+
+  it("reads the wait message only from marked rate limit rejections", () => {
+    // Build response fixtures around the status, marker and body rules.
+    const cases = [
+      { name: "marked 429", xhr: createRateLimitedXhr(), expected: RATE_LIMIT_MESSAGE },
+      {
+        name: "marked 500",
+        xhr: createXhr({ status: 500, responseText: "Oops", headers: { "X-OCG-Rate-Limited": "true" } }),
+        expected: "",
+      },
+      { name: "absent marker", xhr: createXhr({ status: 429, responseText: "Wait" }), expected: "" },
+      {
+        name: "false marker",
+        xhr: createXhr({ status: 429, responseText: "Wait", headers: { "X-OCG-Rate-Limited": "false" } }),
+        expected: "",
+      },
+      { name: "no header lookup", xhr: { status: 429, responseText: "Wait" }, expected: "" },
+      { name: "empty body", xhr: createRateLimitedXhr(""), expected: "" },
+      { name: "blank body", xhr: createRateLimitedXhr("   "), expected: "" },
+      {
+        name: "missing body",
+        xhr: { status: 429, getResponseHeader: () => "true" },
+        expected: "",
+      },
+      { name: "null xhr", xhr: null, expected: "" },
+      { name: "undefined xhr", xhr: undefined, expected: "" },
+    ];
+
+    // Assert only marked 429s with a body yield a message.
+    cases.forEach(({ name, xhr, expected }) => {
+      expect(getRateLimitMessage(xhr), name).to.equal(expected);
+    });
+  });
+
+  it("detects an alert on screen only for the same visible text", () => {
+    // The default mock exposes no visibility check.
+    expect(isErrorAlertShown(RATE_LIMIT_MESSAGE)).to.equal(false);
+
+    // A hidden alert with the same text is not shown.
+    const htmlContainer = document.createElement("div");
+    htmlContainer.textContent = RATE_LIMIT_MESSAGE;
+    let visible = false;
+    globalThis.Swal.isVisible = () => visible;
+    globalThis.Swal.getHtmlContainer = () => htmlContainer;
+    expect(isErrorAlertShown(RATE_LIMIT_MESSAGE)).to.equal(false);
+
+    // A visible alert matches only its exact text.
+    visible = true;
+    expect(isErrorAlertShown(RATE_LIMIT_MESSAGE)).to.equal(true);
+    expect(isErrorAlertShown("Something went wrong")).to.equal(false);
+
+    // A visible popup without a text container matches nothing.
+    globalThis.Swal.getHtmlContainer = () => null;
+    expect(isErrorAlertShown(RATE_LIMIT_MESSAGE)).to.equal(false);
   });
 
   it("does not treat forced-refresh intercepts as successful mutations", () => {

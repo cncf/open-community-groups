@@ -1,4 +1,10 @@
-import { handleHtmxResponse, showSuccessAlert } from "/static/js/common/alerts.js";
+import {
+  getRateLimitMessage,
+  handleHtmxResponse,
+  isErrorAlertShown,
+  showErrorAlert,
+  showSuccessAlert,
+} from "/static/js/common/alerts.js";
 import {
   addLoadedDashboardContextHeaders,
   isDashboardContextReloadRequested,
@@ -27,6 +33,8 @@ const HTMX_PRESERVE_ATTRIBUTE_PATTERN =
 const HTMX_SWAP_SELECTOR = "[hx-swap], [data-hx-swap]";
 // Requests that only serve logged-in users, such as enrollment and membership checks.
 const LOGIN_REQUIRED_SELECTOR = "[data-ocg-requires-login]";
+// Alert text for a boosted navigation that failed without a server message to show.
+const NAVIGATION_ERROR_MESSAGE = "Something went wrong loading the page. Please try again later.";
 
 /**
  * Finds the closest response owner from whichever element HTMX exposes.
@@ -159,6 +167,30 @@ export const createNoEmptyValuesExtension = (dropZero) => ({
     return null;
   },
 });
+
+/**
+ * Reports a boosted navigation that ended without a page: an error status, a network error or a
+ * timeout. The current page stays, and a rate limit rejection shows the server's wait message.
+ * @param {CustomEvent} event HTMX responseError, sendError or timeout event.
+ * @returns {void}
+ */
+export const handleBoostedNavigationError = (event) => {
+  const xhr = event.detail?.xhr;
+  if (event.detail?.boosted !== true || isDeploymentReloadRequested()) {
+    return;
+  }
+
+  // A declarative owner already reported this response
+  if (xhr && handledDeclarativeResponseXhrs.has(xhr)) {
+    return;
+  }
+
+  const message = getRateLimitMessage(xhr) || NAVIGATION_ERROR_MESSAGE;
+  // A replayed double click fails the same way, so one alert stays on screen
+  if (!isErrorAlertShown(message)) {
+    showErrorAlert(message);
+  }
+};
 
 /**
  * Allows the shared HTML not found page to replace the current body on boosted requests.
@@ -473,6 +505,9 @@ export const registerHtmxResponseHandlers = (root = document) => {
   eventRoot.addEventListener("htmx:beforeSwap", handlePreserveBeforeSwap);
   eventRoot.addEventListener("htmx:beforeSwap", handleDeclarativeHtmxResponse);
   eventRoot.addEventListener("htmx:afterRequest", handleDeclarativeHtmxResponse);
+  eventRoot.addEventListener("htmx:responseError", handleBoostedNavigationError);
+  eventRoot.addEventListener("htmx:sendError", handleBoostedNavigationError);
+  eventRoot.addEventListener("htmx:timeout", handleBoostedNavigationError);
   responseHandlerRoots.add(eventRoot);
 };
 

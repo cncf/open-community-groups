@@ -1,0 +1,39 @@
+{# Site Too Many Requests Page: standalone, the base layout needs site settings -#}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    {# Same viewer preferences as the base layout: theme and desktop version before first paint. -#}
+    <script data-ocg-preferences>
+      {% include "common/scripts/preferences_init.js" -%}
+    </script>
+    <title>Too many requests</title>
+    <link rel="icon"
+          href="/static/images/favicon.svg"
+          type="image/svg+xml"
+          sizes="any">
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    {# Default brand ramp: dark primary roles have no fallback in styles.css. -#}
+    {% let brand_ramp = crate::templates::brand_ramp::BrandRamp::default_ramp() -%}
+    {% include "common/brand_ramp_style.html" -%}
+  </head>
+  <body class="min-h-full bg-canvas">
+    <main id="main-content"
+          class="flex min-h-dvh w-full items-center justify-center">
+      <div class="container max-w-3xl m-auto px-4 py-8 md:px-6 md:py-12">
+        <div class="bg-surface p-8 md:p-10 border border-stone-200 rounded-lg shadow-sm">
+          <div class="mx-auto max-w-2xl text-center">
+            <p class="text-sm font-semibold uppercase tracking-wide text-primary-fg-hover">Too many requests</p>
+            <h1 class="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-stone-900">Please wait a moment</h1>
+            <p class="mt-6 text-base sm:text-lg leading-8 text-stone-600">{{ message }}</p>
+            <div class="mt-10">
+              <a href="/" class="btn-primary-anchor text-base py-3 px-7 font-semibold">Go to home page</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

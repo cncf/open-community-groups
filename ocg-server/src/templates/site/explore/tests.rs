@@ -1,6 +1,11 @@
+use uuid::Uuid;
+
 use crate::{
     test_util::{element_html_with, element_text_with, opening_tag_with},
-    types::tests::sample_site_settings,
+    types::{
+        pagination::NavigationLink,
+        tests::{sample_event_summary, sample_group_summary, sample_site_settings},
+    },
 };
 
 use super::*;
@@ -236,6 +241,85 @@ fn test_page_title_names_explore() {
     assert!(body.contains("<title>Explore · Test Site</title>"));
 }
 
+#[test]
+fn test_results_paging_links_sync_on_entity_section() {
+    // Render a middle page of events and groups results, with every paging link
+    let events_body = EventsResultsSection {
+        events: vec![EventCard {
+            event: sample_event_summary(Uuid::from_u128(1)),
+        }],
+        navigation_links: middle_page_navigation_links(),
+        total: 30,
+
+        offset: Some(10),
+        view_mode: Some(ViewMode::List),
+        widget_data: None,
+    }
+    .render()
+    .unwrap();
+    let groups_body = GroupsResultsSection {
+        groups: vec![GroupCard {
+            group: sample_group_summary(Uuid::from_u128(2)),
+        }],
+        navigation_links: middle_page_navigation_links(),
+        total: 30,
+
+        offset: Some(10),
+        view_mode: Some(ViewMode::List),
+        widget_data: None,
+    }
+    .render()
+    .unwrap();
+
+    // Check every paging link drops a click while a page or section request is loading
+    for (label, body) in [("events", events_body), ("groups", groups_body)] {
+        let links = opening_tags_with(&body, r##"hx-target="#cards-list""##);
+        assert_eq!(links.len(), 4, "{label}");
+        for link in links {
+            assert!(link.starts_with("<a"), "{label}: {link}");
+            assert!(
+                link.contains(r#"hx-sync="closest #entity-section:drop""#),
+                "{label}: {link}"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_section_requests_sync_on_entity_section() {
+    // Render the events and groups sections
+    let events_body = render_default_events_section();
+    let groups_body = GroupsSection {
+        filters: SearchGroupsFilters::default(),
+        filters_options: FiltersOptions::default(),
+        results_section: GroupsResultsSection {
+            groups: vec![],
+            navigation_links: NavigationLinks::default(),
+            total: 0,
+
+            offset: None,
+            view_mode: None,
+            widget_data: None,
+        },
+    }
+    .render()
+    .unwrap();
+
+    // Check both forms and every entity button replace the running section request
+    for (label, body) in [("events", events_body), ("groups", groups_body)] {
+        let requesters = opening_tags_with(&body, r##"hx-target="#entity-section""##);
+        let forms = requesters.iter().filter(|tag| tag.starts_with("<form")).count();
+        let buttons = requesters.iter().filter(|tag| tag.starts_with("<button")).count();
+        assert_eq!((forms, buttons), (2, 3), "{label}");
+        for requester in requesters {
+            assert!(
+                requester.contains(r#"hx-sync="closest #entity-section:replace""#),
+                "{label}: {requester}"
+            );
+        }
+    }
+}
+
 // Helpers.
 
 /// Returns filter options with one entry for every filter the explore page renders.
@@ -267,6 +351,34 @@ fn empty_events_widget_data() -> SearchEventsOutput<EventMinimal> {
         bbox: None,
         truncated: false,
     }
+}
+
+/// Returns navigation links for a middle page, with first, previous, next and last links.
+fn middle_page_navigation_links() -> NavigationLinks {
+    let link = |offset: usize| NavigationLink {
+        hx_url: format!("/explore/results?offset={offset}"),
+        url: format!("/explore?offset={offset}"),
+    };
+
+    NavigationLinks {
+        current_page: 2,
+        total_pages: 3,
+
+        first: Some(link(0)),
+        last: Some(link(20)),
+        next: Some(link(20)),
+        prev: Some(link(0)),
+    }
+}
+
+/// Returns every rendered opening tag that contains `needle`, in document order.
+fn opening_tags_with<'a>(html: &'a str, needle: &str) -> Vec<&'a str> {
+    html.match_indices(needle)
+        .map(|(position, _)| {
+            let tag_start = html[..position].rfind('<').expect("opening tag start");
+            opening_tag_with(&html[tag_start..], needle)
+        })
+        .collect()
 }
 
 /// Renders the events section with default filters and no results.
