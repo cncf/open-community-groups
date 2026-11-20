@@ -48,7 +48,7 @@ icalendar = "0.17.17"
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "tiff", "webp"] }
 ipnet = "2.12.0"
 iref = "3.2.2"
-lettre = { version = "0.11.23", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls"] }
+lettre = { version = "0.11.24", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls"] }
 markdown = "1.0.0"
 mime_guess = "2.0.5"
 minify-html = "0.18.1"
