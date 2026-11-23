@@ -13,6 +13,7 @@ use crate::{
     services::{
         enrollment::EnrollmentError,
         events::EventsError,
+        images::ImagesError,
         inbox::InboxError,
         payments::{AutomaticTaxReadinessError, FiscalSponsorReadinessError, PaymentsError},
     },
@@ -197,6 +198,15 @@ impl From<FiscalSponsorReadinessError> for HandlerError {
         match err {
             FiscalSponsorReadinessError::NotReady(message) => HandlerError::Rejected(message),
             FiscalSponsorReadinessError::Unexpected(err) => HandlerError::from(err),
+        }
+    }
+}
+
+impl From<ImagesError> for HandlerError {
+    fn from(err: ImagesError) -> Self {
+        match err {
+            ImagesError::Other(err) => HandlerError::from(err),
+            ImagesError::Rejected(message) => HandlerError::Rejected(message),
         }
     }
 }

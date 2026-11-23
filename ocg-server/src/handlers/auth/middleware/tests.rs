@@ -22,7 +22,7 @@ use crate::{
     handlers::{auth::session_context::SELECTED_GROUP_ID_KEY, tests::*},
     router::{self, CACHE_CONTROL_NO_STORE},
     services::{
-        blocking::BlockingExecutor, images::MockImageStorage,
+        blocking::BlockingExecutor, images::MockImagesManager,
         notifications::MockNotificationsManager,
     },
 };
@@ -1156,7 +1156,7 @@ async fn protected_router(db: DynDB, routes: Router<router::State>) -> Router {
     let server_cfg = HttpServerConfig::default();
     let state = test_state(
         db.clone(),
-        Arc::new(MockImageStorage::new()),
+        Arc::new(MockImagesManager::new()),
         Arc::new(MockNotificationsManager::new()),
     );
     let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db)

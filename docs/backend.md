@@ -46,6 +46,8 @@ Forbidden edges:
 - `handlers -> db::<module>::{*Input, *Result}` operation types. A handler
   that needs to build one is orchestrating a workflow and delegates it to
   `services/`.
+- `handlers -> services::*` provider traits, adapters, and constructors.
+  Handlers call managers instead.
 
 `layers::layer_dependencies_follow_backend_rules` (`ocg-server/src/layers.rs`,
 run by `just server-tests`) enforces these rules over every Rust file under
@@ -483,8 +485,9 @@ row identifier on every outcome, from enqueue to delivery.
 CPU-bound work runs off the async executor through
 `services::blocking::BlockingExecutor`, which wraps `spawn_blocking` in a
 semaphore sized by `server.max_blocking_concurrency`, so a burst cannot
-saturate the blocking pool. One executor is created in `router::setup` and
-shared by everything that hashes or verifies passwords.
+saturate the blocking pool. One executor is created in `main` and shared by
+everything that runs CPU-bound work (password hashing and verification, image
+validation and hashing).
 
 ### Bounded exports
 

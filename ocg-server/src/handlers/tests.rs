@@ -39,7 +39,7 @@ use crate::{
         blocking::BlockingExecutor,
         enrollment::{DynEnrollmentManager, MockEnrollmentManager},
         events::{DynEventsManager, MockEventsManager},
-        images::{DynImageStorage, MockImageStorage},
+        images::{DynImagesManager, MockImagesManager},
         inbox::{DynInboxManager, MockInboxManager},
         notifications::{DynNotificationsManager, MockNotificationsManager},
         payments::{DynPaymentsManager, MockPaymentsManager},
@@ -1109,12 +1109,12 @@ impl DashboardIds {
 /// Builds test router state with default server configuration.
 pub(crate) fn test_state(
     db: DynDB,
-    image_storage: DynImageStorage,
+    images_manager: DynImagesManager,
     notifications_manager: DynNotificationsManager,
 ) -> router::State {
     test_state_with_server_cfg(
         db,
-        image_storage,
+        images_manager,
         notifications_manager,
         &HttpServerConfig::default(),
     )
@@ -1123,7 +1123,7 @@ pub(crate) fn test_state(
 /// Builds test router state with the provided server configuration.
 pub(crate) fn test_state_with_server_cfg(
     db: DynDB,
-    image_storage: DynImageStorage,
+    images_manager: DynImagesManager,
     notifications_manager: DynNotificationsManager,
     server_cfg: &HttpServerConfig,
 ) -> router::State {
@@ -1138,7 +1138,7 @@ pub(crate) fn test_state_with_server_cfg(
         db,
         enrollment_manager: Arc::new(MockEnrollmentManager::new()),
         events_manager: Arc::new(MockEventsManager::new()),
-        image_storage,
+        images_manager,
         inbox_manager: Arc::new(MockInboxManager::new()),
         meetings_cfg: None,
         notifications_manager,
@@ -1156,7 +1156,7 @@ pub(crate) struct TestRouterBuilder {
     db: Box<MockDB>,
     enrollment_manager: Option<MockEnrollmentManager>,
     events_manager: Option<MockEventsManager>,
-    image_storage: Option<MockImageStorage>,
+    images_manager: Option<MockImagesManager>,
     inbox_manager: Option<MockInboxManager>,
     meetings_cfg: Option<crate::config::MeetingsConfig>,
     notifications_manager: Option<MockNotificationsManager>,
@@ -1169,7 +1169,7 @@ pub(crate) struct TestRouterBuilder {
 impl TestRouterBuilder {
     /// Creates a new test router builder with the database mock.
     ///
-    /// The activity tracker, image storage, notifications manager, and the
+    /// The activity tracker, images manager, notifications manager, and the
     /// enrollment, events, and inbox managers default to mocks without
     /// expectations, which panic on any call. The default payments manager
     /// only answers the configured provider and fiscal sponsor validation.
@@ -1179,7 +1179,7 @@ impl TestRouterBuilder {
             db: Box::new(db),
             enrollment_manager: None,
             events_manager: None,
-            image_storage: None,
+            images_manager: None,
             inbox_manager: None,
             meetings_cfg: None,
             notifications_manager: None,
@@ -1197,10 +1197,11 @@ impl TestRouterBuilder {
         let db: DynDB = Arc::new(*self.db);
         let activity_tracker: DynActivityTracker =
             Arc::new(self.activity_tracker.unwrap_or_default());
-        let is: DynImageStorage = Arc::new(self.image_storage.unwrap_or_default());
+        let images_manager: DynImagesManager = Arc::new(self.images_manager.unwrap_or_default());
         let nm: DynNotificationsManager = Arc::new(self.notifications_manager.unwrap_or_default());
         let mut server_cfg = self.server_cfg.unwrap_or_default();
         server_cfg.badges.get_or_insert_with(|| TEST_BADGES_CONFIG.clone());
+        let blocking_executor = BlockingExecutor::new(server_cfg.max_blocking_concurrency());
         let configured_provider = self.payments_cfg.as_ref().map(PaymentsConfig::provider);
         let payments_manager = self.payments_manager.unwrap_or_else(|| {
             let mut payments_manager = MockPaymentsManager::new();
@@ -1220,10 +1221,11 @@ impl TestRouterBuilder {
 
         router::setup(
             activity_tracker,
+            blocking_executor,
             db,
             enrollment_manager,
             events_manager,
-            is,
+            images_manager,
             inbox_manager,
             self.meetings_cfg,
             self.payments_cfg,
@@ -1261,9 +1263,9 @@ impl TestRouterBuilder {
         self
     }
 
-    /// Sets a custom image storage.
-    pub(crate) fn with_image_storage(mut self, is: MockImageStorage) -> Self {
-        self.image_storage = Some(is);
+    /// Sets a custom images manager.
+    pub(crate) fn with_images_manager(mut self, images_manager: MockImagesManager) -> Self {
+        self.images_manager = Some(images_manager);
         self
     }
 

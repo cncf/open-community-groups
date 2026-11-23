@@ -1,31 +1,23 @@
-use std::io::Cursor;
-
 use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use image::DynamicImage;
 use serde_json::json;
 
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    services::images::MockImageStorage,
-    test_util::sample_png,
+    services::images::{ImagesError, MockImagesManager},
     types::{
         badges::{
             AwardBadgeOutcome, BadgeAwardInput, BadgeAwardSourceFilter, BadgeInput,
             GroupAwardedBadges, GroupBadges,
         },
-        images::Image,
         permissions::GroupPermission,
     },
 };
 
 use super::*;
-
-/// Message returned for any badge artwork that fails validation.
-const INVALID_ARTWORK_MESSAGE: &str = "badge artwork must be a 512x512 PNG, JPEG, or WebP image";
 
 #[tokio::test]
 async fn test_artwork_page_renders_independent_tab() {
@@ -437,67 +429,54 @@ async fn test_add_artwork_rejects_invalid_file_name() {
     expect_group_access(&mut db, &ids, GroupPermission::BadgesWrite);
     db.expect_add_badge_artwork().never();
 
-    // Setup image storage mock, which must not be read
-    let mut storage = MockImageStorage::new();
-    storage.expect_get().never();
+    // Setup images manager mock, which must not be called
+    let mut images_manager = MockImagesManager::new();
+    images_manager.expect_validate_badge_artwork().never();
 
     // Setup router and send request with a path instead of a basename
-    let router = TestRouterBuilder::new(db).with_image_storage(storage).build().await;
+    let router = TestRouterBuilder::new(db)
+        .with_images_manager(images_manager)
+        .build()
+        .await;
     let (parts, bytes) = send(router, add_artwork_request(&ids, "../badge.png")).await;
 
-    // Check the filename is rejected before storage or database access
+    // Check the filename is rejected before validation or database access
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(bytes, "artwork filename is invalid");
 }
 
 #[tokio::test]
-async fn test_add_artwork_rejects_missing_image() {
+async fn test_add_artwork_rejects_manager_rejection() {
     // Setup identifiers and database mock
     let ids = DashboardIds::new();
     let mut db = MockDB::new();
     expect_group_access(&mut db, &ids, GroupPermission::BadgesWrite);
     db.expect_add_badge_artwork().never();
 
-    // Setup image storage mock without the stored image
-    let mut storage = MockImageStorage::new();
-    storage
-        .expect_get()
+    // Setup images manager mock rejecting the stored artwork
+    let mut images_manager = MockImagesManager::new();
+    images_manager
+        .expect_validate_badge_artwork()
         .times(1)
         .withf(|file_name| file_name == "badge.png")
-        .returning(|_| Box::pin(async { Ok(None) }));
+        .returning(|_| {
+            Box::pin(async {
+                Err(ImagesError::Rejected(
+                    "badge artwork was not found".to_string(),
+                ))
+            })
+        });
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db).with_image_storage(storage).build().await;
+    let router = TestRouterBuilder::new(db)
+        .with_images_manager(images_manager)
+        .build()
+        .await;
     let (parts, bytes) = send(router, add_artwork_request(&ids, "badge.png")).await;
 
-    // Check a nonexistent object cannot enter the reusable gallery
+    // Check a manager rejection returns 422 before the database mutation
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(bytes, "badge artwork was not found");
-}
-
-#[tokio::test]
-async fn test_add_artwork_rejects_wrong_dimensions() {
-    // Setup identifiers and database mock
-    let ids = DashboardIds::new();
-    let mut db = MockDB::new();
-    expect_group_access(&mut db, &ids, GroupPermission::BadgesWrite);
-    db.expect_add_badge_artwork().never();
-
-    // Setup image storage mock with an undersized PNG
-    let mut storage = MockImageStorage::new();
-    storage
-        .expect_get()
-        .times(1)
-        .withf(|file_name| file_name == "badge.png")
-        .return_once(|_| Box::pin(async { Ok(Some(png_image(1, 1))) }));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db).with_image_storage(storage).build().await;
-    let (parts, bytes) = send(router, add_artwork_request(&ids, "badge.png")).await;
-
-    // Check invalid dimensions are rejected before the database mutation
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(bytes, INVALID_ARTWORK_MESSAGE);
 }
 
 #[tokio::test]
@@ -516,16 +495,19 @@ async fn test_add_artwork_success() {
         })
         .return_once(|_, _, _, _| Ok(()));
 
-    // Setup image storage mock with valid badge artwork
-    let mut storage = MockImageStorage::new();
-    storage
-        .expect_get()
+    // Setup images manager mock accepting the stored artwork
+    let mut images_manager = MockImagesManager::new();
+    images_manager
+        .expect_validate_badge_artwork()
         .times(1)
         .withf(|file_name| file_name == "badge.png")
-        .return_once(|_| Box::pin(async { Ok(Some(png_image(512, 512))) }));
+        .return_once(|_| Box::pin(async { Ok(()) }));
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db).with_image_storage(storage).build().await;
+    let router = TestRouterBuilder::new(db)
+        .with_images_manager(images_manager)
+        .build()
+        .await;
     let (parts, bytes) = send(router, add_artwork_request(&ids, "badge.png")).await;
 
     // Check the dashboard refresh contract
@@ -997,93 +979,6 @@ fn test_parse_date_filters() {
 }
 
 #[test]
-fn test_validate_badge_artwork() {
-    let mut oversized_png = sample_png(512, 512);
-    oversized_png.resize(MAX_BADGE_ARTWORK_SIZE_BYTES + 1, 0);
-    let cases = [
-        ("512x512 png", "badge.png", png_image(512, 512), true),
-        (
-            "uppercase extension",
-            "badge.PNG",
-            png_image(512, 512),
-            true,
-        ),
-        (
-            "512x512 jpeg with jpg extension",
-            "badge.jpg",
-            encoded_image(ImageFormat::Jpeg, "image/jpeg"),
-            true,
-        ),
-        (
-            "512x512 jpeg with jpeg extension",
-            "badge.jpeg",
-            encoded_image(ImageFormat::Jpeg, "image/jpeg"),
-            true,
-        ),
-        (
-            "512x512 webp",
-            "badge.webp",
-            encoded_image(ImageFormat::WebP, "image/webp"),
-            true,
-        ),
-        ("undersized png", "badge.png", png_image(1, 1), false),
-        (
-            "non-square png",
-            "badge.png",
-            stored_image(sample_png(512, 256), "image/png"),
-            false,
-        ),
-        (
-            "oversized png",
-            "badge.png",
-            stored_image(oversized_png, "image/png"),
-            false,
-        ),
-        (
-            "png bytes with jpg extension",
-            "badge.jpg",
-            png_image(512, 512),
-            false,
-        ),
-        (
-            "png bytes without extension",
-            "badge",
-            png_image(512, 512),
-            false,
-        ),
-        (
-            "png bytes with jpeg content type",
-            "badge.png",
-            stored_image(sample_png(512, 512), "image/jpeg"),
-            false,
-        ),
-        (
-            "unsupported gif format",
-            "badge.gif",
-            encoded_image(ImageFormat::Gif, "image/gif"),
-            false,
-        ),
-        (
-            "non-image bytes",
-            "badge.png",
-            stored_image(b"not an image".to_vec(), "image/png"),
-            false,
-        ),
-    ];
-
-    for (label, file_name, image, accepted) in cases {
-        match validate_badge_artwork(file_name, &image) {
-            Ok(()) => assert!(accepted, "{label}: should be rejected"),
-            Err(HandlerError::Rejected(message)) => {
-                assert!(!accepted, "{label}: should be accepted, got {message:?}");
-                assert_eq!(message, INVALID_ARTWORK_MESSAGE, "{label}");
-            }
-            Err(err) => panic!("{label}: unexpected error {err:?}"),
-        }
-    }
-}
-
-#[test]
 fn test_validate_badge_input() {
     let with = |update: fn(&mut BadgeInput)| {
         let mut input = sample_badge_input();
@@ -1166,20 +1061,6 @@ fn add_artwork_request(ids: &DashboardIds, file_name: &str) -> Request<Body> {
     )
 }
 
-/// Encode a 512x512 image in the format with the content type.
-fn encoded_image(format: ImageFormat, content_type: &str) -> Image {
-    let mut output = Cursor::new(Vec::new());
-    DynamicImage::new_rgb8(BADGE_ARTWORK_SIZE, BADGE_ARTWORK_SIZE)
-        .write_to(&mut output, format)
-        .unwrap();
-    stored_image(output.into_inner(), content_type)
-}
-
-/// Build a stored PNG image with the dimensions.
-fn png_image(width: u32, height: u32) -> Image {
-    stored_image(sample_png(width, height), "image/png")
-}
-
 /// Build one valid badge definition form fixture.
 fn sample_badge_input() -> BadgeInput {
     BadgeInput {
@@ -1187,13 +1068,5 @@ fn sample_badge_input() -> BadgeInput {
         description: "Recognizes participation".to_string(),
         image_file_name: "badge.png".to_string(),
         name: "Participant".to_string(),
-    }
-}
-
-/// Build a stored image from its bytes and content type.
-fn stored_image(bytes: Vec<u8>, content_type: &str) -> Image {
-    Image {
-        bytes,
-        content_type: content_type.to_string(),
     }
 }

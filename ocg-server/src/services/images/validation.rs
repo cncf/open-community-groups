@@ -1,16 +1,93 @@
 //! Upload validation for images: format detection, extension checks, SVG
 //! sanitization, and target dimension requirements.
 
-use std::{borrow::Cow, io::Cursor};
+use std::{borrow::Cow, io::Cursor, path::Path as FilePath};
 
 use anyhow::{Context, Result, anyhow};
-use image::{ImageFormat, ImageReader};
+use image::{GenericImageView, ImageFormat, ImageReader, Limits};
 use quick_xml::{Reader, XmlVersion, events::Event};
 
-use crate::types::images::ImageTarget;
+use crate::types::images::{Image, ImageTarget};
+
+use super::MAX_IMAGE_SIZE_BYTES;
 
 #[cfg(test)]
 mod tests;
+
+/// Maximum memory allocation allowed when decoding stored badge artwork (16 MiB).
+const MAX_BADGE_ARTWORK_DECODE_ALLOC_BYTES: usize = 16 * 1024 * 1024;
+
+/// Validates that a stored image is a bounded 512x512 PNG, JPEG, or WebP asset.
+pub(crate) fn validate_badge_artwork(
+    file_name: &str,
+    image: &Image,
+) -> Result<(), ImageValidationError> {
+    // Reject stored objects larger than the upload size limit
+    if image.bytes.len() > MAX_IMAGE_SIZE_BYTES {
+        return Err(ImageValidationError::InvalidBadgeArtwork);
+    }
+
+    // Guess the image format and confirm it matches both extension and MIME type
+    let mut reader = ImageReader::new(Cursor::new(&image.bytes))
+        .with_guessed_format()
+        .map_err(|_| ImageValidationError::InvalidBadgeArtwork)?;
+    let extension = FilePath::new(file_name)
+        .extension()
+        .and_then(|extension| extension.to_str());
+    let format_matches = match reader.format() {
+        Some(ImageFormat::Jpeg) => {
+            extension.is_some_and(|extension| {
+                extension.eq_ignore_ascii_case("jpeg") || extension.eq_ignore_ascii_case("jpg")
+            }) && image.content_type == "image/jpeg"
+        }
+        Some(ImageFormat::Png) => {
+            extension.is_some_and(|extension| extension.eq_ignore_ascii_case("png"))
+                && image.content_type == "image/png"
+        }
+        Some(ImageFormat::WebP) => {
+            extension.is_some_and(|extension| extension.eq_ignore_ascii_case("webp"))
+                && image.content_type == "image/webp"
+        }
+        _ => false,
+    };
+    if !format_matches {
+        return Err(ImageValidationError::InvalidBadgeArtwork);
+    }
+
+    // Decode with bounded dimensions and allocation limits to reject corrupted assets
+    let (expected_width, expected_height) =
+        (ImageTarget::Badge.width(), ImageTarget::Badge.height());
+    let mut limits = Limits::default();
+    limits.max_alloc = Some(MAX_BADGE_ARTWORK_DECODE_ALLOC_BYTES as u64);
+    limits.max_image_height = Some(expected_height);
+    limits.max_image_width = Some(expected_width);
+    reader.limits(limits);
+    let decoded = reader
+        .decode()
+        .map_err(|_| ImageValidationError::InvalidBadgeArtwork)?;
+    if decoded.dimensions() != (expected_width, expected_height) {
+        return Err(ImageValidationError::InvalidBadgeArtwork);
+    }
+
+    Ok(())
+}
+
+/// Validates that the image dimensions match the target requirements.
+pub(crate) fn validate_image_dimensions(bytes: &[u8], target: ImageTarget) -> Result<()> {
+    let (expected_width, expected_height) = (target.width(), target.height());
+    let reader = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .context("failed to detect image format")?;
+    let (width, height) = reader.into_dimensions().context("failed to read dimensions")?;
+
+    if width != expected_width || height != expected_height {
+        return Err(anyhow!(
+            "image dimensions {width}x{height} do not match required {expected_width}x{expected_height}"
+        ));
+    }
+
+    Ok(())
+}
 
 /// Validates an uploaded image and returns the metadata needed to store it.
 ///
@@ -53,23 +130,6 @@ pub(crate) fn validate_image_upload(
     })
 }
 
-/// Validates that the image dimensions match the target requirements.
-pub(crate) fn validate_image_dimensions(bytes: &[u8], target: ImageTarget) -> Result<()> {
-    let (expected_width, expected_height) = (target.width(), target.height());
-    let reader = ImageReader::new(Cursor::new(bytes))
-        .with_guessed_format()
-        .context("failed to detect image format")?;
-    let (width, height) = reader.into_dimensions().context("failed to read dimensions")?;
-
-    if width != expected_width || height != expected_height {
-        return Err(anyhow!(
-            "image dimensions {width}x{height} do not match required {expected_width}x{expected_height}"
-        ));
-    }
-
-    Ok(())
-}
-
 // Types.
 
 /// Reasons an uploaded image is rejected.
@@ -81,6 +141,9 @@ pub(crate) enum ImageValidationError {
     /// The file extension does not match the detected image format.
     #[error("file extension does not match detected image format")]
     ExtensionMismatch,
+    /// Stored badge artwork does not meet format, size, or dimension requirements.
+    #[error("badge artwork must be a 512x512 PNG, JPEG, or WebP image")]
+    InvalidBadgeArtwork,
     /// The target only accepts raster formats suitable for public embedding.
     #[error("{target_name} images must be PNG, JPEG, or WebP")]
     PublicFormatRequired {

@@ -1,8 +1,20 @@
-use crate::{test_util::sample_png, types::images::ImageTarget};
+use std::io::Cursor;
+
+use image::{DynamicImage, ImageFormat};
+
+use crate::{
+    services::images::MAX_IMAGE_SIZE_BYTES,
+    test_util::sample_png,
+    types::images::{Image, ImageTarget},
+};
 
 use super::{
-    ImageValidationError, ValidatedImage, is_svg, validate_image_dimensions, validate_image_upload,
+    ImageValidationError, ValidatedImage, is_svg, validate_badge_artwork,
+    validate_image_dimensions, validate_image_upload,
 };
+
+/// Message returned for any badge artwork that fails validation.
+const INVALID_ARTWORK_MESSAGE: &str = "badge artwork must be a 512x512 PNG, JPEG, or WebP image";
 
 /// SVG document free of scripts, handlers, and unsafe URLs.
 const SAFE_SVG: &[u8] = br#"<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>"#;
@@ -169,6 +181,93 @@ fn test_is_svg_rejects_unsafe_documents() {
 }
 
 #[test]
+fn test_validate_badge_artwork() {
+    let mut oversized_png = sample_png(512, 512);
+    oversized_png.resize(MAX_IMAGE_SIZE_BYTES + 1, 0);
+    let cases = [
+        ("512x512 png", "badge.png", png_image(512, 512), true),
+        (
+            "uppercase extension",
+            "badge.PNG",
+            png_image(512, 512),
+            true,
+        ),
+        (
+            "512x512 jpeg with jpg extension",
+            "badge.jpg",
+            encoded_image(ImageFormat::Jpeg, "image/jpeg"),
+            true,
+        ),
+        (
+            "512x512 jpeg with jpeg extension",
+            "badge.jpeg",
+            encoded_image(ImageFormat::Jpeg, "image/jpeg"),
+            true,
+        ),
+        (
+            "512x512 webp",
+            "badge.webp",
+            encoded_image(ImageFormat::WebP, "image/webp"),
+            true,
+        ),
+        ("undersized png", "badge.png", png_image(1, 1), false),
+        (
+            "non-square png",
+            "badge.png",
+            stored_image(sample_png(512, 256), "image/png"),
+            false,
+        ),
+        (
+            "oversized png",
+            "badge.png",
+            stored_image(oversized_png, "image/png"),
+            false,
+        ),
+        (
+            "png bytes with jpg extension",
+            "badge.jpg",
+            png_image(512, 512),
+            false,
+        ),
+        (
+            "png bytes without extension",
+            "badge",
+            png_image(512, 512),
+            false,
+        ),
+        (
+            "png bytes with jpeg content type",
+            "badge.png",
+            stored_image(sample_png(512, 512), "image/jpeg"),
+            false,
+        ),
+        (
+            "unsupported gif format",
+            "badge.gif",
+            encoded_image(ImageFormat::Gif, "image/gif"),
+            false,
+        ),
+        (
+            "non-image bytes",
+            "badge.png",
+            stored_image(b"not an image".to_vec(), "image/png"),
+            false,
+        ),
+    ];
+
+    for (label, file_name, image, accepted) in cases {
+        match validate_badge_artwork(file_name, &image) {
+            Ok(()) => assert!(accepted, "{label}: should be rejected"),
+            Err(err @ ImageValidationError::InvalidBadgeArtwork) => {
+                assert!(!accepted, "{label}: should be accepted, got {err:?}");
+                assert_eq!(err.to_string(), INVALID_ARTWORK_MESSAGE, "{label}");
+            }
+            Err(err) => panic!("{label}: unexpected error {err:?}"),
+        }
+    }
+}
+
+#[test]
 fn test_validate_image_dimensions_requires_exact_target_size() {
     let cases = [
         (ImageTarget::AdBanner, "2400x300"),
@@ -292,6 +391,14 @@ fn test_validate_image_upload_rejects_invalid_images() {
             "unsupported image format: Bmp",
         ),
         (
+            "unsafe svg",
+            "example.svg",
+            br#"<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>"#.to_vec(),
+            None,
+            unsupported,
+            "unsupported image format",
+        ),
+        (
             "unrecognized bytes",
             "image.png",
             b"not an image".to_vec(),
@@ -312,5 +419,29 @@ fn test_validate_image_upload_rejects_invalid_images() {
         let err = validate_image_upload(file_name, &bytes, target).unwrap_err();
         assert!(is_expected_error(&err), "{case}: {err:?}");
         assert_eq!(err.to_string(), message, "{case}");
+    }
+}
+
+// Helpers.
+
+/// Encodes a 512x512 test image in the requested raster format.
+fn encoded_image(format: ImageFormat, content_type: &str) -> Image {
+    let mut bytes = Vec::new();
+    DynamicImage::new_rgb8(512, 512)
+        .write_to(&mut Cursor::new(&mut bytes), format)
+        .unwrap();
+    stored_image(bytes, content_type)
+}
+
+/// Builds a stored PNG image with the requested dimensions.
+fn png_image(width: u32, height: u32) -> Image {
+    stored_image(sample_png(width, height), "image/png")
+}
+
+/// Builds a stored image fixture with the given bytes and content type.
+fn stored_image(bytes: Vec<u8>, content_type: &str) -> Image {
+    Image {
+        bytes,
+        content_type: content_type.to_string(),
     }
 }
