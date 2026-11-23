@@ -113,12 +113,14 @@ where
     /// [`DBNotifications::claim_pending_notification`].
     #[instrument(skip(self), err)]
     async fn claim_pending_notification(&self) -> Result<Option<Notification>> {
-        // Claim pending notification (if any)
-        let db = self.client().await?;
-        let Some(row) = db
-            .query_opt("select * from claim_pending_notification();", &[])
-            .await?
-        else {
+        // Claim pending notification (if any) and release the connection before
+        // loading attachments so a cache miss cannot wait for a second pooled client
+        let row = {
+            let db = self.client().await?;
+            db.query_opt("select * from claim_pending_notification();", &[])
+                .await?
+        };
+        let Some(row) = row else {
             return Ok(None);
         };
 
@@ -134,7 +136,7 @@ where
                 Err(err) => {
                     // Finalize pre-send failures so claimed rows are not stranded
                     let error = format!("{err:#}");
-                    db.execute(
+                    self.execute(
                         "
                         select update_notification($1::uuid, $2::text, $3::timestamptz);
                         ",
@@ -359,14 +361,7 @@ where
     /// [`DBNotifications::get_notification_attachment`].
     #[instrument(skip(self), err)]
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment> {
-        #[cached(
-            max_size = 500,
-            ttl_secs = 7200,
-            key = "Uuid",
-            convert = "{ attachment_id }",
-            sync_writes = "by_key"
-        )]
-        async fn inner(db: &PgClient<'_>, attachment_id: Uuid) -> Result<Attachment> {
+        async fn fetch(db: &PgClient<'_>, attachment_id: Uuid) -> Result<Attachment> {
             let row = db
                 .query_one(
                     "
@@ -383,6 +378,23 @@ where
                 data: row.get("data"),
                 file_name: row.get("file_name"),
             })
+        }
+
+        #[cached(
+            max_size = 500,
+            ttl_secs = 7200,
+            key = "Uuid",
+            convert = "{ attachment_id }",
+            sync_writes = "by_key"
+        )]
+        async fn inner(db: &PgClient<'_>, attachment_id: Uuid) -> Result<Attachment> {
+            fetch(db, attachment_id).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db, attachment_id).await;
         }
 
         // Serve a fresh cached value without checking out a client

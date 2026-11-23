@@ -139,6 +139,7 @@ async fn db_contracts_webhook_reconciler_completes_checkout_with_notification_on
         &completion_statements,
         "get_event_summary_by_id"
     ));
+    assert!(has_statement(&completion_statements, "get_site_settings"));
     assert!(has_statement(
         &completion_statements,
         "enqueue_notification"
@@ -157,8 +158,7 @@ async fn db_contracts_webhook_reconciler_completes_checkout_with_notification_on
         Some("text/calendar; charset=utf-8")
     );
 
-    // Check the replayed webhook skipped uncached notification lookup and insert SQL
-    // (`get_site_settings` may be served from the process cache; unit tests cover it via MockDB)
+    // Check the replayed webhook skipped notification lookups and insert SQL
     assert!(has_statement(
         &replay_statements,
         "reconcile_event_purchase_for_checkout_session"
@@ -167,6 +167,7 @@ async fn db_contracts_webhook_reconciler_completes_checkout_with_notification_on
         &replay_statements,
         "get_event_summary_by_id"
     ));
+    assert!(!has_statement(&replay_statements, "get_site_settings"));
     assert!(!has_statement(&replay_statements, "enqueue_notification"));
     assert_eq!(notification_count_after_replay, 1);
 
@@ -186,8 +187,7 @@ async fn db_contracts_webhook_reconciler_noop_webhook_skips_notification_lookups
         .handle_webhook_event(checkout_completed_event(session_id))
         .await?;
 
-    // Check only reconciliation ran and no uncached notification lookup or insert executed
-    // (`get_site_settings` may be served from the process cache; unit tests cover it via MockDB)
+    // Check only reconciliation ran and no notification lookup or insert executed
     let client = pool.get().await?;
     let statements = prepared_statements(&client).await?;
     assert!(has_statement(
@@ -195,6 +195,7 @@ async fn db_contracts_webhook_reconciler_noop_webhook_skips_notification_lookups
         "reconcile_event_purchase_for_checkout_session"
     ));
     assert!(!has_statement(&statements, "get_event_summary_by_id"));
+    assert!(!has_statement(&statements, "get_site_settings"));
     assert!(!has_statement(&statements, "enqueue_notification"));
 
     Ok(())

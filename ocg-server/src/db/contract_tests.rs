@@ -3,6 +3,7 @@
 
 mod auth;
 mod badges;
+mod cache_bypass;
 mod common;
 mod community;
 mod dashboard_common;

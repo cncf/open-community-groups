@@ -7,9 +7,9 @@
 //! fails on a forbidden edge that is not listed in an allowance. Allowances
 //! exist only for edges that are still being migrated; an allowance that no
 //! longer matches any edge also fails the test, so the lists shrink with each
-//! migration and never grow silently. Additional tests keep cached aggregates
-//! over mutable data out of `services`, where transactions are opened, and
-//! verify that every non-singleton `#[cached]` attribute specifies `max_size`.
+//! migration and never grow silently. Additional tests verify that every
+//! cached database read respects `PgExecutor::use_cache` and that every
+//! non-singleton `#[cached]` attribute specifies `max_size`.
 
 use std::{
     collections::BTreeSet,
@@ -67,24 +67,14 @@ const DB_OPERATION_TYPES: &[&str] = &[
 /// moved behind a manager, and new handler code never adds an entry.
 const HANDLER_OPERATION_TYPE_ALLOWANCES: &[(&str, &str)] = &[];
 
-/// Cached aggregates over mutable data. Inside a transaction that changed the
-/// underlying rows they could hide its writes or cache uncommitted counts.
-/// Keeping them out of `services`, where transactions are opened, is a
-/// conservative proxy for that rule; see "Cached reads and transactions" in
-/// `docs/backend.md`.
-const MUTABLE_AGGREGATE_CACHED_READS: &[&str] = &[
-    "get_community_site_stats",
-    "get_community_stats",
-    "get_event_analytics",
-    "get_group_stats",
-    "get_site_home_stats",
-    "get_site_stats",
-];
-
 /// Parsed `#[cached]` attribute found in a Rust source file.
 struct CachedAttribute {
     /// 1-based line number where the attribute begins.
     line: usize,
+    /// Byte offset immediately after the closing `]` of the attribute.
+    span_end: usize,
+    /// Byte offset where the attribute begins (`#`).
+    span_start: usize,
 
     /// Raw argument list inside `#[cached(...)]`, or `None` for bare `#[cached]`.
     args: Option<String>,
@@ -110,6 +100,28 @@ struct CachedAttributeSummary {
     violations: Vec<usize>,
 }
 
+/// Summary of cached database reads scanned for `use_cache` guards.
+struct CachedBypassSummary {
+    /// Count of `#[cached]` attributes inspected outside `#[cfg(test)]`.
+    checked: usize,
+    /// 1-based line numbers of `#[cached]` reads missing a `use_cache` guard.
+    violations: Vec<usize>,
+}
+
+/// Parsed Rust function item with its signature flags and body byte range.
+struct FunctionBlock {
+    /// Byte offset of the closing `}` of the function body.
+    body_end: usize,
+    /// Byte offset of the opening `{` of the function body.
+    body_start: usize,
+    /// Whether the function parameter list takes a `self` receiver.
+    has_self: bool,
+    /// Whether the function parameter list declares a `use_cache` parameter.
+    has_use_cache_param: bool,
+    /// Function identifier name.
+    name: String,
+}
+
 /// A source file with the `crate::` paths it references.
 struct SourceFile {
     /// Layer the file belongs to.
@@ -118,43 +130,6 @@ struct SourceFile {
     paths: BTreeSet<String>,
     /// Path relative to `src/`, with `/` separators.
     relative_path: String,
-}
-
-#[test]
-fn cached_aggregate_reads_stay_outside_services() {
-    let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-
-    // Collect every service source file
-    let mut entries = Vec::new();
-    walk_rust_files(&src_dir.join("services"), &mut entries);
-    entries.push(src_dir.join("services.rs"));
-    assert!(
-        entries.len() > 1,
-        "service source files should be found under {}",
-        src_dir.display()
-    );
-
-    // Check service code for calls to cached aggregates over mutable data
-    let mut violations = Vec::new();
-    for entry in entries.iter().filter(|entry| entry.is_file()) {
-        let source = fs::read_to_string(entry).expect("source file should be readable");
-        let code = strip_line_comments(&source);
-        let identifiers: BTreeSet<&str> = tokenize(&code).into_iter().collect();
-        for method in MUTABLE_AGGREGATE_CACHED_READS {
-            if identifiers.contains(method) {
-                violations.push(format!(
-                    "{} references cached aggregate read `{method}`",
-                    entry.strip_prefix(&src_dir).unwrap_or(entry).display()
-                ));
-            }
-        }
-    }
-
-    assert!(
-        violations.is_empty(),
-        "cached aggregate reads must stay outside services:\n{}",
-        violations.join("\n")
-    );
 }
 
 #[test]
@@ -298,6 +273,383 @@ fn cached_attributes_check_flags_unbounded_keyed_caches() {
             "{case}: violating lines"
         );
     }
+}
+
+#[test]
+fn cached_bypass_check_accepts_guarded_db_caches() {
+    // Setup local, helper-backed, turbofish, and test-only cached fixtures
+    let source = r#"
+        impl<T: PgExecutor> DBSample for T {
+            async fn local_cached(&self) -> Result<()> {
+                async fn fetch(_db: &PgClient<'_>) -> Result<()> {
+                    Ok(())
+                }
+
+                #[cached(ttl_secs = 60, key = "()", convert = "{ () }")]
+                async fn inner(db: &PgClient<'_>) -> Result<()> {
+                    fetch(db).await
+                }
+
+                if !self.use_cache() {
+                    let db = self.client().await?;
+                    return fetch(&db).await;
+                }
+
+                if let Some(value) = cache_probe(&INNER, &()).await {
+                    return Ok(value);
+                }
+
+                let db = self.client().await?;
+                inner(&db).await
+            }
+
+            async fn helper_backed(&self, name: &str) -> Result<()> {
+                resolve_name(name, self.use_cache()).await
+            }
+
+            async fn helper_backed_turbofish(&self, name: &str) -> Result<()> {
+                resolve_name::<()>(name, self.use_cache()).await
+            }
+        }
+
+        #[cached(max_size = 16, ttl_secs = 60, key = "String", convert = "{ String::from(name) }")]
+        async fn lookup_name(name: &str) -> Result<()> {
+            let _ = name;
+            Ok(())
+        }
+
+        async fn resolve_name<T>(name: &str, use_cache: bool) -> Result<()> {
+            if !use_cache {
+                return Ok(());
+            }
+            if let Some(value) = cache_probe(&LOOKUP_NAME, name).await {
+                return Ok(value);
+            }
+            lookup_name(name).await
+        }
+
+        #[cfg(test)]
+        mod tests {
+            #[cached(max_size = 16, ttl_secs = 60, key = "()", convert = "{ () }")]
+            async fn test_only_cache() -> Result<()> {
+                Ok(())
+            }
+        }
+    "#;
+
+    // Run the bypass scanner
+    let summary = cached_bypass_summary(source);
+
+    // Check both production caches pass and the test-only cache is ignored
+    assert_eq!(summary.checked, 2);
+    assert!(
+        summary.violations.is_empty(),
+        "unexpected violations: {:?}",
+        summary.violations
+    );
+}
+
+#[test]
+fn cached_bypass_check_flags_nested_guards_and_returns() {
+    // Exercise nested guards and non-top-level returns inside bypass branches
+    let cases: &[(&str, &str, &[usize])] = &[
+        (
+            "nested bypass guard inside an outer if fails",
+            concat!(
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn nested_guard(&self, flag: bool) -> Result<()> {\n",
+                "        #[cached(ttl_secs = 60, key = \"()\", convert = \"{ () }\")]\n",
+                "        async fn inner() -> Result<()> { Ok(()) }\n",
+                "        if flag { if !self.use_cache() { return Ok(()); } }\n",
+                "        inner().await\n",
+                "    }\n",
+                "}\n",
+            ),
+            &[3],
+        ),
+        (
+            "conditional or closure return inside bypass branch fails",
+            concat!(
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn conditional_return_guard(&self, flag: bool) -> Result<()> {\n",
+                "        #[cached(ttl_secs = 60, key = \"()\", convert = \"{ () }\")]\n",
+                "        async fn inner() -> Result<()> { Ok(()) }\n",
+                "        if !self.use_cache() { if flag { return Ok(()); } }\n",
+                "        inner().await\n",
+                "    }\n",
+                "    async fn closure_return_guard(&self) -> Result<()> {\n",
+                "        #[cached(ttl_secs = 60, key = \"()\", convert = \"{ () }\")]\n",
+                "        async fn inner() -> Result<()> { Ok(()) }\n",
+                "        if !self.use_cache() { let _ = || return Ok::<(), ()>(()); }\n",
+                "        inner().await\n",
+                "    }\n",
+                "}\n",
+            ),
+            &[3, 9],
+        ),
+    ];
+
+    // Check every fixture reports the exact violating cache lines
+    for (case, source, expected_violations) in cases {
+        let summary = cached_bypass_summary(source);
+        assert_eq!(
+            summary.checked,
+            expected_violations.len(),
+            "{case}: checked count"
+        );
+        assert_eq!(
+            summary.violations, *expected_violations,
+            "{case}: violating lines"
+        );
+    }
+}
+
+#[test]
+fn cached_bypass_check_flags_unguarded_helper_caches() {
+    // Exercise unguarded helper-chain, turbofish, and cfg(test) field fixtures
+    let cases: &[(&str, &str, &[usize])] = &[
+        (
+            "module-level helper called with literal true next to unrelated self.use_cache() fails",
+            concat!(
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn unguarded_caller(&self, name: &str) -> Result<()> {\n",
+                "        let _ = self.use_cache();\n",
+                "        resolve_name(name, true).await\n",
+                "    }\n",
+                "}\n",
+                "#[cached(max_size = 16, ttl_secs = 60, key = \"String\", convert = \"{ String::from(name) }\")]\n",
+                "async fn lookup_name(name: &str) -> Result<()> { Ok(()) }\n",
+                "async fn resolve_name(name: &str, use_cache: bool) -> Result<()> {\n",
+                "    if !use_cache { return Ok(()); }\n",
+                "    lookup_name(name).await\n",
+                "}\n",
+            ),
+            &[7],
+        ),
+        (
+            "module-level helper discarding use_cache without early return fails",
+            concat!(
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn caller(&self, name: &str) -> Result<()> {\n",
+                "        resolve_name(name, self.use_cache()).await\n",
+                "    }\n",
+                "}\n",
+                "#[cached(max_size = 16, ttl_secs = 60, key = \"String\", convert = \"{ String::from(name) }\")]\n",
+                "async fn lookup_name(name: &str) -> Result<()> { Ok(()) }\n",
+                "async fn resolve_name(name: &str, use_cache: bool) -> Result<()> {\n",
+                "    let _ = use_cache;\n",
+                "    lookup_name(name).await\n",
+                "}\n",
+            ),
+            &[6],
+        ),
+        (
+            "unguarded turbofish call alongside a guarded call fails",
+            concat!(
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn guarded_caller(&self, name: &str) -> Result<()> {\n",
+                "        resolve_name(name, self.use_cache()).await\n",
+                "    }\n",
+                "    async fn unguarded_turbofish(&self, name: &str) -> Result<()> {\n",
+                "        resolve_name::<()>(name, true).await\n",
+                "    }\n",
+                "}\n",
+                "#[cached(max_size = 16, ttl_secs = 60, key = \"String\", convert = \"{ String::from(name) }\")]\n",
+                "async fn lookup_name(name: &str) -> Result<()> { Ok(()) }\n",
+                "async fn resolve_name<T>(name: &str, use_cache: bool) -> Result<()> {\n",
+                "    if !use_cache { return Ok(()); }\n",
+                "    lookup_name(name).await\n",
+                "}\n",
+            ),
+            &[9],
+        ),
+        (
+            "cfg(test) struct field does not mask a following unguarded production impl",
+            concat!(
+                "struct State {\n",
+                "    #[cfg(test)]\n",
+                "    map: HashMap<String, usize>,\n",
+                "    #[cfg(test)]\n",
+                "    probe: bool\n",
+                "}\n",
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn unguarded(&self) -> Result<()> {\n",
+                "        #[cached(ttl_secs = 60, key = \"()\", convert = \"{ () }\")]\n",
+                "        async fn inner() -> Result<()> { Ok(()) }\n",
+                "        inner().await\n",
+                "    }\n",
+                "}\n",
+            ),
+            &[9],
+        ),
+    ];
+
+    // Check every fixture reports the exact violating cache lines
+    for (case, source, expected_violations) in cases {
+        let summary = cached_bypass_summary(source);
+        assert_eq!(
+            summary.checked,
+            expected_violations.len(),
+            "{case}: checked count"
+        );
+        assert_eq!(
+            summary.violations, *expected_violations,
+            "{case}: violating lines"
+        );
+    }
+}
+
+#[test]
+fn cached_bypass_check_flags_unguarded_local_caches() {
+    // Exercise unguarded, late-guard, discarded, and fallthrough local cache fixtures
+    let cases: &[(&str, &str, &[usize])] = &[
+        (
+            "local cached method without use_cache fails",
+            concat!(
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn missing_guard(&self) -> Result<()> {\n",
+                "        #[cached(ttl_secs = 60, key = \"()\", convert = \"{ () }\")]\n",
+                "        async fn inner() -> Result<()> { Ok(()) }\n",
+                "        inner().await\n",
+                "    }\n",
+                "}\n",
+            ),
+            &[3],
+        ),
+        (
+            "use_cache only in comments, strings, fetch, or inner fails",
+            concat!(
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn fake_guard(&self) -> Result<()> {\n",
+                "        // if !self.use_cache() { return Ok(()); }\n",
+                "        let _ = \"if !self.use_cache() { return Ok(()); }\";\n",
+                "        async fn fetch(&self) -> Result<()> {\n",
+                "            if !self.use_cache() { return Ok(()); }\n",
+                "            Ok(())\n",
+                "        }\n",
+                "        #[cached(ttl_secs = 60, key = \"()\", convert = \"{ () }\")]\n",
+                "        async fn inner(&self) -> Result<()> {\n",
+                "            if !self.use_cache() { return Ok(()); }\n",
+                "            Ok(())\n",
+                "        }\n",
+                "        inner(self).await\n",
+                "    }\n",
+                "}\n",
+            ),
+            &[9],
+        ),
+        (
+            "discarded self.use_cache() result fails",
+            concat!(
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn discarded_guard(&self) -> Result<()> {\n",
+                "        #[cached(ttl_secs = 60, key = \"()\", convert = \"{ () }\")]\n",
+                "        async fn inner() -> Result<()> { Ok(()) }\n",
+                "        let _ = self.use_cache();\n",
+                "        inner().await\n",
+                "    }\n",
+                "}\n",
+            ),
+            &[3],
+        ),
+        (
+            "bypass placed after cache_probe fails",
+            concat!(
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn late_guard(&self) -> Result<()> {\n",
+                "        #[cached(ttl_secs = 60, key = \"()\", convert = \"{ () }\")]\n",
+                "        async fn inner() -> Result<()> { Ok(()) }\n",
+                "        if let Some(v) = cache_probe(&INNER, &()).await { return Ok(v); }\n",
+                "        if !self.use_cache() { return Ok(()); }\n",
+                "        inner().await\n",
+                "    }\n",
+                "}\n",
+            ),
+            &[3],
+        ),
+        (
+            "bypass branch that falls through or calls cached inner fails",
+            concat!(
+                "impl<T: PgExecutor> DBSample for T {\n",
+                "    async fn fallthrough_guard(&self) -> Result<()> {\n",
+                "        #[cached(ttl_secs = 60, key = \"()\", convert = \"{ () }\")]\n",
+                "        async fn inner() -> Result<()> { Ok(()) }\n",
+                "        if !self.use_cache() { let _ = (); }\n",
+                "        inner().await\n",
+                "    }\n",
+                "    async fn calling_inner_in_guard(&self) -> Result<()> {\n",
+                "        #[cached(ttl_secs = 60, key = \"()\", convert = \"{ () }\")]\n",
+                "        async fn inner() -> Result<()> { Ok(()) }\n",
+                "        if !self.use_cache() { return inner().await; }\n",
+                "        inner().await\n",
+                "    }\n",
+                "}\n",
+            ),
+            &[3, 9],
+        ),
+    ];
+
+    // Check every fixture reports the exact violating cache lines
+    for (case, source, expected_violations) in cases {
+        let summary = cached_bypass_summary(source);
+        assert_eq!(
+            summary.checked,
+            expected_violations.len(),
+            "{case}: checked count"
+        );
+        assert_eq!(
+            summary.violations, *expected_violations,
+            "{case}: violating lines"
+        );
+    }
+}
+
+#[test]
+fn cached_db_reads_respect_use_cache() {
+    let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+
+    // Collect every production database source file
+    let mut entries = Vec::new();
+    walk_rust_files(&src_dir.join("db"), &mut entries);
+    entries.push(src_dir.join("db.rs"));
+    entries.sort();
+
+    // Check every production #[cached] database read guards on PgExecutor::use_cache
+    let mut total_checked = 0;
+    let mut violations = Vec::new();
+    for entry in entries.into_iter().filter(|entry| entry.is_file()) {
+        let relative_path = entry
+            .strip_prefix(&src_dir)
+            .expect("entry should be under src")
+            .to_string_lossy()
+            .replace('\\', "/");
+        if relative_path == "db/contract_tests.rs"
+            || relative_path.starts_with("db/contract_tests/")
+            || relative_path == "db/mock.rs"
+        {
+            continue;
+        }
+        let source = fs::read_to_string(&entry).expect("source file should be readable");
+        let summary = cached_bypass_summary(&source);
+        total_checked += summary.checked;
+        for line in summary.violations {
+            violations.push(format!(
+                "{relative_path}:{line} uses `#[cached]` in `db` without guarding on `use_cache()`"
+            ));
+        }
+    }
+
+    // Check cached database reads were discovered so a broken scan cannot pass
+    assert!(
+        total_checked > 0,
+        "expected production `#[cached]` database reads under {}",
+        src_dir.display()
+    );
+    assert!(
+        violations.is_empty(),
+        "cached database reads missing `use_cache()` bypass:\n{}",
+        violations.join("\n")
+    );
 }
 
 #[test]
@@ -476,6 +828,59 @@ fn cached_attribute_summary(source: &str) -> CachedAttributeSummary {
     summary
 }
 
+/// Checks every non-test `#[cached]` attribute in `source` for a `use_cache`
+/// bypass guard and returns the count inspected and violating line numbers.
+fn cached_bypass_summary(source: &str) -> CachedBypassSummary {
+    // Strip test-only items and parse production attributes and function blocks
+    let stripped = strip_cfg_test_items(source);
+    let attributes = extract_cached_attributes(&stripped);
+    let functions = extract_functions(&stripped);
+    let mut summary = CachedBypassSummary {
+        checked: attributes.len(),
+        violations: Vec::new(),
+    };
+
+    // Verify each cached attribute has an early bypass before any cache access
+    for attr in &attributes {
+        let is_guarded = if let Some(enclosing) = functions
+            .iter()
+            .find(|func| func.body_start < attr.span_start && attr.span_start < func.body_end)
+        {
+            // Mask nested functions (such as `fetch` and `inner`) in the enclosing method
+            let Some(annotated) = parse_annotated_function(&stripped, attr.span_end) else {
+                summary.violations.push(attr.line);
+                continue;
+            };
+            let enclosing_body = &stripped[enclosing.body_start + 1..enclosing.body_end];
+            let masked_body = mask_nested_functions(enclosing_body);
+            let first_cache_access = earliest_call_offset(&masked_body, &annotated.name);
+            enclosing.has_self
+                && has_early_bypass_guard(&masked_body, true, &annotated.name, first_cache_access)
+        } else if let Some(annotated) = parse_annotated_function(&stripped, attr.span_end) {
+            // Verify every caller chain to a module-level cached helper checks `use_cache`
+            let mut visited = BTreeSet::new();
+            visited.insert(annotated.name.clone());
+            helper_callers_guard_use_cache(
+                &stripped,
+                &functions,
+                &annotated.name,
+                true,
+                &mut visited,
+            )
+        } else {
+            // Reject attributes that do not annotate a recognizable function
+            false
+        };
+
+        // Record the attribute line when no valid bypass guard was found
+        if !is_guarded {
+            summary.violations.push(attr.line);
+        }
+    }
+
+    summary
+}
+
 /// Classifies a `#[cached]` attribute as bounded (`max_size`), singleton
 /// (constant `convert` expression), or unbounded.
 fn classify_cached_attribute(args: Option<&str>) -> CachedAttributeKind {
@@ -509,7 +914,13 @@ fn classify_cached_attribute(args: Option<&str>) -> CachedAttributeKind {
 
 /// Parses an attribute body (including `cfg_attr` wrappers) and appends any
 /// matching `cached` or `concurrent_cached` attributes to `out`.
-fn collect_cached_attributes(inner: &str, line: usize, out: &mut Vec<CachedAttribute>) {
+fn collect_cached_attributes(
+    inner: &str,
+    line: usize,
+    span_start: usize,
+    span_end: usize,
+    out: &mut Vec<CachedAttribute>,
+) {
     let bytes = inner.as_bytes();
     let mut index = skip_ws_and_comments(inner, 0);
 
@@ -550,7 +961,7 @@ fn collect_cached_attributes(inner: &str, line: usize, out: &mut Vec<CachedAttri
         };
         let args = &inner[index + 1..close];
         for nested in split_top_level_args(args).into_iter().skip(1) {
-            collect_cached_attributes(&nested, line, out);
+            collect_cached_attributes(&nested, line, span_start, span_end, out);
         }
         return;
     }
@@ -562,7 +973,12 @@ fn collect_cached_attributes(inner: &str, line: usize, out: &mut Vec<CachedAttri
 
     // Record bare `#[cached]` or extract the parenthesized argument list
     if index == bytes.len() {
-        out.push(CachedAttribute { line, args: None });
+        out.push(CachedAttribute {
+            line,
+            span_end,
+            span_start,
+            args: None,
+        });
         return;
     }
     if bytes.get(index) != Some(&b'(') {
@@ -577,6 +993,8 @@ fn collect_cached_attributes(inner: &str, line: usize, out: &mut Vec<CachedAttri
     }
     out.push(CachedAttribute {
         line,
+        span_end,
+        span_start,
         args: Some(inner[index + 1..close].to_string()),
     });
 }
@@ -700,6 +1118,24 @@ fn decode_rust_string_literal(input: &str) -> Option<String> {
     None
 }
 
+/// Returns the earliest byte offset in `code` where either `cache_probe` or
+/// `target` is invoked.
+fn earliest_call_offset(code: &str, target: &str) -> Option<usize> {
+    let probe_pos = find_function_calls(code, "cache_probe")
+        .into_iter()
+        .map(|(offset, _)| offset)
+        .min();
+    let target_pos = find_function_calls(code, target)
+        .into_iter()
+        .map(|(offset, _)| offset)
+        .min();
+
+    match (probe_pos, target_pos) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (a, b) => a.or(b),
+    }
+}
+
 /// Extracts every `#[cached]` or `#[concurrent_cached]` outer attribute from
 /// `source`, ignoring occurrences inside comments and literals.
 fn extract_cached_attributes(source: &str) -> Vec<CachedAttribute> {
@@ -718,14 +1154,21 @@ fn extract_cached_attributes(source: &str) -> Vec<CachedAttribute> {
 
         if bytes[index] == b'#' {
             let attr_line = line;
+            let attr_start = index;
             let mut cursor = skip_ws_and_comments(source, index + 1);
             if bytes.get(cursor) == Some(&b'[') {
                 // Find the matching closing bracket of the outer attribute
                 let content_start = cursor + 1;
                 if let Some(content_end) = find_matching_delimiter(source, cursor, b'[', b']') {
                     let inner = &source[content_start..content_end];
-                    collect_cached_attributes(inner, attr_line, &mut attributes);
                     cursor = content_end + 1;
+                    collect_cached_attributes(
+                        inner,
+                        attr_line,
+                        attr_start,
+                        cursor,
+                        &mut attributes,
+                    );
                     line += count_newlines(&source[index..cursor]);
                     index = cursor;
                     continue;
@@ -740,6 +1183,242 @@ fn extract_cached_attributes(source: &str) -> Vec<CachedAttribute> {
     }
 
     attributes
+}
+
+/// Extracts top-level and `impl`-level function definitions with bodies from
+/// `source`, ignoring comments, literals, and nested local functions.
+fn extract_functions(source: &str) -> Vec<FunctionBlock> {
+    let mut functions = Vec::new();
+    extract_functions_in_range(source, 0, source.len(), &mut functions);
+    functions
+}
+
+/// Scans `source[start..end]` for function definitions, descending into `impl`
+/// and inline `mod` blocks.
+fn extract_functions_in_range(
+    source: &str,
+    start: usize,
+    end: usize,
+    out: &mut Vec<FunctionBlock>,
+) {
+    let bytes = source.as_bytes();
+    let mut index = start;
+
+    while index < end {
+        if let Some(next) = skip_non_code(source, index) {
+            index = next.min(end);
+            continue;
+        }
+
+        // Read identifier tokens to match `fn`, `impl`, or inline `mod`
+        if bytes[index].is_ascii_alphabetic() || bytes[index] == b'_' {
+            let ident_start = index;
+            while index < end && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_') {
+                index += 1;
+            }
+            let ident = &source[ident_start..index];
+            match ident {
+                "fn" => {
+                    if let Some(func) = parse_function_at(source, ident_start)
+                        && func.body_end < end
+                    {
+                        let next_index = func.body_end + 1;
+                        out.push(func);
+                        index = next_index;
+                        continue;
+                    }
+                }
+                "impl" | "mod" => {
+                    // Advance to the block opening `{` or declaration terminator `;`
+                    let mut cursor = index;
+                    let mut paren_depth = 0usize;
+                    let mut bracket_depth = 0usize;
+                    while cursor < end {
+                        if let Some(next) = skip_non_code(source, cursor) {
+                            cursor = next.min(end);
+                            continue;
+                        }
+                        match bytes[cursor] {
+                            b'(' => paren_depth += 1,
+                            b')' => paren_depth = paren_depth.saturating_sub(1),
+                            b'[' => bracket_depth += 1,
+                            b']' => bracket_depth = bracket_depth.saturating_sub(1),
+                            b';' if paren_depth == 0 && bracket_depth == 0 => {
+                                index = cursor + 1;
+                                break;
+                            }
+                            b'{' if paren_depth == 0 && bracket_depth == 0 => {
+                                if let Some(close) =
+                                    find_matching_delimiter(source, cursor, b'{', b'}')
+                                    && close < end
+                                {
+                                    extract_functions_in_range(source, cursor + 1, close, out);
+                                    index = close + 1;
+                                } else {
+                                    index = end;
+                                }
+                                break;
+                            }
+                            _ => {}
+                        }
+                        cursor += source[cursor..].chars().next().map_or(1, char::len_utf8);
+                    }
+                    continue;
+                }
+                _ => {}
+            }
+            continue;
+        }
+
+        // Skip brace-delimited non-function blocks such as structs, enums, or traits
+        if bytes[index] == b'{' {
+            if let Some(close) = find_matching_delimiter(source, index, b'{', b'}')
+                && close < end
+            {
+                index = close + 1;
+                continue;
+            }
+            break;
+        }
+
+        index += source[index..].chars().next().map_or(1, char::len_utf8);
+    }
+}
+
+/// Returns the byte offset immediately after the item, field, or variant
+/// annotated by a `#[cfg(test)]` attribute ending at `after_attr`.
+fn find_cfg_test_item_end(source: &str, after_attr: usize) -> usize {
+    let bytes = source.as_bytes();
+
+    // Skip sibling outer attributes attached to the same syntax node
+    let mut cursor = skip_ws_and_comments(source, after_attr);
+    while bytes.get(cursor) == Some(&b'#') {
+        let attr_open = skip_ws_and_comments(source, cursor + 1);
+        if bytes.get(attr_open) == Some(&b'[')
+            && let Some(attr_close) = find_matching_delimiter(source, attr_open, b'[', b']')
+        {
+            cursor = skip_ws_and_comments(source, attr_close + 1);
+        } else {
+            break;
+        }
+    }
+
+    // Scan to the end of the gated item (`;` / `{ ... }`) or field/variant (`,` / before `}`)
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut angle_depth = 0usize;
+    let mut in_expr = false;
+    let mut in_where = false;
+    while cursor < bytes.len() {
+        if let Some(next) = skip_non_code(source, cursor) {
+            cursor = next;
+            continue;
+        }
+        if paren_depth == 0
+            && bracket_depth == 0
+            && angle_depth == 0
+            && (bytes[cursor].is_ascii_alphabetic() || bytes[cursor] == b'_')
+        {
+            let ident_start = cursor;
+            while cursor < bytes.len()
+                && (bytes[cursor].is_ascii_alphanumeric() || bytes[cursor] == b'_')
+            {
+                cursor += 1;
+            }
+            if &source[ident_start..cursor] == "where" {
+                in_where = true;
+            }
+            continue;
+        }
+        match bytes[cursor] {
+            b'(' => paren_depth += 1,
+            b')' => paren_depth = paren_depth.saturating_sub(1),
+            b'[' => bracket_depth += 1,
+            b']' => bracket_depth = bracket_depth.saturating_sub(1),
+            b'=' if !in_expr
+                && paren_depth == 0
+                && bracket_depth == 0
+                && !matches!(
+                    bytes.get(cursor.wrapping_sub(1)),
+                    Some(b'=' | b'!' | b'<' | b'>')
+                )
+                && !matches!(bytes.get(cursor + 1), Some(b'=' | b'>')) =>
+            {
+                in_expr = true;
+                angle_depth = 0;
+            }
+            b'<' if !in_expr
+                && paren_depth == 0
+                && bracket_depth == 0
+                && bytes.get(cursor + 1) != Some(&b'<') =>
+            {
+                angle_depth += 1;
+            }
+            b'>' if !in_expr
+                && paren_depth == 0
+                && bracket_depth == 0
+                && !matches!(bytes.get(cursor.wrapping_sub(1)), Some(b'-' | b'=')) =>
+            {
+                angle_depth = angle_depth.saturating_sub(1);
+            }
+            b';' if paren_depth == 0 && bracket_depth == 0 && angle_depth == 0 => {
+                return cursor + 1;
+            }
+            b',' if !in_where && paren_depth == 0 && bracket_depth == 0 && angle_depth == 0 => {
+                return cursor + 1;
+            }
+            b'}' if paren_depth == 0 && bracket_depth == 0 && angle_depth == 0 => {
+                return cursor;
+            }
+            b'{' if paren_depth == 0 && bracket_depth == 0 && angle_depth == 0 => {
+                return find_matching_delimiter(source, cursor, b'{', b'}')
+                    .map_or(bytes.len(), |end| end + 1);
+            }
+            _ => {}
+        }
+        cursor += source[cursor..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    bytes.len()
+}
+
+/// Finds every call to `name(...)` or `name::<...>(...)` in `code` outside
+/// comments and literals, returning each call's byte offset and raw argument text.
+fn find_function_calls(code: &str, name: &str) -> Vec<(usize, String)> {
+    let bytes = code.as_bytes();
+    let mut calls = Vec::new();
+    let mut index = 0;
+
+    // Scan code tokens for `name` followed by optional turbofish and `(`
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(code, index) {
+            index = next;
+            continue;
+        }
+        if bytes[index].is_ascii_alphabetic() || bytes[index] == b'_' {
+            let start = index;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            if &code[start..index] == name {
+                let mut cursor = skip_ws_and_comments(code, index);
+                if let Some(after_turbofish) = skip_turbofish(code, cursor) {
+                    cursor = skip_ws_and_comments(code, after_turbofish);
+                }
+                if bytes.get(cursor) == Some(&b'(')
+                    && let Some(close) = find_matching_delimiter(code, cursor, b'(', b')')
+                {
+                    calls.push((start, code[cursor + 1..close].to_string()));
+                }
+            }
+            continue;
+        }
+        index += code[index..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    calls
 }
 
 /// Finds the byte index of the closing delimiter matching the opening delimiter
@@ -790,12 +1469,271 @@ fn find_raw_string_end(
     None
 }
 
+/// Returns whether `code` contains a top-level early-returning
+/// `if !self.use_cache()` (or `if !use_cache`) guard before `before_offset`
+/// whose branch does not invoke `cache_probe` or `forbidden_target`.
+fn has_early_bypass_guard(
+    code: &str,
+    require_self_call: bool,
+    forbidden_target: &str,
+    before_offset: Option<usize>,
+) -> bool {
+    let bytes = code.as_bytes();
+    let limit = before_offset.unwrap_or(bytes.len());
+    let mut brace_depth = 0usize;
+    let mut index = 0;
+
+    // Scan depth-0 statements for `if !self.use_cache() { ... }` or `if !use_cache { ... }`
+    while index < limit {
+        if let Some(next) = skip_non_code(code, index) {
+            index = next;
+            continue;
+        }
+        if bytes[index] == b'{' {
+            brace_depth += 1;
+            index += 1;
+            continue;
+        }
+        if bytes[index] == b'}' {
+            brace_depth = brace_depth.saturating_sub(1);
+            index += 1;
+            continue;
+        }
+        if brace_depth == 0 && (bytes[index].is_ascii_alphabetic() || bytes[index] == b'_') {
+            let ident_start = index;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            if &code[ident_start..index] != "if" {
+                continue;
+            }
+
+            // Match the negated condition and opening brace of the guard block
+            let bang = skip_ws_and_comments(code, index);
+            if bytes.get(bang) != Some(&b'!') {
+                continue;
+            }
+            let cond_start = skip_ws_and_comments(code, bang + 1);
+            let mut cursor = cond_start;
+            while cursor < bytes.len() {
+                if let Some(next) = skip_non_code(code, cursor) {
+                    cursor = next;
+                    continue;
+                }
+                if bytes[cursor] == b'{' {
+                    break;
+                }
+                cursor += code[cursor..].chars().next().map_or(1, char::len_utf8);
+            }
+            if bytes.get(cursor) != Some(&b'{') {
+                continue;
+            }
+            let cond = trim_ws_and_comments(&code[cond_start..cursor]);
+            let cond_matches = if require_self_call {
+                is_self_use_cache_expr(cond)
+            } else {
+                cond == "use_cache"
+            };
+            if !cond_matches {
+                continue;
+            }
+
+            // Verify the bypass branch has a top-level return without touching the cache
+            let Some(block_end) = find_matching_delimiter(code, cursor, b'{', b'}') else {
+                continue;
+            };
+            let branch_body = &code[cursor + 1..block_end];
+            if has_top_level_return(branch_body)
+                && find_function_calls(branch_body, "cache_probe").is_empty()
+                && find_function_calls(branch_body, forbidden_target).is_empty()
+            {
+                return true;
+            }
+            continue;
+        }
+        index += code[index..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    false
+}
+
+/// Returns whether `code` references identifier `ident` outside comments and literals.
+fn has_identifier(code: &str, ident: &str) -> bool {
+    let cleaned = strip_non_code(code);
+    tokenize(&cleaned).into_iter().any(|token| token == ident)
+}
+
+/// Returns whether `body` contains a top-level `return` statement (not nested
+/// inside an inner block, expression, or closure).
+fn has_top_level_return(body: &str) -> bool {
+    let bytes = body.as_bytes();
+    let mut brace_depth = 0usize;
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut at_stmt_start = true;
+    let mut index = 0;
+
+    // Scan depth-0 statement heads for `return`
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(body, index) {
+            index = next;
+            continue;
+        }
+        if bytes[index].is_ascii_whitespace() {
+            index += 1;
+            continue;
+        }
+        if brace_depth == 0
+            && paren_depth == 0
+            && bracket_depth == 0
+            && (bytes[index].is_ascii_alphabetic() || bytes[index] == b'_')
+        {
+            let start = index;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            if at_stmt_start && &body[start..index] == "return" {
+                return true;
+            }
+            at_stmt_start = false;
+            continue;
+        }
+        match bytes[index] {
+            b'{' => {
+                brace_depth += 1;
+                at_stmt_start = false;
+            }
+            b'}' => {
+                brace_depth = brace_depth.saturating_sub(1);
+                if brace_depth == 0 && paren_depth == 0 && bracket_depth == 0 {
+                    at_stmt_start = true;
+                }
+            }
+            b'(' => {
+                paren_depth += 1;
+                at_stmt_start = false;
+            }
+            b')' => paren_depth = paren_depth.saturating_sub(1),
+            b'[' => {
+                bracket_depth += 1;
+                at_stmt_start = false;
+            }
+            b']' => bracket_depth = bracket_depth.saturating_sub(1),
+            b';' if brace_depth == 0 && paren_depth == 0 && bracket_depth == 0 => {
+                at_stmt_start = true;
+            }
+            _ => {
+                if brace_depth == 0 && paren_depth == 0 && bracket_depth == 0 {
+                    at_stmt_start = false;
+                }
+            }
+        }
+        index += body[index..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    false
+}
+
+/// Verifies every call chain within the file to a module-level cached helper
+/// guards cache access with `use_cache` and originates from methods passing
+/// or guarding on `self.use_cache()`.
+fn helper_callers_guard_use_cache(
+    source: &str,
+    functions: &[FunctionBlock],
+    target: &str,
+    is_cached_target: bool,
+    visited: &mut BTreeSet<String>,
+) -> bool {
+    // Collect every function in the file that calls `target`
+    let mut callers = Vec::new();
+    for func in functions {
+        if func.name == target {
+            continue;
+        }
+        let body = mask_nested_functions(&source[func.body_start + 1..func.body_end]);
+        let calls = find_function_calls(&body, target);
+        if !calls.is_empty() {
+            callers.push((func, body, calls));
+        }
+    }
+
+    // Reject unreachable module-level cached helpers
+    if callers.is_empty() {
+        return false;
+    }
+
+    // Check every caller either guards before calling or forwards the executor's flag
+    for (caller, body, calls) in callers {
+        let first_call = earliest_call_offset(&body, target);
+        if caller.has_self {
+            // Check `&self` callers guard early or pass `self.use_cache()` into a guarded helper
+            let guarded_directly = has_early_bypass_guard(&body, true, target, first_call);
+            let forwards_flag = !is_cached_target
+                && calls.iter().all(|(_, args)| {
+                    split_top_level_args(args)
+                        .iter()
+                        .any(|arg| is_self_use_cache_expr(arg))
+                });
+            if !guarded_directly && !forwards_flag {
+                return false;
+            }
+        } else {
+            // Check non-`self` helpers accept `use_cache`, guard or forward it, and have guarded callers
+            if !caller.has_use_cache_param {
+                return false;
+            }
+            let guarded_directly = has_early_bypass_guard(&body, false, target, first_call);
+            let forwards_flag = !is_cached_target
+                && calls.iter().all(|(_, args)| {
+                    split_top_level_args(args)
+                        .iter()
+                        .any(|arg| trim_ws_and_comments(arg) == "use_cache")
+                });
+            if !guarded_directly && !forwards_flag {
+                return false;
+            }
+            if visited.insert(caller.name.clone())
+                && !helper_callers_guard_use_cache(source, functions, &caller.name, false, visited)
+            {
+                return false;
+            }
+        }
+    }
+
+    true
+}
+
+/// Returns whether the inner text of an outer attribute is `cfg(test)`.
+fn is_cfg_test_attribute(inner: &str) -> bool {
+    let trimmed = trim_ws_and_comments(inner);
+    let Some(rest) = trimmed.strip_prefix("cfg") else {
+        return false;
+    };
+    let rest = trim_ws_and_comments(rest);
+    let Some(arg) = rest.strip_prefix('(').and_then(|s| s.strip_suffix(')')) else {
+        return false;
+    };
+    trim_ws_and_comments(arg) == "test"
+}
+
 /// Returns whether the token is an identifier.
 fn is_identifier(token: &str) -> bool {
     token
         .chars()
         .next()
         .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+}
+
+/// Returns whether `expr` is strictly `self.use_cache()` ignoring whitespace
+/// and comments.
+fn is_self_use_cache_expr(expr: &str) -> bool {
+    let cleaned = strip_non_code(expr);
+    let compact: String = cleaned.chars().filter(|c| !c.is_ascii_whitespace()).collect();
+    compact == "self.use_cache()"
 }
 
 /// Returns whether a `convert` attribute expression evaluates to a constant
@@ -823,6 +1761,173 @@ fn is_singleton_convert_expr(raw_value: &str) -> bool {
     }
 
     false
+}
+
+/// Replaces every nested `fn ... { ... }` definition inside `body` with spaces
+/// while preserving byte length and newlines so caller offsets stay aligned.
+fn mask_nested_functions(body: &str) -> String {
+    let bytes = body.as_bytes();
+    let mut out = String::with_capacity(body.len());
+    let mut index = 0;
+
+    // Mask nested function definitions so inner or sibling helpers cannot satisfy caller guards
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(body, index) {
+            out.push_str(&body[index..next]);
+            index = next;
+            continue;
+        }
+        if bytes[index].is_ascii_alphabetic() || bytes[index] == b'_' {
+            let ident_start = index;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            if &body[ident_start..index] == "fn"
+                && let Some(nested) = parse_function_at(body, ident_start)
+            {
+                let end = nested.body_end + 1;
+                for ch in body[ident_start..end].chars() {
+                    out.push(if ch == '\n' { '\n' } else { ' ' });
+                }
+                index = end;
+                continue;
+            }
+            out.push_str(&body[ident_start..index]);
+            continue;
+        }
+        let ch = body[index..].chars().next().expect("valid utf-8 boundary");
+        out.push(ch);
+        index += ch.len_utf8();
+    }
+
+    out
+}
+
+/// Parses the function annotated by an attribute ending at `after_attr`.
+fn parse_annotated_function(source: &str, after_attr: usize) -> Option<FunctionBlock> {
+    let bytes = source.as_bytes();
+    let mut index = after_attr;
+
+    while index < bytes.len() {
+        index = skip_ws_and_comments(source, index);
+        if index >= bytes.len() {
+            return None;
+        }
+
+        // Skip sibling attributes on the same function
+        if bytes[index] == b'#' {
+            let open = skip_ws_and_comments(source, index + 1);
+            if bytes.get(open) == Some(&b'[')
+                && let Some(close) = find_matching_delimiter(source, open, b'[', b']')
+            {
+                index = close + 1;
+                continue;
+            }
+            return None;
+        }
+
+        // Read modifiers (`pub(...)`, `async`, `const`, `unsafe`) until `fn`
+        if bytes[index].is_ascii_alphabetic() || bytes[index] == b'_' {
+            let ident_start = index;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            let ident = &source[ident_start..index];
+            match ident {
+                "fn" => return parse_function_at(source, ident_start),
+                "pub" => {
+                    let next = skip_ws_and_comments(source, index);
+                    if bytes.get(next) == Some(&b'(')
+                        && let Some(close) = find_matching_delimiter(source, next, b'(', b')')
+                    {
+                        index = close + 1;
+                    }
+                }
+                "async" | "const" | "unsafe" => {}
+                _ => return None,
+            }
+            continue;
+        }
+
+        return None;
+    }
+
+    None
+}
+
+/// Parses a function definition starting at its `fn` keyword byte offset.
+fn parse_function_at(source: &str, fn_start: usize) -> Option<FunctionBlock> {
+    let bytes = source.as_bytes();
+    let name_start = skip_ws_and_comments(source, fn_start + 2);
+    let mut name_end = name_start;
+    while name_end < bytes.len()
+        && (bytes[name_end].is_ascii_alphanumeric() || bytes[name_end] == b'_')
+    {
+        name_end += 1;
+    }
+    if name_end == name_start {
+        return None;
+    }
+    let name = source[name_start..name_end].to_string();
+
+    // Advance past optional generic parameters to the opening `(` of parameters
+    let mut cursor = name_end;
+    let mut lparen = None;
+    while cursor < bytes.len() {
+        if let Some(next) = skip_non_code(source, cursor) {
+            cursor = next;
+            continue;
+        }
+        match bytes[cursor] {
+            b'(' => {
+                lparen = Some(cursor);
+                break;
+            }
+            b';' | b'{' => return None,
+            _ => cursor += source[cursor..].chars().next().map_or(1, char::len_utf8),
+        }
+    }
+    let lparen = lparen?;
+    let rparen = find_matching_delimiter(source, lparen, b'(', b')')?;
+    let params = &source[lparen + 1..rparen];
+    let has_self = has_identifier(params, "self");
+    let has_use_cache_param = has_identifier(params, "use_cache");
+
+    // Advance past return type and optional `where` clause to `{` or `;`
+    cursor = rparen + 1;
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    while cursor < bytes.len() {
+        if let Some(next) = skip_non_code(source, cursor) {
+            cursor = next;
+            continue;
+        }
+        match bytes[cursor] {
+            b'(' => paren_depth += 1,
+            b')' => paren_depth = paren_depth.saturating_sub(1),
+            b'[' => bracket_depth += 1,
+            b']' => bracket_depth = bracket_depth.saturating_sub(1),
+            b';' if paren_depth == 0 && bracket_depth == 0 => return None,
+            b'{' if paren_depth == 0 && bracket_depth == 0 => {
+                let body_end = find_matching_delimiter(source, cursor, b'{', b'}')?;
+                return Some(FunctionBlock {
+                    body_end,
+                    body_start: cursor,
+                    has_self,
+                    has_use_cache_param,
+                    name,
+                });
+            }
+            _ => {}
+        }
+        cursor += source[cursor..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    None
 }
 
 /// Parses a use tree starting at `index`, appending each flattened path
@@ -981,6 +2086,51 @@ fn skip_non_code(source: &str, index: usize) -> Option<usize> {
     None
 }
 
+/// Skips a Rust turbofish generic argument list (`::<...>`) starting at `index`
+/// and returns the byte offset immediately after the closing `>`.
+fn skip_turbofish(source: &str, index: usize) -> Option<usize> {
+    let bytes = source.as_bytes();
+    if bytes.get(index) != Some(&b':') || bytes.get(index + 1) != Some(&b':') {
+        return None;
+    }
+    let open = skip_ws_and_comments(source, index + 2);
+    if bytes.get(open) != Some(&b'<') {
+        return None;
+    }
+
+    // Balance nested `<...>`, `(...)`, and `[...]` until the matching `>`
+    let mut cursor = open + 1;
+    let mut angle_depth = 1usize;
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    while cursor < bytes.len() {
+        if let Some(next) = skip_non_code(source, cursor) {
+            cursor = next;
+            continue;
+        }
+        match bytes[cursor] {
+            b'(' => paren_depth += 1,
+            b')' => paren_depth = paren_depth.saturating_sub(1),
+            b'[' => bracket_depth += 1,
+            b']' => bracket_depth = bracket_depth.saturating_sub(1),
+            b'<' if paren_depth == 0 && bracket_depth == 0 => angle_depth += 1,
+            b'>' if paren_depth == 0
+                && bracket_depth == 0
+                && !matches!(bytes.get(cursor.wrapping_sub(1)), Some(b'-' | b'=')) =>
+            {
+                angle_depth -= 1;
+                if angle_depth == 0 {
+                    return Some(cursor + 1);
+                }
+            }
+            _ => {}
+        }
+        cursor += source[cursor..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    None
+}
+
 /// Advances past ASCII whitespace and Rust comments starting at `index`.
 fn skip_ws_and_comments(source: &str, mut index: usize) -> usize {
     let bytes = source.as_bytes();
@@ -1059,6 +2209,46 @@ fn split_top_level_key_value(item: &str) -> Option<(String, String)> {
     Some((item[key_start..key_end].to_string(), value.to_string()))
 }
 
+/// Masks every `#[cfg(test)]`-annotated item, field, or variant in `source`
+/// with spaces while preserving newlines so reported line numbers remain accurate.
+fn strip_cfg_test_items(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let mut out = String::with_capacity(source.len());
+    let mut index = 0;
+
+    // Walk source code, masking any item, field, or variant gated by #[cfg(test)]
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(source, index) {
+            out.push_str(&source[index..next]);
+            index = next;
+            continue;
+        }
+
+        if bytes[index] == b'#' {
+            let open = skip_ws_and_comments(source, index + 1);
+            if bytes.get(open) == Some(&b'[')
+                && let Some(close) = find_matching_delimiter(source, open, b'[', b']')
+                && is_cfg_test_attribute(&source[open + 1..close])
+            {
+                let end = find_cfg_test_item_end(source, close + 1);
+
+                // Preserve line numbers by keeping newlines intact
+                for ch in source[index..end].chars() {
+                    out.push(if ch == '\n' { '\n' } else { ' ' });
+                }
+                index = end;
+                continue;
+            }
+        }
+
+        let ch = source[index..].chars().next().expect("valid utf-8 boundary");
+        out.push(ch);
+        index += ch.len_utf8();
+    }
+
+    out
+}
+
 /// Returns the source with line comments removed, so documentation can mention
 /// paths and identifiers freely.
 fn strip_line_comments(source: &str) -> String {
@@ -1073,6 +2263,26 @@ fn strip_line_comments(source: &str) -> String {
             acc.push('\n');
             acc
         })
+}
+
+/// Returns `source` with comments and string or char literals replaced by spaces.
+fn strip_non_code(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let mut out = String::with_capacity(source.len());
+    let mut index = 0;
+
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(source, index) {
+            out.push(' ');
+            index = next;
+            continue;
+        }
+        let ch = source[index..].chars().next().expect("valid utf-8 boundary");
+        out.push(ch);
+        index += ch.len_utf8();
+    }
+
+    out
 }
 
 /// Splits source code into identifier, `::`, and punctuation tokens.

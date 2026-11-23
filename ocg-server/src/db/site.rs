@@ -44,9 +44,7 @@ pub(crate) trait DBSite {
 
     /// Retrieves the site home stats.
     ///
-    /// Cached for up to one hour per process. Aggregates mutable data; see
-    /// "Cached reads and transactions" in `docs/backend.md` before calling it
-    /// from a transaction.
+    /// Cached for up to one hour per process.
     async fn get_site_home_stats(&self) -> Result<SiteHomeStats>;
 
     /// Retrieves the most recently added groups across all communities.
@@ -59,9 +57,7 @@ pub(crate) trait DBSite {
 
     /// Retrieves the site stats for the stats page.
     ///
-    /// Cached for up to one hour per process. Aggregates mutable data; see
-    /// "Cached reads and transactions" in `docs/backend.md` before calling it
-    /// from a transaction.
+    /// Cached for up to one hour per process.
     async fn get_site_stats(&self) -> Result<SiteStats>;
 
     /// Retrieves upcoming events across all communities.
@@ -124,6 +120,10 @@ where
 
     #[instrument(skip(self), err)]
     async fn get_site_home_stats(&self) -> Result<SiteHomeStats> {
+        async fn fetch(db: &PgClient<'_>) -> Result<SiteHomeStats> {
+            db.fetch_json_one("select get_site_home_stats()", &[]).await
+        }
+
         #[cached(
             ttl_secs = 3600,
             key = "String",
@@ -131,7 +131,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>) -> Result<SiteHomeStats> {
-            db.fetch_json_one("select get_site_home_stats()", &[]).await
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -152,6 +158,10 @@ where
 
     #[instrument(skip(self), err)]
     async fn get_site_settings(&self) -> Result<SiteSettings> {
+        async fn fetch(db: &PgClient<'_>) -> Result<SiteSettings> {
+            db.fetch_json_one("select get_site_settings()", &[]).await
+        }
+
         #[cached(
             ttl_secs = 300,
             key = "String",
@@ -159,7 +169,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>) -> Result<SiteSettings> {
-            db.fetch_json_one("select get_site_settings()", &[]).await
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -174,6 +190,10 @@ where
 
     #[instrument(skip(self), err)]
     async fn get_site_stats(&self) -> Result<SiteStats> {
+        async fn fetch(db: &PgClient<'_>) -> Result<SiteStats> {
+            db.fetch_json_one("select get_site_stats()", &[]).await
+        }
+
         #[cached(
             ttl_secs = 3600,
             key = "String",
@@ -181,7 +201,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>) -> Result<SiteStats> {
-            db.fetch_json_one("select get_site_stats()", &[]).await
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -209,6 +235,10 @@ where
 
     #[instrument(skip(self), err)]
     async fn list_communities(&self) -> Result<Vec<CommunitySummary>> {
+        async fn fetch(db: &PgClient<'_>) -> Result<Vec<CommunitySummary>> {
+            db.fetch_json_one("select list_communities();", &[]).await
+        }
+
         #[cached(
             ttl_secs = 300,
             key = "String",
@@ -216,7 +246,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>) -> Result<Vec<CommunitySummary>> {
-            db.fetch_json_one("select list_communities();", &[]).await
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client

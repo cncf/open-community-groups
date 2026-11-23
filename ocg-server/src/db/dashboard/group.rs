@@ -323,9 +323,7 @@ pub(crate) trait DBDashboardGroup {
     ///
     /// Returns `None` for missing, foreign or deleted events. Cached for up to
     /// one hour per process, so callers check availability with the uncached
-    /// [`DBDashboardGroup::group_has_event`] first. Aggregates mutable data;
-    /// see "Cached reads and transactions" in `docs/backend.md` before calling
-    /// it from a transaction.
+    /// [`DBDashboardGroup::group_has_event`] first.
     async fn get_event_analytics(
         &self,
         group_id: Uuid,
@@ -423,9 +421,7 @@ pub(crate) trait DBDashboardGroup {
 
     /// Retrieves analytics statistics for a group.
     ///
-    /// Cached for up to one hour per process. Aggregates mutable data; see
-    /// "Cached reads and transactions" in `docs/backend.md` before calling it
-    /// from a transaction.
+    /// Cached for up to one hour per process.
     async fn get_group_stats(
         &self,
         community_id: Uuid,
@@ -1400,6 +1396,18 @@ where
         group_id: Uuid,
         event_id: Uuid,
     ) -> Result<Option<EventAnalytics>> {
+        async fn fetch(
+            db: &PgClient<'_>,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Option<EventAnalytics>> {
+            db.fetch_json_opt(
+                "select get_event_analytics($1::uuid, $2::uuid)",
+                &[&group_id, &event_id],
+            )
+            .await
+        }
+
         #[cached(
             max_size = 1_000,
             ttl_secs = 3600,
@@ -1412,11 +1420,13 @@ where
             group_id: Uuid,
             event_id: Uuid,
         ) -> Result<Option<EventAnalytics>> {
-            db.fetch_json_opt(
-                "select get_event_analytics($1::uuid, $2::uuid)",
-                &[&group_id, &event_id],
-            )
-            .await
+            fetch(db, group_id, event_id).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db, group_id, event_id).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -1598,6 +1608,19 @@ where
         group_id: Uuid,
         include_subgroups: bool,
     ) -> Result<GroupDashboardStats> {
+        async fn fetch(
+            db: &PgClient<'_>,
+            community_id: Uuid,
+            group_id: Uuid,
+            include_subgroups: bool,
+        ) -> Result<GroupDashboardStats> {
+            db.fetch_json_one(
+                "select get_group_stats($1::uuid, $2::uuid, $3::bool)",
+                &[&community_id, &group_id, &include_subgroups],
+            )
+            .await
+        }
+
         #[cached(
             max_size = 1_000,
             ttl_secs = 3600,
@@ -1611,11 +1634,13 @@ where
             group_id: Uuid,
             include_subgroups: bool,
         ) -> Result<GroupDashboardStats> {
-            db.fetch_json_one(
-                "select get_group_stats($1::uuid, $2::uuid, $3::bool)",
-                &[&community_id, &group_id, &include_subgroups],
-            )
-            .await
+            fetch(db, community_id, group_id, include_subgroups).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db, community_id, group_id, include_subgroups).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -1821,6 +1846,10 @@ where
     /// [`DBDashboardGroup::list_event_kinds`]
     #[instrument(skip(self), err)]
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>> {
+        async fn fetch(db: &PgClient<'_>) -> Result<Vec<EventKind>> {
+            db.fetch_json_one("select list_event_kinds()", &[]).await
+        }
+
         #[cached(
             ttl_secs = 86400,
             key = "String",
@@ -1828,7 +1857,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>) -> Result<Vec<EventKind>> {
-            db.fetch_json_one("select list_event_kinds()", &[]).await
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -2062,6 +2097,10 @@ where
     /// [`DBDashboardGroup::list_group_roles`]
     #[instrument(skip(self), err)]
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>> {
+        async fn fetch(db: &PgClient<'_>) -> Result<Vec<GroupRoleSummary>> {
+            db.fetch_json_one("select list_group_roles()", &[]).await
+        }
+
         #[cached(
             ttl_secs = 86400,
             key = "String",
@@ -2069,7 +2108,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>) -> Result<Vec<GroupRoleSummary>> {
-            db.fetch_json_one("select list_group_roles()", &[]).await
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -2114,6 +2159,13 @@ where
     /// [`DBDashboardGroup::list_payment_currency_codes`]
     #[instrument(skip(self), err)]
     async fn list_payment_currency_codes(&self) -> Result<Vec<String>> {
+        async fn fetch(db: &PgClient<'_>) -> Result<Vec<String>> {
+            let row = db.query_one("select list_payment_currency_codes()", &[]).await?;
+            let currency_codes = row.try_get::<_, Vec<String>>(0)?;
+
+            Ok(currency_codes)
+        }
+
         #[cached(
             ttl_secs = 86400,
             key = "String",
@@ -2121,10 +2173,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>) -> Result<Vec<String>> {
-            let row = db.query_one("select list_payment_currency_codes()", &[]).await?;
-            let currency_codes = row.try_get::<_, Vec<String>>(0)?;
+            fetch(db).await
+        }
 
-            Ok(currency_codes)
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -2140,6 +2195,10 @@ where
     /// [`DBDashboardGroup::list_session_kinds`]
     #[instrument(skip(self), err)]
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>> {
+        async fn fetch(db: &PgClient<'_>) -> Result<Vec<SessionKind>> {
+            db.fetch_json_one("select list_session_kinds()", &[]).await
+        }
+
         #[cached(
             ttl_secs = 86400,
             key = "String",
@@ -2147,7 +2206,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>) -> Result<Vec<SessionKind>> {
-            db.fetch_json_one("select list_session_kinds()", &[]).await
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client

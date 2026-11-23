@@ -1,19 +1,23 @@
 //! Contract tests for the `DBNotifications` functions.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use anyhow::{Context, Result};
 use chrono::{NaiveDate, Utc};
+use deadpool_postgres::{PoolConfig, Timeouts};
+use tokio::time::timeout;
+use tokio_postgres::NoTls;
 use uuid::Uuid;
 
 use crate::{
     db::{
-        DBUnitOfWork, PgExecutor, PgUnitOfWork,
+        DBUnitOfWork, PgDB, PgExecutor, PgUnitOfWork,
         dashboard::group::DBDashboardGroup,
         notifications::{
             CommunityCustomNotificationEnqueue, CustomNotificationScope,
             CustomNotificationTracking, DBNotifications,
         },
+        pool::create_pool,
     },
     types::{
         dashboard::{
@@ -56,6 +60,110 @@ async fn db_contracts_claim_pending_notification_deserializes() -> Result<()> {
 
     // Finalize through the production wrapper to verify the claim identity round trip
     uow.update_notification(&notification, None).await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_claim_pending_notification_loads_attachment_on_single_connection_pool()
+-> Result<()> {
+    // Setup a single-connection PgDB pool so a nested checkout would stall
+    let mut cfg = contract_tests_config()?;
+    cfg.pool = Some(PoolConfig {
+        max_size: 1,
+        timeouts: Timeouts {
+            wait: Some(Duration::from_secs(2)),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+    let db = PgDB::new(create_pool(&cfg, NoTls)?);
+
+    // Seed an oldest pending notification linked to a fresh uncached attachment
+    let attachment_id = Uuid::new_v4();
+    let pending_notification_id = Uuid::new_v4();
+    let hash = format!("single-pool-attachment-{}", attachment_id.simple());
+    db.execute(
+        "
+        insert into attachment (
+            attachment_id,
+            content_type,
+            data,
+            file_name,
+            hash
+        ) values (
+            $1::uuid,
+            'text/calendar; charset=utf-8',
+            $2::bytea,
+            'event.ics',
+            $3::text
+        )
+        ",
+        &[&attachment_id, &b"BEGIN:VCALENDAR".as_slice(), &hash],
+    )
+    .await?;
+    db.execute(
+        "
+        insert into notification (
+            created_at,
+            kind,
+            notification_id,
+            user_id
+        ) values (
+            '2000-01-01 00:00:00+00',
+            'event-welcome',
+            $1::uuid,
+            $2::uuid
+        )
+        ",
+        &[&pending_notification_id, &organizer_id()],
+    )
+    .await?;
+    db.execute(
+        "
+        insert into notification_attachment (
+            attachment_id,
+            notification_id
+        ) values (
+            $1::uuid,
+            $2::uuid
+        )
+        ",
+        &[&attachment_id, &pending_notification_id],
+    )
+    .await?;
+
+    // Claim the notification on the single-connection pool and decode its attachment
+    let claim_result = timeout(Duration::from_secs(2), db.claim_pending_notification()).await;
+
+    // Clean up temporary rows before asserting so failures leave the contract database clean
+    let cleanup_db = contract_tests_db()?;
+    cleanup_db
+        .execute(
+            "delete from notification where notification_id = $1::uuid",
+            &[&pending_notification_id],
+        )
+        .await?;
+    cleanup_db
+        .execute(
+            "delete from attachment where attachment_id = $1::uuid",
+            &[&attachment_id],
+        )
+        .await?;
+
+    // Check the claim completed without stalling and loaded the attachment
+    let notification = claim_result
+        .expect("claim with uncached attachment should not stall a single-connection pool")?
+        .context("pending notification should be claimed")?;
+    assert_eq!(notification.notification_id, pending_notification_id);
+    assert_eq!(notification.attachments.len(), 1);
+    assert_eq!(notification.attachments[0].file_name, "event.ics");
+    assert_eq!(
+        notification.attachments[0].content_type,
+        "text/calendar; charset=utf-8"
+    );
+    assert_eq!(notification.attachments[0].data, b"BEGIN:VCALENDAR");
 
     Ok(())
 }

@@ -525,27 +525,15 @@ lookups omit `sync_writes` so uncached misses do not serialize while holding
 pooled connections). No caller waits for a pool connection while holding the
 fill lock, which transactions holding their connections would queue behind.
 
-The `#[cached]` reads sit on blanket `impl<T: PgExecutor>` blocks, so `PgDB`
-and `PgUnitOfWork` share the same cache entries and there is no transactional
-bypass. A cached read inside a transaction is served from the cache like any
-other call, and a miss populates the cache from the transaction's view.
-
-Whether a cached read is safe inside a `DBExt::transaction` depends on what
-the transaction writes, not on the transaction itself:
-
-- Safe: the transaction does not modify the cached data. Reference data
-  (kinds, roles, currencies, timezones, community name and ID lookups) is the
-  typical case, and reading it inside a transaction behaves like reading it
-  outside one.
-- Unsafe: the transaction modifies the cached data, or data a cached aggregate
-  is computed from. A hit hides the transaction's own writes, and a miss can
-  cache uncommitted values that outlive a rollback for the whole TTL. Read the
-  rows with an uncached query instead of adding a bypass to the cached method.
-
-Aggregates over mutable data (dashboard and site statistics) are the reads
-most likely to overlap with a transaction's writes, so they are not read from
-`services`, where transactions are opened. Their trait methods point here, and
-`layers::cached_aggregate_reads_stay_outside_services` enforces the rule.
+Process-wide caches are only used through root pooled handles (`PgDB`).
+`PgExecutor::use_cache` returns `true` only for `PgDB` and `false` for
+transaction-scoped handles (`PgUnitOfWork`) and direct clients (`PgClient`).
+Every cached database read checks `self.use_cache()` before probing or entering
+its `#[cached]` store and executes the underlying query directly on
+`self.client().await?` when caching is disabled. This structural bypass ensures
+that a transaction always sees its own uncommitted writes and can never
+populate a shared cache with uncommitted or rolled-back state. Enforced by
+`layers::cached_db_reads_respect_use_cache`.
 
 Cache entries are keyed by the data they describe and are global to the
 process. Every `PgDB` in a process shares them, which is the intended

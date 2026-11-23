@@ -34,9 +34,7 @@ pub(crate) trait DBCommunity {
 
     /// Retrieves statistical data for the community page.
     ///
-    /// Cached for up to one hour per process. Aggregates mutable data; see
-    /// "Cached reads and transactions" in `docs/backend.md` before calling it
-    /// from a transaction.
+    /// Cached for up to one hour per process.
     async fn get_community_site_stats(&self, community_id: Uuid) -> Result<CommunityStats>;
 
     /// Retrieves upcoming events for the community.
@@ -57,6 +55,7 @@ where
     async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>> {
         resolve_community_id(
             name,
+            self.use_cache(),
             || self.client(),
             |db| async move {
                 db.fetch_scalar_opt("select get_community_id_by_name($1::text)", &[&name])
@@ -82,6 +81,14 @@ where
     /// [`DB::get_community_site_stats`]
     #[instrument(skip(self), err)]
     async fn get_community_site_stats(&self, community_id: Uuid) -> Result<CommunityStats> {
+        async fn fetch(db: &PgClient<'_>, community_id: Uuid) -> Result<CommunityStats> {
+            db.fetch_json_one(
+                "select get_community_site_stats($1::uuid)",
+                &[&community_id],
+            )
+            .await
+        }
+
         #[cached(
             max_size = 1_000,
             ttl_secs = 3600,
@@ -90,11 +97,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>, community_id: Uuid) -> Result<CommunityStats> {
-            db.fetch_json_one(
-                "select get_community_site_stats($1::uuid)",
-                &[&community_id],
-            )
-            .await
+            fetch(db, community_id).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db, community_id).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -164,10 +173,12 @@ where
     }
 }
 
-/// Resolves a community ID by name, probing the cache before acquiring a
-/// client and storing only positive matches.
+/// Resolves a community ID by name, bypassing the cache when `use_cache` is
+/// `false` and otherwise probing the cache before acquiring a client and
+/// storing only positive matches.
 async fn resolve_community_id<A, AFut, C, F, Fut>(
     name: &str,
+    use_cache: bool,
     acquire: A,
     fetch: F,
 ) -> Result<Option<Uuid>>
@@ -180,6 +191,12 @@ where
     // Short-circuit empty names without probing or querying
     if name.is_empty() {
         return Ok(None);
+    }
+
+    // Bypass the process-wide cache outside root pooled handles
+    if !use_cache {
+        let client = acquire().await?;
+        return fetch(client).await;
     }
 
     // Serve a fresh cached value without checking out a client
@@ -231,6 +248,7 @@ mod tests {
             let community_id = Uuid::from_u128(index as u128 + 1);
             let resolved = resolve_community_id(
                 &slug,
+                true,
                 || async { Ok(()) },
                 |()| async move { Ok(Some(community_id)) },
             )
@@ -245,6 +263,54 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_resolve_community_id_bypasses_cache_when_disabled() {
+        // Isolate the shared cache for this test
+        let _guard = CACHE_TEST_LOCK.lock().await;
+        clear_community_id_cache().await;
+        let cached_id = Uuid::from_u128(10);
+        let uncached_id = Uuid::from_u128(11);
+        let tx_id = Uuid::from_u128(12);
+
+        // Run an uncached lookup first and check it does not populate the cache
+        let resolved = resolve_community_id(
+            "tx-only-community",
+            false,
+            || async { Ok(()) },
+            |()| async move { Ok(Some(uncached_id)) },
+        )
+        .await
+        .expect("uncached lookup to succeed");
+        assert_eq!(resolved, Some(uncached_id));
+        assert_eq!(LOOKUP_COMMUNITY_ID.read().await.cache_size(), 0);
+
+        // Warm the cache for a slug through the cached path
+        let seeded = resolve_community_id(
+            "cncf",
+            true,
+            || async { Ok(()) },
+            |()| async move { Ok(Some(cached_id)) },
+        )
+        .await
+        .expect("cached lookup to succeed");
+        assert_eq!(seeded, Some(cached_id));
+
+        // Run an uncached lookup for the warmed slug and check it bypasses both reading and writing
+        let bypassed = resolve_community_id(
+            "cncf",
+            false,
+            || async { Ok(()) },
+            |()| async move { Ok(Some(tx_id)) },
+        )
+        .await
+        .expect("bypassed lookup to succeed");
+        assert_eq!(bypassed, Some(tx_id));
+        assert_eq!(
+            cache_probe(&LOOKUP_COMMUNITY_ID, "cncf").await,
+            Some(cached_id)
+        );
+    }
+
+    #[tokio::test]
     async fn test_resolve_community_id_caches_newly_created_community_after_miss() {
         // Isolate the shared cache for this test
         let _guard = CACHE_TEST_LOCK.lock().await;
@@ -255,6 +321,7 @@ mod tests {
         // First lookup misses before the community exists
         let first = resolve_community_id(
             "new-community",
+            true,
             || async { Ok(()) },
             |()| {
                 let calls = calls.clone();
@@ -272,6 +339,7 @@ mod tests {
         // Second lookup sees the newly created community immediately
         let second = resolve_community_id(
             "new-community",
+            true,
             || async { Ok(()) },
             |()| {
                 let calls = calls.clone();
@@ -289,6 +357,7 @@ mod tests {
         // Third lookup hits the positive cache without acquiring a client
         let third = resolve_community_id(
             "new-community",
+            true,
             || async { Err::<(), _>(anyhow!("client must not be acquired on cache hit")) },
             |()| async { panic!("fetch must not run on cache hit") },
         )
@@ -310,6 +379,7 @@ mod tests {
             tokio::join!(
                 resolve_community_id(
                     "missing-concurrent",
+                    true,
                     || async { Ok(()) },
                     |()| {
                         let barrier = barrier.clone();
@@ -321,6 +391,7 @@ mod tests {
                 ),
                 resolve_community_id(
                     "missing-concurrent",
+                    true,
                     || async { Ok(()) },
                     |()| {
                         let barrier = barrier.clone();
@@ -349,6 +420,7 @@ mod tests {
         let valid_id = Uuid::from_u128(1);
         let seeded = resolve_community_id(
             "cncf",
+            true,
             || async { Ok(()) },
             |()| async move { Ok(Some(valid_id)) },
         )
@@ -360,10 +432,14 @@ mod tests {
         // Flood with more missing slugs than the cache capacity
         for index in 0..2_000usize {
             let missing_slug = format!("missing-community-{index}");
-            let result =
-                resolve_community_id(&missing_slug, || async { Ok(()) }, |()| async { Ok(None) })
-                    .await
-                    .expect("missing lookup to succeed");
+            let result = resolve_community_id(
+                &missing_slug,
+                true,
+                || async { Ok(()) },
+                |()| async { Ok(None) },
+            )
+            .await
+            .expect("missing lookup to succeed");
             assert_eq!(result, None);
         }
 
@@ -375,6 +451,7 @@ mod tests {
         );
         let cached = resolve_community_id(
             "cncf",
+            true,
             || async { Err::<(), _>(anyhow!("client must not be acquired on cache hit")) },
             |()| async { panic!("fetch must not run for non-evicted community") },
         )
@@ -392,6 +469,7 @@ mod tests {
         // Fail client checkout before reaching the cached lookup
         let err = resolve_community_id(
             "pool-exhausted",
+            true,
             || async { Err::<(), _>(anyhow!("pool wait timed out")) },
             |()| async { panic!("fetch must not run when client checkout fails") },
         )
@@ -413,6 +491,7 @@ mod tests {
         // Fail the first lookup with a database error
         let err = resolve_community_id(
             "flaky-community",
+            true,
             || async { Ok(()) },
             |()| async { Err(anyhow!("database unavailable")) },
         )
@@ -424,6 +503,7 @@ mod tests {
         // Subsequent lookup retries and caches the positive result
         let recovered = resolve_community_id(
             "flaky-community",
+            true,
             || async { Ok(()) },
             |()| async move { Ok(Some(community_id)) },
         )
@@ -442,6 +522,7 @@ mod tests {
         // Empty name returns None without acquiring a client or touching the cache
         let result = resolve_community_id(
             "",
+            true,
             || async { Err::<(), _>(anyhow!("client must not be acquired for empty name")) },
             |()| async { panic!("fetch must not run for empty name") },
         )

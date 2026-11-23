@@ -140,9 +140,7 @@ pub(crate) trait DBDashboardCommunity {
 
     /// Retrieves analytics statistics for a community.
     ///
-    /// Cached for up to one hour per process. Aggregates mutable data; see
-    /// "Cached reads and transactions" in `docs/backend.md` before calling it
-    /// from a transaction.
+    /// Cached for up to one hour per process.
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats>;
 
     /// Lists community dashboard audit log rows.
@@ -435,6 +433,11 @@ where
     /// [`DBDashboardCommunity::get_community_stats`]
     #[instrument(skip(self), err)]
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats> {
+        async fn fetch(db: &PgClient<'_>, community_id: Uuid) -> Result<CommunityDashboardStats> {
+            db.fetch_json_one("select get_community_stats($1::uuid)", &[&community_id])
+                .await
+        }
+
         #[cached(
             max_size = 1_000,
             ttl_secs = 3600,
@@ -443,8 +446,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>, community_id: Uuid) -> Result<CommunityDashboardStats> {
-            db.fetch_json_one("select get_community_stats($1::uuid)", &[&community_id])
-                .await
+            fetch(db, community_id).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db, community_id).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -501,6 +509,10 @@ where
     /// [`DBDashboardCommunity::list_community_roles`]
     #[instrument(skip(self), err)]
     async fn list_community_roles(&self) -> Result<Vec<CommunityRoleSummary>> {
+        async fn fetch(db: &PgClient<'_>) -> Result<Vec<CommunityRoleSummary>> {
+            db.fetch_json_one("select list_community_roles()", &[]).await
+        }
+
         #[cached(
             ttl_secs = 86400,
             key = "String",
@@ -508,7 +520,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>) -> Result<Vec<CommunityRoleSummary>> {
-            db.fetch_json_one("select list_community_roles()", &[]).await
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client

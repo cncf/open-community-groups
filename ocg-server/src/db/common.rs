@@ -233,13 +233,7 @@ where
     /// [`DBCommon::list_timezones`]
     #[instrument(skip(self), err)]
     async fn list_timezones(&self) -> Result<Vec<String>> {
-        #[cached(
-            ttl_secs = 86400,
-            key = "String",
-            convert = r#"{ String::from("timezones") }"#,
-            sync_writes = "by_key"
-        )]
-        async fn inner(db: &PgClient<'_>) -> Result<Vec<String>> {
+        async fn fetch(db: &PgClient<'_>) -> Result<Vec<String>> {
             let timezones = db
                 .query(
                     "
@@ -257,6 +251,22 @@ where
                 .collect();
 
             Ok(timezones)
+        }
+
+        #[cached(
+            ttl_secs = 86400,
+            key = "String",
+            convert = r#"{ String::from("timezones") }"#,
+            sync_writes = "by_key"
+        )]
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<String>> {
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client
@@ -289,13 +299,7 @@ where
     /// [`DBCommon::list_utm_mediums`]
     #[instrument(skip(self), err)]
     async fn list_utm_mediums(&self) -> Result<Vec<String>> {
-        #[cached(
-            ttl_secs = 86400,
-            key = "String",
-            convert = r#"{ String::from("utm_mediums") }"#,
-            sync_writes = "by_key"
-        )]
-        async fn inner(db: &PgClient<'_>) -> Result<Vec<String>> {
+        async fn fetch(db: &PgClient<'_>) -> Result<Vec<String>> {
             let utm_mediums = db
                 .query(
                     "select utm_medium_id from utm_medium order by utm_medium_id asc;",
@@ -307,6 +311,22 @@ where
                 .collect();
 
             Ok(utm_mediums)
+        }
+
+        #[cached(
+            ttl_secs = 86400,
+            key = "String",
+            convert = r#"{ String::from("utm_mediums") }"#,
+            sync_writes = "by_key"
+        )]
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<String>> {
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
         }
 
         // Serve a fresh cached value without checking out a client
