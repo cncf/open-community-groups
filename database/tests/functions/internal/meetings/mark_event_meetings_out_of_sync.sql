@@ -32,14 +32,18 @@ select fx_event_category(:'eventCategoryID', :'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Virtual event with a requested meeting that is in sync
+-- Virtual event with a requested meeting that is in sync, with stale retry state
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', '2030-06-01 12:00:00+00',
     'event_kind_id', 'virtual',
+    'meeting_create_attempted_at', '2030-05-01 09:00:00+00',
     'meeting_in_sync', true,
+    'meeting_last_provider_host_user', 'event-host@example.com',
+    'meeting_next_sync_at', '2030-06-01 09:00:00+00',
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
+    'meeting_sync_attempts', 5,
     'starts_at', '2030-06-01 10:00:00+00'
 ));
 
@@ -85,13 +89,17 @@ insert into session (
     '2030-06-03 10:00:00+00'
 );
 
--- Requested session meeting of the event that is in sync
+-- Requested session meeting of the event that is in sync, with stale retry state
 insert into session (
     ends_at,
     event_id,
+    meeting_create_attempted_at,
     meeting_in_sync,
+    meeting_last_provider_host_user,
+    meeting_next_sync_at,
     meeting_provider_id,
     meeting_requested,
+    meeting_sync_attempts,
     name,
     session_id,
     session_kind_id,
@@ -99,9 +107,13 @@ insert into session (
 ) values (
     '2030-06-01 11:00:00+00',
     :'eventID',
+    '2030-05-01 09:00:00+00',
     true,
+    'session-host@example.com',
+    '2030-06-01 09:00:00+00',
     'zoom',
     true,
+    5,
     'Requested Session',
     :'requestedSessionID',
     'virtual',
@@ -138,15 +150,39 @@ select lives_ok(
     format('select mark_event_meetings_out_of_sync(%L::uuid)', :'eventID'),
     'Should mark the meetings of an event with requested meetings'
 );
-select is(
-    (select meeting_in_sync from event where event_id = :'eventID'),
-    false,
-    'Should mark a requested event meeting out of sync'
+select results_eq(
+    format(
+        $$
+            select
+                meeting_create_attempted_at,
+                meeting_in_sync,
+                meeting_last_provider_host_user,
+                meeting_next_sync_at,
+                meeting_sync_attempts
+            from event
+            where event_id = %L::uuid
+        $$,
+        :'eventID'
+    ),
+    $$ values ('2030-05-01 09:00:00+00'::timestamptz, false, 'event-host@example.com', null::timestamptz, 0) $$,
+    'Should mark a requested event meeting out of sync, reset retry state and preserve create tracking'
 );
-select is(
-    (select meeting_in_sync from session where session_id = :'requestedSessionID'),
-    false,
-    'Should mark requested session meetings out of sync'
+select results_eq(
+    format(
+        $$
+            select
+                meeting_create_attempted_at,
+                meeting_in_sync,
+                meeting_last_provider_host_user,
+                meeting_next_sync_at,
+                meeting_sync_attempts
+            from session
+            where session_id = %L::uuid
+        $$,
+        :'requestedSessionID'
+    ),
+    $$ values ('2030-05-01 09:00:00+00'::timestamptz, false, 'session-host@example.com', null::timestamptz, 0) $$,
+    'Should mark requested session meetings out of sync, reset retry state and preserve create tracking'
 );
 select is(
     (select meeting_in_sync from session where session_id = :'unrequestedSessionID'),

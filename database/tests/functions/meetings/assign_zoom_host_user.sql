@@ -425,10 +425,13 @@ select is(
     'host@example.com',
     'Should return available host for claimed event'
 );
-select is(
-    (select meeting_provider_host_user from event where event_id = :'eventClaimedID'),
-    'host@example.com',
-    'Should store event host reservation'
+select results_eq(
+    format(
+        $$ select meeting_last_provider_host_user, meeting_provider_host_user from event where event_id = %L::uuid $$,
+        :'eventClaimedID'
+    ),
+    $$ values ('host@example.com', 'host@example.com') $$,
+    'Should store event host reservation and sticky last host'
 );
 select is(
     assign_zoom_host_user(
@@ -443,10 +446,13 @@ select is(
     null,
     'Should return null when event claim timestamp does not match'
 );
-select is(
-    (select meeting_provider_host_user from event where event_id = :'eventStaleClaimID'),
-    null,
-    'Should not store event host reservation for stale claim'
+select results_eq(
+    format(
+        $$ select meeting_last_provider_host_user, meeting_provider_host_user from event where event_id = %L::uuid $$,
+        :'eventStaleClaimID'
+    ),
+    $$ values (null::text, null::text) $$,
+    'Should not store event host reservation or sticky last host for stale claim'
 );
 
 -- Should count event host reservations when checking capacity
@@ -478,10 +484,13 @@ select is(
     'session-host@example.com',
     'Should return available host for claimed session'
 );
-select is(
-    (select meeting_provider_host_user from session where session_id = :'sessionClaimedID'),
-    'session-host@example.com',
-    'Should store session host reservation'
+select results_eq(
+    format(
+        $$ select meeting_last_provider_host_user, meeting_provider_host_user from session where session_id = %L::uuid $$,
+        :'sessionClaimedID'
+    ),
+    $$ values ('session-host@example.com', 'session-host@example.com') $$,
+    'Should store session host reservation and sticky last host'
 );
 select is(
     assign_zoom_host_user(

@@ -5,17 +5,20 @@
 -- ============================================================================
 
 begin;
-select plan(23);
+select plan(28);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '7a050000-0000-0000-0000-000000000001'
+\set eventBackedOffID '7a050000-0000-0000-0000-000000000048'
 \set eventCanceledDeleteID '7a050000-0000-0000-0000-000000000002'
 \set eventCanceledNoMeetingID '7a050000-0000-0000-0000-000000000003'
 \set eventCategoryID '7a050000-0000-0000-0000-000000000004'
 \set eventCreateID '7a050000-0000-0000-0000-000000000005'
+\set eventCreateRetryID '7a050000-0000-0000-0000-000000000049'
+\set eventDeleteBackedOffID '7a050000-0000-0000-0000-000000000053'
 \set eventDisabledID '7a050000-0000-0000-0000-000000000007'
 \set eventInSyncID '7a050000-0000-0000-0000-000000000008'
 \set eventNoRequestID '7a050000-0000-0000-0000-000000000009'
@@ -27,6 +30,7 @@ select plan(23);
 \set eventWithSessionsID '7a050000-0000-0000-0000-000000000015'
 \set groupCategoryID '7a050000-0000-0000-0000-000000000016'
 \set groupID '7a050000-0000-0000-0000-000000000017'
+\set meetingBackedOffOrphanID '7a050000-0000-0000-0000-000000000050'
 \set meetingDisabledID '7a050000-0000-0000-0000-000000000018'
 \set meetingEventCanceledDeleteID '7a050000-0000-0000-0000-000000000019'
 \set meetingEventOrphanDetachedID '7a050000-0000-0000-0000-000000000021'
@@ -34,14 +38,18 @@ select plan(23);
 \set meetingEventUnsetRequestID '7a050000-0000-0000-0000-000000000045'
 \set meetingEventUpdateID '7a050000-0000-0000-0000-000000000023'
 \set meetingOrphanID '7a050000-0000-0000-0000-000000000024'
+\set meetingRetryOrphanID '7a050000-0000-0000-0000-000000000054'
 \set meetingSessionDeleteID '7a050000-0000-0000-0000-000000000026'
 \set meetingSessionDisabledID '7a050000-0000-0000-0000-000000000027'
 \set meetingSessionOrphanDetachedID '7a050000-0000-0000-0000-000000000028'
 \set meetingSessionUnpublishedID '7a050000-0000-0000-0000-000000000029'
 \set meetingSessionUnsetRequestID '7a050000-0000-0000-0000-000000000047'
 \set meetingSessionUpdateID '7a050000-0000-0000-0000-000000000030'
+\set sessionBackedOffID '7a050000-0000-0000-0000-000000000051'
 \set sessionCanceledNoMeetingID '7a050000-0000-0000-0000-000000000031'
 \set sessionCreateID '7a050000-0000-0000-0000-000000000032'
+\set sessionCreateRetryID '7a050000-0000-0000-0000-000000000052'
+\set sessionDeleteBackedOffID '7a050000-0000-0000-0000-000000000055'
 \set sessionDeleteID '7a050000-0000-0000-0000-000000000034'
 \set sessionDisabledID '7a050000-0000-0000-0000-000000000035'
 \set sessionPastImportID '7a050000-0000-0000-0000-000000000037'
@@ -93,6 +101,38 @@ select fx_event(:'eventCreateID', :'groupID', :'eventCategoryID', jsonb_build_ob
     'starts_at', current_timestamp + interval '1 day'
 ));
 
+-- Published event needing create retry after an earlier create attempt and elapsed backoff
+select fx_event(:'eventCreateRetryID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '1 day 3 hours',
+    'event_kind_id', 'virtual',
+    'meeting_create_attempted_at', current_timestamp - interval '10 minutes',
+    'meeting_in_sync', false,
+    'meeting_last_provider_host_user', 'retry-event-host@example.com',
+    'meeting_next_sync_at', current_timestamp - interval '1 minute',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_attempts', 2,
+    'name', 'Event Create Retry Test',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day 2 hours'
+));
+
+-- Published event waiting in retry backoff that must not be claimed yet
+select fx_event(:'eventBackedOffID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '1 day 5 hours',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_next_sync_at', current_timestamp + interval '5 minutes',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_attempts', 1,
+    'name', 'Event Backed Off Test',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day 4 hours'
+));
+
 -- Published event needing update of its existing meeting
 select fx_event(:'eventUpdateID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
@@ -128,6 +168,20 @@ select fx_event(:'eventCanceledDeleteID', :'groupID', :'eventCategoryID', jsonb_
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
     'starts_at', current_timestamp + interval '4 days'
+));
+
+-- Canceled event needing delete waiting in retry backoff that must not be claimed yet
+select fx_event(:'eventDeleteBackedOffID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '4 days 2 hours',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_next_sync_at', current_timestamp + interval '5 minutes',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_attempts', 1,
+    'starts_at', current_timestamp + interval '4 days 1 hour'
 ));
 
 -- Unpublished event needing delete without a meeting row
@@ -259,6 +313,64 @@ insert into session (
     current_timestamp + interval '3 days'
 );
 
+-- Session needing create retry after an earlier create attempt and elapsed backoff
+insert into session (
+    ends_at,
+    event_id,
+    meeting_create_attempted_at,
+    meeting_in_sync,
+    meeting_last_provider_host_user,
+    meeting_next_sync_at,
+    meeting_provider_id,
+    meeting_requested,
+    meeting_sync_attempts,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
+    current_timestamp + interval '3 days 45 minutes',
+    :'eventWithSessionsID',
+    current_timestamp - interval '10 minutes',
+    false,
+    'retry-session-host@example.com',
+    current_timestamp - interval '1 minute',
+    'zoom',
+    true,
+    2,
+    'Session Create Retry Test',
+    :'sessionCreateRetryID',
+    'virtual',
+    current_timestamp + interval '3 days 15 minutes'
+);
+
+-- Session waiting in retry backoff that must not be claimed yet
+insert into session (
+    ends_at,
+    event_id,
+    meeting_in_sync,
+    meeting_next_sync_at,
+    meeting_provider_id,
+    meeting_requested,
+    meeting_sync_attempts,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
+    current_timestamp + interval '3 days 50 minutes',
+    :'eventWithSessionsID',
+    false,
+    current_timestamp + interval '5 minutes',
+    'zoom',
+    true,
+    1,
+    'Session Backed Off Test',
+    :'sessionBackedOffID',
+    'virtual',
+    current_timestamp + interval '3 days 20 minutes'
+);
+
 -- Session needing update, with a reserved host and a previous error
 insert into session (
     ends_at,
@@ -349,6 +461,33 @@ insert into session (
     :'sessionDeleteID',
     'virtual',
     current_timestamp + interval '4 days'
+);
+
+-- Session needing delete waiting in retry backoff that must not be claimed yet
+insert into session (
+    ends_at,
+    event_id,
+    meeting_in_sync,
+    meeting_next_sync_at,
+    meeting_provider_id,
+    meeting_requested,
+    meeting_sync_attempts,
+    name,
+    session_id,
+    session_kind_id,
+    starts_at
+) values (
+    current_timestamp + interval '4 days 50 minutes',
+    :'eventCanceledDeleteID',
+    false,
+    current_timestamp + interval '5 minutes',
+    'zoom',
+    true,
+    1,
+    'Session Delete Backed Off Test',
+    :'sessionDeleteBackedOffID',
+    'virtual',
+    current_timestamp + interval '4 days 30 minutes'
 );
 
 -- Session needing delete on an unpublished event without a meeting row
@@ -578,6 +717,40 @@ insert into meeting (
     'session-orphan-detached'
 );
 
+-- Orphan meeting waiting in retry backoff that must not be claimed yet
+insert into meeting (
+    join_url,
+    meeting_id,
+    meeting_provider_id,
+    next_sync_at,
+    provider_meeting_id,
+    sync_attempts
+) values (
+    'https://zoom.us/j/orphan-backed-off',
+    :'meetingBackedOffOrphanID',
+    'zoom',
+    current_timestamp + interval '5 minutes',
+    'orphan-backed-off',
+    1
+);
+
+-- Orphan meeting whose retry backoff has elapsed and must be claimed again
+insert into meeting (
+    join_url,
+    meeting_id,
+    meeting_provider_id,
+    next_sync_at,
+    provider_meeting_id,
+    sync_attempts
+) values (
+    'https://zoom.us/j/orphan-retry-due',
+    :'meetingRetryOrphanID',
+    'zoom',
+    current_timestamp - interval '1 minute',
+    'orphan-retry-due',
+    2
+);
+
 -- Session speaker included in the session meeting claim payload
 insert into session_speaker (session_id, user_id, featured)
 values (:'sessionCreateID', :'userSessionSpeakerID', false);
@@ -586,13 +759,13 @@ values (:'sessionCreateID', :'userSessionSpeakerID', false);
 -- TESTS
 -- ============================================================================
 
--- Claim every eligible owner and orphan meeting (2 event and 2 session
--- create/update, 6 event and 6 session delete, 3 orphan), keyed by the
+-- Claim every eligible owner and orphan meeting (3 event and 3 session
+-- create/update, 6 event and 6 session delete, 4 orphan), keyed by the
 -- session, event or orphan meeting id; claim order is covered by
 -- claim_meeting_out_of_sync_priority.sql
 with claims as materialized (
     select claim_meeting_out_of_sync() as claim
-    from generate_series(1, 19)
+    from generate_series(1, 22)
 )
 select jsonb_object_agg(
     coalesce(claim->>'session_id', claim->>'event_id', claim->>'meeting_id'),
@@ -600,7 +773,7 @@ select jsonb_object_agg(
 ) filter (where claim is not null) as "claims"
 from claims \gset
 
--- Should return an event needing create with combined hosts and its reserved host
+-- Should return an event needing create with combined hosts, reserved host and omitted create_attempted_at on first attempt
 select is(
     :'claims'::jsonb -> :'eventCreateID',
     format(
@@ -612,6 +785,7 @@ select is(
             "meeting_provider_id": "zoom",
             "meeting_recording_requested": true,
             "provider_host_user_id": "claim-event-create-host@example.com",
+            "sync_attempts": 1,
             "timezone": "UTC",
             "topic": "Event Create Test"
         }$json$,
@@ -621,27 +795,83 @@ select is(
         'sync_claimed_at', current_timestamp,
         'sync_state_hash', get_event_meeting_sync_state_hash(:'eventCreateID')
     ),
-    'Should return an event needing create with combined hosts and its reserved host'
+    'Should return an event needing create with combined hosts, reserved host and omitted create_attempted_at on first attempt'
 );
 
--- Should claim the event, clear its error and keep it out of sync
+-- Should claim the event, stamp create_attempted_at, increment attempts, clear error and keep it out of sync
 select results_eq(
     format(
-        $$ select meeting_error, meeting_in_sync, meeting_provider_host_user, meeting_sync_claimed_at from event where event_id = %L $$,
+        $$
+            select
+                meeting_create_attempted_at,
+                meeting_error,
+                meeting_in_sync,
+                meeting_next_sync_at,
+                meeting_provider_host_user,
+                meeting_sync_attempts,
+                meeting_sync_claimed_at
+            from event
+            where event_id = %L
+        $$,
         :'eventCreateID'
     ),
-    $$ values (null::text, false, 'claim-event-create-host@example.com', current_timestamp) $$,
-    'Should claim the event, clear its error and keep it out of sync'
+    $$
+        values (
+            current_timestamp,
+            null::text,
+            false,
+            null::timestamptz,
+            'claim-event-create-host@example.com',
+            1,
+            current_timestamp
+        )
+    $$,
+    'Should claim the event, stamp create_attempted_at, increment attempts, clear error and keep it out of sync'
 );
 
--- Should return an event needing update as a create/update claim
+-- Should return prior create_attempted_at and sticky host on an event create retry
 select is(
-    :'claims'::jsonb -> :'eventUpdateID' ->> 'delete',
-    'false',
-    'Should return an event needing update as a create/update claim'
+    jsonb_build_object(
+        'create_attempted_at', :'claims'::jsonb -> :'eventCreateRetryID' -> 'create_attempted_at',
+        'last_provider_host_user', :'claims'::jsonb -> :'eventCreateRetryID' -> 'last_provider_host_user',
+        'sync_attempts', :'claims'::jsonb -> :'eventCreateRetryID' -> 'sync_attempts'
+    ),
+    jsonb_build_object(
+        'create_attempted_at', current_timestamp - interval '10 minutes',
+        'last_provider_host_user', 'retry-event-host@example.com',
+        'sync_attempts', 3
+    ),
+    'Should return prior create_attempted_at and sticky host on an event create retry'
 );
 
--- Should return a session needing create with combined hosts
+-- Should keep event create_attempted_at monotonic and clear elapsed backoff on retry claim
+select results_eq(
+    format(
+        $$
+            select
+                meeting_create_attempted_at,
+                meeting_next_sync_at,
+                meeting_sync_attempts
+            from event
+            where event_id = %L
+        $$,
+        :'eventCreateRetryID'
+    ),
+    $$ values (current_timestamp - interval '10 minutes', null::timestamptz, 3) $$,
+    'Should keep event create_attempted_at monotonic and clear elapsed backoff on retry claim'
+);
+
+-- Should return an event needing update as a create/update claim without stamping create_attempted_at
+select results_eq(
+    format(
+        $$ select meeting_create_attempted_at, meeting_sync_attempts from event where event_id = %L $$,
+        :'eventUpdateID'
+    ),
+    $$ values (null::timestamptz, 1) $$,
+    'Should not stamp create_attempted_at when claiming an event update'
+);
+
+-- Should return a session needing create with combined hosts and omitted create_attempted_at on first attempt
 select is(
     :'claims'::jsonb -> :'sessionCreateID',
     format(
@@ -652,6 +882,7 @@ select is(
             "meeting_provider_id": "zoom",
             "meeting_recording_requested": true,
             "session_id": "%s",
+            "sync_attempts": 1,
             "timezone": "UTC",
             "topic": "Session Create Test"
         }$json$,
@@ -661,7 +892,22 @@ select is(
         'sync_claimed_at', current_timestamp,
         'sync_state_hash', get_session_meeting_sync_state_hash(:'sessionCreateID')
     ),
-    'Should return a session needing create with combined hosts'
+    'Should return a session needing create with combined hosts and omitted create_attempted_at on first attempt'
+);
+
+-- Should return prior create_attempted_at and sticky host on a session create retry
+select is(
+    jsonb_build_object(
+        'create_attempted_at', :'claims'::jsonb -> :'sessionCreateRetryID' -> 'create_attempted_at',
+        'last_provider_host_user', :'claims'::jsonb -> :'sessionCreateRetryID' -> 'last_provider_host_user',
+        'sync_attempts', :'claims'::jsonb -> :'sessionCreateRetryID' -> 'sync_attempts'
+    ),
+    jsonb_build_object(
+        'create_attempted_at', current_timestamp - interval '10 minutes',
+        'last_provider_host_user', 'retry-session-host@example.com',
+        'sync_attempts', 3
+    ),
+    'Should return prior create_attempted_at and sticky host on a session create retry'
 );
 
 -- Should return a session needing update as a create/update claim
@@ -674,10 +920,20 @@ select is(
 -- Should claim the session, clear its error and keep it out of sync
 select results_eq(
     format(
-        $$ select meeting_error, meeting_in_sync, meeting_provider_host_user, meeting_sync_claimed_at from session where session_id = %L $$,
+        $$
+            select
+                meeting_create_attempted_at,
+                meeting_error,
+                meeting_in_sync,
+                meeting_provider_host_user,
+                meeting_sync_attempts,
+                meeting_sync_claimed_at
+            from session
+            where session_id = %L
+        $$,
         :'sessionUpdateID'
     ),
-    $$ values (null::text, false, 'claim-session-update-host@example.com', current_timestamp) $$,
+    $$ values (null::timestamptz, null::text, false, 'claim-session-update-host@example.com', 1, current_timestamp) $$,
     'Should claim the session, clear its error and keep it out of sync'
 );
 
@@ -691,7 +947,8 @@ select is(
             "join_url": "https://zoom.us/j/event-canceled-delete",
             "meeting_id": "%s",
             "meeting_provider_id": "zoom",
-            "provider_meeting_id": "event-canceled-delete"
+            "provider_meeting_id": "event-canceled-delete",
+            "sync_attempts": 1
         }$json$,
         :'eventCanceledDeleteID',
         :'meetingEventCanceledDeleteID'
@@ -750,7 +1007,8 @@ select is(
             "meeting_id": "%s",
             "meeting_provider_id": "zoom",
             "provider_meeting_id": "session-delete",
-            "session_id": "%s"
+            "session_id": "%s",
+            "sync_attempts": 1
         }$json$,
         :'meetingSessionDeleteID',
         :'sessionDeleteID'
@@ -809,7 +1067,8 @@ select is(
             "meeting_id": "%s",
             "meeting_provider_id": "zoom",
             "provider_host_user_id": "orphan-host-user",
-            "provider_meeting_id": "orphan"
+            "provider_meeting_id": "orphan",
+            "sync_attempts": 1
         }$json$,
         :'meetingOrphanID'
     )::jsonb || jsonb_build_object(
@@ -821,10 +1080,10 @@ select is(
 -- Should claim the orphan meeting on the meeting row
 select results_eq(
     format(
-        $$ select sync_claimed_at, updated_at from meeting where meeting_id = %L $$,
+        $$ select next_sync_at, sync_attempts, sync_claimed_at, updated_at from meeting where meeting_id = %L $$,
         :'meetingOrphanID'
     ),
-    $$ values (current_timestamp, current_timestamp) $$,
+    $$ values (null::timestamptz, 1, current_timestamp, current_timestamp) $$,
     'Should claim the orphan meeting on the meeting row'
 );
 
@@ -840,12 +1099,47 @@ select set_eq(
         :'claims'
     ),
     format(
-        $$ values (%L::uuid), (%L::uuid), (%L::uuid) $$,
+        $$ values (%L::uuid), (%L::uuid), (%L::uuid), (%L::uuid) $$,
         :'meetingEventOrphanDetachedID',
         :'meetingOrphanID',
+        :'meetingRetryOrphanID',
         :'meetingSessionOrphanDetachedID'
     ),
     'Should claim every detached orphan meeting'
+);
+
+-- Should claim a due orphan retry, clear next_sync_at and increment sync_attempts
+select results_eq(
+    format(
+        $$ select next_sync_at, sync_attempts, sync_claimed_at from meeting where meeting_id = %L $$,
+        :'meetingRetryOrphanID'
+    ),
+    $$ values (null::timestamptz, 3, current_timestamp) $$,
+    'Should claim a due orphan retry, clear next_sync_at and increment sync_attempts'
+);
+
+-- Should not claim backed-off events, sessions or orphan meetings before next_sync_at
+select results_eq(
+    format(
+        $$
+        select meeting_sync_claimed_at from event where event_id = %L
+        union all
+        select meeting_sync_claimed_at from event where event_id = %L
+        union all
+        select meeting_sync_claimed_at from session where session_id = %L
+        union all
+        select meeting_sync_claimed_at from session where session_id = %L
+        union all
+        select sync_claimed_at from meeting where meeting_id = %L
+        $$,
+        :'eventBackedOffID',
+        :'eventDeleteBackedOffID',
+        :'sessionBackedOffID',
+        :'sessionDeleteBackedOffID',
+        :'meetingBackedOffOrphanID'
+    ),
+    $$ values (null::timestamptz), (null::timestamptz), (null::timestamptz), (null::timestamptz), (null::timestamptz) $$,
+    'Should not claim backed-off events, sessions or orphan meetings before next_sync_at'
 );
 
 -- Should not claim imported past events and sessions for provider create or update

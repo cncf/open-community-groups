@@ -16,7 +16,7 @@ use super::{
     DynMeetingsProvider, DynMeetingsProviders, Meeting, MeetingAutoEndCheckOutcome,
     MeetingEndResult, MeetingProvider, MeetingProviderError, MeetingProviderMeeting,
     MeetingsAutoEndWorker, MeetingsClaimRecoveryWorker, MeetingsSyncWorker, MockMeetingsProvider,
-    SyncAction, SyncError,
+    SYNC_MAX_ATTEMPTS, SyncAction, SyncError,
 };
 
 // MeetingProviderError tests.
@@ -99,6 +99,31 @@ fn test_sync_action_for_meeting() {
 }
 
 // Meetings workers tests.
+
+#[test]
+fn test_retry_delay_for_attempt_applies_exponential_backoff_and_caps() {
+    let cases = [
+        (-1, None, Duration::from_mins(1)),
+        (0, None, Duration::from_mins(1)),
+        (1, None, Duration::from_mins(1)),
+        (2, None, Duration::from_mins(2)),
+        (3, None, Duration::from_mins(4)),
+        (4, None, Duration::from_mins(8)),
+        (5, None, Duration::from_mins(16)),
+        (6, None, Duration::from_mins(30)),
+        (9, None, Duration::from_mins(30)),
+        (1, Some(Duration::from_secs(30)), Duration::from_mins(1)),
+        (1, Some(Duration::from_mins(3)), Duration::from_mins(3)),
+        (2, Some(Duration::from_hours(2)), Duration::from_mins(30)),
+    ];
+    for (attempt, retry_after, expected) in cases {
+        assert_eq!(
+            MeetingsSyncWorker::retry_delay_for_attempt(attempt, retry_after),
+            expected,
+            "attempt={attempt}, retry_after={retry_after:?}"
+        );
+    }
+}
 
 #[tokio::test]
 async fn test_worker_auto_end_meeting_already_not_running_records_outcome() {
@@ -579,23 +604,26 @@ async fn test_worker_sync_meeting_updates_existing_meeting() {
 
 #[tokio::test]
 async fn test_worker_sync_meeting_update_retryable_error_releases_claim() {
-    // Setup an existing meeting whose provider update fails transiently
+    // Setup an existing meeting whose provider update fails transiently on attempt 2
     let meeting_id = Uuid::new_v4();
     let meeting = Meeting {
         meeting_id: Some(meeting_id),
         provider_meeting_id: Some("zoom-456".to_string()),
+        sync_attempts: 2,
         ..Default::default()
     };
 
-    // Setup database mock: the claim is released and nothing is written
+    // Setup database mock: the claim is released with exponential backoff and nothing is written
     let mut db = MockDBMeetings::new();
     expect_claimed_meeting(&mut db, meeting);
     db.expect_update_meeting().never();
     db.expect_set_meeting_error().never();
     db.expect_release_meeting_sync_claim()
         .times(1)
-        .withf(move |m| m.meeting_id == Some(meeting_id))
-        .returning(|_| Ok(()));
+        .withf(move |m, retry_after| {
+            m.meeting_id == Some(meeting_id) && *retry_after == Some(Duration::from_mins(2))
+        })
+        .returning(|_, _| Ok(()));
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -741,21 +769,151 @@ async fn test_worker_sync_meeting_no_pending_meeting() {
 }
 
 #[tokio::test]
+async fn test_worker_sync_meeting_delete_retryable_error_caps_backoff_past_max_attempts() {
+    // Setup an event delete past SYNC_MAX_ATTEMPTS whose provider delete fails transiently
+    let event_id = Uuid::new_v4();
+    let meeting_id = Uuid::new_v4();
+    let meeting = Meeting {
+        delete: Some(true),
+        event_id: Some(event_id),
+        meeting_id: Some(meeting_id),
+        provider_meeting_id: Some("zoom-delete".to_string()),
+        sync_attempts: SYNC_MAX_ATTEMPTS,
+        ..Default::default()
+    };
+
+    // Setup database mock: delete stays on capped backoff instead of marking synced
+    let mut db = MockDBMeetings::new();
+    expect_claimed_meeting(&mut db, meeting);
+    db.expect_delete_meeting().never();
+    db.expect_set_meeting_error().never();
+    db.expect_release_meeting_sync_claim()
+        .times(1)
+        .withf(move |m, retry_after| {
+            m.event_id == Some(event_id)
+                && m.meeting_id == Some(meeting_id)
+                && *retry_after == Some(Duration::from_mins(30))
+        })
+        .returning(|_, _| Ok(()));
+
+    // Setup meetings provider mock returning a retryable outage error
+    let mut mp = MockMeetingsProvider::new();
+    mp.expect_delete_meeting().times(1).returning(|_| {
+        Box::pin(async { Err(MeetingProviderError::Server("unavailable".to_string())) })
+    });
+
+    // Setup worker and sync meeting
+    let worker = sample_sync_worker(db, Some(mp));
+    let result = worker.sync_meeting().await;
+
+    // Check result is a retryable provider error
+    assert!(matches!(
+        result,
+        Err(SyncError::Provider(MeetingProviderError::Server(_)))
+    ));
+}
+
+#[tokio::test]
+async fn test_worker_sync_meeting_orphan_retryable_error_caps_backoff_without_deleting() {
+    // Setup an orphan meeting past SYNC_MAX_ATTEMPTS whose delete fails transiently
+    let meeting_id = Uuid::new_v4();
+    let meeting = Meeting {
+        delete: Some(true),
+        meeting_id: Some(meeting_id),
+        provider_meeting_id: Some("zoom-orphan".to_string()),
+        sync_attempts: SYNC_MAX_ATTEMPTS,
+        ..Default::default()
+    };
+
+    // Setup database mock: orphan stays on capped backoff instead of deleting the local row
+    let mut db = MockDBMeetings::new();
+    expect_claimed_meeting(&mut db, meeting);
+    db.expect_delete_meeting().never();
+    db.expect_set_meeting_error().never();
+    db.expect_release_meeting_sync_claim()
+        .times(1)
+        .withf(move |m, retry_after| {
+            m.meeting_id == Some(meeting_id) && *retry_after == Some(Duration::from_mins(30))
+        })
+        .returning(|_, _| Ok(()));
+
+    // Setup meetings provider mock returning a retryable outage error
+    let mut mp = MockMeetingsProvider::new();
+    mp.expect_delete_meeting().times(1).returning(|_| {
+        Box::pin(async { Err(MeetingProviderError::Server("unavailable".to_string())) })
+    });
+
+    // Setup worker and sync meeting
+    let worker = sample_sync_worker(db, Some(mp));
+    let result = worker.sync_meeting().await;
+
+    // Check result is a retryable provider error
+    assert!(matches!(
+        result,
+        Err(SyncError::Provider(MeetingProviderError::Server(_)))
+    ));
+}
+
+#[tokio::test]
+async fn test_worker_sync_meeting_retryable_error_exhausted_records_terminal_error() {
+    // Setup an event meeting on its final allowed sync attempt
+    let event_id = Uuid::new_v4();
+    let meeting_id = Uuid::new_v4();
+    let starts_at = chrono::DateTime::from_timestamp(1_900_015_000, 0).unwrap();
+    let meeting = Meeting {
+        event_id: Some(event_id),
+        sync_attempts: SYNC_MAX_ATTEMPTS,
+        ..sample_create_meeting(meeting_id, starts_at)
+    };
+
+    // Setup database mock: terminal error is recorded instead of releasing for retry
+    let mut db = MockDBMeetings::new();
+    expect_claimed_meeting(&mut db, meeting);
+    db.expect_assign_zoom_host_user()
+        .times(1)
+        .returning(|_, _, _, _, _| Ok(Some("host@example.com".to_string())));
+    db.expect_release_meeting_sync_claim().never();
+    db.expect_set_meeting_error()
+        .times(1)
+        .withf(move |m, err| m.meeting_id == Some(meeting_id) && err.contains("timeout"))
+        .returning(|_, _| Ok(()));
+
+    // Setup meetings provider mock returning a retryable network error
+    let mut mp = MockMeetingsProvider::new();
+    mp.expect_create_meeting().times(1).returning(|_| {
+        Box::pin(async { Err(MeetingProviderError::Network("timeout".to_string())) })
+    });
+
+    // Setup worker and sync meeting
+    let worker = sample_sync_worker(db, Some(mp));
+    let synced = worker.sync_meeting().await.unwrap();
+
+    // Check exhausted retryable error completed as terminal
+    assert!(synced);
+}
+
+#[tokio::test]
 async fn test_worker_sync_meeting_retryable_error_releases_claim() {
-    // Setup identifiers and data structures
+    // Setup identifiers and data structures on attempt 1
     let meeting_id = Uuid::new_v4();
     let starts_at = chrono::DateTime::from_timestamp(1_900_010_000, 0).unwrap();
+    let meeting = Meeting {
+        sync_attempts: 1,
+        ..sample_create_meeting(meeting_id, starts_at)
+    };
 
-    // Setup database mock
+    // Setup database mock: attempt 1 schedules the base backoff delay
     let mut db = MockDBMeetings::new();
-    expect_claimed_meeting(&mut db, sample_create_meeting(meeting_id, starts_at));
+    expect_claimed_meeting(&mut db, meeting);
     db.expect_assign_zoom_host_user()
         .times(1)
         .returning(|_, _, _, _, _| Ok(Some("host@example.com".to_string())));
     db.expect_release_meeting_sync_claim()
         .times(1)
-        .withf(move |m| m.meeting_id == Some(meeting_id))
-        .returning(|_| Ok(()));
+        .withf(move |m, retry_after| {
+            m.meeting_id == Some(meeting_id) && *retry_after == Some(Duration::from_mins(1))
+        })
+        .returning(|_, _| Ok(()));
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -771,6 +929,52 @@ async fn test_worker_sync_meeting_retryable_error_releases_claim() {
     assert!(matches!(
         result,
         Err(SyncError::Provider(MeetingProviderError::Network(_)))
+    ));
+}
+
+#[tokio::test]
+async fn test_worker_sync_meeting_retryable_rate_limit_respects_provider_retry_after() {
+    // Setup identifiers and data structures on attempt 1 with a longer provider Retry-After
+    let meeting_id = Uuid::new_v4();
+    let starts_at = chrono::DateTime::from_timestamp(1_900_012_000, 0).unwrap();
+    let meeting = Meeting {
+        sync_attempts: 1,
+        ..sample_create_meeting(meeting_id, starts_at)
+    };
+
+    // Setup database mock: the provider Retry-After overrides the shorter attempt-1 backoff
+    let mut db = MockDBMeetings::new();
+    expect_claimed_meeting(&mut db, meeting);
+    db.expect_assign_zoom_host_user()
+        .times(1)
+        .returning(|_, _, _, _, _| Ok(Some("host@example.com".to_string())));
+    db.expect_release_meeting_sync_claim()
+        .times(1)
+        .withf(move |m, retry_after| {
+            m.meeting_id == Some(meeting_id) && *retry_after == Some(Duration::from_mins(3))
+        })
+        .returning(|_, _| Ok(()));
+
+    // Setup meetings provider mock returning a 3-minute rate limit
+    let mut mp = MockMeetingsProvider::new();
+    mp.expect_create_meeting().times(1).returning(|_| {
+        Box::pin(async {
+            Err(MeetingProviderError::RateLimit {
+                retry_after: Duration::from_mins(3),
+            })
+        })
+    });
+
+    // Setup worker and sync meeting
+    let worker = sample_sync_worker(db, Some(mp));
+    let result = worker.sync_meeting().await;
+
+    // Check result is a rate-limit provider error
+    assert!(matches!(
+        result,
+        Err(SyncError::Provider(MeetingProviderError::RateLimit {
+            retry_after
+        })) if retry_after == Duration::from_mins(3)
     ));
 }
 

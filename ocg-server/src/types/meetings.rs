@@ -17,7 +17,13 @@ pub(crate) struct Meeting {
     #[serde(alias = "meeting_provider_id", default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub provider: MeetingProvider,
+    /// Number of synchronization attempts made in the current sync cycle.
+    #[serde(default, skip_serializing)]
+    pub sync_attempts: i32,
 
+    /// Timestamp of the first create attempt before a provider meeting was persisted.
+    #[serde(skip_serializing)]
+    pub create_attempted_at: Option<DateTime<Utc>>,
     /// Whether the provider meeting should be deleted.
     pub delete: Option<bool>,
     /// Meeting duration.
@@ -30,6 +36,9 @@ pub(crate) struct Meeting {
     pub hosts: Option<Vec<String>>,
     /// Provider join URL.
     pub join_url: Option<String>,
+    /// Last provider host user reserved for this meeting across retries.
+    #[serde(skip_serializing)]
+    pub last_provider_host_user: Option<String>,
     /// Local meeting identifier.
     pub meeting_id: Option<Uuid>,
     /// Provider meeting password.

@@ -39,9 +39,13 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 -- Claimed virtual event whose sync succeeds
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
+    'meeting_create_attempted_at', '2024-01-01 00:00:00+00',
     'meeting_error', 'previous error',
     'meeting_in_sync', false,
+    'meeting_last_provider_host_user', 'release-sync-host@example.com',
+    'meeting_next_sync_at', '2024-01-01 00:05:00+00',
     'meeting_provider_host_user', 'release-sync-host@example.com',
+    'meeting_sync_attempts', 3,
     'meeting_sync_claimed_at', '2024-01-01 00:00:00+00',
     'timezone', 'America/New_York'
 ));
@@ -49,8 +53,11 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
 -- Claimed virtual event whose sync fails
 select fx_event(:'errorEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
+    'meeting_create_attempted_at', '2024-01-01 00:00:00+00',
     'meeting_in_sync', false,
+    'meeting_next_sync_at', '2024-01-01 00:05:00+00',
     'meeting_provider_host_user', 'release-sync-error-host@example.com',
+    'meeting_sync_attempts', 4,
     'meeting_sync_claimed_at', '2024-01-01 00:00:00+00',
     'timezone', 'America/New_York'
 ));
@@ -110,9 +117,13 @@ select fx_event(:'nullHashEventID', :'groupID', :'eventCategoryID', jsonb_build_
 -- Claimed session whose sync succeeds, with an earlier error
 insert into session (
     event_id,
+    meeting_create_attempted_at,
     meeting_error,
     meeting_in_sync,
+    meeting_last_provider_host_user,
+    meeting_next_sync_at,
     meeting_provider_host_user,
+    meeting_sync_attempts,
     meeting_sync_claimed_at,
     name,
     session_id,
@@ -120,9 +131,13 @@ insert into session (
     starts_at
 ) values (
     :'eventID',
+    '2024-01-01 00:00:00+00',
     'previous session error',
     false,
     'release-sync-session-host@example.com',
+    '2024-01-01 00:05:00+00',
+    'release-sync-session-host@example.com',
+    3,
     '2024-01-01 00:00:00+00',
     'Release Sync Session',
     :'sessionID',
@@ -182,46 +197,83 @@ insert into session (
 -- TESTS
 -- ============================================================================
 
--- Should release a held event claim and clear the error on success
+-- Should release a held event claim and clear create tracking when requested
 select is(
     release_meeting_sync(
         :'eventID',
         null,
         '2024-01-01 00:00:00+00',
         get_event_meeting_sync_state_hash(:'eventID'),
-        null
+        null,
+        true
     ),
     true,
     'Should report the event claim as held'
 );
 select results_eq(
     format(
-        $$ select meeting_error, meeting_in_sync, meeting_provider_host_user, meeting_sync_claimed_at from event where event_id = %L $$,
+        $$
+            select
+                meeting_create_attempted_at,
+                meeting_error,
+                meeting_in_sync,
+                meeting_last_provider_host_user,
+                meeting_next_sync_at,
+                meeting_provider_host_user,
+                meeting_sync_attempts,
+                meeting_sync_claimed_at
+            from event
+            where event_id = %L
+        $$,
         :'eventID'
     ),
-    $$ values (null::text, true, null::text, null::timestamptz) $$,
-    'Should mark the event in sync and clear the claim and error'
+    $$ values (null::timestamptz, null::text, true, null::text, null::timestamptz, null::text, 0, null::timestamptz) $$,
+    'Should mark the event in sync and clear the claim, error, retry state and create tracking'
 );
 
--- Should record the error while releasing a held claim
+-- Should record the error while preserving create tracking and last host when clear is false
 select is(
     release_meeting_sync(
         :'errorEventID',
         null,
         '2024-01-01 00:00:00+00',
         get_event_meeting_sync_state_hash(:'errorEventID'),
-        'provider rejected the meeting'
+        'provider rejected the meeting',
+        false
     ),
     true,
     'Should report the failing event claim as held'
 );
 select results_eq(
     format(
-        $$ select meeting_error, meeting_in_sync, meeting_sync_claimed_at from event where event_id = %L $$,
+        $$
+            select
+                meeting_create_attempted_at,
+                meeting_error,
+                meeting_in_sync,
+                meeting_last_provider_host_user,
+                meeting_next_sync_at,
+                meeting_provider_host_user,
+                meeting_sync_attempts,
+                meeting_sync_claimed_at
+            from event
+            where event_id = %L
+        $$,
         :'errorEventID'
     ),
-    $$ values ('provider rejected the meeting', true, null::timestamptz) $$,
-    'Should store the error and keep the row in sync with the synchronized state'
+    $$
+        values (
+            '2024-01-01 00:00:00+00'::timestamptz,
+            'provider rejected the meeting',
+            true,
+            'release-sync-error-host@example.com',
+            null::timestamptz,
+            null::text,
+            0,
+            null::timestamptz
+        )
+    $$,
+    'Should store the error, reset retry state and preserve create tracking and last host'
 );
 
 -- Should keep an event marked keep during the claim when its state changed
@@ -378,25 +430,38 @@ select results_eq(
     'Should leave a row whose claim is no longer held unchanged'
 );
 
--- Should release a held session claim
+-- Should release a held session claim and clear create tracking when requested
 select is(
     release_meeting_sync(
         null,
         :'sessionID',
         '2024-01-01 00:00:00+00',
         get_session_meeting_sync_state_hash(:'sessionID'),
-        null
+        null,
+        true
     ),
     true,
     'Should report the session claim as held'
 );
 select results_eq(
     format(
-        $$ select meeting_error, meeting_in_sync, meeting_provider_host_user, meeting_sync_claimed_at from session where session_id = %L $$,
+        $$
+            select
+                meeting_create_attempted_at,
+                meeting_error,
+                meeting_in_sync,
+                meeting_last_provider_host_user,
+                meeting_next_sync_at,
+                meeting_provider_host_user,
+                meeting_sync_attempts,
+                meeting_sync_claimed_at
+            from session
+            where session_id = %L
+        $$,
         :'sessionID'
     ),
-    $$ values (null::text, true, null::text, null::timestamptz) $$,
-    'Should mark the session in sync and clear the claim and error'
+    $$ values (null::timestamptz, null::text, true, null::text, null::timestamptz, null::text, 0, null::timestamptz) $$,
+    'Should mark the session in sync and clear the claim, error, retry state and create tracking'
 );
 
 -- Should do nothing without an event or session

@@ -26,6 +26,9 @@ mod tests;
 /// Zoom client error code for "meeting does not exist".
 pub(crate) const ZOOM_MEETING_NOT_FOUND: i32 = 3001;
 
+/// Zoom client error code for "user does not exist".
+pub(crate) const ZOOM_USER_NOT_FOUND: i32 = 1001;
+
 /// Base URL for Zoom client v2.
 const BASE_URL: &str = "https://api.zoom.us/v2";
 

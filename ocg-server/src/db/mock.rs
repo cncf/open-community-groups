@@ -1439,6 +1439,7 @@ mock! {
         async fn release_meeting_sync_claim(
             &self,
             meeting: &crate::types::meetings::Meeting,
+            retry_after: Option<std::time::Duration>,
         ) -> Result<()>;
         async fn set_meeting_auto_end_check_outcome(
             &self,

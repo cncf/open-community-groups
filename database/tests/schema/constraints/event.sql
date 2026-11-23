@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -130,6 +130,28 @@ select throws_ok(
     '23514',
     'new row for relation "event" violates check constraint "event_banner_mobile_dark_url_check"',
     'Should reject a blank dark mobile banner URL'
+);
+
+-- Should reject a blank last provider host user
+select throws_ok(
+    format(
+        $$update event set meeting_last_provider_host_user = ' ' where event_id = %L::uuid$$,
+        :'eventImagesID'
+    ),
+    '23514',
+    'new row for relation "event" violates check constraint "event_meeting_last_provider_host_user_check"',
+    'Should reject a blank last provider host user'
+);
+
+-- Should reject negative meeting sync attempts
+select throws_ok(
+    format(
+        $$update event set meeting_sync_attempts = -1 where event_id = %L::uuid$$,
+        :'eventImagesID'
+    ),
+    '23514',
+    'new row for relation "event" violates check constraint "event_meeting_sync_attempts_check"',
+    'Should reject negative meeting sync attempts'
 );
 
 -- Should reject a deleted published event

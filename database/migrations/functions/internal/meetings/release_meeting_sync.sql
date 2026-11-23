@@ -16,7 +16,8 @@ create or replace function release_meeting_sync(
     p_session_id uuid,
     p_sync_claimed_at timestamptz,
     p_sync_state_hash text,
-    p_error text
+    p_error text,
+    p_clear_create_attempt boolean default false
 )
 returns boolean as $$
 declare
@@ -44,6 +45,12 @@ begin
         -- Record the outcome and release the claim
         update event
         set
+            meeting_create_attempted_at = case
+                -- Clear create tracking once the meeting is persisted or removed
+                when p_clear_create_attempt then null
+                -- Preserve monotonic create tracking while no meeting row exists
+                else meeting_create_attempted_at
+            end,
             meeting_error = case
                 -- Record the worker outcome for the current state
                 when v_state_unchanged then p_error
@@ -56,7 +63,15 @@ begin
                 -- Mark the event in sync only when its state is unchanged
                 else v_state_unchanged
             end,
+            meeting_last_provider_host_user = case
+                -- Clear sticky host tracking once the meeting is persisted or removed
+                when p_clear_create_attempt then null
+                -- Preserve the last reserved host for future adoption scans
+                else coalesce(meeting_provider_host_user, meeting_last_provider_host_user)
+            end,
+            meeting_next_sync_at = null,
             meeting_provider_host_user = null,
+            meeting_sync_attempts = 0,
             meeting_sync_claimed_at = null
         where event_id = p_event_id;
 
@@ -81,6 +96,12 @@ begin
         -- Record the outcome and release the claim
         update session
         set
+            meeting_create_attempted_at = case
+                -- Clear create tracking once the meeting is persisted or removed
+                when p_clear_create_attempt then null
+                -- Preserve monotonic create tracking while no meeting row exists
+                else meeting_create_attempted_at
+            end,
             meeting_error = case
                 -- Record the worker outcome for the current state
                 when v_state_unchanged then p_error
@@ -93,7 +114,15 @@ begin
                 -- Mark the session in sync only when its state is unchanged
                 else v_state_unchanged
             end,
+            meeting_last_provider_host_user = case
+                -- Clear sticky host tracking once the meeting is persisted or removed
+                when p_clear_create_attempt then null
+                -- Preserve the last reserved host for future adoption scans
+                else coalesce(meeting_provider_host_user, meeting_last_provider_host_user)
+            end,
+            meeting_next_sync_at = null,
             meeting_provider_host_user = null,
+            meeting_sync_attempts = 0,
             meeting_sync_claimed_at = null
         where session_id = p_session_id;
 

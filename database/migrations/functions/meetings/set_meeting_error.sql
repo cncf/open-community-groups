@@ -9,14 +9,16 @@ create or replace function set_meeting_error(
 )
 returns void as $$
 begin
-    -- Complete event or session claim when the worker still holds it
+    -- Complete event or session claim when the worker still holds it,
+    -- preserving create-attempt and sticky host tracking for later retries
     if p_event_id is not null or p_session_id is not null then
         perform release_meeting_sync(
             p_event_id,
             p_session_id,
             p_sync_claimed_at,
             p_sync_state_hash,
-            p_error
+            p_error,
+            false
         );
     -- Orphan meeting case: no event/session to record error on, delete the row
     -- only when the worker still holds the claim

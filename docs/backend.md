@@ -423,8 +423,11 @@ Classification at the boundary:
   unknown outcome and is recorded as such, never retried blindly; a
   connection timeout before that point is retryable.
 - A meeting provider creation without an idempotency key is made safe to
-  retry by the provider adapter, which stamps every meeting with a reference
-  and adopts an existing match before creating.
+  retry by recording a durable create-attempt marker at claim time and
+  stamping every created meeting with a provider reference; the first create
+  skips the adoption scan, while retries and recoveries scan the host pool
+  (checking the last reserved host first) and adopt an existing match before
+  creating.
 - S3 image uploads key objects by content hash, so a timed-out write is
   idempotent and safe for the caller to retry.
 - A PostgreSQL statement timeout is not an unknown outcome: the server
