@@ -510,6 +510,7 @@ mod tests {
     async fn test_cache_probe_returns_without_waiting_for_in_progress_fill() {
         // Setup a cached fill that holds its key lock until released
         #[cached(
+            max_size = 16,
             ttl_secs = 60,
             key = "String",
             convert = r#"{ String::from(name) }"#,

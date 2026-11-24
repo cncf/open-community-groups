@@ -512,9 +512,11 @@ acceptable. The cache is a performance tool, not a consistency mechanism, and
 the TTL is the only invalidation. Each cached trait method documents its TTL.
 A cached read probes the cache before checking out a client, so a fast-path hit
 never takes a pool connection or reaches the database. On a miss it checks out
-the client first and only then enters the cached function, whose per-key fill
-lock rechecks the cache. No caller waits for a pool connection while holding
-the fill lock, which transactions holding their connections would queue behind.
+the client first and only then enters the cached function (which rechecks the
+cache under its per-key fill lock when `sync_writes` is enabled; positive-only
+lookups omit `sync_writes` so uncached misses do not serialize while holding
+pooled connections). No caller waits for a pool connection while holding the
+fill lock, which transactions holding their connections would queue behind.
 
 The `#[cached]` reads sit on blanket `impl<T: PgExecutor>` blocks, so `PgDB`
 and `PgUnitOfWork` share the same cache entries and there is no transactional
@@ -540,4 +542,6 @@ most likely to overlap with a transaction's writes, so they are not read from
 
 Cache entries are keyed by the data they describe and are global to the
 process. Every `PgDB` in a process shares them, which is the intended
-production shape (one pool, one database).
+production shape (one pool, one database). Every non-singleton `#[cached]`
+attribute specifies a `max_size` bound so cache memory stays bounded, enforced
+by `layers::keyed_cached_reads_specify_max_size`.

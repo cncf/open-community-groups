@@ -436,6 +436,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats> {
         #[cached(
+            max_size = 1_000,
             ttl_secs = 3600,
             key = "Uuid",
             convert = "{ community_id }",

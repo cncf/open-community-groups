@@ -1599,6 +1599,7 @@ where
         include_subgroups: bool,
     ) -> Result<GroupDashboardStats> {
         #[cached(
+            max_size = 1_000,
             ttl_secs = 3600,
             key = "(Uuid, Uuid, bool)",
             convert = "{ (community_id, group_id, include_subgroups) }",
