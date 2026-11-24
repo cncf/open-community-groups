@@ -973,6 +973,49 @@ async fn test_preview_renders_named_organizers_after_hosts() {
 }
 
 #[tokio::test]
+async fn test_preview_sanitizes_unsafe_image_urls() {
+    // Setup identifiers and a preview carrying unsafe event image URLs with safe fallbacks
+    let ids = DashboardIds::new();
+    let preview_context = json!({
+        "group": {
+            "banner_url": "/images/group-banner.png",
+            "logo_url": "https://example.test/group-logo.png"
+        }
+    });
+    let body = serde_urlencoded::to_string([
+        ("banner_url", "javascript:alert(1)".to_string()),
+        ("banner_dark_url", "data:image/svg+xml,<svg/>".to_string()),
+        ("logo_url", "//evil.test/logo.png".to_string()),
+        ("logo_dark_url", "javascript:alert(2)".to_string()),
+        ("preview_context", preview_context.to_string()),
+    ])
+    .unwrap();
+
+    // Setup database mock for session and permission middleware only
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::EventsWrite);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "POST",
+        "/dashboard/group/events/preview",
+        ids.session_id,
+        body,
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the handler returns an HTML preview with sanitized URLs
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(!body.contains("javascript:alert"));
+    assert!(!body.contains("data:image/svg+xml"));
+    assert!(!body.contains("//evil.test/logo.png"));
+    assert!(body.contains("/images/group-banner.png"));
+    assert!(body.contains("https://example.test/group-logo.png"));
+}
+
+#[tokio::test]
 async fn test_preview_uses_submitted_payload_without_event_db_calls() {
     // Setup identifiers and database mock for session and permission middleware only
     let ids = DashboardIds::new();

@@ -126,15 +126,52 @@ pub(crate) async fn user_has_path_community_permission(
     };
 
     // Check required permission against the community id from the path
-    let Ok(has_permission) = db
+    let has_permission = match db
         .user_has_community_permission(&community_id, &user.user_id, permission)
         .await
-    else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    {
+        Ok(has_permission) => has_permission,
+        Err(err) => return HandlerError::from(err).into_response(),
     };
     if !has_permission {
         return StatusCode::FORBIDDEN.into_response();
     }
+
+    next.run(request).await.into_response()
+}
+
+/// Check if the user has at least one accessible group in a path community.
+#[instrument(skip_all)]
+pub(crate) async fn user_has_path_group_community_access(
+    State(db): State<DynDB>,
+    Path(community_id): Path<Uuid>,
+    auth_session: AuthSession,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    // Require an authenticated user
+    let Some(user) = auth_session.user else {
+        return StatusCode::FORBIDDEN.into_response();
+    };
+
+    // Resolve the first accessible group in the path community
+    let groups_by_community = match db.list_user_groups(&user.user_id).await {
+        Ok(groups) => groups,
+        Err(err) => return HandlerError::from(err).into_response(),
+    };
+    let Some(first_group_id) = groups_by_community
+        .iter()
+        .find(|community| community.community.community_id == community_id)
+        .and_then(|community| community.groups.first())
+        .map(|group| group.group_id)
+    else {
+        return HandlerError::Forbidden.into_response();
+    };
+
+    // Store resolved community and group context for downstream extractors
+    let mut request = request;
+    request.extensions_mut().insert(SelectedCommunityId(community_id));
+    request.extensions_mut().insert(SelectedGroupId(first_group_id));
 
     next.run(request).await.into_response()
 }
@@ -162,21 +199,22 @@ pub(crate) async fn user_has_path_group_permission(
     };
 
     // Ensure the path group belongs to the selected community before checking permissions
-    let Ok(group_belongs_to_community) =
-        db.group_belongs_to_community(&community_id, &group_id).await
-    else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
+    let group_belongs_to_community =
+        match db.group_belongs_to_community(&community_id, &group_id).await {
+            Ok(belongs) => belongs,
+            Err(err) => return HandlerError::from(err).into_response(),
+        };
     if !group_belongs_to_community {
         return StatusCode::FORBIDDEN.into_response();
     }
 
     // Check required permission against the group id from the path
-    let Ok(has_permission) = db
+    let has_permission = match db
         .user_has_group_permission(&community_id, &group_id, &user.user_id, permission)
         .await
-    else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    {
+        Ok(has_permission) => has_permission,
+        Err(err) => return HandlerError::from(err).into_response(),
     };
     if !has_permission {
         return StatusCode::FORBIDDEN.into_response();

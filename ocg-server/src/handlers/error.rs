@@ -2,7 +2,10 @@
 //! in handlers.
 
 use axum::{
-    extract::multipart::MultipartError,
+    extract::{
+        multipart::MultipartError,
+        rejection::{FormRejection, StringRejection},
+    },
     http::StatusCode,
     response::{IntoResponse, Response},
 };
@@ -72,6 +75,13 @@ pub(crate) enum HandlerError {
     #[error(transparent)]
     Other(anyhow::Error),
 
+    /// Error reading or framing a request payload with axum's status and detail.
+    ///
+    /// The response keeps axum's status code with a fixed body (empty on 5xx).
+    /// The detail is logged and never returned to the client.
+    #[error("request payload error ({0}): {1}")]
+    Payload(StatusCode, String),
+
     /// User-facing business rejection raised by application code.
     #[error("rejected: {0}")]
     Rejected(String),
@@ -104,6 +114,9 @@ impl HandlerError {
             Self::Multipart(err) if err.status().is_server_error() => {
                 error!(error = %format_args!("{self:#}"), "handler error");
             }
+            Self::Payload(status, _) if status.is_server_error() => {
+                error!(error = %format_args!("{self:#}"), "handler error");
+            }
             // Client rejections are expected traffic
             Self::Auth
             | Self::Database(_)
@@ -111,6 +124,7 @@ impl HandlerError {
             | Self::Forbidden
             | Self::Multipart(_)
             | Self::NotFound
+            | Self::Payload(_, _)
             | Self::Rejected(_)
             | Self::Validation(_) => warn!(error = %self, "request rejected"),
         }
@@ -134,16 +148,9 @@ impl IntoResponse for HandlerError {
             }
             HandlerError::Forbidden => StatusCode::FORBIDDEN.into_response(),
             // Answer with axum's status for the error and a fixed body
-            HandlerError::Multipart(err) => match err.status() {
-                StatusCode::PAYLOAD_TOO_LARGE => {
-                    (StatusCode::PAYLOAD_TOO_LARGE, REQUEST_PAYLOAD_TOO_LARGE).into_response()
-                }
-                status if status.is_client_error() => {
-                    (status, INVALID_REQUEST_PAYLOAD).into_response()
-                }
-                status => status.into_response(),
-            },
+            HandlerError::Multipart(err) => payload_error_response(err.status()),
             HandlerError::NotFound => StatusCode::NOT_FOUND.into_response(),
+            HandlerError::Payload(status, _) => payload_error_response(status),
             HandlerError::Validation(report) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, report.to_string()).into_response()
             }
@@ -202,6 +209,12 @@ impl From<FiscalSponsorReadinessError> for HandlerError {
     }
 }
 
+impl From<FormRejection> for HandlerError {
+    fn from(err: FormRejection) -> Self {
+        HandlerError::Payload(err.status(), err.to_string())
+    }
+}
+
 impl From<ImagesError> for HandlerError {
     fn from(err: ImagesError) -> Self {
         match err {
@@ -232,5 +245,24 @@ impl From<PaymentsError> for HandlerError {
 impl From<serde_qs::Error> for HandlerError {
     fn from(err: serde_qs::Error) -> Self {
         HandlerError::Deserialization(err.to_string())
+    }
+}
+
+impl From<StringRejection> for HandlerError {
+    fn from(err: StringRejection) -> Self {
+        HandlerError::Payload(err.status(), err.to_string())
+    }
+}
+
+// Helpers.
+
+/// Maps a request payload error status to its fixed response body.
+fn payload_error_response(status: StatusCode) -> Response {
+    match status {
+        StatusCode::PAYLOAD_TOO_LARGE => {
+            (StatusCode::PAYLOAD_TOO_LARGE, REQUEST_PAYLOAD_TOO_LARGE).into_response()
+        }
+        status if status.is_client_error() => (status, INVALID_REQUEST_PAYLOAD).into_response(),
+        status => status.into_response(),
     }
 }

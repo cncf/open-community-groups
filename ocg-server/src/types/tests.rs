@@ -7,6 +7,7 @@ use chrono_tz::UTC;
 use uuid::Uuid;
 
 use crate::types::{
+    badges::BadgeInput,
     community::{CommunityRole, CommunitySummary},
     dashboard::{
         community::team::CommunityTeamMember,
@@ -105,6 +106,16 @@ pub(crate) fn sample_attendee() -> Attendee {
         refund_request_status: None,
         registration_answers: None,
         ticket_title: None,
+    }
+}
+
+/// Sample badge definition form fixture.
+pub(crate) fn sample_badge_input() -> BadgeInput {
+    BadgeInput {
+        criteria: "Attend the event".to_string(),
+        description: "Recognizes participation".to_string(),
+        image_file_name: "badge.png".to_string(),
+        name: "Participant".to_string(),
     }
 }
 

@@ -1,23 +1,16 @@
 //! HTTP handlers for the group dashboard.
 
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::IntoResponse,
-};
+use axum::{extract::Path, http::StatusCode, response::IntoResponse};
 use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     config::PaymentsConfig,
-    db::DynDB,
     handlers::{
-        auth::session_context::{
-            SELECTED_GROUP_ID_KEY, SelectedGroupPolicy, sync_selected_community_and_group,
-        },
+        auth::session_context::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
         error::HandlerError,
-        extractors::CurrentUser,
+        extractors::{SelectedCommunityId, SelectedGroupId},
     },
     types::payments::GroupPaymentRecipient,
 };
@@ -73,20 +66,13 @@ pub(crate) fn payments_ready(
 /// Sets the selected community and auto-selects the first group in session.
 #[instrument(skip_all)]
 pub(crate) async fn select_community(
-    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
     session: Session,
-    State(db): State<DynDB>,
-    Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update the selected community and group in the session
-    sync_selected_community_and_group(
-        &db,
-        &session,
-        &user.user_id,
-        community_id,
-        SelectedGroupPolicy::Required,
-    )
-    .await?;
+    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
+    session.insert(SELECTED_GROUP_ID_KEY, group_id).await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }

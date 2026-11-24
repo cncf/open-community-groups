@@ -2,6 +2,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 
+use anyhow::anyhow;
 use axum::{
     Form,
     extract::{FromRequest, FromRequestParts, Path, Request},
@@ -139,17 +140,18 @@ impl FromRequestParts<router::State> for Oidc {
 pub(crate) struct SelectedCommunityId(pub Uuid);
 
 impl FromRequestParts<router::State> for SelectedCommunityId {
-    type Rejection = (StatusCode, &'static str);
+    type Rejection = HandlerError;
 
-    #[instrument(skip_all, err(Debug))]
+    #[instrument(skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
         _state: &router::State,
     ) -> Result<Self, Self::Rejection> {
-        parts.extensions.get::<SelectedCommunityId>().copied().ok_or((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "missing selected community context",
-        ))
+        parts
+            .extensions
+            .get::<SelectedCommunityId>()
+            .copied()
+            .ok_or_else(|| HandlerError::Other(anyhow!("missing selected community context")))
     }
 }
 
@@ -159,26 +161,27 @@ impl FromRequestParts<router::State> for SelectedCommunityId {
 pub(crate) struct SelectedGroupId(pub Uuid);
 
 impl FromRequestParts<router::State> for SelectedGroupId {
-    type Rejection = (StatusCode, &'static str);
+    type Rejection = HandlerError;
 
-    #[instrument(skip_all, err(Debug))]
+    #[instrument(skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
         _state: &router::State,
     ) -> Result<Self, Self::Rejection> {
-        parts.extensions.get::<SelectedGroupId>().copied().ok_or((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "missing selected group context",
-        ))
+        parts
+            .extensions
+            .get::<SelectedGroupId>()
+            .copied()
+            .ok_or_else(|| HandlerError::Other(anyhow!("missing selected group context")))
     }
 }
 
 /// Extractor that deserializes and validates form data using Axum's Form extractor.
 ///
 /// Use this for simple, flat form structures. For complex nested structures
-/// (arrays, maps), use `ValidatedFormQs` instead. Deserialization failures
-/// follow the `HandlerError::Deserialization` contract (fixed body, detail
-/// logged) and validation failures return the `garde` report.
+/// (arrays, maps), use `ValidatedFormQs` instead. Body length-limit and
+/// deserialization failures follow the `HandlerError` contract (fixed body,
+/// detail logged) and validation failures return the `garde` report.
 pub(crate) struct ValidatedForm<T>(pub T);
 
 impl<T> FromRequest<router::State> for ValidatedForm<T>
@@ -192,7 +195,7 @@ where
         // Deserialize form data
         let Form(value) = Form::<T>::from_request(req, state)
             .await
-            .map_err(|e| HandlerError::Deserialization(e.to_string()).into_response())?;
+            .map_err(|err| HandlerError::from(err).into_response())?;
 
         // Validate the deserialized value
         value
@@ -221,13 +224,13 @@ where
         // Read body as string
         let body = String::from_request(req, state)
             .await
-            .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()).into_response())?;
+            .map_err(|err| HandlerError::from(err).into_response())?;
 
         // Deserialize using serde_qs
         let value: T = state
             .serde_qs_de
             .deserialize_str(&body)
-            .map_err(|e| HandlerError::Deserialization(e.to_string()).into_response())?;
+            .map_err(|err| HandlerError::Deserialization(err.to_string()).into_response())?;
 
         // Validate the deserialized value
         value

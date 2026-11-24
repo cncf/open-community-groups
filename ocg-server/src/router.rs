@@ -588,7 +588,7 @@ fn insert_commit_sha_header(headers: &mut axum::http::HeaderMap) {
 /// Middleware that redirects requests from old hosts to the base URL.
 ///
 /// If the request's Host header matches any hostname in the configured `redirect_hosts`
-/// list, the request is redirected with a 301 permanent redirect to the base URL.
+/// list, the request is redirected with a 308 permanent redirect to the base URL.
 async fn redirect_old_hosts(
     AxumState(server_cfg): AxumState<HttpServerConfig>,
     request: Request,

@@ -2,10 +2,15 @@
 
 use askama::Template;
 use chrono::NaiveDateTime;
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use crate::{templates::filters, types::images::ThemedImage, validation::EVENT_LABEL_COLORS};
+use crate::{
+    templates::filters,
+    types::images::ThemedImage,
+    validation::{EVENT_LABEL_COLORS, is_safe_image_url},
+};
 
 #[cfg(test)]
 mod tests;
@@ -228,7 +233,7 @@ impl From<Input> for Event {
             .clone()
             .unwrap_or_default()
             .into_iter()
-            .filter_map(|value| normalize_text(Some(value)))
+            .filter_map(|value| sanitize_image_url(Some(&value)).map(str::to_string))
             .collect();
         let sessions = build_sessions(
             input.sessions.as_deref(),
@@ -236,6 +241,7 @@ impl From<Input> for Event {
             input.timezone.as_deref(),
         );
         let speakers = named_people(&context.speakers);
+        let sponsors = build_sponsors(&context.sponsors);
 
         // Derive location and missing-field display state
         let venue_label = build_location(&input);
@@ -258,7 +264,7 @@ impl From<Input> for Event {
             photos,
             sessions,
             speakers,
-            sponsors: context.sponsors.clone(),
+            sponsors,
             venue_label,
         }
     }
@@ -313,8 +319,12 @@ pub(crate) struct SessionLabel {
 // Input types.
 
 /// Submitted event editor payload accepted by the preview endpoint.
+///
+/// Accepts incomplete drafts so the preview can highlight missing fields while
+/// sanitizing unsafe URLs during rendering.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+#[garde(allow_unvalidated)]
 pub(crate) struct Input {
     /// Event category identifier from the editor.
     pub category_id: Option<String>,
@@ -625,8 +635,11 @@ fn build_cohosts(cohosts: &[ContextCohost]) -> Vec<ContextCohost> {
                 })?;
 
             // Keep the dark logo only together with its light logo
-            let logo_url = normalize_text(cohost.logo_url.clone());
-            let logo_dark_url = logo_url.as_ref().and(normalize_text(cohost.logo_dark_url.clone()));
+            let logo_url = sanitize_image_url(cohost.logo_url.as_deref()).map(str::to_string);
+            let logo_dark_url = logo_url
+                .as_ref()
+                .and_then(|_| sanitize_image_url(cohost.logo_dark_url.as_deref()))
+                .map(str::to_string);
 
             Some(ContextCohost {
                 logo_dark_url,
@@ -804,14 +817,27 @@ fn build_sessions(
         .collect()
 }
 
-/// Returns the first level with a non-empty light image, paired with the
-/// normalized dark image of that same level.
+/// Sanitizes preview sponsor logo URLs while preserving submitted details.
+fn build_sponsors(sponsors: &[ContextSponsor]) -> Vec<ContextSponsor> {
+    sponsors
+        .iter()
+        .cloned()
+        .map(|mut sponsor| {
+            sponsor.logo_url = sanitize_image_url(sponsor.logo_url.as_deref()).map(str::to_string);
+            sponsor
+        })
+        .collect()
+}
+
+/// Returns the first level with a valid light image URL, paired with the
+/// validated dark image URL of that same level.
 ///
-/// Each level is a (light URL, dark URL) pair, normalized first and then
+/// Each level is a (light URL, dark URL) pair, sanitized first and then
 /// resolved by [`ThemedImage::first`].
 fn first_image(levels: [(Option<&str>, Option<&str>); 3]) -> (Option<String>, Option<String>) {
-    // Treat blank URLs as missing before resolving the level
-    let levels = levels.map(|(url, dark_url)| (trimmed_text(url), trimmed_text(dark_url)));
+    // Drop blank or unsafe URLs before resolving the level
+    let levels =
+        levels.map(|(url, dark_url)| (sanitize_image_url(url), sanitize_image_url(dark_url)));
 
     // Return owned URLs of the level that provides the light image
     ThemedImage::first(levels).map_or((None, None), |image| {
@@ -831,12 +857,17 @@ where
     values.into_iter().find_map(normalize_text)
 }
 
-/// Keeps the people with a full name, matching the public event page.
+/// Keeps the people with a full name and sanitized photo URLs, matching the
+/// public event page.
 fn named_people(people: &[ContextPerson]) -> Vec<ContextPerson> {
     people
         .iter()
         .filter(|person| normalize_text(person.name.as_deref()).is_some())
         .cloned()
+        .map(|mut person| {
+            person.photo_url = sanitize_image_url(person.photo_url.as_deref()).map(str::to_string);
+            person
+        })
         .collect()
 }
 
@@ -867,6 +898,11 @@ fn parse_datetime(value: Option<&str>) -> Option<NaiveDateTime> {
     NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S")
         .or_else(|_| NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M"))
         .ok()
+}
+
+/// Returns a trimmed image URL when it passes image URL validation.
+fn sanitize_image_url(value: Option<&str>) -> Option<&str> {
+    trimmed_text(value).filter(|url| is_safe_image_url(url))
 }
 
 /// Returns true when a submitted session should be rendered.

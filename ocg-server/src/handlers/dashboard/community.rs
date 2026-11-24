@@ -12,8 +12,7 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{
-        auth::session_context::{SelectedGroupPolicy, sync_selected_community_and_group},
-        error::HandlerError,
+        auth::session_context::sync_selected_community_and_group, error::HandlerError,
         extractors::CurrentUser,
     },
 };
@@ -41,14 +40,7 @@ pub(crate) async fn select_community(
     Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update the selected community and group in the session
-    sync_selected_community_and_group(
-        &db,
-        &session,
-        &user.user_id,
-        community_id,
-        SelectedGroupPolicy::Optional,
-    )
-    .await?;
+    sync_selected_community_and_group(&db, &session, &user.user_id, community_id).await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }

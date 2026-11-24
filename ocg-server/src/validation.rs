@@ -187,6 +187,11 @@ pub(crate) fn is_safe_href(url: &str) -> bool {
     is_safe_web_url(url, true)
 }
 
+/// Returns whether a URL is valid for use as an image source.
+pub(crate) fn is_safe_image_url(url: &str) -> bool {
+    validate_image_url(url).is_ok()
+}
+
 /// Returns whether a UTM value has the format accepted by the database.
 pub(crate) fn is_valid_utm_value(value: &str) -> bool {
     !value.is_empty()
@@ -292,6 +297,19 @@ pub fn utm_value_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
         }
     }
 
+    Ok(())
+}
+
+/// Validates that a stored artwork filename is a bounded, route-safe basename.
+pub fn valid_artwork_file_name(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
+    let file_name = value.as_ref().trim();
+    let mut bytes = file_name.bytes();
+    let valid = (1..=80).contains(&file_name.len())
+        && bytes.next().is_some_and(|byte| byte.is_ascii_alphanumeric())
+        && bytes.all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'));
+    if !valid {
+        return Err(garde::Error::new("artwork filename is invalid"));
+    }
     Ok(())
 }
 
@@ -739,6 +757,31 @@ mod tests {
     }
 
     #[test]
+    fn test_is_safe_image_url_matches_valid_urls() {
+        let too_long = format!("https://example.com/{}", "a".repeat(MAX_LEN_L));
+        let cases = [
+            ("absolute web URL", "https://example.com/image.png", true),
+            ("plain HTTP URL", "http://example.com/image.png", true),
+            ("root-relative path", "/images/banner.png", true),
+            ("empty", "", false),
+            ("blank", "   ", false),
+            ("protocol-relative URL", "//evil.com/image.png", false),
+            (
+                "backslash protocol-relative URL",
+                "/\\evil.com/image.png",
+                false,
+            ),
+            ("data URL", "data:image/svg+xml,<svg/>", false),
+            ("javascript URL", "javascript:alert(1)", false),
+            ("too long", too_long.as_str(), false),
+        ];
+
+        for (case, url, expected) in cases {
+            assert_eq!(is_safe_image_url(url), expected, "{case}");
+        }
+    }
+
+    #[test]
     fn test_is_valid_utm_value_invalid() {
         let too_long = "a".repeat(MAX_LEN_UTM_VALUE + 1);
         for value in ["", "News", "news letter", "news!", "news\u{0}", &too_long] {
@@ -792,6 +835,45 @@ mod tests {
     fn test_trimmed_non_empty_valid() {
         for value in ["hello", "  hello  ", "a"] {
             assert!(trimmed_non_empty(&value, &()).is_ok(), "{value:?}");
+        }
+    }
+
+    #[test]
+    fn test_valid_artwork_file_name() {
+        let cases = [
+            (
+                "content-addressed basename",
+                "0123456789abcdef.png".to_string(),
+                true,
+            ),
+            (
+                "trimmed basename",
+                "  0123456789abcdef.png  ".to_string(),
+                true,
+            ),
+            (
+                "separators after the first byte",
+                "a1_b-c.d.webp".to_string(),
+                true,
+            ),
+            ("80 characters", format!("{}.png", "a".repeat(76)), true),
+            ("81 characters", format!("{}.png", "a".repeat(77)), false),
+            ("empty", String::new(), false),
+            ("blank", "   ".to_string(), false),
+            ("leading dot", ".badge.png".to_string(), false),
+            ("leading hyphen", "-badge.png".to_string(), false),
+            ("parent traversal", "../../log-out".to_string(), false),
+            ("nested path", "badge/image.png".to_string(), false),
+            ("inner space", "badge image.png".to_string(), false),
+            ("non-ascii", "bädge.png".to_string(), false),
+        ];
+
+        for (label, file_name, expected) in cases {
+            let result = valid_artwork_file_name(&file_name, &());
+            assert_eq!(result.is_ok(), expected, "{label}");
+            if let Err(err) = result {
+                assert_eq!(err.to_string(), "artwork filename is invalid", "{label}");
+            }
         }
     }
 

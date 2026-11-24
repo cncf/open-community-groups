@@ -10,8 +10,8 @@ use crate::{
     services::images::{ImagesError, MockImagesManager},
     types::{
         badges::{
-            AwardBadgeOutcome, BadgeAwardInput, BadgeAwardSourceFilter, BadgeInput,
-            GroupAwardedBadges, GroupBadges,
+            AwardBadgeOutcome, BADGE_REVOCATION_REASON_MAX_CHARS, BadgeAwardInput,
+            BadgeAwardSourceFilter, GroupAwardedBadges, GroupBadges,
         },
         permissions::GroupPermission,
     },
@@ -381,7 +381,10 @@ async fn test_add_rejects_invalid_input() {
 
     // Check input validation fails before the badge mutation
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(bytes, "all badge fields are required");
+    assert_eq!(
+        bytes,
+        "description: value cannot be empty or whitespace-only\n"
+    );
 }
 
 #[tokio::test]
@@ -442,7 +445,7 @@ async fn test_add_artwork_rejects_invalid_file_name() {
 
     // Check the filename is rejected before validation or database access
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(bytes, "artwork filename is invalid");
+    assert_eq!(bytes, "file_name: artwork filename is invalid\n");
 }
 
 #[tokio::test]
@@ -764,6 +767,30 @@ async fn test_delete_artwork_success() {
 }
 
 #[tokio::test]
+async fn test_revoke_rejects_invalid_input() {
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
+    let user_badge_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_group_access(&mut db, &ids, GroupPermission::BadgesWrite);
+    db.expect_revoke_group_user_badge().never();
+
+    // Setup router and send request with a blank revocation reason
+    let router = TestRouterBuilder::new(db).build().await;
+    let request = form_request(
+        "POST",
+        &format!("/dashboard/group/badges/awards/{user_badge_id}/revoke"),
+        ids.session_id,
+        "reason=+++",
+    );
+    let (parts, bytes) = send(router, request).await;
+
+    // Check input validation fails before the revocation mutation
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(bytes, "reason: value cannot be empty or whitespace-only\n");
+}
+
+#[tokio::test]
 async fn test_revoke_rejects_invalid_user_badge_id() {
     // Setup identifiers and database mock
     let ids = DashboardIds::new();
@@ -850,7 +877,7 @@ async fn test_update_rejects_invalid_input() {
 
     // Check input validation fails before the badge mutation
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(bytes, "all badge fields are required");
+    assert_eq!(bytes, "name: value cannot be empty or whitespace-only\n");
 }
 
 #[tokio::test]
@@ -897,35 +924,6 @@ async fn test_update_success() {
         StatusCode::NO_CONTENT,
         "refresh-group-dashboard-table",
     );
-}
-
-#[test]
-fn test_is_safe_artwork_file_name() {
-    let cases = [
-        (
-            "content-addressed basename",
-            "0123456789abcdef.png".to_string(),
-            true,
-        ),
-        (
-            "separators after the first byte",
-            "a1_b-c.d.webp".to_string(),
-            true,
-        ),
-        ("80 characters", format!("{}.png", "a".repeat(76)), true),
-        ("81 characters", format!("{}.png", "a".repeat(77)), false),
-        ("empty", String::new(), false),
-        ("leading dot", ".badge.png".to_string(), false),
-        ("leading hyphen", "-badge.png".to_string(), false),
-        ("parent traversal", "../../log-out".to_string(), false),
-        ("nested path", "badge/image.png".to_string(), false),
-        ("inner space", "badge image.png".to_string(), false),
-        ("non-ascii", "bädge.png".to_string(), false),
-    ];
-
-    for (label, file_name, expected) in cases {
-        assert_eq!(is_safe_artwork_file_name(&file_name), expected, "{label}");
-    }
 }
 
 #[test]
@@ -979,70 +977,41 @@ fn test_parse_date_filters() {
 }
 
 #[test]
-fn test_validate_badge_input() {
-    let with = |update: fn(&mut BadgeInput)| {
-        let mut input = sample_badge_input();
-        update(&mut input);
-        input
-    };
+fn test_revoke_input_validation() {
     let cases = [
-        ("valid definition", sample_badge_input(), None),
+        ("valid reason", "duplicate".to_string(), None),
         (
-            "text at every bound",
-            with(|input| {
-                input.criteria = "a".repeat(BADGE_CRITERIA_MAX_CHARS);
-                input.description = "a".repeat(BADGE_DESCRIPTION_MAX_CHARS);
-                input.name = "é".repeat(BADGE_NAME_MAX_CHARS);
-            }),
+            "reason at max char bound",
+            "é".repeat(BADGE_REVOCATION_REASON_MAX_CHARS),
             None,
         ),
         (
-            "blank criteria",
-            with(|input| input.criteria = " ".to_string()),
-            Some("all badge fields are required"),
+            "reason with crlf line breaks at max char bound",
+            format!("{}{}", "a".repeat(990), "\r\n".repeat(10)),
+            None,
         ),
         (
-            "empty description",
-            with(|input| input.description.clear()),
-            Some("all badge fields are required"),
+            "blank reason",
+            "   ".to_string(),
+            Some("reason: value cannot be empty or whitespace-only\n"),
         ),
         (
-            "empty image file name",
-            with(|input| input.image_file_name.clear()),
-            Some("all badge fields are required"),
+            "oversized reason",
+            "a".repeat(BADGE_REVOCATION_REASON_MAX_CHARS + 1),
+            Some("reason: length is greater than 1000\n"),
         ),
         (
-            "blank name",
-            with(|input| input.name = "\t".to_string()),
-            Some("all badge fields are required"),
-        ),
-        (
-            "unsafe image file name",
-            with(|input| input.image_file_name = "../badge.png".to_string()),
-            Some("all badge fields are required"),
-        ),
-        (
-            "oversized criteria",
-            with(|input| input.criteria = "a".repeat(BADGE_CRITERIA_MAX_CHARS + 1)),
-            Some("badge text exceeds the allowed length"),
-        ),
-        (
-            "oversized description",
-            with(|input| input.description = "a".repeat(BADGE_DESCRIPTION_MAX_CHARS + 1)),
-            Some("badge text exceeds the allowed length"),
-        ),
-        (
-            "oversized name",
-            with(|input| input.name = "a".repeat(BADGE_NAME_MAX_CHARS + 1)),
-            Some("badge text exceeds the allowed length"),
+            "oversized reason with crlf line breaks",
+            format!("{}{}", "a".repeat(991), "\r\n".repeat(10)),
+            Some("reason: length is greater than 1000\n"),
         ),
     ];
 
-    for (label, input, expected_error) in cases {
-        match (validate_badge_input(&input), expected_error) {
+    for (label, reason, expected_error) in cases {
+        match (RevokeInput { reason }.validate(), expected_error) {
             (Ok(()), None) => {}
-            (Err(HandlerError::Rejected(message)), Some(expected_message)) => {
-                assert_eq!(message, expected_message, "{label}");
+            (Err(report), Some(expected_message)) => {
+                assert_eq!(report.to_string(), expected_message, "{label}");
             }
             (result, expected) => panic!("{label}: got {result:?}, expected {expected:?}"),
         }
@@ -1059,14 +1028,4 @@ fn add_artwork_request(ids: &DashboardIds, file_name: &str) -> Request<Body> {
         ids.session_id,
         format!("file_name={file_name}"),
     )
-}
-
-/// Build one valid badge definition form fixture.
-fn sample_badge_input() -> BadgeInput {
-    BadgeInput {
-        criteria: "Attend the event".to_string(),
-        description: "Recognizes participation".to_string(),
-        image_file_name: "badge.png".to_string(),
-        name: "Participant".to_string(),
-    }
 }

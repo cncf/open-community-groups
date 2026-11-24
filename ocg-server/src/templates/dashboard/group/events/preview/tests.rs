@@ -1,4 +1,6 @@
-use super::{Context, ContextCommunity, ContextGroup, ContextPerson, Event, Input};
+use askama::Template;
+
+use super::{Context, ContextCommunity, ContextGroup, ContextPerson, Event, Input, Page};
 
 #[test]
 fn test_context_defaults_missing_lists() {
@@ -350,6 +352,83 @@ fn test_event_pairs_no_dark_image_without_branding() {
     assert_eq!(event.logo_dark_url, None);
 }
 
+#[test]
+fn test_event_sanitizes_unsafe_image_urls() {
+    // Setup unsafe event image URLs over safe group fallback images and mixed
+    // collection URLs
+    let context = r#"{
+        "cohosts":[
+            {"name":"Alpha","status":"approved","logo_url":"javascript:alert(1)","logo_dark_url":"https://example.test/dark.png"},
+            {"name":"Beta","status":"approved","logo_url":"/images/beta.png","logo_dark_url":"data:image/svg+xml,<svg/>"}
+        ],
+        "group":{
+            "banner_url":"/images/group-banner.png",
+            "banner_dark_url":"javascript:alert(1)",
+            "logo_url":"https://example.test/group-logo.png"
+        },
+        "hosts":[{"name":"Host","photo_url":"javascript:alert(1)","username":"host"}],
+        "sponsors":[{"name":"Sponsor","logo_url":"data:text/html,bad"}]
+    }"#;
+    let input = Input {
+        banner_dark_url: Some("https://example.test/event-banner-dark.png".to_string()),
+        banner_url: Some("javascript:alert(1)".to_string()),
+        logo_dark_url: Some("//evil.test/logo-dark.png".to_string()),
+        logo_url: Some("data:image/svg+xml,<svg/>".to_string()),
+        photos_urls: Some(vec![
+            "javascript:alert(1)".to_string(),
+            "/images/valid.png".to_string(),
+            "//evil.test/photo.png".to_string(),
+            "https://example.test/photo.jpg".to_string(),
+        ]),
+        preview_context: Some(context.to_string()),
+        ..Input::default()
+    };
+
+    // Build the preview
+    let event = Event::from(input);
+
+    // Check unsafe banner and logo fall back to safe group images without unsafe dark variants
+    assert_eq!(
+        event.banner_url.as_deref(),
+        Some("/images/group-banner.png")
+    );
+    assert_eq!(event.banner_dark_url, None);
+    assert_eq!(
+        event.logo_url.as_deref(),
+        Some("https://example.test/group-logo.png")
+    );
+    assert_eq!(event.logo_dark_url, None);
+
+    // Check unsafe URLs are dropped from photos, co-hosts, people, and sponsors
+    assert_eq!(
+        event.photos,
+        vec![
+            "/images/valid.png".to_string(),
+            "https://example.test/photo.jpg".to_string(),
+        ]
+    );
+    assert_eq!(event.cohosts[0].logo_url, None);
+    assert_eq!(event.cohosts[0].logo_dark_url, None);
+    assert_eq!(
+        event.cohosts[1].logo_url.as_deref(),
+        Some("/images/beta.png")
+    );
+    assert_eq!(event.cohosts[1].logo_dark_url, None);
+    assert_eq!(event.hosts[0].photo_url, None);
+    assert_eq!(event.sponsors[0].logo_url, None);
+
+    // Check the rendered HTML excludes unsafe URLs and renders safe fallbacks
+    let html = Page { event }.render().unwrap();
+    assert!(!html.contains("javascript:alert"));
+    assert!(!html.contains("data:image/svg+xml"));
+    assert!(!html.contains("data:text/html"));
+    assert!(!html.contains("//evil.test"));
+    assert!(html.contains("banner-url=\"/images/group-banner.png\""));
+    assert!(html.contains("src=\"https://example.test/group-logo.png\""));
+    assert!(html.contains("/images/beta.png"));
+    assert!(html.contains("/images/valid.png"));
+}
+
 // Helpers.
 
 /// Returns an input with the given (light, dark) event and group pairs for one
@@ -416,7 +495,7 @@ fn image_url(kind: &str, token: Option<&str>) -> Option<String> {
         if token.trim().is_empty() {
             token.to_string()
         } else {
-            format!("{token}-{kind}")
+            format!("/{token}-{kind}.png")
         }
     })
 }
