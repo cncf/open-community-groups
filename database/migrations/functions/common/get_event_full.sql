@@ -1,347 +1,353 @@
 -- Returns full information about an event.
+-- Uses PL/pgSQL with `force_generic_plan` so each connection caches its plan
+-- instead of planning the SQL-language body on every call.
 create or replace function get_event_full(
     p_community_id uuid,
     p_group_id uuid,
     p_event_id uuid
 )
 returns json as $$
+begin
     -- Build full event payload with related entities and computed fields
-    select jsonb_strip_nulls(
-        jsonb_build_object(
-            -- Include core event fields
-            'attendee_count', coalesce(ea.attendee_count, 0),
-            'canceled', e.canceled,
-            'category_name', ec.name,
-            'cohosts', event_cohosts_json(e.event_id),
-            'created_at', epoch_seconds(e.created_at),
-            'description', e.description,
-            'event_id', e.event_id,
-            'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
-            'kind', e.event_kind_id,
-            'manual_tax_rate_ids', e.manual_tax_rate_ids,
-            'name', e.name,
-            'published', e.published,
-            'registration_questions', e.registration_questions,
-            'slug', e.slug,
-            'tax_behavior', e.tax_behavior,
-            'tax_calculation_mode', e.tax_calculation_mode,
-            'test_event', e.test_event,
-            'timezone', e.timezone
-        )
-        -- Include optional fields and nested related collections
-        || jsonb_build_object(
-            'attendee_approval_required', e.attendee_approval_required,
-            'banner_dark_url', e.banner_dark_url,
-            'banner_mobile_dark_url', e.banner_mobile_dark_url,
-            'banner_mobile_url', e.banner_mobile_url,
-            'banner_url', e.banner_url,
-            'capacity', e.capacity,
-            'cfs_description', e.cfs_description,
-            'cfs_enabled', e.cfs_enabled,
-            'cfs_ends_at', epoch_seconds(e.cfs_ends_at),
-            'cfs_starts_at', epoch_seconds(e.cfs_starts_at),
-            -- Expose the event's own logos so editors do not persist the fallback
-            'custom_logo_dark_url', e.logo_dark_url,
-            'custom_logo_url', e.logo_url,
-            'description_short', e.description_short,
-            'discount_codes', list_event_discount_codes(e.event_id),
-            'ends_at', epoch_seconds(e.ends_at),
-            'event_reminder_enabled', e.event_reminder_enabled,
-            'event_series_id', e.event_series_id,
-            'external_payment_instructions', e.external_payment_instructions,
-            'external_payment_url', e.external_payment_url,
-            'external_payment_window_hours', e.external_payment_window_hours,
-            -- Report whether another live event shares the series
-            'has_related_events', exists (
-                select 1
-                from event related_event
-                where related_event.event_series_id = e.event_series_id
-                and related_event.event_id <> e.event_id
-                and related_event.deleted = false
-            ),
-            'labels', event_labels_json(
-                array(
-                    select el.event_label_id
-                    from event_label el
-                    where el.event_id = e.event_id
-                )
-            ),
-            'latitude', st_y(e.location::geometry),
-            -- Pair the dark logo with the level that provides the light logo
-            'logo_dark_url', paired_dark_image_url(
-                e.logo_url, e.logo_dark_url,
-                g.logo_url, g.logo_dark_url,
-                c.logo_url, c.logo_dark_url
-            ),
-            'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
-            'longitude', st_x(e.location::geometry),
-            'luma_url', e.luma_url,
-            'meeting_error', e.meeting_error,
-            'meeting_hosts', e.meeting_hosts,
-            'meeting_in_sync', e.meeting_in_sync,
-            'meeting_join_instructions', e.meeting_join_instructions,
-            -- Show the provider link only while the automatic meeting is requested
-            'meeting_join_url', case
-                -- Use the provider link of a requested meeting
-                when e.meeting_requested
-                then m_event.join_url
-                -- Otherwise use the stored manual link
-                else e.meeting_join_url
-            end,
-            -- Show the provider password only alongside a link to the provider meeting
-            'meeting_password', case
-                -- Use the provider password of a requested meeting
-                when e.meeting_requested
-                then m_event.password
-                -- Keep the provider password of a manual link to the provider meeting
-                when e.meeting_join_url = m_event.join_url
-                then m_event.password
-                -- Otherwise hide the password of an unrelated or missing link
-                else null
-            end,
-            'meeting_provider', e.meeting_provider_id,
-            -- Expose the recording publicly only once the organizer publishes it
-            'meeting_recording_public_url', case
-                -- Use the recording link of a published recording
-                when e.meeting_recording_published
-                then e.meeting_recording_url
-                -- Keep unpublished recordings private
-                else null
-            end,
-            'meeting_recording_published', e.meeting_recording_published,
-            'meeting_recording_raw_urls', nullif(m_event.recording_urls, array[]::text[]),
-            'meeting_recording_requested', e.meeting_recording_requested,
-            'meeting_recording_url', e.meeting_recording_url,
-            'meeting_requested', e.meeting_requested,
-            'meetup_url', e.meetup_url,
-            'payment_currency_code', e.payment_currency_code
-        )
-        || jsonb_build_object(
-            'has_ticket_purchases', exists (
-                select 1
-                from event_purchase ep
-                where ep.event_id = e.event_id
-            ),
-            'photos_urls', e.photos_urls,
-            'published_at', epoch_seconds(e.published_at),
-            'registration_ends_at', epoch_seconds(e.registration_ends_at),
-            'registration_starts_at', epoch_seconds(e.registration_starts_at),
-            'starts_at', epoch_seconds(e.starts_at),
-            'tags', e.tags,
-            'ticket_types', list_event_ticket_types(e.event_id),
-            'venue_address', e.venue_address,
-            'venue_city', e.venue_city,
-            'venue_country_code', e.venue_country_code,
-            'venue_country_name', e.venue_country_name,
-            'venue_name', e.venue_name,
-            'venue_state_code', e.venue_state_code,
-            'venue_state_name', e.venue_state_name,
-            'venue_zip_code', e.venue_zip_code,
-            'waitlist_count', coalesce(ew.waitlist_count, 0),
-            'waitlist_enabled', e.waitlist_enabled
-        )
-
-        || jsonb_build_object(
-            -- Include community and group summaries
-            'community', get_community_summary(g.community_id),
-            'group', get_group_summary(g.community_id, g.group_id),
-            -- Include event hosts profiles
-            'hosts', (
-                select coalesce(
-                    jsonb_agg(public_user_profile(u) order by u.name),
-                    '[]'::jsonb
-                )
-                from event_host eh
-                join "user" u using (user_id)
-                where eh.event_id = e.event_id
-            ),
-            -- Include legacy hosts for backward compatibility
-            'legacy_hosts', (
-                select coalesce(json_agg(json_strip_nulls(json_build_object(
-                    'bio', leh.bio,
-                    'name', leh.name,
-                    'photo_url', leh.photo_url,
-                    'title', leh.title
-                )) order by leh.name), '[]')
-                from legacy_event_host leh
-                where leh.event_id = e.event_id
-            ),
-            -- Include legacy speakers for backward compatibility
-            'legacy_speakers', (
-                select coalesce(json_agg(json_strip_nulls(json_build_object(
-                    'bio', les.bio,
-                    'name', les.name,
-                    'photo_url', les.photo_url,
-                    'title', les.title
-                )) order by les.name), '[]')
-                from legacy_event_speaker les
-                where les.event_id = e.event_id
-            ),
-            -- Include event organizers
-            'organizers', (
-                select coalesce(
-                    jsonb_agg(
-                        public_user_profile(u)
-                        order by eo."order" nulls last, u.name nulls last, u.username, u.user_id
-                    ),
-                    '[]'::jsonb
-                )
-                from event_organizer eo
-                join "user" u using (user_id)
-                where eo.event_id = e.event_id
-            ),
-            -- Lock registration questions once answers have been submitted
-            'registration_questions_locked', questionnaire_answers_exist_for_event(e.event_id),
-            -- Include remaining capacity when event capacity is set
-            'remaining_capacity',
-                case
-                    -- Leave remaining capacity unset for unlimited events
-                    when e.capacity is null then null
-                    -- Otherwise subtract occupied seats without going negative
-                    else greatest(e.capacity - coalesce(ea.attendee_count, 0), 0)
-                end,
-            -- Resolve the legal seller from the payment rail the event uses
-            'seller_display_name',
-                case
-                    -- Use the external payments seller for externally paid events
-                    when e.external_payment_url is not null then g.external_payments_seller_display_name
-                    -- Otherwise use the payment recipient seller
-                    else g.payment_recipient->>'seller_display_name'
-                end,
-            -- Include sessions grouped by local event day
-            'sessions', (
-                with
-                -- Build session payloads for this event
-                event_sessions as (
-                    select
-                        to_char((s.starts_at at time zone e.timezone)::date, 'YYYY-MM-DD') as day,
-                        s.starts_at,
-                        json_strip_nulls(json_build_object(
-                            'session_id', s.session_id,
-                            'kind', s.session_kind_id,
-                            'name', s.name,
-                            'starts_at', epoch_seconds(s.starts_at),
-
-                            'cfs_submission_id', s.cfs_submission_id,
-                            'description', coalesce(s.description, sp.description),
-                            'ends_at', epoch_seconds(s.ends_at),
-                            'location', s.location,
-                            'meeting_error', s.meeting_error,
-                            'meeting_hosts', s.meeting_hosts,
-                            'meeting_in_sync', s.meeting_in_sync,
-                            'meeting_join_instructions', s.meeting_join_instructions,
-                            -- Show the provider link only while the automatic meeting is requested
-                            'meeting_join_url', case
-                                -- Use the provider link of a requested meeting
-                                when s.meeting_requested
-                                then m_session.join_url
-                                -- Otherwise use the stored manual link
-                                else s.meeting_join_url
-                            end,
-                            -- Show the provider password only alongside a link to the provider meeting
-                            'meeting_password', case
-                                -- Use the provider password of a requested meeting
-                                when s.meeting_requested
-                                then m_session.password
-                                -- Keep the provider password of a manual link to the provider meeting
-                                when s.meeting_join_url = m_session.join_url
-                                then m_session.password
-                                -- Otherwise hide the password of an unrelated or missing link
-                                else null
-                            end,
-                            'meeting_provider', s.meeting_provider_id,
-                            -- Expose the recording publicly only once the organizer publishes it
-                            'meeting_recording_public_url', case
-                                -- Use the recording link of a published recording
-                                when s.meeting_recording_published
-                                then s.meeting_recording_url
-                                -- Keep unpublished recordings private
-                                else null
-                            end,
-                            'meeting_recording_published', s.meeting_recording_published,
-                            'meeting_recording_raw_urls', nullif(m_session.recording_urls, array[]::text[]),
-                            'meeting_recording_url', s.meeting_recording_url,
-                            'meeting_requested', s.meeting_requested,
-
-                            'labels', event_labels_json(
-                                array(
-                                    select sl.event_label_id
-                                    from session_label sl
-                                    where sl.session_id = s.session_id
-                                )
-                            ),
-                            -- Include the assigned or linked proposal speakers
-                            'speakers', (
-                                select coalesce(
-                                    jsonb_agg(
-                                        public_user_profile(u) || jsonb_build_object('featured', ssp.featured)
-                                        order by ssp.featured desc, ssp.sort_order, u.name
-                                    ),
-                                    '[]'::jsonb
-                                )
-                                from session_speakers() ssp
-                                join "user" u on u.user_id = ssp.user_id
-                                where ssp.session_id = s.session_id
-                            )
-                        )) as session_json
-                    from session s
-                    left join meeting m_session on m_session.session_id = s.session_id
-                    left join cfs_submission cs on cs.cfs_submission_id = s.cfs_submission_id
-                    left join session_proposal sp on sp.session_proposal_id = cs.session_proposal_id
-                    where s.event_id = e.event_id
-                ),
-                -- Group session payloads by day
-                event_sessions_grouped as (
-                    select day, json_agg(session_json order by starts_at) as sessions
-                    from event_sessions
-                    group by day
-                )
-                select coalesce(
-                    (select jsonb_object_agg(day, sessions order by day) from event_sessions_grouped),
-                    '{}'::jsonb
-                )::json
-            ),
-            -- Include event speakers
-            'speakers', (
-                select coalesce(
-                    jsonb_agg(
-                        public_user_profile(u) || jsonb_build_object('featured', es.featured)
-                        order by es.featured desc, u.name
-                    ),
-                    '[]'::jsonb
-                )
-                from event_speaker es
-                join "user" u using (user_id)
-                where es.event_id = e.event_id
-            ),
-            -- Include event sponsors
-            'sponsors', (
-                select coalesce(json_agg(json_strip_nulls(json_build_object(
-                    'group_sponsor_id', gs.group_sponsor_id,
-                    'level', es.level,
-                    'logo_url', gs.logo_url,
-                    'name', gs.name,
-
-                    'website_url', gs.website_url
-                )) order by gs.name), '[]')
-                from event_sponsor es
-                join group_sponsor gs on gs.group_sponsor_id = es.group_sponsor_id
-                where es.event_id = e.event_id
+    return (
+        select jsonb_strip_nulls(
+            jsonb_build_object(
+                -- Include core event fields
+                'attendee_count', coalesce(ea.attendee_count, 0),
+                'canceled', e.canceled,
+                'category_name', ec.name,
+                'cohosts', event_cohosts_json(e.event_id),
+                'created_at', epoch_seconds(e.created_at),
+                'description', e.description,
+                'event_id', e.event_id,
+                'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
+                'kind', e.event_kind_id,
+                'manual_tax_rate_ids', e.manual_tax_rate_ids,
+                'name', e.name,
+                'published', e.published,
+                'registration_questions', e.registration_questions,
+                'slug', e.slug,
+                'tax_behavior', e.tax_behavior,
+                'tax_calculation_mode', e.tax_calculation_mode,
+                'test_event', e.test_event,
+                'timezone', e.timezone
             )
-        )
-    )::json as json_data
-    from event e
-    join "group" g using (group_id)
-    join community c on c.community_id = g.community_id
-    join event_category ec using (event_category_id)
-    left join meeting m_event on m_event.event_id = e.event_id
-    cross join lateral get_event_occupied_seat_count(e.event_id) as ea(attendee_count)
-    cross join lateral (
-        select count(*)::int as waitlist_count
-        from event_waitlist ewl
-        where ewl.event_id = e.event_id
-    ) ew
-    where e.event_id = p_event_id
-    and g.group_id = p_group_id
-    and g.community_id = p_community_id;
-$$ language sql stable;
+            -- Include optional fields and nested related collections
+            || jsonb_build_object(
+                'attendee_approval_required', e.attendee_approval_required,
+                'banner_dark_url', e.banner_dark_url,
+                'banner_mobile_dark_url', e.banner_mobile_dark_url,
+                'banner_mobile_url', e.banner_mobile_url,
+                'banner_url', e.banner_url,
+                'capacity', e.capacity,
+                'cfs_description', e.cfs_description,
+                'cfs_enabled', e.cfs_enabled,
+                'cfs_ends_at', epoch_seconds(e.cfs_ends_at),
+                'cfs_starts_at', epoch_seconds(e.cfs_starts_at),
+                -- Expose the event's own logos so editors do not persist the fallback
+                'custom_logo_dark_url', e.logo_dark_url,
+                'custom_logo_url', e.logo_url,
+                'description_short', e.description_short,
+                'discount_codes', list_event_discount_codes(e.event_id),
+                'ends_at', epoch_seconds(e.ends_at),
+                'event_reminder_enabled', e.event_reminder_enabled,
+                'event_series_id', e.event_series_id,
+                'external_payment_instructions', e.external_payment_instructions,
+                'external_payment_url', e.external_payment_url,
+                'external_payment_window_hours', e.external_payment_window_hours,
+                -- Report whether another live event shares the series
+                'has_related_events', exists (
+                    select 1
+                    from event related_event
+                    where related_event.event_series_id = e.event_series_id
+                    and related_event.event_id <> e.event_id
+                    and related_event.deleted = false
+                ),
+                'labels', event_labels_json(
+                    array(
+                        select el.event_label_id
+                        from event_label el
+                        where el.event_id = e.event_id
+                    )
+                ),
+                'latitude', st_y(e.location::geometry),
+                -- Pair the dark logo with the level that provides the light logo
+                'logo_dark_url', paired_dark_image_url(
+                    e.logo_url, e.logo_dark_url,
+                    g.logo_url, g.logo_dark_url,
+                    c.logo_url, c.logo_dark_url
+                ),
+                'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
+                'longitude', st_x(e.location::geometry),
+                'luma_url', e.luma_url,
+                'meeting_error', e.meeting_error,
+                'meeting_hosts', e.meeting_hosts,
+                'meeting_in_sync', e.meeting_in_sync,
+                'meeting_join_instructions', e.meeting_join_instructions,
+                -- Show the provider link only while the automatic meeting is requested
+                'meeting_join_url', case
+                    -- Use the provider link of a requested meeting
+                    when e.meeting_requested
+                    then m_event.join_url
+                    -- Otherwise use the stored manual link
+                    else e.meeting_join_url
+                end,
+                -- Show the provider password only alongside a link to the provider meeting
+                'meeting_password', case
+                    -- Use the provider password of a requested meeting
+                    when e.meeting_requested
+                    then m_event.password
+                    -- Keep the provider password of a manual link to the provider meeting
+                    when e.meeting_join_url = m_event.join_url
+                    then m_event.password
+                    -- Otherwise hide the password of an unrelated or missing link
+                    else null
+                end,
+                'meeting_provider', e.meeting_provider_id,
+                -- Expose the recording publicly only once the organizer publishes it
+                'meeting_recording_public_url', case
+                    -- Use the recording link of a published recording
+                    when e.meeting_recording_published
+                    then e.meeting_recording_url
+                    -- Keep unpublished recordings private
+                    else null
+                end,
+                'meeting_recording_published', e.meeting_recording_published,
+                'meeting_recording_raw_urls', nullif(m_event.recording_urls, array[]::text[]),
+                'meeting_recording_requested', e.meeting_recording_requested,
+                'meeting_recording_url', e.meeting_recording_url,
+                'meeting_requested', e.meeting_requested,
+                'meetup_url', e.meetup_url,
+                'payment_currency_code', e.payment_currency_code
+            )
+            || jsonb_build_object(
+                'has_ticket_purchases', exists (
+                    select 1
+                    from event_purchase ep
+                    where ep.event_id = e.event_id
+                ),
+                'photos_urls', e.photos_urls,
+                'published_at', epoch_seconds(e.published_at),
+                'registration_ends_at', epoch_seconds(e.registration_ends_at),
+                'registration_starts_at', epoch_seconds(e.registration_starts_at),
+                'starts_at', epoch_seconds(e.starts_at),
+                'tags', e.tags,
+                'ticket_types', list_event_ticket_types(e.event_id),
+                'venue_address', e.venue_address,
+                'venue_city', e.venue_city,
+                'venue_country_code', e.venue_country_code,
+                'venue_country_name', e.venue_country_name,
+                'venue_name', e.venue_name,
+                'venue_state_code', e.venue_state_code,
+                'venue_state_name', e.venue_state_name,
+                'venue_zip_code', e.venue_zip_code,
+                'waitlist_count', coalesce(ew.waitlist_count, 0),
+                'waitlist_enabled', e.waitlist_enabled
+            )
+
+            || jsonb_build_object(
+                -- Include community and group summaries
+                'community', get_community_summary(g.community_id),
+                'group', get_group_summary(g.community_id, g.group_id),
+                -- Include event hosts profiles
+                'hosts', (
+                    select coalesce(
+                        jsonb_agg(public_user_profile(u) order by u.name),
+                        '[]'::jsonb
+                    )
+                    from event_host eh
+                    join "user" u using (user_id)
+                    where eh.event_id = e.event_id
+                ),
+                -- Include legacy hosts for backward compatibility
+                'legacy_hosts', (
+                    select coalesce(json_agg(json_strip_nulls(json_build_object(
+                        'bio', leh.bio,
+                        'name', leh.name,
+                        'photo_url', leh.photo_url,
+                        'title', leh.title
+                    )) order by leh.name), '[]')
+                    from legacy_event_host leh
+                    where leh.event_id = e.event_id
+                ),
+                -- Include legacy speakers for backward compatibility
+                'legacy_speakers', (
+                    select coalesce(json_agg(json_strip_nulls(json_build_object(
+                        'bio', les.bio,
+                        'name', les.name,
+                        'photo_url', les.photo_url,
+                        'title', les.title
+                    )) order by les.name), '[]')
+                    from legacy_event_speaker les
+                    where les.event_id = e.event_id
+                ),
+                -- Include event organizers
+                'organizers', (
+                    select coalesce(
+                        jsonb_agg(
+                            public_user_profile(u)
+                            order by eo."order" nulls last, u.name nulls last, u.username, u.user_id
+                        ),
+                        '[]'::jsonb
+                    )
+                    from event_organizer eo
+                    join "user" u using (user_id)
+                    where eo.event_id = e.event_id
+                ),
+                -- Lock registration questions once answers have been submitted
+                'registration_questions_locked', questionnaire_answers_exist_for_event(e.event_id),
+                -- Include remaining capacity when event capacity is set
+                'remaining_capacity',
+                    case
+                        -- Leave remaining capacity unset for unlimited events
+                        when e.capacity is null then null
+                        -- Otherwise subtract occupied seats without going negative
+                        else greatest(e.capacity - coalesce(ea.attendee_count, 0), 0)
+                    end,
+                -- Resolve the legal seller from the payment rail the event uses
+                'seller_display_name',
+                    case
+                        -- Use the external payments seller for externally paid events
+                        when e.external_payment_url is not null then g.external_payments_seller_display_name
+                        -- Otherwise use the payment recipient seller
+                        else g.payment_recipient->>'seller_display_name'
+                    end,
+                -- Include sessions grouped by local event day
+                'sessions', (
+                    with
+                    -- Build session payloads for this event
+                    event_sessions as (
+                        select
+                            to_char((s.starts_at at time zone e.timezone)::date, 'YYYY-MM-DD') as day,
+                            s.starts_at,
+                            json_strip_nulls(json_build_object(
+                                'session_id', s.session_id,
+                                'kind', s.session_kind_id,
+                                'name', s.name,
+                                'starts_at', epoch_seconds(s.starts_at),
+
+                                'cfs_submission_id', s.cfs_submission_id,
+                                'description', coalesce(s.description, sp.description),
+                                'ends_at', epoch_seconds(s.ends_at),
+                                'location', s.location,
+                                'meeting_error', s.meeting_error,
+                                'meeting_hosts', s.meeting_hosts,
+                                'meeting_in_sync', s.meeting_in_sync,
+                                'meeting_join_instructions', s.meeting_join_instructions,
+                                -- Show the provider link only while the automatic meeting is requested
+                                'meeting_join_url', case
+                                    -- Use the provider link of a requested meeting
+                                    when s.meeting_requested
+                                    then m_session.join_url
+                                    -- Otherwise use the stored manual link
+                                    else s.meeting_join_url
+                                end,
+                                -- Show the provider password only alongside a link to the provider meeting
+                                'meeting_password', case
+                                    -- Use the provider password of a requested meeting
+                                    when s.meeting_requested
+                                    then m_session.password
+                                    -- Keep the provider password of a manual link to the provider meeting
+                                    when s.meeting_join_url = m_session.join_url
+                                    then m_session.password
+                                    -- Otherwise hide the password of an unrelated or missing link
+                                    else null
+                                end,
+                                'meeting_provider', s.meeting_provider_id,
+                                -- Expose the recording publicly only once the organizer publishes it
+                                'meeting_recording_public_url', case
+                                    -- Use the recording link of a published recording
+                                    when s.meeting_recording_published
+                                    then s.meeting_recording_url
+                                    -- Keep unpublished recordings private
+                                    else null
+                                end,
+                                'meeting_recording_published', s.meeting_recording_published,
+                                'meeting_recording_raw_urls', nullif(m_session.recording_urls, array[]::text[]),
+                                'meeting_recording_url', s.meeting_recording_url,
+                                'meeting_requested', s.meeting_requested,
+
+                                'labels', event_labels_json(
+                                    array(
+                                        select sl.event_label_id
+                                        from session_label sl
+                                        where sl.session_id = s.session_id
+                                    )
+                                ),
+                                -- Include the assigned or linked proposal speakers
+                                'speakers', (
+                                    select coalesce(
+                                        jsonb_agg(
+                                            public_user_profile(u) || jsonb_build_object('featured', ssp.featured)
+                                            order by ssp.featured desc, ssp.sort_order, u.name
+                                        ),
+                                        '[]'::jsonb
+                                    )
+                                    from session_speakers() ssp
+                                    join "user" u on u.user_id = ssp.user_id
+                                    where ssp.session_id = s.session_id
+                                )
+                            )) as session_json
+                        from session s
+                        left join meeting m_session on m_session.session_id = s.session_id
+                        left join cfs_submission cs on cs.cfs_submission_id = s.cfs_submission_id
+                        left join session_proposal sp on sp.session_proposal_id = cs.session_proposal_id
+                        where s.event_id = e.event_id
+                    ),
+                    -- Group session payloads by day
+                    event_sessions_grouped as (
+                        select day, json_agg(session_json order by starts_at) as sessions
+                        from event_sessions
+                        group by day
+                    )
+                    select coalesce(
+                        (select jsonb_object_agg(day, sessions order by day) from event_sessions_grouped),
+                        '{}'::jsonb
+                    )::json
+                ),
+                -- Include event speakers
+                'speakers', (
+                    select coalesce(
+                        jsonb_agg(
+                            public_user_profile(u) || jsonb_build_object('featured', es.featured)
+                            order by es.featured desc, u.name
+                        ),
+                        '[]'::jsonb
+                    )
+                    from event_speaker es
+                    join "user" u using (user_id)
+                    where es.event_id = e.event_id
+                ),
+                -- Include event sponsors
+                'sponsors', (
+                    select coalesce(json_agg(json_strip_nulls(json_build_object(
+                        'group_sponsor_id', gs.group_sponsor_id,
+                        'level', es.level,
+                        'logo_url', gs.logo_url,
+                        'name', gs.name,
+
+                        'website_url', gs.website_url
+                    )) order by gs.name), '[]')
+                    from event_sponsor es
+                    join group_sponsor gs on gs.group_sponsor_id = es.group_sponsor_id
+                    where es.event_id = e.event_id
+                )
+            )
+        )::json as json_data
+        from event e
+        join "group" g using (group_id)
+        join community c on c.community_id = g.community_id
+        join event_category ec using (event_category_id)
+        left join meeting m_event on m_event.event_id = e.event_id
+        cross join lateral get_event_occupied_seat_count(e.event_id) as ea(attendee_count)
+        cross join lateral (
+            select count(*)::int as waitlist_count
+            from event_waitlist ewl
+            where ewl.event_id = e.event_id
+        ) ew
+        where e.event_id = p_event_id
+        and g.group_id = p_group_id
+        and g.community_id = p_community_id
+    );
+end;
+$$ language plpgsql stable set plan_cache_mode = force_generic_plan;

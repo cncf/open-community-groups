@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -29,6 +29,13 @@ select plan(13);
 \set inactivePriceWindowID 'f3050000-0000-0000-0000-000000000010'
 \set inactiveTicketTypeID 'f3050000-0000-0000-0000-000000000011'
 \set inactiveUserID 'f3050000-0000-0000-0000-000000000012'
+\set mixedEmptyPriceWindowID 'f3050000-0000-0000-0000-00000000002b'
+\set mixedEmptyTicketTypeID 'f3050000-0000-0000-0000-00000000002c'
+\set mixedEventID 'f3050000-0000-0000-0000-00000000002d'
+\set mixedFirstUserID 'f3050000-0000-0000-0000-00000000002e'
+\set mixedQueuedPriceWindowID 'f3050000-0000-0000-0000-00000000002f'
+\set mixedQueuedTicketTypeID 'f3050000-0000-0000-0000-000000000030'
+\set mixedSecondUserID 'f3050000-0000-0000-0000-000000000031'
 \set noPriceEventID 'f3050000-0000-0000-0000-000000000013'
 \set noPriceTicketTypeID 'f3050000-0000-0000-0000-000000000014'
 \set noPriceUserID 'f3050000-0000-0000-0000-000000000015'
@@ -58,21 +65,53 @@ select plan(13);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories and users
+-- Community containing the promotion group
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- User queued on the free tier
 select fx_user(:'freeUserID');
+
+-- User holding the only seat of the full tier
 select fx_user(:'fullUserID');
+
+-- User queued on the full tier
 select fx_user(:'fullWaitlistUserID');
+
+-- User queued on the inactive tier
 select fx_user(:'inactiveUserID');
+
+-- First user queued on the waitlisted tier of the mixed event
+select fx_user(:'mixedFirstUserID');
+
+-- Second user queued on the waitlisted tier of the mixed event
+select fx_user(:'mixedSecondUserID');
+
+-- User queued on the no-price tier
 select fx_user(:'noPriceUserID');
+
+-- User queued on the blocked paid tier
 select fx_user(:'paidBlockedUserID');
+
+-- User queued on the ready paid tier
 select fx_user(:'paidReadyUserID');
+
+-- User queued on the past-start tier
 select fx_user(:'pastUserID');
+
+-- User queued on the invitation-only tier
 select fx_user(:'privateUserID');
+
+-- User queued on the unscoped tier
 select fx_user(:'scopedBlockedUserID');
+
+-- User queued on the scoped tier
 select fx_user(:'scopedUserID');
+
+-- Event category of the promotion events
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category of the promotion group
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Group with the matching Stripe recipient used by paid promotions
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
@@ -102,6 +141,13 @@ select fx_event(:'fullEventID', :'groupID', :'eventCategoryID', jsonb_build_obje
 -- Event with inactive and invitation-only ticket tiers
 select fx_event(:'inactiveEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'name', 'Promote Inactive Event',
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
+
+-- Event mixing a tier without a waitlist and a waitlisted tier
+select fx_event(:'mixedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'Promote Mixed Event',
     'starts_at', current_timestamp + interval '2 days',
     'waitlist_enabled', true
 ));
@@ -173,6 +219,15 @@ select fx_event_ticket_type(:'inactiveTicketTypeID', :'inactiveEventID', jsonb_b
     'seats_total', 1
 ));
 
+-- Free ticket tier of the mixed event with a free seat and no waitlist
+select fx_event_ticket_type(:'mixedEmptyTicketTypeID', :'mixedEventID', jsonb_build_object('seats_total', 1));
+
+-- Free ticket tier of the mixed event with two queued seats available
+select fx_event_ticket_type(:'mixedQueuedTicketTypeID', :'mixedEventID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 2
+));
+
 -- No-price ticket tier that keeps the FIFO head queued
 select fx_event_ticket_type(:'noPriceTicketTypeID', :'noPriceEventID', jsonb_build_object('seats_total', 1));
 
@@ -201,30 +256,6 @@ select fx_event_ticket_type(:'scopedBlockedTicketTypeID', :'scopedEventID', json
     'seats_total', 1
 ));
 
--- Free current price used by the free promotion
-select fx_event_ticket_price_window(:'freePriceWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
-
--- Free current price used by the full-capacity scenario
-select fx_event_ticket_price_window(:'fullPriceWindowID', :'fullTicketTypeID', jsonb_build_object('amount_minor', 0));
-
--- Free current price used by the inactive-tier scenario
-select fx_event_ticket_price_window(:'inactivePriceWindowID', :'inactiveTicketTypeID', jsonb_build_object('amount_minor', 0));
-
--- Paid current price blocked by the incomplete venue
-select fx_event_ticket_price_window(:'paidBlockedPriceWindowID', :'paidBlockedTicketTypeID', jsonb_build_object('amount_minor', 1000));
-
--- Paid current price promoted with matching Stripe readiness
-select fx_event_ticket_price_window(:'paidReadyPriceWindowID', :'paidReadyTicketTypeID', jsonb_build_object('amount_minor', 1000));
-
--- Free current price used by the past-start scenario
-select fx_event_ticket_price_window(:'pastPriceWindowID', :'pastTicketTypeID', jsonb_build_object('amount_minor', 0));
-
--- Free current price used by the invitation-only scenario
-select fx_event_ticket_price_window(:'privatePriceWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 0));
-
--- Free current price used by the scoped promotion scenario
-select fx_event_ticket_price_window(:'scopedPriceWindowID', :'scopedTicketTypeID', jsonb_build_object('amount_minor', 0));
-
 -- Completed purchase that fills the full ticket tier
 insert into event_purchase (
     amount_minor,
@@ -245,6 +276,36 @@ insert into event_purchase (
     'Full admission',
     :'fullUserID'
 );
+
+-- Free current price used by the free promotion
+select fx_event_ticket_price_window(:'freePriceWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Free current price used by the full-capacity scenario
+select fx_event_ticket_price_window(:'fullPriceWindowID', :'fullTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Free current price used by the inactive-tier scenario
+select fx_event_ticket_price_window(:'inactivePriceWindowID', :'inactiveTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Free current price of the mixed event tier without a waitlist
+select fx_event_ticket_price_window(:'mixedEmptyPriceWindowID', :'mixedEmptyTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Free current price of the mixed event waitlisted tier
+select fx_event_ticket_price_window(:'mixedQueuedPriceWindowID', :'mixedQueuedTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Paid current price blocked by the incomplete venue
+select fx_event_ticket_price_window(:'paidBlockedPriceWindowID', :'paidBlockedTicketTypeID', jsonb_build_object('amount_minor', 1000));
+
+-- Paid current price promoted with matching Stripe readiness
+select fx_event_ticket_price_window(:'paidReadyPriceWindowID', :'paidReadyTicketTypeID', jsonb_build_object('amount_minor', 1000));
+
+-- Free current price used by the past-start scenario
+select fx_event_ticket_price_window(:'pastPriceWindowID', :'pastTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Free current price used by the invitation-only scenario
+select fx_event_ticket_price_window(:'privatePriceWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 0));
+
+-- Free current price used by the scoped promotion scenario
+select fx_event_ticket_price_window(:'scopedPriceWindowID', :'scopedTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- FIFO waitlist entries for each promotion branch
 insert into event_waitlist (
@@ -272,6 +333,16 @@ insert into event_waitlist (
     :'inactiveEventID',
     :'privateTicketTypeID',
     :'privateUserID'
+), (
+    '2024-01-01 00:00:00+00',
+    :'mixedEventID',
+    :'mixedQueuedTicketTypeID',
+    :'mixedFirstUserID'
+), (
+    '2024-01-02 00:00:00+00',
+    :'mixedEventID',
+    :'mixedQueuedTicketTypeID',
+    :'mixedSecondUserID'
 ), (
     '2024-01-01 00:00:00+00',
     :'noPriceEventID',
@@ -412,6 +483,19 @@ select is(
     'Should promote paid queue heads when Stripe readiness matches'
 );
 
+-- Should promote waitlisted tiers next to tiers without a waitlist
+select is(
+    promote_event_waitlist_entries(
+        (select e from event e where e.event_id = :'mixedEventID'),
+        (select g from "group" g where g.group_id = :'groupID'),
+        null,
+        null,
+        '{}'::jsonb
+    ),
+    array[:'mixedFirstUserID'::uuid, :'mixedSecondUserID'::uuid],
+    'Should promote waitlisted tiers next to tiers without a waitlist'
+);
+
 -- Should audit every promoted waitlist offer as a system action
 select set_eq(
     format(
@@ -454,6 +538,28 @@ select set_eq(
     'Should audit every promoted waitlist offer as a system action'
 );
 
+-- Should mark every offer of a multi-tier event as not a simple RSVP
+select results_eq(
+    format(
+        $$
+            select n.user_id, ntd.data->'is_simple_rsvp'
+            from notification n
+            join notification_template_data ntd using (notification_template_data_id)
+            where n.kind = 'event-ticket-waitlist-offer'
+            and n.user_id in (%L::uuid, %L::uuid)
+            order by n.user_id
+        $$,
+        :'mixedFirstUserID',
+        :'mixedSecondUserID'
+    ),
+    format(
+        $$ values (%L::uuid, 'false'::jsonb), (%L::uuid, 'false'::jsonb) $$,
+        :'mixedFirstUserID',
+        :'mixedSecondUserID'
+    ),
+    'Should mark every offer of a multi-tier event as not a simple RSVP'
+);
+
 -- Should notify every promoted waitlist user
 select set_eq(
     format(
@@ -461,17 +567,21 @@ select set_eq(
             select n.user_id
             from notification n
             where n.kind = 'event-ticket-waitlist-offer'
-            and n.user_id in (%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid)
+            and n.user_id in (%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid)
         $$,
         :'freeUserID',
+        :'mixedFirstUserID',
+        :'mixedSecondUserID',
         :'paidBlockedUserID',
         :'paidReadyUserID',
         :'scopedBlockedUserID',
         :'scopedUserID'
     ),
     format(
-        $$ values (%L::uuid), (%L::uuid), (%L::uuid) $$,
+        $$ values (%L::uuid), (%L::uuid), (%L::uuid), (%L::uuid), (%L::uuid) $$,
         :'freeUserID',
+        :'mixedFirstUserID',
+        :'mixedSecondUserID',
         :'paidReadyUserID',
         :'scopedUserID'
     ),
@@ -493,10 +603,16 @@ select set_eq(
         $$ values
             (%L::uuid, %L::uuid, 'pending'::text, current_timestamp + interval '12 hours'),
             (%L::uuid, %L::uuid, 'pending'::text, current_timestamp + interval '24 hours'),
+            (%L::uuid, %L::uuid, 'pending'::text, current_timestamp + interval '24 hours'),
+            (%L::uuid, %L::uuid, 'pending'::text, current_timestamp + interval '24 hours'),
             (%L::uuid, %L::uuid, 'pending'::text, current_timestamp + interval '24 hours')
         $$,
         :'freeEventID',
         :'freeUserID',
+        :'mixedEventID',
+        :'mixedFirstUserID',
+        :'mixedEventID',
+        :'mixedSecondUserID',
         :'paidReadyEventID',
         :'paidReadyUserID',
         :'scopedEventID',

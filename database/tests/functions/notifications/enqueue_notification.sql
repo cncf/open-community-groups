@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(28);
+select plan(30);
 
 -- ============================================================================
 -- VARIABLES
@@ -541,6 +541,40 @@ select results_eq(
         :'userID2'
     ),
     'Should keep template reference null for event-welcome notifications'
+);
+
+-- Should reuse attachment row for repeated hash
+select lives_ok(
+    format(
+        $$select enqueue_notification(
+            'event-welcome',
+            null,
+            jsonb_build_array(
+                jsonb_build_object(
+                    'content_type', 'text/plain',
+                    'data_base64', 'aGVsbG8=',
+                    'file_name', 'hello.txt'
+                )
+            ),
+            array[%L]::uuid[]
+        )$$,
+        :'userID1'
+    ),
+    'Should reuse attachment row for repeated hash'
+);
+
+-- Should link the repeated attachment to its stored row
+select results_eq(
+    $$
+    select
+        count(distinct a.attachment_id)::int,
+        count(*)::int
+    from attachment a
+    join notification_attachment na on na.attachment_id = a.attachment_id
+    where a.file_name = 'hello.txt'
+    $$,
+    $$ values (1, 3) $$,
+    'Should link the repeated attachment to its stored row'
 );
 
 -- ============================================================================

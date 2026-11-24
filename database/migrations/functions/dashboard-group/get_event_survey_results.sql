@@ -27,8 +27,9 @@ responses as (
     where r.event_survey_id = p_event_survey_id
     and exists (select 1 from survey)
 ),
--- Break down the selected options of every select question
-breakdowns as (
+-- Break down the selected options of every select question; materialized so
+-- each per-question lookup reuses the same breakdown
+breakdowns as materialized (
     select breakdown.value
     from survey sv
     cross join lateral jsonb_array_elements(

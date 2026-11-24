@@ -1,8 +1,10 @@
 -- Returns the groups that match the search filters provided, with the fields
 -- callers need to sort, paginate and locate them. Only publicly visible groups
--- of active communities match. Distances are only computed when sorting by
--- distance from the viewer location. Uses PL/pgSQL with `force_custom_plan`
--- so each call is planned with the actual filter values.
+-- of active communities match. The bbox is matched as a planar
+-- longitude/latitude rectangle, like the map viewport. Distances are only
+-- computed when sorting by distance from the viewer location. Uses PL/pgSQL
+-- with `force_custom_plan` so each call is planned with the actual filter
+-- values.
 create or replace function search_groups_matches(p_filters jsonb)
 returns table (
     community_id uuid,
@@ -33,9 +35,11 @@ begin
         g.community_id,
         g.created_at,
         case
+            -- Measure the distance only when sorting by it from a known location
             when v_sort_by = 'distance'
             and v_explore.user_location is not null then
                 st_distance(g.location, v_explore.user_location)
+            -- Leave the distance empty for every other sort
             else null
         end as distance,
         g.group_id,
@@ -49,7 +53,7 @@ begin
     and is_group_public(g)
     and
         case when v_bbox is not null then
-        st_intersects(g.location, v_bbox) else true end
+        st_intersects(g.location::geometry, v_bbox) else true end
     and
         case when v_explore.community_ids is not null then
         g.community_id = any(v_explore.community_ids) else true end

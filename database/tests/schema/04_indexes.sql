@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(132);
+select plan(139);
 
 -- ============================================================================
 -- TESTS
@@ -37,11 +37,18 @@ select index_is_unique('admission_offer', 'admission_offer_event_id_user_id_acti
 select indexes_are('audit_log', array[
     'audit_log_pkey',
     'audit_log_actor_user_id_created_at_idx',
-    'audit_log_community_id_created_at_idx',
+    'audit_log_community_id_action_idx',
     'audit_log_created_at_idx',
     'audit_log_group_id_created_at_idx',
     'audit_log_resource_type_resource_id_created_at_idx'
 ]);
+
+-- Test: audit_log community action index should key community rows by action
+select is(
+    (select indexdef from pg_indexes where indexname = 'audit_log_community_id_action_idx'),
+    'CREATE INDEX audit_log_community_id_action_idx ON public.audit_log USING btree (community_id, action)',
+    'audit_log community action index should key community rows by action'
+);
 
 -- Test: auth_session indexes should match expected
 select indexes_are('auth_session', array[
@@ -217,6 +224,20 @@ select indexes_are('event', array[
     'event_group_not_deleted_starts_at_idx'
 ]);
 select index_is_unique('event', 'event_event_id_group_id_key');
+
+-- Test: event meeting sync claim index should be partial on out of sync or claimed events
+select is(
+    (select indexdef from pg_indexes where indexname = 'event_meeting_sync_claim_idx'),
+    'CREATE INDEX event_meeting_sync_claim_idx ON public.event USING btree (meeting_sync_claimed_at) WHERE ((meeting_in_sync = false) OR (meeting_sync_claimed_at IS NOT NULL))',
+    'event meeting sync claim index should be partial on out of sync or claimed events'
+);
+
+-- Test: event starts_at index should cover the explore search columns
+select is(
+    (select indexdef from pg_indexes where indexname = 'event_starts_at_idx'),
+    'CREATE INDEX event_starts_at_idx ON public.event USING btree (starts_at) INCLUDE (event_category_id, event_id, event_kind_id, group_id, location, test_event) WHERE ((published = true) AND (canceled = false) AND (deleted = false))',
+    'event starts_at index should cover the explore search columns'
+);
 
 -- Test: event_series indexes should match expected
 select indexes_are('event_series', array[
@@ -452,6 +473,7 @@ select indexes_are('group', array[
     'group_group_category_id_idx',
     'group_region_id_idx',
     'group_group_site_layout_id_idx',
+    'group_location_geometry_idx',
     'group_location_idx',
     'group_search_idx',
     'group_tsdoc_idx',
@@ -460,6 +482,13 @@ select indexes_are('group', array[
     'group_community_active_created_at_idx',
     'group_parent_group_id_idx'
 ]);
+
+-- Test: group location geometry index should index the planar group location
+select is(
+    (select indexdef from pg_indexes where indexname = 'group_location_geometry_idx'),
+    'CREATE INDEX group_location_geometry_idx ON public."group" USING gist (((location)::geometry))',
+    'group location geometry index should index the planar group location'
+);
 
 -- Test: group_category indexes should match expected
 select indexes_are('group_category', array[
@@ -640,8 +669,16 @@ select indexes_are('notification', array[
     'notification_delivery_claimed_at_idx',
     'notification_kind_idx',
     'notification_not_processed_idx',
+    'notification_processing_claimed_at_idx',
     'notification_user_id_idx'
 ]);
+
+-- Test: notification processing claim index should be partial on processing notifications
+select is(
+    (select indexdef from pg_indexes where indexname = 'notification_processing_claimed_at_idx'),
+    'CREATE INDEX notification_processing_claimed_at_idx ON public.notification USING btree (delivery_claimed_at) WHERE (delivery_status = ''processing''::text)',
+    'notification processing claim index should be partial on processing notifications'
+);
 
 -- Test: notification_attachment indexes should match expected
 select indexes_are('notification_attachment', array[
@@ -673,9 +710,17 @@ select indexes_are('payment_job', array[
     'payment_job_claimed_at_idx',
     'payment_job_event_purchase_id_idx',
     'payment_job_idempotency_key_key',
+    'payment_job_unfinished_idx',
     'payment_job_work_idx'
 ]);
 select index_is_unique('payment_job', 'payment_job_idempotency_key_key');
+
+-- Test: payment_job unfinished index should be partial on unfinished jobs
+select is(
+    (select indexdef from pg_indexes where indexname = 'payment_job_unfinished_idx'),
+    'CREATE INDEX payment_job_unfinished_idx ON public.payment_job USING btree (payment_job_id) WHERE (status <> ''completed''::text)',
+    'payment_job unfinished index should be partial on unfinished jobs'
+);
 
 -- Test: payment_provider indexes should match expected
 select indexes_are('payment_provider', array[
@@ -700,6 +745,13 @@ select indexes_are('session', array[
     'session_meeting_sync_idx',
     'session_session_kind_id_idx'
 ]);
+
+-- Test: session meeting sync claim index should be partial on out of sync or claimed sessions
+select is(
+    (select indexdef from pg_indexes where indexname = 'session_meeting_sync_claim_idx'),
+    'CREATE INDEX session_meeting_sync_claim_idx ON public.session USING btree (meeting_sync_claimed_at) WHERE ((meeting_in_sync = false) OR (meeting_sync_claimed_at IS NOT NULL))',
+    'session meeting sync claim index should be partial on out of sync or claimed sessions'
+);
 
 -- Test: session_label indexes should match expected
 select indexes_are('session_label', array[

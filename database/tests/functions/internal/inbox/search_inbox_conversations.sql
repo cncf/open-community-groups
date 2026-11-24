@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -183,6 +183,22 @@ select is(
     ),
     jsonb_build_object('ids', jsonb_build_array(:'conversationOpenID'::uuid), 'total', 1),
     'Should filter conversations by status'
+);
+
+-- Should filter user conversations by status excluding deleted groups
+select is(
+    (
+        select jsonb_build_object(
+            'ids', jsonb_path_query_array(r, '$.conversations[*].inbox_conversation_id'),
+            'total', r->'total'
+        )
+        from (select search_inbox_conversations(null, :'userID'::uuid, '{"status": "open"}'::jsonb)::jsonb as r) t
+    ),
+    jsonb_build_object(
+        'ids', jsonb_build_array(:'conversationOpenID'::uuid, :'conversationOtherGroupID'::uuid),
+        'total', 2
+    ),
+    'Should filter user conversations by status excluding deleted groups'
 );
 
 -- Should flag an unpublished event as not public

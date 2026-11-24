@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(195);
+select plan(196);
 
 -- ============================================================================
 -- VARIABLES
@@ -518,6 +518,21 @@ select is(
     ),
     true,
     'Group admin event permissions should remain unchanged when community restriction is enabled'
+);
+
+-- Should run as PL/pgSQL with the default plan cache mode
+select is(
+    (
+        select
+            l.lanname = 'plpgsql'
+            and p.proconfig is null
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'user_has_group_permission(uuid, uuid, uuid, text)'::regprocedure
+    ),
+    true,
+    'Should run as PL/pgSQL with the default plan cache mode'
 );
 
 -- ============================================================================

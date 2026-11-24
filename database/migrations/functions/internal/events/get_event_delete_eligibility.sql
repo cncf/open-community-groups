@@ -64,7 +64,9 @@ returns text as $$
              and not exists (
                  select 1
                  from audit_log al
-                 where al.event_id = e.event_id
+                 -- Match publish rows through the indexed resource key
+                 where al.resource_type = 'event'
+                 and al.resource_id = e.event_id
                  and al.action = 'event_published'
              )
              and not exists (

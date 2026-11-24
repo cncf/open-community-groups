@@ -2236,7 +2236,7 @@ async fn test_publish_series_sends_aggregate_notification() {
         })
         .returning(move |_, _, _| Ok(related_event_full.clone()));
     tx.expect_filter_notification_recipient_ids()
-        .times(2)
+        .times(1)
         .withf(move |kind, recipients, group_ids| {
             matches!(kind, NotificationKind::EventSeriesPublished)
                 && recipients == [member_id]

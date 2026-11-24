@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -151,6 +151,21 @@ select is(
     ),
     jsonb_build_array(:'event2ID', :'event6ID', :'event7ID'),
     'Should order tied future events by event ID'
+);
+
+-- Should plan each call with the actual arguments
+select is(
+    (
+        select
+            l.lanname = 'plpgsql'
+            and p.proconfig = array['plan_cache_mode=force_custom_plan']
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'get_community_upcoming_events(uuid, text[])'::regprocedure
+    ),
+    true,
+    'Should plan each call with the actual arguments'
 );
 
 -- Should return empty array for non-existing community

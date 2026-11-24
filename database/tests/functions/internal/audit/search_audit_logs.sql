@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -32,8 +32,8 @@ select plan(13);
 -- SEED DATA
 -- ============================================================================
 
--- Community whose audit rows are searched
-select fx_community(:'communityID');
+-- Community whose audit rows are searched and whose display name is resolved live
+select fx_community(:'communityID', jsonb_build_object('display_name', 'Search Audit Community'));
 
 -- Other community whose audit rows stay out of the community scope
 select fx_community(:'otherCommunityID');
@@ -301,6 +301,53 @@ select is(
         3
     ),
     'Should render each row with its resource name'
+);
+
+-- Should render resource names of a later page
+select is(
+    search_audit_logs(
+        :'communityID'::uuid,
+        null,
+        null,
+        array['community_updated', 'group_sponsor_deleted', 'group_updated']::text[],
+        '{"limit": 2, "offset": 2}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        format(
+            $json$
+                [
+                    {
+                        "action": "group_updated",
+                        "actor_username": "bob-search-audit-logs",
+                        "audit_log_id": "%s",
+                        "created_at": 1714608000,
+                        "details": {},
+                        "resource_id": "%s",
+                        "resource_name": "Search Audit Group",
+                        "resource_type": "group"
+                    },
+                    {
+                        "action": "community_updated",
+                        "actor_username": "alice-search-audit-logs",
+                        "audit_log_id": "%s",
+                        "created_at": 1714607999,
+                        "details": {},
+                        "resource_id": "%s",
+                        "resource_name": "Search Audit Community",
+                        "resource_type": "community"
+                    }
+                ]
+            $json$,
+            :'groupAuditID',
+            :'groupID',
+            :'communityAuditID',
+            :'communityID'
+        )::jsonb,
+        'total',
+        4
+    ),
+    'Should render resource names of a later page'
 );
 
 -- Should return rows in ascending order with offset, limit and total

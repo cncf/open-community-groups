@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -217,6 +217,21 @@ select is(
         'username', 'testuser'
     ),
     'Should return user without password when include_password is false'
+);
+
+-- Should run as PL/pgSQL with the default plan cache mode
+select is(
+    (
+        select
+            l.lanname = 'plpgsql'
+            and p.proconfig is null
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'get_user_by_id(uuid, boolean)'::regprocedure
+    ),
+    true,
+    'Should run as PL/pgSQL with the default plan cache mode'
 );
 
 -- ============================================================================

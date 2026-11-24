@@ -1,118 +1,124 @@
 -- Returns full information about a group.
+-- Uses PL/pgSQL with `force_generic_plan` so each connection caches its plan
+-- instead of planning the SQL-language body on every call.
 create or replace function get_group_full(
     p_community_id uuid,
     p_group_id uuid
 )
 returns json as $$
+begin
     -- Build full group payload with related entities and computed fields; this
     -- call passes 96 of the 100 json_build_object arguments, so split it with
     -- jsonb concatenation like get_event_full before adding more keys
-    select json_strip_nulls(json_build_object(
-        -- Include core group fields
-        'active', g.active,
-        'category', group_category_json(gc),
-        'created_at', epoch_seconds(g.created_at),
-        'external_payments_enabled', g.external_payments_enabled,
-        'group_id', g.group_id,
-        'members_count', (
-            select count(*)
-            from group_member
-            where group_id = g.group_id
-        ),
-        'name', g.name,
-        'slug', g.slug,
+    return (
+        select json_strip_nulls(json_build_object(
+            -- Include core group fields
+            'active', g.active,
+            'category', group_category_json(gc),
+            'created_at', epoch_seconds(g.created_at),
+            'external_payments_enabled', g.external_payments_enabled,
+            'group_id', g.group_id,
+            'members_count', (
+                select count(*)
+                from group_member
+                where group_id = g.group_id
+            ),
+            'name', g.name,
+            'slug', g.slug,
 
-        -- Include optional group profile fields
-        'banner_dark_url', g.banner_dark_url,
-        'banner_mobile_dark_url', g.banner_mobile_dark_url,
-        'banner_mobile_url', g.banner_mobile_url,
-        'banner_url', g.banner_url,
-        'bluesky_url', g.bluesky_url,
-        'city', g.city,
-        'country_code', g.country_code,
-        'country_name', g.country_name,
-        -- Expose the group's own logos so editors do not persist the fallback
-        'custom_logo_dark_url', g.logo_dark_url,
-        'custom_logo_url', g.logo_url,
-        'description', g.description,
-        'description_short', g.description_short,
-        'external_payments_seller_display_name', g.external_payments_seller_display_name,
-        'extra_links', g.extra_links,
-        'facebook_url', g.facebook_url,
-        'flickr_url', g.flickr_url,
-        'github_url', g.github_url,
-        'instagram_url', g.instagram_url,
-        'latitude', st_y(g.location::geometry),
-        'linkedin_url', g.linkedin_url,
-        -- Pair the dark logo with the level that provides the light logo
-        'logo_dark_url', paired_dark_image_url(
-            g.logo_url, g.logo_dark_url,
-            c.logo_url, c.logo_dark_url
-        ),
-        'logo_url', coalesce(g.logo_url, c.logo_url),
-        'longitude', st_x(g.location::geometry),
-        'og_image_url', g.og_image_url,
-        'payment_recipient', g.payment_recipient,
-        'photos_urls', g.photos_urls,
-        'region', group_region_json(r),
-        'slack_url', g.slack_url,
-        'slug_pretty', g.slug_pretty,
-        'state', g.state,
-        'tags', g.tags,
-        'twitter_url', g.twitter_url,
-        'wechat_url', g.wechat_url,
-        'website_url', g.website_url,
-        'youtube_url', g.youtube_url,
+            -- Include optional group profile fields
+            'banner_dark_url', g.banner_dark_url,
+            'banner_mobile_dark_url', g.banner_mobile_dark_url,
+            'banner_mobile_url', g.banner_mobile_url,
+            'banner_url', g.banner_url,
+            'bluesky_url', g.bluesky_url,
+            'city', g.city,
+            'country_code', g.country_code,
+            'country_name', g.country_name,
+            -- Expose the group's own logos so editors do not persist the fallback
+            'custom_logo_dark_url', g.logo_dark_url,
+            'custom_logo_url', g.logo_url,
+            'description', g.description,
+            'description_short', g.description_short,
+            'external_payments_seller_display_name', g.external_payments_seller_display_name,
+            'extra_links', g.extra_links,
+            'facebook_url', g.facebook_url,
+            'flickr_url', g.flickr_url,
+            'github_url', g.github_url,
+            'instagram_url', g.instagram_url,
+            'latitude', st_y(g.location::geometry),
+            'linkedin_url', g.linkedin_url,
+            -- Pair the dark logo with the level that provides the light logo
+            'logo_dark_url', paired_dark_image_url(
+                g.logo_url, g.logo_dark_url,
+                c.logo_url, c.logo_dark_url
+            ),
+            'logo_url', coalesce(g.logo_url, c.logo_url),
+            'longitude', st_x(g.location::geometry),
+            'og_image_url', g.og_image_url,
+            'payment_recipient', g.payment_recipient,
+            'photos_urls', g.photos_urls,
+            'region', group_region_json(r),
+            'slack_url', g.slack_url,
+            'slug_pretty', g.slug_pretty,
+            'state', g.state,
+            'tags', g.tags,
+            'twitter_url', g.twitter_url,
+            'wechat_url', g.wechat_url,
+            'website_url', g.website_url,
+            'youtube_url', g.youtube_url,
 
-        -- Include parent and children groups
-        'parent', (
-            select get_group_summary(g.community_id, parent.group_id)
-            from "group" parent
-            where parent.group_id = g.parent_group_id
-            and parent.community_id = g.community_id
-            and parent.active = true
-            and parent.deleted = false
-        ),
-        'subgroups', (
-            select coalesce(
-                json_agg(
-                    get_group_summary(g.community_id, child.group_id)
-                    order by child.name asc, child.group_id asc
-                ), '[]'::json
+            -- Include parent and children groups
+            'parent', (
+                select get_group_summary(g.community_id, parent.group_id)
+                from "group" parent
+                where parent.group_id = g.parent_group_id
+                and parent.community_id = g.community_id
+                and parent.active = true
+                and parent.deleted = false
+            ),
+            'subgroups', (
+                select coalesce(
+                    json_agg(
+                        get_group_summary(g.community_id, child.group_id)
+                        order by child.name asc, child.group_id asc
+                    ), '[]'::json
+                )
+                from "group" child
+                where child.parent_group_id = g.group_id
+                and child.community_id = g.community_id
+                and child.active = true
+                and child.deleted = false
+            ),
+
+            -- Include community summary and related collections
+            'community', get_community_summary(g.community_id),
+            'organizers', list_group_organizers(g.group_id),
+
+            -- Include group sponsors
+            'sponsors', (
+                select coalesce(
+                    json_agg(
+                        json_strip_nulls(json_build_object(
+                            'featured', gs.featured,
+                            'group_sponsor_id', gs.group_sponsor_id,
+                            'logo_url', gs.logo_url,
+                            'name', gs.name,
+
+                            'website_url', gs.website_url
+                        )) order by gs.name
+                    ), '[]'::json
+                )
+                from group_sponsor gs
+                where gs.group_id = g.group_id
             )
-            from "group" child
-            where child.parent_group_id = g.group_id
-            and child.community_id = g.community_id
-            and child.active = true
-            and child.deleted = false
-        ),
-
-        -- Include community summary and related collections
-        'community', get_community_summary(g.community_id),
-        'organizers', list_group_organizers(g.group_id),
-
-        -- Include group sponsors
-        'sponsors', (
-            select coalesce(
-                json_agg(
-                    json_strip_nulls(json_build_object(
-                        'featured', gs.featured,
-                        'group_sponsor_id', gs.group_sponsor_id,
-                        'logo_url', gs.logo_url,
-                        'name', gs.name,
-
-                        'website_url', gs.website_url
-                    )) order by gs.name
-                ), '[]'::json
-            )
-            from group_sponsor gs
-            where gs.group_id = g.group_id
-        )
-    )) as json_data
-    from "group" g
-    join community c using (community_id)
-    join group_category gc using (group_category_id)
-    left join region r using (region_id)
-    where g.group_id = p_group_id
-    and g.community_id = p_community_id;
-$$ language sql stable;
+        )) as json_data
+        from "group" g
+        join community c using (community_id)
+        join group_category gc using (group_category_id)
+        left join region r using (region_id)
+        where g.group_id = p_group_id
+        and g.community_id = p_community_id
+    );
+end;
+$$ language plpgsql stable set plan_cache_mode = force_generic_plan;

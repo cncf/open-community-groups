@@ -1,7 +1,7 @@
 -- Returns one page of audit log rows for exactly one scope (a community, a
 -- group or an actor), limited to the given actions. Uses PL/pgSQL with custom
 -- plans for argument-aware plans, so the null scope predicates fold away and
--- each scope walks its (scope, created_at desc) index.
+-- each scope reads only its own audit_log index.
 create or replace function search_audit_logs(
     p_community_id uuid,
     p_group_id uuid,
@@ -78,22 +78,9 @@ begin
                 select count(*)::int as total
                 from filtered_logs
             ),
-            -- Select the paginated audit log rows
-            logs as (
-                select
-                    fl.action,
-                    fl.audit_log_id,
-                    epoch_seconds(fl.created_at) as created_at,
-                    fl.details,
-                    fl.resource_id,
-                    fl.resource_type,
-
-                    fl.actor_username,
-                    audit_log_resource_name(
-                        fl.resource_type,
-                        fl.resource_id,
-                        fl.details
-                    ) as resource_name
+            -- Select the requested page before resolving resource names
+            page as (
+                select fl.*
                 from filtered_logs fl
                 -- Order by creation time in the requested direction, breaking ties by id
                 order by
@@ -103,6 +90,24 @@ begin
                     case when v_sort <> 'created-asc' then fl.audit_log_id end desc
                 offset v_offset
                 limit v_limit
+            ),
+            -- Shape the page rows with their resource names
+            logs as (
+                select
+                    p.action,
+                    p.audit_log_id,
+                    epoch_seconds(p.created_at) as created_at,
+                    p.details,
+                    p.resource_id,
+                    p.resource_type,
+
+                    p.actor_username,
+                    audit_log_resource_name(
+                        p.resource_type,
+                        p.resource_id,
+                        p.details
+                    ) as resource_name
+                from page p
             ),
             -- Render rows as JSON
             logs_json as (

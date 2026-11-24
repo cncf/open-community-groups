@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -890,6 +890,21 @@ insert into event_refund_request (
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should cache a generic plan per connection
+select is(
+    (
+        select
+            l.lanname = 'plpgsql'
+            and p.proconfig = array['plan_cache_mode=force_generic_plan']
+            and p.provolatile = 's'
+        from pg_proc p
+        join pg_language l on l.oid = p.prolang
+        where p.oid = 'list_user_events(uuid, jsonb)'::regprocedure
+    ),
+    true,
+    'Should cache a generic plan per connection'
+);
 
 -- Should hide an active offer from My Events while its refund is processing
 select is(

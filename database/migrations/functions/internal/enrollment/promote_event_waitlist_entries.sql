@@ -15,7 +15,7 @@ create or replace function promote_event_waitlist_entries(
 )
 returns uuid[] as $$
 declare
-    v_is_simple_rsvp boolean := is_event_simple_rsvp(p_event.event_id);
+    v_is_simple_rsvp boolean;
     v_offer_expires_at timestamptz;
     v_offer_id uuid;
     v_paid_seat_ready boolean;
@@ -34,6 +34,13 @@ begin
         and (
             p_event_ticket_type_id is null
             or ett.event_ticket_type_id = p_event_ticket_type_id
+        )
+        -- Skip tiers with an empty queue before counting their allocations
+        and exists (
+            select 1
+            from event_waitlist ew
+            where ew.event_id = ett.event_id
+            and ew.event_ticket_type_id = ett.event_ticket_type_id
         )
         order by ett.event_ticket_type_id
     loop
@@ -126,6 +133,11 @@ begin
                 v_waitlist_entry.user_id
             )
             returning admission_offer_id into v_offer_id;
+
+            -- Resolve the simple RSVP flag once, when the first offer is sent
+            if v_is_simple_rsvp is null then
+                v_is_simple_rsvp := is_event_simple_rsvp(p_event.event_id);
+            end if;
 
             -- Track and notify the promoted ticket recipient atomically
             perform insert_audit_log(

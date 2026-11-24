@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,8 @@ select plan(13);
 \set eventID 'd7320000-0000-0000-0000-000000000003'
 \set groupCategoryID 'd7320000-0000-0000-0000-000000000004'
 \set groupID 'd7320000-0000-0000-0000-000000000005'
+\set otherPurchaseID 'd7320000-0000-0000-0000-000000000009'
+\set otherUserID 'd7320000-0000-0000-0000-00000000000a'
 \set purchaseID 'd7320000-0000-0000-0000-000000000006'
 \set ticketTypeID 'd7320000-0000-0000-0000-000000000007'
 \set userID 'd7320000-0000-0000-0000-000000000008'
@@ -24,11 +26,22 @@ select plan(13);
 -- SEED DATA
 -- ============================================================================
 
--- Baseline community, categories, users and group
+-- Community containing the selling group
 select fx_community(:'communityID');
-select fx_group_category(:'groupCategoryID', :'communityID');
-select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Buyer of the purchase of another seller account
+select fx_user(:'otherUserID');
+
+-- Buyer of the purchase awaiting its application fee
 select fx_user(:'userID');
+
+-- Event category of the purchased event
+select fx_event_category(:'eventCategoryID', :'communityID');
+
+-- Group category of the selling group
+select fx_group_category(:'groupCategoryID', :'communityID');
+
+-- Group selling the purchased tickets
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event snapshotted by the purchase
@@ -39,6 +52,63 @@ select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
     'seats_total', 10,
     'title', 'General admission'
 ));
+
+-- Completed direct-charge purchase of another seller account sharing the provider charge identifier
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    connected_seller_id,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    provisional_platform_fee_amount_minor,
+    seller_snapshot,
+    status,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot
+) values (
+    2500,
+    'direct-charge',
+    current_timestamp,
+    'acct_other_seller',
+    'USD',
+    :'eventID',
+    :'otherPurchaseID',
+    :'ticketTypeID',
+    62,
+    'stripe',
+    'ch_application_fee',
+    'cs_other_seller',
+    'acct_other_seller',
+    'pi_other_seller',
+    2500,
+    80,
+    '{"display_name":"Other Seller"}'::jsonb,
+    'completed',
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'General admission',
+    :'otherUserID',
+    '{}'::jsonb
+);
 
 -- Completed direct-charge purchase awaiting its asynchronous application fee
 insert into event_purchase (
@@ -213,6 +283,17 @@ select is(
     ),
     'fee_application_fee',
     'Should persist the provider application-fee identifier'
+);
+
+-- Should leave the same provider charge of another seller account unattached
+select is(
+    (
+        select provider_application_fee_id
+        from event_purchase
+        where event_purchase_id = :'otherPurchaseID'::uuid
+    ),
+    null,
+    'Should leave the same provider charge of another seller account unattached'
 );
 
 -- Should accept replaying the same application fee

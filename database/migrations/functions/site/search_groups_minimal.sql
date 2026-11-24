@@ -3,6 +3,7 @@
 -- uncapped total and the bbox of every eligible group.
 create or replace function search_groups_minimal(p_filters jsonb, p_limit int)
 returns json as $$
+    -- Keep the located matches
     with eligible as (
         select m.*
         from search_groups_matches(p_filters) m
@@ -12,7 +13,7 @@ returns json as $$
     stats as (
         select
             count(*)::bigint as total,
-            search_bbox_json(st_envelope(st_union(st_envelope(location::geometry)))) as bbox
+            search_bbox_json(st_extent(location::geometry)::geometry) as bbox
         from eligible
     ),
     -- Keep the first groups by name up to the cap

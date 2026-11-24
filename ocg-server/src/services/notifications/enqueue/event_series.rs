@@ -1,6 +1,6 @@
 //! Event series notification enqueue workflows.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, hash_map::Entry};
 
 use anyhow::Result;
 use uuid::Uuid;
@@ -97,6 +97,8 @@ pub(crate) async fn enqueue_event_series_canceled_notifications(
 /// then the owner audience, then the co-host audiences ordered by name.
 /// Recipients who turned off new events, or muted a group an occurrence
 /// names, are filtered per occurrence before the notifications are bundled.
+/// Eligibility only depends on the groups an occurrence names, so the
+/// audiences are filtered once per distinct set of groups.
 pub(crate) async fn enqueue_event_series_published_notifications(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
@@ -113,6 +115,7 @@ pub(crate) async fn enqueue_event_series_published_notifications(
     let mut cohost_audiences: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
     let mut cohost_events: BTreeMap<(String, Uuid), RecipientEvents> = BTreeMap::new();
     let mut covered: HashSet<(Uuid, Uuid)> = HashSet::new();
+    let mut eligible_by_scope: HashMap<Vec<Uuid>, HashSet<Uuid>> = HashMap::new();
     let mut member_events: RecipientEvents = HashMap::new();
     let mut occurrence_group_ids: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
     let mut speaker_events: RecipientEvents = HashMap::new();
@@ -138,7 +141,7 @@ pub(crate) async fn enqueue_event_series_published_notifications(
             &event_full,
             &owner_audience,
             &mut cohost_audiences,
-            &covered,
+            &mut eligible_by_scope,
         )
         .await?;
         occurrence_group_ids.insert(*event_id, audience.group_ids);
@@ -237,11 +240,11 @@ struct EventSeriesNotificationGroup {
 }
 
 /// Audiences of one published series occurrence after preference filtering.
-struct EventSeriesOccurrenceAudience<'a> {
+struct EventSeriesOccurrenceAudience<'a, 'b> {
     /// Approved co-hosts ordered by name, each with its audience.
     cohost_audiences: Vec<(&'a EventCohostGroup, Vec<Uuid>)>,
     /// Audience members who accept an email naming the occurrence's groups.
-    eligible: HashSet<Uuid>,
+    eligible: &'b HashSet<Uuid>,
     /// Owner and approved co-host groups named by the occurrence.
     group_ids: Vec<Uuid>,
 }
@@ -345,16 +348,18 @@ fn group_recipients_by_events(
 /// Loads the audiences of one published series occurrence and keeps the
 /// members who accept an email naming its owner and approved co-host groups.
 ///
-/// Co-host audiences are cached across occurrences. Recipients already covered
-/// for the occurrence, such as its speakers, are not checked.
-async fn load_event_series_occurrence_audience<'a>(
+/// Co-host audiences are cached by group, and eligible members by the list of
+/// groups the occurrence names. Eligibility is decided per recipient, so the
+/// cached set also covers members, such as speakers, that callers skip for a
+/// given occurrence.
+async fn load_event_series_occurrence_audience<'a, 'b>(
     db: &dyn DBOperations,
     group_id: Uuid,
     event_full: &'a EventFull,
     owner_audience: &[Uuid],
     cohost_audiences_cache: &mut HashMap<Uuid, Vec<Uuid>>,
-    covered: &HashSet<(Uuid, Uuid)>,
-) -> Result<EventSeriesOccurrenceAudience<'a>> {
+    eligible_by_scope: &'b mut HashMap<Vec<Uuid>, HashSet<Uuid>>,
+) -> Result<EventSeriesOccurrenceAudience<'a, 'b>> {
     // Load each approved co-host audience (see the single-event helper for
     // why `cohosts` only holds approved co-hosts here)
     let mut cohosts = event_full.cohosts.iter().collect::<Vec<_>>();
@@ -372,28 +377,35 @@ async fn load_event_series_occurrence_audience<'a>(
         cohost_audiences.push((cohost, audience));
     }
 
-    // Collect the groups the occurrence names and its uncovered candidates
+    // Collect the groups the occurrence names
     let group_ids: Vec<Uuid> = std::iter::once(group_id)
         .chain(cohost_audiences.iter().map(|(cohost, _)| cohost.group_id))
         .collect();
-    let mut seen_candidates = HashSet::new();
-    let candidates: Vec<Uuid> = owner_audience
-        .iter()
-        .chain(cohost_audiences.iter().flat_map(|(_, audience)| audience))
-        .copied()
-        .filter(|id| !covered.contains(&(*id, event_full.event_id)) && seen_candidates.insert(*id))
-        .collect();
 
-    // Keep the candidates who accept an email naming those groups
-    let eligible: HashSet<Uuid> = db
-        .filter_notification_recipient_ids(
-            &NotificationKind::EventSeriesPublished,
-            &candidates,
-            &group_ids,
-        )
-        .await?
-        .into_iter()
-        .collect();
+    // Reuse the eligible members of an earlier occurrence naming the same groups
+    let eligible = match eligible_by_scope.entry(group_ids.clone()) {
+        Entry::Occupied(entry) => entry.into_mut(),
+        Entry::Vacant(entry) => {
+            // Keep the audience members who accept an email naming those groups
+            let mut seen_candidates = HashSet::new();
+            let candidates: Vec<Uuid> = owner_audience
+                .iter()
+                .chain(cohost_audiences.iter().flat_map(|(_, audience)| audience))
+                .copied()
+                .filter(|id| seen_candidates.insert(*id))
+                .collect();
+            let eligible = db
+                .filter_notification_recipient_ids(
+                    &NotificationKind::EventSeriesPublished,
+                    &candidates,
+                    &group_ids,
+                )
+                .await?
+                .into_iter()
+                .collect();
+            entry.insert(eligible)
+        }
+    };
 
     Ok(EventSeriesOccurrenceAudience {
         cohost_audiences,

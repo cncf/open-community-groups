@@ -1,9 +1,10 @@
 -- Returns the publicly visible events that match the search filters provided,
 -- with the fields callers need to sort, paginate and locate them. The bbox and
 -- distance filters use the event location, falling back to the group location,
--- while the returned location is the event's own location. Distances are only
--- computed when sorting by distance from the viewer location. A non-empty group
--- selection that resolves to no group matches nothing. Uses PL/pgSQL with
+-- while the returned location is the event's own location. The bbox is matched
+-- as a planar longitude/latitude rectangle, like the map viewport. Distances are
+-- only computed when sorting by distance from the viewer location. A non-empty
+-- group selection that resolves to no group matches nothing. Uses PL/pgSQL with
 -- `force_custom_plan` so each call is planned with the actual filter values.
 create or replace function search_events_matches(p_filters jsonb)
 returns table (
@@ -58,9 +59,11 @@ begin
     select
         g.community_id,
         case
+            -- Measure the distance only when sorting by it from a known location
             when v_sort_by = 'distance'
             and v_explore.user_location is not null then
                 st_distance(coalesce(e.location, g.location), v_explore.user_location)
+            -- Leave the distance empty for every other sort
             else null
         end as distance,
         e.event_id,
@@ -77,7 +80,7 @@ begin
     and is_event_listed(e, g)
     and
         case when v_bbox is not null then
-        st_intersects(coalesce(e.location, g.location), v_bbox) else true end
+        st_intersects(coalesce(e.location, g.location)::geometry, v_bbox) else true end
     and
         case when v_explore.community_ids is not null then
         g.community_id = any(v_explore.community_ids) else true end

@@ -13,6 +13,7 @@ create or replace function enqueue_notification(
 returns uuid[] as $$
 declare
     v_attachment jsonb;
+    v_attachment_hash text;
     v_attachment_id uuid;
     v_data bytea;
     v_group_mutable boolean;
@@ -56,12 +57,26 @@ begin
 
     -- Insert or reuse template data and get its ID when provided
     if p_template_data is not null then
+        -- Insert the template data unless its hash is already stored
         v_template_hash := encode(digest(convert_to(p_template_data::text, 'utf8'), 'sha256'), 'hex');
 
         insert into notification_template_data (data, hash)
         values (p_template_data, v_template_hash)
-        on conflict (hash) do update set hash = notification_template_data.hash
+        on conflict (hash) do nothing
         returning notification_template_data_id into v_notification_template_data_id;
+
+        -- Reuse the stored template data without writing a new row version
+        if v_notification_template_data_id is null then
+            select notification_template_data_id
+            into v_notification_template_data_id
+            from notification_template_data
+            where hash = v_template_hash;
+
+            -- Fail instead of enqueuing notifications without their template data
+            if not found then
+                raise exception 'notification template data not found';
+            end if;
+        end if;
     end if;
 
     -- Insert one notification per recipient and collect IDs
@@ -81,15 +96,29 @@ begin
     loop
         -- Insert attachment and get its ID, using hash to avoid duplicates
         v_data := decode(v_attachment->>'data_base64', 'base64');
+        v_attachment_hash := encode(digest(v_data, 'sha256'), 'hex');
         insert into attachment (content_type, data, file_name, hash)
         values (
             v_attachment->>'content_type',
             v_data,
             v_attachment->>'file_name',
-            encode(digest(v_data, 'sha256'), 'hex')
+            v_attachment_hash
         )
-        on conflict (hash) do update set hash = attachment.hash
+        on conflict (hash) do nothing
         returning attachment_id into v_attachment_id;
+
+        -- Reuse the stored attachment without writing a new row version
+        if v_attachment_id is null then
+            select attachment_id
+            into v_attachment_id
+            from attachment
+            where hash = v_attachment_hash;
+
+            -- Fail instead of linking notifications to a missing attachment
+            if not found then
+                raise exception 'notification attachment not found';
+            end if;
+        end if;
 
         -- Link the attachment to all notifications
         insert into notification_attachment (notification_id, attachment_id)

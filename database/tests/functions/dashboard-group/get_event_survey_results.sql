@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -26,6 +26,8 @@ select plan(7);
 \set rustOptionID 'a5e00017-0000-0000-0000-00000000000e'
 \set sqlOptionID 'a5e00017-0000-0000-0000-00000000000f'
 \set surveyID 'a5e00017-0000-0000-0000-000000000010'
+\set textOnlyQuestionID 'a5e00017-0000-0000-0000-000000000013'
+\set textOnlySurveyID 'a5e00017-0000-0000-0000-000000000014'
 \set topicsQuestionID 'a5e00017-0000-0000-0000-000000000011'
 
 -- ============================================================================
@@ -126,6 +128,24 @@ values (
     '2025-01-02 10:00:00+00'
 );
 
+-- Ready survey with a single free-text question
+insert into event_survey (event_survey_id, event_id, questions, status, title, first_response_at)
+values (
+    :'textOnlySurveyID',
+    :'eventID',
+    jsonb_build_array(
+        jsonb_build_object(
+            'id', :'textOnlyQuestionID'::uuid,
+            'kind', 'free-text',
+            'prompt', 'Comments',
+            'required', true
+        )
+    ),
+    'ready',
+    'Text only survey',
+    '2025-01-03 10:00:00+00'
+);
+
 -- Responses 101 to 112, one minute apart: ratings 101-108 good and 109-112
 -- bad; feedback "Answer 01" to "Answer 11" and a blank one from 112; topics
 -- Rust and SQL from 101-103, Rust only from 104-106 and none from the rest
@@ -155,6 +175,20 @@ select
     :'surveyID'::uuid,
     format('a5e00017-0000-0000-0000-000000000%s', n)::uuid
 from generate_series(101, 112) as n;
+
+-- Responses 101 and 102 to the free-text only survey, one minute apart
+insert into event_survey_response (answers, created_at, event_survey_id, user_id)
+select
+    jsonb_build_object('answers', jsonb_build_array(
+        jsonb_build_object(
+            'question_id', :'textOnlyQuestionID'::uuid,
+            'value', 'Comment ' || lpad((n - 100)::text, 2, '0')
+        )
+    )),
+    '2025-01-03 10:00:00+00'::timestamptz + make_interval(mins => n - 100),
+    :'textOnlySurveyID'::uuid,
+    format('a5e00017-0000-0000-0000-000000000%s', n)::uuid
+from generate_series(101, 102) as n;
 
 -- ============================================================================
 -- TESTS
@@ -230,6 +264,27 @@ select is(
     get_event_survey_results(:'groupID'::uuid, :'eventID'::uuid, null)::jsonb,
     null,
     'Should return null without a survey id'
+);
+
+-- Should return text answers without breakdowns for surveys with only free-text questions
+select is(
+    get_event_survey_results(:'groupID'::uuid, :'eventID'::uuid, :'textOnlySurveyID'::uuid)::jsonb->'questions',
+    jsonb_build_array(
+        jsonb_build_object(
+            'kind', 'free-text',
+            'position', 1,
+            'prompt', 'Comments',
+            'question_id', :'textOnlyQuestionID'::uuid,
+            'required', true,
+
+            'breakdown', null,
+            'text_answers', jsonb_build_object(
+                'answers', jsonb_build_array('Comment 01', 'Comment 02'),
+                'total', 2
+            )
+        )
+    ),
+    'Should return text answers without breakdowns for surveys with only free-text questions'
 );
 
 -- Should return the questions in order with breakdowns and the first text answers
