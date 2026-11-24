@@ -43,7 +43,7 @@ pub(crate) fn attachment_response(file_name: &str, body: Vec<u8>) -> Response {
 
 /// Formats an optional timestamp for CSV export, using an empty cell for none.
 pub(crate) fn csv_optional_timestamp(value: Option<DateTime<Utc>>) -> String {
-    value.map(csv_timestamp).unwrap_or_default()
+    value.map_or_default(csv_timestamp)
 }
 
 /// Formats a timestamp for CSV export with minute precision in UTC.

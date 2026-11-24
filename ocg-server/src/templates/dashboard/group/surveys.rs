@@ -67,10 +67,7 @@ impl FormPage {
 
     /// Returns the survey audience, confirmed attendees by default.
     pub(crate) fn audience(&self) -> EventSurveyAudience {
-        self.survey
-            .as_ref()
-            .map(|survey| survey.summary.audience)
-            .unwrap_or_default()
+        self.survey.as_ref().map_or_default(|survey| survey.summary.audience)
     }
 
     /// Returns the scheduled closing time as a datetime-local value in the
@@ -457,8 +454,7 @@ pub(crate) fn status_action(
         EventSurveyState::Draft => {
             let expected_effective_opens_at = survey
                 .effective_opens_at
-                .map(|opens_at| opens_at.timestamp().to_string())
-                .unwrap_or_default();
+                .map_or_default(|opens_at| opens_at.timestamp().to_string());
             SurveyStatusAction {
                 action: EventSurveyStatusAction::MarkReady,
                 confirm_message: mark_ready_message(survey, event, now),
@@ -552,8 +548,7 @@ pub(crate) fn view_all_answers_label(total: usize) -> String {
 
 /// Formats an optional time as a datetime-local value in the event timezone.
 fn datetime_local_value(date: Option<DateTime<Utc>>, timezone: Tz) -> String {
-    date.map(|date| date.with_timezone(&timezone).format(DATE_FORMAT).to_string())
-        .unwrap_or_default()
+    date.map_or_default(|date| date.with_timezone(&timezone).format(DATE_FORMAT).to_string())
 }
 
 /// Returns the Mark ready confirmation, with the attendees currently emailed

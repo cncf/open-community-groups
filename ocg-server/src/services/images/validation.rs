@@ -380,9 +380,5 @@ fn is_svg(bytes: &[u8], extension: &str) -> bool {
         buf.clear();
     }
 
-    if !found_svg_root {
-        return false;
-    }
-
-    true
+    found_svg_root
 }
