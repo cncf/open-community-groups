@@ -313,6 +313,7 @@ async fn test_delete_current_user_logs_out() {
         ids.session_id,
     )
     .header("HX-Request", "true")
+    .header("Sec-Fetch-Site", "same-origin")
     .body(Body::empty())
     .unwrap();
     let (parts, bytes) = send(router, request).await;

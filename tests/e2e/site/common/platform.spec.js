@@ -82,7 +82,19 @@ const CROSS_SITE_MUTATION_CASES = [
     headers: { Origin: FOREIGN_ORIGIN },
     name: "foreign Origin",
   },
+  {
+    headers: {},
+    name: "missing browser origin signals",
+  },
 ];
+
+// Global non-CSP security headers emitted on every server response.
+const EXPECTED_SECURITY_HEADERS = {
+  "permissions-policy": "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+};
 
 test.describe("site platform request contracts", () => {
   test("health check is readiness-only", async ({ request }) => {
@@ -93,6 +105,29 @@ test.describe("site platform request contracts", () => {
     expect(response.status()).toBe(200);
     expect(response.headers()["content-type"]).toBeUndefined();
     await expect(response.text()).resolves.toBe("");
+  });
+
+  test("responses carry global non-CSP security headers and conditional HSTS", async ({ request }) => {
+    const isHttps = new URL(buildE2eUrl("/")).protocol === "https:";
+
+    // Request a rendered page and the readiness probe.
+    for (const path of ["/", "/health-check"]) {
+      await test.step(path, async () => {
+        const response = await request.get(buildE2eUrl(path));
+        const headers = response.headers();
+
+        // Verify the universal security headers are present and HSTS matches the base URL scheme.
+        expect(response.status()).toBe(200);
+        for (const [name, value] of Object.entries(EXPECTED_SECURITY_HEADERS)) {
+          expect(headers[name], `${path} ${name}`).toBe(value);
+        }
+        if (isHttps) {
+          expect(headers["strict-transport-security"]).toBe("max-age=31536000");
+        } else {
+          expect(headers["strict-transport-security"]).toBeUndefined();
+        }
+      });
+    }
   });
 
   test("favicon redirects to the configured site favicon with a cacheable response", async ({ request }) => {
@@ -210,6 +245,26 @@ test.describe("site platform request contracts", () => {
         }
       });
     }
+  });
+
+  test("stateless badge verification accepts headerless POSTs and rejects cross-site POSTs", async ({
+    request,
+  }) => {
+    const credential = BADGE_CREDENTIAL_PATH.split("/").pop();
+
+    // Headerless CLI/API requests succeed without Sec-Fetch-Site, Origin, or Referer headers.
+    const response = await request.post(buildE2eUrl("/badges/verify"), {
+      multipart: { credential },
+    });
+    expect(response.status()).toBe(200);
+    await expect(response.text()).resolves.toContain("Valid and active");
+
+    // Explicit cross-site browser requests are still rejected with 403.
+    const crossSiteResponse = await request.post(buildE2eUrl("/badges/verify"), {
+      headers: { "Sec-Fetch-Site": "cross-site" },
+      multipart: { credential },
+    });
+    expect(crossSiteResponse.status()).toBe(403);
   });
 
   test("cross-site page view POST is rejected before analytics are accepted", async ({ request }) => {

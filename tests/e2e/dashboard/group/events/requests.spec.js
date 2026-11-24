@@ -37,6 +37,7 @@ import {
   navigateToEvent,
   navigateToPath,
   routeNextRequestWithQuery,
+  SAME_ORIGIN_HEADERS,
   uniqueName,
   waitForActionResponse,
   waitForHtmxSettle,
@@ -304,7 +305,7 @@ test.describe("group dashboard requests tab", () => {
     for (const requesterPage of [pending1Page, pending2Page]) {
       const requestResponse = await requesterPage.request.post(
         buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
-        { form: {} },
+        { form: {}, headers: SAME_ORIGIN_HEADERS },
       );
       expect(requestResponse.ok()).toBeTruthy();
     }
@@ -547,7 +548,7 @@ test.describe("group dashboard requests tab", () => {
     for (const requesterPage of [pending1Page, pending2Page]) {
       const requestResponse = await requesterPage.request.post(
         buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
-        { form: {} },
+        { form: {}, headers: SAME_ORIGIN_HEADERS },
       );
       expect(requestResponse.ok()).toBeTruthy();
     }

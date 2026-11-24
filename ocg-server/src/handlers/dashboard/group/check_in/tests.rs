@@ -326,6 +326,7 @@ fn raw_scan_request(session_id: session::Id, event_id: Uuid) -> axum::http::requ
         &format!("/dashboard/group/events/{event_id}/check-ins/scan"),
         session_id,
     )
+    .header("Sec-Fetch-Site", "same-origin")
 }
 
 /// Builds an authorized scanner router that must reject before checking in.

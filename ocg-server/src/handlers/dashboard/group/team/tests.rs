@@ -349,6 +349,7 @@ fn delete_current_user_request(ids: &DashboardIds) -> Request<Body> {
         ids.session_id,
     )
     .header("HX-Request", "true")
+    .header("Sec-Fetch-Site", "same-origin")
     .body(Body::empty())
     .unwrap()
 }

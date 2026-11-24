@@ -806,6 +806,7 @@ fn upload_request_with_body(
 ) -> Request<Body> {
     let mut request = authenticated_request("POST", "/images", session_id)
         .header(HOST, "example.test")
+        .header("Sec-Fetch-Site", "same-origin")
         .header(
             CONTENT_TYPE,
             format!("multipart/form-data; boundary={UPLOAD_BOUNDARY}"),

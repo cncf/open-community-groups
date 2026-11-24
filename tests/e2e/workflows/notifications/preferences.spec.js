@@ -14,7 +14,7 @@ import {
 } from "../../data-graphs/notification-preferences.js";
 import { queryE2eDatabase } from "../../database.js";
 import { TEST_GROUP_AUDIENCE_IDS, TEST_GROUP_IDS, TEST_GROUP_NAMES, TEST_USER_IDS } from "../../seed.js";
-import { buildE2eUrl, navigateToPath, waitForActionResponse } from "../../utils.js";
+import { buildE2eUrl, navigateToPath, SAME_ORIGIN_HEADERS, waitForActionResponse } from "../../utils.js";
 
 const NOTIFICATIONS_PATH = "/dashboard/user?tab=notifications";
 
@@ -69,6 +69,7 @@ test.describe("notification preferences workflow", () => {
           body: GROUP_NOTIFICATION_BODY,
           subject: GROUP_NOTIFICATION_SUBJECT,
         },
+        headers: SAME_ORIGIN_HEADERS,
       },
     );
     expect(groupNotificationResponse.ok()).toBeTruthy();
@@ -109,6 +110,7 @@ test.describe("notification preferences workflow", () => {
           body: GROUP_NOTIFICATION_BODY,
           subject: GROUP_NOTIFICATION_SUBJECT,
         },
+        headers: SAME_ORIGIN_HEADERS,
       },
     );
     expect(groupNotificationResponse.ok()).toBeTruthy();
@@ -135,6 +137,7 @@ test.describe("notification preferences workflow", () => {
           role: "viewer",
           user_id: TEST_USER_IDS.member1,
         },
+        headers: SAME_ORIGIN_HEADERS,
       },
     );
     expect(invitationResponse.ok()).toBeTruthy();
@@ -169,6 +172,7 @@ test.describe("notification preferences workflow", () => {
     const publishCheckpoint = notifications.checkpoint();
     const publishResponse = await organizerGroupPage.request.put(
       buildE2eUrl(`/dashboard/group/events/${scenario.eventId}/publish`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
     expect(publishResponse.ok()).toBeTruthy();
     notifications.expectNew(
@@ -213,6 +217,7 @@ test.describe("notification preferences workflow", () => {
           body: ORGANIZER_MESSAGE_BODY,
           subject: ORGANIZER_MESSAGE_SUBJECT,
         },
+        headers: SAME_ORIGIN_HEADERS,
       },
     );
     expect(messageResponse.ok()).toBeTruthy();
@@ -333,6 +338,7 @@ test.describe("notification preferences workflow", () => {
     const publishCheckpoint = notifications.checkpoint();
     const publishResponse = await organizerGroupPage.request.put(
       buildE2eUrl(`/dashboard/group/events/${scenario.eventId}/publish`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
     expect(publishResponse.ok()).toBeTruthy();
     notifications.expectNew([], { since: publishCheckpoint });
@@ -341,6 +347,7 @@ test.describe("notification preferences workflow", () => {
     const cancelCheckpoint = notifications.checkpoint();
     const cancelResponse = await organizerGroupPage.request.put(
       buildE2eUrl(`/dashboard/group/events/${scenario.eventId}/cancel`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
     expect(cancelResponse.ok()).toBeTruthy();
     notifications.expectNew([], { since: cancelCheckpoint });
@@ -364,6 +371,7 @@ const getNotificationPreference = async (page, category) =>
 const muteGroupForUser = async (page, groupId) => {
   const response = await page.request.put(
     buildE2eUrl(`/dashboard/user/notifications/muted-groups/${groupId}`),
+    { headers: SAME_ORIGIN_HEADERS },
   );
 
   expect(response.ok()).toBeTruthy();

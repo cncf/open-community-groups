@@ -7,7 +7,7 @@ use chrono_tz::UTC;
 use uuid::Uuid;
 
 use crate::types::{
-    badges::BadgeInput,
+    badges::{BadgeInput, BadgeSnapshot, BadgeSnapshotIssuer, UserBadge},
     community::{CommunityRole, CommunitySummary},
     dashboard::{
         community::team::CommunityTeamMember,
@@ -1036,6 +1036,45 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> User {
 
         name: Some("Speaker".to_string()),
         ..Default::default()
+    }
+}
+
+/// Sample active public user badge fixture.
+pub(crate) fn sample_user_badge() -> UserBadge {
+    let group_id = Uuid::new_v4();
+    UserBadge {
+        awarded_at: Utc.with_ymd_and_hms(2024, 1, 2, 3, 4, 5).unwrap(),
+        badge_status_list_id: Uuid::new_v4(),
+        display_order: 0,
+        group_id,
+        is_listed: true,
+        snapshot: BadgeSnapshot {
+            criteria: "Attend".to_string(),
+            description: "Test badge description".to_string(),
+            image_file_name: "test-badge.png".to_string(),
+            issuer: BadgeSnapshotIssuer {
+                community_id: Uuid::new_v4(),
+                community_name: "Test Community".to_string(),
+                group_id,
+                group_name: "Test Group".to_string(),
+            },
+            name: "Test Badge".to_string(),
+        },
+        status_list_index: 1,
+        user_badge_id: Uuid::new_v4(),
+
+        badge_id: Some(Uuid::new_v4()),
+        event_id: Some(Uuid::new_v4()),
+        event_name: Some("Test Event".to_string()),
+        identity_bound_at: None,
+        identity_hash: None,
+        identity_salt: None,
+        recipient_name: Some("Ada".to_string()),
+        recipient_username: Some("ada".to_string()),
+        revocation_reason: None,
+        revoked_at: None,
+        revoked_by_user_id: None,
+        user_id: Some(Uuid::new_v4()),
     }
 }
 

@@ -18,7 +18,10 @@ use axum::{
     extract::{FromRef, MatchedPath, Request, State as AxumState},
     http::{
         HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri,
-        header::{CACHE_CONTROL, CONTENT_TYPE, HOST, ORIGIN, REFERER, SET_COOKIE, VARY},
+        header::{
+            CACHE_CONTROL, CONTENT_TYPE, HOST, ORIGIN, REFERER, REFERRER_POLICY, SET_COOKIE,
+            STRICT_TRANSPORT_SECURITY, VARY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
+        },
     },
     middleware::{self, Next},
     response::{IntoResponse, Redirect},
@@ -104,6 +107,13 @@ pub(crate) const COMMIT_SHA_HEADER: &str = "x-ocg-commit-sha";
 /// Header used to request an application-level page refresh for `ocgFetch`.
 const OCG_REFRESH_HEADER: &str = "x-ocg-refresh";
 
+/// Permissions-Policy header name.
+const PERMISSIONS_POLICY: HeaderName = HeaderName::from_static("permissions-policy");
+
+/// Permissions-Policy header value allowing camera access only on the site itself.
+const PERMISSIONS_POLICY_VALUE: &str =
+    "camera=(self), microphone=(), geolocation=(), payment=(), usb=()";
+
 /// Headers for public shared-cache responses without additional headers.
 pub(crate) const PUBLIC_SHARED_CACHE_HEADERS: [(HeaderName, &str); 2] = [
     (CACHE_CONTROL, CACHE_CONTROL_PUBLIC_SHARED),
@@ -113,11 +123,23 @@ pub(crate) const PUBLIC_SHARED_CACHE_HEADERS: [(HeaderName, &str); 2] = [
 /// Vary header value for public shared-cache responses.
 pub(crate) const PUBLIC_SHARED_CACHE_VARY: &str = "x-ocg-commit-sha, hx-request, x-ocg-fetch";
 
+/// Referrer-Policy header value applied to every response.
+const REFERRER_POLICY_VALUE: &str = "strict-origin-when-cross-origin";
+
 /// Matched path recorded for requests served by the router fallback.
 const ROUTE_FALLBACK_PATH: &str = "fallback";
 
 /// Path prefix of embedded static assets.
 const STATIC_PATH_PREFIX: &str = "/static/";
+
+/// Strict-Transport-Security header value applied when `base_url` uses HTTPS.
+const STRICT_TRANSPORT_SECURITY_VALUE: &str = "max-age=31536000";
+
+/// X-Content-Type-Options header value applied to every response.
+const X_CONTENT_TYPE_OPTIONS_VALUE: &str = "nosniff";
+
+/// X-Frame-Options header value applied to every response.
+const X_FRAME_OPTIONS_VALUE: &str = "DENY";
 
 /// Static file embedder using rust-embed.
 ///
@@ -125,6 +147,16 @@ const STATIC_PATH_PREFIX: &str = "/static/";
 #[derive(Embed)]
 #[folder = "dist/static"]
 struct StaticFile;
+
+/// Policy controlling how unsafe requests without browser origin headers are handled.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum OriginPolicy {
+    /// Allow requests lacking `Sec-Fetch-Site`, `Origin`, and `Referer` while
+    /// still rejecting explicit cross-site browser signals.
+    AllowHeaderless,
+    /// Fail closed unless trustworthy same-origin browser signals are present.
+    RequireEvidence,
+}
 
 /// Dependencies required to build the application router.
 pub(crate) struct RouterDeps {
@@ -361,10 +393,6 @@ pub(crate) async fn setup(deps: RouterDeps) -> Result<Router> {
             "/badges/status-lists/{badge_status_list_id}",
             get(badges::status_list),
         )
-        .route(
-            "/badges/verify",
-            get(badges::verify_page).post(badges::verify),
-        )
         .route("/docs", get(site::docs::page))
         .route("/explore", get(site::explore::page))
         .route(
@@ -454,6 +482,18 @@ pub(crate) async fn setup(deps: RouterDeps) -> Result<Router> {
             .route("/log-in/oidc/{provider}/callback", get(auth::oidc_callback));
     }
 
+    // Stateless public badge verification: allow headerless CLI/API clients
+    // while still rejecting explicit cross-site browser POSTs
+    let badge_verify_router = Router::new()
+        .route(
+            "/badges/verify",
+            get(badges::verify_page).post(badges::verify),
+        )
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            enforce_badge_verify_origin,
+        ));
+
     router = router
         .route("/log-out", post(auth::log_out))
         .route("/section/user-menu", get(auth::user_menu_section))
@@ -461,7 +501,8 @@ pub(crate) async fn setup(deps: RouterDeps) -> Result<Router> {
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             enforce_browser_same_origin,
-        ));
+        ))
+        .merge(badge_verify_router);
 
     // Setup Zoom webhook route if enabled in configuration
     if zoom_enabled {
@@ -509,11 +550,42 @@ pub(crate) async fn setup(deps: RouterDeps) -> Result<Router> {
             CACHE_CONTROL,
             HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE),
         ))
+        .layer(middleware::from_fn(refresh_stale_clients));
+
+    // Emit HSTS for canonical HTTPS responses (including stale-client 204s),
+    // excluding legacy redirect hosts handled by the outer redirect layer
+    if is_https_base_url(&state.server_cfg.base_url) {
+        router = router.layer(SetResponseHeaderLayer::if_not_present(
+            STRICT_TRANSPORT_SECURITY,
+            HeaderValue::from_static(STRICT_TRANSPORT_SECURITY_VALUE),
+        ));
+    }
+
+    router = router
         .layer(middleware::from_fn_with_state(
             state.clone(),
             redirect_old_hosts,
         ))
-        .layer(middleware::from_fn(refresh_stale_clients));
+        // Apply global non-CSP security headers to every response
+        .layer(
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    PERMISSIONS_POLICY,
+                    HeaderValue::from_static(PERMISSIONS_POLICY_VALUE),
+                ))
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    REFERRER_POLICY,
+                    HeaderValue::from_static(REFERRER_POLICY_VALUE),
+                ))
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    X_CONTENT_TYPE_OPTIONS,
+                    HeaderValue::from_static(X_CONTENT_TYPE_OPTIONS_VALUE),
+                ))
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    X_FRAME_OPTIONS,
+                    HeaderValue::from_static(X_FRAME_OPTIONS_VALUE),
+                )),
+        );
 
     Ok(router.with_state(state))
 }
@@ -596,20 +668,40 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 
 // Middleware.
 
+/// Rejects explicit cross-site browser requests while allowing headerless CLI/API verifiers.
+async fn enforce_badge_verify_origin(
+    AxumState(server_cfg): AxumState<HttpServerConfig>,
+    request: Request,
+    next: Next,
+) -> axum::response::Response {
+    enforce_origin_policy(&server_cfg, OriginPolicy::AllowHeaderless, request, next).await
+}
+
 /// Rejects unsafe browser requests without trustworthy same-origin evidence.
 async fn enforce_browser_same_origin(
     AxumState(server_cfg): AxumState<HttpServerConfig>,
     request: Request,
     next: Next,
 ) -> axum::response::Response {
-    // Check the request's same-origin evidence
-    let allowed = match browser_request_allowed(&server_cfg, request.method(), request.headers()) {
-        Ok(allowed) => allowed,
-        Err(err) => {
-            error!(error = %format_args!("{err:#}"), "error checking request origin");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-    };
+    enforce_origin_policy(&server_cfg, OriginPolicy::RequireEvidence, request, next).await
+}
+
+/// Applies the given origin check policy to a request before invoking the next service.
+async fn enforce_origin_policy(
+    server_cfg: &HttpServerConfig,
+    policy: OriginPolicy,
+    request: Request,
+    next: Next,
+) -> axum::response::Response {
+    // Check the request's origin evidence under the configured policy
+    let allowed =
+        match browser_request_allowed(server_cfg, request.method(), request.headers(), policy) {
+            Ok(allowed) => allowed,
+            Err(err) => {
+                error!(error = %format_args!("{err:#}"), "error checking request origin");
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        };
 
     // Run the handler only for allowed requests
     if allowed {
@@ -759,14 +851,19 @@ pub(crate) fn serde_qs_config() -> serde_qs::Config {
     serde_qs::Config::new().max_depth(6).use_form_encoding(true)
 }
 
-/// Returns whether a browser request carries trustworthy same-origin evidence.
+/// Returns whether a request passes the origin check under `policy`.
 ///
-/// Methods that cannot mutate application state are always allowed. Fails
-/// only when the configured `base_url` cannot be used for the origin check.
+/// Methods that cannot mutate application state are always allowed. Explicit
+/// cross-site Fetch Metadata and foreign `Origin`/`Referer` headers are always
+/// rejected. When `Sec-Fetch-Site`, `Origin`, and `Referer` are all absent,
+/// [`OriginPolicy::RequireEvidence`] fails closed while
+/// [`OriginPolicy::AllowHeaderless`] allows the request. Fails only when the
+/// configured `base_url` cannot be used for the origin check.
 fn browser_request_allowed(
     server_cfg: &HttpServerConfig,
     method: &Method,
     headers: &HeaderMap,
+    policy: OriginPolicy,
 ) -> Result<bool> {
     // Allow methods that cannot mutate application state
     if matches!(
@@ -776,28 +873,39 @@ fn browser_request_allowed(
         return Ok(true);
     }
 
-    // Reject explicit cross-site browser requests
-    let fetch_site = headers.get("sec-fetch-site").map(|value| value.to_str().ok());
-    if fetch_site
-        .flatten()
-        .is_some_and(|value| value.eq_ignore_ascii_case("cross-site"))
-    {
+    // Reject explicit cross-site Fetch Metadata on any header line
+    let fetch_sites: Vec<_> = headers.get_all("sec-fetch-site").iter().collect();
+    if fetch_sites.iter().any(|value| {
+        value
+            .to_str()
+            .is_ok_and(|value| value.eq_ignore_ascii_case("cross-site"))
+    }) {
         return Ok(false);
     }
 
     // Apply Fetch Metadata policy when origin headers are absent
     let has_explicit_origin = headers.contains_key(ORIGIN) || headers.contains_key(REFERER);
     if !has_explicit_origin {
-        let allowed = match fetch_site {
-            None => true,
-            Some(Some(value)) if value.eq_ignore_ascii_case("same-origin") => true,
-            Some(_) => false,
-        };
-        return Ok(allowed);
+        if fetch_sites.is_empty() {
+            return Ok(policy == OriginPolicy::AllowHeaderless);
+        }
+        let all_same_origin = fetch_sites.iter().all(|value| {
+            value
+                .to_str()
+                .is_ok_and(|value| value.eq_ignore_ascii_case("same-origin"))
+        });
+        return Ok(all_same_origin);
     }
 
     // Require explicit browser origin evidence to match the configured site
     request_headers_match_site_origin(server_cfg, headers)
+}
+
+/// Returns whether the configured base URL uses the HTTPS scheme.
+fn is_https_base_url(base_url: &str) -> bool {
+    base_url
+        .get(..8)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("https://"))
 }
 
 /// Opens the request span, carrying the request id so downstream log lines can be correlated.

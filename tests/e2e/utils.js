@@ -16,6 +16,11 @@ const HTMX_SETTLE_TIMEOUT_MS = 10_000;
 const ACTION_RESPONSE_BODY_PREVIEW_CHARS = 2_000;
 // Wait message of a rate limit rejection, in the server's wording (see handlers/rate_limit.rs).
 export const RATE_LIMIT_MESSAGE = "Too many requests from your network. Please wait 2 minutes and try again.";
+// Same-origin headers for direct API requests to browser-guarded routes.
+export const SAME_ORIGIN_HEADERS = {
+  Origin: new URL(BASE_URL).origin,
+  "Sec-Fetch-Site": "same-origin",
+};
 // Total time to open a table filter menu and click one of its options.
 const TABLE_FILTER_MENU_TIMEOUT_MS = 10_000;
 // Wait for a table filter option before reopening its menu and trying again.
@@ -1164,7 +1169,9 @@ export const logInWithSeededUser = async (page, credentials) => {
 
 /** Selects a community dashboard context for the logged-in user. */
 export const selectCommunityContext = async (page, communityId) => {
-  const response = await page.request.put(buildUrl(`/dashboard/community/${communityId}/select`));
+  const response = await page.request.put(buildUrl(`/dashboard/community/${communityId}/select`), {
+    headers: SAME_ORIGIN_HEADERS,
+  });
 
   expect(response.status(), await response.text()).toBe(204);
 };
@@ -1173,9 +1180,12 @@ export const selectCommunityContext = async (page, communityId) => {
 export const selectGroupContext = async (page, communityId, groupId) => {
   const communityResponse = await page.request.put(
     buildUrl(`/dashboard/group/community/${communityId}/select`),
+    { headers: SAME_ORIGIN_HEADERS },
   );
   expect(communityResponse.status(), await communityResponse.text()).toBe(204);
 
-  const groupResponse = await page.request.put(buildUrl(`/dashboard/group/${groupId}/select`));
+  const groupResponse = await page.request.put(buildUrl(`/dashboard/group/${groupId}/select`), {
+    headers: SAME_ORIGIN_HEADERS,
+  });
   expect(groupResponse.status(), await groupResponse.text()).toBe(204);
 };

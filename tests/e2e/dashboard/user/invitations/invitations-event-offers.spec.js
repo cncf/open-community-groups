@@ -12,7 +12,13 @@ import {
   TEST_TICKETING_EVENTS,
   TEST_USER_IDS,
 } from "../../../seed.js";
-import { buildE2eUrl, confirmAlert, expectDialogClosed, waitForActionResponse } from "../../../utils.js";
+import {
+  buildE2eUrl,
+  confirmAlert,
+  expectDialogClosed,
+  SAME_ORIGIN_HEADERS,
+  waitForActionResponse,
+} from "../../../utils.js";
 import { clearEventAttendeeState, openUserDashboardPath } from "../helpers.js";
 import { openEventOfferActions, readInvitationsMenuCount } from "./helpers.js";
 
@@ -313,7 +319,7 @@ test.describe("user dashboard invitations view — event offers", () => {
     for (const page of [organizerGroupPage, member2Page]) {
       const attendResponse = await page.request.post(
         buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
-        { form: {} },
+        { form: {}, headers: SAME_ORIGIN_HEADERS },
       );
       expect(attendResponse.ok()).toBeTruthy();
     }

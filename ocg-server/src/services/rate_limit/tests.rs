@@ -473,18 +473,18 @@ fn test_rate_limiter_new_rejects_invalid_client_ip_config() {
 }
 
 #[test]
-fn test_rate_limiter_record_skipped_cross_origin_counts_without_requests() {
+fn test_rate_limiter_record_skipped_origin_check_counts_without_requests() {
     // Setup a limiter
     let now = Instant::now();
     let limiter = limiter(views_budgets(budget(1, 60)), RateLimitMode::Enforce, now);
 
-    // Skip a cross-origin request for a limit
-    limiter.record_skipped_cross_origin(IpLimit::SignUp);
+    // Skip an origin-rejected request for a limit
+    limiter.record_skipped_origin_check(IpLimit::SignUp);
 
     // Check the skip is counted apart from requests and leaves the budget untouched
     let window = limiter.take_window();
     let sign_up = window.limit(Limit::SignUp);
-    assert_eq!(sign_up.skipped_cross_origin, 1);
+    assert_eq!(sign_up.skipped_origin_check, 1);
     assert_eq!(sign_up.requests, 0);
     assert!(sign_up.has_traffic());
 }

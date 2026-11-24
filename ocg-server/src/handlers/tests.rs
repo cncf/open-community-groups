@@ -100,9 +100,9 @@ pub(crate) use crate::{
         sample_group_payment_recipient, sample_group_region, sample_group_sponsor,
         sample_group_summary, sample_inbox_conversation, sample_inbox_conversation_summary,
         sample_invitation_request, sample_session_proposal, sample_session_proposal_levels,
-        sample_site_settings, sample_site_stats, sample_team_member, sample_user_cfs_submission,
-        sample_user_event, sample_user_event_survey, sample_user_event_survey_item,
-        sample_user_search_result, sample_user_summary,
+        sample_site_settings, sample_site_stats, sample_team_member, sample_user_badge,
+        sample_user_cfs_submission, sample_user_event, sample_user_event_survey,
+        sample_user_event_survey_item, sample_user_search_result, sample_user_summary,
     },
 };
 
@@ -401,21 +401,43 @@ pub(crate) fn authenticated_request(
     request(method, uri).header(COOKIE, format!("id={session_id}"))
 }
 
+/// Build an unauthenticated multipart badge verification request submitting a credential ID.
+pub(crate) fn badge_verify_request(user_badge_id: Uuid) -> Request<Body> {
+    const BOUNDARY: &str = "BADGE-VERIFY-BOUNDARY";
+    let body = format!(
+        "--{BOUNDARY}\r\nContent-Disposition: form-data; name=\"credential\"\r\n\r\n{user_badge_id}\r\n--{BOUNDARY}--\r\n"
+    );
+
+    request("POST", "/badges/verify")
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={BOUNDARY}"),
+        )
+        .body(Body::from(body))
+        .unwrap()
+}
+
 /// Build an authenticated request with an empty body.
+///
+/// Unsafe methods carry `Sec-Fetch-Site: same-origin` so handler tests pass the
+/// browser same-origin guard.
 pub(crate) fn empty_request(method: &str, uri: &str, session_id: session::Id) -> Request<Body> {
-    authenticated_request(method, uri, session_id)
+    same_origin_authenticated_request(method, uri, session_id)
         .body(Body::empty())
         .unwrap()
 }
 
 /// Build an authenticated form-encoded request.
+///
+/// Unsafe methods carry `Sec-Fetch-Site: same-origin` so handler tests pass the
+/// browser same-origin guard.
 pub(crate) fn form_request(
     method: &str,
     uri: &str,
     session_id: session::Id,
     body: impl Into<Body>,
 ) -> Request<Body> {
-    authenticated_request(method, uri, session_id)
+    same_origin_authenticated_request(method, uri, session_id)
         .header(CONTENT_TYPE, FORM_CONTENT_TYPE)
         .body(body.into())
         .unwrap()
@@ -427,13 +449,16 @@ pub(crate) fn get_request(uri: &str, session_id: session::Id) -> Request<Body> {
 }
 
 /// Build an authenticated JSON request.
+///
+/// Unsafe methods carry `Sec-Fetch-Site: same-origin` so handler tests pass the
+/// browser same-origin guard.
 pub(crate) fn json_request(
     method: &str,
     uri: &str,
     session_id: session::Id,
     body: &serde_json::Value,
 ) -> Request<Body> {
-    authenticated_request(method, uri, session_id)
+    same_origin_authenticated_request(method, uri, session_id)
         .header(CONTENT_TYPE, "application/json")
         .body(Body::from(body.to_string()))
         .unwrap()
@@ -442,6 +467,21 @@ pub(crate) fn json_request(
 /// Start a request builder without a session cookie.
 pub(crate) fn request(method: &str, uri: &str) -> RequestBuilder {
     Request::builder().method(method).uri(uri)
+}
+
+/// Start an authenticated request builder carrying `Sec-Fetch-Site: same-origin`
+/// on unsafe methods.
+fn same_origin_authenticated_request(
+    method: &str,
+    uri: &str,
+    session_id: session::Id,
+) -> RequestBuilder {
+    let builder = authenticated_request(method, uri, session_id);
+    if matches!(method, "GET" | "HEAD" | "OPTIONS" | "TRACE") {
+        builder
+    } else {
+        builder.header("Sec-Fetch-Site", "same-origin")
+    }
 }
 
 /// Send the request through the router and return the response parts and body.

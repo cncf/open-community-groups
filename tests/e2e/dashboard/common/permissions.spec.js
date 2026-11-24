@@ -40,6 +40,7 @@ import {
 import {
   buildE2eUrl,
   futureDate,
+  SAME_ORIGIN_HEADERS,
   selectCommunityContext,
   selectGroupContext,
   uniqueName,
@@ -417,6 +418,7 @@ function createCommunityGroupOperation(role, expectedStatus) {
       if (role.roleName === "groups-manager") {
         const deleteResponse = await page.request.delete(
           buildE2eUrl(`/dashboard/community/groups/${groupId}/delete`),
+          { headers: SAME_ORIGIN_HEADERS },
         );
         expect(deleteResponse.status()).toBe(204);
       }
@@ -911,6 +913,7 @@ test.describe("dashboard permission matrix", () => {
     // Select the secondary community with the primary admin's seeded viewer role.
     const response = await adminCommunityPage.request.put(
       buildE2eUrl(`/dashboard/community/${TEST_COMMUNITY_IDS.community2}/select`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
 
     // Verify the path-community read guard accepts the foreign viewer role.
@@ -921,6 +924,7 @@ test.describe("dashboard permission matrix", () => {
     // The community1 viewer has no community_team row for the secondary community.
     const response = await communityViewerPage.request.put(
       buildE2eUrl(`/dashboard/community/${TEST_COMMUNITY_IDS.community2}/select`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
 
     // Verify user_has_path_community_permission rejects the foreign community outright.
@@ -931,6 +935,7 @@ test.describe("dashboard permission matrix", () => {
     // The first pending user only holds an unaccepted primary community team invitation.
     const response = await pending1Page.request.put(
       buildE2eUrl(`/dashboard/community/${PRIMARY_COMMUNITY_ID}/select`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
 
     // Verify a pending community_team row grants no community read access.
@@ -943,6 +948,7 @@ test.describe("dashboard permission matrix", () => {
     // The second pending user only holds an unaccepted primary group team invitation.
     const response = await pending2Page.request.put(
       buildE2eUrl(`/dashboard/group/community/${PRIMARY_COMMUNITY_ID}/select`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
 
     // Verify a pending group_team row leaves no selectable group in the community.
@@ -1254,6 +1260,9 @@ const runGroupCase = async (matrixCase, page, notifications) => {
 async function sendDashboardRequest(page, operation, expectedStatus) {
   const options = { method: operation.method };
 
+  if (operation.method !== "GET" && operation.method !== "HEAD") {
+    options.headers = SAME_ORIGIN_HEADERS;
+  }
   if (operation.form) {
     options.form = operation.form;
   }
