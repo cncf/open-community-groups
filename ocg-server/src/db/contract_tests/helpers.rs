@@ -440,7 +440,7 @@ pub(super) fn contract_event_label() -> EventLabel {
 }
 
 /// Builds the shared `PostgreSQL` configuration for contract tests.
-pub(super) fn contract_tests_config() -> Result<DeadpoolDbConfig> {
+pub(crate) fn contract_tests_config() -> Result<DeadpoolDbConfig> {
     let port = env_or_default("OCG_DB_PORT", "5432")
         .parse()
         .context("OCG_DB_PORT must be a valid port number")?;
@@ -917,7 +917,7 @@ pub(super) const fn paid_cancellation_user_id() -> Uuid {
 }
 
 /// Returns the paid event that also holds the refund fixtures.
-pub(super) const fn paid_event_id() -> Uuid {
+pub(crate) const fn paid_event_id() -> Uuid {
     uuid!("00000000-0000-0000-0000-00000000c0d0")
 }
 
@@ -994,13 +994,18 @@ pub(super) const fn rebind_user_badge_id() -> Uuid {
 }
 
 /// Returns the reconciliation buyer identifier used by the contract fixture.
-pub(super) const fn reconcile_buyer_id() -> Uuid {
+pub(crate) const fn reconcile_buyer_id() -> Uuid {
     uuid!("00000000-0000-0000-0000-00000000c0e3")
 }
 
 /// Returns the due reconciliation event identifier used by the contract fixture.
 pub(super) const fn reconcile_due_event_id() -> Uuid {
     uuid!("00000000-0000-0000-0000-00000000c0de")
+}
+
+/// Returns the pending purchase reconciled by the checkout webhook contracts.
+pub(crate) const fn reconcile_purchase_id() -> Uuid {
+    uuid!("00000000-0000-0000-0000-00000000c0f2")
 }
 
 /// Returns the payment job fixture ready for local refund finalization.

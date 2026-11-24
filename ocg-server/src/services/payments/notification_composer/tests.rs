@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::{mock::MockDB, payments::CompletedEventPurchase},
+    db::mock::MockDB,
     services::notifications::MockNotificationsManager,
     templates::notifications::{
         EventRefundApproved, EventRefundRejected, EventRefundRequested, EventWelcome,
@@ -77,49 +77,6 @@ async fn test_build_refund_request_template_data_returns_expected_payload() {
         })
         .unwrap()
     );
-}
-
-#[tokio::test]
-async fn test_enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance() {
-    // Setup identifiers, notification context, and expected payload
-    let community_id = Uuid::new_v4();
-    let event = sample_event_summary(Uuid::new_v4());
-    let user_id = Uuid::new_v4();
-    let expected_template_data = to_value(&EventWelcome {
-        event: event.clone(),
-        link: SAMPLE_EVENT_LINK.to_string(),
-        theme: SiteSettings::default().theme,
-
-        dashboard_link: None,
-    })
-    .unwrap();
-    let mut db = MockDB::new();
-    expect_event_notification_context(&mut db, community_id, &event);
-
-    // Setup notifications manager mock
-    let mut notifications_manager = MockNotificationsManager::new();
-    notifications_manager
-        .expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            notification.attachments.len() == 1
-                && matches!(notification.kind, NotificationKind::EventWelcome)
-                && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref() == Some(&expected_template_data)
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Enqueue the checkout completed welcome notification
-    let composer = sample_notification_composer(db, notifications_manager);
-    composer
-        .enqueue_checkout_completed_notification(CompletedEventPurchase {
-            community_id,
-            event_id: event.event_id,
-            user_id,
-
-            transitioned: None,
-        })
-        .await;
 }
 
 #[tokio::test]

@@ -25,8 +25,9 @@ use crate::{
             build_event_cohost_removed_notification, build_event_cohost_responded_notification,
             build_event_custom_notification, build_event_paid_configured_notification,
             build_event_published_notification, build_event_rescheduled_notification,
-            build_group_custom_notification, build_inbox_message_received_notification,
-            build_inbox_reply_received_notification, build_speaker_welcome_notification,
+            build_event_welcome_notification, build_group_custom_notification,
+            build_inbox_message_received_notification, build_inbox_reply_received_notification,
+            build_speaker_welcome_notification,
         },
     },
     templates::notifications::EventCohostRemovalReason,
@@ -437,6 +438,35 @@ pub(crate) async fn enqueue_event_rescheduled_notification(
         recipients,
         server_cfg,
         &site_settings,
+    )?;
+    db.enqueue_notification(&notification).await?;
+
+    Ok(())
+}
+
+/// Enqueues the attendee welcome notification for an event.
+///
+/// Required: callers running inside a transaction pass the transaction handle
+/// so notification failures roll back with the triggering mutation.
+pub(crate) async fn enqueue_event_welcome_notification(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+    community_id: Uuid,
+    event_id: Uuid,
+    user_id: Uuid,
+    include_dashboard_link: bool,
+) -> Result<()> {
+    // Load the event and site context on the caller's database handle
+    let (event, site_settings) =
+        load_event_notification_context(db, community_id, event_id).await?;
+
+    // Build and enqueue the welcome notification with its calendar attachment
+    let notification = build_event_welcome_notification(
+        &event,
+        user_id,
+        server_cfg,
+        &site_settings,
+        include_dashboard_link,
     )?;
     db.enqueue_notification(&notification).await?;
 

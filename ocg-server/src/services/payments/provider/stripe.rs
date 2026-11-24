@@ -11,7 +11,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
-use tracing::instrument;
+use tracing::{debug, instrument};
 use uuid::Uuid;
 
 use crate::{
@@ -682,10 +682,7 @@ impl StripeProvider {
 
     /// Parses a platform application-fee event into the shared webhook model.
     fn parse_application_fee_event(event: StripeWebhookEvent) -> Result<PaymentsWebhookEvent> {
-        let object = event
-            .data
-            .object
-            .context("Stripe webhook payload is missing object data")?;
+        let object = Self::parse_webhook_object(event.data.object)?;
         Ok(PaymentsWebhookEvent::ApplicationFeeCreated {
             amount_minor: object
                 .amount
@@ -706,10 +703,7 @@ impl StripeProvider {
         let connected_account_id = event
             .account
             .context("Stripe checkout webhook is missing connected account")?;
-        let object = event
-            .data
-            .object
-            .context("Stripe webhook payload is missing object data")?;
+        let object = Self::parse_webhook_object(event.data.object)?;
         Ok(PaymentsWebhookEvent::CheckoutCompleted {
             connected_account_id,
             is_live: event.livemode,
@@ -722,10 +716,7 @@ impl StripeProvider {
         let connected_account_id = event
             .account
             .context("Stripe checkout webhook is missing connected account")?;
-        let object = event
-            .data
-            .object
-            .context("Stripe webhook payload is missing object data")?;
+        let object = Self::parse_webhook_object(event.data.object)?;
         Ok(PaymentsWebhookEvent::CheckoutExpired {
             connected_account_id,
             is_live: event.livemode,
@@ -738,10 +729,7 @@ impl StripeProvider {
         let connected_account_id = event
             .account
             .context("Stripe invoice webhook is missing connected account")?;
-        let object = event
-            .data
-            .object
-            .context("Stripe webhook payload is missing object data")?;
+        let object = Self::parse_webhook_object(event.data.object)?;
         let Some(purchase_id) = object.metadata.get("event_purchase_id") else {
             return Ok(PaymentsWebhookEvent::Noop);
         };
@@ -858,10 +846,7 @@ impl StripeProvider {
         let connected_account_id = event
             .account
             .context("Stripe refund webhook is missing connected account")?;
-        let object = event
-            .data
-            .object
-            .context("Stripe webhook payload is missing object data")?;
+        let object = Self::parse_webhook_object(event.data.object)?;
         let Some(purchase_id) = object.metadata.get("event_purchase_id") else {
             return Ok(PaymentsWebhookEvent::Noop);
         };
@@ -928,22 +913,38 @@ impl StripeProvider {
         event: StripeWebhookEvent,
         endpoint: PaymentsWebhookEndpoint,
     ) -> Result<PaymentsWebhookEvent> {
-        let event_type = event.event_type.clone();
-        match event_type.as_str() {
-            "application_fee.created" if endpoint == PaymentsWebhookEndpoint::PlatformAccount => {
+        match (endpoint, event.event_type.as_str()) {
+            (PaymentsWebhookEndpoint::PlatformAccount, "application_fee.created") => {
                 Self::parse_application_fee_event(event)
             }
-            "checkout.session.completed" => Self::parse_checkout_completed_event(event),
-            "checkout.session.expired" => Self::parse_checkout_expired_event(event),
-            "invoice.paid" => Self::parse_invoice_event(event),
-            "refund.created" | "refund.failed" | "refund.updated" => {
-                Self::parse_refund_event(event)
+            (PaymentsWebhookEndpoint::ConnectedAccount, "checkout.session.completed") => {
+                Self::parse_checkout_completed_event(event)
             }
-            _ if endpoint == PaymentsWebhookEndpoint::PlatformAccount => {
+            (PaymentsWebhookEndpoint::ConnectedAccount, "checkout.session.expired") => {
+                Self::parse_checkout_expired_event(event)
+            }
+            (PaymentsWebhookEndpoint::ConnectedAccount, "invoice.paid") => {
+                Self::parse_invoice_event(event)
+            }
+            (
+                PaymentsWebhookEndpoint::ConnectedAccount,
+                "refund.created" | "refund.failed" | "refund.updated",
+            ) => Self::parse_refund_event(event),
+            _ => {
+                debug!(
+                    ?endpoint,
+                    event_type = %event.event_type,
+                    "ignoring unhandled Stripe webhook event"
+                );
                 Ok(PaymentsWebhookEvent::Noop)
             }
-            unsupported => bail!("unsupported Stripe webhook event: {unsupported}"),
         }
+    }
+
+    /// Deserializes the Stripe webhook object payload for a handled event type.
+    fn parse_webhook_object(object: Option<serde_json::Value>) -> Result<StripeWebhookObject> {
+        let object = object.context("Stripe webhook payload is missing object data")?;
+        serde_json::from_value(object).context("error parsing Stripe webhook object")
     }
 
     /// Builds a stable SHA-256 fingerprint for immutable provider inputs.
@@ -2471,7 +2472,7 @@ struct StripeTaxSettingsResponse {
 #[derive(Debug, Deserialize)]
 struct StripeWebhookData {
     /// Event object supplied by Stripe when present.
-    object: Option<StripeWebhookObject>,
+    object: Option<serde_json::Value>,
 }
 
 /// Stripe webhook event envelope received from the webhook endpoint.

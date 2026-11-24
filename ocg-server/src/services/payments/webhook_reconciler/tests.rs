@@ -7,19 +7,15 @@ use crate::{
     config::HttpServerConfig,
     db::{
         DynDB,
-        mock::MockDB,
+        mock::{MockDB, expect_rolled_back_transaction, expect_successful_transaction},
         payments::{
             CompletedEventPurchase, EventPurchaseRefund, EventPurchaseRefundKind,
             EventPurchaseRefundStatus, ReconcileEventPurchaseResult,
         },
     },
-    services::{
-        notifications::MockNotificationsManager,
-        payments::{
-            PaymentsWebhookEvent, RefundPaymentResult, RefundPaymentStatus,
-            notification_composer::PaymentsNotificationComposer,
-            provider::{CheckoutFinancialContext, MockPaymentsProvider},
-        },
+    services::payments::{
+        PaymentsWebhookEvent, RefundPaymentResult, RefundPaymentStatus,
+        provider::{CheckoutFinancialContext, MockPaymentsProvider},
     },
     types::{
         notifications::NotificationKind,
@@ -47,7 +43,7 @@ async fn test_handle_webhook_event_attaches_application_fee_to_direct_charge() {
         .returning(|_, _, _, _, _| Ok(()));
 
     // Reconcile the asynchronously created platform object
-    sample_reconciler(db, MockNotificationsManager::new(), webhook_provider())
+    sample_reconciler(db, webhook_provider())
         .handle_webhook_event(PaymentsWebhookEvent::ApplicationFeeCreated {
             amount_minor: 62,
             connected_account_id: "acct_test_123".to_string(),
@@ -61,14 +57,14 @@ async fn test_handle_webhook_event_attaches_application_fee_to_direct_charge() {
 
 #[tokio::test]
 async fn test_handle_webhook_event_completes_checkout_and_enqueues_notification() {
-    // Setup a checkout completion and its notification context
+    // Setup a checkout completion and its transaction-scoped notification context
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
 
-    // Setup checkout reconciliation and notification context expectations
-    let mut db = MockDB::new();
-    db.expect_reconcile_event_purchase_for_checkout_session()
+    // Setup transactional checkout reconciliation and attendee welcome enqueue
+    let mut tx = MockDB::new();
+    tx.expect_reconcile_event_purchase_for_checkout_session()
         .withf(|input| {
             input.payment_provider == PaymentProvider::Stripe
                 && input.provider_object_account_id == "acct_test_123"
@@ -91,35 +87,38 @@ async fn test_handle_webhook_event_completes_checkout_and_enqueues_notification(
                 },
             ))
         });
-    db.expect_get_event_summary_by_id()
+    tx.expect_get_event_summary_by_id()
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .times(1)
         .returning(move |_, _| Ok(sample_event_summary(event_id)));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(SiteSettings::default()));
-
-    // Setup the attendee welcome notification expectation
-    let mut notifications_manager = MockNotificationsManager::new();
-    notifications_manager
-        .expect_enqueue()
+    tx.expect_enqueue_notification()
         .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventWelcome)
+            notification.attachments.len() == 1
+                && matches!(notification.kind, NotificationKind::EventWelcome)
                 && notification.recipients == vec![user_id]
-                && notification
-                    .template_data
-                    .as_ref()
-                    .is_some_and(|data| data["event"]["event_id"] == json!(event_id))
+                && notification.template_data.as_ref().is_some_and(|data| {
+                    data["event"]["event_id"] == json!(event_id) && data["dashboard_link"].is_null()
+                })
         })
         .times(1)
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+
+    // Forbid out-of-transaction database lookups or notification writes
+    let mut db = MockDB::new();
+    expect_successful_transaction(&mut db, tx);
+    db.expect_get_event_summary_by_id().never();
+    db.expect_get_site_settings().never();
+    db.expect_enqueue_notification().never();
 
     // Guard the worker-owned provider refund methods
     let mut provider = webhook_provider();
     expect_checkout_financial_context(&mut provider, "cs_test_123");
 
     // Reconcile the completed checkout
-    let reconciler = sample_reconciler(db, notifications_manager, provider);
+    let reconciler = sample_reconciler(db, provider);
     let result = reconciler
         .handle_webhook_event(PaymentsWebhookEvent::CheckoutCompleted {
             connected_account_id: "acct_test_123".to_string(),
@@ -128,15 +127,15 @@ async fn test_handle_webhook_event_completes_checkout_and_enqueues_notification(
         })
         .await;
 
-    // Check local completion and best-effort notification succeed
+    // Check local completion and transactional notification succeed together
     assert!(result.is_ok());
 }
 
 #[tokio::test]
 async fn test_handle_webhook_event_completes_checkout_before_application_fee_created() {
     // Setup checkout financial context whose direct-charge fee is still asynchronous
-    let mut db = MockDB::new();
-    db.expect_reconcile_event_purchase_for_checkout_session()
+    let mut tx = MockDB::new();
+    tx.expect_reconcile_event_purchase_for_checkout_session()
         .withf(|input| {
             input.payment_provider == PaymentProvider::Stripe
                 && input.provider_object_account_id == "acct_test_123"
@@ -149,6 +148,13 @@ async fn test_handle_webhook_event_completes_checkout_before_application_fee_cre
         })
         .times(1)
         .returning(|_| Ok(ReconcileEventPurchaseResult::Noop));
+    tx.expect_get_event_summary_by_id().never();
+    tx.expect_get_site_settings().never();
+    tx.expect_enqueue_notification().never();
+
+    // Setup transaction and provider expectations
+    let mut db = MockDB::new();
+    expect_successful_transaction(&mut db, tx);
     let mut provider = webhook_provider();
     provider
         .expect_get_checkout_financial_context()
@@ -171,7 +177,7 @@ async fn test_handle_webhook_event_completes_checkout_before_application_fee_cre
         });
 
     // Reconcile checkout without blocking fulfillment on fee creation timing
-    sample_reconciler(db, MockNotificationsManager::new(), provider)
+    sample_reconciler(db, provider)
         .handle_webhook_event(PaymentsWebhookEvent::CheckoutCompleted {
             connected_account_id: "acct_test_123".to_string(),
             is_live: false,
@@ -198,7 +204,7 @@ async fn test_handle_webhook_event_expires_checkout_session() {
     let provider = webhook_provider();
 
     // Reconcile the expired checkout
-    let reconciler = sample_reconciler(db, MockNotificationsManager::new(), provider);
+    let reconciler = sample_reconciler(db, provider);
     let result = reconciler
         .handle_webhook_event(PaymentsWebhookEvent::CheckoutExpired {
             connected_account_id: "acct_test_123".to_string(),
@@ -239,7 +245,7 @@ async fn test_handle_webhook_event_persists_failed_refund_without_provider_call(
     let provider = webhook_provider();
 
     // Persist the verified provider failure
-    let reconciler = sample_reconciler(db, MockNotificationsManager::new(), provider);
+    let reconciler = sample_reconciler(db, provider);
     let result = reconciler
         .handle_webhook_event(sample_refund_event(RefundPaymentStatus::Failed))
         .await;
@@ -274,7 +280,7 @@ async fn test_handle_webhook_event_persists_pending_refund_without_provider_call
     let provider = webhook_provider();
 
     // Persist the verified provider progress
-    let reconciler = sample_reconciler(db, MockNotificationsManager::new(), provider);
+    let reconciler = sample_reconciler(db, provider);
     let result = reconciler
         .handle_webhook_event(sample_refund_event(RefundPaymentStatus::Pending))
         .await;
@@ -311,7 +317,7 @@ async fn test_handle_webhook_event_persists_succeeded_refund_for_worker_finaliza
     let provider = webhook_provider();
 
     // Persist the verified provider success
-    let reconciler = sample_reconciler(db, MockNotificationsManager::new(), provider);
+    let reconciler = sample_reconciler(db, provider);
     let result = reconciler
         .handle_webhook_event(sample_refund_event(RefundPaymentStatus::Succeeded))
         .await;
@@ -337,7 +343,7 @@ async fn test_handle_webhook_event_preserves_terminal_failure_on_late_pending_up
     let provider = webhook_provider();
 
     // Reconcile the delayed pending update
-    let reconciler = sample_reconciler(db, MockNotificationsManager::new(), provider);
+    let reconciler = sample_reconciler(db, provider);
     let result = reconciler
         .handle_webhook_event(sample_refund_event(RefundPaymentStatus::Pending))
         .await;
@@ -349,8 +355,8 @@ async fn test_handle_webhook_event_preserves_terminal_failure_on_late_pending_up
 #[tokio::test]
 async fn test_handle_webhook_event_queues_unfulfillable_checkout_without_provider_call() {
     // Setup checkout reconciliation that durably queued a refund
-    let mut db = MockDB::new();
-    db.expect_reconcile_event_purchase_for_checkout_session()
+    let mut tx = MockDB::new();
+    tx.expect_reconcile_event_purchase_for_checkout_session()
         .withf(|input| {
             input.payment_provider == PaymentProvider::Stripe
                 && input.provider_object_account_id == "acct_test_123"
@@ -363,15 +369,18 @@ async fn test_handle_webhook_event_queues_unfulfillable_checkout_without_provide
         })
         .times(1)
         .returning(|_| Ok(ReconcileEventPurchaseResult::RefundQueued));
+    tx.expect_get_event_summary_by_id().never();
+    tx.expect_get_site_settings().never();
+    tx.expect_enqueue_notification().never();
 
     // Guard notifications and worker-owned provider refund methods
-    let mut notifications_manager = MockNotificationsManager::new();
-    notifications_manager.expect_enqueue().never();
+    let mut db = MockDB::new();
+    expect_successful_transaction(&mut db, tx);
     let mut provider = webhook_provider();
     expect_checkout_financial_context(&mut provider, "cs_unfulfillable_123");
 
     // Reconcile the completed but unfulfillable checkout
-    let reconciler = sample_reconciler(db, notifications_manager, provider);
+    let reconciler = sample_reconciler(db, provider);
     let result = reconciler
         .handle_webhook_event(PaymentsWebhookEvent::CheckoutCompleted {
             connected_account_id: "acct_test_123".to_string(),
@@ -434,7 +443,7 @@ async fn test_handle_webhook_event_refreshes_unpinned_success_before_persisting(
     provider.expect_provider().return_const(PaymentProvider::Stripe);
 
     // Reconcile the stale success webhook against current provider state
-    let reconciler = sample_reconciler(db, MockNotificationsManager::new(), provider);
+    let reconciler = sample_reconciler(db, provider);
     let result = reconciler
         .handle_webhook_event(sample_refund_event(RefundPaymentStatus::Succeeded))
         .await;
@@ -460,7 +469,7 @@ async fn test_handle_webhook_event_attaches_paid_invoice() {
         .returning(|_, _, _, _, _| Ok(()));
 
     // Reconcile the paid invoice
-    sample_reconciler(db, MockNotificationsManager::new(), webhook_provider())
+    sample_reconciler(db, webhook_provider())
         .handle_webhook_event(PaymentsWebhookEvent::InvoicePaid {
             connected_account_id: "acct_test_123".to_string(),
             hosted_url: "https://stripe.test/invoices/in_test_123".to_string(),
@@ -486,7 +495,7 @@ async fn test_handle_webhook_event_preserves_succeeded_refund_on_late_pending_up
     db.expect_record_event_purchase_refund_pending().never();
 
     // Reconcile the delayed pending update
-    let reconciler = sample_reconciler(db, MockNotificationsManager::new(), webhook_provider());
+    let reconciler = sample_reconciler(db, webhook_provider());
     let result = reconciler
         .handle_webhook_event(sample_refund_event(RefundPaymentStatus::Pending))
         .await;
@@ -498,19 +507,22 @@ async fn test_handle_webhook_event_preserves_succeeded_refund_on_late_pending_up
 #[tokio::test]
 async fn test_handle_webhook_event_propagates_checkout_reconciliation_failure() {
     // Setup a local reconciliation failure after the provider lookup succeeds
-    let mut db = MockDB::new();
-    db.expect_reconcile_event_purchase_for_checkout_session()
+    let mut tx = MockDB::new();
+    tx.expect_reconcile_event_purchase_for_checkout_session()
         .times(1)
         .returning(|_| Err(anyhow::anyhow!("reconciliation unavailable")));
+    tx.expect_get_event_summary_by_id().never();
+    tx.expect_get_site_settings().never();
+    tx.expect_enqueue_notification().never();
 
-    // Guard notifications and worker-owned provider refund methods
-    let mut notifications_manager = MockNotificationsManager::new();
-    notifications_manager.expect_enqueue().never();
+    // Guard rollback and worker-owned provider refund methods
+    let mut db = MockDB::new();
+    expect_rolled_back_transaction(&mut db, tx);
     let mut provider = webhook_provider();
     expect_checkout_financial_context(&mut provider, "cs_test_123");
 
     // Reconcile the completed checkout
-    let err = sample_reconciler(db, notifications_manager, provider)
+    let err = sample_reconciler(db, provider)
         .handle_webhook_event(PaymentsWebhookEvent::CheckoutCompleted {
             connected_account_id: "acct_test_123".to_string(),
             is_live: false,
@@ -519,8 +531,11 @@ async fn test_handle_webhook_event_propagates_checkout_reconciliation_failure() 
         .await
         .expect_err("reconciliation failure to be retried by the provider");
 
-    // Check the local failure is returned
-    assert_eq!(err.to_string(), "reconciliation unavailable");
+    // Check the local failure is returned with reconciliation context
+    assert_eq!(
+        format!("{err:#}"),
+        "failed to reconcile checkout purchase: reconciliation unavailable"
+    );
 }
 
 #[tokio::test]
@@ -544,7 +559,7 @@ async fn test_handle_webhook_event_rejects_mismatched_connected_account() {
     {
         *connected_account_id = "acct_other".to_string();
     }
-    let err = sample_reconciler(db, MockNotificationsManager::new(), webhook_provider())
+    let err = sample_reconciler(db, webhook_provider())
         .handle_webhook_event(event)
         .await
         .expect_err("cross-account refund event to be rejected");
@@ -570,13 +585,68 @@ async fn test_handle_webhook_event_rejects_refund_for_purchase_not_awaiting_refu
     db.expect_get_event_purchase_refund().never();
 
     // Reconcile a refund event for the completed purchase
-    let err = sample_reconciler(db, MockNotificationsManager::new(), webhook_provider())
+    let err = sample_reconciler(db, webhook_provider())
         .handle_webhook_event(sample_refund_event(RefundPaymentStatus::Succeeded))
         .await
         .expect_err("refund event without a pending refund to be rejected");
 
     // Check the purchase state is reported
     assert_eq!(err.to_string(), "event purchase is not awaiting a refund");
+}
+
+#[tokio::test]
+async fn test_handle_webhook_event_rolls_back_checkout_when_notification_enqueue_fails() {
+    // Setup a completed checkout whose transactional welcome email fails to enqueue
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+
+    let mut tx = MockDB::new();
+    tx.expect_reconcile_event_purchase_for_checkout_session()
+        .times(1)
+        .returning(move |_| {
+            Ok(ReconcileEventPurchaseResult::Completed(
+                CompletedEventPurchase {
+                    community_id,
+                    event_id,
+                    user_id,
+
+                    transitioned: None,
+                },
+            ))
+        });
+    tx.expect_get_event_summary_by_id()
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .times(1)
+        .returning(move |_, _| Ok(sample_event_summary(event_id)));
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(SiteSettings::default()));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .returning(|_| Err(anyhow::anyhow!("notification queue unavailable")));
+
+    // Expect rollback so reconciliation and welcome notification fail together
+    let mut db = MockDB::new();
+    expect_rolled_back_transaction(&mut db, tx);
+    let mut provider = webhook_provider();
+    expect_checkout_financial_context(&mut provider, "cs_test_123");
+
+    // Reconcile the completed checkout
+    let err = sample_reconciler(db, provider)
+        .handle_webhook_event(PaymentsWebhookEvent::CheckoutCompleted {
+            connected_account_id: "acct_test_123".to_string(),
+            is_live: false,
+            provider_session_id: "cs_test_123".to_string(),
+        })
+        .await
+        .expect_err("notification enqueue failure should roll back and trigger retry");
+
+    // Check the enqueue failure propagates with welcome-notification context
+    assert_eq!(
+        format!("{err:#}"),
+        "failed to enqueue checkout welcome notification: notification queue unavailable"
+    );
 }
 
 #[test]
@@ -733,19 +803,12 @@ fn sample_purchase() -> EventPurchaseSummary {
 }
 
 /// Creates a webhook reconciler with the supplied test doubles.
-fn sample_reconciler(
-    db: MockDB,
-    notifications_manager: MockNotificationsManager,
-    provider: MockPaymentsProvider,
-) -> PaymentsWebhookReconciler {
-    let db = Arc::new(db) as DynDB;
-    let notification_composer = PaymentsNotificationComposer::new(
-        db.clone(),
-        Arc::new(notifications_manager),
+fn sample_reconciler(db: MockDB, provider: MockPaymentsProvider) -> PaymentsWebhookReconciler {
+    PaymentsWebhookReconciler::new(
+        Arc::new(db) as DynDB,
+        Arc::new(provider),
         HttpServerConfig::default(),
-    );
-
-    PaymentsWebhookReconciler::new(db, notification_composer, Arc::new(provider))
+    )
 }
 
 /// Creates a durable refund matching the provider webhook fixture.
