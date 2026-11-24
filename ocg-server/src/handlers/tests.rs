@@ -1221,7 +1221,7 @@ impl TestRouterBuilder {
         let events_manager = Arc::new(self.events_manager.unwrap_or_default()) as DynEventsManager;
         let inbox_manager = Arc::new(self.inbox_manager.unwrap_or_default()) as DynInboxManager;
 
-        router::setup(
+        Box::pin(router::setup(router::RouterDeps {
             activity_tracker,
             blocking_executor,
             db,
@@ -1229,14 +1229,15 @@ impl TestRouterBuilder {
             events_manager,
             images_manager,
             inbox_manager,
-            self.meetings_cfg,
-            self.payments_cfg,
+            notifications_manager: nm,
             payments_manager,
-            nm,
-            self.rate_limiter,
-            &server_cfg,
-            CancellationToken::new(),
-        )
+            server_cfg,
+            shutdown_drain: CancellationToken::new(),
+
+            meetings_cfg: self.meetings_cfg,
+            payments_cfg: self.payments_cfg,
+            rate_limiter: self.rate_limiter,
+        }))
         .await
         .expect("router setup should succeed")
     }

@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use deadpool_postgres::{Client, Pool, PoolConfig};
+use ocg_common::db::create_pool;
 use serde_json::{Value, json};
 use tokio_postgres::NoTls;
 
@@ -17,7 +18,6 @@ use crate::{
             contract_tests_config, contract_tests_pool, paid_event_id, reconcile_buyer_id,
             reconcile_purchase_id,
         },
-        pool::create_pool,
     },
     services::payments::{
         PaymentsWebhookEvent,
@@ -463,5 +463,5 @@ fn single_connection_pool() -> Result<Pool> {
     let mut cfg = contract_tests_config()?;
     cfg.pool = Some(PoolConfig::new(1));
 
-    create_pool(&cfg, NoTls)
+    create_pool(&cfg, NoTls, 1)
 }
