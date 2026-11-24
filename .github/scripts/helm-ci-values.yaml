@@ -1,0 +1,11 @@
+# CI fixture values supplying required secret placeholders so `helm lint` and
+# `helm template` render cleanly without real deployment secrets.
+server:
+  badges:
+    signingKey:
+      key_id: ci-test-key
+      private_jwk:
+        kty: OKP
+        crv: Ed25519
+        x: 6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw
+        d: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc

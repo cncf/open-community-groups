@@ -20,9 +20,11 @@ jobs:
       pull-requests: read
     runs-on: ubuntu-latest-4-cores
     outputs:
+      charts: ${{ steps.filter.outputs.charts }}
       database: ${{ steps.filter.outputs.database }}
       database_contracts: ${{ steps.filter.outputs.database_contracts }}
       dependencies: ${{ steps.filter.outputs.dependencies }}
+      dockerfiles: ${{ steps.filter.outputs.dockerfiles }}
       javascript: ${{ steps.filter.outputs.javascript }}
       markdown: ${{ steps.filter.outputs.markdown }}
       server: ${{ steps.filter.outputs.server }}
@@ -34,6 +36,11 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
+            charts:
+              - '.github/scripts/helm-ci-values.yaml'
+              - '.github/scripts/lint-helm.sh'
+              - '.github/workflows/ci.yml'
+              - 'charts/**'
             database:
               - '.github/workflows/ci.yml'
               - '.github/workflows/tern.conf'
@@ -57,6 +64,10 @@ jobs:
               - '**/Cargo.lock'
               - '**/Cargo.toml'
               - '.cargo/audit.toml'
+            dockerfiles:
+              - '.github/workflows/ci.yml'
+              - '.hadolint.yaml'
+              - '**/Dockerfile*'
             javascript:
               - '.github/workflows/ci.yml'
               - 'tests/e2e/**'
@@ -167,6 +178,87 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- --deny warnings
+
+  lint-dockerfiles:
+    needs: changes
+    if: needs.changes.outputs.dockerfiles == 'true'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: db-migrator
+            dockerfile: database/migrations/Dockerfile
+            context: .
+            runs-on: ubuntu-latest-4-cores
+          - name: db-tests
+            dockerfile: database/tests/Dockerfile-db-tests
+            context: database/tests
+            runs-on: ubuntu-latest-4-cores
+          - name: postgres-db-tests
+            dockerfile: database/tests/Dockerfile-postgres-db-tests
+            context: database/tests
+            runs-on: ubuntu-latest-4-cores
+          - name: redirector
+            dockerfile: ocg-redirector/Dockerfile
+            context: .
+            runs-on: ubuntu-latest-8-cores
+          - name: server
+            dockerfile: ocg-server/Dockerfile
+            context: .
+            runs-on: ubuntu-latest-8-cores
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Verify Dockerfile matrix coverage
+        if: matrix.name == 'db-migrator'
+        run: |
+          set -eu
+          discovered=$(git ls-files ':(glob)**/Dockerfile*' | sort)
+          configured=$(yq -r '.jobs["lint-dockerfiles"].strategy.matrix.include[].dockerfile' .github/workflows/ci.yml | sort)
+          if [ "$discovered" != "$configured" ]; then
+            echo "Dockerfile matrix in .github/workflows/ci.yml is out of sync with repository files:" >&2
+            diff -u <(printf '%s\n' "$configured") <(printf '%s\n' "$discovered") >&2 || true
+            exit 1
+          fi
+      - name: Lint Dockerfile with hadolint
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          config: .hadolint.yaml
+          dockerfile: ${{ matrix.dockerfile }}
+          failure-threshold: warning
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Check Docker image build
+        uses: docker/build-push-action@v7
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          build-args: ${{ matrix.name == 'server' && 'OCG_COMMIT_SHA=ci' || '' }}
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          load: false
+          provenance: false
+          push: false
+
+  lint-helm:
+    needs: changes
+    if: needs.changes.outputs.charts == 'true'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest-4-cores
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          checksum-policy: required
+          version: v3.22.1
+      - name: Run Helm lint and template checks
+        run: bash .github/scripts/lint-helm.sh
 
   lint-markdown-files:
     needs: changes
