@@ -9,7 +9,7 @@ use crate::{
     types::badges::{UserBadge, VerifiedBadge},
 };
 
-use super::{BadgesManagerError, DynBadgesManager, Result, badge_image_url, png};
+use super::{BadgesManagerError, DynBadgesManager, Result, badge_image_url};
 
 // Types.
 
@@ -66,7 +66,7 @@ pub(crate) async fn verify_submission(
     badges_manager: &DynBadgesManager,
     db: &dyn DBOperations,
     credential_reference: Option<&str>,
-    png_bytes: Option<&[u8]>,
+    png_bytes: Option<Vec<u8>>,
 ) -> std::result::Result<VerifiedBadge, VerificationError> {
     // Prefer the uploaded portable credential over a local reference
     if let Some(png_bytes) = png_bytes {
@@ -90,6 +90,7 @@ async fn load_award(
 /// Classifies proof and profile failures without hiding server configuration faults.
 fn map_verification_validation_error(error: BadgesManagerError) -> VerificationError {
     match error {
+        BadgesManagerError::Other(error) => VerificationError::Internal(error),
         error @ (BadgesManagerError::InvalidContext | BadgesManagerError::InvalidKey) => {
             VerificationError::Internal(error.into())
         }
@@ -136,10 +137,13 @@ async fn resolve_credential_reference(
 async fn verify_portable_credential(
     badges_manager: &DynBadgesManager,
     db: &dyn DBOperations,
-    png_bytes: &[u8],
+    png_bytes: Vec<u8>,
 ) -> std::result::Result<VerifiedBadge, VerificationError> {
     // Extract and cryptographically verify the baked credential
-    let credential = png::extract(png_bytes).map_err(|_| VerificationError::Invalid)?;
+    let credential = badges_manager
+        .extract_png(png_bytes)
+        .await
+        .map_err(map_verification_validation_error)?;
     let credential =
         serde_json::from_slice::<Value>(&credential).map_err(|_| VerificationError::Invalid)?;
     let verified = badges_manager
@@ -257,9 +261,13 @@ fn is_valid_identity_hash(hash: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::anyhow;
     use serde_json::{Value, json};
 
-    use super::{contains_unsupported_identifier, recipient_display_name, single_proof};
+    use super::{
+        BadgesManagerError, VerificationError, contains_unsupported_identifier,
+        map_verification_validation_error, recipient_display_name, single_proof,
+    };
 
     #[test]
     fn test_contains_unsupported_identifier_accepts_credential_without_identifier_claims() {
@@ -331,6 +339,37 @@ mod tests {
             let credential = json!({"credentialSubject": {"identifier": identifier}});
             assert!(contains_unsupported_identifier(&credential));
         }
+    }
+
+    #[test]
+    fn test_map_verification_validation_error_preserves_internal_failures() {
+        // Check server-side faults remain internal errors
+        assert!(matches!(
+            map_verification_validation_error(BadgesManagerError::InvalidContext),
+            VerificationError::Internal(_)
+        ));
+        assert!(matches!(
+            map_verification_validation_error(BadgesManagerError::InvalidKey),
+            VerificationError::Internal(_)
+        ));
+        assert!(matches!(
+            map_verification_validation_error(BadgesManagerError::Other(anyhow!("worker failed"))),
+            VerificationError::Internal(_)
+        ));
+
+        // Check client-supplied badge failures normalize to Invalid
+        assert!(matches!(
+            map_verification_validation_error(BadgesManagerError::InvalidPng),
+            VerificationError::Invalid
+        ));
+        assert!(matches!(
+            map_verification_validation_error(BadgesManagerError::PngLimitExceeded),
+            VerificationError::Invalid
+        ));
+        assert!(matches!(
+            map_verification_validation_error(BadgesManagerError::InvalidProof),
+            VerificationError::Invalid
+        ));
     }
 
     #[test]

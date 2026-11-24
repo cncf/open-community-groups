@@ -487,7 +487,8 @@ CPU-bound work runs off the async executor through
 semaphore sized by `server.max_blocking_concurrency`, so a burst cannot
 saturate the blocking pool. One executor is created in `main` and shared by
 everything that runs CPU-bound work (password hashing and verification, image
-validation and hashing).
+validation and hashing, and badge signing, verification, encoding, and PNG
+processing).
 
 ### Bounded exports
 

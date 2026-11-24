@@ -1,13 +1,17 @@
 //! Badge credential manager tests.
 
+use std::{sync::mpsc, time::Duration};
+
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 use ssi_jwk::{Base64urlUInt, JWK, OctetParams, Params};
 use ssi_verification_methods::ed25519_dalek::SigningKey;
+use tokio::sync::oneshot;
 use uuid::Uuid;
 
 use crate::{
     config::{BadgeSigningKeyConfig, BadgeVerificationKeyConfig, BadgesConfig},
+    services::blocking::BlockingExecutor,
     test_util::sample_png,
     types::badges::{
         BADGE_CRITERIA_MAX_CHARS, BADGE_DESCRIPTION_MAX_CHARS, BADGE_NAME_MAX_CHARS, BadgeSnapshot,
@@ -23,6 +27,35 @@ use super::{
 /// Deterministic group issuer URL used by signed test documents.
 const TEST_ISSUER_URL: &str =
     "https://badges.example.test/badges/issuers/00000000-0000-0000-0000-00000000000c";
+
+#[tokio::test]
+async fn test_bake_png_offloads_to_blocking_executor() {
+    // Setup a single-permit executor and occupy its only permit
+    let executor = BlockingExecutor::new(1);
+    let (release_tx, blocker) = occupy_blocking_executor(&executor).await;
+    let manager = manager_with_executor(executor);
+
+    // Start PNG baking while the blocking permit is busy
+    let mut bake_task = tokio::spawn(async move {
+        manager
+            .bake_png(sample_png(512, 512), br#"{"id":"baked"}"#.to_vec())
+            .await
+    });
+
+    // Check PNG baking waits on the blocking executor rather than running inline
+    assert!(
+        tokio::time::timeout(Duration::from_millis(25), &mut bake_task)
+            .await
+            .is_err(),
+        "bake_png should wait while the blocking executor has no free permits"
+    );
+
+    // Release the permit and check baking completes cleanly
+    release_tx.send(()).unwrap();
+    blocker.await.unwrap();
+    let baked = bake_task.await.unwrap().unwrap();
+    assert_eq!(super::png::extract(&baked).unwrap(), br#"{"id":"baked"}"#);
+}
 
 #[tokio::test(start_paused = true)]
 async fn test_cached_credential_rejects_cold_request_when_signer_is_busy() {
@@ -67,6 +100,45 @@ async fn test_cached_export_credential_reuses_binding_and_supersedes_on_rebind()
         rebound["credentialSubject"]["identifier"],
         first["credentialSubject"]["identifier"]
     );
+}
+
+#[tokio::test]
+async fn test_cached_status_list_allows_distinct_lists_while_another_is_busy() {
+    // Setup a manager and hold the signing guard for one status list
+    let manager = manager();
+    let busy_list_id = Uuid::from_u128(31);
+    let free_list_id = Uuid::from_u128(32);
+    let group_id = Uuid::from_u128(33);
+    let created_at = Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap();
+    let _guard = manager.status_list_cache.signing_guard(busy_list_id).await.unwrap();
+
+    // Sign a different status list while the first list's guard is held
+    let signed = manager
+        .cached_status_list(free_list_id, group_id, &[4], created_at)
+        .await
+        .unwrap();
+
+    // Check unrelated status lists are not blocked by another list's signer
+    assert_eq!(
+        signed["id"],
+        format!("https://badges.example.test/badges/status-lists/{free_list_id}")
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_cached_status_list_rejects_cold_request_when_list_signer_is_busy() {
+    // Setup a manager whose per-list signing guard is already held
+    let manager = manager();
+    let list_id = Uuid::from_u128(31);
+    let group_id = Uuid::from_u128(32);
+    let created_at = Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap();
+    let _guard = manager.status_list_cache.signing_guard(list_id).await.unwrap();
+
+    // Run one cold request for the same status list
+    let result = manager.cached_status_list(list_id, group_id, &[42], created_at).await;
+
+    // Check the bounded wait fails closed with Busy instead of queuing indefinitely
+    assert!(matches!(result, Err(BadgesManagerError::Busy)));
 }
 
 #[tokio::test]
@@ -165,6 +237,136 @@ async fn test_credential_profile_signs_and_verifies_after_key_rotation() {
     assert_eq!(verified.status_list_index, award.status_list_index);
     assert_eq!(verified.user_badge_id, award.user_badge_id);
     assert_eq!(verified.valid_from, award.awarded_at);
+}
+
+#[tokio::test]
+async fn test_extract_png_offloads_to_blocking_executor() {
+    // Prepare a baked PNG and occupy the executor's only permit
+    let baked = bake(&sample_png(512, 512), br#"{"id":"extracted"}"#).unwrap();
+    let executor = BlockingExecutor::new(1);
+    let (release_tx, blocker) = occupy_blocking_executor(&executor).await;
+    let manager = manager_with_executor(executor);
+
+    // Start PNG extraction while the blocking permit is busy
+    let mut extract_task = tokio::spawn(async move { manager.extract_png(baked).await });
+
+    // Check PNG extraction waits on the blocking executor rather than running inline
+    assert!(
+        tokio::time::timeout(Duration::from_millis(25), &mut extract_task)
+            .await
+            .is_err(),
+        "extract_png should wait while the blocking executor has no free permits"
+    );
+
+    // Release the permit and check extraction returns the embedded payload
+    release_tx.send(()).unwrap();
+    blocker.await.unwrap();
+    let extracted = extract_task.await.unwrap().unwrap();
+    assert_eq!(extracted, br#"{"id":"extracted"}"#);
+}
+
+#[tokio::test]
+async fn test_issue_credential_offloads_signing_to_blocking_executor() {
+    // Setup a single-permit executor and occupy its only permit
+    let executor = BlockingExecutor::new(1);
+    let (release_tx, blocker) = occupy_blocking_executor(&executor).await;
+    let manager = manager_with_executor(executor);
+
+    // Start credential signing while the blocking permit is busy
+    let mut sign_task = tokio::spawn(async move {
+        let award = sample_award();
+        manager
+            .issue_credential(CredentialInput {
+                award: &award,
+                created_at: award.awarded_at,
+                email_identity: None,
+            })
+            .await
+    });
+
+    // Check signing waits on the blocking executor rather than running inline
+    assert!(
+        tokio::time::timeout(Duration::from_millis(25), &mut sign_task)
+            .await
+            .is_err(),
+        "issue_credential should wait while the blocking executor has no free permits"
+    );
+
+    // Release the permit and check signing completes cleanly
+    release_tx.send(()).unwrap();
+    blocker.await.unwrap();
+    let signed = sign_task.await.unwrap().unwrap();
+    assert_eq!(signed["proof"][0]["cryptosuite"], "eddsa-rdfc-2022");
+}
+
+#[tokio::test]
+async fn test_issue_status_list_offloads_encoding_and_signing_to_blocking_executor() {
+    // Setup a single-permit executor and occupy its only permit
+    let executor = BlockingExecutor::new(1);
+    let (release_tx, blocker) = occupy_blocking_executor(&executor).await;
+    let manager = manager_with_executor(executor);
+
+    // Start status-list encoding and signing while the blocking permit is busy
+    let mut sign_task = tokio::spawn(async move {
+        manager
+            .issue_status_list(
+                Uuid::from_u128(31),
+                Uuid::from_u128(32),
+                &[42],
+                Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+            )
+            .await
+    });
+
+    // Check encoding and signing wait on the blocking executor rather than running inline
+    assert!(
+        tokio::time::timeout(Duration::from_millis(25), &mut sign_task)
+            .await
+            .is_err(),
+        "issue_status_list should wait while the blocking executor has no free permits"
+    );
+
+    // Release the permit and check status-list issuance completes cleanly
+    release_tx.send(()).unwrap();
+    blocker.await.unwrap();
+    let signed = sign_task.await.unwrap().unwrap();
+    assert_eq!(signed["proof"][0]["cryptosuite"], "eddsa-rdfc-2022");
+}
+
+#[tokio::test]
+async fn test_issue_status_list_offloads_encoding_before_signing() {
+    // Setup a single-permit executor and occupy its only permit
+    let executor = BlockingExecutor::new(1);
+    let (release_tx, blocker) = occupy_blocking_executor(&executor).await;
+    let manager = manager_with_executor(executor);
+
+    // Start status-list issuance with an invalid index that fails during encoding
+    let mut encode_task = tokio::spawn(async move {
+        manager
+            .issue_status_list(
+                Uuid::from_u128(31),
+                Uuid::from_u128(32),
+                &[-1],
+                Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+            )
+            .await
+    });
+
+    // Check encoding itself waits on the blocking executor rather than failing inline
+    assert!(
+        tokio::time::timeout(Duration::from_millis(25), &mut encode_task)
+            .await
+            .is_err(),
+        "status-list encoding should wait while the blocking executor has no free permits"
+    );
+
+    // Release the permit and check encoding fails with InvalidStatusList
+    release_tx.send(()).unwrap();
+    blocker.await.unwrap();
+    assert!(matches!(
+        encode_task.await.unwrap(),
+        Err(BadgesManagerError::InvalidStatusList)
+    ));
 }
 
 #[tokio::test]
@@ -302,6 +504,32 @@ async fn test_unknown_context_fails_closed_during_signing() {
 
     // Check the closed loader rejects the operation
     assert!(matches!(result, Err(BadgesManagerError::SigningFailed)));
+}
+
+#[tokio::test]
+async fn test_verify_credential_offloads_verification_to_blocking_executor() {
+    // Issue a valid signed credential before occupying the executor
+    let credential = signed_credential(&manager()).await;
+    let executor = BlockingExecutor::new(1);
+    let (release_tx, blocker) = occupy_blocking_executor(&executor).await;
+    let manager = manager_with_executor(executor);
+
+    // Start verification while the blocking permit is busy
+    let mut verify_task = tokio::spawn(async move { manager.verify_credential(&credential).await });
+
+    // Check verification waits on the blocking executor rather than running inline
+    assert!(
+        tokio::time::timeout(Duration::from_millis(25), &mut verify_task)
+            .await
+            .is_err(),
+        "verify_credential should wait while the blocking executor has no free permits"
+    );
+
+    // Release the permit and check verification succeeds
+    release_tx.send(()).unwrap();
+    blocker.await.unwrap();
+    let verified = verify_task.await.unwrap().unwrap();
+    assert_eq!(verified.user_badge_id, sample_award().user_badge_id);
 }
 
 #[tokio::test]
@@ -604,6 +832,21 @@ fn manager() -> SsiBadgesManager {
     manager_with_key(test_jwk(7), "test-key", vec![])
 }
 
+/// Build a badges manager with a caller-supplied blocking executor.
+fn manager_with_executor(blocking_executor: BlockingExecutor) -> SsiBadgesManager {
+    SsiBadgesManager::new(
+        "https://badges.example.test",
+        blocking_executor,
+        &BadgesConfig {
+            signing_key: BadgeSigningKeyConfig {
+                key_id: "test-key".to_string(),
+                private_jwk: test_jwk(7),
+            },
+            verification_keys: vec![],
+        },
+    )
+}
+
 /// Build a badges manager with one active key and retained public keys.
 fn manager_with_key(
     signing_jwk: JWK,
@@ -612,6 +855,7 @@ fn manager_with_key(
 ) -> SsiBadgesManager {
     SsiBadgesManager::new(
         "https://badges.example.test",
+        BlockingExecutor::new(4),
         &BadgesConfig {
             signing_key: BadgeSigningKeyConfig {
                 key_id: key_id.to_string(),
@@ -620,6 +864,26 @@ fn manager_with_key(
             verification_keys,
         },
     )
+}
+
+/// Occupies one permit on `executor` until the returned sender is signalled.
+async fn occupy_blocking_executor(
+    executor: &BlockingExecutor,
+) -> (mpsc::Sender<()>, tokio::task::JoinHandle<()>) {
+    let (entered_tx, entered_rx) = oneshot::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let executor = executor.clone();
+    let blocker = tokio::spawn(async move {
+        executor
+            .run(move || {
+                let _ = entered_tx.send(());
+                let _ = release_rx.recv();
+            })
+            .await
+            .unwrap();
+    });
+    entered_rx.await.unwrap();
+    (release_tx, blocker)
 }
 
 /// Build the deterministic active award used by credential tests.

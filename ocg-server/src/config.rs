@@ -688,7 +688,9 @@ pub(crate) struct HttpServerConfig {
     /// Deadlines applied to login provider requests (`OAuth2`, OIDC, GitHub).
     #[serde(default)]
     pub http_client: HttpClientConfig,
-    /// Maximum CPU-heavy tasks (password hashing, image validation and hashing) running at once.
+    /// Maximum CPU-heavy tasks (password hashing, image validation and
+    /// hashing, and badge signing, verification, encoding, and PNG processing)
+    /// running at once.
     ///
     /// Defaults to the available parallelism of the host.
     pub max_blocking_concurrency: Option<usize>,

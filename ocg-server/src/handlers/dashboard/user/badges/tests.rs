@@ -11,7 +11,8 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::{
-        badges::{BadgesManager, SsiBadgesManager, png},
+        badges::{BadgesManager, SsiBadgesManager},
+        blocking::BlockingExecutor,
         images::MockImagesManager,
     },
     test_util::sample_png,
@@ -91,7 +92,7 @@ async fn test_export_success() {
     // Setup an authenticated owner, active award, signing key, and valid artwork
     let config = sample_badges_cfg();
     let base_url = "https://badges.example.test";
-    let verification_manager = SsiBadgesManager::new(base_url, &config);
+    let verification_manager = SsiBadgesManager::new(base_url, BlockingExecutor::new(1), &config);
     let ids = DashboardIds::new();
     let user_badge_id = Uuid::new_v4();
     let award = sample_user_badge(user_badge_id, ids.user_id);
@@ -152,7 +153,9 @@ async fn test_export_success() {
         parts.headers.get(CONTENT_DISPOSITION).unwrap(),
         &format!("attachment; filename=\"badge-{user_badge_id}.png\"")
     );
-    let credential = serde_json::from_slice(&png::extract(&bytes).unwrap()).unwrap();
+    let credential =
+        serde_json::from_slice(&verification_manager.extract_png(bytes.to_vec()).await.unwrap())
+            .unwrap();
     let verified = verification_manager.verify_credential(&credential).await.unwrap();
     assert_eq!(verified.user_badge_id, user_badge_id);
     assert_eq!(verified.status_list_id, badge_status_list_id);
