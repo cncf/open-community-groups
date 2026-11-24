@@ -347,11 +347,13 @@ surface per layer:
   asserts SQL JSON to Rust DTO shapes, lock ordering, the `PgUnitOfWork`
   lifecycle (rollback on drop, explicit rollback, failing deferred
   constraint on commit), that an `OCG01` rejection reaches Rust as a
-  user-facing error, and manager compositions that mocks cannot prove. A
-  test that only re-asserts a pgTAP `throws_ok` rejection is not repeated
-  here; a rejection is asserted only as the outcome of a race, lifecycle, or
-  composition the test exists to prove, or to pin how a wrapper passes its
-  arguments.
+  user-facing error, and manager compositions that mocks cannot prove. Every
+  database trait method backed by `fetch_json_*` has at least one ignored
+  `db_contracts_*` test under `db/contract_tests/`, enforced by
+  `layers::fetch_json_db_methods_have_contract_tests`. A test that only
+  re-asserts a pgTAP `throws_ok` rejection is not repeated here; a rejection
+  is asserted only as the outcome of a race, lifecycle, or composition the
+  test exists to prove, or to pin how a wrapper passes its arguments.
 
 Rules that follow from the layering:
 

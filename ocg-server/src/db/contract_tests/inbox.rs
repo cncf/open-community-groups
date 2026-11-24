@@ -5,11 +5,92 @@ use chrono::{TimeZone, Utc};
 use uuid::Uuid;
 
 use crate::{
-    db::inbox::{DBInbox, StartInboxConversationConflict, StartInboxConversationResult},
+    db::{
+        DBUnitOfWork,
+        inbox::{DBInbox, StartInboxConversationConflict, StartInboxConversationResult},
+    },
     types::inbox::{InboxConversationStatus, InboxConversationsFilters, InboxMessageKind},
 };
 
 use super::helpers::*;
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_add_inbox_group_reply_deserializes() -> Result<()> {
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
+
+    // Post a group reply through the Rust contract
+    let posted = uow
+        .add_inbox_group_reply(
+            inbox_admin_id(),
+            inbox_read_group_id(),
+            inbox_open_conversation_id(),
+            "Doors open at 9:00.",
+        )
+        .await?;
+
+    // Check the deserialized posted message identifiers
+    assert_eq!(posted.group_id, inbox_read_group_id());
+    assert_eq!(posted.inbox_conversation_id, inbox_open_conversation_id());
+    assert!(!posted.inbox_message_id.is_nil());
+
+    // Check the stored reply is visible within the unit of work
+    let conversation = uow
+        .get_group_inbox_conversation(inbox_read_group_id(), inbox_open_conversation_id())
+        .await?
+        .expect("read conversation to exist");
+    let reply = conversation
+        .messages
+        .last()
+        .expect("conversation to contain the posted reply");
+    assert_eq!(reply.body, "Doors open at 9:00.");
+    assert_eq!(reply.inbox_message_id, posted.inbox_message_id);
+    assert_eq!(reply.kind, InboxMessageKind::GroupReply);
+
+    // Roll back the fixture changes
+    Box::new(uow).rollback().await?;
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_add_inbox_user_message_deserializes() -> Result<()> {
+    // Setup a rolled-back unit of work
+    let uow = contract_unit_of_work().await?;
+
+    // Post a user follow-up through the Rust contract
+    let posted = uow
+        .add_inbox_user_message(
+            inbox_user_id(),
+            inbox_closed_conversation_id(),
+            "One more question.",
+        )
+        .await?;
+
+    // Check the deserialized posted message identifiers
+    assert_eq!(posted.group_id, inbox_read_group_id());
+    assert_eq!(posted.inbox_conversation_id, inbox_closed_conversation_id());
+    assert!(!posted.inbox_message_id.is_nil());
+
+    // Check the stored message reopens the conversation within the unit of work
+    let conversation = uow
+        .get_user_inbox_conversation(inbox_user_id(), inbox_closed_conversation_id())
+        .await?
+        .expect("closed conversation to exist");
+    assert_eq!(conversation.status, InboxConversationStatus::Open);
+    let message = conversation
+        .messages
+        .last()
+        .expect("conversation to contain the posted message");
+    assert_eq!(message.body, "One more question.");
+    assert_eq!(message.inbox_message_id, posted.inbox_message_id);
+    assert_eq!(message.kind, InboxMessageKind::UserReply);
+
+    // Roll back the fixture changes
+    Box::new(uow).rollback().await?;
+    Ok(())
+}
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]

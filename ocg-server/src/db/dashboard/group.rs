@@ -463,6 +463,8 @@ pub(crate) trait DBDashboardGroup {
     async fn list_badges(&self, group_id: Uuid, filters: &BadgeFilters) -> Result<GroupBadges>;
 
     /// Lists reviewer-available CFS submission statuses.
+    ///
+    /// Cached for up to one day per process.
     async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>>;
 
     /// Lists the groups of a community that can be invited to co-host events.
@@ -1747,11 +1749,38 @@ where
         .await
     }
 
-    /// [`DBDashboardGroup::list_cfs_submission_statuses_for_review`]
+    /// [`DBDashboardGroup::list_cfs_submission_statuses_for_review`].
     #[instrument(skip(self), err)]
     async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>> {
-        self.fetch_json_one("select list_cfs_submission_statuses_for_review()", &[])
-            .await
+        async fn fetch(db: &PgClient<'_>) -> Result<Vec<CfsSubmissionStatus>> {
+            db.fetch_json_one("select list_cfs_submission_statuses_for_review()", &[])
+                .await
+        }
+
+        #[cached(
+            ttl_secs = 86400,
+            key = "String",
+            convert = r#"{ String::from("cfs_submission_statuses_for_review") }"#,
+            sync_writes = "by_key"
+        )]
+        async fn inner(db: &PgClient<'_>) -> Result<Vec<CfsSubmissionStatus>> {
+            fetch(db).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db).await;
+        }
+
+        // Serve a fresh cached value without checking out a client
+        if let Some(statuses) = cache_probe(&INNER, "cfs_submission_statuses_for_review").await {
+            return Ok(statuses);
+        }
+
+        // Check out the client before the cached fill takes its key lock
+        let db = self.client().await?;
+        inner(&db).await
     }
 
     /// [`DBDashboardGroup::list_cohost_group_options`].
