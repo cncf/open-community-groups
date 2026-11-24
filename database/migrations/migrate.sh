@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -eu
+
 schemaVersionTable=version_schema
 functionsVersionTable=version_functions
 
@@ -7,6 +9,11 @@ functionsVersionTable=version_functions
 # 2.3.0+, which discovers shared templates recursively. Older releases only
 # scan one directory level and fail with "template ... not defined".
 minTernVersion="2.3.0"
+
+if [ -z "${TERN_CONF:-}" ]; then
+    echo "error: TERN_CONF is not set" >&2
+    exit 1
+fi
 
 if ! command -v tern >/dev/null 2>&1; then
     echo "error: tern not found on PATH (requires v$minTernVersion or newer)" >&2
@@ -26,20 +33,28 @@ if [ "$(printf '%s\n%s\n' "$minTernVersion" "$ternVersion" | sort -t. -k1,1n -k2
 fi
 
 echo "- Applying schema migrations.."
-cd schema
-tern status --config $TERN_CONF --version-table $schemaVersionTable
-tern migrate --config $TERN_CONF --version-table $schemaVersionTable
-if [ $? -ne 0 ]; then exit 1; fi
+cd schema || {
+    echo "error: failed to enter schema directory" >&2
+    exit 1
+}
+tern status --config "$TERN_CONF" --version-table "$schemaVersionTable"
+tern migrate --config "$TERN_CONF" --version-table "$schemaVersionTable"
 echo "Done"
-cd ..
+cd .. || {
+    echo "error: failed to return to migrations directory" >&2
+    exit 1
+}
 
 echo "- Loading functions.."
-cd functions
-tern status --config $TERN_CONF --version-table $functionsVersionTable | grep "version:  1 of 1"
-if [ $? -eq 0 ]; then
-    tern migrate --config $TERN_CONF --version-table $functionsVersionTable --destination -+1
+cd functions || {
+    echo "error: failed to enter functions directory" >&2
+    exit 1
+}
+functionsStatus=$(tern status --config "$TERN_CONF" --version-table "$functionsVersionTable") || exit $?
+printf '%s\n' "$functionsStatus"
+if printf '%s\n' "$functionsStatus" | grep -q "version:  1 of 1"; then
+    tern migrate --config "$TERN_CONF" --version-table "$functionsVersionTable" --destination -+1
 else
-    tern migrate --config $TERN_CONF --version-table $functionsVersionTable
+    tern migrate --config "$TERN_CONF" --version-table "$functionsVersionTable"
 fi
-if [ $? -ne 0 ]; then exit 1; fi
 echo "Done"

@@ -91,6 +91,58 @@ definition after a deploy.
 - Every schema change updates the tests under `tests/schema/` in the same
   change.
 
+### Concurrent index migrations
+
+Indexes on existing tables must not take write-blocking locks during rollout:
+
+- Creating an index on an existing table lives in a dedicated
+  non-transactional schema migration marked with the exact standalone Tern
+  directive line `---- tern: disable-tx ----`, separate from transactional
+  table or column DDL (`create table`, `alter table`, `drop table`). Indexes
+  on tables created in the same migration stay inside that migration's
+  transaction.
+- Non-transactional migrations never use `set local` (PostgreSQL ignores
+  `set local` outside a transaction block). They bound lock waits and build
+  duration with session-level `set lock_timeout = ...;` and
+  `set statement_timeout = ...;` before DDL, paired with trailing
+  `reset lock_timeout;` and `reset statement_timeout;` after all DDL so
+  session settings stay scoped to the migration (including when run directly
+  through `psql`).
+- Every `create [unique] index concurrently <name>` is preceded immediately by
+  `drop index concurrently if exists <name>;` so retrying after an aborted
+  build removes any `INVALID` index stub.
+- `database/scripts/lint.sh` (`just db-lint`, also run in CI) enforces the
+  `---- tern: disable-tx ----` directive, non-transactional timeout and
+  table-DDL separation rules, `create index concurrently` on existing tables,
+  and `drop index concurrently if exists` pairing.
+
+### Rolling-deploy compatibility (expand/contract)
+
+`dbmigrator` applies schema migrations and reloads every function before old
+application pods finish draining, so every deploy runs old application pods
+against the new database state during the rollout window (and after any
+application rollback):
+
+- **Schema changes**: Breaking changes split across two releases: *expand*
+  (add nullable or defaulted columns, new tables, or non-breaking constraints
+  while keeping the prior contract intact), deploy the application reading and
+  writing the new shape, and *contract* (drop obsolete columns or tighten
+  constraints) in a later release.
+- **SQL function signatures**: Do not break the parameter list or return type
+  of a Rust-facing function in a release where old pods still call the prior
+  signature. For a zero-gap change, introduce a function with a distinct name
+  alongside the old one and drop the old signature in a follow-up release once
+  old pods are gone. Adding trailing parameters with defaults that preserve
+  prior behavior requires dropping the narrower signature in the schema
+  migration so PostgreSQL does not create an ambiguous overload, which leaves
+  a brief gap between schema drop and function reload during `migrate.sh`.
+- **JSON DTO shapes**: Adding optional JSON fields is safe when older Rust
+  DTOs ignore unknown fields (never `#[serde(deny_unknown_fields)]` on
+  database read models) and newer DTOs tolerate absent fields when needed.
+  Removing, renaming, or changing the type or nullability of an existing JSON
+  field requires emitting both shapes (or dual-reading) for one release before
+  dropping the old field.
+
 ## Error contract
 
 Database functions signal failures with `raise exception`, and the SQLSTATE
