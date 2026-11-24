@@ -404,12 +404,14 @@ Deadlines come from typed configuration under the section that owns the
 client. Every HTTP client is built once through `util::build_http_client`
 from an `HttpClientConfig`, whose request deadline covers the whole exchange
 including the response body. SMTP has separate connect and send deadlines
-applied by the email sender. PostgreSQL connections get the pool `create`,
-`wait`, and `recycle` timeouts, TCP keepalive and user-timeout socket bounds
-that close a connection whose network path died, plus server-enforced
-`statement_timeout` and `idle_in_transaction_session_timeout` session
-defaults, all applied in `db::pool`; a path that legitimately needs longer
-raises the limit with `set local statement_timeout` inside its own
+applied by the email sender. S3 image storage applies separate connect and
+request deadlines in `S3ImageStorage`, with the request deadline covering both
+the SDK operation and response body streaming. PostgreSQL connections get the
+pool `create`, `wait`, and `recycle` timeouts, TCP keepalive and user-timeout
+socket bounds that close a connection whose network path died, plus
+server-enforced `statement_timeout` and `idle_in_transaction_session_timeout`
+session defaults, all applied in `db::pool`; a path that legitimately needs
+longer raises the limit with `set local statement_timeout` inside its own
 transaction.
 
 Classification at the boundary:
@@ -423,6 +425,8 @@ Classification at the boundary:
 - A meeting provider creation without an idempotency key is made safe to
   retry by the provider adapter, which stamps every meeting with a reference
   and adopts an existing match before creating.
+- S3 image uploads key objects by content hash, so a timed-out write is
+  idempotent and safe for the caller to retry.
 - A PostgreSQL statement timeout is not an unknown outcome: the server
   aborts the statement, so the write did not happen. The only ambiguous case
   is a commit whose acknowledgement is lost, which the durable job claims and

@@ -29,6 +29,8 @@ full_feature_args=(
   --set images.provider=s3
   --set images.s3.bucket=ci-test-bucket
   --set images.s3.region=us-east-1
+  --set images.s3.connectTimeoutSecs=15
+  --set images.s3.requestTimeoutSecs=45
   --set meetings.zoom.enabled=true
   --set payments.enabled=true
   --set externalPayments.enabled=true
@@ -125,6 +127,8 @@ render_and_validate() {
     yq eval '.' "$redirector_yml" >/dev/null
     assert_eq "$case_name redirector.yml db.host" "$(yq -r '.db.host' "$redirector_yml")" "$expected_db_host"
     assert_eq "$case_name server.yml db.tls.ca_cert" "$(yq -r '.db.tls.ca_cert' "$server_yml")" "$TEST_CA_CERT"
+    assert_eq "$case_name server.yml images.connect_timeout_secs" "$(yq -r '.images.connect_timeout_secs' "$server_yml")" "15"
+    assert_eq "$case_name server.yml images.request_timeout_secs" "$(yq -r '.images.request_timeout_secs' "$server_yml")" "45"
     assert_eq "$case_name redirector.yml db.tls.ca_cert" "$(yq -r '.db.tls.ca_cert' "$redirector_yml")" "$TEST_CA_CERT"
     assert_eq "$case_name dbmigrator-config ca.crt" "$(yq -r "select(.kind == \"Secret\" and .metadata.name == \"${prefix}dbmigrator-config\") | .stringData[\"ca.crt\"]" "$out")" "$TEST_CA_CERT"
   fi

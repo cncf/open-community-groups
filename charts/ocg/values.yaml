@@ -82,8 +82,12 @@ images:
     secretAccessKey: ""
     bucket: ""
     region: ""
+    # Connection timeout in seconds (optional; server default: 10)
+    connectTimeoutSecs: null
     endpoint: null
     forcePathStyle: true
+    # Total request timeout in seconds (optional; server default: 30)
+    requestTimeoutSecs: null
 
 # Log configuration
 log:
