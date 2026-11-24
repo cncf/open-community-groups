@@ -204,6 +204,39 @@ async fn test_end_meeting_skips_end_call_when_meeting_is_not_running() {
     assert_eq!(calls, vec!["GET /meetings/555".to_string()]);
 }
 
+// Helpers.
+
+/// Creates a sample Zoom configuration with the given host pool users.
+pub(super) fn sample_zoom_config(host_pool_users: Vec<String>) -> MeetingsZoomConfig {
+    MeetingsZoomConfig {
+        account_id: "account".to_string(),
+        client_id: "client".to_string(),
+        client_secret: "secret".to_string(),
+        enabled: true,
+        host_pool_users,
+        max_participants: 100,
+        max_simultaneous_meetings_per_host: 1,
+        webhook_secret_token: "webhook".to_string(),
+
+        http_client: HttpClientConfig::default(),
+    }
+}
+
+/// Serves the fake Zoom API on an ephemeral port until the test runtime stops.
+pub(super) async fn spawn_zoom_api(router: Router) -> String {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("test Zoom API listener to bind");
+    let address = listener
+        .local_addr()
+        .expect("test Zoom API listener address to exist");
+    tokio::spawn(async move {
+        axum::serve(listener, router).await.expect("test Zoom API to serve");
+    });
+
+    format!("http://{address}")
+}
+
 /// Builds a fake Zoom API that records calls and serves the given listings.
 ///
 /// Listings map each host to its pages in order; requests beyond the last
@@ -335,37 +368,14 @@ fn sample_meeting(event_id: Uuid) -> Meeting {
 
 /// Creates a Zoom provider pointed at the fake API without request throttling.
 fn sample_zoom_provider(api_address: &str) -> ZoomMeetingsProvider {
-    let mut provider = ZoomMeetingsProvider::new(&MeetingsZoomConfig {
-        account_id: "account".to_string(),
-        client_id: "client".to_string(),
-        client_secret: "secret".to_string(),
-        enabled: true,
-        host_pool_users: vec![OTHER_HOST.to_string(), ASSIGNED_HOST.to_string()],
-        max_participants: 100,
-        max_simultaneous_meetings_per_host: 1,
-        webhook_secret_token: "webhook".to_string(),
-
-        http_client: HttpClientConfig::default(),
-    })
+    let mut provider = ZoomMeetingsProvider::new(&sample_zoom_config(vec![
+        OTHER_HOST.to_string(),
+        ASSIGNED_HOST.to_string(),
+    ]))
     .expect("sample Zoom provider to build");
     provider.client.api_base_url = format!("{api_address}/v2");
     provider.client.request_interval = Duration::ZERO;
     provider.client.token_url = format!("{api_address}/oauth/token");
 
     provider
-}
-
-/// Serves the fake Zoom API on an ephemeral port until the test runtime stops.
-async fn spawn_zoom_api(router: Router) -> String {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("test Zoom API listener to bind");
-    let address = listener
-        .local_addr()
-        .expect("test Zoom API listener address to exist");
-    tokio::spawn(async move {
-        axum::serve(listener, router).await.expect("test Zoom API to serve");
-    });
-
-    format!("http://{address}")
 }
