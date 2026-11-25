@@ -367,19 +367,19 @@ fn test_rate_limit_stats_record_resolution_records_peer_trust() {
 }
 
 #[test]
-fn test_rate_limit_stats_record_skipped_cross_origin_is_not_a_request() {
+fn test_rate_limit_stats_record_skipped_origin_check_is_not_a_request() {
     // Setup statistics
     let now = Instant::now();
     let stats = RateLimitStats::new(now);
 
-    // Record cross-origin skips for one limit
-    stats.record_skipped_cross_origin(Limit::Views);
-    stats.record_skipped_cross_origin(Limit::Views);
+    // Record origin-check skips for one limit
+    stats.record_skipped_origin_check(Limit::Views);
+    stats.record_skipped_origin_check(Limit::Views);
 
     // Check the skips are counted apart from requests and give the limit traffic
     let window = stats.take_window(now);
     let views = window.limit(Limit::Views);
-    assert_eq!(views.skipped_cross_origin, 2);
+    assert_eq!(views.skipped_origin_check, 2);
     assert_eq!(views.requests, 0);
     assert!(views.keys.entries.is_empty());
     assert!(views.has_traffic());

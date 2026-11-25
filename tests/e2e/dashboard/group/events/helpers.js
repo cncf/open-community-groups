@@ -6,6 +6,7 @@ import {
   futureDate,
   navigateToPath,
   routeNextRequestWithQuery,
+  SAME_ORIGIN_HEADERS,
   selectTimezone,
   waitForActionResponse,
   waitForActionResponses,
@@ -390,7 +391,9 @@ export const createApprovalRequiredEvent = async (page, eventName) => {
   });
   const eventId = await waitForEventEditorAfterSave(page);
 
-  const publishResponse = await page.request.put(buildE2eUrl(`/dashboard/group/events/${eventId}/publish`));
+  const publishResponse = await page.request.put(buildE2eUrl(`/dashboard/group/events/${eventId}/publish`), {
+    headers: SAME_ORIGIN_HEADERS,
+  });
   expect(publishResponse.ok()).toBeTruthy();
 
   const eventRow = await openGroupEventsTabWithEvent(page, eventName);

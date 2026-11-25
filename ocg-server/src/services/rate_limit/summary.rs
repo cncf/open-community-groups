@@ -208,8 +208,8 @@ struct LimitSummary {
     peak_burst_used_pct: u8,
     /// Store acquires for the limit, untracked ones included.
     requests: u64,
-    /// Requests passed through uncounted because they are cross-origin.
-    skipped_cross_origin: u64,
+    /// Requests passed through uncounted because they failed the origin check.
+    skipped_origin_check: u64,
     /// Most frequent tracked client keys, masked.
     top_keys: Vec<KeyShare>,
     /// Requests allowed untracked because the store is full.
@@ -419,7 +419,7 @@ fn emit(report: &SummaryReport) {
             peak_burst_used_pct = limit.peak_burst_used_pct,
             untracked_store_full = limit.untracked_store_full,
             evicted_store_full = limit.evicted_store_full,
-            skipped_cross_origin = limit.skipped_cross_origin,
+            skipped_origin_check = limit.skipped_origin_check,
             top_keys = join(&limit.top_keys),
             "rate limit summary"
         );
@@ -548,7 +548,7 @@ fn limit_summary(limit: Limit, window: &LimitWindow, mode: RateLimitMode) -> Lim
             .count(),
         peak_burst_used_pct: window.peak_burst_used_pct,
         requests: window.requests,
-        skipped_cross_origin: window.skipped_cross_origin,
+        skipped_origin_check: window.skipped_origin_check,
         top_keys,
         untracked_store_full: window.untracked_store_full,
     }

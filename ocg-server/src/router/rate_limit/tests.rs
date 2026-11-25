@@ -14,7 +14,7 @@ use axum::{
     body::Body,
     extract::ConnectInfo,
     http::{
-        Method, StatusCode,
+        HeaderValue, Method, StatusCode,
         header::{ACCEPT, CACHE_CONTROL, CONTENT_TYPE, ORIGIN, RETRY_AFTER, SET_COOKIE},
     },
     middleware,
@@ -26,17 +26,19 @@ use uuid::Uuid;
 use crate::{
     activity_tracker::{Activity, MockActivityTracker},
     config::{HttpServerConfig, LoginOptions, RateLimitBudget, RateLimitBudgets, RateLimitMode},
-    db::mock::MockDB,
+    db::mock::{MockDB, expect_site_settings},
     handlers::{
         rate_limit::RATE_LIMITED_HEADER,
         tests::{
-            TestRouterBuilder, authenticated_request, request, sample_rate_limiter,
-            sample_server_cfg, send,
+            TestRouterBuilder, assert_html_response, authenticated_request, badge_verify_request,
+            request, sample_rate_limiter, sample_server_cfg, sample_user_badge, send,
         },
     },
     router::{
         CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE,
-        tests::{ROUTE_MANIFEST_PATH, RouteManifestEntry, declared_routes},
+        tests::{
+            HEADERLESS_EXEMPT_ROUTES, ROUTE_MANIFEST_PATH, RouteManifestEntry, declared_routes,
+        },
     },
     services::rate_limit::{IpLimit, Limit, LogInFailureLimit, RateLimiter, client_ip::ClientKey},
 };
@@ -244,6 +246,67 @@ async fn test_limit_requests_answers_exhausted_navigations_with_the_page_before_
 }
 
 #[tokio::test]
+async fn test_limit_requests_counts_and_throttles_badge_verify_without_browser_headers() {
+    // Setup a router with a one-request badge-verify budget and one active award
+    let award = sample_user_badge();
+    let badge_id = award.user_badge_id;
+    let mut db = MockDB::new();
+    db.expect_get_public_user_badge()
+        .times(1)
+        .withf(move |id| *id == badge_id)
+        .return_once(move |_| Ok(Some(award)));
+    expect_site_settings(&mut db);
+    let rate_limiter = sample_rate_limiter(single_request_budgets(), RateLimitMode::Enforce);
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(site_server_cfg())
+        .build()
+        .await;
+
+    // First headerless request verifies the active badge and consumes the only token
+    let (first_parts, first_bytes) =
+        send(router.clone(), with_client(badge_verify_request(badge_id))).await;
+    assert_html_response(&first_parts, &first_bytes, StatusCode::OK);
+    assert!(String::from_utf8_lossy(&first_bytes).contains("Valid and active"));
+
+    // Second headerless request is throttled before reaching the handler
+    let (second_parts, second_bytes) =
+        send(router.clone(), with_client(badge_verify_request(badge_id))).await;
+    assert_eq!(second_parts.status, StatusCode::TOO_MANY_REQUESTS);
+    let retry_after: u64 = second_parts
+        .headers
+        .get(RETRY_AFTER)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert!(
+        (1..=PERIOD_SECS).contains(&retry_after),
+        "unexpected Retry-After {retry_after}"
+    );
+    assert_eq!(
+        second_parts.headers.get(RATE_LIMITED_HEADER).unwrap(),
+        "true"
+    );
+    assert_eq!(second_bytes, PERIOD_REJECTION_BODY);
+
+    // Explicit cross-site browser POST is skipped uncounted and rejected with 403
+    let mut cross_site_request = badge_verify_request(badge_id);
+    cross_site_request
+        .headers_mut()
+        .insert("sec-fetch-site", HeaderValue::from_static("cross-site"));
+    let (cross_site_parts, _) = send(router, with_client(cross_site_request)).await;
+    assert_eq!(cross_site_parts.status, StatusCode::FORBIDDEN);
+
+    // Check the two headerless requests were counted and the cross-site request was skipped
+    let window = rate_limiter.take_window();
+    assert_eq!(window.limit(Limit::BadgeVerify).requests, 2);
+    assert_eq!(window.limit(Limit::BadgeVerify).over_limit, 1);
+    assert_eq!(window.limit(Limit::BadgeVerify).skipped_origin_check, 1);
+}
+
+#[tokio::test]
 async fn test_limit_requests_inserts_log_in_failure_limit_only_on_log_in_posts() {
     // Setup labeled requests with whether the handler gets the failed log-in limit
     let event_views_uri = concrete_uri("/events/{event_id}/views");
@@ -383,6 +446,11 @@ async fn test_limit_requests_passes_cross_origin_posts_through_uncounted() {
             request("POST", "/log-in").header(ORIGIN, "https://attacker.test"),
         ),
         (
+            "log-in without browser headers",
+            Limit::LogIn,
+            request("POST", "/log-in"),
+        ),
+        (
             "view from another origin",
             Limit::Views,
             request("POST", &event_views_uri).header(ORIGIN, "https://attacker.test"),
@@ -406,7 +474,7 @@ async fn test_limit_requests_passes_cross_origin_posts_through_uncounted() {
         let window = rate_limiter.take_window();
         assert_eq!(window.limit(limit).requests, 0, "{case}");
         assert_eq!(window.limit(limit).over_limit, 0, "{case}");
-        assert_eq!(window.limit(limit).skipped_cross_origin, 1, "{case}");
+        assert_eq!(window.limit(limit).skipped_origin_check, 1, "{case}");
     }
 }
 
@@ -436,9 +504,9 @@ async fn test_limit_requests_passes_origin_check_errors_through_uncounted() {
             request("POST", "/sign-up").header(ORIGIN, SITE_ORIGIN),
         ),
         (
-            "view without origin headers",
+            "view with same-origin fetch metadata",
             Limit::Views,
-            request("POST", &event_views_uri),
+            request("POST", &event_views_uri).header("Sec-Fetch-Site", "same-origin"),
         ),
     ];
 
@@ -454,7 +522,7 @@ async fn test_limit_requests_passes_origin_check_errors_through_uncounted() {
         let window = rate_limiter.take_window();
         assert_eq!(window.limit(limit).requests, 0, "{case}");
         assert_eq!(window.limit(limit).over_limit, 0, "{case}");
-        assert_eq!(window.limit(limit).skipped_cross_origin, 0, "{case}");
+        assert_eq!(window.limit(limit).skipped_origin_check, 0, "{case}");
     }
 }
 
@@ -609,6 +677,38 @@ fn test_limited_routes_exist_in_router_and_manifest() {
         assert!(
             manifest.contains(&key),
             "LIMITED_ROUTES entry is missing from {ROUTE_MANIFEST_PATH}: {method} {}",
+            route.path
+        );
+    }
+}
+
+#[test]
+fn test_post_origin_allowed_matches_route_origin_policies() {
+    // Check headerless and cross-site POSTs match the router's origin policy for every limited POST
+    let server_cfg = site_server_cfg();
+    for route in LIMITED_ROUTES
+        .into_iter()
+        .filter(|route| route.method == RouteMethod::Post)
+    {
+        let expected_headerless = HEADERLESS_EXEMPT_ROUTES.contains(&route.path);
+        let headerless_req = request("POST", &concrete_uri(route.path))
+            .body(Body::empty())
+            .unwrap();
+        let allowed_headerless =
+            post_origin_allowed(&server_cfg, route.limit, &headerless_req).unwrap();
+        assert_eq!(
+            allowed_headerless, expected_headerless,
+            "POST {} headerless mismatch between HEADERLESS_EXEMPT_ROUTES and post_origin_allowed",
+            route.path
+        );
+
+        let cross_site_req = request("POST", &concrete_uri(route.path))
+            .header("Sec-Fetch-Site", "cross-site")
+            .body(Body::empty())
+            .unwrap();
+        assert!(
+            !post_origin_allowed(&server_cfg, route.limit, &cross_site_req).unwrap(),
+            "POST {} should not allow explicit cross-site requests in post_origin_allowed",
             route.path
         );
     }

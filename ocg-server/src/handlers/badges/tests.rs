@@ -18,8 +18,8 @@ use crate::{
         error::{INVALID_REQUEST_PAYLOAD, REQUEST_PAYLOAD_TOO_LARGE},
         tests::{
             DEFAULT_BODY_LIMIT_BYTES, TestRouterBuilder, assert_empty_response,
-            assert_html_response, request, sample_badges_cfg, sample_server_cfg,
-            sample_site_settings, send,
+            assert_html_response, badge_verify_request, request, sample_badges_cfg,
+            sample_server_cfg, sample_site_settings, sample_user_badge, send,
         },
     },
     router::{CACHE_CONTROL_PRIVATE_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
@@ -31,8 +31,7 @@ use crate::{
     },
     test_util::sample_png,
     types::badges::{
-        BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicBadgeSnapshot,
-        PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
+        BadgeStatusList, PublicBadgeSnapshot, PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
     },
 };
 
@@ -552,7 +551,7 @@ async fn test_verify_post_returns_current_local_award() {
         .await;
 
     // Submit the opaque local award identifier as multipart form data
-    let (parts, bytes) = send(router, credential_verify_request(user_badge_id)).await;
+    let (parts, bytes) = send(router, badge_verify_request(user_badge_id)).await;
 
     // Check verification renders current public identity without caching
     assert_html_response(&parts, &bytes, StatusCode::OK);
@@ -671,16 +670,6 @@ async fn baked_png(
         .unwrap()
 }
 
-/// Builds a verification request submitting an award identifier.
-fn credential_verify_request(user_badge_id: Uuid) -> Request<Body> {
-    verify_request(
-        format!(
-            "--{VERIFY_BOUNDARY}\r\nContent-Disposition: form-data; name=\"credential\"\r\n\r\n{user_badge_id}\r\n--{VERIFY_BOUNDARY}--\r\n"
-        )
-        .into_bytes(),
-    )
-}
-
 /// Expects the award read and site settings read of the public award pages,
 /// with the award lookup returning `award`.
 fn expect_award_page_reads(db: &mut MockDB, award: UserBadge) {
@@ -712,45 +701,6 @@ fn sample_badge_status_list() -> BadgeStatusList {
         badge_status_list_id: Uuid::new_v4(),
         group_id: Uuid::new_v4(),
         revoked_indexes: vec![1],
-    }
-}
-
-/// Build one active public badge fixture.
-fn sample_user_badge() -> UserBadge {
-    let group_id = Uuid::new_v4();
-    UserBadge {
-        awarded_at: Utc.with_ymd_and_hms(2024, 1, 2, 3, 4, 5).unwrap(),
-        badge_status_list_id: Uuid::new_v4(),
-        display_order: 0,
-        group_id,
-        is_listed: true,
-        snapshot: BadgeSnapshot {
-            criteria: "Attend".to_string(),
-            description: "Test badge description".to_string(),
-            image_file_name: "test-badge.png".to_string(),
-            issuer: BadgeSnapshotIssuer {
-                community_id: Uuid::new_v4(),
-                community_name: "Test Community".to_string(),
-                group_id,
-                group_name: "Test Group".to_string(),
-            },
-            name: "Test Badge".to_string(),
-        },
-        status_list_index: 1,
-        user_badge_id: Uuid::new_v4(),
-
-        badge_id: Some(Uuid::new_v4()),
-        event_id: Some(Uuid::new_v4()),
-        event_name: Some("Test Event".to_string()),
-        identity_bound_at: None,
-        identity_hash: None,
-        identity_salt: None,
-        recipient_name: Some("Ada".to_string()),
-        recipient_username: Some("ada".to_string()),
-        revocation_reason: None,
-        revoked_at: None,
-        revoked_by_user_id: None,
-        user_id: Some(Uuid::new_v4()),
     }
 }
 

@@ -1,6 +1,12 @@
 import { expect, test } from "../../fixtures.js";
 import { TEST_USER_CREDENTIALS } from "../../seed.js";
-import { buildAuthUser, buildE2eUrl, logInWithSeededUser, navigateToPath } from "../../utils.js";
+import {
+  buildAuthUser,
+  buildE2eUrl,
+  logInWithSeededUser,
+  navigateToPath,
+  SAME_ORIGIN_HEADERS,
+} from "../../utils.js";
 import {
   deleteUserByUsername,
   fillSignUpForm,
@@ -273,6 +279,7 @@ test.describe("authentication", () => {
     // Log in with a seeded user and keep the redirect response.
     const response = await request.post(buildE2eUrl(`/log-in?next_url=${encodeURIComponent(nextUrl)}`), {
       form: TEST_USER_CREDENTIALS.member1,
+      headers: SAME_ORIGIN_HEADERS,
       maxRedirects: 0,
     });
 

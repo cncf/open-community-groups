@@ -327,7 +327,7 @@ fn test_build_report_leaves_out_idle_limits() {
     views.peak_burst_used_pct = 100;
     views.keys.entries.insert(key(1), key_counts(1, 2));
     views.keys.entries.insert(key(2), key_counts(0, 1));
-    window.limit_mut(Limit::SignUp).skipped_cross_origin = 2;
+    window.limit_mut(Limit::SignUp).skipped_origin_check = 2;
 
     // Build the report
     let report = build_report(&window, RateLimitMode::Enforce, "peer");
@@ -336,11 +336,11 @@ fn test_build_report_leaves_out_idle_limits() {
     let limits: Vec<Limit> = report.limits.iter().map(|limit| limit.limit).collect();
     assert_eq!(limits, [Limit::SignUp, Limit::Views]);
 
-    // Check the cross-origin only limit
+    // Check the origin-check-skip only limit
     let sign_up = &report.limits[0];
     assert_eq!(sign_up.level, Level::INFO);
     assert_eq!(sign_up.requests, 0);
-    assert_eq!(sign_up.skipped_cross_origin, 2);
+    assert_eq!(sign_up.skipped_origin_check, 2);
     assert_eq!(sign_up.top_keys, []);
 
     // Check the limit with requests
@@ -353,7 +353,7 @@ fn test_build_report_leaves_out_idle_limits() {
     assert_eq!(views.over_limit_keys, 1);
     assert_eq!(views.peak_burst_used_pct, 100);
     assert_eq!(views.requests, 3);
-    assert_eq!(views.skipped_cross_origin, 0);
+    assert_eq!(views.skipped_origin_check, 0);
     assert_eq!(
         views.top_keys,
         vec![

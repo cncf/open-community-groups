@@ -4,7 +4,7 @@ import { setupCfsSubmission } from "../../../data-graphs/cfs.js";
 import { cleanupInboxConversations, setupInboxConversation } from "../../../data-graphs/inbox.js";
 import { queryCount, queryScalar, sqlUuid } from "../../../database.js";
 import { TEST_EVENT_IDS, TEST_GROUP_IDS, TEST_USER_IDS } from "../../../seed.js";
-import { buildE2eUrl, uniqueName } from "../../../utils.js";
+import { buildE2eUrl, SAME_ORIGIN_HEADERS, uniqueName } from "../../../utils.js";
 
 test.describe("user dashboard ownership", () => {
   test("badge revoke rejects a credential of another user", async ({ member1Page, owned }) => {
@@ -19,6 +19,7 @@ test.describe("user dashboard ownership", () => {
     // Revoke the second member's credential as the first member.
     const response = await member1Page.request.delete(
       buildE2eUrl(`/dashboard/user/badges/${credential.userBadgeId}`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
 
     // Verify the rejection leaves the credential active.
@@ -43,6 +44,7 @@ test.describe("user dashboard ownership", () => {
     // Delete the second member's proposal as the first member.
     const response = await member1Page.request.delete(
       buildE2eUrl(`/dashboard/user/session-proposals/${proposalId}`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
 
     // Verify the rejection keeps the proposal with its owner.
@@ -68,6 +70,7 @@ test.describe("user dashboard ownership", () => {
     // Withdraw the second member's submission as the first member.
     const response = await member1Page.request.put(
       buildE2eUrl(`/dashboard/user/submissions/${submissionId}/withdraw`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
 
     // Verify the rejection keeps the submission under review.
@@ -95,7 +98,10 @@ test.describe("user dashboard ownership", () => {
     // Post a follow-up to the second member's conversation as the first member.
     const response = await member1Page.request.post(
       buildE2eUrl(`/dashboard/user/inbox/${conversation.id}/messages`),
-      { form: { body: "First member follow-up that must not be stored." } },
+      {
+        form: { body: "First member follow-up that must not be stored." },
+        headers: SAME_ORIGIN_HEADERS,
+      },
     );
 
     // Verify the rejection leaves the conversation untouched.

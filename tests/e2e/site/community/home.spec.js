@@ -21,6 +21,7 @@ import {
   getSectionLink,
   navigateToCommunityHome,
   navigateToGroup,
+  SAME_ORIGIN_HEADERS,
 } from "../../utils.js";
 import {
   expectLatestGroupsSection,
@@ -68,6 +69,7 @@ test.describe("community home page", () => {
       for (const groupId of groupIds) {
         const response = await adminSecondaryCommunityPage.request.put(
           buildE2eUrl(`/dashboard/community/groups/${groupId}/deactivate`),
+          { headers: SAME_ORIGIN_HEADERS },
         );
         expect(response.ok()).toBeTruthy();
         deactivatedGroupIds.push(groupId);
@@ -91,6 +93,7 @@ test.describe("community home page", () => {
       for (const groupId of deactivatedGroupIds) {
         const response = await adminSecondaryCommunityPage.request.put(
           buildE2eUrl(`/dashboard/community/groups/${groupId}/activate`),
+          { headers: SAME_ORIGIN_HEADERS },
         );
         expect(response.ok()).toBeTruthy();
       }

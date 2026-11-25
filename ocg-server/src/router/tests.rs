@@ -16,13 +16,27 @@ use uuid::Uuid;
 use crate::{
     db::mock::{MockDB, expect_site_settings},
     handlers::tests::*,
+    services::{images::MockImagesManager, payments::MockPaymentsManager},
     types::{
+        images::Image,
         permissions::{CommunityPermission, GroupPermission},
         tests::sample_site_settings,
     },
 };
 
 use super::*;
+
+/// Unsafe routes that accept requests without browser origin headers.
+///
+/// External webhook providers authenticate with signatures and stateless Open
+/// Badges verification accepts CLI/API clients without browser headers (while
+/// still rejecting explicit cross-site browser signals).
+pub(super) const HEADERLESS_EXEMPT_ROUTES: [&str; 4] = [
+    "/badges/verify",
+    "/webhooks/payments",
+    "/webhooks/payments/connected",
+    "/webhooks/zoom",
+];
 
 /// Response header the matched-path test layer echoes the matched path in.
 const MATCHED_PATH_TEST_HEADER: &str = "x-test-matched-path";
@@ -49,10 +63,10 @@ const SCOPE_SELECTION_ROUTES: [&str; 3] = [
 /// Environment variable that makes the manifest test rewrite the E2E manifest.
 const UPDATE_ROUTE_MANIFEST_ENV: &str = "OCG_UPDATE_ROUTE_MANIFEST";
 
-/// Unsafe routes registered after the browser same-origin guard layer.
+/// Unsafe webhook routes registered outside all browser origin guard layers.
 ///
 /// Providers call these webhooks server to server and authenticate with
-/// signatures, so the real-router guard test exempts exactly these paths.
+/// signatures, so the real-router cross-site guard test exempts exactly these paths.
 const WEBHOOK_ROUTES: [&str; 3] = [
     "/webhooks/payments",
     "/webhooks/payments/connected",
@@ -76,12 +90,78 @@ impl RouteManifestEntry {
 }
 
 #[tokio::test]
+async fn test_browser_same_origin_allows_exempt_routes_without_browser_headers() {
+    // Setup mocks for stateless badge verification and payment webhooks
+    let award = sample_user_badge();
+    let badge_id = award.user_badge_id;
+    let mut db = site_settings_db();
+    db.expect_get_public_user_badge()
+        .times(1)
+        .withf(move |id| *id == badge_id)
+        .return_once(move |_| Ok(Some(award)));
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_handle_webhook()
+        .times(1)
+        .returning(|_, _| Box::pin(async { Ok(()) }));
+    payments_manager
+        .expect_handle_connected_webhook()
+        .times(1)
+        .returning(|_, _| Box::pin(async { Ok(()) }));
+    let router = TestRouterBuilder::new(db)
+        .with_meetings_cfg(sample_zoom_meetings_cfg("zoom-secret"))
+        .with_payments_cfg(sample_payments_cfg())
+        .with_payments_manager(payments_manager)
+        .with_server_cfg(sample_server_cfg("https://example.test"))
+        .build()
+        .await;
+
+    // Send a headerless POST to badge verification and check it verifies the active award
+    let (badge_parts, badge_bytes) = send(router.clone(), badge_verify_request(badge_id)).await;
+    assert_html_response(&badge_parts, &badge_bytes, StatusCode::OK);
+    assert!(String::from_utf8_lossy(&badge_bytes).contains("Valid and active"));
+
+    // Explicit cross-site browser POSTs to badge verification are still rejected
+    for (case, header_name, header_value) in [
+        ("cross-site fetch metadata", "sec-fetch-site", "cross-site"),
+        ("foreign origin", "origin", "https://attacker.test"),
+    ] {
+        let mut cross_site_request = badge_verify_request(badge_id);
+        cross_site_request.headers_mut().insert(
+            HeaderName::from_static(header_name),
+            HeaderValue::from_static(header_value),
+        );
+        let (parts, _) = send(router.clone(), cross_site_request).await;
+        assert_eq!(
+            parts.status,
+            StatusCode::FORBIDDEN,
+            "POST /badges/verify ({case})"
+        );
+    }
+
+    // Send headerless webhook POSTs and check they reach their handlers
+    for (path, expected_status) in [
+        ("/webhooks/payments", StatusCode::OK),
+        ("/webhooks/payments/connected", StatusCode::OK),
+        ("/webhooks/zoom", StatusCode::UNAUTHORIZED),
+    ] {
+        let webhook_request = request("POST", path).body(Body::empty()).unwrap();
+        let (parts, _) = send(router.clone(), webhook_request).await;
+        assert_eq!(parts.status, expected_status, "POST {path}");
+    }
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_browser_same_origin_middleware_enforces_browser_signals() {
     // Setup a mutation route protected by the browser-origin middleware
     let router = Router::new()
         .route(
             "/",
-            get(|| async { StatusCode::NO_CONTENT }).post(|| async { StatusCode::NO_CONTENT }),
+            delete(|| async { StatusCode::NO_CONTENT })
+                .get(|| async { StatusCode::NO_CONTENT })
+                .post(|| async { StatusCode::NO_CONTENT })
+                .put(|| async { StatusCode::NO_CONTENT }),
         )
         .route_layer(middleware::from_fn_with_state(
             sample_server_cfg("https://example.test"),
@@ -96,7 +176,23 @@ async fn test_browser_same_origin_middleware_enforces_browser_signals() {
             None,
             None,
             None,
-            StatusCode::NO_CONTENT,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "put without browser signals",
+            Method::PUT,
+            None,
+            None,
+            None,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "delete without browser signals",
+            Method::DELETE,
+            None,
+            None,
+            None,
+            StatusCode::FORBIDDEN,
         ),
         (
             "post from same origin fetch",
@@ -179,6 +275,15 @@ async fn test_browser_same_origin_middleware_enforces_browser_signals() {
         let (parts, _) = send(router.clone(), request.body(Body::empty()).unwrap()).await;
         assert_eq!(parts.status, expected_status, "{case}");
     }
+
+    // Conflicting duplicate Sec-Fetch-Site headers must also be rejected
+    let duplicate_request = request("POST", "/")
+        .header("Sec-Fetch-Site", "same-origin")
+        .header("Sec-Fetch-Site", "cross-site")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, _) = send(router, duplicate_request).await;
+    assert_eq!(parts.status, StatusCode::FORBIDDEN);
 }
 
 /// Only routes declared with a path literal in `.route(` calls of the router
@@ -193,32 +298,64 @@ async fn test_browser_same_origin_protects_every_unsafe_route() {
         .build()
         .await;
 
-    // Collect the declared unsafe routes and split out the exempt webhook routes
-    let (webhook_routes, unsafe_routes): (Vec<_>, Vec<_>) = declared_routes()
+    // Collect every declared unsafe route and verify the exempt lists stay in sync
+    let all_unsafe_routes: Vec<_> = declared_routes()
         .into_iter()
         .filter(|(_, method)| *method != Method::GET)
-        .partition(|(path, _)| WEBHOOK_ROUTES.contains(&path.as_str()));
-    let webhook_paths: Vec<_> = webhook_routes.iter().map(|(path, _)| path.as_str()).collect();
+        .collect();
+    let webhook_paths: Vec<_> = all_unsafe_routes
+        .iter()
+        .filter(|(path, _)| WEBHOOK_ROUTES.contains(&path.as_str()))
+        .map(|(path, _)| path.as_str())
+        .collect();
     assert_eq!(
         webhook_paths, WEBHOOK_ROUTES,
         "every WEBHOOK_ROUTES entry should be a declared unsafe route"
     );
+    let headerless_paths: Vec<_> = all_unsafe_routes
+        .iter()
+        .filter(|(path, _)| HEADERLESS_EXEMPT_ROUTES.contains(&path.as_str()))
+        .map(|(path, _)| path.as_str())
+        .collect();
+    assert_eq!(
+        headerless_paths, HEADERLESS_EXEMPT_ROUTES,
+        "every HEADERLESS_EXEMPT_ROUTES entry should be a declared unsafe route"
+    );
     assert!(
-        !unsafe_routes.is_empty(),
+        !all_unsafe_routes.is_empty(),
         "router should expose unsafe routes"
     );
 
-    // Check every unsafe route rejects cross-site requests before its handler runs
-    for (path, method) in unsafe_routes {
-        let request = request(method.as_str(), &concrete_uri(&path))
+    // Check every non-webhook unsafe route rejects cross-site requests and every
+    // non-headerless-exempt unsafe route also rejects headerless requests
+    for (path, method) in all_unsafe_routes {
+        if WEBHOOK_ROUTES.contains(&path.as_str()) {
+            continue;
+        }
+
+        let cross_site_request = request(method.as_str(), &concrete_uri(&path))
             .header("Sec-Fetch-Site", "cross-site")
             .body(Body::empty())
             .unwrap();
-        let (parts, _) = send(router.clone(), request).await;
+        let (parts, _) = send(router.clone(), cross_site_request).await;
         assert_eq!(
             parts.status,
             StatusCode::FORBIDDEN,
-            "{method} {path} is not protected by the browser same-origin guard"
+            "{method} {path} (cross-site) is not protected by an origin guard"
+        );
+
+        if HEADERLESS_EXEMPT_ROUTES.contains(&path.as_str()) {
+            continue;
+        }
+
+        let headerless_request = request(method.as_str(), &concrete_uri(&path))
+            .body(Body::empty())
+            .unwrap();
+        let (parts, _) = send(router.clone(), headerless_request).await;
+        assert_eq!(
+            parts.status,
+            StatusCode::FORBIDDEN,
+            "{method} {path} (missing browser headers) is not protected by the browser same-origin guard"
         );
     }
 }
@@ -683,7 +820,10 @@ async fn test_redirects_to_log_in_flags_only_log_in_guard_rejections() {
         ),
         (
             "log out handler redirect to log in",
-            request("POST", "/log-out").body(Body::empty()).unwrap(),
+            request("POST", "/log-out")
+                .header("Sec-Fetch-Site", "same-origin")
+                .body(Body::empty())
+                .unwrap(),
             StatusCode::SEE_OTHER,
             false,
         ),
@@ -819,6 +959,134 @@ fn test_route_manifest_parses_every_route_declaration() {
             !methods.is_empty(),
             "route {path} should declare a DELETE, GET, PATCH, POST or PUT method"
         );
+    }
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_security_headers_are_applied_to_responses_with_conditional_hsts() {
+    // Setup labeled base URLs with whether canonical responses should emit HSTS
+    let cases = [
+        ("http base url omits hsts", "http://localhost:9000", false),
+        ("https base url emits hsts", "https://example.test", true),
+        (
+            "uppercase https base url emits hsts",
+            "HTTPS://example.test",
+            true,
+        ),
+    ];
+
+    for (case, base_url, expect_hsts) in cases {
+        // Setup the router with a legacy redirect host and an image response that already sets nosniff
+        let mut images_manager = MockImagesManager::new();
+        images_manager.expect_get().times(1).returning(|_| {
+            Box::pin(async {
+                Ok(Some(Image {
+                    bytes: b"png".to_vec(),
+                    content_type: "image/png".to_string(),
+                }))
+            })
+        });
+        let server_cfg = HttpServerConfig {
+            redirect_hosts: Some(vec!["old.example.test".to_string()]),
+            ..sample_server_cfg(base_url)
+        };
+        let router = TestRouterBuilder::new(MockDB::new())
+            .with_images_manager(images_manager)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
+
+        // Check canonical responses and legacy-host redirects
+        let requests = [
+            (
+                "health check",
+                request("GET", "/health-check").body(Body::empty()).unwrap(),
+                StatusCode::OK,
+                expect_hsts,
+            ),
+            (
+                "static asset",
+                request("GET", "/static/images/icons/arrow_left.svg")
+                    .body(Body::empty())
+                    .unwrap(),
+                StatusCode::OK,
+                expect_hsts,
+            ),
+            (
+                "stored image",
+                request("GET", "/images/sample.png")
+                    .header(ORIGIN, base_url)
+                    .body(Body::empty())
+                    .unwrap(),
+                StatusCode::OK,
+                expect_hsts,
+            ),
+            (
+                "rejected headerless post",
+                request("POST", "/log-out").body(Body::empty()).unwrap(),
+                StatusCode::FORBIDDEN,
+                expect_hsts,
+            ),
+            (
+                "stale client refresh",
+                request("GET", "/health-check")
+                    .header("HX-Request", "true")
+                    .header(COMMIT_SHA_HEADER, "older-commit")
+                    .body(Body::empty())
+                    .unwrap(),
+                StatusCode::NO_CONTENT,
+                expect_hsts,
+            ),
+            (
+                "legacy redirect host omits hsts",
+                request("GET", "/health-check")
+                    .header(HOST, "old.example.test")
+                    .body(Body::empty())
+                    .unwrap(),
+                StatusCode::PERMANENT_REDIRECT,
+                false,
+            ),
+        ];
+
+        for (route_case, request, expected_status, expect_route_hsts) in requests {
+            let (parts, _) = send(router.clone(), request).await;
+            assert_eq!(parts.status, expected_status, "{case}: {route_case}");
+            assert_eq!(
+                parts.headers.get("permissions-policy").unwrap(),
+                "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
+                "{case}: {route_case}"
+            );
+            assert_eq!(
+                parts.headers.get("referrer-policy").unwrap(),
+                "strict-origin-when-cross-origin",
+                "{case}: {route_case}"
+            );
+            let nosniff_values: Vec<_> =
+                parts.headers.get_all("x-content-type-options").iter().collect();
+            assert_eq!(
+                nosniff_values,
+                [&HeaderValue::from_static("nosniff")],
+                "{case}: {route_case}"
+            );
+            assert_eq!(
+                parts.headers.get("x-frame-options").unwrap(),
+                "DENY",
+                "{case}: {route_case}"
+            );
+            if expect_route_hsts {
+                assert_eq!(
+                    parts.headers.get("strict-transport-security").unwrap(),
+                    "max-age=31536000",
+                    "{case}: {route_case}"
+                );
+            } else {
+                assert!(
+                    parts.headers.get("strict-transport-security").is_none(),
+                    "{case}: {route_case}"
+                );
+            }
+        }
     }
 }
 

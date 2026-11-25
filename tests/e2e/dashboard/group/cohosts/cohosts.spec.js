@@ -5,6 +5,7 @@ import {
   buildE2eUrl,
   expectPaginationNavigation,
   navigateToPath,
+  SAME_ORIGIN_HEADERS,
   selectGroupContext,
   waitForActionResponse,
 } from "../../../utils.js";
@@ -95,6 +96,7 @@ test.describe("group dashboard co-hosts", () => {
     // Delete the event as the owner while the co-host list stays open.
     const deleteResponse = await organizerGroupPage.request.delete(
       buildE2eUrl(`/dashboard/group/events/${scenario.eventId}/delete`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
     expect(deleteResponse.ok()).toBe(true);
 

@@ -1505,6 +1505,7 @@ async fn test_send_contact_message_redirects_anonymous_visitors_to_log_in() {
         .build()
         .await;
     let request = request("POST", &event_uri(event_id, "contact"))
+        .header("Sec-Fetch-Site", "same-origin")
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from("body=Hello"))
         .unwrap();

@@ -34,6 +34,7 @@ import {
   confirmAlert,
   navigateToGroup,
   navigateToPath,
+  SAME_ORIGIN_HEADERS,
   uniqueName,
   waitForActionResponse,
 } from "../../utils.js";
@@ -240,6 +241,7 @@ test.describe("event co-hosting workflows", () => {
     // Approve the invitation from the co-host group while the editor stays open.
     const approveResponse = await organizerGroupWithoutPaymentsPage.request.put(
       buildE2eUrl(`/dashboard/group/cohosts/${invitationId}/approve`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
     expect(approveResponse.status()).toBe(204);
     const approvedRevision = readCohostsRevision(scenario.eventId);
@@ -261,6 +263,7 @@ test.describe("event co-hosting workflows", () => {
     // Cancel co-hosting from the co-host group while the reloaded editor stays open.
     const cancelResponse = await organizerGroupWithoutPaymentsPage.request.put(
       buildE2eUrl(`/dashboard/group/cohosts/${invitationId}/cancel`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
     expect(cancelResponse.status()).toBe(204);
 

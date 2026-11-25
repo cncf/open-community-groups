@@ -134,9 +134,9 @@ impl RateLimitStats {
         }
     }
 
-    /// Records a request to a limit skipped because it is cross-origin.
-    pub(super) fn record_skipped_cross_origin(&self, limit: Limit) {
-        self.window().snapshot.limit_mut(limit).skipped_cross_origin += 1;
+    /// Records a request to a limit skipped because it failed the origin check.
+    pub(super) fn record_skipped_origin_check(&self, limit: Limit) {
+        self.window().snapshot.limit_mut(limit).skipped_origin_check += 1;
     }
 
     /// Swaps the current window out at `now` and starts an empty one.
@@ -256,8 +256,8 @@ pub(crate) struct LimitWindow {
     pub peak_burst_used_pct: u8,
     /// Store acquires for the limit, untracked ones included.
     pub requests: u64,
-    /// Requests passed through uncounted because they are cross-origin.
-    pub skipped_cross_origin: u64,
+    /// Requests passed through uncounted because they failed the origin check.
+    pub skipped_origin_check: u64,
     /// Requests allowed untracked because the store is full.
     pub untracked_store_full: u64,
 }
@@ -265,7 +265,7 @@ pub(crate) struct LimitWindow {
 impl LimitWindow {
     /// Returns whether the limit saw any request during the window.
     pub(crate) fn has_traffic(&self) -> bool {
-        self.requests + self.skipped_cross_origin > 0
+        self.requests + self.skipped_origin_check > 0
     }
 }
 

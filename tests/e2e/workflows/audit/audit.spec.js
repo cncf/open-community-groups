@@ -13,7 +13,13 @@ import { cleanupGroupSponsor, setupGroupSponsor } from "../../data-graphs/groups
 import { cleanupGroupTeamInvitation } from "../../data-graphs/invitations.js";
 import { cleanupGroupMute } from "../../data-graphs/notification-preferences.js";
 import { TEST_COMMUNITY_IDS, TEST_GROUP_IDS, TEST_USER_IDS } from "../../seed.js";
-import { buildE2eUrl, navigateToPath, uniqueName, waitForActionResponse } from "../../utils.js";
+import {
+  buildE2eUrl,
+  navigateToPath,
+  SAME_ORIGIN_HEADERS,
+  uniqueName,
+  waitForActionResponse,
+} from "../../utils.js";
 import { fillMarkdownEditor } from "../../dashboard/form-helpers.js";
 import { respondToCohostInvitation } from "../../dashboard/group/cohosts/helpers.js";
 import { inviteTeamMember } from "../../dashboard/team-helpers.js";
@@ -207,7 +213,7 @@ test.describe("dashboard audit workflow", () => {
     // Add a region to the selected community.
     const addRegionResponse = await adminCommunityPage.request.post(
       buildE2eUrl("/dashboard/community/regions/add"),
-      { form: { name: regionName } },
+      { form: { name: regionName }, headers: SAME_ORIGIN_HEADERS },
     );
     expect(addRegionResponse.status(), "add region status").toBe(201);
     const regionId = queryScalar(`select region_id from region where name = ${sqlString(regionName)}`);
@@ -232,7 +238,7 @@ test.describe("dashboard audit workflow", () => {
     await withRowRestore(GROUPS_MANAGER_TEAM_ROW, async () => {
       const updateRoleResponse = await adminCommunityPage.request.put(
         buildE2eUrl(`/dashboard/community/team/${TEST_USER_IDS.groupsManager1}/role`),
-        { form: { role: "viewer" } },
+        { form: { role: "viewer" }, headers: SAME_ORIGIN_HEADERS },
       );
       expect(updateRoleResponse.status(), "update community team role status").toBe(204);
 
@@ -291,6 +297,7 @@ test.describe("dashboard audit workflow", () => {
     // Delete the owned sponsor from the selected group.
     const deleteSponsorResponse = await organizerGroupPage.request.delete(
       buildE2eUrl(`/dashboard/group/sponsors/${sponsor.sponsorId}/delete`),
+      { headers: SAME_ORIGIN_HEADERS },
     );
     expect(deleteSponsorResponse.status(), "delete sponsor status").toBe(204);
 
@@ -319,9 +326,13 @@ test.describe("dashboard audit workflow", () => {
 
     try {
       // Mute and unmute the group through the user notification endpoints.
-      const muteResponse = await member1Page.request.put(buildE2eUrl(mutePath));
+      const muteResponse = await member1Page.request.put(buildE2eUrl(mutePath), {
+        headers: SAME_ORIGIN_HEADERS,
+      });
       expect(muteResponse.status(), "mute group status").toBe(204);
-      const unmuteResponse = await member1Page.request.delete(buildE2eUrl(mutePath));
+      const unmuteResponse = await member1Page.request.delete(buildE2eUrl(mutePath), {
+        headers: SAME_ORIGIN_HEADERS,
+      });
       expect(unmuteResponse.status(), "unmute group status").toBe(204);
 
       // Verify each transition has its own user log row.

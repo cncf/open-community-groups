@@ -43,6 +43,7 @@ import {
   navigateToEvent,
   navigateToPath,
   resolveCssColor,
+  SAME_ORIGIN_HEADERS,
   sendCloseRequest,
   useTheme,
   waitForActionResponse,
@@ -556,7 +557,7 @@ test.describe("event attendance", () => {
     // Post a second attendance directly, bypassing the event page.
     const response = await member1Page.request.post(
       buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${event.eventId}/attend`),
-      { form: {} },
+      { form: {}, headers: SAME_ORIGIN_HEADERS },
     );
 
     // Verify the enrollment guard rejects it and keeps a single attendee row.

@@ -19,7 +19,7 @@ use crate::{
     services::rate_limit::{IpLimit, RateLimiter, Verdict},
 };
 
-use super::browser_request_allowed;
+use super::{OriginPolicy, browser_request_allowed};
 
 #[cfg(test)]
 mod tests;
@@ -186,9 +186,10 @@ enum RouteMethod {
 
 /// Middleware that applies the IP limits to the mapped routes.
 ///
-/// Fails open: an unmapped route, a cross-origin POST, an origin check error
-/// and an unresolved client all pass through. Rejections are not logged one
-/// by one; the periodic summary aggregates them.
+/// Fails open: an unmapped route, a POST failing the inner origin checks
+/// (cross-origin, or headerless on browser-guarded routes), an origin check
+/// error, and an unresolved client all pass through. Rejections are not logged
+/// one by one; the periodic summary aggregates them.
 pub(super) async fn limit_requests(
     State(state): State<Arc<RateLimitLayerState>>,
     mut request: Request,
@@ -206,13 +207,14 @@ pub(super) async fn limit_requests(
         return next.run(request).await;
     };
 
-    // Pass cross-origin POSTs through uncounted, so the inner layer or handler rejects them
+    // Pass POSTs failing the inner origin checks through uncounted so the
+    // inner layer or handler rejects them
     if request.method() == Method::POST {
         let Ok(is_allowed) = post_origin_allowed(server_cfg, limit, &request) else {
             return next.run(request).await;
         };
         if !is_allowed {
-            rate_limiter.record_skipped_cross_origin(limit);
+            rate_limiter.record_skipped_origin_check(limit);
             return next.run(request).await;
         }
     }
@@ -248,14 +250,22 @@ pub(super) async fn limit_requests(
 }
 
 /// Returns whether a POST to a limited route passes the origin checks that
-/// the same-origin layer and, for views, the view handler apply.
+/// the inner origin layer and, for views, the view handler apply.
+///
+/// Stateless badge verification allows headerless CLI/API requests while still
+/// rejecting explicit cross-site browser signals, matching its route layer.
 fn post_origin_allowed(
     server_cfg: &HttpServerConfig,
     limit: IpLimit,
     request: &Request,
 ) -> Result<bool> {
-    // Apply the same-origin layer's predicate
-    if !browser_request_allowed(server_cfg, request.method(), request.headers())? {
+    // Match the route's origin layer policy
+    let policy = if limit == IpLimit::BadgeVerify {
+        OriginPolicy::AllowHeaderless
+    } else {
+        OriginPolicy::RequireEvidence
+    };
+    if !browser_request_allowed(server_cfg, request.method(), request.headers(), policy)? {
         return Ok(false);
     }
 

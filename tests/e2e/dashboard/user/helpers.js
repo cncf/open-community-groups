@@ -1,6 +1,12 @@
 import { expect } from "../../fixtures.js";
 import { TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS } from "../../seed.js";
-import { buildE2eUrl, navigateToEvent, navigateToPath, waitForActionResponse } from "../../utils.js";
+import {
+  buildE2eUrl,
+  navigateToEvent,
+  navigateToPath,
+  SAME_ORIGIN_HEADERS,
+  waitForActionResponse,
+} from "../../utils.js";
 import { fillMarkdownEditor } from "../form-helpers.js";
 
 /** Opens a user dashboard path. */
@@ -37,6 +43,7 @@ export const restoreCoSpeakerInvitation = async (page, proposalTitle, coSpeakerU
     `/dashboard/user/session-proposals/${proposal.session_proposal_id}`,
     {
       form: baseForm,
+      headers: SAME_ORIGIN_HEADERS,
     },
   );
   expect(clearCoSpeakerResponse.ok()).toBeTruthy();
@@ -48,6 +55,7 @@ export const restoreCoSpeakerInvitation = async (page, proposalTitle, coSpeakerU
         ...baseForm,
         co_speaker_user_id: coSpeakerUserId,
       },
+      headers: SAME_ORIGIN_HEADERS,
     },
   );
   expect(restoreInvitationResponse.ok()).toBeTruthy();
@@ -55,7 +63,12 @@ export const restoreCoSpeakerInvitation = async (page, proposalTitle, coSpeakerU
 
 /** Deletes event attendee state through the dashboard request API. */
 export const clearEventAttendeeState = async (page, eventId, userId) => {
-  await page.request.delete(buildE2eUrl(`/dashboard/group/events/${eventId}/attendees/${userId}/attendance`));
+  await page.request.delete(
+    buildE2eUrl(`/dashboard/group/events/${eventId}/attendees/${userId}/attendance`),
+    {
+      headers: SAME_ORIGIN_HEADERS,
+    },
+  );
 };
 
 /** Creates a reusable session proposal and returns the dashboard content. */

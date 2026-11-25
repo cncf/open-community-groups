@@ -124,10 +124,10 @@ impl RateLimiter {
         self.mode
     }
 
-    /// Records a request to a limit passed through uncounted because it is
-    /// cross-origin.
-    pub(crate) fn record_skipped_cross_origin(&self, limit: IpLimit) {
-        self.stats.record_skipped_cross_origin(Limit::from(limit));
+    /// Records a request to a limit passed through uncounted because it failed
+    /// the origin check.
+    pub(crate) fn record_skipped_origin_check(&self, limit: IpLimit) {
+        self.stats.record_skipped_origin_check(Limit::from(limit));
     }
 
     /// Resolves the client of a request and records the client IP and proxy

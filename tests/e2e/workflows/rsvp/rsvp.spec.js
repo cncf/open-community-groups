@@ -3,7 +3,13 @@ import { expect, test } from "../../fixtures.js";
 import { createApprovalRequiredEvent } from "../../dashboard/group/events/helpers.js";
 import { cleanupEventsByIds } from "../../data-graphs/events.js";
 import { TEST_COMMUNITY_NAME, TEST_USER_IDS } from "../../seed.js";
-import { buildE2eUrl, navigateToPath, uniqueName, waitForActionResponse } from "../../utils.js";
+import {
+  buildE2eUrl,
+  navigateToPath,
+  SAME_ORIGIN_HEADERS,
+  uniqueName,
+  waitForActionResponse,
+} from "../../utils.js";
 
 test.describe("rsvp approval workflow", () => {
   test("approved RSVP requests are claimed through checkout", async ({
@@ -18,14 +24,14 @@ test.describe("rsvp approval workflow", () => {
       // Create and approve a tier-scoped RSVP request.
       const requestResponse = await pending1Page.request.post(
         buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
-        { form: {} },
+        { form: {}, headers: SAME_ORIGIN_HEADERS },
       );
       expect(requestResponse.ok()).toBeTruthy();
       const approvalResponse = await organizerGroupPage.request.put(
         buildE2eUrl(
           `/dashboard/group/events/${eventId}/attendees/${TEST_USER_IDS.pending1}/invitation-request/accept`,
         ),
-        { form: {} },
+        { form: {}, headers: SAME_ORIGIN_HEADERS },
       );
       expect(approvalResponse.ok()).toBeTruthy();
 
