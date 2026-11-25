@@ -5,6 +5,7 @@ use std::{collections::HashMap, time::Duration};
 use anyhow::{Context, Result};
 use chrono::{NaiveDate, Utc};
 use deadpool_postgres::{PoolConfig, Timeouts};
+use ocg_common::db::create_pool;
 use tokio::time::timeout;
 use tokio_postgres::NoTls;
 use uuid::Uuid;
@@ -17,7 +18,6 @@ use crate::{
             CommunityCustomNotificationEnqueue, CustomNotificationScope,
             CustomNotificationTracking, DBNotifications,
         },
-        pool::create_pool,
     },
     types::{
         dashboard::{
@@ -78,7 +78,7 @@ async fn db_contracts_claim_pending_notification_loads_attachment_on_single_conn
         },
         ..Default::default()
     });
-    let db = PgDB::new(create_pool(&cfg, NoTls)?);
+    let db = PgDB::new(create_pool(&cfg, NoTls, 1)?);
 
     // Seed an oldest pending notification linked to a fresh uncached attachment
     let attachment_id = Uuid::new_v4();

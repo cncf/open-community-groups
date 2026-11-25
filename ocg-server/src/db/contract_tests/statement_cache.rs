@@ -3,9 +3,10 @@
 
 use anyhow::Result;
 use deadpool_postgres::{Client, ManagerConfig, Pool, PoolConfig, RecyclingMethod, Runtime};
+use ocg_common::db::create_pool;
 use tokio_postgres::{NoTls, error::SqlState};
 
-use crate::db::{DBUnitOfWork, PgDB, PgExecutor, PgUnitOfWork, pool::create_pool};
+use crate::db::{DBUnitOfWork, PgDB, PgExecutor, PgUnitOfWork};
 
 use super::helpers::*;
 
@@ -93,7 +94,7 @@ async fn db_contracts_statement_cache_reuses_statement_across_checkouts() -> Res
     // Setup a single-connection pool with the server's default recycling
     let mut cfg = contract_tests_config()?;
     cfg.pool = Some(PoolConfig::new(1));
-    let pool = create_pool(&cfg, NoTls)?;
+    let pool = create_pool(&cfg, NoTls, 1)?;
     let db = PgDB::new(pool.clone());
     let sql = "select $1::int4 + 1";
 
@@ -207,5 +208,5 @@ fn single_connection_pool(recycling_method: RecyclingMethod) -> Result<Pool> {
     cfg.manager = Some(ManagerConfig { recycling_method });
     cfg.pool = Some(PoolConfig::new(1));
 
-    create_pool(&cfg, NoTls)
+    create_pool(&cfg, NoTls, 1)
 }

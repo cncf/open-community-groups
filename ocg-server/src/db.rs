@@ -68,9 +68,6 @@ pub(crate) mod notifications;
 /// Module containing database functionality for payments and ticketing.
 pub(crate) mod payments;
 
-/// Module containing database pool configuration.
-pub(crate) mod pool;
-
 /// Module containing database functionality for global site.
 pub(crate) mod site;
 

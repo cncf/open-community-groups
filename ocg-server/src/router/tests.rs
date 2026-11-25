@@ -35,7 +35,7 @@ const MATCHED_PATH_TEST_HEADER: &str = "x-test-matched-path";
 const READ_ONLY_POST_ROUTES: [&str; 1] = ["/dashboard/community/contact/recipients"];
 
 /// E2E route manifest path, relative to the server crate directory.
-const ROUTE_MANIFEST_PATH: &str = "../tests/e2e/coverage/route-manifest.json";
+pub(super) const ROUTE_MANIFEST_PATH: &str = "../tests/e2e/coverage/route-manifest.json";
 
 /// Dashboard mutation routes that only change the session's selected scope.
 ///
@@ -61,11 +61,11 @@ const WEBHOOK_ROUTES: [&str; 3] = [
 
 /// Route entry of the E2E route manifest.
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
-struct RouteManifestEntry {
+pub(super) struct RouteManifestEntry {
     /// HTTP method routed on the path.
-    method: String,
+    pub method: String,
     /// Route path template, as reported by the matched path.
-    path: String,
+    pub path: String,
 }
 
 impl RouteManifestEntry {
@@ -1146,7 +1146,7 @@ fn dashboard_mutation_routes() -> Vec<(String, Method)> {
 ///
 /// Only `.route(` calls with a path literal are seen; routes registered
 /// through helpers are missed.
-fn declared_routes() -> Vec<(String, Method)> {
+pub(super) fn declared_routes() -> Vec<(String, Method)> {
     // Flatten every route declaration into one entry per method
     let mut routes: Vec<_> = route_declarations()
         .into_iter()

@@ -14,7 +14,7 @@ use activity_tracker::ActivityTrackerDB;
 use anyhow::{Context, Result};
 use clap::Parser;
 use ocg_common::{
-    db::tls_connector,
+    db::{create_pool, tls_connector},
     runtime::{setup_logging, shutdown_signal_with_drain},
 };
 use tokio::net::TcpListener;
@@ -23,7 +23,8 @@ use tracing::{error, info};
 
 use crate::{
     config::{Config, HttpServerConfig, ImageStorageConfig, MeetingsConfig, PaymentsConfig},
-    db::{DynDB, PgDB, payments::DBPayments, pool as db_pool},
+    db::{DynDB, PgDB, payments::DBPayments},
+    router::RouterDeps,
     services::{
         badges::start_badge_award_workers,
         blocking::BlockingExecutor,
@@ -39,7 +40,7 @@ use crate::{
             DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider,
             start_payment_workers,
         },
-        rate_limit::{self, RateLimiter},
+        rate_limit,
         workers::{BackgroundTasks, queue_health},
     },
     types::meetings::MeetingProvider,
@@ -73,6 +74,9 @@ mod types;
 mod util;
 /// Validation utilities and custom validators.
 mod validation;
+
+/// Default maximum number of database connections in the server pool.
+const DB_POOL_MAX_SIZE: usize = 25;
 
 /// Command-line arguments for the application.
 #[derive(Debug, Parser)]
@@ -156,7 +160,7 @@ async fn main() -> Result<()> {
     let inbox_manager = setup_inbox_manager(db.clone());
 
     // Serve HTTP requests until a shutdown signal is received
-    run_server(
+    run_server(RouterDeps {
         activity_tracker,
         blocking_executor,
         db,
@@ -164,13 +168,15 @@ async fn main() -> Result<()> {
         events_manager,
         images_manager,
         inbox_manager,
-        cfg.meetings.clone(),
-        cfg.payments.clone(),
-        payments_manager,
         notifications_manager,
+        payments_manager,
+        server_cfg: cfg.server,
+        shutdown_drain: CancellationToken::new(),
+
+        meetings_cfg: cfg.meetings,
+        payments_cfg: cfg.payments,
         rate_limiter,
-        &cfg.server,
-    )
+    })
     .await?;
 
     // Stop background workers gracefully before exiting
@@ -180,46 +186,18 @@ async fn main() -> Result<()> {
 }
 
 /// Build the router and serve HTTP requests until shutdown.
-#[allow(clippy::too_many_arguments)]
-async fn run_server(
-    activity_tracker: Arc<ActivityTrackerDB>,
-    blocking_executor: BlockingExecutor,
-    db: Arc<PgDB>,
-    enrollment_manager: DynEnrollmentManager,
-    events_manager: DynEventsManager,
-    images_manager: DynImagesManager,
-    inbox_manager: DynInboxManager,
-    meetings_cfg: Option<MeetingsConfig>,
-    payments_cfg: Option<PaymentsConfig>,
-    payments_manager: DynPaymentsManager,
-    notifications_manager: Arc<PgNotificationsManager>,
-    rate_limiter: Option<Arc<RateLimiter>>,
-    server_cfg: &HttpServerConfig,
-) -> Result<()> {
+async fn run_server(deps: RouterDeps) -> Result<()> {
+    // Capture the bind address and drain handle before moving deps into router setup
+    let addr = deps.server_cfg.addr.clone();
+    let shutdown_drain = deps.shutdown_drain.clone();
+
     // Build the router before binding the TCP listener
-    let shutdown_drain = CancellationToken::new();
-    let router = router::setup(
-        activity_tracker,
-        blocking_executor,
-        db,
-        enrollment_manager,
-        events_manager,
-        images_manager,
-        inbox_manager,
-        meetings_cfg,
-        payments_cfg,
-        payments_manager,
-        notifications_manager,
-        rate_limiter,
-        server_cfg,
-        shutdown_drain.clone(),
-    )
-    .await?;
-    let listener = TcpListener::bind(&server_cfg.addr).await?;
+    let router = router::setup(deps).await?;
+    let listener = TcpListener::bind(&addr).await?;
 
     // Serve requests with their peer address until a graceful shutdown signal arrives
     info!("server started");
-    info!(%server_cfg.addr, "listening");
+    info!(%addr, "listening");
 
     if let Err(err) = axum::serve(
         listener,
@@ -257,7 +235,7 @@ fn setup_db(cfg: &Config) -> Result<Arc<PgDB>> {
     let connector = tls_connector(cfg.db.tls.as_ref())?;
 
     // Create the Postgres connection pool and wrap it in our database abstraction
-    let pool = db_pool::create_pool(&cfg.db.connection, connector)?;
+    let pool = create_pool(&cfg.db.connection, connector, DB_POOL_MAX_SIZE)?;
     let db = Arc::new(PgDB::new(pool));
 
     Ok(db)

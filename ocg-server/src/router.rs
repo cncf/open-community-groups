@@ -126,6 +126,39 @@ const STATIC_PATH_PREFIX: &str = "/static/";
 #[folder = "dist/static"]
 struct StaticFile;
 
+/// Dependencies required to build the application router.
+pub(crate) struct RouterDeps {
+    /// Activity tracker handle.
+    pub activity_tracker: DynActivityTracker,
+    /// Bounded executor for CPU-heavy work.
+    pub blocking_executor: BlockingExecutor,
+    /// Database handle.
+    pub db: DynDB,
+    /// Enrollment manager handle.
+    pub enrollment_manager: DynEnrollmentManager,
+    /// Events manager handle.
+    pub events_manager: DynEventsManager,
+    /// Images manager handle.
+    pub images_manager: DynImagesManager,
+    /// Inbox manager handle.
+    pub inbox_manager: DynInboxManager,
+    /// Notifications manager handle.
+    pub notifications_manager: DynNotificationsManager,
+    /// Payments manager handle.
+    pub payments_manager: DynPaymentsManager,
+    /// HTTP server configuration.
+    pub server_cfg: HttpServerConfig,
+    /// Token cancelled when the server starts draining traffic before shutdown.
+    pub shutdown_drain: CancellationToken,
+
+    /// Meetings configuration.
+    pub meetings_cfg: Option<MeetingsConfig>,
+    /// Payments configuration.
+    pub payments_cfg: Option<PaymentsConfig>,
+    /// Rate limiter for unauthenticated routes, when configured.
+    pub rate_limiter: Option<Arc<RateLimiter>>,
+}
+
 /// Shared state for the router.
 #[derive(Clone, FromRef)]
 pub(crate) struct State {
@@ -145,12 +178,8 @@ pub(crate) struct State {
     pub images_manager: DynImagesManager,
     /// Inbox manager handle.
     pub inbox_manager: DynInboxManager,
-    /// Meetings configuration.
-    pub meetings_cfg: Option<MeetingsConfig>,
     /// Notifications manager handle.
     pub notifications_manager: DynNotificationsManager,
-    /// Payments configuration.
-    pub payments_cfg: Option<PaymentsConfig>,
     /// Payments manager handle.
     pub payments_manager: DynPaymentsManager,
     /// `serde_qs` config for query string parsing.
@@ -159,6 +188,11 @@ pub(crate) struct State {
     pub server_cfg: HttpServerConfig,
     /// Token cancelled when the server starts draining traffic before shutdown.
     pub shutdown_drain: CancellationToken,
+
+    /// Meetings configuration.
+    pub meetings_cfg: Option<MeetingsConfig>,
+    /// Payments configuration.
+    pub payments_cfg: Option<PaymentsConfig>,
 }
 
 /// Configures and returns the application router.
@@ -166,24 +200,26 @@ pub(crate) struct State {
 /// Sets up all routes, middleware layers, and shared state. Optionally adds basic
 /// authentication if configured, and rate limiting when a limiter is given.
 #[allow(clippy::too_many_lines)]
-#[allow(clippy::too_many_arguments)]
 #[instrument(skip_all)]
-pub(crate) async fn setup(
-    activity_tracker: DynActivityTracker,
-    blocking_executor: BlockingExecutor,
-    db: DynDB,
-    enrollment_manager: DynEnrollmentManager,
-    events_manager: DynEventsManager,
-    images_manager: DynImagesManager,
-    inbox_manager: DynInboxManager,
-    meetings_cfg: Option<MeetingsConfig>,
-    payments_cfg: Option<PaymentsConfig>,
-    payments_manager: DynPaymentsManager,
-    notifications_manager: DynNotificationsManager,
-    rate_limiter: Option<Arc<RateLimiter>>,
-    server_cfg: &HttpServerConfig,
-    shutdown_drain: CancellationToken,
-) -> Result<Router> {
+pub(crate) async fn setup(deps: RouterDeps) -> Result<Router> {
+    let RouterDeps {
+        activity_tracker,
+        blocking_executor,
+        db,
+        enrollment_manager,
+        events_manager,
+        images_manager,
+        inbox_manager,
+        notifications_manager,
+        payments_manager,
+        server_cfg,
+        shutdown_drain,
+
+        meetings_cfg,
+        payments_cfg,
+        rate_limiter,
+    } = deps;
+
     // Check whether the Zoom meetings provider is enabled
     let zoom_enabled = meetings_cfg
         .as_ref()
@@ -199,6 +235,14 @@ pub(crate) async fn setup(
         .as_ref()
         .expect("server badge configuration to be validated before router setup");
 
+    // Setup authentication layer before moving server_cfg into router state
+    let auth_layer = Box::pin(crate::auth::setup_layer(
+        &server_cfg,
+        blocking_executor.clone(),
+        db.clone(),
+    ))
+    .await?;
+
     // Setup router state, sharing the caller's blocking bound with handlers and auth
     let state = State {
         activity_tracker,
@@ -207,23 +251,21 @@ pub(crate) async fn setup(
             blocking_executor.clone(),
             badges_config,
         )),
-        blocking_executor: blocking_executor.clone(),
-        db: db.clone(),
+        blocking_executor,
+        db,
         enrollment_manager,
         events_manager,
         images_manager,
         inbox_manager,
-        meetings_cfg,
         notifications_manager,
-        payments_cfg,
         payments_manager,
         serde_qs_de: serde_qs_config(),
-        server_cfg: server_cfg.clone(),
+        server_cfg,
         shutdown_drain,
-    };
 
-    // Setup authentication layer
-    let auth_layer = crate::auth::setup_layer(server_cfg, blocking_executor, db).await?;
+        meetings_cfg,
+        payments_cfg,
+    };
 
     // Setup sub-routers
     let community_dashboard_router = dashboard::setup_community_dashboard_router(&state);
@@ -392,13 +434,13 @@ pub(crate) async fn setup(
         .fallback(site::not_found::page);
 
     // Setup some routes based on the login options enabled
-    if server_cfg.login.email {
+    if state.server_cfg.login.email {
         router = router
             .route("/log-in", post(auth::log_in))
             .route("/sign-up", post(auth::sign_up))
             .route("/verify-email/{code}", get(auth::verify_email));
     }
-    if server_cfg.login.github {
+    if state.server_cfg.login.github {
         router = router
             .route("/log-in/oauth2/{provider}", get(auth::oauth2_redirect))
             .route(
@@ -406,7 +448,7 @@ pub(crate) async fn setup(
                 get(auth::oauth2_callback),
             );
     }
-    if server_cfg.login.linuxfoundation {
+    if state.server_cfg.login.linuxfoundation {
         router = router
             .route("/log-in/oidc/{provider}", get(auth::oidc_redirect))
             .route("/log-in/oidc/{provider}/callback", get(auth::oidc_callback));
@@ -441,7 +483,7 @@ pub(crate) async fn setup(
     if let Some(rate_limiter) = rate_limiter {
         let rate_limit_state = Arc::new(RateLimitLayerState {
             rate_limiter,
-            server_cfg: server_cfg.clone(),
+            server_cfg: state.server_cfg.clone(),
         });
         router = router.layer(middleware::from_fn_with_state(
             rate_limit_state,

@@ -18,17 +18,36 @@ use std::{
 };
 
 /// Layers checked for forbidden edges, in dependency order.
-const LAYERS: &[&str] = &["handlers", "services", "db", "templates", "types"];
+const LAYERS: &[&str] = &[
+    "handlers",
+    "activity_tracker",
+    "auth",
+    "services",
+    "db",
+    "templates",
+    "types",
+];
 
 /// Forbidden edges as `(source layer, target layer)`.
 const FORBIDDEN_EDGES: &[(&str, &str)] = &[
+    ("activity_tracker", "auth"),
+    ("activity_tracker", "handlers"),
+    ("activity_tracker", "templates"),
+    ("auth", "activity_tracker"),
+    ("auth", "handlers"),
+    ("auth", "templates"),
+    ("db", "activity_tracker"),
     ("db", "handlers"),
     ("db", "services"),
     ("db", "templates"),
+    ("services", "activity_tracker"),
+    ("services", "auth"),
     ("services", "handlers"),
+    ("templates", "activity_tracker"),
     ("templates", "db"),
     ("templates", "handlers"),
     ("templates", "services"),
+    ("types", "activity_tracker"),
     ("types", "db"),
     ("types", "handlers"),
     ("types", "services"),
@@ -848,38 +867,41 @@ fn layer_dependencies_follow_backend_rules() {
     let files = collect_source_files(&src_dir);
     let mut violations = Vec::new();
 
-    // Check every layer directory contributed source files, so an empty walk cannot pass
+    // Check every expected layer directory and root module contributed source files
     for layer in LAYERS {
         let layer_dir = format!("{layer}/");
+        let layer_root = format!("{layer}.rs");
+        let has_dir = src_dir.join(layer).is_dir();
+        let has_root = src_dir.join(&layer_root).is_file();
+
         assert!(
-            files.iter().any(|file| file.relative_path.starts_with(&layer_dir)),
-            "no source files found under `{layer_dir}`"
+            has_dir || has_root,
+            "neither `{layer_dir}` nor `{layer_root}` exists under `{}`",
+            src_dir.display()
         );
+        if has_dir {
+            assert!(
+                files.iter().any(|file| file.relative_path.starts_with(&layer_dir)),
+                "no source files found under `{layer_dir}`"
+            );
+        }
+        if has_root {
+            assert!(
+                files.iter().any(|file| file.relative_path == layer_root),
+                "root source file `{layer_root}` was not collected"
+            );
+        }
     }
 
     // Check layer edges against the forbidden list and its allowances
     let mut used_layer_allowances = BTreeSet::new();
     for file in &files {
-        let targets: BTreeSet<&str> = file
-            .paths
-            .iter()
-            .filter_map(|path| path.split("::").next())
-            .filter(|target| LAYERS.contains(target))
-            .collect();
-        for target in targets {
-            if !FORBIDDEN_EDGES.contains(&(file.layer, target)) {
-                continue;
-            }
-            let allowance = (file.relative_path.as_str(), target);
-            if LAYER_EDGE_ALLOWANCES.contains(&allowance) {
-                used_layer_allowances.insert(allowance);
-            } else {
-                violations.push(format!(
-                    "{} ({}) depends on `crate::{target}`",
-                    file.relative_path, file.layer
-                ));
-            }
-        }
+        violations.extend(layer_edge_violations(
+            file.layer,
+            &file.relative_path,
+            &file.paths,
+            &mut used_layer_allowances,
+        ));
     }
     for allowance in LAYER_EDGE_ALLOWANCES {
         if !used_layer_allowances.contains(allowance) {
@@ -930,6 +952,88 @@ fn layer_dependencies_follow_backend_rules() {
         "layer dependency violations:\n{}",
         violations.join("\n")
     );
+}
+
+#[test]
+fn layer_edge_check_enforces_auth_and_activity_tracker_rules() {
+    // Exercise allowed and forbidden dependencies for auth and activity_tracker
+    let cases: &[(&str, &str, &str, &str, &[&str])] = &[
+        (
+            "activity_tracker may depend on services, db, and types",
+            "activity_tracker",
+            "activity_tracker.rs",
+            "use crate::{db::activity_tracker::DynDBActivityTracker, services::workers::BackgroundTasks, types::utm::UtmParams};",
+            &[],
+        ),
+        (
+            "activity_tracker cannot depend on auth, handlers, or templates",
+            "activity_tracker",
+            "activity_tracker.rs",
+            "use crate::{auth::User, handlers::error::HandlerError, templates::PageId};",
+            &[
+                "activity_tracker.rs (activity_tracker) depends on `crate::auth`",
+                "activity_tracker.rs (activity_tracker) depends on `crate::handlers`",
+                "activity_tracker.rs (activity_tracker) depends on `crate::templates`",
+            ],
+        ),
+        (
+            "auth may depend on services, db, and types",
+            "auth",
+            "auth.rs",
+            "use crate::{db::DynDB, services::blocking::BlockingExecutor, types::user::UserProvider};",
+            &[],
+        ),
+        (
+            "auth cannot depend on activity_tracker, handlers, or templates",
+            "auth",
+            "auth.rs",
+            "use crate::{activity_tracker::Activity, handlers::error::HandlerError, templates::PageId};",
+            &[
+                "auth.rs (auth) depends on `crate::activity_tracker`",
+                "auth.rs (auth) depends on `crate::handlers`",
+                "auth.rs (auth) depends on `crate::templates`",
+            ],
+        ),
+        (
+            "services cannot depend on activity_tracker or auth",
+            "services",
+            "services/sample.rs",
+            "use crate::{activity_tracker::Activity, auth::User};",
+            &[
+                "services/sample.rs (services) depends on `crate::activity_tracker`",
+                "services/sample.rs (services) depends on `crate::auth`",
+            ],
+        ),
+        (
+            "db cannot depend on activity_tracker",
+            "db",
+            "db/sample.rs",
+            "use crate::activity_tracker::Activity;",
+            &["db/sample.rs (db) depends on `crate::activity_tracker`"],
+        ),
+        (
+            "templates cannot depend on activity_tracker",
+            "templates",
+            "templates/sample.rs",
+            "use crate::activity_tracker::Activity;",
+            &["templates/sample.rs (templates) depends on `crate::activity_tracker`"],
+        ),
+        (
+            "types cannot depend on activity_tracker",
+            "types",
+            "types/sample.rs",
+            "use crate::activity_tracker::Activity;",
+            &["types/sample.rs (types) depends on `crate::activity_tracker`"],
+        ),
+    ];
+
+    for (case, layer, relative_path, source, expected) in cases {
+        let paths = crate_paths(source);
+        let mut used_allowances = BTreeSet::new();
+        let violations = layer_edge_violations(layer, relative_path, &paths, &mut used_allowances);
+        let expected: Vec<String> = expected.iter().map(|entry| (*entry).to_string()).collect();
+        assert_eq!(violations, expected, "{case}");
+    }
 }
 
 /// Summarizes `#[cached]` attributes in `source` by classification and collects
@@ -1975,6 +2079,38 @@ fn is_singleton_convert_expr(raw_value: &str) -> bool {
     false
 }
 
+/// Checks a single source file's referenced `crate::` paths against the
+/// forbidden layer-edge matrix.
+fn layer_edge_violations<'a>(
+    layer: &str,
+    relative_path: &'a str,
+    paths: &'a BTreeSet<String>,
+    used_allowances: &mut BTreeSet<(&'a str, &'a str)>,
+) -> Vec<String> {
+    let mut violations = Vec::new();
+    let targets: BTreeSet<&str> = paths
+        .iter()
+        .filter_map(|path| path.split("::").next())
+        .filter(|target| LAYERS.contains(target))
+        .collect();
+
+    for target in targets {
+        if !FORBIDDEN_EDGES.contains(&(layer, target)) {
+            continue;
+        }
+        let allowance = (relative_path, target);
+        if LAYER_EDGE_ALLOWANCES.contains(&allowance) {
+            used_allowances.insert(allowance);
+        } else {
+            violations.push(format!(
+                "{relative_path} ({layer}) depends on `crate::{target}`"
+            ));
+        }
+    }
+
+    violations
+}
+
 /// Replaces every nested `fn ... { ... }` definition inside `body` with spaces
 /// while preserving byte length and newlines so caller offsets stay aligned.
 fn mask_nested_functions(body: &str) -> String {
@@ -2559,10 +2695,18 @@ fn trim_ws_and_comments(source: &str) -> &str {
 
 /// Recursively collects `.rs` files under `dir`.
 fn walk_rust_files(dir: &Path, files: &mut Vec<PathBuf>) {
-    let Ok(entries) = fs::read_dir(dir) else {
+    if !dir.exists() {
         return;
-    };
-    for entry in entries.flatten() {
+    }
+    let entries = fs::read_dir(dir)
+        .unwrap_or_else(|err| panic!("failed to read directory `{}`: {err}", dir.display()));
+    for entry in entries {
+        let entry = entry.unwrap_or_else(|err| {
+            panic!(
+                "failed to read directory entry under `{}`: {err}",
+                dir.display()
+            )
+        });
         let path = entry.path();
         if path.is_dir() {
             walk_rust_files(&path, files);

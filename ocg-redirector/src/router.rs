@@ -1,18 +1,22 @@
 //! HTTP routing configuration for the OCG redirector.
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, net::Ipv6Addr, str::FromStr, sync::Arc};
 
 use axum::{
     Router,
-    extract::State as AxumState,
-    http::{HeaderMap, StatusCode, Uri, header::HOST},
+    extract::{Request, State as AxumState},
+    http::{HeaderMap, HeaderValue, StatusCode, Uri, header::HOST, uri::Scheme},
     response::{IntoResponse, Redirect},
     routing::get,
 };
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
-use tower_http::trace::TraceLayer;
-use tracing::instrument;
+use tower::ServiceBuilder;
+use tower_http::{
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
+    trace::TraceLayer,
+};
+use tracing::{Span, info_span, instrument};
 
 use crate::config::HttpServerConfig;
 
@@ -35,10 +39,71 @@ pub(crate) type Redirects = HashMap<String, CommunityRedirects>;
 /// Redirect settings and mappings for one community.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct CommunityRedirects {
-    /// Base legacy URL used for unmatched redirect requests.
-    pub base_legacy_url: Option<String>,
     /// Redirects keyed by normalized legacy path.
     pub redirects: HashMap<String, String>,
+
+    /// Base legacy URL used for unmatched redirect requests.
+    pub base_legacy_url: Option<String>,
+}
+
+/// Returns whether the provided URL is an absolute HTTP(S) URL without
+/// userinfo, query, fragment, malformed port, or invalid header characters.
+pub(crate) fn is_valid_http_url(value: &str) -> bool {
+    // Reject fragments and non-header characters because `http::Uri` ignores fragments
+    if value.contains('#') || HeaderValue::from_str(value).is_err() {
+        return false;
+    }
+
+    // Parse and require an HTTP(S) scheme without a query string
+    let Ok(uri) = Uri::from_str(value) else {
+        return false;
+    };
+    if !matches!(uri.scheme(), Some(scheme) if *scheme == Scheme::HTTP || *scheme == Scheme::HTTPS)
+        || uri.query().is_some()
+    {
+        return false;
+    }
+
+    // Validate authority has a nonempty host (valid IPv6 when bracketed), no userinfo,
+    // and a valid optional decimal port
+    let Some(authority) = uri.authority() else {
+        return false;
+    };
+    let authority_str = authority.as_str();
+    let host = authority.host();
+    if host.is_empty() || authority_str.contains('@') {
+        return false;
+    }
+    if let Some(ipv6) = host.strip_prefix('[').and_then(|h| h.strip_suffix(']'))
+        && ipv6.parse::<Ipv6Addr>().is_err()
+    {
+        return false;
+    }
+    if authority_str.len() != host.len() {
+        let Some(port_str) = authority_str
+            .strip_prefix(host)
+            .and_then(|rest| rest.strip_prefix(':'))
+        else {
+            return false;
+        };
+        if port_str.is_empty()
+            || !port_str.bytes().all(|byte| byte.is_ascii_digit())
+            || authority.port_u16().is_none()
+        {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Returns whether the provided redirect path is a safe root-relative path.
+pub(crate) fn is_valid_redirect_path(path: &str) -> bool {
+    path.starts_with('/')
+        && !path.starts_with("//")
+        && !path.contains('#')
+        && HeaderValue::from_str(path).is_ok()
+        && Uri::from_str(path).is_ok_and(|uri| uri.scheme().is_none() && uri.authority().is_none())
 }
 
 /// Configures and returns the application router.
@@ -61,7 +126,13 @@ pub(crate) fn setup(
         .route("/", get(redirect))
         .route("/health-check", get(health_check))
         .route("/{*path}", get(redirect))
-        .layer(TraceLayer::new_for_http());
+        .layer(
+            // Assign a request id, open the request span carrying it, and echo it in the response
+            ServiceBuilder::new()
+                .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+                .layer(TraceLayer::new_for_http().make_span_with(make_request_span))
+                .layer(PropagateRequestIdLayer::x_request_id()),
+        );
 
     router.with_state(state)
 }
@@ -104,11 +175,20 @@ async fn redirect(
         // Redirect root requests to the community page
         if legacy_path == "/" {
             community_redirect_target(&state.base_redirect_url, &community_name)
-        // Redirect known legacy paths to their canonical target
-        } else if let Some(new_path) = community_redirects.redirects.get(&legacy_path) {
+        // Redirect known legacy paths to their canonical target, re-validating as
+        // defense-in-depth in case `Redirects` was built outside `db::load_redirects`
+        } else if let Some(new_path) = community_redirects
+            .redirects
+            .get(&legacy_path)
+            .filter(|path| is_valid_redirect_path(path))
+        {
             format!("{}{new_path}", state.base_redirect_url)
-        // Fall back to the legacy site when the community still needs one
-        } else if let Some(base_legacy_url) = &community_redirects.base_legacy_url {
+        // Fall back to the legacy site when configured and still valid
+        } else if let Some(base_legacy_url) = community_redirects
+            .base_legacy_url
+            .as_deref()
+            .filter(|url| is_valid_http_url(url))
+        {
             legacy_redirect_target(base_legacy_url, &uri)
         // Redirect unmatched paths to the community page when no legacy fallback is configured
         } else {
@@ -149,6 +229,23 @@ fn legacy_redirect_target(base_legacy_url: &str, uri: &Uri) -> String {
     let path_and_query = uri.path_and_query().map_or("/", |value| value.as_str());
 
     format!("{base_legacy_url}{path_and_query}")
+}
+
+/// Opens the request span, carrying the request id so downstream log lines can be correlated.
+fn make_request_span(request: &Request) -> Span {
+    let request_id = request
+        .headers()
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+
+    info_span!(
+        "request",
+        method = %request.method(),
+        uri = %request.uri(),
+        version = ?request.version(),
+        request_id,
+    )
 }
 
 /// Normalizes an incoming request host.
@@ -275,6 +372,40 @@ mod tests {
             response.headers().get(LOCATION).unwrap(),
             &HeaderValue::from_static("https://ocg.example/community/group/group/event/event")
         );
+    }
+
+    #[tokio::test]
+    async fn test_redirect_ignores_invalid_new_path_and_invalid_base_legacy_url() {
+        // Setup a community with unsafe new_path targets (including a fragment with control chars)
+        // and an unsafe base_legacy_url
+        let router = test_router(HashMap::from([(
+            "active-community".to_string(),
+            CommunityRedirects {
+                redirects: HashMap::from([
+                    (
+                        "/unsafe-path".to_string(),
+                        "//evil.example/phish".to_string(),
+                    ),
+                    (
+                        "/fragment-control".to_string(),
+                        "/cncf#\r\nX-Injected: 1".to_string(),
+                    ),
+                ]),
+
+                base_legacy_url: Some("https://legacy.example:bad".to_string()),
+            },
+        )]));
+
+        // Check both unsafe targets fall back cleanly to the community page
+        for path in ["/unsafe-path", "/fragment-control"] {
+            let response = router.clone().oneshot(test_request(path)).await.unwrap();
+            assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT, "{path}");
+            assert_eq!(
+                response.headers().get(LOCATION).unwrap(),
+                &HeaderValue::from_static("https://ocg.example/active-community"),
+                "{path}"
+            );
+        }
     }
 
     #[tokio::test]
@@ -436,6 +567,35 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn test_request_id_is_generated_when_missing_and_echoed_when_present() {
+        // Setup the redirector router
+        let router = test_router(test_community_redirects(HashMap::new()));
+
+        // Check requests without x-request-id receive a generated header
+        let generated_response =
+            router.clone().oneshot(test_request("/health-check")).await.unwrap();
+        let generated_id = generated_response
+            .headers()
+            .get("x-request-id")
+            .and_then(|value| value.to_str().ok())
+            .expect("x-request-id header should be generated");
+        assert_ne!(generated_id, "");
+
+        // Check requests with x-request-id echo the caller's value
+        let request = Request::builder()
+            .header(HOST, "active-community.redirects.ocg.example")
+            .header("x-request-id", "req-custom-123")
+            .uri("/missing")
+            .body(Body::empty())
+            .unwrap();
+        let propagated_response = router.oneshot(request).await.unwrap();
+        assert_eq!(
+            propagated_response.headers().get("x-request-id"),
+            Some(&HeaderValue::from_static("req-custom-123"))
+        );
+    }
+
     // Helpers.
 
     /// Sets up a router mapping the legacy event path for the active community.
@@ -458,8 +618,9 @@ mod tests {
         HashMap::from([(
             "active-community".to_string(),
             CommunityRedirects {
-                base_legacy_url: Some("https://legacy.example/".to_string()),
                 redirects,
+
+                base_legacy_url: Some("https://legacy.example/".to_string()),
             },
         )])
     }
@@ -467,8 +628,9 @@ mod tests {
     /// Builds test redirects without a legacy fallback.
     fn test_redirects(redirects: HashMap<String, String>) -> CommunityRedirects {
         CommunityRedirects {
-            base_legacy_url: None,
             redirects,
+
+            base_legacy_url: None,
         }
     }
 

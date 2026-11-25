@@ -17,20 +17,28 @@ here is introduced, removed, or altered; most changes do not touch it.
 
 ```text
 ocg-server/src/
-  router/      Route tables, permission middleware layering, shared State
-  handlers/    HTTP handlers: extraction, delegation, response shaping
-  services/    Workflows, managers, providers, workers, notifications
-  db/          Database traits, PostgreSQL wrappers, operation types, mock
-  types/       Domain shapes, read models, request forms
-  templates/   Askama Template structs, view-only enums, filters, emails
+  router/           Route tables, permission middleware layering, shared State
+  handlers/         HTTP handlers: extraction, delegation, response shaping
+  activity_tracker  Batched page-view activity tracking
+  auth              Session store, password/OAuth2/OIDC authentication backend
+  services/         Workflows, managers, providers, workers, notifications
+  db/               Database traits, PostgreSQL wrappers, operation types, mock
+  types/            Domain shapes, read models, request forms
+  templates/        Askama Template structs, view-only enums, filters, emails
 ```
 
-Dependencies point in one direction: `router -> handlers -> services -> db`.
-`types/` and `templates/` are leaves.
+Dependencies point in one direction: `router -> handlers -> services -> db`,
+with one explicit exception for `auth`'s session and user types
+(`auth <-> db`, `auth <-> types`, and `templates -> auth`). `types/` and
+`templates/` are otherwise leaves. `auth` and `activity_tracker` sit beside
+`services` and may depend on `services`, `db`, and `types`.
 
 Allowed edges:
 
 - `templates -> types`, `db -> types`, `services -> types`.
+- `db -> auth`, `templates -> auth`, `types -> auth` for the session and user
+  types owned by `auth` (forming the allowed `auth <-> db` and `auth <-> types`
+  cycles).
 - `services -> templates::notifications` for the email templates only, whose
   serialized form is the `template_data` contract described in
   [Serde derives](#serde-derives).
@@ -39,10 +47,12 @@ Allowed edges:
 
 Forbidden edges:
 
-- `types -> {templates, services, db, handlers}`.
-- `templates -> {services, db, handlers}`.
-- `db -> {templates, services, handlers}`.
-- `services -> handlers`.
+- `types -> {templates, services, db, handlers, activity_tracker}`.
+- `templates -> {services, db, handlers, activity_tracker}`.
+- `db -> {templates, services, handlers, activity_tracker}`.
+- `services -> {handlers, auth, activity_tracker}`.
+- `auth -> {handlers, templates, activity_tracker}`.
+- `activity_tracker -> {handlers, templates, auth}`.
 - `handlers -> db::<module>::{*Input, *Result}` operation types. A handler
   that needs to build one is orchestrating a workflow and delegates it to
   `services/`.
@@ -51,8 +61,10 @@ Forbidden edges:
 
 `layers::layer_dependencies_follow_backend_rules` (`ocg-server/src/layers.rs`,
 run by `just server-tests`) enforces these rules over every Rust file under
-the layered directories, tests included. Its allowance lists are empty and an
-allowance that matches nothing fails the test, so new code never adds one.
+each layer's root module and directory (`handlers`, `activity_tracker`, `auth`,
+`services`, `db`, `templates`, `types`), tests included. Its allowance lists
+are empty and an allowance that matches nothing fails the test, so new code
+never adds one.
 
 A type that two layers need lives in `types/`. A `db` operation type that
 carries notification content stores it as an already serialized
@@ -413,9 +425,9 @@ the SDK operation and response body streaming. PostgreSQL connections get the
 pool `create`, `wait`, and `recycle` timeouts, TCP keepalive and user-timeout
 socket bounds that close a connection whose network path died, plus
 server-enforced `statement_timeout` and `idle_in_transaction_session_timeout`
-session defaults, all applied in `db::pool`; a path that legitimately needs
-longer raises the limit with `set local statement_timeout` inside its own
-transaction.
+session defaults, all applied in `ocg_common::db::create_pool`; a path that
+legitimately needs longer raises the limit with `set local statement_timeout`
+inside its own transaction.
 
 Classification at the boundary:
 

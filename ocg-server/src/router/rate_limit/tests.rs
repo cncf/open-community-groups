@@ -1,7 +1,10 @@
 //! Tests for the rate limiting middleware.
 
 use std::{
+    collections::BTreeSet,
+    fs,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
     sync::Arc,
     time::Instant,
 };
@@ -31,7 +34,10 @@ use crate::{
             sample_server_cfg, send,
         },
     },
-    router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE},
+    router::{
+        CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE,
+        tests::{ROUTE_MANIFEST_PATH, RouteManifestEntry, declared_routes},
+    },
     services::rate_limit::{IpLimit, Limit, LogInFailureLimit, RateLimiter, client_ip::ClientKey},
 };
 
@@ -560,6 +566,52 @@ async fn test_limit_requests_views_over_the_limit_return_no_content_untracked() 
     let window = rate_limiter.take_window();
     assert_eq!(window.limit(Limit::Views).requests, 2);
     assert_eq!(window.limit(Limit::Views).over_limit, 1);
+}
+
+#[test]
+fn test_limited_routes_exist_in_router_and_manifest() {
+    // Collect every route declared in the router sources
+    let declared: BTreeSet<(String, String)> = declared_routes()
+        .into_iter()
+        .map(|(path, method)| (method.to_string(), path))
+        .collect();
+
+    // Load the committed E2E route manifest
+    let manifest_path = Path::new(env!("CARGO_MANIFEST_DIR")).join(ROUTE_MANIFEST_PATH);
+    let manifest_entries: Vec<RouteManifestEntry> = fs::read_to_string(&manifest_path)
+        .ok()
+        .and_then(|json| serde_json::from_str(&json).ok())
+        .expect("route-manifest.json should be readable and valid JSON");
+    let manifest: BTreeSet<(String, String)> = manifest_entries
+        .into_iter()
+        .map(|entry| (entry.method, entry.path))
+        .collect();
+
+    // Check every limited route is unique and registered in both the router and manifest
+    let mut seen = BTreeSet::new();
+    for route in LIMITED_ROUTES {
+        let method = match route.method {
+            RouteMethod::Get => "GET",
+            RouteMethod::Post => "POST",
+        };
+        let key = (method.to_string(), route.path.to_string());
+
+        assert!(
+            seen.insert(key.clone()),
+            "duplicate LIMITED_ROUTES entry: {method} {}",
+            route.path
+        );
+        assert!(
+            declared.contains(&key),
+            "LIMITED_ROUTES entry is not declared in router: {method} {}",
+            route.path
+        );
+        assert!(
+            manifest.contains(&key),
+            "LIMITED_ROUTES entry is missing from {ROUTE_MANIFEST_PATH}: {method} {}",
+            route.path
+        );
+    }
 }
 
 #[test]
