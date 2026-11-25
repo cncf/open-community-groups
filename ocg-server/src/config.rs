@@ -15,7 +15,7 @@ use std::{
 };
 
 use anyhow::{Result, bail};
-use axum::http::{HeaderName, header::FORWARDED};
+use axum::http::{HeaderName, HeaderValue, header::FORWARDED};
 use figment::{
     Figment,
     providers::{Env, Format, Serialized, Yaml},
@@ -698,6 +698,9 @@ pub(crate) struct HttpServerConfig {
     pub rate_limit: Option<RateLimitConfig>,
     /// Optional list of hostnames that should redirect to `base_url`.
     pub redirect_hosts: Option<Vec<String>>,
+    /// Security headers configuration.
+    #[serde(default)]
+    pub security: SecurityConfig,
     /// Grace period in seconds granted to background workers on shutdown.
     #[serde(default = "default_shutdown_grace_period_secs")]
     pub shutdown_grace_period_secs: u64,
@@ -729,6 +732,31 @@ impl HttpServerConfig {
         // Validate the optional rate limiting section
         if let Some(rate_limit_cfg) = &self.rate_limit {
             rate_limit_cfg.validate()?;
+        }
+
+        // Validate security header settings
+        self.security.validate()?;
+
+        Ok(())
+    }
+}
+
+/// Security headers configuration.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct SecurityConfig {
+    /// Emit `Content-Security-Policy-Report-Only` instead of enforcing CSP.
+    #[serde(default)]
+    pub csp_report_only: bool,
+    /// Optional URI appended as a `report-uri` directive on CSP headers.
+    pub csp_report_uri: Option<String>,
+}
+
+impl SecurityConfig {
+    /// Validate security header settings.
+    fn validate(&self) -> Result<()> {
+        if let Some(uri) = &self.csp_report_uri {
+            validate_csp_report_uri(uri)?;
         }
 
         Ok(())
@@ -1264,6 +1292,61 @@ fn validate_badge_key_id(key_id: &str) -> Result<()> {
         bail!(
             "server.badges key identifiers must be 1-64 lowercase URL-safe characters and start and end with a letter or digit"
         );
+    }
+
+    Ok(())
+}
+
+/// Validate a CSP `report-uri` value.
+///
+/// Accepts a root-relative path (starting with `/` without authority prefixes or
+/// backslashes) or an `http`/`https` URL without whitespace, control characters,
+/// or CSP directive separators.
+fn validate_csp_report_uri(uri: &str) -> Result<()> {
+    const INVALID_TARGET_MSG: &str =
+        "server.security.csp_report_uri must be a relative path or http/https URL";
+
+    // Reject empty values, non-ASCII characters, directive separators, backslashes,
+    // and unsafe header characters so the emitted URI matches browser parsing
+    if uri.is_empty()
+        || !uri.is_ascii()
+        || uri.bytes().any(|b| {
+            b.is_ascii_whitespace() || b.is_ascii_control() || matches!(b, b';' | b',' | b'\\')
+        })
+        || HeaderValue::from_str(uri).is_err()
+    {
+        bail!(
+            "server.security.csp_report_uri must be a valid URI without whitespace or separators"
+        );
+    }
+
+    // Validate root-relative paths against a placeholder origin so browser resolution
+    // cannot reinterpret the path as another host
+    if uri.starts_with('/') {
+        if uri.starts_with("//") {
+            bail!("{INVALID_TARGET_MSG}");
+        }
+        let base = reqwest::Url::parse("https://placeholder.invalid")?;
+        let resolved = base.join(uri).map_err(|_| anyhow::anyhow!(INVALID_TARGET_MSG))?;
+        if resolved.scheme() != "https" || resolved.host_str() != Some("placeholder.invalid") {
+            bail!("{INVALID_TARGET_MSG}");
+        }
+        return Ok(());
+    }
+
+    // Require an explicit http:// or https:// authority prefix before parsing
+    let has_web_authority = uri
+        .get(..7)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("http://"))
+        || uri
+            .get(..8)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("https://"));
+    if !has_web_authority {
+        bail!("{INVALID_TARGET_MSG}");
+    }
+    let parsed = reqwest::Url::parse(uri).map_err(|_| anyhow::anyhow!(INVALID_TARGET_MSG))?;
+    if !matches!(parsed.scheme(), "http" | "https") || parsed.host_str().is_none() {
+        bail!("{INVALID_TARGET_MSG}");
     }
 
     Ok(())

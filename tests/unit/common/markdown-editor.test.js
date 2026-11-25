@@ -15,6 +15,20 @@ describe("markdown-editor", () => {
   beforeEach(() => {
     latestEditor = null;
     globalThis.EasyMDE = class {
+      static drawHorizontalRule = () => {};
+      static drawLink = () => {};
+      static drawTable = () => {};
+      static redo = () => {};
+      static toggleBlockquote = () => {};
+      static toggleBold = () => {};
+      static toggleCheckList = () => {};
+      static toggleHeadingSmaller = () => {};
+      static toggleItalic = () => {};
+      static toggleOrderedList = () => {};
+      static togglePreview = () => {};
+      static toggleUnorderedList = () => {};
+      static undo = () => {};
+
       constructor(options) {
         this.options = options;
         this._changeHandler = null;
@@ -111,5 +125,39 @@ describe("markdown-editor", () => {
 
     // The textarea receives the id without requiring the host id to match.
     expect(element.querySelector("textarea")?.id).to.equal("description-input");
+  });
+
+  it("disables external CDN downloads and renders local inline SVG toolbar icons", async () => {
+    // Render the markdown-editor fixture.
+    await mountLitComponent("markdown-editor");
+
+    // Verify Font Awesome CDN injection and CodeMirror CDN spellcheck are disabled.
+    expect(latestEditor.options.autoDownloadFontAwesome).to.equal(false);
+    expect(latestEditor.options.spellChecker).to.equal(false);
+
+    // Verify every toolbar button uses a local inline SVG icon and an EasyMDE action.
+    const buttons = latestEditor.options.toolbar.filter((item) => typeof item === "object");
+    expect(buttons.map((button) => button.name)).to.deep.equal([
+      "bold",
+      "italic",
+      "heading",
+      "quote",
+      "unordered-list",
+      "ordered-list",
+      "check-list",
+      "link",
+      "table",
+      "horizontal-rule",
+      "preview",
+      "undo",
+      "redo",
+    ]);
+    for (const button of buttons) {
+      expect(typeof button.action, button.name).to.equal("function");
+      expect(button.className, button.name).to.equal(undefined);
+      expect(button.icon, button.name).to.include("<svg ");
+      expect(button.icon, button.name).to.include('aria-hidden="true"');
+      expect(button.icon, button.name).to.include("</svg>");
+    }
   });
 });

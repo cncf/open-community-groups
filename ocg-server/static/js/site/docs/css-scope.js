@@ -248,12 +248,13 @@ export const scopeCssRules = (cssText, scope) => {
   while (cursor < cssText.length) {
     const delimiter = findTopLevelDelimiter(cssText, cursor);
     if (!delimiter) {
-      scopedCss += cssText.slice(cursor);
+      scopedCss += stripExternalImportStatement(cssText.slice(cursor));
       break;
     }
 
     if (delimiter.char === ";") {
-      scopedCss += cssText.slice(cursor, delimiter.index + 1);
+      const statement = cssText.slice(cursor, delimiter.index + 1);
+      scopedCss += stripExternalImportStatement(statement);
       cursor = delimiter.index + 1;
       continue;
     }
@@ -289,4 +290,36 @@ export const scopeCssRules = (cssText, scope) => {
   }
 
   return scopedCss;
+};
+
+/**
+ * Strips cross-origin `@import` statements so vendored stylesheets cannot trigger CSP violations.
+ * Preserves any leading comments and non-external statements.
+ * @param {string} statement Semicolon-terminated top-level CSS statement.
+ * @returns {string} Statement with external `@import` removed.
+ */
+const stripExternalImportStatement = (statement) => {
+  let cursor = 0;
+  while (cursor < statement.length) {
+    if (/\s/.test(statement[cursor])) {
+      cursor += 1;
+      continue;
+    }
+    if (statement[cursor] === "/" && statement[cursor + 1] === "*") {
+      const commentEnd = statement.indexOf("*/", cursor + 2);
+      if (commentEnd === -1) {
+        return statement;
+      }
+      cursor = commentEnd + 2;
+      continue;
+    }
+    break;
+  }
+
+  const rule = statement.slice(cursor);
+  if (/^@import(?:\s+(?:url\(\s*)?["']?|["'])(?:https?:|\/\/)/i.test(rule)) {
+    return statement.slice(0, cursor);
+  }
+
+  return statement;
 };

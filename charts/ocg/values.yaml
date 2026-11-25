@@ -266,6 +266,13 @@ server:
   # Optional list of hostnames that should redirect to baseUrl
   redirectHosts: []
 
+  # Security headers configuration
+  security:
+    # Emit Content-Security-Policy-Report-Only instead of enforcing CSP
+    cspReportOnly: false
+    # Optional URI appended as a report-uri directive on CSP headers
+    cspReportUri: null
+
   # Ingress configuration
   ingress:
     enabled: true

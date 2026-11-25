@@ -431,12 +431,36 @@ test.describe("group dashboard event surveys tab", () => {
     );
     await expect(table.locator("tbody tr")).toHaveCount(2);
 
-    // Open the first respondent from the keyboard.
+    // Verify HTMX eval is disabled, non-Enter keys do not activate the respondent row,
+    // and Enter triggers exactly one modal request.
+    expect(await page.evaluate(() => window.htmx?.config?.allowEval)).toBe(false);
     await firstRow.focus();
-    await waitForActionResponse(page, () => firstRow.press("Enter"), {
-      method: "GET",
-      urlIncludes: `/responses/${attendeeIds.checkedIn1}`,
-    });
+    let respondentRequests = 0;
+    const countRespondentRequest = (request) => {
+      if (request.url().includes(`/responses/${attendeeIds.checkedIn1}`)) {
+        respondentRequests += 1;
+      }
+    };
+    page.on("request", countRespondentRequest);
+    try {
+      await firstRow.press("Space");
+      await firstRow.press("ArrowDown");
+      await firstRow.press("Shift+Enter");
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+      await expect(page.getByRole("dialog", { name: "E2E Survey Attendee One" })).toBeHidden();
+      expect(respondentRequests).toBe(0);
+
+      // Open the first respondent from the keyboard.
+      await waitForActionResponse(page, () => firstRow.press("Enter"), {
+        method: "GET",
+        urlIncludes: `/responses/${attendeeIds.checkedIn1}`,
+      });
+      expect(respondentRequests).toBe(1);
+    } finally {
+      page.off("request", countRespondentRequest);
+    }
     const firstDialog = page.getByRole("dialog", { name: "E2E Survey Attendee One" });
     await expect(firstDialog).toBeVisible();
     await expect(firstDialog).toContainText("General admission");

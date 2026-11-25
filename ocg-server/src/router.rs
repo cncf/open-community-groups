@@ -19,7 +19,8 @@ use axum::{
     http::{
         HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri,
         header::{
-            CACHE_CONTROL, CONTENT_TYPE, HOST, ORIGIN, REFERER, REFERRER_POLICY, SET_COOKIE,
+            CACHE_CONTROL, CONTENT_SECURITY_POLICY, CONTENT_SECURITY_POLICY_REPORT_ONLY,
+            CONTENT_TYPE, HOST, ORIGIN, REFERER, REFERRER_POLICY, SET_COOKIE,
             STRICT_TRANSPORT_SECURITY, VARY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
         },
     },
@@ -42,7 +43,7 @@ use tracing::{Span, debug, error, info_span, instrument};
 use crate::{
     activity_tracker::DynActivityTracker,
     auth::AuthnBackend,
-    config::{HttpServerConfig, MeetingsConfig, PaymentsConfig},
+    config::{HttpServerConfig, MeetingsConfig, PaymentsConfig, SecurityConfig},
     db::DynDB,
     handlers::{
         auth::{self, LOG_IN_URL},
@@ -103,6 +104,9 @@ pub(crate) const COMMIT_SHA: &str = env!("OCG_COMMIT_SHA");
 
 /// Header carrying the loaded or current application commit SHA.
 pub(crate) const COMMIT_SHA_HEADER: &str = "x-ocg-commit-sha";
+
+/// Space-separated CSP SHA-256 hashes for build-time static inline scripts.
+pub(crate) const CSP_SCRIPT_HASHES: &str = env!("OCG_CSP_SCRIPT_HASHES");
 
 /// Header used to request an application-level page refresh for `ocgFetch`.
 const OCG_REFRESH_HEADER: &str = "x-ocg-refresh";
@@ -561,14 +565,22 @@ pub(crate) async fn setup(deps: RouterDeps) -> Result<Router> {
         ));
     }
 
+    // Build the global Content-Security-Policy header before moving state into layers
+    let (csp_header_name, csp_header_value) =
+        build_content_security_policy(&state.server_cfg.security)?;
+
     router = router
         .layer(middleware::from_fn_with_state(
             state.clone(),
             redirect_old_hosts,
         ))
-        // Apply global non-CSP security headers to every response
+        // Apply global security headers to every response without overriding stricter handler policies
         .layer(
             ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    csp_header_name,
+                    csp_header_value,
+                ))
                 .layer(SetResponseHeaderLayer::if_not_present(
                     PERMISSIONS_POLICY,
                     HeaderValue::from_static(PERMISSIONS_POLICY_VALUE),
@@ -899,6 +911,41 @@ fn browser_request_allowed(
 
     // Require explicit browser origin evidence to match the configured site
     request_headers_match_site_origin(server_cfg, headers)
+}
+
+/// Builds the global Content-Security-Policy header name and value from configuration.
+fn build_content_security_policy(security: &SecurityConfig) -> Result<(HeaderName, HeaderValue)> {
+    // Select enforced or report-only header name
+    let header_name = if security.csp_report_only {
+        CONTENT_SECURITY_POLICY_REPORT_ONLY
+    } else {
+        CONTENT_SECURITY_POLICY
+    };
+
+    // Assemble the base policy with build-time inline script hashes
+    let mut policy = format!(
+        "default-src 'self'; \
+         script-src 'self' {CSP_SCRIPT_HASHES}; \
+         style-src 'self' 'unsafe-inline'; \
+         font-src 'self' data:; \
+         img-src 'self' data: blob: https:; \
+         connect-src 'self' https://tiles.openfreemap.org https://nominatim.openstreetmap.org; \
+         worker-src 'self' blob:; \
+         frame-ancestors 'none'; \
+         object-src 'none'; \
+         base-uri 'self'"
+    );
+
+    // Append report-uri when configured
+    if let Some(report_uri) = &security.csp_report_uri {
+        policy.push_str("; report-uri ");
+        policy.push_str(report_uri);
+    }
+
+    // Parse the assembled policy into an HTTP header value
+    let header_value = HeaderValue::from_str(&policy)?;
+
+    Ok((header_name, header_value))
 }
 
 /// Returns whether the configured base URL uses the HTTPS scheme.

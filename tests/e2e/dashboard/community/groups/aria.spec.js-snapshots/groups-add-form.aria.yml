@@ -21,23 +21,23 @@
 - text: Description *
 - application:
   - toolbar:
-    - button "Bold": 
-    - button "Italic": 
-    - button "Heading": 
+    - button "Bold"
+    - button "Italic"
+    - button "Heading"
     - text: "|"
-    - button "Quote": 
-    - button "Generic List": 
-    - button "Numbered List": 
-    - button "Check List": 
+    - button "Quote"
+    - button "Generic List"
+    - button "Numbered List"
+    - button "Check List"
     - text: "|"
-    - button "Create Link": 
-    - button "Insert Table": 
-    - button "Insert Horizontal Line": 
+    - button "Create Link"
+    - button "Insert Table"
+    - button "Insert Horizontal Line"
     - text: "|"
-    - button "Toggle Preview": 
+    - button "Toggle Preview"
     - text: "|"
-    - button "Undo": 
-    - button "Redo": 
+    - button "Undo"
+    - button "Redo"
 - paragraph: /Brief description of the group and its purpose\. Max \d+ characters\./
 - text: Logo
 - button "Logo Click or drop image":

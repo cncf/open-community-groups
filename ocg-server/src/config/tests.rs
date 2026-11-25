@@ -365,6 +365,19 @@ fn test_http_server_config_rejects_invalid_rate_limit() {
 }
 
 #[test]
+fn test_http_server_config_rejects_invalid_security() {
+    // Setup a server section with a directive-injecting CSP report URI
+    let mut cfg = sample_config().server;
+    cfg.security.csp_report_uri = Some("https://reports.example.test/csp; img-src *".to_string());
+
+    // Check the server section validates the security section
+    assert_eq!(
+        cfg.validate().unwrap_err().to_string(),
+        "server.security.csp_report_uri must be a valid URI without whitespace or separators"
+    );
+}
+
+#[test]
 fn test_http_server_config_rejects_zero_max_blocking_concurrency() {
     // Setup a server section with a zero blocking bound
     let mut cfg = sample_config().server;
@@ -914,6 +927,102 @@ fn test_rate_limit_config_rejects_malformed_sections() {
 }
 
 #[test]
+fn test_security_config_defaults_and_accepts_valid_report_uris() {
+    // Deserialize an empty security section and verify defaults
+    let default_cfg: SecurityConfig = serde_json::from_value(json!({})).unwrap();
+    assert!(!default_cfg.csp_report_only);
+    assert_eq!(default_cfg.csp_report_uri, None);
+    assert!(default_cfg.validate().is_ok());
+
+    // Check root-relative paths and http/https report URIs pass validation
+    for uri in [
+        "/csp-report",
+        "/api/csp/report?env=staging",
+        "http://127.0.0.1:9001/csp-report",
+        "https://reports.example.test/csp",
+    ] {
+        let cfg = SecurityConfig {
+            csp_report_only: true,
+            csp_report_uri: Some(uri.to_string()),
+        };
+        assert!(cfg.validate().is_ok(), "{uri}");
+    }
+}
+
+#[test]
+fn test_security_config_rejects_invalid_settings() {
+    // (case, serialized security section, expected error substring)
+    let cases = [
+        (
+            "empty report uri",
+            json!({ "csp_report_uri": "" }),
+            "server.security.csp_report_uri must be a valid URI without whitespace or separators",
+        ),
+        (
+            "whitespace in report uri",
+            json!({ "csp_report_uri": "https://reports.example.test/csp report" }),
+            "server.security.csp_report_uri must be a valid URI without whitespace or separators",
+        ),
+        (
+            "semicolon directive injection",
+            json!({ "csp_report_uri": "https://reports.example.test/csp;script-src *" }),
+            "server.security.csp_report_uri must be a valid URI without whitespace or separators",
+        ),
+        (
+            "comma policy separator",
+            json!({ "csp_report_uri": "https://reports.example.test/csp,default-src *" }),
+            "server.security.csp_report_uri must be a valid URI without whitespace or separators",
+        ),
+        (
+            "backslash authority prefix",
+            json!({ "csp_report_uri": "/\\reports.example.test/csp" }),
+            "server.security.csp_report_uri must be a valid URI without whitespace or separators",
+        ),
+        (
+            "non-ascii path",
+            json!({ "csp_report_uri": "/café" }),
+            "server.security.csp_report_uri must be a valid URI without whitespace or separators",
+        ),
+        (
+            "protocol-relative report uri",
+            json!({ "csp_report_uri": "//reports.example.test/csp" }),
+            "server.security.csp_report_uri must be a relative path or http/https URL",
+        ),
+        (
+            "scheme without authority slashes",
+            json!({ "csp_report_uri": "https:reports.example.test/csp" }),
+            "server.security.csp_report_uri must be a relative path or http/https URL",
+        ),
+        (
+            "non-http scheme",
+            json!({ "csp_report_uri": "javascript:alert(1)" }),
+            "server.security.csp_report_uri must be a relative path or http/https URL",
+        ),
+        (
+            "bare non-path string",
+            json!({ "csp_report_uri": "reports.example.test/csp" }),
+            "server.security.csp_report_uri must be a relative path or http/https URL",
+        ),
+        (
+            "unknown field",
+            json!({ "csp_report_url": "https://reports.example.test/csp" }),
+            "unknown field `csp_report_url`",
+        ),
+    ];
+
+    for (case, value, expected) in cases {
+        // Deserialize and validate the security section
+        let result = serde_json::from_value::<SecurityConfig>(value)
+            .map_err(anyhow::Error::from)
+            .and_then(|cfg| cfg.validate());
+
+        // Check validation rejects the invalid setting with the expected message
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains(expected), "{case}: {error}");
+    }
+}
+
+#[test]
 fn test_smtp_config_defaults_deadlines() {
     // Setup an SMTP section that omits both deadlines
     let cfg: SmtpConfig = serde_json::from_value(serde_json::json!({
@@ -1087,6 +1196,7 @@ fn sample_config() -> Config {
             max_blocking_concurrency: None,
             rate_limit: None,
             redirect_hosts: None,
+            security: SecurityConfig::default(),
             shutdown_grace_period_secs: DEFAULT_SHUTDOWN_GRACE_PERIOD_SECS,
         },
         external_payments: None,
