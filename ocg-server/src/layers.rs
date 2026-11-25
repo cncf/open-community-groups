@@ -8,8 +8,10 @@
 //! exist only for edges that are still being migrated; an allowance that no
 //! longer matches any edge also fails the test, so the lists shrink with each
 //! migration and never grow silently. Additional tests verify that every
-//! cached database read respects `PgExecutor::use_cache` and that every
-//! non-singleton `#[cached]` attribute specifies `max_size`.
+//! cached database read respects `PgExecutor::use_cache`, that every
+//! non-singleton `#[cached]` attribute specifies `max_size`, and that every
+//! database trait method backed by `fetch_json_*` has at least one ignored
+//! `db_contracts_*` test under `db/contract_tests/`.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -112,6 +114,18 @@ const PROVIDER_TYPES: &[&str] = &[
     "services::payments::build_payments_provider",
 ];
 
+/// Function, helper, and method call targets collected from a Rust function body.
+struct BodyCalls {
+    /// Bare function calls (`name(`), excluding resolved nested local functions.
+    local_calls: BTreeSet<String>,
+    /// Method and DB/executor UFCS calls (`.name(` or `DB*::name(`).
+    method_calls: BTreeSet<String>,
+    /// Non-DB path-qualified calls as `(qualifier, name)`.
+    qualified_calls: BTreeSet<(Option<String>, String)>,
+    /// Non-call identifier references (such as helpers passed by value) as `(qualifier, name)`.
+    value_refs: BTreeSet<(Option<String>, String)>,
+}
+
 /// Parsed `#[cached]` attribute found in a Rust source file.
 struct CachedAttribute {
     /// 1-based line number where the attribute begins.
@@ -153,18 +167,69 @@ struct CachedBypassSummary {
     violations: Vec<usize>,
 }
 
+/// Parsed function inside `db/contract_tests/` with its test classification
+/// and reachable call targets.
+struct ContractTestFunction {
+    /// Reachable calls invoked by the function body.
+    calls: BodyCalls,
+    /// Whether the function is an ignored `db_contracts_*` test entry point.
+    is_contract_test: bool,
+    /// Function identifier name.
+    name: String,
+}
+
+/// Summary of `fetch_json_*` DB trait methods checked against `db/contract_tests/`.
+struct DbContractCoverageSummary {
+    /// Count of ignored `db_contracts_*` tests discovered.
+    contract_tests: usize,
+    /// Discovered JSON-returning DB trait methods as `(relative_path, method, line)`.
+    methods: Vec<(String, String, usize)>,
+    /// Violations for missing tests, duplicate method names, or unattributed `fetch_json_*` calls.
+    violations: Vec<String>,
+}
+
 /// Parsed Rust function item with its signature flags and body byte range.
 struct FunctionBlock {
     /// Byte offset of the closing `}` of the function body.
     body_end: usize,
     /// Byte offset of the opening `{` of the function body.
     body_start: usize,
+    /// Byte offset of the `fn` keyword.
+    fn_start: usize,
     /// Whether the function parameter list takes a `self` receiver.
     has_self: bool,
     /// Whether the function parameter list declares a `use_cache` parameter.
     has_use_cache_param: bool,
     /// Function identifier name.
     name: String,
+    /// Enclosing declaration scope of the function.
+    scope: FunctionScope,
+}
+
+/// Enclosing declaration scope of a parsed top-level or `impl`-level function.
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum FunctionScope {
+    /// Method inside an `impl ... DB* for ...` block.
+    DbTraitImpl,
+    /// Free function at module scope.
+    Free,
+    /// Method inside an inherent or non-`DB*` trait `impl` block.
+    OtherImpl,
+}
+
+/// Significant token immediately preceding an identifier while scanning bodies.
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum PrevToken<'a> {
+    /// Preceded by a single `.` member-access operator.
+    Dot,
+    /// Preceded by the `fn` keyword of a nested function declaration.
+    FnKeyword,
+    /// Preceded by the `let` keyword of a variable binding.
+    LetKeyword,
+    /// Preceded by any other token.
+    Other,
+    /// Preceded by a `::` path separator with its preceding qualifier segment.
+    PathSep(Option<&'a str>),
 }
 
 /// A source file with the `crate::` paths it references.
@@ -175,6 +240,15 @@ struct SourceFile {
     paths: BTreeSet<String>,
     /// Path relative to `src/`, with `/` separators.
     relative_path: String,
+}
+
+/// Outer attribute markers relevant to contract test discovery.
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum TestAttribute {
+    /// `#[ignore]` or `#[ignore = "..."]`.
+    Ignore,
+    /// `#[test]` or `#[tokio::test(...)]`.
+    Test,
 }
 
 #[test]
@@ -653,28 +727,10 @@ fn cached_bypass_check_flags_unguarded_local_caches() {
 fn cached_db_reads_respect_use_cache() {
     let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
 
-    // Collect every production database source file
-    let mut entries = Vec::new();
-    walk_rust_files(&src_dir.join("db"), &mut entries);
-    entries.push(src_dir.join("db.rs"));
-    entries.sort();
-
     // Check every production #[cached] database read guards on PgExecutor::use_cache
     let mut total_checked = 0;
     let mut violations = Vec::new();
-    for entry in entries.into_iter().filter(|entry| entry.is_file()) {
-        let relative_path = entry
-            .strip_prefix(&src_dir)
-            .expect("entry should be under src")
-            .to_string_lossy()
-            .replace('\\', "/");
-        if relative_path == "db/contract_tests.rs"
-            || relative_path.starts_with("db/contract_tests/")
-            || relative_path == "db/mock.rs"
-        {
-            continue;
-        }
-        let source = fs::read_to_string(&entry).expect("source file should be readable");
+    for (relative_path, source) in collect_production_db_files(&src_dir) {
         let summary = cached_bypass_summary(&source);
         total_checked += summary.checked;
         for line in summary.violations {
@@ -724,6 +780,565 @@ fn crate_paths_flattens_use_trees_and_inline_paths() {
             ]
             .map(String::from)
         )
+    );
+}
+
+#[test]
+fn fetch_json_contract_check_accepts_covered_methods() {
+    // Setup DB sources covering direct, cached, turbofish, same-file, and cross-file helpers
+    let db_main_source = r#"
+#[async_trait]
+impl<T> crate::db::DBSample for T where T: PgExecutor + Send + Sync {
+    async fn direct_one(&self) -> Result<Foo> {
+        self.fetch_json_one("select direct_one()", &[]).await
+    }
+    async fn direct_opt(&self) -> Result<Option<Foo>> {
+        self.fetch_json_opt::<Foo>("select direct_opt()", &[]).await
+    }
+    async fn cached_one(&self) -> Result<Foo> {
+        async fn fetch(db: &PgClient<'_>) -> Result<Foo> {
+            db.fetch_json_one("select cached_one()", &[]).await
+        }
+        let db = self.client().await?;
+        fetch(&db).await
+    }
+    async fn helper_backed(&self) -> Result<Foo> { load_helper_backed(self).await }
+    async fn cross_file_backed(&self) -> Result<Foo> { queries::load_cross_file(self).await }
+    async fn scalar_only(&self) -> Result<String> {
+        // self.fetch_json_one("commented", &[])
+        let _ = "self.fetch_json_one(\"literal\", &[])";
+        let _ = String::from("ok");
+        self.fetch_scalar_one("select 'ok'", &[]).await
+    }
+}
+impl<T: Fn() -> ()> DBClient<T> where T: for<'a> Fn(&'a str) {
+    async fn inherent_method(&self) -> Result<()> { Ok(()) }
+}
+impl From<Foo> for Bar {
+    fn from(_: Foo) -> Self { Bar }
+}
+async fn load_helper_backed<T: PgExecutor>(db: &T) -> Result<Foo> {
+    db.fetch_json_one("select helper_backed()", &[]).await
+}
+#[cfg(test)]
+mod tests {
+    impl<T> DBSampleTestOnly for T {
+        async fn test_only_json(&self) -> Result<Foo> {
+            self.fetch_json_one("select test_only_json()", &[]).await
+        }
+    }
+}
+"#;
+    let db_queries_source = r#"
+        pub(super) async fn load_cross_file<T: PgExecutor>(db: &T) -> Result<Foo> { db.fetch_json_one("select 1", &[]).await }
+    "#;
+
+    // Setup contract tests covering methods directly, via UFCS, inline mod, and helpers.rs
+    let helpers_source = r"
+        pub(super) async fn load_shared_helper(db: &PgDB) -> Result<Foo> { db.helper_backed().await }
+    ";
+    let contract_source = r#"
+        #[tokio::test]
+        #[ignore = "requires the contract test database"]
+        async fn db_contracts_direct_and_ufcs() -> Result<()> {
+            let db = contract_tests_db()?;
+            let _ = db.direct_one().await?;
+            let _ = DBSample::direct_opt(&db).await?;
+            let _ = load_cached(&db).await?;
+            let _ = helpers::load_shared_helper(&db).await?;
+            Ok(())
+        }
+        mod nested {
+            #[tokio::test]
+            #[ignore]
+            async fn db_contracts_inline_mod() -> Result<()> {
+                async fn run_nested(db: &PgDB) -> Result<Foo> { db.cross_file_backed().await }
+                let _ = run_nested(&db).await?;
+                Ok(())
+            }
+        }
+        async fn load_cached(db: &PgDB) -> Result<Foo> { db.cached_one().await }
+    "#;
+
+    // Run the contract coverage summary over the fixtures
+    let summary = db_contract_coverage_summary(
+        &[
+            ("db/queries.rs", db_queries_source),
+            ("db/sample.rs", db_main_source),
+        ],
+        &[
+            ("db/contract_tests/helpers.rs", helpers_source),
+            ("db/contract_tests/sample.rs", contract_source),
+        ],
+    );
+
+    // Check exact discovered methods with line numbers, test count, and zero violations
+    assert_eq!(
+        summary.methods,
+        vec![
+            ("db/sample.rs".to_string(), "direct_one".to_string(), 4),
+            ("db/sample.rs".to_string(), "direct_opt".to_string(), 7),
+            ("db/sample.rs".to_string(), "cached_one".to_string(), 10),
+            ("db/sample.rs".to_string(), "helper_backed".to_string(), 17),
+            (
+                "db/sample.rs".to_string(),
+                "cross_file_backed".to_string(),
+                18
+            ),
+        ]
+    );
+    assert_eq!(summary.contract_tests, 2);
+    assert!(
+        summary.violations.is_empty(),
+        "unexpected violations: {:?}",
+        summary.violations
+    );
+}
+
+#[test]
+fn fetch_json_contract_check_flags_impersonated_and_leaked_calls() {
+    type SourceFiles<'a> = &'a [(&'a str, &'a str)];
+
+    // Exercise qualifier impersonation and cross-file private helper isolation
+    let cases: &[(&str, &str, SourceFiles<'_>, &[&str])] = &[
+        (
+            "non-DB path-qualified fixture call does not impersonate a DB method",
+            r#"
+                impl<T> DBSample for T {
+                    async fn get_group_summary(&self) -> Result<Foo> {
+                        self.fetch_json_one("select get_group_summary()", &[]).await
+                    }
+                }
+            "#,
+            &[(
+                "db/contract_tests/sample.rs",
+                r"
+                    #[tokio::test]
+                    #[ignore]
+                    async fn db_contracts_fixture_call() -> Result<()> {
+                        let _ = fixture::get_group_summary();
+                        Ok(())
+                    }
+                ",
+            )],
+            &["get_group_summary"],
+        ),
+        (
+            "private helper in another non-helpers file does not leak coverage",
+            r#"
+                impl<T> DBSample for T {
+                    async fn leaked_method(&self) -> Result<Foo> {
+                        self.fetch_json_one("select leaked_method()", &[]).await
+                    }
+                }
+            "#,
+            &[
+                (
+                    "db/contract_tests/alpha.rs",
+                    r"
+                        #[tokio::test]
+                        #[ignore]
+                        async fn db_contracts_alpha() -> Result<()> {
+                            let _ = shared_name(&db).await?;
+                            Ok(())
+                        }
+
+                        async fn shared_name(db: &PgDB) -> Result<()> {
+                            let _ = db.something_else().await?;
+                            Ok(())
+                        }
+                    ",
+                ),
+                (
+                    "db/contract_tests/beta.rs",
+                    r"
+                        async fn shared_name(db: &PgDB) -> Result<Foo> {
+                            db.leaked_method().await
+                        }
+                    ",
+                ),
+            ],
+            &["leaked_method"],
+        ),
+    ];
+
+    // Check every fixture reports the exact missing methods
+    for (case, db_source, contract_files, expected_missing) in cases {
+        let summary = db_contract_coverage_summary(&[("db/sample.rs", db_source)], contract_files);
+        let mut reported: Vec<&str> = summary
+            .violations
+            .iter()
+            .filter_map(|line| line.split('`').nth(1))
+            .collect();
+        reported.sort_unstable();
+        assert_eq!(
+            reported, *expected_missing,
+            "{case}: {:?}",
+            summary.violations
+        );
+    }
+}
+
+#[test]
+fn fetch_json_contract_check_flags_invalid_tests_and_dead_helpers() {
+    // Setup DB methods targeted only by invalid or unreachable test constructs
+    let db_source = r#"
+        impl<T> DBSample for T {
+            async fn cfg_disabled_only(&self) -> Result<Foo> {
+                self.fetch_json_one("select cfg_disabled_only()", &[]).await
+            }
+            async fn dead_helper_only(&self) -> Result<Foo> {
+                self.fetch_json_one("select dead_helper_only()", &[]).await
+            }
+            async fn unignored_only(&self) -> Result<Foo> {
+                self.fetch_json_one("select unignored_only()", &[]).await
+            }
+            async fn unused_local_only(&self) -> Result<Foo> {
+                self.fetch_json_one("select unused_local_only()", &[]).await
+            }
+            async fn wrong_name_only(&self) -> Result<Foo> {
+                self.fetch_json_one("select wrong_name_only()", &[]).await
+            }
+        }
+    "#;
+    let contract_source = r"
+        #[cfg(any())]
+        #[tokio::test]
+        #[ignore]
+        async fn db_contracts_cfg_disabled() -> Result<()> {
+            let _ = db.cfg_disabled_only().await?;
+            Ok(())
+        }
+
+        #[tokio::test]
+        async fn db_contracts_unignored() -> Result<()> {
+            let _ = db.unignored_only().await?;
+            Ok(())
+        }
+
+        #[tokio::test]
+        #[ignore]
+        async fn db_contracts_unused_local() -> Result<()> {
+            async fn never_called(db: &PgDB) -> Result<Foo> {
+                db.unused_local_only().await
+            }
+            Ok(())
+        }
+
+        #[tokio::test]
+        #[ignore]
+        async fn test_wrong_prefix() -> Result<()> {
+            let _ = db.wrong_name_only().await?;
+            Ok(())
+        }
+
+        async fn unused_helper(db: &PgDB) -> Result<Foo> {
+            db.dead_helper_only().await
+        }
+    ";
+
+    // Run the coverage summary
+    let summary = db_contract_coverage_summary(
+        &[("db/sample.rs", db_source)],
+        &[("db/contract_tests/sample.rs", contract_source)],
+    );
+
+    // Check none of the invalid tests or dead helpers satisfy coverage
+    let mut reported: Vec<&str> = summary
+        .violations
+        .iter()
+        .filter_map(|line| line.split('`').nth(1))
+        .collect();
+    reported.sort_unstable();
+    assert_eq!(
+        reported,
+        vec![
+            "cfg_disabled_only",
+            "dead_helper_only",
+            "unignored_only",
+            "unused_local_only",
+            "wrong_name_only",
+        ],
+        "violations: {:?}",
+        summary.violations
+    );
+}
+
+#[test]
+fn fetch_json_contract_check_flags_missing_and_unattributed_calls() {
+    // Exercise missing tests, non-code mentions, fail-closed unattributed calls, and duplicate names
+    let cases: &[(&str, &str, &str, &[&str])] = &[
+        (
+            "raw SQL strings and comments do not satisfy coverage",
+            r#"
+                impl<T> DBSample for T {
+                    async fn comment_only(&self) -> Result<Foo> {
+                        self.fetch_json_opt("select comment_only()", &[]).await
+                    }
+                    async fn raw_sql_only(&self) -> Result<Foo> {
+                        self.fetch_json_one("select raw_sql_only()", &[]).await
+                    }
+                }
+            "#,
+            r#"
+                #[tokio::test]
+                #[ignore]
+                async fn db_contracts_raw_sql_only() -> Result<()> {
+                    // db.comment_only().await?;
+                    client.query_one("select raw_sql_only()", &[]).await?;
+                    Ok(())
+                }
+            "#,
+            &["`comment_only`", "`raw_sql_only`"],
+        ),
+        (
+            "unattributed fetch_json_* calls in trait defaults and non-DB impls fail closed without poisoning scalar methods",
+            r#"
+                trait DBDefault {
+                    async fn default_json(&self) -> Result<Foo> {
+                        self.fetch_json_one("select default_json()", &[]).await
+                    }
+                }
+                impl<T> DBSample for T {
+                    async fn scalar_with_from(&self) -> Result<String> {
+                        let _ = String::from("ok");
+                        self.fetch_scalar_one("select 'ok'", &[]).await
+                    }
+                }
+                impl From<Foo> for Bar {
+                    fn from(value: Foo) -> Self {
+                        let _ = value.fetch_json_one();
+                        Bar
+                    }
+                }
+            "#,
+            r"
+                #[tokio::test]
+                #[ignore]
+                async fn db_contracts_other() -> Result<()> {
+                    let _ = db.other().await?;
+                    Ok(())
+                }
+            ",
+            &["calls `fetch_json_*` outside an attributed `DB*` trait method"],
+        ),
+        (
+            "duplicate fetch_json_* method names across DB traits fail",
+            r#"
+                impl<T> DBFirst for T {
+                    async fn shared_read(&self) -> Result<Foo> {
+                        self.fetch_json_one("select shared_read()", &[]).await
+                    }
+                }
+                impl<T> DBSecond for T {
+                    async fn shared_read(&self) -> Result<Bar> {
+                        self.fetch_json_one("select shared_read()", &[]).await
+                    }
+                }
+            "#,
+            r"
+                #[tokio::test]
+                #[ignore]
+                async fn db_contracts_shared_read() -> Result<()> {
+                    let _ = db.shared_read().await?;
+                    Ok(())
+                }
+            ",
+            &["duplicate DB trait method name `shared_read`"],
+        ),
+    ];
+
+    // Check every fixture triggers the expected violation substrings without false positives
+    for (case, db_source, contract_source, expected_substrings) in cases {
+        let summary = db_contract_coverage_summary(
+            &[("db/sample.rs", db_source)],
+            &[("db/contract_tests/sample.rs", contract_source)],
+        );
+        for expected in *expected_substrings {
+            assert!(
+                summary.violations.iter().any(|v| v.contains(expected)),
+                "{case}: expected violation containing {expected}, got {:?}",
+                summary.violations
+            );
+        }
+        assert!(
+            !summary.violations.iter().any(|v| v.contains("scalar_with_from")),
+            "{case}: scalar method should not be poisoned: {:?}",
+            summary.violations
+        );
+    }
+}
+
+#[test]
+fn fetch_json_contract_check_handles_qualifiers_and_collisions() {
+    // Check generic type args do not act as DB qualifiers, while `<T as DB>::` and helpers/mod.rs do
+    let db_main = r#"
+        impl<T> DBFirst for T {
+            async fn new(&self) -> Result<Foo> {
+                let _ = Foo::<PgClient>::fetch_json_x();
+                self.fetch_json_one("select new()", &[]).await
+            }
+            async fn ufcs_qualified(&self) -> Result<Foo> {
+                self.fetch_json_one("select ufcs()", &[]).await
+            }
+            async fn from_shared_helper(&self) -> Result<Foo> {
+                self.fetch_json_one("select shared()", &[]).await
+            }
+            async fn from_callback_ref(&self) -> Result<Foo> {
+                self.fetch_json_one("select callback()", &[]).await
+            }
+            async fn cached_scalar(&self) -> Result<Vec<String>> {
+                async fn fetch(db: &PgClient<'_>) -> Result<Vec<String>> {
+                    db.fetch_scalar_one("select 1", &[]).await
+                }
+                let db = self.client().await?;
+                fetch(&db).await
+            }
+            async fn colliding(&self) -> Result<Foo> {
+                self.fetch_json_one("select colliding()", &[]).await
+            }
+        }
+        impl<T> DBSecond for T {
+            async fn colliding(&self) -> Result<i64> {
+                self.fetch_scalar_one("select 1", &[]).await
+            }
+        }
+    "#;
+    let db_other = r#"
+        async fn fetch(db: &PgClient<'_>) -> Result<Foo> {
+            db.fetch_json_one("select unattributed()", &[]).await
+        }
+    "#;
+    let helpers_mod = r"
+        pub(super) async fn load_group(db: &PgDB) -> Result<Foo> {
+            db.from_shared_helper().await
+        }
+    ";
+    let contract_source = r"
+        #[tokio::test]
+        #[ignore]
+        async fn db_contracts_precision() -> Result<()> {
+            let _ = Arc::<PgDB>::new(db);
+            let _ = helpers::load_group(&db).await?;
+            let _ = run_race(invoke_callback).await?;
+            let _ = db.colliding().await?;
+            return <PgDB as crate::db::DBFirst>::ufcs_qualified(&db).await;
+        }
+        async fn load_group(_db: &PgDB) -> Result<()> { Ok(()) }
+        async fn invoke_callback(db: &PgDB) -> Result<Foo> { db.from_callback_ref().await }
+    ";
+
+    // Run the coverage summary across both DB files and helpers/mod.rs
+    let summary = db_contract_coverage_summary(
+        &[("db/main.rs", db_main), ("db/other.rs", db_other)],
+        &[
+            ("db/contract_tests/helpers/mod.rs", helpers_mod),
+            ("db/contract_tests/sample.rs", contract_source),
+        ],
+    );
+
+    // Check only the three real violations fire (missing `new`, unattributed `db/other.rs`, and JSON/scalar collision)
+    assert_eq!(
+        summary.violations.len(),
+        3,
+        "violations: {:?}",
+        summary.violations
+    );
+    assert!(
+        summary.violations.iter().any(|v| v.contains("DB method `new`")),
+        "expected missing contract test for `new`, got {:?}",
+        summary.violations
+    );
+    assert!(
+        summary
+            .violations
+            .iter()
+            .any(|v| v.contains("db/other.rs:") && v.contains("outside an attributed")),
+        "expected unattributed fetch_json_* in db/other.rs, got {:?}",
+        summary.violations
+    );
+    assert!(
+        summary
+            .violations
+            .iter()
+            .any(|v| v.contains("duplicate DB trait method name `colliding`")),
+        "expected JSON/scalar collision on `colliding`, got {:?}",
+        summary.violations
+    );
+}
+
+#[test]
+fn fetch_json_contract_check_parses_impl_headers_and_modules() {
+    // Check `is_db_trait_impl_header` handles inherent, HRTB, and path-qualified impl headers
+    let header_cases = [
+        (
+            "generic bound with arrow",
+            "impl<T: Fn() -> ()> DBSample for T",
+            true,
+        ),
+        (
+            "path-qualified DB trait with where clause",
+            "impl<T> crate::db::DBSample for T where T: PgExecutor",
+            true,
+        ),
+        ("inherent DB-prefixed type", "impl DBClient", false),
+        (
+            "inherent DB-prefixed type with HRTB for in where clause",
+            "impl<T> DBClient<T> where T: for<'a> Fn(&'a str)",
+            false,
+        ),
+    ];
+    for (case, header, expected) in header_cases {
+        assert_eq!(is_db_trait_impl_header(header), expected, "{case}");
+    }
+
+    // Check declared module discovery ignores disabled, inline, and commented `mod` items
+    let root_source = r"
+        // mod commented_out;
+        #[cfg(any())]
+        mod disabled;
+        pub(crate) mod helpers;
+        mod inbox;
+        mod inline_only {}
+    ";
+    assert_eq!(
+        declared_contract_module_names(root_source),
+        BTreeSet::from(["helpers", "inbox"].map(String::from))
+    );
+}
+
+#[test]
+fn fetch_json_db_methods_have_contract_tests() {
+    let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+
+    // Collect production DB files and compiled contract test modules
+    let db_sources = collect_production_db_files(&src_dir);
+    let contract_sources = collect_contract_test_files(&src_dir);
+    let db_refs: Vec<(&str, &str)> = db_sources
+        .iter()
+        .map(|(path, source)| (path.as_str(), source.as_str()))
+        .collect();
+    let contract_refs: Vec<(&str, &str)> = contract_sources
+        .iter()
+        .map(|(path, source)| (path.as_str(), source.as_str()))
+        .collect();
+
+    // Check every production fetch_json_* DB trait method has at least one contract test
+    let summary = db_contract_coverage_summary(&db_refs, &contract_refs);
+    assert!(
+        !summary.methods.is_empty(),
+        "expected JSON-returning `fetch_json_*` DB methods under {}",
+        src_dir.display()
+    );
+    assert!(
+        summary.contract_tests > 0,
+        "expected ignored `db_contracts_*` tests under {}",
+        src_dir.join("db/contract_tests").display()
+    );
+    assert!(
+        summary.violations.is_empty(),
+        "JSON-returning DB contract-test violations:\n{}",
+        summary.violations.join("\n")
     );
 }
 
@@ -1138,6 +1753,67 @@ fn classify_cached_attribute(args: Option<&str>) -> CachedAttributeKind {
     }
 }
 
+/// Classifies an outer attribute body as a Rust/Tokio test or `#[ignore]` marker.
+fn classify_test_attribute(inner: &str) -> Option<TestAttribute> {
+    let (last_segment, _) = parse_attribute_last_segment(inner)?;
+    match last_segment {
+        "ignore" => Some(TestAttribute::Ignore),
+        "test" => Some(TestAttribute::Test),
+        _ => None,
+    }
+}
+
+/// Collects method/DB-UFCS calls, helper calls, and value references directly
+/// in `body`, ignoring comments, string/char literals, and `fn <name>` headers
+/// (callers mask nested function bodies first when only reachable nested calls
+/// should count).
+fn collect_body_calls(body: &str) -> BodyCalls {
+    let mut calls = BodyCalls {
+        local_calls: BTreeSet::new(),
+        method_calls: BTreeSet::new(),
+        qualified_calls: BTreeSet::new(),
+        value_refs: BTreeSet::new(),
+    };
+
+    // Classify every call and identifier reference by its preceding token
+    scan_body_identifiers(body, |_, prev, ident, is_call| {
+        if is_call {
+            match prev {
+                PrevToken::Dot => {
+                    calls.method_calls.insert(ident.to_string());
+                }
+                PrevToken::PathSep(qualifier) => {
+                    if qualifier.is_some_and(is_db_ufcs_qualifier) {
+                        calls.method_calls.insert(ident.to_string());
+                    } else {
+                        calls
+                            .qualified_calls
+                            .insert((qualifier.map(String::from), ident.to_string()));
+                    }
+                }
+                PrevToken::Other => {
+                    calls.local_calls.insert(ident.to_string());
+                }
+                PrevToken::FnKeyword | PrevToken::LetKeyword => {}
+            }
+        } else {
+            match prev {
+                PrevToken::Other => {
+                    calls.value_refs.insert((None, ident.to_string()));
+                }
+                PrevToken::PathSep(qualifier) => {
+                    calls
+                        .value_refs
+                        .insert((qualifier.map(String::from), ident.to_string()));
+                }
+                PrevToken::Dot | PrevToken::FnKeyword | PrevToken::LetKeyword => {}
+            }
+        }
+    });
+
+    calls
+}
+
 /// Parses an attribute body (including `cfg_attr` wrappers) and appends any
 /// matching `cached` or `concurrent_cached` attributes to `out`.
 fn collect_cached_attributes(
@@ -1148,34 +1824,9 @@ fn collect_cached_attributes(
     out: &mut Vec<CachedAttribute>,
 ) {
     let bytes = inner.as_bytes();
-    let mut index = skip_ws_and_comments(inner, 0);
-
-    // Allow a leading global path separator such as `::cached::cached`
-    if bytes.get(index) == Some(&b':') && bytes.get(index + 1) == Some(&b':') {
-        index = skip_ws_and_comments(inner, index + 2);
-    }
-
-    // Read the attribute path and keep the final segment
-    let last_segment;
-    loop {
-        let start = index;
-        while index < bytes.len() && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
-        {
-            index += 1;
-        }
-        if index == start {
-            return;
-        }
-        let segment = &inner[start..index];
-        let next = skip_ws_and_comments(inner, index);
-        if bytes.get(next) == Some(&b':') && bytes.get(next + 1) == Some(&b':') {
-            index = skip_ws_and_comments(inner, next + 2);
-        } else {
-            last_segment = segment;
-            index = next;
-            break;
-        }
-    }
+    let Some((last_segment, index)) = parse_attribute_last_segment(inner) else {
+        return;
+    };
 
     // Unwrap `cfg_attr(predicate, attr1, ...)` and inspect every nested attribute
     if last_segment == "cfg_attr" {
@@ -1225,6 +1876,150 @@ fn collect_cached_attributes(
     });
 }
 
+/// Collects every compiled contract test module reachable from
+/// `src/db/contract_tests.rs` through unconditional `mod <name>;` declarations.
+fn collect_contract_test_files(src_dir: &Path) -> Vec<(String, String)> {
+    let root_path = src_dir.join("db/contract_tests.rs");
+    let root_source =
+        fs::read_to_string(&root_path).expect("db/contract_tests.rs should be readable");
+    let mut files = vec![("db/contract_tests.rs".to_string(), root_source.clone())];
+    collect_contract_test_files_in_dir(
+        src_dir,
+        &src_dir.join("db/contract_tests"),
+        &root_source,
+        &mut files,
+    );
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+    files
+}
+
+/// Recursively resolves `mod <name>;` children declared in `parent_source`
+/// under `mod_dir` and appends their `(relative_path, source)` pairs to `out`.
+fn collect_contract_test_files_in_dir(
+    src_dir: &Path,
+    mod_dir: &Path,
+    parent_source: &str,
+    out: &mut Vec<(String, String)>,
+) {
+    for module_name in declared_contract_module_names(parent_source) {
+        let file_path = mod_dir.join(format!("{module_name}.rs"));
+        let nested_mod_path = mod_dir.join(&module_name).join("mod.rs");
+        let (resolved_path, child_dir) = if file_path.is_file() {
+            (file_path, mod_dir.join(&module_name))
+        } else if nested_mod_path.is_file() {
+            (nested_mod_path, mod_dir.join(&module_name))
+        } else {
+            continue;
+        };
+
+        let relative_path = resolved_path
+            .strip_prefix(src_dir)
+            .expect("contract test file should be under src")
+            .to_string_lossy()
+            .replace('\\', "/");
+        let source =
+            fs::read_to_string(&resolved_path).expect("contract test file should be readable");
+        collect_contract_test_files_in_dir(src_dir, &child_dir, &source, out);
+        out.push((relative_path, source));
+    }
+}
+
+/// Collects every production database source file (`db.rs` and `db/**/*.rs`,
+/// excluding `db/contract_tests*` and `db/mock.rs`) as `(relative_path, source)`.
+fn collect_production_db_files(src_dir: &Path) -> Vec<(String, String)> {
+    let mut entries = Vec::new();
+    walk_rust_files(&src_dir.join("db"), &mut entries);
+    entries.push(src_dir.join("db.rs"));
+    entries.sort();
+
+    // Filter out test and mock files and read each production source file
+    let mut files = Vec::new();
+    for entry in entries.into_iter().filter(|entry| entry.is_file()) {
+        let relative_path = entry
+            .strip_prefix(src_dir)
+            .expect("entry should be under src")
+            .to_string_lossy()
+            .replace('\\', "/");
+        if relative_path == "db/contract_tests.rs"
+            || relative_path.starts_with("db/contract_tests/")
+            || relative_path == "db/mock.rs"
+        {
+            continue;
+        }
+        let source = fs::read_to_string(&entry).expect("source file should be readable");
+        files.push((relative_path, source));
+    }
+    files
+}
+
+/// Collects calls reachable from `body`, following nested local `fn` bodies
+/// only when they are invoked from the enclosing body or another reachable local `fn`.
+fn collect_reachable_body_calls(body: &str) -> BodyCalls {
+    // Collect direct calls from the body with nested local functions masked out
+    let masked = mask_nested_functions(body);
+    let mut reachable = collect_body_calls(&masked);
+
+    // Collect nested local functions directly declared in `body`
+    let bytes = body.as_bytes();
+    let mut nested_fns: Vec<(String, BodyCalls)> = Vec::new();
+    let mut index = 0;
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(body, index) {
+            index = next;
+            continue;
+        }
+        if bytes[index].is_ascii_alphabetic() || bytes[index] == b'_' {
+            let start = index;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            if &body[start..index] == "fn"
+                && let Some(nested) = parse_function_at(body, start)
+            {
+                let nested_body = &body[nested.body_start + 1..nested.body_end];
+                nested_fns.push((nested.name, collect_reachable_body_calls(nested_body)));
+                index = nested.body_end + 1;
+                continue;
+            }
+            continue;
+        }
+        index += body[index..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    // Visit nested local functions only when invoked or referenced by reachable code
+    let mut visited = vec![false; nested_fns.len()];
+    loop {
+        let mut changed = false;
+        for (idx, (name, calls)) in nested_fns.iter().enumerate() {
+            let is_referenced = reachable.local_calls.contains(name)
+                || reachable.value_refs.contains(&(None, name.clone()));
+            if !visited[idx] && is_referenced {
+                visited[idx] = true;
+                reachable.local_calls.extend(calls.local_calls.iter().cloned());
+                reachable.method_calls.extend(calls.method_calls.iter().cloned());
+                reachable
+                    .qualified_calls
+                    .extend(calls.qualified_calls.iter().cloned());
+                reachable.value_refs.extend(calls.value_refs.iter().cloned());
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+
+    // Remove nested local function names so they cannot match module-level helpers
+    for (name, _) in &nested_fns {
+        reachable.local_calls.remove(name);
+        reachable.value_refs.remove(&(None, name.clone()));
+    }
+
+    reachable
+}
+
 /// Collects every Rust source file under the layered directories with the
 /// `crate::` paths it references.
 fn collect_source_files(src_dir: &Path) -> Vec<SourceFile> {
@@ -1250,6 +2045,100 @@ fn collect_source_files(src_dir: &Path) -> Vec<SourceFile> {
         }
     }
     files
+}
+
+/// Returns the count of ignored `db_contracts_*` tests and the set of DB
+/// method names invoked by those tests (directly or through reachable helpers).
+fn contract_tested_methods(contract_files: &[(&str, &str)]) -> (usize, BTreeSet<String>) {
+    // Parse functions for every contract test file and locate shared helpers modules
+    let mut parsed_files: Vec<Vec<ContractTestFunction>> = Vec::with_capacity(contract_files.len());
+    let mut helpers_file_indices = Vec::new();
+    for (file_idx, (path, source)) in contract_files.iter().enumerate() {
+        if *path == "db/contract_tests/helpers.rs" || *path == "db/contract_tests/helpers/mod.rs" {
+            helpers_file_indices.push(file_idx);
+        }
+        parsed_files.push(extract_contract_test_functions(source));
+    }
+
+    // Seed the worklist with every ignored `db_contracts_*` test function
+    let mut contract_test_count = 0usize;
+    let mut visited: BTreeSet<(usize, usize)> = BTreeSet::new();
+    let mut worklist: Vec<(usize, usize)> = Vec::new();
+    for (file_idx, functions) in parsed_files.iter().enumerate() {
+        for (fn_idx, func) in functions.iter().enumerate() {
+            if func.is_contract_test {
+                contract_test_count += 1;
+                if visited.insert((file_idx, fn_idx)) {
+                    worklist.push((file_idx, fn_idx));
+                }
+            }
+        }
+    }
+
+    // Walk reachable helpers respecting qualifiers (`helpers::`, `self::`, or bare)
+    let mut covered = BTreeSet::new();
+    while let Some((file_idx, fn_idx)) = worklist.pop() {
+        let func = &parsed_files[file_idx][fn_idx];
+        covered.extend(func.calls.method_calls.iter().cloned());
+
+        let bare_refs = func.calls.local_calls.iter().map(|name| (None, name.as_str()));
+        let qualified_and_value_refs = func
+            .calls
+            .qualified_calls
+            .iter()
+            .chain(func.calls.value_refs.iter())
+            .map(|(qualifier, name)| (qualifier.as_deref(), name.as_str()));
+
+        for (qualifier, callee) in bare_refs.chain(qualified_and_value_refs) {
+            match qualifier {
+                Some("helpers") => {
+                    // Resolve `helpers::*` directly in the shared helpers module
+                    for &shared_idx in &helpers_file_indices {
+                        for (cand_idx, cand) in parsed_files[shared_idx].iter().enumerate() {
+                            if cand.name == callee && visited.insert((shared_idx, cand_idx)) {
+                                worklist.push((shared_idx, cand_idx));
+                            }
+                        }
+                    }
+                }
+                Some("self") => {
+                    // Resolve `self::*` strictly in the same file
+                    for (cand_idx, cand) in parsed_files[file_idx].iter().enumerate() {
+                        if cand.name == callee && visited.insert((file_idx, cand_idx)) {
+                            worklist.push((file_idx, cand_idx));
+                        }
+                    }
+                }
+                None => {
+                    // Resolve bare references in the same file first, then fall back to helpers
+                    let mut matched_same_file = false;
+                    for (cand_idx, cand) in parsed_files[file_idx].iter().enumerate() {
+                        if cand.name == callee {
+                            matched_same_file = true;
+                            if visited.insert((file_idx, cand_idx)) {
+                                worklist.push((file_idx, cand_idx));
+                            }
+                        }
+                    }
+                    if !matched_same_file {
+                        for &shared_idx in &helpers_file_indices {
+                            if shared_idx == file_idx {
+                                continue;
+                            }
+                            for (cand_idx, cand) in parsed_files[shared_idx].iter().enumerate() {
+                                if cand.name == callee && visited.insert((shared_idx, cand_idx)) {
+                                    worklist.push((shared_idx, cand_idx));
+                                }
+                            }
+                        }
+                    }
+                }
+                Some(_) => {}
+            }
+        }
+    }
+
+    (contract_test_count, covered)
 }
 
 /// Counts newline characters in `slice`.
@@ -1370,6 +2259,169 @@ fn crate_paths(source: &str) -> BTreeSet<String> {
     paths
 }
 
+/// Checks every production `fetch_json_*` DB trait method across `db_files`
+/// against ignored `db_contracts_*` tests in `contract_files`, failing closed
+/// on missing coverage, duplicate method names, or unattributed `fetch_json_*`
+/// call sites.
+fn db_contract_coverage_summary(
+    db_files: &[(&str, &str)],
+    contract_files: &[(&str, &str)],
+) -> DbContractCoverageSummary {
+    // Strip `#[cfg(test)]` items and parse functions and reachable calls per DB file
+    let mut stripped_sources = Vec::with_capacity(db_files.len());
+    let mut parsed_files = Vec::with_capacity(db_files.len());
+    let mut direct_fetch_json = Vec::with_capacity(db_files.len());
+    for (_, source) in db_files {
+        let stripped = strip_cfg_test_items(source);
+        let functions = extract_functions(&stripped);
+        let mut file_fns = Vec::with_capacity(functions.len());
+        let mut file_direct = Vec::with_capacity(functions.len());
+        for func in functions {
+            let body = &stripped[func.body_start + 1..func.body_end];
+            let calls = collect_reachable_body_calls(body);
+            let is_direct = calls.method_calls.iter().any(|name| name.starts_with("fetch_json_"));
+            file_direct.push(is_direct);
+            file_fns.push((func, calls));
+        }
+        direct_fetch_json.push(file_direct);
+        parsed_files.push(file_fns);
+        stripped_sources.push(stripped);
+    }
+
+    // Propagate `fetch_json_*` usage through free helpers and collect DB trait methods
+    let mut uses_fetch_json = direct_fetch_json.clone();
+    propagate_free_helper_usage(&parsed_files, &mut uses_fetch_json);
+    let mut attributed: Vec<Vec<bool>> =
+        parsed_files.iter().map(|fns| vec![false; fns.len()]).collect();
+    let mut worklist = Vec::new();
+    let mut methods = Vec::new();
+    let mut all_db_method_locations: BTreeMap<String, Vec<(String, usize)>> = BTreeMap::new();
+    let mut json_method_names: BTreeSet<String> = BTreeSet::new();
+    for (file_idx, (path, _)) in db_files.iter().enumerate() {
+        for (fn_idx, (func, _)) in parsed_files[file_idx].iter().enumerate() {
+            if func.scope != FunctionScope::DbTraitImpl || !func.has_self {
+                continue;
+            }
+            let line = 1 + count_newlines(&stripped_sources[file_idx][..func.fn_start]);
+            all_db_method_locations
+                .entry(func.name.clone())
+                .or_default()
+                .push(((*path).to_string(), line));
+            if uses_fetch_json[file_idx][fn_idx] {
+                attributed[file_idx][fn_idx] = true;
+                worklist.push((file_idx, fn_idx));
+                methods.push(((*path).to_string(), func.name.clone(), line));
+                json_method_names.insert(func.name.clone());
+            }
+        }
+    }
+    while let Some((file_idx, fn_idx)) = worklist.pop() {
+        for (target_file, target_fn) in
+            resolve_free_helper_targets(&parsed_files, file_idx, &parsed_files[file_idx][fn_idx].1)
+        {
+            if !attributed[target_file][target_fn] {
+                attributed[target_file][target_fn] = true;
+                worklist.push((target_file, target_fn));
+            }
+        }
+    }
+
+    // Fail closed on unattributed `fetch_json_*` call sites and DB trait method name collisions
+    let mut violations = Vec::new();
+    for (file_idx, (path, _)) in db_files.iter().enumerate() {
+        let stripped = &stripped_sources[file_idx];
+        for offset in find_fetch_json_call_offsets(stripped) {
+            let enclosing = parsed_files[file_idx]
+                .iter()
+                .enumerate()
+                .find(|(_, (f, _))| f.body_start < offset && offset < f.body_end);
+            let is_attributed = enclosing.is_some_and(|(fn_idx, _)| {
+                attributed[file_idx][fn_idx] && direct_fetch_json[file_idx][fn_idx]
+            });
+            if !is_attributed {
+                let line = 1 + count_newlines(&stripped[..offset]);
+                violations.push(format!(
+                    "{path}:{line} calls `fetch_json_*` outside an attributed `DB*` trait method"
+                ));
+            }
+        }
+    }
+    for (method, locations) in &all_db_method_locations {
+        if locations.len() > 1 && json_method_names.contains(method) {
+            let rendered: Vec<_> = locations.iter().map(|(p, l)| format!("{p}:{l}")).collect();
+            violations.push(format!(
+                "duplicate DB trait method name `{method}` collides at {}",
+                rendered.join(", ")
+            ));
+        }
+    }
+
+    // Verify every discovered JSON-returning DB method has a matching contract test
+    let (contract_tests, covered_methods) = contract_tested_methods(contract_files);
+    for (path, method, line) in &methods {
+        if !covered_methods.contains(method) {
+            violations.push(format!(
+                "{path}:{line} defines JSON-returning DB method `{method}` without an ignored `db_contracts_*` test under `db/contract_tests/`"
+            ));
+        }
+    }
+
+    DbContractCoverageSummary {
+        contract_tests,
+        methods,
+        violations,
+    }
+}
+
+/// Extracts unconditional external `mod <name>;` module names declared at the
+/// top level of `source`, ignoring comments, inline modules, and non-test `#[cfg]` items.
+fn declared_contract_module_names(source: &str) -> BTreeSet<String> {
+    let stripped = strip_cfg_items_where(source, is_non_test_cfg_attribute);
+    let bytes = stripped.as_bytes();
+    let mut names = BTreeSet::new();
+    let mut index = 0;
+
+    // Scan top-level items for `mod <ident>;` declarations
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(&stripped, index) {
+            index = next;
+            continue;
+        }
+        if bytes[index] == b'{' {
+            index = find_matching_delimiter(&stripped, index, b'{', b'}')
+                .map_or(bytes.len(), |close| close + 1);
+            continue;
+        }
+        if bytes[index].is_ascii_alphabetic() || bytes[index] == b'_' {
+            let start = index;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            if &stripped[start..index] == "mod" {
+                let name_start = skip_ws_and_comments(&stripped, index);
+                let mut name_end = name_start;
+                while name_end < bytes.len()
+                    && (bytes[name_end].is_ascii_alphanumeric() || bytes[name_end] == b'_')
+                {
+                    name_end += 1;
+                }
+                let after = skip_ws_and_comments(&stripped, name_end);
+                if name_end > name_start && bytes.get(after) == Some(&b';') {
+                    names.insert(stripped[name_start..name_end].to_string());
+                    index = after + 1;
+                    continue;
+                }
+            }
+            continue;
+        }
+        index += stripped[index..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    names
+}
+
 /// Decodes a single Rust string literal (normal or raw) that spans the entire
 /// trimmed input.
 fn decode_rust_string_literal(input: &str) -> Option<String> {
@@ -1484,11 +2536,36 @@ fn extract_cached_attributes(source: &str) -> Vec<CachedAttribute> {
     attributes
 }
 
+/// Extracts top-level and inline-`mod` functions from a contract test file
+/// together with their test attributes and reachable body call sets.
+fn extract_contract_test_functions(source: &str) -> Vec<ContractTestFunction> {
+    let stripped = strip_cfg_items_where(source, is_non_test_cfg_attribute);
+    let test_attrs = extract_test_attributes(&stripped);
+    let functions = extract_functions(&stripped);
+
+    // Pair each function with its discovered test markers and reachable calls
+    functions
+        .into_iter()
+        .map(|func| {
+            let (has_test, has_ignore) =
+                test_attrs.get(&func.fn_start).copied().unwrap_or((false, false));
+            let body = &stripped[func.body_start + 1..func.body_end];
+            let calls = collect_reachable_body_calls(body);
+            let is_contract_test = has_test && has_ignore && func.name.starts_with("db_contracts_");
+            ContractTestFunction {
+                calls,
+                is_contract_test,
+                name: func.name,
+            }
+        })
+        .collect()
+}
+
 /// Extracts top-level and `impl`-level function definitions with bodies from
 /// `source`, ignoring comments, literals, and nested local functions.
 fn extract_functions(source: &str) -> Vec<FunctionBlock> {
     let mut functions = Vec::new();
-    extract_functions_in_range(source, 0, source.len(), &mut functions);
+    extract_functions_in_range(source, 0, source.len(), FunctionScope::Free, &mut functions);
     functions
 }
 
@@ -1498,6 +2575,7 @@ fn extract_functions_in_range(
     source: &str,
     start: usize,
     end: usize,
+    scope: FunctionScope,
     out: &mut Vec<FunctionBlock>,
 ) {
     let bytes = source.as_bytes();
@@ -1518,10 +2596,11 @@ fn extract_functions_in_range(
             let ident = &source[ident_start..index];
             match ident {
                 "fn" => {
-                    if let Some(func) = parse_function_at(source, ident_start)
+                    if let Some(mut func) = parse_function_at(source, ident_start)
                         && func.body_end < end
                     {
                         let next_index = func.body_end + 1;
+                        func.scope = scope;
                         out.push(func);
                         index = next_index;
                         continue;
@@ -1551,7 +2630,21 @@ fn extract_functions_in_range(
                                     find_matching_delimiter(source, cursor, b'{', b'}')
                                     && close < end
                                 {
-                                    extract_functions_in_range(source, cursor + 1, close, out);
+                                    let child_scope = if ident == "mod" {
+                                        FunctionScope::Free
+                                    } else if is_db_trait_impl_header(&source[ident_start..cursor])
+                                    {
+                                        FunctionScope::DbTraitImpl
+                                    } else {
+                                        FunctionScope::OtherImpl
+                                    };
+                                    extract_functions_in_range(
+                                        source,
+                                        cursor + 1,
+                                        close,
+                                        child_scope,
+                                        out,
+                                    );
                                     index = close + 1;
                                 } else {
                                     index = end;
@@ -1582,6 +2675,101 @@ fn extract_functions_in_range(
 
         index += source[index..].chars().next().map_or(1, char::len_utf8);
     }
+}
+
+/// Extracts the final path segment of the trait (or type) from the interior of
+/// a qualified path `<Type as Trait>::` or `<Type>::`.
+fn extract_qualified_path_trait(inner: &str) -> Option<&str> {
+    let bytes = inner.as_bytes();
+    let mut index = 0;
+    let mut angle_depth = 0usize;
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut target_start = 0usize;
+
+    // Locate a top-level `as` keyword to isolate the trait portion of `<Type as Trait>`
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(inner, index) {
+            index = next;
+            continue;
+        }
+        if angle_depth == 0
+            && paren_depth == 0
+            && bracket_depth == 0
+            && (bytes[index].is_ascii_alphabetic() || bytes[index] == b'_')
+        {
+            let start = index;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            if &inner[start..index] == "as" {
+                target_start = index;
+                break;
+            }
+            continue;
+        }
+        match bytes[index] {
+            b'(' => paren_depth += 1,
+            b')' => paren_depth = paren_depth.saturating_sub(1),
+            b'[' => bracket_depth += 1,
+            b']' => bracket_depth = bracket_depth.saturating_sub(1),
+            b'<' if paren_depth == 0 && bracket_depth == 0 => angle_depth += 1,
+            b'>' if paren_depth == 0
+                && bracket_depth == 0
+                && !matches!(bytes.get(index.wrapping_sub(1)), Some(b'-' | b'=')) =>
+            {
+                angle_depth = angle_depth.saturating_sub(1);
+            }
+            _ => {}
+        }
+        index += inner[index..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    // Take the final identifier segment before any generic arguments
+    let tail = trim_ws_and_comments(&inner[target_start..]);
+    let head = tail.split('<').next().unwrap_or("");
+    head.rsplit("::")
+        .map(trim_ws_and_comments)
+        .find(|segment| !segment.is_empty() && is_identifier(segment))
+}
+
+/// Maps each annotated function's `fn_start` offset to `(has_test, has_ignore)`
+/// markers found on its outer attributes.
+fn extract_test_attributes(source: &str) -> BTreeMap<usize, (bool, bool)> {
+    let bytes = source.as_bytes();
+    let mut markers: BTreeMap<usize, (bool, bool)> = BTreeMap::new();
+    let mut index = 0;
+
+    // Scan outer attributes and attach `test` / `ignore` markers to their target function
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(source, index) {
+            index = next;
+            continue;
+        }
+        if bytes[index] == b'#' {
+            let open = skip_ws_and_comments(source, index + 1);
+            if bytes.get(open) == Some(&b'[')
+                && let Some(close) = find_matching_delimiter(source, open, b'[', b']')
+            {
+                if let Some(marker) = classify_test_attribute(&source[open + 1..close])
+                    && let Some(func) = parse_annotated_function(source, close + 1)
+                {
+                    let entry = markers.entry(func.fn_start).or_insert((false, false));
+                    match marker {
+                        TestAttribute::Test => entry.0 = true,
+                        TestAttribute::Ignore => entry.1 = true,
+                    }
+                }
+                index = close + 1;
+                continue;
+            }
+        }
+        index += source[index..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    markers
 }
 
 /// Returns the byte offset immediately after the item, field, or variant
@@ -1679,6 +2867,26 @@ fn find_cfg_test_item_end(source: &str, after_attr: usize) -> usize {
     }
 
     bytes.len()
+}
+
+/// Finds the byte offset of every `fetch_json_*` method or DB-UFCS call in
+/// `source`, ignoring comments, string/char literals, and `fn` headers.
+fn find_fetch_json_call_offsets(source: &str) -> Vec<usize> {
+    let mut offsets = Vec::new();
+
+    // Collect offsets of method or DB-UFCS invocations targeting `fetch_json_*`
+    scan_body_identifiers(source, |offset, prev, ident, is_call| {
+        if !is_call {
+            return;
+        }
+        let is_method_or_ufcs = matches!(prev, PrevToken::Dot)
+            || matches!(prev, PrevToken::PathSep(Some(q)) if is_db_ufcs_qualifier(q));
+        if is_method_or_ufcs && ident.starts_with("fetch_json_") {
+            offsets.push(offset);
+        }
+    });
+
+    offsets
 }
 
 /// Finds every call to `name(...)` or `name::<...>(...)` in `code` outside
@@ -2036,12 +3244,157 @@ fn is_cfg_test_attribute(inner: &str) -> bool {
     trim_ws_and_comments(arg) == "test"
 }
 
+/// Returns whether an `impl` header implements a `DB*` trait (for example
+/// `impl<T> DBSite for T where ...`).
+fn is_db_trait_impl_header(header: &str) -> bool {
+    let bytes = header.as_bytes();
+    let mut index = skip_ws_and_comments(header, 0);
+
+    // Skip the leading `impl` keyword
+    let start = index;
+    while index < bytes.len() && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_') {
+        index += 1;
+    }
+    if &header[start..index] != "impl" {
+        return false;
+    }
+    index = skip_ws_and_comments(header, index);
+
+    // Skip optional generic parameter list `impl<...>`
+    if bytes.get(index) == Some(&b'<') {
+        let Some(after_generics) = skip_angle_brackets(header, index) else {
+            return false;
+        };
+        index = skip_ws_and_comments(header, after_generics);
+    }
+
+    // Scan until the top-level `for` keyword (stopping at `where` on inherent impls)
+    let trait_start = index;
+    let mut angle_depth = 0usize;
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut trait_end = None;
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(header, index) {
+            index = next;
+            continue;
+        }
+        if angle_depth == 0
+            && paren_depth == 0
+            && bracket_depth == 0
+            && (bytes[index].is_ascii_alphabetic() || bytes[index] == b'_')
+        {
+            let ident_start = index;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            match &header[ident_start..index] {
+                "for" => {
+                    trait_end = Some(ident_start);
+                    break;
+                }
+                "where" => return false,
+                _ => continue,
+            }
+        }
+        match bytes[index] {
+            b'(' => paren_depth += 1,
+            b')' => paren_depth = paren_depth.saturating_sub(1),
+            b'[' => bracket_depth += 1,
+            b']' => bracket_depth = bracket_depth.saturating_sub(1),
+            b'<' if paren_depth == 0 && bracket_depth == 0 => angle_depth += 1,
+            b'>' if paren_depth == 0
+                && bracket_depth == 0
+                && !matches!(bytes.get(index.wrapping_sub(1)), Some(b'-' | b'=')) =>
+            {
+                angle_depth = angle_depth.saturating_sub(1);
+            }
+            _ => {}
+        }
+        index += header[index..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    // Check the final path segment of the trait starts with `DB`
+    let Some(trait_end) = trait_end else {
+        return false;
+    };
+    let trait_path = strip_non_code(&header[trait_start..trait_end]);
+    let trait_head = trait_path.split('<').next().unwrap_or("");
+    trait_head
+        .rsplit("::")
+        .map(str::trim)
+        .find(|segment| !segment.is_empty())
+        .is_some_and(|segment| segment.starts_with("DB"))
+}
+
+/// Returns whether a UFCS qualifier segment (`Qualifier::method(...)`) names a
+/// database trait or PostgreSQL executor type.
+fn is_db_ufcs_qualifier(qualifier: &str) -> bool {
+    qualifier.starts_with("DB")
+        || matches!(
+            qualifier,
+            "PgClient" | "PgDB" | "PgExecutor" | "PgUnitOfWork"
+        )
+}
+
 /// Returns whether the token is an identifier.
 fn is_identifier(token: &str) -> bool {
     token
         .chars()
         .next()
         .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+}
+
+/// Returns whether the inner text of an outer attribute is `cfg(...)` for a
+/// predicate other than `test`.
+fn is_non_test_cfg_attribute(inner: &str) -> bool {
+    let Some((last_segment, next)) = parse_attribute_last_segment(inner) else {
+        return false;
+    };
+    last_segment == "cfg"
+        && inner.as_bytes().get(next) == Some(&b'(')
+        && !is_cfg_test_attribute(inner)
+}
+
+/// Returns whether `ident` is a Rust keyword that cannot name a helper or type qualifier.
+fn is_rust_keyword(ident: &str) -> bool {
+    matches!(
+        ident,
+        "as" | "async"
+            | "await"
+            | "break"
+            | "const"
+            | "continue"
+            | "else"
+            | "enum"
+            | "extern"
+            | "false"
+            | "fn"
+            | "for"
+            | "if"
+            | "impl"
+            | "in"
+            | "let"
+            | "loop"
+            | "match"
+            | "mod"
+            | "move"
+            | "mut"
+            | "pub"
+            | "ref"
+            | "return"
+            | "static"
+            | "struct"
+            | "trait"
+            | "true"
+            | "type"
+            | "unsafe"
+            | "use"
+            | "where"
+            | "while"
+    )
 }
 
 /// Returns whether `expr` is strictly `self.use_cache()` ignoring whitespace
@@ -2207,6 +3560,38 @@ fn parse_annotated_function(source: &str, after_attr: usize) -> Option<FunctionB
     None
 }
 
+/// Parses an attribute path at the start of `inner` (allowing a leading `::`)
+/// and returns its final segment along with the byte offset after trailing
+/// whitespace and comments.
+fn parse_attribute_last_segment(inner: &str) -> Option<(&str, usize)> {
+    let bytes = inner.as_bytes();
+    let mut index = skip_ws_and_comments(inner, 0);
+
+    // Allow a leading global path separator such as `::tokio::test`
+    if bytes.get(index) == Some(&b':') && bytes.get(index + 1) == Some(&b':') {
+        index = skip_ws_and_comments(inner, index + 2);
+    }
+
+    // Read `::`-separated segments and return the final one
+    loop {
+        let start = index;
+        while index < bytes.len() && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+        {
+            index += 1;
+        }
+        if index == start {
+            return None;
+        }
+        let segment = &inner[start..index];
+        let next = skip_ws_and_comments(inner, index);
+        if bytes.get(next) == Some(&b':') && bytes.get(next + 1) == Some(&b':') {
+            index = skip_ws_and_comments(inner, next + 2);
+        } else {
+            return Some((segment, next));
+        }
+    }
+}
+
 /// Parses a function definition starting at its `fn` keyword byte offset.
 fn parse_function_at(source: &str, fn_start: usize) -> Option<FunctionBlock> {
     let bytes = source.as_bytes();
@@ -2265,9 +3650,11 @@ fn parse_function_at(source: &str, fn_start: usize) -> Option<FunctionBlock> {
                 return Some(FunctionBlock {
                     body_end,
                     body_start: cursor,
+                    fn_start,
                     has_self,
                     has_use_cache_param,
                     name,
+                    scope: FunctionScope::Free,
                 });
             }
             _ => {}
@@ -2340,6 +3727,38 @@ fn parse_use_tree(
     index
 }
 
+/// Propagates `uses_fetch_json` flags across DB files through `FunctionScope::Free`
+/// helper calls until fixed point.
+fn propagate_free_helper_usage(
+    parsed_files: &[Vec<(FunctionBlock, BodyCalls)>],
+    uses_fetch_json: &mut [Vec<bool>],
+) {
+    loop {
+        let mut changed = false;
+        for file_idx in 0..parsed_files.len() {
+            for fn_idx in 0..parsed_files[file_idx].len() {
+                if uses_fetch_json[file_idx][fn_idx] {
+                    continue;
+                }
+                let calls_json_helper = resolve_free_helper_targets(
+                    parsed_files,
+                    file_idx,
+                    &parsed_files[file_idx][fn_idx].1,
+                )
+                .into_iter()
+                .any(|(target_file, target_fn)| uses_fetch_json[target_file][target_fn]);
+                if calls_json_helper {
+                    uses_fetch_json[file_idx][fn_idx] = true;
+                    changed = true;
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+}
+
 /// Returns `(prefix_len, hash_count)` if `bytes[index..]` starts a Rust raw
 /// string literal (`r"..."`, `r#"..."#`, `br#"..."#`, `cr#"..."#`).
 fn raw_string_prefix(bytes: &[u8], index: usize) -> Option<(usize, usize)> {
@@ -2367,6 +3786,191 @@ fn raw_string_prefix(bytes: &[u8], index: usize) -> Option<(usize, usize)> {
         return None;
     }
     Some((cursor + 1 - index, cursor - hash_start))
+}
+
+/// Resolves calls in `calls` to matching `FunctionScope::Free` helper indices:
+/// bare calls and `self::` calls match only same-file helpers, while non-`self`
+/// path-qualified calls may match free helpers in sibling DB files.
+fn resolve_free_helper_targets(
+    parsed_files: &[Vec<(FunctionBlock, BodyCalls)>],
+    caller_file_idx: usize,
+    calls: &BodyCalls,
+) -> Vec<(usize, usize)> {
+    let mut targets = Vec::new();
+
+    // Resolve bare local calls strictly against same-file free helpers
+    for callee in &calls.local_calls {
+        for (fn_idx, (f, _)) in parsed_files[caller_file_idx].iter().enumerate() {
+            if f.scope == FunctionScope::Free && f.name == *callee {
+                targets.push((caller_file_idx, fn_idx));
+            }
+        }
+    }
+
+    // Resolve path-qualified calls: `self::` in the same file, other qualifiers across DB files
+    for (qualifier, callee) in &calls.qualified_calls {
+        if qualifier.as_deref() == Some("self") {
+            for (fn_idx, (f, _)) in parsed_files[caller_file_idx].iter().enumerate() {
+                if f.scope == FunctionScope::Free && f.name == *callee {
+                    targets.push((caller_file_idx, fn_idx));
+                }
+            }
+        } else {
+            for (other_file, other_fns) in parsed_files.iter().enumerate() {
+                for (fn_idx, (f, _)) in other_fns.iter().enumerate() {
+                    if f.scope == FunctionScope::Free && f.name == *callee {
+                        targets.push((other_file, fn_idx));
+                    }
+                }
+            }
+        }
+    }
+
+    targets
+}
+
+/// Scans `code` outside comments and literals, invoking `on_ident` for every
+/// non-keyword identifier together with its byte offset, preceding token, name,
+/// and whether it is invoked with `(` or `::<...>(`.
+fn scan_body_identifiers<'a>(
+    code: &'a str,
+    mut on_ident: impl FnMut(usize, PrevToken<'a>, &'a str, bool),
+) {
+    let bytes = code.as_bytes();
+    let mut index = 0;
+    let mut last_ident: Option<&'a str> = None;
+    let mut prev = PrevToken::Other;
+
+    // Walk code tokens and report every call and identifier reference
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(code, index) {
+            index = next;
+            continue;
+        }
+        if bytes[index].is_ascii_whitespace() {
+            index += 1;
+            continue;
+        }
+
+        // Track member-access `.` while ignoring `..` range operators
+        if bytes[index] == b'.' {
+            if bytes.get(index + 1) == Some(&b'.') {
+                prev = PrevToken::Other;
+                last_ident = None;
+                index += 2;
+            } else {
+                prev = PrevToken::Dot;
+                last_ident = None;
+                index += 1;
+            }
+            continue;
+        }
+
+        // Track `::` together with its preceding qualifier segment
+        if bytes[index] == b':' && bytes.get(index + 1) == Some(&b':') {
+            prev = PrevToken::PathSep(last_ident);
+            last_ident = None;
+            index += 2;
+            continue;
+        }
+
+        // Handle `<Type as Trait>::` qualified paths and `::<...>` turbofish without leaking inner type args
+        if bytes[index] == b'<'
+            && let Some(after_angle) = skip_angle_brackets(code, index)
+        {
+            match prev {
+                PrevToken::PathSep(outer) => {
+                    prev = PrevToken::Other;
+                    last_ident = outer;
+                    index = after_angle;
+                    continue;
+                }
+                PrevToken::Other if last_ident.is_none() => {
+                    let next = skip_ws_and_comments(code, after_angle);
+                    if bytes.get(next) == Some(&b':') && bytes.get(next + 1) == Some(&b':') {
+                        last_ident =
+                            extract_qualified_path_trait(&code[index + 1..after_angle - 1]);
+                        prev = PrevToken::Other;
+                        index = after_angle;
+                        continue;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Read identifier tokens and classify calls vs value references
+        if bytes[index].is_ascii_alphabetic() || bytes[index] == b'_' {
+            let start = index;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            let ident = &code[start..index];
+            let is_keyword = is_rust_keyword(ident);
+            if !is_keyword {
+                let mut cursor = skip_ws_and_comments(code, index);
+                if let Some(after_turbofish) = skip_turbofish(code, cursor) {
+                    cursor = skip_ws_and_comments(code, after_turbofish);
+                }
+                let is_call = bytes.get(cursor) == Some(&b'(');
+                on_ident(start, prev, ident, is_call);
+            }
+            prev = match ident {
+                "fn" => PrevToken::FnKeyword,
+                "let" => PrevToken::LetKeyword,
+                _ => PrevToken::Other,
+            };
+            last_ident = (!is_keyword).then_some(ident);
+            continue;
+        }
+
+        prev = PrevToken::Other;
+        last_ident = None;
+        index += code[index..].chars().next().map_or(1, char::len_utf8);
+    }
+}
+
+/// Skips a balanced `<...>` generic argument or parameter list starting at
+/// `open_index`, respecting nested delimiters, comments, literals, and `->`/`=>`.
+fn skip_angle_brackets(source: &str, open_index: usize) -> Option<usize> {
+    let bytes = source.as_bytes();
+    if bytes.get(open_index) != Some(&b'<') {
+        return None;
+    }
+
+    // Balance nested `<...>`, `(...)`, and `[...]` until the matching `>`
+    let mut cursor = open_index + 1;
+    let mut angle_depth = 1usize;
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    while cursor < bytes.len() {
+        if let Some(next) = skip_non_code(source, cursor) {
+            cursor = next;
+            continue;
+        }
+        match bytes[cursor] {
+            b'(' => paren_depth += 1,
+            b')' => paren_depth = paren_depth.saturating_sub(1),
+            b'[' => bracket_depth += 1,
+            b']' => bracket_depth = bracket_depth.saturating_sub(1),
+            b'<' if paren_depth == 0 && bracket_depth == 0 => angle_depth += 1,
+            b'>' if paren_depth == 0
+                && bracket_depth == 0
+                && !matches!(bytes.get(cursor.wrapping_sub(1)), Some(b'-' | b'=')) =>
+            {
+                angle_depth -= 1;
+                if angle_depth == 0 {
+                    return Some(cursor + 1);
+                }
+            }
+            _ => {}
+        }
+        cursor += source[cursor..].chars().next().map_or(1, char::len_utf8);
+    }
+
+    None
 }
 
 /// Skips a single comment, string literal, or char literal starting at `index`.
@@ -2461,41 +4065,7 @@ fn skip_turbofish(source: &str, index: usize) -> Option<usize> {
         return None;
     }
     let open = skip_ws_and_comments(source, index + 2);
-    if bytes.get(open) != Some(&b'<') {
-        return None;
-    }
-
-    // Balance nested `<...>`, `(...)`, and `[...]` until the matching `>`
-    let mut cursor = open + 1;
-    let mut angle_depth = 1usize;
-    let mut paren_depth = 0usize;
-    let mut bracket_depth = 0usize;
-    while cursor < bytes.len() {
-        if let Some(next) = skip_non_code(source, cursor) {
-            cursor = next;
-            continue;
-        }
-        match bytes[cursor] {
-            b'(' => paren_depth += 1,
-            b')' => paren_depth = paren_depth.saturating_sub(1),
-            b'[' => bracket_depth += 1,
-            b']' => bracket_depth = bracket_depth.saturating_sub(1),
-            b'<' if paren_depth == 0 && bracket_depth == 0 => angle_depth += 1,
-            b'>' if paren_depth == 0
-                && bracket_depth == 0
-                && !matches!(bytes.get(cursor.wrapping_sub(1)), Some(b'-' | b'=')) =>
-            {
-                angle_depth -= 1;
-                if angle_depth == 0 {
-                    return Some(cursor + 1);
-                }
-            }
-            _ => {}
-        }
-        cursor += source[cursor..].chars().next().map_or(1, char::len_utf8);
-    }
-
-    None
+    skip_angle_brackets(source, open)
 }
 
 /// Advances past ASCII whitespace and Rust comments starting at `index`.
@@ -2576,14 +4146,15 @@ fn split_top_level_key_value(item: &str) -> Option<(String, String)> {
     Some((item[key_start..key_end].to_string(), value.to_string()))
 }
 
-/// Masks every `#[cfg(test)]`-annotated item, field, or variant in `source`
-/// with spaces while preserving newlines so reported line numbers remain accurate.
-fn strip_cfg_test_items(source: &str) -> String {
+/// Masks every item, field, or variant annotated with an outer attribute
+/// matching `predicate` with spaces while preserving newlines so line numbers
+/// remain accurate.
+fn strip_cfg_items_where(source: &str, mut predicate: impl FnMut(&str) -> bool) -> String {
     let bytes = source.as_bytes();
     let mut out = String::with_capacity(source.len());
     let mut index = 0;
 
-    // Walk source code, masking any item, field, or variant gated by #[cfg(test)]
+    // Walk source code, masking any item, field, or variant whose attribute matches
     while index < bytes.len() {
         if let Some(next) = skip_non_code(source, index) {
             out.push_str(&source[index..next]);
@@ -2595,7 +4166,7 @@ fn strip_cfg_test_items(source: &str) -> String {
             let open = skip_ws_and_comments(source, index + 1);
             if bytes.get(open) == Some(&b'[')
                 && let Some(close) = find_matching_delimiter(source, open, b'[', b']')
-                && is_cfg_test_attribute(&source[open + 1..close])
+                && predicate(&source[open + 1..close])
             {
                 let end = find_cfg_test_item_end(source, close + 1);
 
@@ -2614,6 +4185,12 @@ fn strip_cfg_test_items(source: &str) -> String {
     }
 
     out
+}
+
+/// Masks every `#[cfg(test)]`-annotated item, field, or variant in `source`
+/// with spaces while preserving newlines so reported line numbers remain accurate.
+fn strip_cfg_test_items(source: &str) -> String {
+    strip_cfg_items_where(source, is_cfg_test_attribute)
 }
 
 /// Returns `source` with comments and string or char literals replaced by spaces.
