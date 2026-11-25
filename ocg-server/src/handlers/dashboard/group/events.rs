@@ -71,8 +71,7 @@ pub(crate) async fn add_page(
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = meetings_cfg
         .as_ref()
-        .map(MeetingsConfig::max_participants_by_provider)
-        .unwrap_or_default();
+        .map_or_default(MeetingsConfig::max_participants_by_provider);
     let sponsor_filters = GroupSponsorsFilters::default();
     let (
         can_manage_events,
@@ -180,8 +179,7 @@ pub(crate) async fn update_page(
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = meetings_cfg
         .as_ref()
-        .map(MeetingsConfig::max_participants_by_provider)
-        .unwrap_or_default();
+        .map_or_default(MeetingsConfig::max_participants_by_provider);
     let sponsor_filters = GroupSponsorsFilters::default();
     let (
         can_manage_events,

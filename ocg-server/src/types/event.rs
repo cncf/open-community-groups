@@ -774,15 +774,12 @@ impl EventFull {
 
     /// Returns the attendee-selectable ticket types for the event page.
     pub fn sellable_ticket_types(&self) -> Vec<&EventTicketType> {
-        self.ticket_types
-            .as_ref()
-            .map(|ticket_types| {
-                ticket_types
-                    .iter()
-                    .filter(|ticket_type| ticket_type.is_sellable_now())
-                    .collect()
-            })
-            .unwrap_or_default()
+        self.ticket_types.as_ref().map_or_default(|ticket_types| {
+            ticket_types
+                .iter()
+                .filter(|ticket_type| ticket_type.is_sellable_now())
+                .collect()
+        })
     }
 
     /// Returns whether attendee prices require an additional-tax label.
@@ -831,18 +828,14 @@ impl EventFull {
 
     /// Returns active ticket types shown in the tickets modal, sorted by price.
     pub fn visible_ticket_types(&self) -> Vec<&EventTicketType> {
-        let mut ticket_types: Vec<_> = self
-            .ticket_types
-            .as_ref()
-            .map(|ticket_types| {
-                ticket_types
-                    .iter()
-                    .filter(|ticket_type| {
-                        ticket_type.active && ticket_type.current_amount_minor().is_some()
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
+        let mut ticket_types: Vec<_> = self.ticket_types.as_ref().map_or_default(|ticket_types| {
+            ticket_types
+                .iter()
+                .filter(|ticket_type| {
+                    ticket_type.active && ticket_type.current_amount_minor().is_some()
+                })
+                .collect()
+        });
 
         ticket_types
             .sort_by_key(|ticket_type| ticket_type.current_amount_minor().unwrap_or_default());

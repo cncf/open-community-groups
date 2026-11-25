@@ -443,8 +443,9 @@ fn build_survey_csv(export: &EventSurveyExport) -> Result<Vec<u8>, HandlerError>
         if !export.anonymous {
             let user = response.user.as_ref();
             row.extend([
-                user.map(|user| user.name.clone().unwrap_or_else(|| user.username.clone()))
-                    .unwrap_or_default(),
+                user.map_or_default(|user| {
+                    user.name.clone().unwrap_or_else(|| user.username.clone())
+                }),
                 user.and_then(|user| user.company.clone()).unwrap_or_default(),
                 user.and_then(|user| user.title.clone()).unwrap_or_default(),
             ]);

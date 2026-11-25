@@ -179,8 +179,7 @@ impl QuestionnaireQuestion {
                 Uuid::parse_str(value)
                     .ok()
                     .and_then(|option_id| self.option_label(option_id))
-                    .map(str::to_string)
-                    .unwrap_or_default()
+                    .map_or_default(str::to_string)
             }
             (QuestionnaireQuestionKind::MultiSelect, QuestionnaireAnswerValue::Many(values)) => {
                 values

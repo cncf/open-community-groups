@@ -118,9 +118,7 @@ impl PgEventsManager {
     ) -> Self {
         Self {
             db,
-            meeting_limits: meetings_cfg
-                .map(MeetingsConfig::meeting_limits_by_provider)
-                .unwrap_or_default(),
+            meeting_limits: meetings_cfg.map_or_default(MeetingsConfig::meeting_limits_by_provider),
             payments_manager,
             server_cfg,
         }
