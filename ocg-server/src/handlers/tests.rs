@@ -1128,13 +1128,15 @@ pub(crate) fn test_state_with_server_cfg(
     server_cfg: &HttpServerConfig,
 ) -> router::State {
     let badges_config = server_cfg.badges.as_ref().unwrap_or(&TEST_BADGES_CONFIG);
+    let blocking_executor = BlockingExecutor::new(server_cfg.max_blocking_concurrency());
     router::State {
         activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
         badges_manager: Arc::new(crate::services::badges::SsiBadgesManager::new(
             &server_cfg.base_url,
+            blocking_executor.clone(),
             badges_config,
         )),
-        blocking_executor: BlockingExecutor::new(server_cfg.max_blocking_concurrency()),
+        blocking_executor,
         db,
         enrollment_manager: Arc::new(MockEnrollmentManager::new()),
         events_manager: Arc::new(MockEventsManager::new()),

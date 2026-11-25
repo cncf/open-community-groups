@@ -50,6 +50,66 @@ fn test_encode_status_list_uses_exact_size_and_msb_orientation() {
 }
 
 #[tokio::test]
+async fn test_status_list_cache_cleans_up_per_list_lock_when_waiter_is_cancelled() {
+    // Setup one status-list cache and hold a lock for one list
+    let cache = StatusListCache::new();
+    let list_id = Uuid::from_u128(52);
+    let guard = cache.signing_guard(list_id).await.unwrap();
+    assert_eq!(cache.signing_locks_len(), 1);
+
+    // Start a contending waiter, let it block on the per-list mutex, then cancel it
+    let waiter_cache = cache.clone();
+    let waiter = tokio::spawn(async move { waiter_cache.signing_guard(list_id).await });
+    tokio::task::yield_now().await;
+    waiter.abort();
+    let _ = waiter.await;
+    assert_eq!(cache.signing_locks_len(), 1);
+
+    // Drop the active guard and check the idle entry is removed from the map
+    drop(guard);
+    assert_eq!(cache.signing_locks_len(), 0);
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_status_list_cache_cleans_up_per_list_locks_after_drop_and_timeout() {
+    // Setup one status-list cache and hold a lock for one list
+    let cache = StatusListCache::new();
+    let list_id = Uuid::from_u128(51);
+    let guard = cache.signing_guard(list_id).await.unwrap();
+    assert_eq!(cache.signing_locks_len(), 1);
+
+    // Wait for the same list until the bounded wait expires
+    let busy = cache.signing_guard(list_id).await;
+    assert!(matches!(busy, Err(BadgesManagerError::Busy)));
+    assert_eq!(cache.signing_locks_len(), 1);
+
+    // Drop the active guard and check the idle entry is removed from the map
+    drop(guard);
+    assert_eq!(cache.signing_locks_len(), 0);
+}
+
+#[tokio::test]
+async fn test_status_list_cache_distinct_lists_do_not_block_each_other() {
+    // Setup one status-list cache and hold the signing guard for the first list
+    let cache = StatusListCache::new();
+    let first_list_id = Uuid::from_u128(61);
+    let second_list_id = Uuid::from_u128(62);
+    let first_guard = cache.signing_guard(first_list_id).await.unwrap();
+
+    // Acquire a signing guard for an unrelated status list immediately
+    let second_guard = cache.signing_guard(second_list_id).await;
+
+    // Check distinct status-list IDs sign independently without blocking each other
+    assert!(second_guard.is_ok());
+    assert_eq!(cache.signing_locks_len(), 2);
+
+    // Release both guards and check all table entries are cleaned up
+    drop(second_guard);
+    drop(first_guard);
+    assert_eq!(cache.signing_locks_len(), 0);
+}
+
+#[tokio::test]
 async fn test_status_list_cache_serves_only_exact_group_and_state() {
     // Setup one cached representation for a known group and state
     let cache = StatusListCache::new();
@@ -63,6 +123,20 @@ async fn test_status_list_cache_serves_only_exact_group_and_state() {
     assert_eq!(cache.get(list_id, Uuid::from_u128(43), &[7]).await, None);
     assert_eq!(cache.get(list_id, group_id, &[7, 9]).await, None);
     assert_eq!(cache.get(Uuid::from_u128(44), group_id, &[7]).await, None);
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_status_list_cache_signing_guard_times_out_with_busy_under_contention() {
+    // Setup one status-list cache whose per-list lock is already held
+    let cache = StatusListCache::new();
+    let list_id = Uuid::from_u128(71);
+    let _guard = cache.signing_guard(list_id).await.unwrap();
+
+    // Request a second signing guard for the same status list
+    let result = cache.signing_guard(list_id).await;
+
+    // Check contention times out with Busy instead of waiting indefinitely
+    assert!(matches!(result, Err(BadgesManagerError::Busy)));
 }
 
 // Helpers.

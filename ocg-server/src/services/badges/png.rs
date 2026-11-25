@@ -33,7 +33,7 @@ const MAX_PNG_SIZE: usize = 2 * 1024 * 1024;
 const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
 
 /// Transcode artwork to PNG and insert exactly one uncompressed credential chunk.
-pub(crate) fn bake(source: &[u8], credential: &[u8]) -> Result<Vec<u8>> {
+pub(super) fn bake(source: &[u8], credential: &[u8]) -> Result<Vec<u8>> {
     // Reject source and credential payloads outside the fixed manager limits
     if source.len() > MAX_PNG_SIZE || credential.len() > MAX_CREDENTIAL_SIZE {
         return Err(BadgesManagerError::PngLimitExceeded);
@@ -58,7 +58,7 @@ pub(crate) fn bake(source: &[u8], credential: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Extract the unique, uncompressed Open Badges credential chunk.
-pub(crate) fn extract(png: &[u8]) -> Result<Vec<u8>> {
+pub(super) fn extract(png: &[u8]) -> Result<Vec<u8>> {
     // Validate the bounded PNG envelope before parsing chunks
     if png.len() > MAX_PNG_SIZE || !png.starts_with(PNG_SIGNATURE) {
         return Err(BadgesManagerError::InvalidPng);

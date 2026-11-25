@@ -5,7 +5,7 @@ mod contexts;
 mod credential;
 mod document;
 mod keys;
-pub(crate) mod png;
+mod png;
 mod status;
 mod verification;
 
@@ -25,10 +25,12 @@ use ssi_data_integrity::{
 };
 use ssi_verification_methods::{AnyMethod, Multikey, SingleSecretSigner};
 use thiserror::Error;
+use tokio::runtime::Handle;
 use uuid::Uuid;
 
 use crate::{
     config::BadgesConfig,
+    services::blocking::BlockingExecutor,
     types::badges::{UserBadge, UserBadgeIdentity},
 };
 
@@ -47,6 +49,9 @@ pub(crate) use verification::{VerificationError, VerifiedCredential, verify_subm
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub(crate) trait BadgesManager {
+    /// Transcode badge artwork to PNG and embed one signed credential chunk.
+    async fn bake_png(&self, source: Vec<u8>, credential: Vec<u8>) -> Result<Vec<u8>>;
+
     /// Return a cached signed credential or issue its immutable public representation once.
     ///
     /// The proof timestamp is pinned to the award time so the opaque public
@@ -73,6 +78,9 @@ pub(crate) trait BadgesManager {
         created_at: DateTime<Utc>,
     ) -> Result<Value>;
 
+    /// Extract the embedded Open Badges credential payload from one uploaded PNG.
+    async fn extract_png(&self, png: Vec<u8>) -> Result<Vec<u8>>;
+
     /// Return the stable public issuer profile URL.
     fn issuer_url(&self, group_id: Uuid) -> String;
 
@@ -98,6 +106,8 @@ pub(crate) type DynBadgesManager = Arc<dyn BadgesManager + Send + Sync>;
 pub(crate) struct SsiBadgesManager {
     /// Canonical public origin without a trailing slash.
     base_url: String,
+    /// Bounded executor used for CPU-heavy badge signing, verification, encoding, and PNG work.
+    blocking_executor: BlockingExecutor,
     /// Signed immutable credential representations.
     credential_cache: credential::CredentialCache,
     /// Active signing and retained verification keys.
@@ -108,9 +118,14 @@ pub(crate) struct SsiBadgesManager {
 
 impl SsiBadgesManager {
     /// Build the manager from application configuration.
-    pub(crate) fn new(base_url: &str, config: &BadgesConfig) -> Self {
+    pub(crate) fn new(
+        base_url: &str,
+        blocking_executor: BlockingExecutor,
+        config: &BadgesConfig,
+    ) -> Self {
         Self {
             base_url: base_url.trim_end_matches('/').to_string(),
+            blocking_executor,
             credential_cache: credential::CredentialCache::new(),
             keys: keys::KeySet::new(config),
             status_list_cache: status::StatusListCache::new(),
@@ -185,30 +200,40 @@ impl SsiBadgesManager {
         revoked_indexes: &[i32],
         created_at: DateTime<Utc>,
     ) -> Result<Value> {
-        // Assemble the supported revocation-only status-list profile
-        let encoded_list = encode_status_list(revoked_indexes)?;
-        let status_list_url = self.status_list_url(badge_status_list_id);
+        // Prepare stable URLs and inputs for the blocking worker
+        let handle = Handle::current();
         let issuer_url = self.issuer_url(group_id);
-        let document = json!({
-            "@context": [contexts::VC_CONTEXT_URL],
-            "id": status_list_url,
-            "type": ["VerifiableCredential", "BitstringStatusListCredential"],
-            "issuer": {
-                "id": issuer_url,
-                "name": issuer_name(group_id)
-            },
-            "validFrom": rfc3339(created_at),
-            "credentialSubject": {
-                "id": format!("{status_list_url}#list"),
-                "type": "BitstringStatusList",
-                "statusPurpose": "revocation",
-                "encodedList": encoded_list,
-                "ttl": STATUS_LIST_TTL_MS
-            }
-        });
+        let keys = self.keys.clone();
+        let revoked_indexes = revoked_indexes.to_vec();
+        let status_list_url = self.status_list_url(badge_status_list_id);
 
-        // Sign the complete status-list credential with the active issuer key
-        self.sign_document(document, &issuer_url, created_at).await
+        // Offload gzip bitstring encoding and RDFC-2022 signing off the async runtime
+        self.blocking_executor
+            .run(move || {
+                // Assemble the supported revocation-only status-list profile
+                let encoded_list = encode_status_list(&revoked_indexes)?;
+                let document = json!({
+                    "@context": [contexts::VC_CONTEXT_URL],
+                    "id": status_list_url,
+                    "type": ["VerifiableCredential", "BitstringStatusListCredential"],
+                    "issuer": {
+                        "id": issuer_url,
+                        "name": issuer_name(group_id)
+                    },
+                    "validFrom": rfc3339(created_at),
+                    "credentialSubject": {
+                        "id": format!("{status_list_url}#list"),
+                        "type": "BitstringStatusList",
+                        "statusPurpose": "revocation",
+                        "encodedList": encoded_list,
+                        "ttl": STATUS_LIST_TTL_MS
+                    }
+                });
+
+                // Sign the complete status-list credential with the active issuer key
+                sign_document_blocking(&handle, &keys, document, &issuer_url, created_at)
+            })
+            .await?
     }
 
     /// Parse and allowlist one local issuer URL.
@@ -273,52 +298,13 @@ impl SsiBadgesManager {
             return Err(BadgesManagerError::InvalidCredential);
         }
 
-        // Resolve the active key and its allowlisted verification method
-        let signing_key = self.keys.signing_key();
-        let method = self.keys.multikey(issuer_url, &signing_key.key_id)?;
-        let method_url = method.id.clone();
-        let resolver = HashMap::from([(method_url.clone(), AnyMethod::Multikey(method))]);
-
-        // Build the fixed proof options and closed JSON-LD environment
-        let proof_options: ProofOptions<Multikey, ()> = serde_json::from_value(json!({
-            "created": rfc3339(created_at),
-            "verificationMethod": method_url,
-            "proofPurpose": "assertionMethod"
-        }))
-        .map_err(|_| BadgesManagerError::SigningFailed)?;
-        let document: CredentialDocument =
-            serde_json::from_value(document).map_err(|_| BadgesManagerError::InvalidCredential)?;
-        let environment = SignatureEnvironment {
-            json_ld_loader: contexts::loader()?,
-            eip712_loader: (),
-        };
-        let signer = SingleSecretSigner::new(signing_key.private_jwk.clone()).into_local();
-
-        // Sign with the required cryptosuite and serialize the result
-        let signed_document = AnySuite::EdDsaRdfc2022
-            .sign_with(
-                environment,
-                document,
-                resolver,
-                signer,
-                proof_options.cast(),
-                AnySignatureOptions::default(),
-            )
-            .await
-            .map_err(|_| BadgesManagerError::SigningFailed)?;
-        let mut signed_document = serde_json::to_value(signed_document)
-            .map_err(|_| BadgesManagerError::InvalidCredential)?;
-
-        // Preserve the signature while emitting the strict plain-JSON proof set shape
-        let proof = signed_document
-            .get_mut("proof")
-            .ok_or(BadgesManagerError::SigningFailed)?;
-        if !proof.is_object() {
-            return Err(BadgesManagerError::SigningFailed);
-        }
-        *proof = Value::Array(vec![proof.take()]);
-
-        Ok(signed_document)
+        // Offload JSON-LD canonicalization and Ed25519 signing off the async runtime
+        let handle = Handle::current();
+        let issuer_url = issuer_url.to_string();
+        let keys = self.keys.clone();
+        self.blocking_executor
+            .run(move || sign_document_blocking(&handle, &keys, document, &issuer_url, created_at))
+            .await?
     }
 
     /// Verifies one Data Integrity proof with the closed context and key resolvers.
@@ -332,37 +318,36 @@ impl SsiBadgesManager {
         {
             return Err(BadgesManagerError::InvalidProof);
         }
+        let verification_method = required_string(proof, "/verificationMethod")?.to_string();
 
-        // Resolve the proof key exclusively through the configured allowlist
-        let verification_method = required_string(proof, "/verificationMethod")?;
-        let resolver = self.keys.resolver(issuer_url)?;
-        if !resolver
-            .keys()
-            .any(|method_id| method_id.as_str() == verification_method)
-        {
-            return Err(BadgesManagerError::UnknownVerificationMethod);
-        }
-
-        // Deserialize the single proof and build the closed verification environment
-        let signed: AnyDataIntegrity<CredentialDocument> = serde_json::from_value(document.clone())
-            .map_err(|_| BadgesManagerError::InvalidCredential)?;
-        if signed.proofs.len() != 1 {
-            return Err(BadgesManagerError::InvalidProof);
-        }
-        let parameters = VerificationParameters::from_resolver(resolver)
-            .with_json_ld_loader(contexts::loader()?);
-
-        // Verify the proof and normalize library failures
-        let verification = signed
-            .verify(parameters)
-            .await
-            .map_err(|_| BadgesManagerError::InvalidProof)?;
-        verification.map_err(|_| BadgesManagerError::InvalidProof)
+        // Offload key decoding, deserialization, JSON-LD canonicalization, and proof verification
+        let document = document.clone();
+        let handle = Handle::current();
+        let issuer_url = issuer_url.to_string();
+        let keys = self.keys.clone();
+        self.blocking_executor
+            .run(move || {
+                verify_document_blocking(
+                    &handle,
+                    &keys,
+                    document,
+                    &issuer_url,
+                    &verification_method,
+                )
+            })
+            .await?
     }
 }
 
 #[async_trait]
 impl BadgesManager for SsiBadgesManager {
+    /// [`BadgesManager::bake_png`].
+    async fn bake_png(&self, source: Vec<u8>, credential: Vec<u8>) -> Result<Vec<u8>> {
+        self.blocking_executor
+            .run(move || png::bake(&source, &credential))
+            .await?
+    }
+
     /// [`BadgesManager::cached_credential`].
     async fn cached_credential(&self, award: &UserBadge) -> Result<Value> {
         self.cached_signed_credential(
@@ -413,8 +398,8 @@ impl BadgesManager for SsiBadgesManager {
             return Ok(credential);
         }
 
-        // Deduplicate cold misses and recheck after any preceding signer finishes
-        let _signing_guard = self.status_list_cache.signing_guard().await;
+        // Deduplicate cold misses per status list and recheck after any preceding signer finishes
+        let _signing_guard = self.status_list_cache.signing_guard(badge_status_list_id).await?;
         if let Some(credential) = self
             .status_list_cache
             .get(badge_status_list_id, group_id, revoked_indexes)
@@ -437,6 +422,11 @@ impl BadgesManager for SsiBadgesManager {
             .await;
 
         Ok(credential)
+    }
+
+    /// [`BadgesManager::extract_png`].
+    async fn extract_png(&self, png: Vec<u8>) -> Result<Vec<u8>> {
+        self.blocking_executor.run(move || png::extract(&png)).await?
     }
 
     /// [`BadgesManager::issuer_url`].
@@ -562,7 +552,7 @@ impl BadgesManager for SsiBadgesManager {
 /// Badges manager failures translated into safe handler-level errors.
 #[derive(Debug, Error)]
 pub(crate) enum BadgesManagerError {
-    /// The bounded credential signer is busy serving another cold request.
+    /// The bounded credential or status-list signer is busy serving another cold request.
     #[error("badge credential signer is busy")]
     Busy,
     /// A reviewed JSON-LD context could not be loaded.
@@ -589,6 +579,9 @@ pub(crate) enum BadgesManagerError {
     /// A configured public URL is invalid.
     #[error("invalid badge URL")]
     InvalidUrl,
+    /// Unexpected internal failure while executing badge work.
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
     /// A configured or uploaded PNG exceeds a supported limit.
     #[error("Open Badges PNG exceeds the supported size limit")]
     PngLimitExceeded,
@@ -611,4 +604,92 @@ pub(crate) fn badge_image_url(image_file_name: &str) -> String {
 /// Returns the stable display name for a group issuer profile.
 pub(crate) fn issuer_name(group_id: Uuid) -> String {
     format!("Open Community Groups issuer {group_id}")
+}
+
+/// Signs a JSON-LD badge document synchronously on a blocking worker thread.
+fn sign_document_blocking(
+    handle: &Handle,
+    keys: &keys::KeySet,
+    document: Value,
+    issuer_url: &str,
+    created_at: DateTime<Utc>,
+) -> Result<Value> {
+    // Resolve the active key and its allowlisted verification method
+    let signing_key = keys.signing_key();
+    let method = keys.multikey(issuer_url, &signing_key.key_id)?;
+    let method_url = method.id.clone();
+    let resolver = HashMap::from([(method_url.clone(), AnyMethod::Multikey(method))]);
+
+    // Build the fixed proof options and closed JSON-LD environment
+    let proof_options: ProofOptions<Multikey, ()> = serde_json::from_value(json!({
+        "created": rfc3339(created_at),
+        "verificationMethod": method_url,
+        "proofPurpose": "assertionMethod"
+    }))
+    .map_err(|_| BadgesManagerError::SigningFailed)?;
+    let document: CredentialDocument =
+        serde_json::from_value(document).map_err(|_| BadgesManagerError::InvalidCredential)?;
+    let environment = SignatureEnvironment {
+        json_ld_loader: contexts::loader()?,
+        eip712_loader: (),
+    };
+    let signer = SingleSecretSigner::new(signing_key.private_jwk.clone()).into_local();
+
+    // Sign with the required cryptosuite and serialize the result
+    let signed_document = handle
+        .block_on(AnySuite::EdDsaRdfc2022.sign_with(
+            environment,
+            document,
+            resolver,
+            signer,
+            proof_options.cast(),
+            AnySignatureOptions::default(),
+        ))
+        .map_err(|_| BadgesManagerError::SigningFailed)?;
+    let mut signed_document =
+        serde_json::to_value(signed_document).map_err(|_| BadgesManagerError::InvalidCredential)?;
+
+    // Preserve the signature while emitting the strict plain-JSON proof set shape
+    let proof = signed_document
+        .get_mut("proof")
+        .ok_or(BadgesManagerError::SigningFailed)?;
+    if !proof.is_object() {
+        return Err(BadgesManagerError::SigningFailed);
+    }
+    *proof = Value::Array(vec![proof.take()]);
+
+    Ok(signed_document)
+}
+
+/// Verifies one Data Integrity proof synchronously on a blocking worker thread.
+fn verify_document_blocking(
+    handle: &Handle,
+    keys: &keys::KeySet,
+    document: Value,
+    issuer_url: &str,
+    verification_method: &str,
+) -> Result<()> {
+    // Resolve the proof key exclusively through the configured allowlist
+    let resolver = keys.resolver(issuer_url)?;
+    if !resolver
+        .keys()
+        .any(|method_id| method_id.as_str() == verification_method)
+    {
+        return Err(BadgesManagerError::UnknownVerificationMethod);
+    }
+
+    // Deserialize the single proof and build the closed verification environment
+    let signed: AnyDataIntegrity<CredentialDocument> =
+        serde_json::from_value(document).map_err(|_| BadgesManagerError::InvalidCredential)?;
+    if signed.proofs.len() != 1 {
+        return Err(BadgesManagerError::InvalidProof);
+    }
+    let parameters =
+        VerificationParameters::from_resolver(resolver).with_json_ld_loader(contexts::loader()?);
+
+    // Verify the proof and normalize library failures
+    let verification = handle
+        .block_on(signed.verify(parameters))
+        .map_err(|_| BadgesManagerError::InvalidProof)?;
+    verification.map_err(|_| BadgesManagerError::InvalidProof)
 }

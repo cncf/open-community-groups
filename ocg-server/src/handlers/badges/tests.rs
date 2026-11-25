@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use axum::{
     body::Body,
     http::{
         HeaderMap, HeaderValue, Request, StatusCode,
-        header::{ACCEPT, CACHE_CONTROL, CONTENT_TYPE},
+        header::{ACCEPT, CACHE_CONTROL, CONTENT_TYPE, RETRY_AFTER},
     },
 };
 use chrono::{TimeZone, Utc};
@@ -21,7 +23,12 @@ use crate::{
         },
     },
     router::{CACHE_CONTROL_PRIVATE_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
-    services::badges::{CredentialInput, EmailIdentity, SsiBadgesManager, png},
+    services::{
+        badges::{
+            BadgesManager, CredentialInput, EmailIdentity, MockBadgesManager, SsiBadgesManager,
+        },
+        blocking::BlockingExecutor,
+    },
     test_util::sample_png,
     types::badges::{
         BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicBadgeSnapshot,
@@ -280,6 +287,45 @@ async fn test_issuer_returns_stable_public_profile() {
         parts.headers.get(CACHE_CONTROL).unwrap(),
         CACHE_CONTROL_PUBLIC_SHARED
     );
+}
+
+#[tokio::test]
+async fn test_status_list_busy_returns_service_unavailable() {
+    // Setup a status list lookup whose signer rejects under contention
+    let status = sample_badge_status_list();
+    let status_list_id = status.badge_status_list_id;
+    let group_id = status.group_id;
+    let revoked_indexes = status.revoked_indexes.clone();
+    let mut db = MockDB::new();
+    db.expect_get_badge_status_list()
+        .times(1)
+        .withf(move |id| *id == status_list_id)
+        .return_once(move |_| Ok(Some(status)));
+    let mut badges_manager = MockBadgesManager::new();
+    badges_manager
+        .expect_cached_status_list()
+        .times(1)
+        .withf(move |list_id, g_id, indexes, _| {
+            *list_id == status_list_id && *g_id == group_id && indexes == revoked_indexes.as_slice()
+        })
+        .returning(|_, _, _, _| Box::pin(async { Err(BadgesManagerError::Busy) }));
+
+    // Invoke the status-list handler directly with the busy manager
+    let response = status_list(
+        State(Arc::new(badges_manager) as DynBadgesManager),
+        State(Arc::new(db) as DynDB),
+        Path(status_list_id),
+    )
+    .await
+    .unwrap();
+
+    // Check busy responses shed load with 503, no-store, and Retry-After
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(
+        response.headers().get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_NO_STORE
+    );
+    assert_eq!(response.headers().get(RETRY_AFTER).unwrap(), "1");
 }
 
 #[tokio::test]
@@ -604,8 +650,11 @@ async fn baked_png(
     award: &UserBadge,
     email_identity: Option<EmailIdentity>,
 ) -> Vec<u8> {
-    let badges_manager =
-        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+    let badges_manager = SsiBadgesManager::new(
+        &server_cfg.base_url,
+        BlockingExecutor::new(server_cfg.max_blocking_concurrency()),
+        server_cfg.badges.as_ref().unwrap(),
+    );
     let credential = badges_manager
         .issue_credential(CredentialInput {
             award,
@@ -616,7 +665,10 @@ async fn baked_png(
         .unwrap();
     let credential = serde_json::to_vec(&credential).unwrap();
 
-    png::bake(&sample_png(512, 512), &credential).unwrap()
+    badges_manager
+        .bake_png(sample_png(512, 512), credential)
+        .await
+        .unwrap()
 }
 
 /// Builds a verification request submitting an award identifier.

@@ -19,7 +19,7 @@ use crate::{
     handlers::{badges::USER_PROFILE_BADGES_LIMIT, error::HandlerError, extractors::CurrentUser},
     router::CACHE_CONTROL_NO_STORE,
     services::{
-        badges::{BadgesManagerError, DynBadgesManager, png},
+        badges::{BadgesManagerError, DynBadgesManager},
         images::DynImagesManager,
     },
     templates::dashboard::user::badges::ListPage,
@@ -68,8 +68,10 @@ pub(crate) async fn export(
         Err(error) => return Err(HandlerError::Other(error.into())),
     };
     let credential = serde_json::to_vec(&credential)?;
-    let png =
-        png::bake(&source.bytes, &credential).map_err(|error| HandlerError::Other(error.into()))?;
+    let png = badges_manager
+        .bake_png(source.bytes, credential)
+        .await
+        .map_err(|error| HandlerError::Other(error.into()))?;
 
     // Return a deterministic attachment name for the opaque award ID
     let mut headers = HeaderMap::new();

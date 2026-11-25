@@ -185,7 +185,7 @@ pub(crate) async fn status_list(
         .get_badge_status_list(badge_status_list_id)
         .await?
         .ok_or(HandlerError::NotFound)?;
-    let credential = badges_manager
+    let credential = match badges_manager
         .cached_status_list(
             status.badge_status_list_id,
             status.group_id,
@@ -193,7 +193,17 @@ pub(crate) async fn status_list(
             Utc::now(),
         )
         .await
-        .map_err(|error| HandlerError::Other(error.into()))?;
+    {
+        Ok(credential) => credential,
+        Err(BadgesManagerError::Busy) => {
+            return Ok((
+                StatusCode::SERVICE_UNAVAILABLE,
+                [(CACHE_CONTROL, CACHE_CONTROL_NO_STORE), (RETRY_AFTER, "1")],
+            )
+                .into_response());
+        }
+        Err(error) => return Err(HandlerError::Other(error.into())),
+    };
 
     Ok((
         [
@@ -253,7 +263,7 @@ pub(crate) async fn verify(
         &badges_manager,
         db.as_ref(),
         credential_reference.as_deref(),
-        png_bytes.as_deref(),
+        png_bytes.map(Into::into),
     )
     .await;
     match result {

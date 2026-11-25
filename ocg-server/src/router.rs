@@ -202,7 +202,11 @@ pub(crate) async fn setup(
     // Setup router state, sharing the caller's blocking bound with handlers and auth
     let state = State {
         activity_tracker,
-        badges_manager: Arc::new(SsiBadgesManager::new(&server_cfg.base_url, badges_config)),
+        badges_manager: Arc::new(SsiBadgesManager::new(
+            &server_cfg.base_url,
+            blocking_executor.clone(),
+            badges_config,
+        )),
         blocking_executor: blocking_executor.clone(),
         db: db.clone(),
         enrollment_manager,
