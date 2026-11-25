@@ -32,6 +32,20 @@ import {
 } from "/tests/unit/test-utils/htmx.js";
 import { stubMatchMedia } from "/tests/unit/test-utils/media.js";
 
+/** Loads the bundled SweetAlert2 script once and returns its global constructor. */
+const loadBundledSweetAlert = async () => {
+  if (!globalThis.Sweetalert2) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.addEventListener("load", resolve, { once: true });
+      script.addEventListener("error", reject, { once: true });
+      script.src = `/ocg-server${VENDOR_BUNDLES.sweetalert2}`;
+      document.head.append(script);
+    });
+  }
+  return globalThis.Sweetalert2;
+};
+
 describe("alerts", () => {
   const env = useDashboardTestEnv({
     path: "/dashboard/groups",
@@ -230,14 +244,7 @@ describe("alerts", () => {
   it("tells a replaced deployment reload prompt apart from a closed one with the bundled SweetAlert2", async () => {
     // Load the SweetAlert2 bundle the base template uses.
     const envSwal = globalThis.Swal;
-    await new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.addEventListener("load", resolve, { once: true });
-      script.addEventListener("error", reject, { once: true });
-      script.src = `/ocg-server${VENDOR_BUNDLES.sweetalert2}`;
-      document.head.append(script);
-    });
-    const sweetAlert = globalThis.Sweetalert2;
+    const sweetAlert = await loadBundledSweetAlert();
     globalThis.Swal = sweetAlert;
 
     try {
@@ -254,6 +261,51 @@ describe("alerts", () => {
     } finally {
       sweetAlert.close();
       document.querySelectorAll(".swal2-container").forEach((container) => container.remove());
+      globalThis.Swal = envSwal;
+    }
+  });
+
+  it("restores focus on close without stealing focus moved elsewhere", async () => {
+    // Load the bundled SweetAlert2 and mount two focusable controls.
+    const envSwal = globalThis.Swal;
+    const sweetAlert = await loadBundledSweetAlert();
+    globalThis.Swal = sweetAlert;
+    const trigger = document.createElement("button");
+    const search = document.createElement("input");
+    document.body.append(trigger, search);
+
+    try {
+      // Dismissing an alert returns focus to the element that triggered it.
+      trigger.focus();
+      showErrorAlert("Failed");
+      expect(document.activeElement).to.equal(sweetAlert.getConfirmButton());
+      sweetAlert.getConfirmButton().click();
+      await waitForAlertToClose();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(document.activeElement).to.equal(trigger);
+
+      // Moving focus to another control as the alert closes keeps focus on that control.
+      trigger.focus();
+      showErrorAlert("Failed again");
+      sweetAlert.getConfirmButton().click();
+      await waitForAlertToClose();
+      search.focus();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(document.activeElement).to.equal(search);
+
+      // Replacing an open alert keeps the original trigger and restores it when closed.
+      trigger.focus();
+      showErrorAlert("First");
+      showSuccessAlert("Second");
+      sweetAlert.getConfirmButton().click();
+      await waitForAlertToClose();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(document.activeElement).to.equal(trigger);
+    } finally {
+      sweetAlert.close();
+      document.querySelectorAll(".swal2-container").forEach((container) => container.remove());
+      trigger.remove();
+      search.remove();
       globalThis.Swal = envSwal;
     }
   });

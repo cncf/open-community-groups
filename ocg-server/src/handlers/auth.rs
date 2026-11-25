@@ -65,14 +65,34 @@ const LF_SSO_EMAIL_CONFLICT_MESSAGE: &str = concat!(
 const LF_SSO_IDENTITY_CONFLICT_MESSAGE: &str =
     "This LF SSO account is already linked to another OCG account.";
 
+/// Friendly message when an LF SSO account does not have a verified email.
+const LF_SSO_UNVERIFIED_EMAIL_MESSAGE: &str =
+    "Your LF SSO account must have a verified email address.";
+
 /// URL for the log in page.
 pub(crate) const LOG_IN_URL: &str = "/log-in";
 
 /// Key used to store the next URL in the session.
 pub(crate) const NEXT_URL_KEY: &str = "next_url";
 
+/// Generic flash message shown when `OAuth2` authorization fails.
+const OAUTH2_AUTHORIZATION_FAILED: &str = "OAuth2 authorization failed";
+
 /// Key used to store the `OAuth2` CSRF state in the session.
 pub(crate) const OAUTH2_CSRF_STATE_KEY: &str = "oauth2.csrf_state";
+
+/// Key used to store the originating provider for the pending login flow.
+const OAUTH2_FLOW_PROVIDER_KEY: &str = "oauth2.flow_provider";
+
+/// Key used to store the `OAuth2` PKCE code verifier in the session.
+const OAUTH2_PKCE_VERIFIER_KEY: &str = "oauth2.pkce_verifier";
+
+/// Friendly message when an `OAuth2` account has no verified primary email.
+const OAUTH2_UNVERIFIED_EMAIL_MESSAGE: &str =
+    "Your account must have a verified primary email address.";
+
+/// Generic flash message shown when `Oidc` authorization fails.
+const OIDC_AUTHORIZATION_FAILED: &str = "OpenID Connect authorization failed";
 
 /// Key used to store the `Oidc` nonce in the session.
 pub(crate) const OIDC_NONCE_KEY: &str = "oidc.nonce";
@@ -281,10 +301,15 @@ pub(crate) async fn oauth2_callback(
 pub(crate) async fn oauth2_redirect(
     session: Session,
     OAuth2(oauth2_provider): OAuth2,
+    Path(provider): Path<OAuth2Provider>,
     Query(NextUrl { next_url }): Query<NextUrl>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Generate the authorization url
-    let mut builder = oauth2_provider.client.authorize_url(oauth2::CsrfToken::new_random);
+    // Generate the authorization url with an S256 PKCE challenge
+    let (pkce_challenge, pkce_verifier) = oauth2::PkceCodeChallenge::new_random_sha256();
+    let mut builder = oauth2_provider
+        .client
+        .authorize_url(oauth2::CsrfToken::new_random)
+        .set_pkce_challenge(pkce_challenge);
     for scope in &oauth2_provider.scopes {
         builder = builder.add_scope(oauth2::Scope::new(scope.clone()));
     }
@@ -293,8 +318,14 @@ pub(crate) async fn oauth2_redirect(
     // Sanitize the next url (if provided)
     let next_url = sanitize_next_url(next_url.as_deref());
 
-    // Save the csrf state and next url in the session
+    // Save the csrf state, flow provider, pkce verifier and next url in the session
     session.insert(OAUTH2_CSRF_STATE_KEY, csrf_state.secret()).await?;
+    session
+        .insert(OAUTH2_FLOW_PROVIDER_KEY, oauth2_flow_provider(&provider))
+        .await?;
+    session
+        .insert(OAUTH2_PKCE_VERIFIER_KEY, pkce_verifier.secret())
+        .await?;
     session.insert(NEXT_URL_KEY, next_url).await?;
 
     // Redirect to the authorization url
@@ -328,14 +359,19 @@ pub(crate) async fn oidc_callback(
 pub(crate) async fn oidc_redirect(
     session: Session,
     Oidc(oidc_provider): Oidc,
+    Path(provider): Path<OidcProvider>,
     Query(NextUrl { next_url }): Query<NextUrl>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Generate the authorization url
-    let mut builder = oidc_provider.client.authorize_url(
-        oidc::AuthenticationFlow::<oidc::core::CoreResponseType>::AuthorizationCode,
-        oidc::CsrfToken::new_random,
-        oidc::Nonce::new_random,
-    );
+    // Generate the authorization url with an S256 PKCE challenge
+    let (pkce_challenge, pkce_verifier) = oidc::PkceCodeChallenge::new_random_sha256();
+    let mut builder = oidc_provider
+        .client
+        .authorize_url(
+            oidc::AuthenticationFlow::<oidc::core::CoreResponseType>::AuthorizationCode,
+            oidc::CsrfToken::new_random,
+            oidc::Nonce::new_random,
+        )
+        .set_pkce_challenge(pkce_challenge);
     for scope in &oidc_provider.scopes {
         builder = builder.add_scope(oidc::Scope::new(scope.clone()));
     }
@@ -344,8 +380,14 @@ pub(crate) async fn oidc_redirect(
     // Sanitize the next url (if provided)
     let next_url = sanitize_next_url(next_url.as_deref());
 
-    // Save the csrf state, nonce and next url in the session
+    // Save the csrf state, flow provider, pkce verifier, nonce and next url in the session
     session.insert(OAUTH2_CSRF_STATE_KEY, csrf_state.secret()).await?;
+    session
+        .insert(OAUTH2_FLOW_PROVIDER_KEY, oidc_flow_provider(&provider))
+        .await?;
+    session
+        .insert(OAUTH2_PKCE_VERIFIER_KEY, pkce_verifier.secret())
+        .await?;
     session.insert(OIDC_NONCE_KEY, nonce.secret()).await?;
     session.insert(NEXT_URL_KEY, next_url).await?;
 
@@ -490,6 +532,7 @@ trait CallbackAuth {
     async fn authenticate_oauth2(
         &mut self,
         code: String,
+        pkce_verifier: oauth2::PkceCodeVerifier,
         provider: OAuth2Provider,
     ) -> Result<Option<auth::User>, String>;
 
@@ -497,6 +540,7 @@ trait CallbackAuth {
         &mut self,
         code: String,
         nonce: oidc::Nonce,
+        pkce_verifier: oidc::PkceCodeVerifier,
         provider: OidcProvider,
     ) -> Result<Option<auth::User>, String>;
 
@@ -508,26 +552,33 @@ impl CallbackAuth for AuthSession {
     async fn authenticate_oauth2(
         &mut self,
         code: String,
+        pkce_verifier: oauth2::PkceCodeVerifier,
         provider: OAuth2Provider,
     ) -> Result<Option<auth::User>, String> {
-        self.authenticate(Credentials::OAuth2(OAuth2Credentials { code, provider }))
-            .await
-            .map_err(|e| e.to_string())
+        self.authenticate(Credentials::OAuth2(OAuth2Credentials {
+            code,
+            pkce_verifier,
+            provider,
+        }))
+        .await
+        .map_err(|e| format!("{e:#}"))
     }
 
     async fn authenticate_oidc(
         &mut self,
         code: String,
         nonce: oidc::Nonce,
+        pkce_verifier: oidc::PkceCodeVerifier,
         provider: OidcProvider,
     ) -> Result<Option<auth::User>, String> {
         self.authenticate(Credentials::Oidc(OidcCredentials {
             code,
             nonce,
+            pkce_verifier,
             provider,
         }))
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("{e:#}"))
     }
 
     async fn log_in(&mut self, user: &auth::User) -> Result<(), HandlerError> {
@@ -548,15 +599,20 @@ where
     A: CallbackAuth,
     F: FnOnce(String),
 {
-    const OAUTH2_AUTHORIZATION_FAILED: &str = "OAuth2 authorization failed";
+    // Consume all pending external-auth flow keys from the session
+    let (state_in_session, flow_provider, pkce_verifier, _nonce) =
+        consume_pending_auth_flow(&session).await?;
 
-    // Verify oauth2 csrf state
-    let Some(state_in_session) = session.remove::<oauth2::CsrfToken>(OAUTH2_CSRF_STATE_KEY).await?
+    // Verify oauth2 csrf state, originating provider and pkce verifier
+    let (Some(state_in_session), Some(flow_provider), Some(pkce_verifier)) =
+        (state_in_session, flow_provider, pkce_verifier)
     else {
         on_error(OAUTH2_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     };
-    if state_in_session.secret() != state.secret() {
+    if state_in_session.secret() != state.secret()
+        || flow_provider != oauth2_flow_provider(&provider)
+    {
         on_error(OAUTH2_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     }
@@ -570,14 +626,15 @@ where
     let log_in_url = get_log_in_url(next_url.as_deref());
 
     // Authenticate user
-    let user = match auth.authenticate_oauth2(code, provider.clone()).await {
+    let user = match auth.authenticate_oauth2(code, pkce_verifier, provider.clone()).await {
         Ok(Some(user)) => user,
         Ok(None) => {
             on_error(OAUTH2_AUTHORIZATION_FAILED.to_string());
             return Ok(Redirect::to(&log_in_url));
         }
         Err(err) => {
-            on_error(format!("{OAUTH2_AUTHORIZATION_FAILED}: {err}"));
+            warn!(error = %err, provider = provider.as_ref(), "oauth2 authentication failed");
+            on_error(oauth2_authorization_error_message(&err));
             return Ok(Redirect::to(&log_in_url));
         }
     };
@@ -608,24 +665,22 @@ where
     A: CallbackAuth,
     F: FnOnce(String),
 {
-    const OIDC_AUTHORIZATION_FAILED: &str = "OpenID Connect authorization failed";
+    // Consume all pending external-auth flow keys from the session
+    let (state_in_session, flow_provider, pkce_verifier, nonce) =
+        consume_pending_auth_flow(&session).await?;
 
-    // Verify oauth2 csrf state
-    let Some(state_in_session) = session.remove::<oauth2::CsrfToken>(OAUTH2_CSRF_STATE_KEY).await?
+    // Verify oidc csrf state, originating provider, pkce verifier and nonce
+    let (Some(state_in_session), Some(flow_provider), Some(pkce_verifier), Some(nonce)) =
+        (state_in_session, flow_provider, pkce_verifier, nonce)
     else {
         on_error(OIDC_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     };
-    if state_in_session.secret() != state.secret() {
+    if state_in_session.secret() != state.secret() || flow_provider != oidc_flow_provider(&provider)
+    {
         on_error(OIDC_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     }
-
-    // Get oidc nonce from session
-    let Some(nonce) = session.remove::<oidc::Nonce>(OIDC_NONCE_KEY).await? else {
-        on_error(OIDC_AUTHORIZATION_FAILED.to_string());
-        return Ok(Redirect::to(LOG_IN_URL));
-    };
 
     // Get next url from session (if any)
     let next_url = session
@@ -636,13 +691,17 @@ where
     let log_in_url = get_log_in_url(next_url.as_deref());
 
     // Authenticate user
-    let user = match auth.authenticate_oidc(code, nonce, provider.clone()).await {
+    let user = match auth
+        .authenticate_oidc(code, nonce, pkce_verifier, provider.clone())
+        .await
+    {
         Ok(Some(user)) => user,
         Ok(None) => {
             on_error(OIDC_AUTHORIZATION_FAILED.to_string());
             return Ok(Redirect::to(&log_in_url));
         }
         Err(err) => {
+            warn!(error = %err, provider = provider.as_ref(), "oidc authentication failed");
             on_error(oidc_authorization_error_message(&err));
             return Ok(Redirect::to(&log_in_url));
         }
@@ -694,6 +753,28 @@ pub(crate) struct NextUrl {
 
 // Helpers.
 
+/// Removes and returns all pending external-auth flow keys from the session.
+async fn consume_pending_auth_flow(
+    session: &Session,
+) -> Result<
+    (
+        Option<oauth2::CsrfToken>,
+        Option<String>,
+        Option<oauth2::PkceCodeVerifier>,
+        Option<oidc::Nonce>,
+    ),
+    HandlerError,
+> {
+    let csrf_state = session.remove::<oauth2::CsrfToken>(OAUTH2_CSRF_STATE_KEY).await?;
+    let flow_provider = session.remove::<String>(OAUTH2_FLOW_PROVIDER_KEY).await?;
+    let pkce_verifier = session
+        .remove::<oauth2::PkceCodeVerifier>(OAUTH2_PKCE_VERIFIER_KEY)
+        .await?;
+    let nonce = session.remove::<oidc::Nonce>(OIDC_NONCE_KEY).await?;
+
+    Ok((csrf_state, flow_provider, pkce_verifier, nonce))
+}
+
 /// Percent-encode a `next_url` so it can be safely embedded in a query string.
 fn encode_next_url(next_url: &str) -> String {
     utf8_percent_encode(next_url, NON_ALPHANUMERIC).to_string()
@@ -717,6 +798,20 @@ fn get_sign_up_url(next_url: Option<&str>) -> Redirect {
     Redirect::to(&sign_up_url)
 }
 
+/// Formats `OAuth2` authorization errors for user-facing flash messages.
+fn oauth2_authorization_error_message(err: &str) -> String {
+    if err.contains(auth::EXTERNAL_AUTH_EMAIL_NOT_VERIFIED_ERROR) {
+        return OAUTH2_UNVERIFIED_EMAIL_MESSAGE.to_string();
+    }
+
+    OAUTH2_AUTHORIZATION_FAILED.to_string()
+}
+
+/// Formats the session marker binding a pending login flow to an `OAuth2` provider.
+fn oauth2_flow_provider(provider: &OAuth2Provider) -> String {
+    format!("oauth2:{}", provider.as_ref())
+}
+
 /// Formats OIDC authorization errors for user-facing flash messages.
 fn oidc_authorization_error_message(err: &str) -> String {
     if err.contains(auth::EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR) {
@@ -727,7 +822,16 @@ fn oidc_authorization_error_message(err: &str) -> String {
         return LF_SSO_IDENTITY_CONFLICT_MESSAGE.to_string();
     }
 
-    format!("OpenID Connect authorization failed: {err}")
+    if err.contains(auth::EXTERNAL_AUTH_OIDC_EMAIL_NOT_VERIFIED_ERROR) {
+        return LF_SSO_UNVERIFIED_EMAIL_MESSAGE.to_string();
+    }
+
+    OIDC_AUTHORIZATION_FAILED.to_string()
+}
+
+/// Formats the session marker binding a pending login flow to an `Oidc` provider.
+fn oidc_flow_provider(provider: &OidcProvider) -> String {
+    format!("oidc:{}", provider.as_ref())
 }
 
 /// Sanitize a `next_url` value ensuring it points to an in-site path.

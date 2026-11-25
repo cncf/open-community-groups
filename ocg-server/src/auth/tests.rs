@@ -1,11 +1,18 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex, mpsc},
+    time::Duration,
+};
 
 use anyhow::anyhow;
+use axum::{Form, Json, Router, http::StatusCode, routing::post};
 use axum_login::AuthUser;
 use chrono::{Duration as ChronoDuration, Utc};
 use oauth2::reqwest as oauth2_reqwest;
 use openidconnect as oidc;
-use password_auth::generate_hash;
+use password_auth::{VerifyError, generate_hash, is_hash_obsolete};
+use serde_json::json;
+use tokio::{net::TcpListener, sync::oneshot, time::timeout};
 use uuid::Uuid;
 
 use crate::{
@@ -15,6 +22,7 @@ use crate::{
     },
     db::{DynDB, mock::MockDB},
     services::blocking::BlockingExecutor,
+    test_util::wait_until,
     types::user::{GitHubUserProvider, LinuxFoundationUserProvider, UserProvider},
 };
 
@@ -89,6 +97,7 @@ async fn test_authenticate_maps_oauth2_backend_error_to_auth_error() {
         &backend,
         Credentials::OAuth2(OAuth2Credentials {
             code: "code".to_string(),
+            pkce_verifier: oauth2::PkceCodeVerifier::new("verifier".to_string()),
             provider: OAuth2Provider::GitHub,
         }),
     )
@@ -113,6 +122,7 @@ async fn test_authenticate_maps_oidc_backend_error_to_auth_error() {
         Credentials::Oidc(OidcCredentials {
             code: "code".to_string(),
             nonce: oidc::Nonce::new("nonce".to_string()),
+            pkce_verifier: oidc::PkceCodeVerifier::new("verifier".to_string()),
             provider: OidcProvider::LinuxFoundation,
         }),
     )
@@ -123,6 +133,106 @@ async fn test_authenticate_maps_oidc_backend_error_to_auth_error() {
         Err(AuthError(err)) => assert!(err.to_string().contains("oidc provider not found")),
         Ok(_) => panic!("expected oidc backend error"),
     }
+}
+
+#[tokio::test]
+async fn test_authenticate_oauth2_sends_pkce_verifier_in_token_exchange() {
+    // Setup local token endpoint that captures the decoded form body
+    let (token_url, body_rx) = spawn_token_capture_server().await;
+    let mut provider_cfg = sample_oauth2_provider_config();
+    provider_cfg.token_url = token_url;
+    let oauth2_cfg = HashMap::from([(OAuth2Provider::GitHub, provider_cfg)]);
+    let backend = AuthnBackend::new(
+        BlockingExecutor::new(1),
+        Arc::new(MockDB::new()),
+        &HttpClientConfig::default(),
+        &oauth2_cfg,
+        &HashMap::new(),
+    )
+    .await
+    .unwrap();
+
+    // Execute authentication against the fake token endpoint
+    let err = backend
+        .authenticate_oauth2(OAuth2Credentials {
+            code: "test-code".to_string(),
+            pkce_verifier: oauth2::PkceCodeVerifier::new("test-pkce-verifier".to_string()),
+            provider: OAuth2Provider::GitHub,
+        })
+        .await
+        .unwrap_err();
+
+    // Check the endpoint rejection and captured PKCE verifier parameter
+    let err_chain = format!("{err:#}");
+    assert!(err_chain.contains("invalid_grant"), "{err_chain}");
+    let params = timeout(Duration::from_secs(5), body_rx)
+        .await
+        .expect("token endpoint should receive the exchange request")
+        .expect("token request form parameters should be captured");
+    assert_eq!(params.get("code").map(String::as_str), Some("test-code"));
+    assert_eq!(
+        params.get("code_verifier").map(String::as_str),
+        Some("test-pkce-verifier")
+    );
+}
+
+#[tokio::test]
+async fn test_authenticate_oidc_sends_pkce_verifier_in_token_exchange() {
+    // Setup local token endpoint and OIDC client pointing at it
+    let (token_url, body_rx) = spawn_token_capture_server().await;
+    let metadata = oidc::core::CoreProviderMetadata::new(
+        oidc::IssuerUrl::new("https://issuer.example".to_string()).unwrap(),
+        oidc::AuthUrl::new("https://issuer.example/authorize".to_string()).unwrap(),
+        oidc::JsonWebKeySetUrl::new("https://issuer.example/jwks".to_string()).unwrap(),
+        vec![oidc::ResponseTypes::new(vec![
+            oidc::core::CoreResponseType::Code,
+        ])],
+        vec![oidc::core::CoreSubjectIdentifierType::Public],
+        vec![oidc::core::CoreJwsSigningAlgorithm::RsaSsaPkcs1V15Sha256],
+        oidc::EmptyAdditionalProviderMetadata::default(),
+    )
+    .set_token_endpoint(Some(oidc::TokenUrl::new(token_url).unwrap()))
+    .set_jwks(oidc::JsonWebKeySet::new(vec![]));
+    let client = oidc::core::CoreClient::from_provider_metadata(
+        metadata,
+        oidc::ClientId::new("client-id".to_string()),
+        Some(oidc::ClientSecret::new("client-secret".to_string())),
+    )
+    .set_redirect_uri(
+        oidc::RedirectUrl::new("https://example.com/oidc/callback".to_string()).unwrap(),
+    );
+    let mut backend = authn_backend(Arc::new(MockDB::new())).await;
+    backend.oidc_providers.insert(
+        OidcProvider::LinuxFoundation,
+        Arc::new(OidcProviderDetails {
+            client,
+            scopes: vec!["openid".to_string()],
+        }),
+    );
+
+    // Execute authentication against the fake token endpoint
+    let err = backend
+        .authenticate_oidc(OidcCredentials {
+            code: "test-code".to_string(),
+            nonce: oidc::Nonce::new("nonce".to_string()),
+            pkce_verifier: oidc::PkceCodeVerifier::new("test-pkce-verifier".to_string()),
+            provider: OidcProvider::LinuxFoundation,
+        })
+        .await
+        .unwrap_err();
+
+    // Check the endpoint rejection and captured PKCE verifier parameter
+    let err_chain = format!("{err:#}");
+    assert!(err_chain.contains("invalid_grant"), "{err_chain}");
+    let params = timeout(Duration::from_secs(5), body_rx)
+        .await
+        .expect("token endpoint should receive the exchange request")
+        .expect("token request form parameters should be captured");
+    assert_eq!(params.get("code").map(String::as_str), Some("test-code"));
+    assert_eq!(
+        params.get("code_verifier").map(String::as_str),
+        Some("test-pkce-verifier")
+    );
 }
 
 #[tokio::test]
@@ -194,6 +304,44 @@ async fn test_authenticate_password_returns_none_when_user_not_found() {
 
     // Check result
     assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_authenticate_password_runs_dummy_verification_when_password_is_missing() {
+    // Setup database mock returning an SSO-only user without a password hash
+    let user = User {
+        password: None,
+        ..sample_user()
+    };
+    let mut db = MockDB::new();
+    expect_user_by_username(&mut db, Some(user));
+
+    // Check authentication waits for the blocking executor permit and returns None
+    assert_dummy_password_verification_uses_blocking_executor(Arc::new(db)).await;
+}
+
+#[tokio::test]
+async fn test_authenticate_password_runs_dummy_verification_when_user_not_found() {
+    // Setup database mock returning no user
+    let mut db = MockDB::new();
+    expect_user_by_username(&mut db, None);
+
+    // Check authentication waits for the blocking executor permit and returns None
+    assert_dummy_password_verification_uses_blocking_executor(Arc::new(db)).await;
+}
+
+#[test]
+fn test_dummy_password_hash_matches_current_argon2_defaults() {
+    // Check the dummy hash uses current default parameters and executes Argon2id
+    assert_eq!(is_hash_obsolete(DUMMY_PASSWORD_HASH), Ok(false));
+    assert!(
+        verify_password(DUMMY_TEST_PASSWORD, DUMMY_PASSWORD_HASH).is_ok(),
+        "expected dummy hash to verify against its precomputed input (proving full Argon2id work)"
+    );
+    assert!(matches!(
+        verify_password("other-password", DUMMY_PASSWORD_HASH),
+        Err(VerifyError::PasswordInvalid)
+    ));
 }
 
 #[test]
@@ -743,7 +891,7 @@ fn test_external_user_profile_from_oidc_id_token_claims_rejects_incomplete_claim
             None,
             name,
             nickname,
-            "email not verified",
+            EXTERNAL_AUTH_OIDC_EMAIL_NOT_VERIFIED_ERROR,
         ),
         (
             "email unverified",
@@ -751,7 +899,7 @@ fn test_external_user_profile_from_oidc_id_token_claims_rejects_incomplete_claim
             Some(false),
             name,
             nickname,
-            "email not verified",
+            EXTERNAL_AUTH_OIDC_EMAIL_NOT_VERIFIED_ERROR,
         ),
     ];
 
@@ -781,6 +929,62 @@ fn test_user_session_auth_hash_matches_auth_hash_bytes() {
 }
 
 // Helpers.
+
+/// Preimage used to precompute `DUMMY_PASSWORD_HASH` so tests can verify real
+/// Argon2id computation and confirm it still never authenticates a missing or
+/// SSO-only user.
+const DUMMY_TEST_PASSWORD: &str = "ocg-dummy-password";
+
+/// Verifies `authenticate_password` schedules dummy verification on the
+/// blocking executor before returning `None`, even if the caller supplies the
+/// dummy hash preimage.
+async fn assert_dummy_password_verification_uses_blocking_executor(db: DynDB) {
+    // Setup a single-permit executor and occupy its only permit
+    let executor = BlockingExecutor::new(1);
+    let (release_tx, release_rx) = mpsc::channel::<()>();
+    let holder_executor = executor.clone();
+    let holder = tokio::spawn(async move {
+        holder_executor
+            .run(move || {
+                let _ = release_rx.recv();
+            })
+            .await
+            .unwrap();
+    });
+    wait_until(|| executor.available_permits() == 0).await;
+
+    // Start password authentication while the blocking executor permit is held
+    let backend = AuthnBackend::new(
+        executor.clone(),
+        db,
+        &HttpClientConfig::default(),
+        &HashMap::new(),
+        &HashMap::new(),
+    )
+    .await
+    .unwrap();
+    let mut auth_task = tokio::spawn(async move {
+        backend
+            .authenticate_password(PasswordCredentials {
+                password: DUMMY_TEST_PASSWORD.to_string(),
+                username: "test-user".to_string(),
+            })
+            .await
+    });
+
+    // Check authentication stays pending until the blocking permit is released
+    assert!(
+        timeout(Duration::from_millis(50), &mut auth_task).await.is_err(),
+        "dummy password verification should wait for a blocking executor permit"
+    );
+
+    // Release the blocking permit and check authentication resolves to None
+    release_tx.send(()).unwrap();
+    holder.await.unwrap();
+    let result = auth_task.await.unwrap().unwrap();
+    assert!(result.is_none());
+    assert_eq!(executor.available_permits(), 1);
+}
 
 /// Expect the email lookup for the sample profile to return the user.
 fn expect_email_lookup(db: &mut MockDB, user: Option<User>) {
@@ -941,4 +1145,41 @@ fn sample_linuxfoundation_username_only_user_provider(username: &str) -> UserPro
             subject: None,
         }),
     }
+}
+
+/// Starts a local axum server that captures one token exchange form body and rejects it.
+async fn spawn_token_capture_server() -> (String, oneshot::Receiver<HashMap<String, String>>) {
+    // Bind an ephemeral listener and prepare the capture channel
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("token capture listener to bind");
+    let addr = listener
+        .local_addr()
+        .expect("token capture listener address to exist");
+    let (body_tx, body_rx) = oneshot::channel();
+    let body_tx = Arc::new(Mutex::new(Some(body_tx)));
+
+    // Serve a fake token endpoint that records the form parameters and replies invalid_grant
+    let router = Router::new().route(
+        "/token",
+        post(move |Form(params): Form<HashMap<String, String>>| {
+            let body_tx = Arc::clone(&body_tx);
+            async move {
+                if let Some(tx) = body_tx.lock().expect("capture mutex poisoned").take() {
+                    let _ = tx.send(params);
+                }
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "invalid_grant" })),
+                )
+            }
+        }),
+    );
+    tokio::spawn(async move {
+        axum::serve(listener, router)
+            .await
+            .expect("token capture server to serve");
+    });
+
+    (format!("http://{addr}/token"), body_rx)
 }

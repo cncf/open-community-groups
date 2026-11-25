@@ -1742,10 +1742,8 @@ test.describe("site explore events page", () => {
     await groupsResponse;
 
     // Verify the failure is reported, and the page stays on Events.
-    await expect(page.locator(".swal2-popup")).toBeVisible();
     await expect(entitySwitch.getByRole("button", { name: "Events", pressed: true })).toBeVisible();
-    await page.locator(".swal2-confirm").click();
-    await expect(page.locator(".swal2-popup")).toHaveCount(0);
+    await dismissAlert(page, { message: RESULTS_ERROR_MESSAGE });
 
     // Run a search, which swaps the same side of the section, and wait for it to settle.
     const sectionSettled = page.evaluate(
@@ -1762,7 +1760,13 @@ test.describe("site explore events page", () => {
     );
     const search = page.locator("#ts_query");
     await search.fill("alpha");
-    await search.press("Enter");
+    await waitForActionResponse(page, () => search.press("Enter"), {
+      method: "GET",
+      params: { ts_query: "alpha" },
+      pathname: EVENTS_SECTION_PATHNAME,
+      settle: false,
+      status: 200,
+    });
     await sectionSettled;
 
     // Verify the failed press did not pull focus to the switch.
