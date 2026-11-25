@@ -239,6 +239,11 @@ where
     /// [`DBEvent::get_event_utm_allowlist`]
     #[instrument(skip(self), err)]
     async fn get_event_utm_allowlist(&self, event_id: Uuid) -> Result<Option<EventUtmAllowlist>> {
+        async fn fetch(db: &PgClient<'_>, event_id: Uuid) -> Result<Option<EventUtmAllowlist>> {
+            db.fetch_json_opt("select get_event_utm_allowlist($1::uuid)", &[&event_id])
+                .await
+        }
+
         #[cached(
             max_size = 10_000,
             ttl_secs = 60,
@@ -247,8 +252,13 @@ where
             sync_writes = "by_key"
         )]
         async fn inner(db: &PgClient<'_>, event_id: Uuid) -> Result<Option<EventUtmAllowlist>> {
-            db.fetch_json_opt("select get_event_utm_allowlist($1::uuid)", &[&event_id])
-                .await
+            fetch(db, event_id).await
+        }
+
+        // Bypass process-wide caches outside root pooled handles
+        if !self.use_cache() {
+            let db = self.client().await?;
+            return fetch(&db, event_id).await;
         }
 
         // Serve a fresh cached value without checking out a client

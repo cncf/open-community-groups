@@ -294,6 +294,16 @@ pub(crate) trait PgExecutor {
         let value = db.query_opt(sql, params).await?.and_then(|row| row.get(0));
         Ok(value)
     }
+
+    /// Reports whether cached reads may use process-wide `#[cached]` stores.
+    ///
+    /// Returns `true` only on root pooled handles (`PgDB`). Transactions
+    /// (`PgUnitOfWork`) and direct clients (`PgClient`) return `false` so
+    /// transactional reads observe the transaction's own writes and never
+    /// populate shared caches with uncommitted state.
+    fn use_cache(&self) -> bool {
+        false
+    }
 }
 
 #[async_trait]
@@ -301,6 +311,11 @@ impl PgExecutor for PgDB {
     /// [`PgExecutor::client`].
     async fn client(&self) -> Result<PgClient<'_>> {
         Ok(PgClient::Pooled(Box::new(self.pool.get().await?)))
+    }
+
+    /// [`PgExecutor::use_cache`].
+    fn use_cache(&self) -> bool {
+        true
     }
 }
 
