@@ -92,12 +92,15 @@ values (:'eventID', :'userEventSpeakerID', false);
 insert into session (
     session_id,
     event_id,
+    meeting_sync_attempts,
     name,
     session_kind_id,
     starts_at,
 
     ends_at,
+    meeting_create_attempted_at,
     meeting_hosts,
+    meeting_last_provider_host_user,
     meeting_provider_host_user,
     meeting_provider_id,
     meeting_requested,
@@ -105,12 +108,15 @@ insert into session (
 ) values (
     :'sessionCreateID',
     :'eventID',
+    2,
     'Session Payload Create',
     'virtual',
     '2030-08-01 10:00:00+00',
 
     '2030-08-01 10:45:00+00',
+    '2030-07-01 08:30:00+00',
     array['session-payload-event-host@example.com', 'session-payload-explicit@example.com'],
+    'session-payload-last@example.com',
     'session-payload-reserved@example.com',
     'zoom',
     true,
@@ -277,15 +283,18 @@ select is(
                 "session-payload-explicit@example.com",
                 "session-payload-speaker@example.com"
             ],
+            "last_provider_host_user": "session-payload-last@example.com",
             "meeting_provider_id": "zoom",
             "meeting_recording_requested": true,
             "provider_host_user_id": "session-payload-reserved@example.com",
             "session_id": "%s",
+            "sync_attempts": 2,
             "timezone": "Europe/Madrid",
             "topic": "Session Payload Create"
         }$json$,
         :'sessionCreateID'
     )::jsonb || jsonb_build_object(
+        'create_attempted_at', '2030-07-01 08:30:00+00'::timestamptz,
         'starts_at', '2030-08-01 10:00:00+00'::timestamptz,
         'sync_claimed_at', '2030-07-01 09:00:00+00'::timestamptz,
         'sync_state_hash', get_session_meeting_sync_state_hash(:'sessionCreateID')
@@ -305,7 +314,8 @@ select is(
             "password": "deletepass",
             "provider_host_user_id": "session-payload-delete-reserved@example.com",
             "provider_meeting_id": "session-payload-delete",
-            "session_id": "%s"
+            "session_id": "%s",
+            "sync_attempts": 0
         }$json$,
         :'meetingDeleteID',
         :'sessionDeleteID'
@@ -322,7 +332,8 @@ select is(
     format(
         $json${
             "delete": true,
-            "session_id": "%s"
+            "session_id": "%s",
+            "sync_attempts": 0
         }$json$,
         :'sessionDeleteNoMeetingID'
     )::jsonb || jsonb_build_object(
@@ -347,6 +358,7 @@ select is(
             "password": "updatepass",
             "provider_meeting_id": "session-payload-update",
             "session_id": "%s",
+            "sync_attempts": 0,
             "timezone": "Europe/Madrid",
             "topic": "Session Payload Update"
         }$json$,

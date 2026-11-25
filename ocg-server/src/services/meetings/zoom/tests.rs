@@ -28,49 +28,6 @@ const ASSIGNED_HOST: &str = "assigned@example.com";
 const OTHER_HOST: &str = "other@example.com";
 
 #[tokio::test]
-async fn test_create_meeting_creates_when_no_host_has_the_reference() {
-    // Serve a pool where no host owns a meeting stamped with the reference
-    let event_id = Uuid::new_v4();
-    let calls = Arc::new(Mutex::new(Vec::new()));
-    let listings = HashMap::from([
-        (
-            OTHER_HOST.to_string(),
-            vec![json!({"meetings": [{"id": 1, "agenda": "ocg:event:other"}]})],
-        ),
-        (
-            ASSIGNED_HOST.to_string(),
-            vec![json!({"meetings": [{"id": 2, "agenda": "Weekly sync"}]})],
-        ),
-    ]);
-    let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
-    let provider = sample_zoom_provider(&api);
-
-    // Create the meeting
-    let provider_meeting = provider
-        .create_meeting(&sample_meeting(event_id))
-        .await
-        .expect("meeting to be created");
-
-    // Check both hosts were searched before creating on the assigned host
-    let calls = calls.lock().expect("calls lock to be available").clone();
-    assert_eq!(
-        calls,
-        vec![
-            format!("GET /users/{OTHER_HOST}/meetings page_size=300 type=scheduled"),
-            format!("GET /users/{ASSIGNED_HOST}/meetings page_size=300 type=scheduled"),
-            format!("POST /users/{ASSIGNED_HOST}/meetings agenda=ocg:event:{event_id}"),
-        ]
-    );
-    assert_eq!(provider_meeting.id, "9001");
-    assert_eq!(provider_meeting.join_url, "https://zoom.us/j/9001");
-    assert_eq!(
-        provider_meeting.host_user_id.as_deref(),
-        Some(ASSIGNED_HOST)
-    );
-    assert_eq!(provider_meeting.password.as_deref(), Some("created-secret"));
-}
-
-#[tokio::test]
 async fn test_create_meeting_adopts_meeting_found_on_another_host() {
     // Serve a pool where another host owns the meeting from an interrupted creation
     let event_id = Uuid::new_v4();
@@ -91,9 +48,9 @@ async fn test_create_meeting_adopts_meeting_found_on_another_host() {
     let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
     let provider = sample_zoom_provider(&api);
 
-    // Create the meeting
+    // Retry creating the meeting after a prior create attempt
     let provider_meeting = provider
-        .create_meeting(&sample_meeting(event_id))
+        .create_meeting(&sample_retry_meeting(event_id, None))
         .await
         .expect("meeting to be adopted");
 
@@ -117,6 +74,274 @@ async fn test_create_meeting_adopts_meeting_found_on_another_host() {
 }
 
 #[tokio::test]
+async fn test_create_meeting_creates_when_no_host_has_the_reference() {
+    // Serve a pool where no host owns a meeting stamped with the reference
+    let event_id = Uuid::new_v4();
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let listings = HashMap::from([
+        (
+            OTHER_HOST.to_string(),
+            vec![json!({"meetings": [{"id": 1, "agenda": "ocg:event:other"}]})],
+        ),
+        (
+            ASSIGNED_HOST.to_string(),
+            vec![json!({"meetings": [{"id": 2, "agenda": "Weekly sync"}]})],
+        ),
+    ]);
+    let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
+    let provider = sample_zoom_provider(&api);
+
+    // Retry creating the meeting after a prior create attempt
+    let provider_meeting = provider
+        .create_meeting(&sample_retry_meeting(event_id, None))
+        .await
+        .expect("meeting to be created");
+
+    // Check both hosts were searched before creating on the assigned host
+    let calls = calls.lock().expect("calls lock to be available").clone();
+    assert_eq!(
+        calls,
+        vec![
+            format!("GET /users/{OTHER_HOST}/meetings page_size=300 type=scheduled"),
+            format!("GET /users/{ASSIGNED_HOST}/meetings page_size=300 type=scheduled"),
+            format!("POST /users/{ASSIGNED_HOST}/meetings agenda=ocg:event:{event_id}"),
+        ]
+    );
+    assert_eq!(provider_meeting.id, "9001");
+    assert_eq!(provider_meeting.join_url, "https://zoom.us/j/9001");
+    assert_eq!(
+        provider_meeting.host_user_id.as_deref(),
+        Some(ASSIGNED_HOST)
+    );
+    assert_eq!(provider_meeting.password.as_deref(), Some("created-secret"));
+}
+
+#[tokio::test]
+async fn test_create_meeting_fails_instead_of_creating_when_a_listing_fails() {
+    // Serve a pool where one host cannot be listed
+    let event_id = Uuid::new_v4();
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let listings = HashMap::from([(ASSIGNED_HOST.to_string(), vec![json!({"meetings": []})])]);
+    let api = spawn_zoom_api(fake_zoom_api(
+        &calls,
+        listings,
+        Some((OTHER_HOST.to_string(), StatusCode::NOT_FOUND)),
+    ))
+    .await;
+    let provider = sample_zoom_provider(&api);
+
+    // Retry creating the meeting after a prior create attempt
+    let err = provider
+        .create_meeting(&sample_retry_meeting(event_id, None))
+        .await
+        .expect_err("listing failure to fail the creation");
+
+    // Check the failure surfaced before any meeting was created
+    assert!(matches!(err, MeetingProviderError::Client(_)), "{err}");
+    let calls = calls.lock().expect("calls lock to be available").clone();
+    assert_eq!(
+        calls,
+        vec![format!(
+            "GET /users/{OTHER_HOST}/meetings page_size=300 type=scheduled"
+        )]
+    );
+}
+
+#[tokio::test]
+async fn test_create_meeting_falls_back_to_remaining_hosts_after_last_host_miss() {
+    // Serve a pool where the meeting is on OTHER_HOST while last_provider_host_user is ASSIGNED_HOST
+    let event_id = Uuid::new_v4();
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let listings = HashMap::from([
+        (
+            OTHER_HOST.to_string(),
+            vec![json!({"meetings": [{"id": 888, "agenda": format!("ocg:event:{event_id}")}]})],
+        ),
+        (ASSIGNED_HOST.to_string(), vec![json!({"meetings": []})]),
+    ]);
+    let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
+    let provider = sample_zoom_provider(&api);
+
+    // Retry creating the meeting with a sticky host hint pointing to the second pool host
+    let provider_meeting = provider
+        .create_meeting(&sample_retry_meeting(event_id, Some(ASSIGNED_HOST)))
+        .await
+        .expect("meeting to be adopted from fallback host");
+
+    // Check ASSIGNED_HOST was scanned first, then OTHER_HOST was scanned and adopted
+    let calls = calls.lock().expect("calls lock to be available").clone();
+    assert_eq!(
+        calls,
+        vec![
+            format!("GET /users/{ASSIGNED_HOST}/meetings page_size=300 type=scheduled"),
+            format!("GET /users/{OTHER_HOST}/meetings page_size=300 type=scheduled"),
+            format!("PATCH /meetings/888 agenda=ocg:event:{event_id} topic=Test Meeting"),
+            "GET /meetings/888".to_string(),
+        ]
+    );
+    assert_eq!(provider_meeting.id, "888");
+    assert_eq!(provider_meeting.host_user_id.as_deref(), Some(OTHER_HOST));
+}
+
+#[tokio::test]
+async fn test_create_meeting_adopts_meeting_from_last_provider_host_user_removed_from_pool() {
+    // Serve a retired host (no longer in host_pool_users) that still owns the earlier meeting
+    let event_id = Uuid::new_v4();
+    let retired_host = "retired@example.com";
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let listings = HashMap::from([
+        (
+            retired_host.to_string(),
+            vec![json!({"meetings": [{"id": 999, "agenda": format!("ocg:event:{event_id}")}]})],
+        ),
+        (OTHER_HOST.to_string(), vec![json!({"meetings": []})]),
+        (ASSIGNED_HOST.to_string(), vec![json!({"meetings": []})]),
+    ]);
+    let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
+    let provider = sample_zoom_provider(&api);
+
+    // Retry creating the meeting with the retired owner recorded in last_provider_host_user
+    let provider_meeting = provider
+        .create_meeting(&sample_retry_meeting(event_id, Some(retired_host)))
+        .await
+        .expect("meeting to be adopted from retired owner");
+
+    // Check the retired host was scanned first and adopted without listing remaining pool hosts
+    let calls = calls.lock().expect("calls lock to be available").clone();
+    assert_eq!(
+        calls,
+        vec![
+            format!("GET /users/{retired_host}/meetings page_size=300 type=scheduled"),
+            format!("PATCH /meetings/999 agenda=ocg:event:{event_id} topic=Test Meeting"),
+            "GET /meetings/999".to_string(),
+        ]
+    );
+    assert_eq!(provider_meeting.id, "999");
+    assert_eq!(provider_meeting.host_user_id.as_deref(), Some(retired_host));
+}
+
+#[tokio::test]
+async fn test_create_meeting_scans_last_provider_host_user_first_on_retry() {
+    // Serve a pool where the second pool host owns the meeting from the timed-out attempt
+    let event_id = Uuid::new_v4();
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let listings = HashMap::from([
+        (OTHER_HOST.to_string(), vec![json!({"meetings": []})]),
+        (
+            ASSIGNED_HOST.to_string(),
+            vec![json!({"meetings": [{"id": 666, "agenda": format!("ocg:event:{event_id}")}]})],
+        ),
+    ]);
+    let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
+    let provider = sample_zoom_provider(&api);
+
+    // Retry creating the meeting with a case-varied last_provider_host_user matching ASSIGNED_HOST
+    let provider_meeting = provider
+        .create_meeting(&sample_retry_meeting(
+            event_id,
+            Some("ASSIGNED@EXAMPLE.COM"),
+        ))
+        .await
+        .expect("meeting to be adopted on sticky host");
+
+    // Check ASSIGNED_HOST was scanned first and OTHER_HOST was never listed
+    let calls = calls.lock().expect("calls lock to be available").clone();
+    assert_eq!(
+        calls,
+        vec![
+            format!("GET /users/{ASSIGNED_HOST}/meetings page_size=300 type=scheduled"),
+            format!("PATCH /meetings/666 agenda=ocg:event:{event_id} topic=Test Meeting"),
+            "GET /meetings/666".to_string(),
+        ]
+    );
+    assert_eq!(provider_meeting.id, "666");
+    assert_eq!(
+        provider_meeting.host_user_id.as_deref(),
+        Some(ASSIGNED_HOST)
+    );
+}
+
+#[tokio::test]
+async fn test_create_meeting_skips_adoption_scan_on_first_attempt() {
+    // Serve a pool whose hosts would be listed if an adoption scan ran
+    let event_id = Uuid::new_v4();
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let listings = HashMap::from([
+        (
+            OTHER_HOST.to_string(),
+            vec![json!({"meetings": [{"id": 555, "agenda": format!("ocg:event:{event_id}")}]})],
+        ),
+        (ASSIGNED_HOST.to_string(), vec![json!({"meetings": []})]),
+    ]);
+    let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
+    let provider = sample_zoom_provider(&api);
+
+    // Create a brand-new meeting with create_attempted_at unset
+    let provider_meeting = provider
+        .create_meeting(&sample_meeting(event_id))
+        .await
+        .expect("meeting to be created directly");
+
+    // Check no host listings were requested before POST create
+    let calls = calls.lock().expect("calls lock to be available").clone();
+    assert_eq!(
+        calls,
+        vec![format!(
+            "POST /users/{ASSIGNED_HOST}/meetings agenda=ocg:event:{event_id}"
+        )]
+    );
+    assert_eq!(provider_meeting.id, "9001");
+    assert_eq!(provider_meeting.join_url, "https://zoom.us/j/9001");
+    assert_eq!(
+        provider_meeting.host_user_id.as_deref(),
+        Some(ASSIGNED_HOST)
+    );
+    assert_eq!(provider_meeting.password.as_deref(), Some("created-secret"));
+}
+
+#[tokio::test]
+async fn test_create_meeting_skips_deleted_last_provider_host_user_outside_pool() {
+    // Serve a deleted retired host (404 / code 1001) and an empty active host pool
+    let event_id = Uuid::new_v4();
+    let deleted_host = "deleted@example.com";
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let listings = HashMap::from([
+        (OTHER_HOST.to_string(), vec![json!({"meetings": []})]),
+        (ASSIGNED_HOST.to_string(), vec![json!({"meetings": []})]),
+    ]);
+    let api = spawn_zoom_api(fake_zoom_api(
+        &calls,
+        listings,
+        Some((deleted_host.to_string(), StatusCode::NOT_FOUND)),
+    ))
+    .await;
+    let provider = sample_zoom_provider(&api);
+
+    // Retry creating the meeting with the deleted retired host as last_provider_host_user
+    let provider_meeting = provider
+        .create_meeting(&sample_retry_meeting(event_id, Some(deleted_host)))
+        .await
+        .expect("meeting to be created after treating deleted out-of-pool host as a miss");
+
+    // Check the deleted host was treated as a miss and creation proceeded after scanning the pool
+    let calls = calls.lock().expect("calls lock to be available").clone();
+    assert_eq!(
+        calls,
+        vec![
+            format!("GET /users/{deleted_host}/meetings page_size=300 type=scheduled"),
+            format!("GET /users/{OTHER_HOST}/meetings page_size=300 type=scheduled"),
+            format!("GET /users/{ASSIGNED_HOST}/meetings page_size=300 type=scheduled"),
+            format!("POST /users/{ASSIGNED_HOST}/meetings agenda=ocg:event:{event_id}"),
+        ]
+    );
+    assert_eq!(provider_meeting.id, "9001");
+    assert_eq!(
+        provider_meeting.host_user_id.as_deref(),
+        Some(ASSIGNED_HOST)
+    );
+}
+
+#[tokio::test]
 async fn test_create_meeting_walks_every_listing_page() {
     // Serve a host whose stamped meeting is only on the second page
     let event_id = Uuid::new_v4();
@@ -134,9 +359,9 @@ async fn test_create_meeting_walks_every_listing_page() {
     let api = spawn_zoom_api(fake_zoom_api(&calls, listings, None)).await;
     let provider = sample_zoom_provider(&api);
 
-    // Create the meeting
+    // Retry creating the meeting after a prior create attempt
     let provider_meeting = provider
-        .create_meeting(&sample_meeting(event_id))
+        .create_meeting(&sample_retry_meeting(event_id, None))
         .await
         .expect("meeting to be adopted");
 
@@ -155,37 +380,6 @@ async fn test_create_meeting_walks_every_listing_page() {
     );
     assert_eq!(provider_meeting.id, "777");
     assert_eq!(provider_meeting.host_user_id.as_deref(), Some(OTHER_HOST));
-}
-
-#[tokio::test]
-async fn test_create_meeting_fails_instead_of_creating_when_a_listing_fails() {
-    // Serve a pool where one host cannot be listed
-    let event_id = Uuid::new_v4();
-    let calls = Arc::new(Mutex::new(Vec::new()));
-    let listings = HashMap::from([(ASSIGNED_HOST.to_string(), vec![json!({"meetings": []})])]);
-    let api = spawn_zoom_api(fake_zoom_api(
-        &calls,
-        listings,
-        Some((OTHER_HOST.to_string(), StatusCode::NOT_FOUND)),
-    ))
-    .await;
-    let provider = sample_zoom_provider(&api);
-
-    // Create the meeting
-    let err = provider
-        .create_meeting(&sample_meeting(event_id))
-        .await
-        .expect_err("listing failure to fail the creation");
-
-    // Check the failure surfaced before any meeting was created
-    assert!(matches!(err, MeetingProviderError::Client(_)), "{err}");
-    let calls = calls.lock().expect("calls lock to be available").clone();
-    assert_eq!(
-        calls,
-        vec![format!(
-            "GET /users/{OTHER_HOST}/meetings page_size=300 type=scheduled"
-        )]
-    );
 }
 
 #[tokio::test]
@@ -363,6 +557,15 @@ fn sample_meeting(event_id: Uuid) -> Meeting {
         starts_at: Some(chrono::DateTime::from_timestamp(1_900_000_000, 0).unwrap()),
         topic: Some("Test Meeting".to_string()),
         ..Default::default()
+    }
+}
+
+/// Creates a retry-path meeting whose create was already attempted earlier.
+fn sample_retry_meeting(event_id: Uuid, last_provider_host_user: Option<&str>) -> Meeting {
+    Meeting {
+        create_attempted_at: Some(chrono::DateTime::from_timestamp(1_899_999_000, 0).unwrap()),
+        last_provider_host_user: last_provider_host_user.map(str::to_string),
+        ..sample_meeting(event_id)
     }
 }
 

@@ -12,13 +12,14 @@ create or replace function update_meeting(
 declare
     v_claim_held boolean := false;
 begin
-    -- Complete event or session claim when the worker still holds it
+    -- Complete event or session claim without clearing create tracking
     v_claim_held := release_meeting_sync(
         p_event_id,
         p_session_id,
         p_sync_claimed_at,
         p_sync_state_hash,
-        null
+        null,
+        false
     );
 
     -- Update meeting only when the worker still held the claim

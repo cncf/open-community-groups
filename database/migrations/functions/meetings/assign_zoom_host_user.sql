@@ -111,15 +111,21 @@ begin
         return v_provider_host_user_id;
     end if;
 
-    -- Store the selected host only on the matching claim
+    -- Store the selected host on an event claim and remember it for retries
     if p_event_id is not null then
         update event
-        set meeting_provider_host_user = v_provider_host_user_id
+        set
+            meeting_last_provider_host_user = v_provider_host_user_id,
+            meeting_provider_host_user = v_provider_host_user_id
         where event_id = p_event_id
           and meeting_sync_claimed_at = p_sync_claimed_at;
+
+    -- Store the selected host on a session claim and remember it for retries
     elsif p_session_id is not null then
         update session
-        set meeting_provider_host_user = v_provider_host_user_id
+        set
+            meeting_last_provider_host_user = v_provider_host_user_id,
+            meeting_provider_host_user = v_provider_host_user_id
         where session_id = p_session_id
           and meeting_sync_claimed_at = p_sync_claimed_at;
     end if;
@@ -129,6 +135,7 @@ begin
         return null;
     end if;
 
+    -- Return the reserved host user identifier
     return v_provider_host_user_id;
 end;
 $$ language plpgsql;

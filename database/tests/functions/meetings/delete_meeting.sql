@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,8 @@ select plan(16);
 \set communityID '7a060000-0000-0000-0000-000000000001'
 \set eventCategoryID '7a060000-0000-0000-0000-000000000002'
 \set eventID '7a060000-0000-0000-0000-000000000003'
+\set eventMissingMeetingID '7a060000-0000-0000-0000-000000000016'
+\set eventNoMeetingID '7a060000-0000-0000-0000-000000000014'
 \set eventReassignedClaimID '7a060000-0000-0000-0000-000000000004'
 \set eventStaleClaimID '7a060000-0000-0000-0000-000000000005'
 \set groupCategoryID '7a060000-0000-0000-0000-000000000006'
@@ -21,9 +23,11 @@ select plan(16);
 \set meetingEventID '7a060000-0000-0000-0000-000000000008'
 \set meetingEventReassignedID '7a060000-0000-0000-0000-000000000009'
 \set meetingEventStaleClaimID '7a060000-0000-0000-0000-000000000010'
+\set meetingNonexistentID '7a060000-0000-0000-0000-000000000017'
 \set meetingOrphanID '7a060000-0000-0000-0000-000000000011'
 \set meetingSessionID '7a060000-0000-0000-0000-000000000012'
 \set sessionID '7a060000-0000-0000-0000-000000000013'
+\set sessionNoMeetingID '7a060000-0000-0000-0000-000000000015'
 
 -- ============================================================================
 -- SEED DATA
@@ -41,12 +45,50 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', '2025-06-01 11:00:00-04',
     'event_kind_id', 'virtual',
+    'meeting_create_attempted_at', current_timestamp - interval '5 minutes',
     'meeting_in_sync', false,
+    'meeting_last_provider_host_user', 'event-claim-host@example.com',
+    'meeting_next_sync_at', current_timestamp + interval '5 minutes',
     'meeting_provider_host_user', 'event-claim-host@example.com',
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
+    'meeting_sync_attempts', 2,
     'meeting_sync_claimed_at', current_timestamp,
     'starts_at', '2025-06-01 10:00:00-04',
+    'timezone', 'America/New_York'
+));
+
+-- Canceled event whose delete call references a nonexistent meeting row
+select fx_event(:'eventMissingMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'capacity', 100,
+    'ends_at', '2025-06-05 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'meeting_create_attempted_at', current_timestamp - interval '5 minutes',
+    'meeting_in_sync', false,
+    'meeting_last_provider_host_user', 'event-missing-meeting-host@example.com',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_attempts', 2,
+    'meeting_sync_claimed_at', current_timestamp,
+    'starts_at', '2025-06-05 10:00:00-04',
+    'timezone', 'America/New_York'
+));
+
+-- Canceled event without a persisted meeting row whose create was previously attempted
+select fx_event(:'eventNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'capacity', 100,
+    'ends_at', '2025-06-04 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'meeting_create_attempted_at', current_timestamp - interval '5 minutes',
+    'meeting_in_sync', false,
+    'meeting_last_provider_host_user', 'event-no-meeting-host@example.com',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_attempts', 2,
+    'meeting_sync_claimed_at', current_timestamp,
+    'starts_at', '2025-06-04 10:00:00-04',
     'timezone', 'America/New_York'
 ));
 
@@ -136,12 +178,16 @@ insert into meeting (
 insert into session (
     session_id,
     event_id,
+    meeting_sync_attempts,
     name,
     starts_at,
     ends_at,
     session_kind_id,
 
+    meeting_create_attempted_at,
     meeting_in_sync,
+    meeting_last_provider_host_user,
+    meeting_next_sync_at,
     meeting_provider_id,
     meeting_provider_host_user,
     meeting_requested,
@@ -149,14 +195,51 @@ insert into session (
 ) values (
     :'sessionID',
     :'eventID',
+    2,
     'Session Test',
     '2025-06-01 10:00:00-04',
     '2025-06-01 10:30:00-04',
     'virtual',
 
+    current_timestamp - interval '5 minutes',
     false,
+    'session-claim-host@example.com',
+    current_timestamp + interval '5 minutes',
     'zoom',
     'session-claim-host@example.com',
+    true,
+    current_timestamp
+);
+
+-- Session without a persisted meeting row whose create was previously attempted
+insert into session (
+    session_id,
+    event_id,
+    meeting_sync_attempts,
+    name,
+    starts_at,
+    ends_at,
+    session_kind_id,
+
+    meeting_create_attempted_at,
+    meeting_in_sync,
+    meeting_last_provider_host_user,
+    meeting_provider_id,
+    meeting_requested,
+    meeting_sync_claimed_at
+) values (
+    :'sessionNoMeetingID',
+    :'eventID',
+    2,
+    'Session No Meeting Test',
+    '2025-06-01 10:30:00-04',
+    '2025-06-01 11:00:00-04',
+    'virtual',
+
+    current_timestamp - interval '5 minutes',
+    false,
+    'session-no-meeting-host@example.com',
+    'zoom',
     true,
     current_timestamp
 );
@@ -214,13 +297,17 @@ select is(
     'Meeting record deleted for event'
 );
 
--- Should mark event as synced and clear the claim after deleting meeting
+-- Should mark event as synced and clear the claim and create tracking after deleting meeting
 select results_eq(
     format(
         $query$
         select
+            meeting_create_attempted_at,
             meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_next_sync_at,
             meeting_provider_host_user,
+            meeting_sync_attempts,
             meeting_sync_claimed_at
         from event
         where event_id = %L::uuid
@@ -229,12 +316,91 @@ select results_eq(
     ),
     $expected$
     values (
+        null::timestamptz,
         true,
         null::text,
+        null::timestamptz,
+        null::text,
+        0,
         null::timestamptz
     )
     $expected$,
-    'Event marked as synced and claim cleared after deleting meeting'
+    'Event marked as synced and claim, retry state and create tracking cleared after deleting meeting'
+);
+
+-- Should preserve create tracking when delete_meeting references a nonexistent meeting row
+select lives_ok(
+    format(
+        'select delete_meeting(%L, %L, null, (select meeting_sync_claimed_at from event where event_id = %L::uuid), get_event_meeting_sync_state_hash(%L::uuid))',
+        :'meetingNonexistentID',
+        :'eventMissingMeetingID',
+        :'eventMissingMeetingID',
+        :'eventMissingMeetingID'
+    ),
+    'Should complete delete when the referenced meeting row does not exist'
+);
+select results_eq(
+    format(
+        $query$
+        select
+            meeting_create_attempted_at,
+            meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_sync_attempts,
+            meeting_sync_claimed_at
+        from event
+        where event_id = %L::uuid
+        $query$,
+        :'eventMissingMeetingID'
+    ),
+    $expected$
+    values (
+        current_timestamp - interval '5 minutes',
+        true,
+        'event-missing-meeting-host@example.com',
+        0,
+        null::timestamptz
+    )
+    $expected$,
+    'Should preserve create tracking and sticky host when no matching meeting row was deleted'
+);
+
+-- Should preserve create tracking when completing a delete without a persisted meeting row
+select lives_ok(
+    format(
+        'select delete_meeting(null, %L, null, (select meeting_sync_claimed_at from event where event_id = %L::uuid), get_event_meeting_sync_state_hash(%L::uuid))',
+        :'eventNoMeetingID',
+        :'eventNoMeetingID',
+        :'eventNoMeetingID'
+    ),
+    'Should complete delete without a persisted meeting row'
+);
+select results_eq(
+    format(
+        $query$
+        select
+            meeting_create_attempted_at,
+            meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_next_sync_at,
+            meeting_sync_attempts,
+            meeting_sync_claimed_at
+        from event
+        where event_id = %L::uuid
+        $query$,
+        :'eventNoMeetingID'
+    ),
+    $expected$
+    values (
+        current_timestamp - interval '5 minutes',
+        true,
+        'event-no-meeting-host@example.com',
+        null::timestamptz,
+        0,
+        null::timestamptz
+    )
+    $expected$,
+    'Should preserve create tracking and sticky host when no meeting row existed'
 );
 
 -- Should not mark event as synced when delete completes after owner state changed
@@ -337,13 +503,17 @@ select is(
     'Meeting record deleted for session'
 );
 
--- Should mark session as synced and clear the claim after deleting meeting
+-- Should mark session as synced and clear the claim, retry state and create tracking after deleting meeting
 select results_eq(
     format(
         $query$
         select
+            meeting_create_attempted_at,
             meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_next_sync_at,
             meeting_provider_host_user,
+            meeting_sync_attempts,
             meeting_sync_claimed_at
         from session
         where session_id = %L::uuid
@@ -352,12 +522,54 @@ select results_eq(
     ),
     $expected$
     values (
+        null::timestamptz,
         true,
         null::text,
+        null::timestamptz,
+        null::text,
+        0,
         null::timestamptz
     )
     $expected$,
-    'Session marked as synced and claim cleared after deleting meeting'
+    'Session marked as synced and claim, retry state and create tracking cleared after deleting meeting'
+);
+
+-- Should preserve session create tracking when completing a delete without a persisted meeting row
+select lives_ok(
+    format(
+        'select delete_meeting(null, null, %L, (select meeting_sync_claimed_at from session where session_id = %L::uuid), get_session_meeting_sync_state_hash(%L::uuid))',
+        :'sessionNoMeetingID',
+        :'sessionNoMeetingID',
+        :'sessionNoMeetingID'
+    ),
+    'Should complete session delete without a persisted meeting row'
+);
+select results_eq(
+    format(
+        $query$
+        select
+            meeting_create_attempted_at,
+            meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_next_sync_at,
+            meeting_sync_attempts,
+            meeting_sync_claimed_at
+        from session
+        where session_id = %L::uuid
+        $query$,
+        :'sessionNoMeetingID'
+    ),
+    $expected$
+    values (
+        current_timestamp - interval '5 minutes',
+        true,
+        'session-no-meeting-host@example.com',
+        null::timestamptz,
+        0,
+        null::timestamptz
+    )
+    $expected$,
+    'Should preserve session create tracking and sticky host when no meeting row existed'
 );
 
 -- Should not delete orphan meeting when the claim token does not match

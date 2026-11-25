@@ -62,8 +62,12 @@ pub(crate) trait DBMeetings {
         candidate: &MeetingAutoEndCandidate,
     ) -> Result<()>;
 
-    /// Releases a retryable sync claim.
-    async fn release_meeting_sync_claim(&self, meeting: &Meeting) -> Result<()>;
+    /// Releases a retryable sync claim, optionally scheduling a backoff delay.
+    async fn release_meeting_sync_claim(
+        &self,
+        meeting: &Meeting,
+        retry_after: Option<Duration>,
+    ) -> Result<()>;
 
     /// Records the outcome of an auto-end check for a meeting.
     async fn set_meeting_auto_end_check_outcome(
@@ -226,14 +230,28 @@ where
     }
 
     #[instrument(skip(self, meeting), err)]
-    async fn release_meeting_sync_claim(&self, meeting: &Meeting) -> Result<()> {
+    async fn release_meeting_sync_claim(
+        &self,
+        meeting: &Meeting,
+        retry_after: Option<Duration>,
+    ) -> Result<()> {
+        // Convert the optional backoff duration to whole seconds for PostgreSQL
+        let retry_after_seconds = retry_after
+            .map(|delay| {
+                i64::try_from(delay.as_secs())
+                    .map_err(|_| anyhow::anyhow!("retry delay cannot exceed i64::MAX seconds"))
+            })
+            .transpose()?;
+
         self.execute(
-            "select release_meeting_sync_claim($1::uuid, $2::uuid, $3::uuid, $4::timestamptz)",
+            "select release_meeting_sync_claim($1::uuid, $2::uuid, $3::uuid, $4::timestamptz, $5::bigint, $6::text)",
             &[
                 &meeting.event_id,
                 &meeting.meeting_id,
                 &meeting.session_id,
                 &meeting.sync_claimed_at,
+                &retry_after_seconds,
+                &meeting.sync_state_hash,
             ],
         )
         .await

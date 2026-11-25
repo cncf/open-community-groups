@@ -5,15 +5,21 @@
 create or replace function mark_event_meetings_out_of_sync(p_event_id uuid)
 returns void as $$
 begin
-    -- Request provider work for the event meeting
+    -- Request provider work for the event meeting with a fresh retry budget
     update event
-    set meeting_in_sync = false
+    set
+        meeting_in_sync = false,
+        meeting_next_sync_at = null,
+        meeting_sync_attempts = 0
     where event_id = p_event_id
     and meeting_requested = true;
 
-    -- Request provider work for the session meetings
+    -- Request provider work for the session meetings with a fresh retry budget
     update session
-    set meeting_in_sync = false
+    set
+        meeting_in_sync = false,
+        meeting_next_sync_at = null,
+        meeting_sync_attempts = 0
     where event_id = p_event_id
     and meeting_requested = true;
 end;

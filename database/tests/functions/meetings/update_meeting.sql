@@ -39,10 +39,14 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', '2025-06-01 11:00:00-04',
     'event_kind_id', 'virtual',
+    'meeting_create_attempted_at', current_timestamp - interval '5 minutes',
     'meeting_in_sync', false,
+    'meeting_last_provider_host_user', 'event-claim-host@example.com',
+    'meeting_next_sync_at', current_timestamp + interval '5 minutes',
     'meeting_provider_host_user', 'event-claim-host@example.com',
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
+    'meeting_sync_attempts', 3,
     'meeting_sync_claimed_at', current_timestamp,
     'starts_at', '2025-06-01 10:00:00-04',
     'timezone', 'America/New_York'
@@ -132,12 +136,16 @@ insert into meeting (
 insert into session (
     session_id,
     event_id,
+    meeting_sync_attempts,
     name,
     starts_at,
     ends_at,
     session_kind_id,
 
+    meeting_create_attempted_at,
     meeting_in_sync,
+    meeting_last_provider_host_user,
+    meeting_next_sync_at,
     meeting_provider_id,
     meeting_provider_host_user,
     meeting_requested,
@@ -145,12 +153,16 @@ insert into session (
 ) values (
     :'sessionID',
     :'eventID',
+    3,
     'Session Test',
     '2025-06-01 10:00:00-04',
     '2025-06-01 10:30:00-04',
     'virtual',
 
+    current_timestamp - interval '5 minutes',
     false,
+    'session-claim-host@example.com',
+    current_timestamp + interval '5 minutes',
     'zoom',
     'session-claim-host@example.com',
     true,
@@ -195,13 +207,17 @@ select is(
     'Meeting record updated for event'
 );
 
--- Should mark event as synced and clear the claim after updating meeting
+-- Should mark event as synced, clear claim and retry state, and preserve create tracking after updating meeting
 select results_eq(
     format(
         $query$
         select
+            meeting_create_attempted_at,
             meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_next_sync_at,
             meeting_provider_host_user,
+            meeting_sync_attempts,
             meeting_sync_claimed_at
         from event
         where event_id = %L::uuid
@@ -210,12 +226,16 @@ select results_eq(
     ),
     $expected$
     values (
+        current_timestamp - interval '5 minutes',
         true,
+        'event-claim-host@example.com',
+        null::timestamptz,
         null::text,
+        0,
         null::timestamptz
     )
     $expected$,
-    'Event marked as synced and claim cleared after updating meeting'
+    'Event marked as synced, claim and retry state cleared, and create tracking preserved after updating meeting'
 );
 
 -- Should not mark event as synced when update completes after owner state changed
@@ -321,13 +341,17 @@ select is(
     'Meeting record updated for session'
 );
 
--- Should mark session as synced and clear the claim after updating meeting
+-- Should mark session as synced, clear claim and retry state, and preserve create tracking after updating meeting
 select results_eq(
     format(
         $query$
         select
+            meeting_create_attempted_at,
             meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_next_sync_at,
             meeting_provider_host_user,
+            meeting_sync_attempts,
             meeting_sync_claimed_at
         from session
         where session_id = %L::uuid
@@ -336,12 +360,16 @@ select results_eq(
     ),
     $expected$
     values (
+        current_timestamp - interval '5 minutes',
         true,
+        'session-claim-host@example.com',
+        null::timestamptz,
         null::text,
+        0,
         null::timestamptz
     )
     $expected$,
-    'Session marked as synced and claim cleared after updating meeting'
+    'Session marked as synced, claim and retry state cleared, and create tracking preserved after updating meeting'
 );
 
 -- ============================================================================

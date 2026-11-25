@@ -1,3 +1,5 @@
+-- Tests recording meeting synchronization errors and completing claims.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -31,8 +33,11 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 -- Event with scenario-specific state
 select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'event_kind_id', 'virtual',
+    'meeting_create_attempted_at', current_timestamp - interval '5 minutes',
     'meeting_in_sync', false,
+    'meeting_next_sync_at', current_timestamp + interval '5 minutes',
     'meeting_provider_host_user', 'event-claim-host@example.com',
+    'meeting_sync_attempts', 10,
     'meeting_sync_claimed_at', current_timestamp,
     'timezone', 'America/New_York'
 ));
@@ -51,18 +56,24 @@ select fx_event(:'eventStaleClaimID', :'groupID', :'eventCategoryID', jsonb_buil
 insert into session (
     session_id,
     event_id,
+    meeting_sync_attempts,
     name,
     session_kind_id,
+    meeting_create_attempted_at,
     meeting_in_sync,
+    meeting_next_sync_at,
     meeting_provider_host_user,
     meeting_sync_claimed_at,
     starts_at
 ) values (
     :'sessionID',
     :'eventID',
+    10,
     'Test Session',
     'virtual',
+    current_timestamp - interval '5 minutes',
     false,
+    current_timestamp + interval '5 minutes',
     'session-claim-host@example.com',
     current_timestamp,
     '2025-06-01 10:00:00-04'
@@ -107,8 +118,12 @@ select results_eq(
     format(
         $query$
         select
+            meeting_create_attempted_at,
             meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_next_sync_at,
             meeting_provider_host_user,
+            meeting_sync_attempts,
             meeting_sync_claimed_at
         from event
         where event_id = %L::uuid
@@ -117,12 +132,16 @@ select results_eq(
     ),
     $expected$
     values (
+        current_timestamp - interval '5 minutes',
         true,
+        'event-claim-host@example.com',
+        null::timestamptz,
         null::text,
+        0,
         null::timestamptz
     )
     $expected$,
-    'Should mark event as in sync and clear claim'
+    'Should mark event as in sync, clear claim and retry state, and preserve create tracking and last host'
 );
 
 -- Should not set event error as current when owner state changed after claim
@@ -205,8 +224,12 @@ select results_eq(
     format(
         $query$
         select
+            meeting_create_attempted_at,
             meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_next_sync_at,
             meeting_provider_host_user,
+            meeting_sync_attempts,
             meeting_sync_claimed_at
         from session
         where session_id = %L::uuid
@@ -215,12 +238,16 @@ select results_eq(
     ),
     $expected$
     values (
+        current_timestamp - interval '5 minutes',
         true,
+        'session-claim-host@example.com',
+        null::timestamptz,
         null::text,
+        0,
         null::timestamptz
     )
     $expected$,
-    'Should mark session as in sync and clear claim'
+    'Should mark session as in sync, clear claim and retry state, and preserve create tracking and last host'
 );
 
 -- Should not delete orphan meeting when the claim token does not match

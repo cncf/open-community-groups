@@ -7,13 +7,16 @@ create or replace function event_meeting_sync_payload(
 returns jsonb as $$
     select jsonb_strip_nulls(
         jsonb_build_object(
+            'create_attempted_at', p_event.meeting_create_attempted_at,
             'delete', p_delete,
             'event_id', p_event.event_id,
             'join_url', m.join_url,
+            'last_provider_host_user', p_event.meeting_last_provider_host_user,
             'meeting_id', m.meeting_id,
             'password', m.password,
             'provider_host_user_id', p_event.meeting_provider_host_user,
             'provider_meeting_id', m.provider_meeting_id,
+            'sync_attempts', p_event.meeting_sync_attempts,
             'sync_claimed_at', p_event.meeting_sync_claimed_at,
             'sync_state_hash', get_event_meeting_sync_state_hash(p_event.event_id)
         )

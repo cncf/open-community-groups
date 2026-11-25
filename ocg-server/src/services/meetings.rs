@@ -55,6 +55,15 @@ const PAUSE_ON_SYNC_ERROR: Duration = Duration::from_secs(30);
 /// Time to wait when there are no meetings to sync.
 const PAUSE_ON_SYNC_NONE: Duration = Duration::from_secs(30);
 
+/// Maximum number of sync attempts before a retryable failure becomes terminal.
+const SYNC_MAX_ATTEMPTS: i32 = 10;
+
+/// Initial delay before retrying a retryable meeting sync failure.
+const SYNC_RETRY_BASE_DELAY: Duration = Duration::from_mins(1);
+
+/// Maximum delay before retrying a retryable meeting sync failure.
+const SYNC_RETRY_MAX_DELAY: Duration = Duration::from_mins(30);
+
 /// Trait that defines the interface for a meetings provider.
 #[async_trait]
 #[cfg_attr(test, automock)]
@@ -402,10 +411,27 @@ impl MeetingsSyncWorker {
             None => Err(SyncError::ProviderNotConfigured(meeting.provider)),
         };
 
-        // Handle errors based on type
+        // Handle errors based on type and remaining retry budget
         if let Err(err) = result {
-            // Non-retryable: record error and mark as synced
-            if err.is_non_retryable() {
+            // Delete claims (event, session, and orphan) stay on capped backoff on
+            // retryable errors so multi-hour provider outages do not leave canceled
+            // provider meetings live
+            let is_delete = meeting.delete == Some(true);
+            let retries_exhausted = !is_delete && meeting.sync_attempts >= SYNC_MAX_ATTEMPTS;
+
+            // Non-retryable or exhausted retry budget: record error and mark as synced
+            if err.is_non_retryable() || retries_exhausted {
+                // Log retry exhaustion so operators can spot failing provider syncs
+                if !err.is_non_retryable() {
+                    error!(
+                        error = %format_args!("{err:#}"),
+                        event_id = meeting.event_id.as_ref().map(tracing::field::display),
+                        meeting_id = meeting.meeting_id.as_ref().map(tracing::field::display),
+                        session_id = meeting.session_id.as_ref().map(tracing::field::display),
+                        sync_attempts = meeting.sync_attempts,
+                        "meeting sync exhausted retry budget, recording terminal error",
+                    );
+                }
                 self.db
                     .set_meeting_error(&meeting, &format!("{err:#}"))
                     .await
@@ -413,9 +439,11 @@ impl MeetingsSyncWorker {
                 return Ok(true);
             }
 
-            // Retryable error: release the claim so the meeting can be retried
+            // Retryable error within budget: release the claim with exponential backoff
+            let retry_after =
+                Self::retry_delay_for_attempt(meeting.sync_attempts, err.retry_after());
             self.db
-                .release_meeting_sync_claim(&meeting)
+                .release_meeting_sync_claim(&meeting, Some(retry_after))
                 .await
                 .map_err(SyncError::Other)?;
             return Err(err);
@@ -548,6 +576,23 @@ impl MeetingsSyncWorker {
             provider_meeting_id = meeting.provider_meeting_id.as_ref().map(tracing::field::display),
             "meeting synchronized with provider"
         );
+    }
+
+    /// Computes the bounded exponential backoff delay for a failed sync attempt,
+    /// respecting any longer provider-supplied `retry_after` delay up to the cap.
+    fn retry_delay_for_attempt(attempt: i32, retry_after: Option<Duration>) -> Duration {
+        // Compute 2^(attempt - 1) * base delay, clamped to prevent overflow
+        let exponent = u32::try_from(attempt.saturating_sub(1)).unwrap_or(0).min(30);
+        let backoff_secs = SYNC_RETRY_BASE_DELAY
+            .as_secs()
+            .saturating_mul(1u64 << exponent)
+            .min(SYNC_RETRY_MAX_DELAY.as_secs());
+        let backoff = Duration::from_secs(backoff_secs);
+
+        // Respect a longer provider-directed delay without exceeding the retry cap
+        retry_after
+            .map_or(backoff, |delay| backoff.max(delay))
+            .min(SYNC_RETRY_MAX_DELAY)
     }
 
     /// Update a meeting on the provider and mark as synced in database.

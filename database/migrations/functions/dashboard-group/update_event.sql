@@ -10,6 +10,8 @@ create or replace function update_event(
 returns boolean as $$
 declare
     v_before event;
+    v_before_event_sync_hash text;
+    v_before_session_sync_hashes jsonb;
     v_event event;
     v_group "group";
     v_group_external_ready boolean;
@@ -27,6 +29,20 @@ begin
 
     -- Lock the event row whose prior state drives the update
     v_before := lock_manageable_event(p_group_id, p_event_id, false);
+
+    -- Snapshot provider-visible meeting sync hashes so material edits start a
+    -- fresh retry budget while unrelated saves keep existing backoff
+    v_before_event_sync_hash := get_event_meeting_sync_state_hash(p_event_id);
+    select coalesce(
+        jsonb_object_agg(
+            s.session_id::text,
+            get_session_meeting_sync_state_hash(s.session_id)
+        ),
+        '{}'::jsonb
+    )
+    into v_before_session_sync_hashes
+    from session s
+    where s.event_id = p_event_id;
 
     -- Resolve the event columns, ticket configuration and payment rail from the payload
     select *
@@ -266,6 +282,25 @@ begin
 
     -- Synchronize event hosts, speakers, and sponsors
     perform sync_event_hosts_speakers_sponsors(p_event_id, p_event);
+
+    -- Reset event retry backoff when provider-visible meeting inputs changed
+    if get_event_meeting_sync_state_hash(p_event_id) is distinct from v_before_event_sync_hash then
+        update event
+        set
+            meeting_next_sync_at = null,
+            meeting_sync_attempts = 0
+        where event_id = p_event_id;
+    end if;
+
+    -- Reset session retry backoff when provider-visible meeting inputs changed
+    update session s
+    set
+        meeting_next_sync_at = null,
+        meeting_sync_attempts = 0
+    where s.event_id = p_event_id
+    and v_before_session_sync_hashes ? s.session_id::text
+    and get_session_meeting_sync_state_hash(s.session_id)
+        is distinct from (v_before_session_sync_hashes ->> s.session_id::text);
 
     -- Replace event organizers only when the payload submitted them, so omitted
     -- sections preserve the stored attribution

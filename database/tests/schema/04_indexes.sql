@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(139);
+select plan(140);
 
 -- ============================================================================
 -- TESTS
@@ -228,7 +228,7 @@ select index_is_unique('event', 'event_event_id_group_id_key');
 -- Test: event meeting sync claim index should be partial on out of sync or claimed events
 select is(
     (select indexdef from pg_indexes where indexname = 'event_meeting_sync_claim_idx'),
-    'CREATE INDEX event_meeting_sync_claim_idx ON public.event USING btree (meeting_sync_claimed_at) WHERE ((meeting_in_sync = false) OR (meeting_sync_claimed_at IS NOT NULL))',
+    'CREATE INDEX event_meeting_sync_claim_idx ON public.event USING btree (meeting_sync_claimed_at, meeting_next_sync_at) WHERE ((meeting_in_sync = false) OR (meeting_sync_claimed_at IS NOT NULL))',
     'event meeting sync claim index should be partial on out of sync or claimed events'
 );
 
@@ -651,6 +651,13 @@ select indexes_are('meeting', array[
     'meeting_zoom_auto_end_pending_idx'
 ]);
 
+-- Test: meeting sync claim index should cover claim and retry timestamps for orphan meetings
+select is(
+    (select indexdef from pg_indexes where indexname = 'meeting_sync_claim_idx'),
+    'CREATE INDEX meeting_sync_claim_idx ON public.meeting USING btree (sync_claimed_at, next_sync_at) WHERE ((event_id IS NULL) AND (session_id IS NULL))',
+    'meeting sync claim index should cover claim and retry timestamps for orphan meetings'
+);
+
 -- Test: meeting_auto_end_check_outcome indexes should match expected
 select indexes_are('meeting_auto_end_check_outcome', array[
     'meeting_auto_end_check_outcome_pkey',
@@ -749,7 +756,7 @@ select indexes_are('session', array[
 -- Test: session meeting sync claim index should be partial on out of sync or claimed sessions
 select is(
     (select indexdef from pg_indexes where indexname = 'session_meeting_sync_claim_idx'),
-    'CREATE INDEX session_meeting_sync_claim_idx ON public.session USING btree (meeting_sync_claimed_at) WHERE ((meeting_in_sync = false) OR (meeting_sync_claimed_at IS NOT NULL))',
+    'CREATE INDEX session_meeting_sync_claim_idx ON public.session USING btree (meeting_sync_claimed_at, meeting_next_sync_at) WHERE ((meeting_in_sync = false) OR (meeting_sync_claimed_at IS NOT NULL))',
     'session meeting sync claim index should be partial on out of sync or claimed sessions'
 );
 

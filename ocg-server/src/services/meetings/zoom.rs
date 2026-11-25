@@ -2,12 +2,14 @@
 //!
 //! Zoom meeting creation has no idempotency key, so a request that times out
 //! after Zoom accepted it could leave a meeting the caller does not know
-//! about. To make retries safe, every meeting is created with its `agenda`
-//! set to the provider reference (`ocg:event:<id>` or `ocg:session:<id>`) and
-//! a creation first lists the scheduled meetings of every host in
-//! `meetings.zoom.host_pool_users` looking for that marker; a match is adopted
-//! and updated instead of creating a second meeting. Updates and deletes are
-//! idempotent on Zoom's side.
+//! about. To make retries safe without scanning on brand-new meetings, every
+//! meeting is created with its `agenda` set to the provider reference
+//! (`ocg:event:<id>` or `ocg:session:<id>`). When a prior create was already
+//! attempted (`create_attempted_at` is set), creation lists scheduled meetings
+//! across `meetings.zoom.host_pool_users` — checking `last_provider_host_user`
+//! first when present in the pool — looking for that marker; a match is
+//! adopted and updated instead of creating a second meeting. Updates and
+//! deletes are idempotent on Zoom's side.
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -16,8 +18,8 @@ use tracing::info;
 use crate::{
     config::MeetingsZoomConfig,
     services::meetings::zoom::client::{
-        CreateMeetingRequest, UpdateMeetingRequest, ZOOM_MEETING_NOT_FOUND, ZoomClient,
-        ZoomClientError,
+        CreateMeetingRequest, UpdateMeetingRequest, ZOOM_MEETING_NOT_FOUND, ZOOM_USER_NOT_FOUND,
+        ZoomClient, ZoomClientError,
     },
 };
 
@@ -49,22 +51,61 @@ impl ZoomMeetingsProvider {
 
     /// Find the meeting stamped with the reference across the host pool.
     ///
-    /// Returns the Zoom meeting identifier and the pool host that owns it. A
-    /// listing failure for any host is propagated, because skipping that host
-    /// could miss an existing meeting and lead to a duplicate creation.
+    /// When `preferred_host_user` is provided, that host is scanned first (using
+    /// its configured pool casing when still in the pool, or directly when it was
+    /// removed from future allocation) before falling back across the remaining
+    /// pool hosts. If a preferred host outside the pool has been deleted from
+    /// Zoom (`ZOOM_USER_NOT_FOUND`), it is treated as a miss so retries can
+    /// continue across the remaining pool hosts. Returns the Zoom meeting
+    /// identifier and the host that owns it. Any other listing failure is
+    /// propagated, because skipping a host could miss an existing meeting and
+    /// lead to a duplicate creation.
     async fn find_meeting_by_reference(
         &self,
         reference: &str,
+        preferred_host_user: Option<&str>,
     ) -> Result<Option<(i64, String)>, MeetingProviderError> {
-        for host_user_id in &self.host_pool_users {
+        // Scan the preferred host first (preserving configured pool casing when
+        // present) so a retired owner is still checked before remaining pool hosts
+        let preferred_pool_host = preferred_host_user.and_then(|preferred| {
+            self.host_pool_users
+                .iter()
+                .find(|host| host.eq_ignore_ascii_case(preferred))
+                .map(String::as_str)
+        });
+        let first_host = preferred_pool_host.or(preferred_host_user);
+        let first_host_outside_pool =
+            preferred_host_user.is_some() && preferred_pool_host.is_none();
+        let hosts = first_host
+            .into_iter()
+            .map(|host| (host, first_host_outside_pool))
+            .chain(
+                self.host_pool_users
+                    .iter()
+                    .map(String::as_str)
+                    .filter(|host| first_host.is_none_or(|first| !host.eq_ignore_ascii_case(first)))
+                    .map(|host| (host, false)),
+            );
+
+        for (host_user_id, outside_pool) in hosts {
             // Walk every page of this host's scheduled meetings
             let mut next_page_token: Option<String> = None;
             loop {
-                let page = self
+                let page = match self
                     .client
                     .list_meetings(host_user_id, next_page_token.as_deref())
                     .await
-                    .map_err(MeetingProviderError::from)?;
+                {
+                    Ok(page) => page,
+                    // A retired host that no longer exists in Zoom cannot own
+                    // scheduled meetings; treat it as a miss and check the pool
+                    Err(ZoomClientError::Client { code, .. })
+                        if outside_pool && code == ZOOM_USER_NOT_FOUND =>
+                    {
+                        break;
+                    }
+                    Err(err) => return Err(MeetingProviderError::from(err)),
+                };
 
                 // Match on the agenda stamp written at creation
                 if let Some(zoom_meeting) = page
@@ -72,7 +113,7 @@ impl ZoomMeetingsProvider {
                     .iter()
                     .find(|m| m.agenda.as_deref().is_some_and(|agenda| agenda.trim() == reference))
                 {
-                    return Ok(Some((zoom_meeting.id, host_user_id.clone())));
+                    return Ok(Some((zoom_meeting.id, host_user_id.to_string())));
                 }
 
                 // Stop at the last page, which Zoom marks with an empty or missing token
@@ -100,11 +141,13 @@ impl MeetingsProvider for ZoomMeetingsProvider {
         })?;
         let req = CreateMeetingRequest::try_from(meeting).map_err(MeetingProviderError::from)?;
 
-        // Adopt the meeting when an earlier attempt created it but its response
-        // was lost, bringing it up to date and reading back its join details
-        if let Some(reference) = meeting.provider_reference()
-            && let Some((meeting_id, owner_host_user_id)) =
-                self.find_meeting_by_reference(&reference).await?
+        // Scan for an existing meeting only when a prior create was attempted,
+        // checking the last reserved host first before falling back across the pool
+        if meeting.create_attempted_at.is_some()
+            && let Some(reference) = meeting.provider_reference()
+            && let Some((meeting_id, owner_host_user_id)) = self
+                .find_meeting_by_reference(&reference, meeting.last_provider_host_user.as_deref())
+                .await?
         {
             info!(
                 %reference,

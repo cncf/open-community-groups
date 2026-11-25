@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(61);
+select plan(67);
 
 -- ============================================================================
 -- TESTS
@@ -128,10 +128,12 @@ select set_eq(
         ('event', 'event_meeting_join_instructions_check'),
         ('event', 'event_meeting_join_url_check'),
         ('event', 'event_meeting_kind_chk'),
+        ('event', 'event_meeting_last_provider_host_user_check'),
         ('event', 'event_meeting_provider_host_user_check'),
         ('event', 'event_meeting_provider_required_chk'),
         ('event', 'event_meeting_recording_url_check'),
         ('event', 'event_meeting_requested_times_chk'),
+        ('event', 'event_meeting_sync_attempts_check'),
         ('event', 'event_meetup_url_check'),
         ('event', 'event_name_check'),
         ('event', 'event_payment_currency_code_check'),
@@ -320,6 +322,7 @@ select set_eq(
         ('meeting', 'meeting_provider_host_user_id_check'),
         ('meeting', 'meeting_provider_meeting_id_check'),
         ('meeting', 'meeting_recording_urls_not_empty_chk'),
+        ('meeting', 'meeting_sync_attempts_check'),
         ('meeting_auto_end_check_outcome', 'meeting_auto_end_check_outcome_display_name_check'),
         ('meeting_provider', 'meeting_provider_display_name_check'),
         ('notification', 'notification_delivery_attempts_chk'),
@@ -369,10 +372,12 @@ select set_eq(
         ('session', 'session_meeting_error_check'),
         ('session', 'session_meeting_join_instructions_check'),
         ('session', 'session_meeting_join_url_check'),
+        ('session', 'session_meeting_last_provider_host_user_check'),
         ('session', 'session_meeting_provider_host_user_check'),
         ('session', 'session_meeting_provider_required_chk'),
         ('session', 'session_meeting_recording_url_check'),
         ('session', 'session_meeting_requested_times_chk'),
+        ('session', 'session_meeting_sync_attempts_check'),
         ('session', 'session_name_check'),
         ('session_proposal', 'session_proposal_check'),
         ('session_proposal', 'session_proposal_description_check'),
@@ -456,6 +461,8 @@ select col_default_is('event', 'cohosts_revision', '0');
 select col_not_null('event', 'cohosts_revision');
 select col_default_is('event', 'meeting_recording_published', 'false');
 select col_not_null('event', 'meeting_recording_published');
+select col_default_is('event', 'meeting_sync_attempts', '0');
+select col_not_null('event', 'meeting_sync_attempts');
 
 -- Test: event invitation requests may defer the ticket tier to organizer approval
 select col_is_null('event_invitation_request', 'event_ticket_type_id');
@@ -479,9 +486,15 @@ select col_default_is('event_survey', 'status', 'draft');
 select col_not_null('group', 'external_payments_enabled');
 select col_default_is('group', 'external_payments_enabled', 'false');
 
+-- Test: meeting table should keep its required defaults
+select col_default_is('meeting', 'sync_attempts', '0');
+select col_not_null('meeting', 'sync_attempts');
+
 -- Test: session table should keep its required defaults
 select col_default_is('session', 'meeting_recording_published', 'false');
 select col_not_null('session', 'meeting_recording_published');
+select col_default_is('session', 'meeting_sync_attempts', '0');
+select col_not_null('session', 'meeting_sync_attempts');
 
 -- Test: event attendee statuses should match expected values
 select col_default_is('event_attendee', 'check_in_code', 'gen_random_uuid()');

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -82,6 +82,17 @@ select lives_ok(
     'Should accept starts_at without ends_at'
 );
 
+-- Should reject a blank last provider host user
+select throws_ok(
+    format(
+        $$update session set meeting_last_provider_host_user = ' ' where session_id = %L::uuid$$,
+        :'sessionInvalidDatesID'
+    ),
+    '23514',
+    'new row for relation "session" violates check constraint "session_meeting_last_provider_host_user_check"',
+    'Should reject a blank last provider host user'
+);
+
 -- Should reject ends_at before starts_at
 select throws_ok(
     format(
@@ -91,6 +102,17 @@ select throws_ok(
     '23514',
     'new row for relation "session" violates check constraint "session_check"',
     'Should reject ends_at before starts_at'
+);
+
+-- Should reject negative meeting sync attempts
+select throws_ok(
+    format(
+        $$update session set meeting_sync_attempts = -1 where session_id = %L::uuid$$,
+        :'sessionInvalidDatesID'
+    ),
+    '23514',
+    'new row for relation "session" violates check constraint "session_meeting_sync_attempts_check"',
+    'Should reject negative meeting sync attempts'
 );
 
 -- ============================================================================

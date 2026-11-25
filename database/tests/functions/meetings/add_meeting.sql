@@ -35,10 +35,14 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 100,
     'ends_at', '2025-06-01 11:00:00-04',
     'event_kind_id', 'virtual',
+    'meeting_create_attempted_at', current_timestamp - interval '5 minutes',
     'meeting_in_sync', false,
+    'meeting_last_provider_host_user', 'event-claim-host@example.com',
+    'meeting_next_sync_at', current_timestamp + interval '5 minutes',
     'meeting_provider_host_user', 'event-claim-host@example.com',
     'meeting_provider_id', 'zoom',
     'meeting_requested', true,
+    'meeting_sync_attempts', 2,
     'meeting_sync_claimed_at', current_timestamp,
     'starts_at', '2025-06-01 10:00:00-04',
     'timezone', 'America/New_York'
@@ -48,11 +52,15 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
 insert into session (
     session_id,
     event_id,
+    meeting_sync_attempts,
     name,
     starts_at,
     ends_at,
     session_kind_id,
+    meeting_create_attempted_at,
     meeting_in_sync,
+    meeting_last_provider_host_user,
+    meeting_next_sync_at,
     meeting_provider_id,
     meeting_provider_host_user,
     meeting_requested,
@@ -60,11 +68,15 @@ insert into session (
 ) values (
     :'sessionID',
     :'eventID',
+    2,
     'Session Test',
     '2025-06-01 10:00:00-04',
     '2025-06-01 10:30:00-04',
     'virtual',
+    current_timestamp - interval '5 minutes',
     false,
+    'session-claim-host@example.com',
+    current_timestamp + interval '5 minutes',
     'zoom',
     'session-claim-host@example.com',
     true,
@@ -158,13 +170,17 @@ select results_eq(
     'Meeting record created for event with expected fields'
 );
 
--- Should mark event as synced and clear the claim after adding meeting
+-- Should mark event as synced and clear the claim and create tracking after adding meeting
 select results_eq(
     format(
         $query$
         select
+            meeting_create_attempted_at,
             meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_next_sync_at,
             meeting_provider_host_user,
+            meeting_sync_attempts,
             meeting_sync_claimed_at
         from event
         where event_id = %L::uuid
@@ -173,12 +189,16 @@ select results_eq(
     ),
     $expected$
     values (
+        null::timestamptz,
         true,
         null::text,
+        null::timestamptz,
+        null::text,
+        0,
         null::timestamptz
     )
     $expected$,
-    'Event marked as synced and claim cleared after adding meeting'
+    'Event marked as synced and claim, retry state and create tracking cleared after adding meeting'
 );
 
 -- Should not mark event as synced when it changed after being claimed
@@ -319,13 +339,17 @@ select results_eq(
     'Meeting record created for session with expected fields'
 );
 
--- Should mark session as synced and clear the claim after adding meeting
+-- Should mark session as synced and clear the claim and create tracking after adding meeting
 select results_eq(
     format(
         $query$
         select
+            meeting_create_attempted_at,
             meeting_in_sync,
+            meeting_last_provider_host_user,
+            meeting_next_sync_at,
             meeting_provider_host_user,
+            meeting_sync_attempts,
             meeting_sync_claimed_at
         from session
         where session_id = %L::uuid
@@ -334,12 +358,16 @@ select results_eq(
     ),
     $expected$
     values (
+        null::timestamptz,
         true,
         null::text,
+        null::timestamptz,
+        null::text,
+        0,
         null::timestamptz
     )
     $expected$,
-    'Session marked as synced and claim cleared after adding meeting'
+    'Session marked as synced and claim, retry state and create tracking cleared after adding meeting'
 );
 
 -- Reclaim event so the duplicate insert is attempted
