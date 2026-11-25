@@ -33,6 +33,46 @@ const UTM_FIELDS = [
 ];
 
 test.describe("group dashboard settings view", () => {
+  test("markdown editor renders local SVG toolbar icons with zero external CDN requests", async ({
+    organizerGroupPage,
+  }) => {
+    // Track requests to external CDNs previously used by EasyMDE for Font Awesome and spellcheck.
+    const externalCdnRequests = [];
+    const recordCdnRequest = (request) => {
+      const url = request.url();
+      if (/font-?awesome|bootstrapcdn|jsdelivr/i.test(url)) {
+        externalCdnRequests.push(url);
+      }
+    };
+    organizerGroupPage.on("request", recordCdnRequest);
+
+    try {
+      // Load group settings and wait for the EasyMDE toolbar to initialize.
+      await navigateToPath(organizerGroupPage, SETTINGS_PATH);
+      const toolbar = organizerGroupPage.locator("markdown-editor#description .editor-toolbar");
+      await expect(toolbar).toBeVisible();
+
+      // Verify every toolbar button renders a visible local SVG icon with no Font Awesome markup.
+      const buttons = toolbar.getByRole("button");
+      await expect(buttons).toHaveCount(13);
+      await expect(toolbar.locator('i[class*="fa-"]')).toHaveCount(0);
+
+      for (const button of await buttons.all()) {
+        const svg = button.locator("svg");
+        await expect(svg).toHaveCount(1);
+        const box = await svg.boundingBox();
+        expect(box, await button.getAttribute("aria-label")).not.toBeNull();
+        expect(box.width, await button.getAttribute("aria-label")).toBeGreaterThan(0);
+        expect(box.height, await button.getAttribute("aria-label")).toBeGreaterThan(0);
+      }
+
+      // Verify no Font Awesome or jsDelivr requests were made.
+      expect(externalCdnRequests).toEqual([]);
+    } finally {
+      organizerGroupPage.off("request", recordCdnRequest);
+    }
+  });
+
   test("settings form exposes every group configuration area", async ({ organizerGroupPage }) => {
     // Load group settings before checking the complete form contract.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=settings");

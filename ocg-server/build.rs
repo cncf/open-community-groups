@@ -6,8 +6,12 @@ use std::{
 };
 
 use anyhow::{Result, bail};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use sha2::{Digest, Sha256};
 use which::which;
+
+/// Relative path of the shared base template under the templates directory.
+const BASE_TEMPLATE_REL_PATH: &str = "common/base.html";
 
 /// Environment variable that may provide the current commit SHA.
 const COMMIT_SHA_ENV_VAR: &str = "OCG_COMMIT_SHA";
@@ -20,6 +24,15 @@ const DOCS_STATIC_DIST_PATH: &str = "dist/static/docs";
 
 /// Static asset directories whose files should be content hashed.
 const HASHED_ASSET_DIRS: [&str; 2] = ["css", "js"];
+
+/// Opening tag of the static inline import map in the base template.
+const IMPORT_MAP_OPEN_TAG: &str = r#"<script type="importmap">"#;
+
+/// Relative paths of static inline scripts included in rendered templates.
+const INLINE_SCRIPT_PATHS: [&str; 2] = [
+    "common/scripts/deployment_refresh_cleanup.js",
+    "common/scripts/preferences_init.js",
+];
 
 /// Path to the static assets distribution directory. This path contains a copy
 /// of the static assets with some modifications applied (e.g. assets hashed
@@ -97,6 +110,13 @@ fn main() -> Result<()> {
 
     // Replace assets paths references with their hashed versions
     replace_hashed_assets_refs(Path::new(TEMPLATES_DIST_PATH), &assets_manifest)?;
+
+    // Compute build-time CSP script hashes from the final emitted template bytes
+    let csp_script_hashes = compute_csp_script_hashes(Path::new(TEMPLATES_DIST_PATH))?;
+    println!(
+        "cargo:rustc-env=OCG_CSP_SCRIPT_HASHES={}",
+        csp_script_hashes.join(" ")
+    );
 
     // Copy documentation to the dist directory
     copy_dir(Path::new(DOCS_PATH), Path::new(DOCS_STATIC_DIST_PATH))?;
@@ -279,6 +299,108 @@ fn calculate_hash(content: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(content);
     hex::encode(hasher.finalize())
+}
+
+/// Computes sorted CSP SHA-256 hashes for all static inline scripts and the import map.
+fn compute_csp_script_hashes(templates_dist_dir: &Path) -> Result<Vec<String>> {
+    let mut hashes = Vec::with_capacity(INLINE_SCRIPT_PATHS.len() + 1);
+
+    // Normalize line endings to LF before hashing so Askama, build.rs, and browsers agree
+    // even on CRLF checkouts; Askama trims a single trailing LF on included files
+    for rel_path in INLINE_SCRIPT_PATHS {
+        let script_path = templates_dist_dir.join(rel_path);
+        let content = normalize_lf_in_file(&script_path)?;
+        ensure_no_askama_delimiters(&content, &script_path)?;
+        let emitted = strip_single_trailing_lf(&content);
+        hashes.push(csp_sha256_hash(emitted.as_bytes()));
+    }
+
+    // Normalize the base template to LF and hash the static import map inner bytes
+    let base_template_path = templates_dist_dir.join(BASE_TEMPLATE_REL_PATH);
+    let base_template = normalize_lf_in_file(&base_template_path)?;
+    let import_map_body = extract_unique_tag_body(
+        &base_template,
+        IMPORT_MAP_OPEN_TAG,
+        "</script>",
+        &base_template_path,
+    )?;
+    ensure_no_askama_delimiters(import_map_body, &base_template_path)?;
+    if import_map_body != import_map_body.trim() {
+        bail!(
+            "{} contains leading or trailing whitespace inside {IMPORT_MAP_OPEN_TAG}",
+            base_template_path.display()
+        );
+    }
+    hashes.push(csp_sha256_hash(import_map_body.as_bytes()));
+
+    // Sort and deduplicate hashes for deterministic compiler output
+    hashes.sort();
+    hashes.dedup();
+
+    Ok(hashes)
+}
+
+/// Formats a CSP SHA-256 source expression for the given bytes.
+fn csp_sha256_hash(content: &[u8]) -> String {
+    let digest = Sha256::digest(content);
+    format!("'sha256-{}'", BASE64_STANDARD.encode(digest))
+}
+
+/// Rejects Askama delimiters in static script bodies hashed at build time.
+fn ensure_no_askama_delimiters(content: &str, path: &Path) -> Result<()> {
+    for delimiter in ["{{", "{%", "{#"] {
+        if content.contains(delimiter) {
+            bail!(
+                "{} contains Askama delimiter '{delimiter}' inside a build-time hashed script",
+                path.display()
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Extracts the inner text of a tag that must appear exactly once in `content`.
+fn extract_unique_tag_body<'a>(
+    content: &'a str,
+    open_tag: &str,
+    close_tag: &str,
+    path: &Path,
+) -> Result<&'a str> {
+    let Some(start) = content.find(open_tag) else {
+        bail!("{} does not contain {open_tag}", path.display());
+    };
+    let after_open = &content[start + open_tag.len()..];
+    if after_open.contains(open_tag) {
+        bail!("{} contains multiple {open_tag} tags", path.display());
+    }
+    let Some(end) = after_open.find(close_tag) else {
+        bail!(
+            "{} is missing closing {close_tag} for {open_tag}",
+            path.display()
+        );
+    };
+
+    Ok(&after_open[..end])
+}
+
+/// Normalizes CRLF and CR line endings to LF in place and returns the normalized text.
+fn normalize_lf_in_file(path: &Path) -> Result<String> {
+    let original = fs::read_to_string(path)?;
+    if !original.contains('\r') {
+        return Ok(original);
+    }
+
+    // Rewrite the copied dist file so Askama compiles the exact LF bytes hashed here
+    let normalized = original.replace("\r\n", "\n").replace('\r', "\n");
+    fs::write(path, &normalized)?;
+
+    Ok(normalized)
+}
+
+/// Removes a single trailing LF, matching Askama's EOF newline trimming on includes.
+fn strip_single_trailing_lf(content: &str) -> &str {
+    content.strip_suffix('\n').unwrap_or(content)
 }
 
 /// Helper function to copy a directory recursively.

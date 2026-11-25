@@ -15,6 +15,7 @@ import {
   registerHtmxNoEmptyValuesExtensions,
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
+import { registerEnterActivationHandler } from "/static/js/common/keyboard.js";
 import { initializeNavigationState } from "/static/js/common/navigation-state.js";
 import { initializePageLoading } from "/static/js/common/page-loading.js";
 import "/static/js/common/cohosts-line.js";
@@ -26,6 +27,8 @@ import "/static/js/common/themed-new-tab.js";
 registerHtmxNoEmptyValuesExtensions(window.htmx);
 // Wire document-level handlers for alerts, 404 swaps, and deployment checks.
 registerHtmxResponseHandlers(document);
+// Activate keyboard-focusable rows on Enter without HTMX eval trigger filters.
+registerEnterActivationHandler(document);
 // Localize currency values on initial render and after HTMX swaps.
 initializeOnReadyAndHtmxLoad(localizeCurrencyElements);
 // Clear transient dashboard state across HTMX and browser navigation.

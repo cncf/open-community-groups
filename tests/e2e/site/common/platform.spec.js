@@ -1,14 +1,16 @@
 import { expect, test } from "../../fixtures.js";
 
+import { TEST_UPLOAD_ASSET_PATHS } from "../../dashboard/form-helpers.js";
 import { queryE2eDatabase, queryE2eDatabaseRows, sqlString } from "../../database.js";
 import {
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
+  TEST_OPEN_CHECK_IN_EVENT,
   TEST_USER_CREDENTIALS,
 } from "../../seed.js";
-import { buildE2eUrl, logInWithSeededUser, navigateToPath } from "../../utils.js";
+import { buildE2eUrl, logInWithSeededUser, navigateToPath, waitForActionResponse } from "../../utils.js";
 
 const FAVICON_CACHE_CONTROL = "public, max-age=604800";
 const SITE_FAVICON_URL = "https://static.example.com/e2e/favicon.ico";
@@ -88,12 +90,64 @@ const CROSS_SITE_MUTATION_CASES = [
   },
 ];
 
-// Global non-CSP security headers emitted on every server response.
+// Global security headers emitted on every server response.
 const EXPECTED_SECURITY_HEADERS = {
   "permissions-policy": "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
   "referrer-policy": "strict-origin-when-cross-origin",
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
+};
+
+// Required directives in the enforced global Content-Security-Policy header.
+const EXPECTED_CSP_DIRECTIVES = [
+  "default-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https://tiles.openfreemap.org https://nominatim.openstreetmap.org",
+  "worker-src 'self' blob:",
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+];
+
+/**
+ * Installs CSP violation collectors across both document events and Playwright-level console
+ * and requestfailed hooks so violations inside dedicated blob workers are also captured.
+ * @param {import("@playwright/test").Page} page Playwright page.
+ * @returns {Promise<{read: () => Promise<Array<object>>}>} Collector handle.
+ */
+const installCspViolationCollector = async (page) => {
+  const externalViolations = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /content security policy/i.test(message.text())) {
+      externalViolations.push({ source: "console", text: message.text() });
+    }
+  });
+  page.on("requestfailed", (request) => {
+    const errorText = request.failure()?.errorText || "";
+    if (/ERR_BLOCKED_BY_CSP/i.test(errorText)) {
+      externalViolations.push({ errorText, source: "requestfailed", url: request.url() });
+    }
+  });
+  await page.addInitScript(() => {
+    window.__OCG_CSP_VIOLATIONS__ = [];
+    document.addEventListener("securitypolicyviolation", (event) => {
+      window.__OCG_CSP_VIOLATIONS__.push({
+        blockedURI: event.blockedURI,
+        effectiveDirective: event.effectiveDirective,
+        pageUrl: window.location.href,
+        violatedDirective: event.violatedDirective,
+      });
+    });
+  });
+
+  return {
+    read: async () => {
+      const domViolations = await page.evaluate(() => window.__OCG_CSP_VIOLATIONS__ ?? []);
+      return [...domViolations, ...externalViolations];
+    },
+  };
 };
 
 test.describe("site platform request contracts", () => {
@@ -107,7 +161,7 @@ test.describe("site platform request contracts", () => {
     await expect(response.text()).resolves.toBe("");
   });
 
-  test("responses carry global non-CSP security headers and conditional HSTS", async ({ request }) => {
+  test("responses carry global security headers, CSP, and conditional HSTS", async ({ request }) => {
     const isHttps = new URL(buildE2eUrl("/")).protocol === "https:";
 
     // Request a rendered page and the readiness probe.
@@ -116,11 +170,17 @@ test.describe("site platform request contracts", () => {
         const response = await request.get(buildE2eUrl(path));
         const headers = response.headers();
 
-        // Verify the universal security headers are present and HSTS matches the base URL scheme.
+        // Verify the universal security headers, CSP directives, and HSTS scheme behavior.
         expect(response.status()).toBe(200);
         for (const [name, value] of Object.entries(EXPECTED_SECURITY_HEADERS)) {
           expect(headers[name], `${path} ${name}`).toBe(value);
         }
+        const csp = headers["content-security-policy"] || "";
+        expect(csp, `${path} script-src hashes`).toMatch(/script-src 'self'(?: 'sha256-[A-Za-z0-9+/=]+'){3}/);
+        for (const directive of EXPECTED_CSP_DIRECTIVES) {
+          expect(csp, `${path} ${directive}`).toContain(directive);
+        }
+        expect(headers["content-security-policy-report-only"]).toBeUndefined();
         if (isHttps) {
           expect(headers["strict-transport-security"]).toBe("max-age=31536000");
         } else {
@@ -128,6 +188,178 @@ test.describe("site platform request contracts", () => {
         }
       });
     }
+  });
+
+  test("enforced CSP emits zero securitypolicyviolation events across site and dashboard widgets", async ({
+    checkInManagerGroupPage,
+    organizerGroupPage,
+    page,
+  }) => {
+    // Install violation collectors before navigating any page.
+    const pageCsp = await installCspViolationCollector(page);
+    const organizerCsp = await installCspViolationCollector(organizerGroupPage);
+    const checkInCsp = await installCspViolationCollector(checkInManagerGroupPage);
+
+    // Visit public pages, stats, and badge verification.
+    for (const path of [...PUBLIC_PAGE_PATHS, "/stats", "/badges/verify"]) {
+      await test.step(`public page ${path}`, async () => {
+        await navigateToPath(page, path);
+        expect(await pageCsp.read(), path).toEqual([]);
+      });
+    }
+
+    // Visit the standalone docs index (no app shell / HTMX) to verify its linked stylesheets stay CSP-clean.
+    await test.step("standalone docs index", async () => {
+      await page.goto(buildE2eUrl("/static/docs/index.html"), { waitUntil: "load" });
+      await expect(page.locator("#app")).toBeVisible();
+      expect(await pageCsp.read(), "/static/docs/index.html").toEqual([]);
+    });
+
+    // Visit /explore map view with a deterministic basemap whose GeoJSON source URL lives on
+    // tiles.openfreemap.org so MapLibre's blob worker actually fetches under connect-src.
+    await test.step("/explore map view", async () => {
+      const probeSourceUrl = "https://tiles.openfreemap.org/csp-probe.geojson";
+      await page.route(/^https:\/\/tiles\.openfreemap\.org\/styles\/(?:bright|fiord)$/, (route) =>
+        route.fulfill({
+          headers: { "access-control-allow-origin": "*" },
+          json: {
+            layers: [{ id: "csp-probe", source: "csp-probe", type: "circle" }],
+            sources: {
+              "csp-probe": {
+                attribution: "OpenFreeMap",
+                data: probeSourceUrl,
+                type: "geojson",
+              },
+            },
+            version: 8,
+          },
+        }),
+      );
+      await page.route(probeSourceUrl, (route) =>
+        route.fulfill({
+          headers: { "access-control-allow-origin": "*" },
+          json: { features: [], type: "FeatureCollection" },
+        }),
+      );
+      const styleResponse = page.waitForResponse((response) =>
+        /^https:\/\/tiles\.openfreemap\.org\/styles\/(?:bright|fiord)$/.test(response.url()),
+      );
+      const workerSourceResponse = page.waitForResponse(
+        (response) => response.url() === probeSourceUrl && response.status() === 200,
+      );
+      await navigateToPath(page, "/explore?entity=events&view_mode=map");
+      await styleResponse;
+      await workerSourceResponse;
+      await expect(page.locator("#map-box canvas")).toBeVisible({ timeout: 15000 });
+      await expect(page.locator("#map-box").getByText("OpenFreeMap")).toBeVisible({ timeout: 15000 });
+      await page.unroute(/^https:\/\/tiles\.openfreemap\.org\/styles\/(?:bright|fiord)$/);
+      await page.unroute(probeSourceUrl);
+      expect(await pageCsp.read(), "/explore map").toEqual([]);
+    });
+
+    // Visit /explore calendar view and open a "+N more" popover so FullCalendar loads its
+    // embedded fcicons data: font under font-src 'self' data:.
+    await test.step("/explore calendar popover", async () => {
+      const now = new Date();
+      const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 15, 10, 0, 0));
+      const baseTs = Math.floor(nextMonth.getTime() / 1000);
+      const crowdedEvents = Array.from({ length: 5 }, (_, index) => ({
+        community_name: TEST_COMMUNITY_NAME,
+        ends_at: baseTs + (index + 1) * 3600,
+        event_id: `00000000-0000-4000-8000-00000000010${index}`,
+        group_name: "CSP Calendar Group",
+        group_slug: TEST_GROUP_SLUGS.community1.alpha,
+        kind: "virtual",
+        name: `CSP Calendar Event ${index + 1}`,
+        slug: `csp-calendar-event-${index + 1}`,
+        starts_at: baseTs + index * 3600,
+        timezone: "UTC",
+      }));
+      await page.route(/\/explore\/events\/search\?/, (route) =>
+        route.fulfill({ json: { events: crowdedEvents, total: crowdedEvents.length, truncated: false } }),
+      );
+      await navigateToPath(page, "/explore?entity=events&view_mode=calendar");
+      await waitForActionResponse(page, () => page.getByRole("button", { name: "Next month" }).click(), {
+        method: "GET",
+        pathname: "/explore/events/search",
+        status: 200,
+      });
+      await page.locator(".fc-daygrid-more-link").first().click();
+      const popover = page.locator(".fc-popover");
+      await expect(popover).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      await popover.locator(".fc-popover-close").click();
+      await expect(popover).toHaveCount(0);
+      await page.unroute(/\/explore\/events\/search\?/);
+      expect(await pageCsp.read(), "/explore calendar popover").toEqual([]);
+    });
+
+    // Visit /docs so Docsify, copy-code, and scoped styles render under CSP.
+    await test.step("/docs shell", async () => {
+      await navigateToPath(page, "/docs");
+      await expect(page.locator(".ocg-docs-root .sidebar-nav")).toBeVisible({ timeout: 15000 });
+      await expect(page.locator(".ocg-docs-root .content")).toBeVisible({ timeout: 15000 });
+      expect(await pageCsp.read(), "/docs").toEqual([]);
+    });
+
+    // Visit EasyMDE form and wait for the image cropper to decode and render its blob URL image under CSP.
+    await test.step("EasyMDE form and image cropper", async () => {
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=settings");
+      await expect(organizerGroupPage.locator("markdown-editor#description .editor-toolbar")).toBeVisible();
+      const logoField = organizerGroupPage.locator('image-field[name="logo_url"]');
+      await logoField.locator('input[type="file"]').setInputFiles(TEST_UPLOAD_ASSET_PATHS.webpLogoSource);
+      const cropperDialog = logoField.locator("image-cropper").getByRole("dialog");
+      await expect(cropperDialog).toBeVisible();
+      await expect(cropperDialog.getByRole("button", { name: "Apply crop" })).toBeEnabled();
+      await cropperDialog.getByRole("button", { name: "Cancel" }).click();
+      await expect(cropperDialog).toBeHidden();
+      expect(await organizerCsp.read(), "EasyMDE and image cropper").toEqual([]);
+    });
+
+    // Open the real QR check-in scanner modal and verify the real QrScanner blob worker runs
+    // and answers a scan request under worker-src 'self' blob:.
+    await test.step("QR check-in scanner", async () => {
+      await navigateToPath(checkInManagerGroupPage, "/dashboard/group?tab=check-in");
+      await checkInManagerGroupPage
+        .locator("[data-group-check-in-open]", { hasText: TEST_OPEN_CHECK_IN_EVENT.name })
+        .click();
+      const scannerModal = checkInManagerGroupPage.locator("#group-check-in-scanner-modal");
+      await expect(scannerModal).toBeVisible();
+      const workerResult = await checkInManagerGroupPage.evaluate(async () => {
+        const { default: QrScanner } = await import("/static/vendor/js/qr-scanner.min.js");
+        const hadDetector = "BarcodeDetector" in window;
+        const originalDetector = window.BarcodeDetector;
+        let engine;
+        try {
+          // Force the blob Worker fallback even on Chromium builds with native BarcodeDetector.
+          delete window.BarcodeDetector;
+          engine = await QrScanner.createQrEngine();
+          if (!(engine instanceof Worker)) {
+            return { isWorker: false, responded: false };
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = 64;
+          canvas.height = 64;
+          try {
+            await QrScanner.scanImage(canvas, { qrEngine: engine });
+            return { isWorker: true, responded: true };
+          } catch (error) {
+            return { isWorker: true, responded: /no qr code found/i.test(String(error)) };
+          }
+        } finally {
+          if (hadDetector) {
+            window.BarcodeDetector = originalDetector;
+          }
+          if (engine && typeof engine.terminate === "function") {
+            engine.terminate();
+          }
+        }
+      });
+      expect(workerResult).toEqual({ isWorker: true, responded: true });
+      await scannerModal.getByRole("button", { name: "Close", exact: true }).click();
+      await expect(scannerModal).toBeHidden();
+      expect(await checkInCsp.read(), "QR check-in scanner").toEqual([]);
+    });
   });
 
   test("favicon redirects to the configured site favicon with a cacheable response", async ({ request }) => {

@@ -26,13 +26,13 @@
        and build.rs rewrites static asset paths in templates, so the file must hold no Askama
        opening delimiter and no static asset path, not even in a comment. -#}
     <script data-ocg-preferences>
-      {% include "common/scripts/preferences_init.js" -%}
+      {%- include "common/scripts/preferences_init.js" -%}
     </script>
     {# Deployment refresh: drop the cache-busting parameter before HTMX records the page path for
        history, keeping other parameters as sent. The parameter name mirrors
        static/js/common/deployment-version.js. -#}
     <script>
-      {% include "common/scripts/deployment_refresh_cleanup.js" -%}
+      {%- include "common/scripts/deployment_refresh_cleanup.js" -%}
     </script>
 
     {# Page title -#}
@@ -44,6 +44,7 @@
       <meta name="description" content="{{ site_settings.title }}">
     {% endblock head_description -%}
     <meta name="keywords" content="community, groups, events">
+    <meta name="htmx-config" content='{"allowEval":false}'>
     <meta name="ocg-commit-sha" content="{{ crate::router::COMMIT_SHA }}">
 
     {% block canonical_link -%}
@@ -92,16 +93,16 @@
     {# End styles -#}
 
     {# Scripts -#}
-    <script type="importmap">
-      {
-        "imports": {
-          "lit": "/static/vendor/js/lit-all.v3.3.3.min.js",
-          "lit/directives/ref.js": "/static/vendor/js/lit-all.v3.3.3.min.js",
-          "lit/directives/repeat.js": "/static/vendor/js/lit-all.v3.3.3.min.js",
-          "lit/directives/unsafe-html.js": "/static/vendor/js/lit-all.v3.3.3.min.js"
-        }
-      }
-    </script>
+    {# djlint:off #}
+    <script type="importmap">{
+  "imports": {
+    "lit": "/static/vendor/js/lit-all.v3.3.3.min.js",
+    "lit/directives/ref.js": "/static/vendor/js/lit-all.v3.3.3.min.js",
+    "lit/directives/repeat.js": "/static/vendor/js/lit-all.v3.3.3.min.js",
+    "lit/directives/unsafe-html.js": "/static/vendor/js/lit-all.v3.3.3.min.js"
+  }
+}</script>
+    {# djlint:on #}
     <script src="/static/vendor/js/htmx.v2.0.10.min.js"></script>
     <script src="/static/vendor/js/sweetalert2.v11.26.25.min.js"></script>
     <script src="/static/vendor/js/easymde.v2.21.0.min.js"></script>

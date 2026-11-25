@@ -8,23 +8,23 @@
 - text: Description *
 - application:
   - toolbar:
-    - button "Bold": 
-    - button "Italic": 
-    - button "Heading": 
+    - button "Bold"
+    - button "Italic"
+    - button "Heading"
     - text: "|"
-    - button "Quote": 
-    - button "Generic List": 
-    - button "Numbered List": 
-    - button "Check List": 
+    - button "Quote"
+    - button "Generic List"
+    - button "Numbered List"
+    - button "Check List"
     - text: "|"
-    - button "Create Link": 
-    - button "Insert Table": 
-    - button "Insert Horizontal Line": 
+    - button "Create Link"
+    - button "Insert Table"
+    - button "Insert Horizontal Line"
     - text: "|"
-    - button "Toggle Preview": 
+    - button "Toggle Preview"
     - text: "|"
-    - button "Undo": 
-    - button "Redo": 
+    - button "Undo"
+    - button "Redo"
   - text: Temporary community owned by E2E coverage.
 - paragraph: /Brief description of the community's purpose or focus\. This information will be featured in the community site home page\. Max \d+ characters\./
 - checkbox "Restrict group team management to community admins and groups managers"
@@ -133,23 +133,23 @@
 - text: New Group Details
 - application:
   - toolbar:
-    - button "Bold": 
-    - button "Italic": 
-    - button "Heading": 
+    - button "Bold"
+    - button "Italic"
+    - button "Heading"
     - text: "|"
-    - button "Quote": 
-    - button "Generic List": 
-    - button "Numbered List": 
-    - button "Check List": 
+    - button "Quote"
+    - button "Generic List"
+    - button "Numbered List"
+    - button "Check List"
     - text: "|"
-    - button "Create Link": 
-    - button "Insert Table": 
-    - button "Insert Horizontal Line": 
+    - button "Create Link"
+    - button "Insert Table"
+    - button "Insert Horizontal Line"
     - text: "|"
-    - button "Toggle Preview": 
+    - button "Toggle Preview"
     - text: "|"
-    - button "Undo": 
-    - button "Redo": 
+    - button "Undo"
+    - button "Redo"
 - paragraph: Instructions for creating new groups.
 - text: Photos
 - paragraph: "/Upload as many images as you need\\. Maximum size: [\\d,.]+[bkmBKM]+ each\\. Drag and drop thumbnails to change their order before submitting\\./"

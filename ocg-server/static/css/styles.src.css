@@ -2492,13 +2492,22 @@ input:placeholder-shown {
   color: var(--color-stone-900);
 }
 
+.EasyMDEContainer .editor-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.EasyMDEContainer .editor-toolbar button svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+}
+
 .EasyMDEContainer .editor-toolbar button.active,
 .EasyMDEContainer .editor-toolbar button:hover {
   background-color: var(--color-surface);
-}
-
-.EasyMDEContainer .CodeMirror .cm-spell-error:not(.cm-url):not(.cm-comment):not(.cm-tag):not(.cm-word) {
-  background: transparent !important;
 }
 
 .EasyMDEContainer .cm-s-easymde .cm-header-1 {

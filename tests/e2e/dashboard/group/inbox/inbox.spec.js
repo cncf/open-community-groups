@@ -27,18 +27,41 @@ test.describe("group dashboard inbox view", () => {
   test("organizer opens a conversation from the inbox with the keyboard", async ({ organizerGroupPage }) => {
     // Focus the seeded conversation row in the group inbox
     await navigateToPath(organizerGroupPage, INBOX_PATH);
+    expect(await organizerGroupPage.evaluate(() => window.htmx?.config?.allowEval)).toBe(false);
     const conversationRow = organizerGroupPage.locator("[data-inbox-conversation-row]", {
       hasText: TEST_INBOX_CONVERSATION.reply,
     });
     await conversationRow.focus();
     await expect(conversationRow).toBeFocused();
 
-    // Verify Enter opens the conversation thread
-    await organizerGroupPage.keyboard.press("Enter");
-    const organizerThread = organizerGroupPage.locator("#inbox-conversation");
-    await expect(organizerThread.getByRole("heading", { name: TEST_EVENT_NAME })).toBeVisible();
-    await expect(organizerThread).toContainText("E2E Member Two");
-    await expect(organizerThread).toContainText(TEST_INBOX_CONVERSATION.question);
+    // Verify non-Enter keys do not trigger row activation and Enter triggers exactly one request
+    let conversationRequests = 0;
+    const countConversationRequest = (request) => {
+      if (request.url().includes(`/dashboard/group/inbox/${TEST_INBOX_CONVERSATION.id}`)) {
+        conversationRequests += 1;
+      }
+    };
+    organizerGroupPage.on("request", countConversationRequest);
+    try {
+      await organizerGroupPage.keyboard.press("Space");
+      await organizerGroupPage.keyboard.press("ArrowDown");
+      await organizerGroupPage.keyboard.press("Shift+Enter");
+      await organizerGroupPage.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+      await expect(organizerGroupPage.locator("#inbox-conversation")).toHaveCount(0);
+      expect(conversationRequests).toBe(0);
+
+      // Verify Enter opens the conversation thread
+      await organizerGroupPage.keyboard.press("Enter");
+      const organizerThread = organizerGroupPage.locator("#inbox-conversation");
+      await expect(organizerThread.getByRole("heading", { name: TEST_EVENT_NAME })).toBeVisible();
+      await expect(organizerThread).toContainText("E2E Member Two");
+      await expect(organizerThread).toContainText(TEST_INBOX_CONVERSATION.question);
+      expect(conversationRequests).toBe(1);
+    } finally {
+      organizerGroupPage.off("request", countConversationRequest);
+    }
   });
 
   test("organizer conversation header adapts actions and dates to the viewport", async ({

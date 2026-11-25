@@ -130,11 +130,12 @@
             <tr class="cursor-pointer odd:bg-surface even:bg-stone-50/50 border-b border-stone-200 transition-colors hover:bg-stone-100 focus:outline-none focus-visible:bg-stone-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-stone-400 motion-reduce:transition-none"
                 tabindex="0"
                 hx-get="{{ scope.conversation_url(conversation.inbox_conversation_id) }}"
-                hx-trigger="click, keydown[key=='Enter']"
+                hx-trigger="click"
                 hx-target="#dashboard-content"
                 hx-swap="innerHTML show:window:top"
                 hx-indicator="#dashboard-spinner"
                 title="View conversation with {{ counterpart_label(conversation) }}"
+                data-enter-activates
                 data-inbox-conversation-row>
               {% if scope.is_group() -%}
                 {{ event_cell(conversation) -}}

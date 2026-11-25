@@ -1,12 +1,16 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    path::Path,
+    fs,
+    path::{Path, PathBuf},
 };
 
 use askama::Template;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 use crate::{
+    router::CSP_SCRIPT_HASHES,
     templates::{
         PageId,
         auth::UserMenuState,
@@ -20,6 +24,15 @@ use crate::{
         tests::sample_site_settings,
     },
 };
+
+#[test]
+fn test_base_layout_disables_htmx_eval() {
+    // Render the shared base layout
+    let base_html = render_base_layout(sample_site_settings());
+
+    // Check HTMX eval is explicitly disabled in the document head
+    assert!(base_html.contains(r#"<meta name="htmx-config" content='{"allowEval":false}'>"#));
+}
 
 #[test]
 fn test_base_layout_emits_dark_primary_roles() {
@@ -212,14 +225,18 @@ fn test_base_layout_runs_inline_initializers_before_assets() {
         )
     );
 
-    // Check the preferences initializer is emitted once and verbatim
+    // Check the preferences initializer is emitted once and verbatim (normalized to LF)
     assert_eq!(html.matches(preferences_tag).count(), 1);
     let (preferences_html, _) = html[preferences..].split_once("</script>").unwrap();
     let preferences_body = preferences_html.strip_prefix(preferences_tag).unwrap();
-    assert!(
-        preferences_body
-            .contains(include_str!("../../templates/common/scripts/preferences_init.js").trim())
-    );
+    let expected_preferences_source =
+        include_str!("../../templates/common/scripts/preferences_init.js")
+            .replace("\r\n", "\n")
+            .replace('\r', "\n");
+    let expected_preferences_body = expected_preferences_source
+        .strip_suffix('\n')
+        .unwrap_or(&expected_preferences_source);
+    assert_eq!(preferences_body, expected_preferences_body);
 
     // Check the refresh cleanup is a classic synchronous inline script
     assert!(html[refresh_cleanup..].starts_with("<script>"));
@@ -489,7 +506,325 @@ fn test_header_shows_phone_title_only_without_logo_outside_home_and_dashboards()
     }
 }
 
+#[test]
+fn test_rendered_inline_scripts_match_build_time_csp_hashes() {
+    // Check the inline-script extractor catches uppercase tags and data-type lookalikes
+    let synthetic_scripts = extract_non_json_inline_scripts(concat!(
+        r#"<SCRIPT>alert(1)</SCRIPT>"#,
+        r#"<script data-type="application/json">alert(2)</script>"#,
+        r#"<script type="application/json">{"ok":true}</script>"#,
+        r#"<script type="module" src="/static/js/app.js"></script>"#,
+    ));
+    assert_eq!(synthetic_scripts, vec!["alert(1)", "alert(2)"]);
+
+    // Render every standalone layout that emits inline scripts
+    let base_html = render_base_layout(sample_site_settings());
+    let too_many_requests_html = site::too_many_requests::Page {
+        message: "Please wait a moment.".to_string(),
+    }
+    .render()
+    .unwrap();
+
+    // Collect hashes built at compile time
+    let build_hashes: BTreeSet<&str> = CSP_SCRIPT_HASHES.split_whitespace().collect();
+    assert_eq!(
+        build_hashes.len(),
+        3,
+        "expected 2 inline scripts + importmap"
+    );
+
+    // Hash every non-JSON inline <script> emitted by the rendered layouts
+    let mut rendered_hashes = BTreeSet::new();
+    for (page, html) in [
+        ("base.html", base_html.as_str()),
+        (
+            "too_many_requests/page.html",
+            too_many_requests_html.as_str(),
+        ),
+    ] {
+        let scripts = extract_non_json_inline_scripts(html);
+        assert_ne!(scripts.len(), 0, "{page} should contain inline scripts");
+        for body in scripts {
+            let hash = format!(
+                "'sha256-{}'",
+                BASE64_STANDARD.encode(Sha256::digest(body.as_bytes()))
+            );
+            assert!(
+                build_hashes.contains(hash.as_str()),
+                "{page} emitted an inline script whose hash {hash} is not in OCG_CSP_SCRIPT_HASHES ({CSP_SCRIPT_HASHES})"
+            );
+            rendered_hashes.insert(hash);
+        }
+    }
+
+    // Check every build-time hash corresponds to a rendered inline script
+    let rendered_hash_refs: BTreeSet<&str> = rendered_hashes.iter().map(String::as_str).collect();
+    assert_eq!(rendered_hash_refs, build_hashes);
+
+    // Check no other template source defines a non-JSON inline <script>
+    let templates_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("templates");
+    let mut template_files = Vec::new();
+    collect_html_files(&templates_dir, &mut template_files);
+    let mut unexpected_inline_scripts = Vec::new();
+    for file in template_files {
+        let rel = file
+            .strip_prefix(&templates_dir)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        if matches!(
+            rel.as_str(),
+            "common/base.html" | "site/too_many_requests/page.html"
+        ) {
+            continue;
+        }
+        let content = fs::read_to_string(&file).unwrap();
+        let count = extract_non_json_inline_scripts(&content).len();
+        if count > 0 {
+            unexpected_inline_scripts.push(format!("{rel} ({count})"));
+        }
+    }
+    assert!(
+        unexpected_inline_scripts.is_empty(),
+        "found unhashed inline <script> tags outside hashed layouts: {}",
+        unexpected_inline_scripts.join(", ")
+    );
+}
+
+#[test]
+fn test_templates_contain_no_htmx_eval_attributes() {
+    // Check the attribute scanner handles UTF-8 prefixes, mixed case, unquoted values,
+    // eval-bearing hx-vars/hx-request attributes, and attributes following Askama tags
+    let synthetic = concat!(
+        "<!-- … so hx-get=\"/ignored\" -->",
+        "<tr {% if cond %}HX-Trigger=keydown[key=='Enter'] hx-vals=js:{a:1} ",
+        "hx-request=\"js:timeout:500\" hx-vars=\"x:1\" data-hx-on:click=\"foo()\"></tr>",
+    );
+    let synthetic_violations = find_htmx_eval_violations("synthetic.html", synthetic);
+    assert_eq!(synthetic_violations.len(), 5, "{synthetic_violations:?}");
+
+    // Collect all template source files
+    let templates_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("templates");
+    let mut template_files = Vec::new();
+    collect_html_files(&templates_dir, &mut template_files);
+    assert_ne!(template_files.len(), 0);
+
+    // Verify no template relies on HTMX eval features disabled by allowEval: false
+    let mut violations = Vec::new();
+    for file in template_files {
+        let content = fs::read_to_string(&file).unwrap();
+        let rel = file.strip_prefix(&templates_dir).unwrap().display().to_string();
+        violations.extend(find_htmx_eval_violations(&rel, &content));
+    }
+
+    assert!(
+        violations.is_empty(),
+        "found HTMX attributes incompatible with allowEval: false:\n{}",
+        violations.join("\n")
+    );
+}
+
 // Helpers.
+
+/// Recursively collects `.html` files under `dir`.
+fn collect_html_files(dir: &Path, files: &mut Vec<PathBuf>) {
+    for entry in fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            collect_html_files(&path, files);
+        } else if path.extension().is_some_and(|ext| ext == "html") {
+            files.push(path);
+        }
+    }
+}
+
+/// Extracts `(attribute_name, attribute_value)` pairs for `hx-*` and `data-hx-*` attributes.
+fn extract_htmx_attributes(html: &str) -> Vec<(String, String)> {
+    let bytes = html.as_bytes();
+    let mut attrs = Vec::new();
+    let mut index = 0;
+
+    while index + 3 <= bytes.len() {
+        // Scan case-insensitively for `hx-` at an attribute or Askama-tag boundary
+        if !bytes[index..index + 3].eq_ignore_ascii_case(b"hx-") {
+            index += 1;
+            continue;
+        }
+        let start = index;
+        let is_boundary = |byte: u8| byte.is_ascii_whitespace() || byte == b'}';
+        let is_data_prefix = start >= 5
+            && bytes[start - 5..start].eq_ignore_ascii_case(b"data-")
+            && start.checked_sub(6).is_none_or(|i| is_boundary(bytes[i]));
+        let is_attr_start =
+            start.checked_sub(1).is_none_or(|i| is_boundary(bytes[i])) || is_data_prefix;
+        if !is_attr_start {
+            index = start + 3;
+            continue;
+        }
+
+        // Read attribute name through `=`, whitespace, or tag close
+        let mut cursor = start;
+        while cursor < bytes.len()
+            && !bytes[cursor].is_ascii_whitespace()
+            && !matches!(bytes[cursor], b'=' | b'>' | b'/')
+        {
+            cursor += 1;
+        }
+        let name = String::from_utf8_lossy(&bytes[start..cursor]).to_ascii_lowercase();
+
+        // Read optional quoted or unquoted attribute value
+        while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+            cursor += 1;
+        }
+        let mut value = String::new();
+        if cursor < bytes.len() && bytes[cursor] == b'=' {
+            cursor += 1;
+            while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+                cursor += 1;
+            }
+            if cursor < bytes.len() && matches!(bytes[cursor], b'"' | b'\'') {
+                let quote = bytes[cursor];
+                cursor += 1;
+                let value_start = cursor;
+                while cursor < bytes.len() && bytes[cursor] != quote {
+                    cursor += 1;
+                }
+                value = String::from_utf8_lossy(&bytes[value_start..cursor]).into_owned();
+                if cursor < bytes.len() {
+                    cursor += 1;
+                }
+            } else {
+                let value_start = cursor;
+                while cursor < bytes.len()
+                    && !bytes[cursor].is_ascii_whitespace()
+                    && !matches!(bytes[cursor], b'>' | b'/')
+                {
+                    cursor += 1;
+                }
+                value = String::from_utf8_lossy(&bytes[value_start..cursor]).into_owned();
+            }
+        }
+
+        attrs.push((name, value));
+        index = cursor;
+    }
+
+    attrs
+}
+
+/// Extracts inner contents of every inline `<script>` tag that is not `type="application/json"`.
+fn extract_non_json_inline_scripts(html: &str) -> Vec<&str> {
+    let bytes = html.as_bytes();
+    let mut scripts = Vec::new();
+    let mut index = 0;
+
+    while index + 7 <= bytes.len() {
+        // Match `<script` case-insensitively at a valid tag name boundary
+        if !bytes[index..index + 7].eq_ignore_ascii_case(b"<script")
+            || bytes
+                .get(index + 7)
+                .is_some_and(|b| !b.is_ascii_whitespace() && *b != b'>' && *b != b'/')
+        {
+            index += 1;
+            continue;
+        }
+        let Some(tag_end_rel) = html[index..].find('>') else {
+            break;
+        };
+        let open_tag = &html[index..=index + tag_end_rel];
+        let body_start = index + tag_end_rel + 1;
+
+        // Locate matching `</script>` case-insensitively
+        let mut close_pos = None;
+        let mut search = body_start;
+        while search + 9 <= bytes.len() {
+            if bytes[search..search + 9].eq_ignore_ascii_case(b"</script>") {
+                close_pos = Some(search);
+                break;
+            }
+            search += 1;
+        }
+        let Some(body_end) = close_pos else {
+            break;
+        };
+        let body = &html[body_start..body_end];
+
+        // Inspect exact `src` and `type` attributes at attribute boundaries
+        let open_lower = open_tag.to_ascii_lowercase();
+        let has_src = has_html_attribute(&open_lower, "src");
+        let is_json_data = html_attribute_value(&open_lower, "type")
+            .is_some_and(|value| value.trim() == "application/json");
+        if !has_src && !is_json_data {
+            scripts.push(body);
+        }
+
+        index = body_end + "</script>".len();
+    }
+
+    scripts
+}
+
+/// Returns whether a lowercased opening tag contains an attribute with the exact name `attr`.
+fn has_html_attribute(open_tag_lower: &str, attr: &str) -> bool {
+    let bytes = open_tag_lower.as_bytes();
+    let needle = format!("{attr}=");
+    open_tag_lower
+        .match_indices(&needle)
+        .any(|(idx, _)| idx > 0 && (bytes[idx - 1].is_ascii_whitespace() || bytes[idx - 1] == b'}'))
+}
+
+/// Reads the value of an exact attribute from a lowercased opening tag.
+fn html_attribute_value<'a>(open_tag_lower: &'a str, attr: &str) -> Option<&'a str> {
+    let bytes = open_tag_lower.as_bytes();
+    let needle = format!("{attr}=");
+    for (idx, _) in open_tag_lower.match_indices(&needle) {
+        if idx == 0 || (!bytes[idx - 1].is_ascii_whitespace() && bytes[idx - 1] != b'}') {
+            continue;
+        }
+        let mut cursor = idx + needle.len();
+        while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+            cursor += 1;
+        }
+        if cursor < bytes.len() && matches!(bytes[cursor], b'"' | b'\'') {
+            let quote = bytes[cursor];
+            cursor += 1;
+            let start = cursor;
+            while cursor < bytes.len() && bytes[cursor] != quote {
+                cursor += 1;
+            }
+            return Some(&open_tag_lower[start..cursor]);
+        }
+        let start = cursor;
+        while cursor < bytes.len()
+            && !bytes[cursor].is_ascii_whitespace()
+            && !matches!(bytes[cursor], b'>' | b'/')
+        {
+            cursor += 1;
+        }
+        return Some(&open_tag_lower[start..cursor]);
+    }
+    None
+}
+
+/// Reports HTMX attributes in `content` that require `allowEval: true`.
+fn find_htmx_eval_violations(label: &str, content: &str) -> Vec<String> {
+    let mut violations = Vec::new();
+    for (attr, value) in extract_htmx_attributes(content) {
+        if attr == "hx-trigger" && value.contains('[') {
+            violations.push(format!("{label}: hx-trigger eval filter ({value})"));
+        } else if attr == "hx-on" || attr.starts_with("hx-on:") || attr.starts_with("hx-on-") {
+            violations.push(format!("{label}: {attr} requires allowEval"));
+        } else if attr == "hx-vars" {
+            violations.push(format!("{label}: hx-vars requires allowEval"));
+        } else if matches!(attr.as_str(), "hx-vals" | "hx-headers" | "hx-request") {
+            let trimmed = value.trim_start();
+            if trimmed.starts_with("js:") || trimmed.starts_with("javascript:") {
+                violations.push(format!("{label}: {attr} js expression requires allowEval"));
+            }
+        }
+    }
+    violations
+}
 
 /// Renders the shared base layout through the site not found page.
 fn render_base_layout(site_settings: SiteSettings) -> String {

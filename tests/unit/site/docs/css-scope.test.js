@@ -36,4 +36,19 @@ describe("site docs css scope", () => {
         "@keyframes fade{ from { opacity: 0; } to { opacity: 1; } }",
     );
   });
+
+  it("strips cross-origin @import statements while preserving comments and local rules", () => {
+    // Build CSS covering url(), compact quoted, protocol-relative, and unterminated EOF @import forms.
+    const css =
+      '/** License */\n@import url("https://fonts.googleapis.com/css?family=Roboto+Mono");' +
+      '@import"https://cdn.example.test/extra.css";' +
+      '@import url("/static/css/local.css");' +
+      "body { color: black; }" +
+      '@import "//cdn.example.test/trailing.css"';
+
+    // The helper removes only external @import rules.
+    expect(scopeCssRules(css, ".ocg-docs-root")).to.equal(
+      '/** License */\n@import url("/static/css/local.css");.ocg-docs-root{ color: black; }',
+    );
+  });
 });

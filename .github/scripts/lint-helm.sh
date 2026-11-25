@@ -38,6 +38,8 @@ full_feature_args=(
   --set server.rateLimit.enabled=true
   --set server.rateLimit.clientIp.source=header
   --set 'server.redirectHosts={alt.example.com}'
+  --set server.security.cspReportOnly=true
+  --set server.security.cspReportUri=https://reports.example.com/csp
 )
 
 assert_eq() {
@@ -85,6 +87,15 @@ render_and_validate() {
     expected_db_host="db.example.com"
   fi
   assert_eq "$case_name server.yml db.host" "$(yq -r '.db.host' "$server_yml")" "$expected_db_host"
+
+  # Verify security header defaults vs explicit full-feature overrides.
+  if [ "$expect_redirector" = "true" ]; then
+    assert_eq "$case_name server.yml server.security.csp_report_only" "$(yq -r '.server.security.csp_report_only' "$server_yml")" "true"
+    assert_eq "$case_name server.yml server.security.csp_report_uri" "$(yq -r '.server.security.csp_report_uri' "$server_yml")" "https://reports.example.com/csp"
+  else
+    assert_eq "$case_name server.yml server.security.csp_report_only" "$(yq -r '.server.security.csp_report_only' "$server_yml")" "false"
+    assert_eq "$case_name server.yml server.security.csp_report_uri" "$(yq -r '.server.security.csp_report_uri' "$server_yml")" "null"
+  fi
 
   # Guard dbmigrator-config hook contract across both install and upgrade.
   local migrator_hook migrator_delete_policy

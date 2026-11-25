@@ -416,6 +416,106 @@ async fn test_cohost_response_routes_require_settings_write_permission() {
 }
 
 #[tokio::test]
+async fn test_content_security_policy_enforced_report_only_and_svg_sandbox() {
+    // Setup labeled security configurations: (case, report_only, report_uri)
+    let cases = [
+        ("default enforced csp", false, None),
+        (
+            "enforced csp with report uri",
+            false,
+            Some("https://reports.example.test/csp"),
+        ),
+        ("report-only csp", true, None),
+        (
+            "report-only csp with report uri",
+            true,
+            Some("/csp-reports"),
+        ),
+    ];
+
+    for (case, csp_report_only, csp_report_uri) in cases {
+        // Setup router with an SVG stored image and the case security settings
+        let mut images_manager = MockImagesManager::new();
+        images_manager.expect_get().times(1).returning(|_| {
+            Box::pin(async {
+                Ok(Some(Image {
+                    bytes: b"<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>".to_vec(),
+                    content_type: "image/svg+xml".to_string(),
+                }))
+            })
+        });
+        let server_cfg = HttpServerConfig {
+            security: SecurityConfig {
+                csp_report_only,
+                csp_report_uri: csp_report_uri.map(str::to_string),
+            },
+            ..sample_server_cfg("https://example.test")
+        };
+        let router = TestRouterBuilder::new(MockDB::new())
+            .with_images_manager(images_manager)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
+
+        // Check regular responses carry the configured CSP header and directives
+        let (parts, _) = send(
+            router.clone(),
+            request("GET", "/health-check").body(Body::empty()).unwrap(),
+        )
+        .await;
+        assert_eq!(parts.status, StatusCode::OK, "{case}");
+
+        let (expected_header, absent_header) = if csp_report_only {
+            (CONTENT_SECURITY_POLICY_REPORT_ONLY, CONTENT_SECURITY_POLICY)
+        } else {
+            (CONTENT_SECURITY_POLICY, CONTENT_SECURITY_POLICY_REPORT_ONLY)
+        };
+        let csp = parts.headers.get(&expected_header).unwrap().to_str().unwrap();
+        assert!(parts.headers.get(&absent_header).is_none(), "{case}");
+        for directive in [
+            "default-src 'self'",
+            &format!("script-src 'self' {CSP_SCRIPT_HASHES}"),
+            "style-src 'self' 'unsafe-inline'",
+            "font-src 'self' data:",
+            "img-src 'self' data: blob: https:",
+            "connect-src 'self' https://tiles.openfreemap.org https://nominatim.openstreetmap.org",
+            "worker-src 'self' blob:",
+            "frame-ancestors 'none'",
+            "object-src 'none'",
+            "base-uri 'self'",
+        ] {
+            assert!(
+                csp.contains(directive),
+                "{case}: missing {directive} in {csp}"
+            );
+        }
+        if let Some(uri) = csp_report_uri {
+            assert!(
+                csp.ends_with(&format!("; report-uri {uri}")),
+                "{case}: {csp}"
+            );
+        } else {
+            assert!(!csp.contains("report-uri"), "{case}: {csp}");
+        }
+
+        // Check SVG image responses keep their stricter sandbox CSP
+        let svg_request = request("GET", "/images/sample.svg")
+            .header(ORIGIN, "https://example.test")
+            .body(Body::empty())
+            .unwrap();
+        let (svg_parts, _) = send(router, svg_request).await;
+        assert_eq!(svg_parts.status, StatusCode::OK, "{case}");
+        let svg_csp_values: Vec<_> =
+            svg_parts.headers.get_all(CONTENT_SECURITY_POLICY).iter().collect();
+        assert_eq!(
+            svg_csp_values,
+            [&HeaderValue::from_static("sandbox")],
+            "{case}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn test_current_commit_request_runs_handler() {
     // Setup router with commit SHA middleware
     let router = Router::new()
