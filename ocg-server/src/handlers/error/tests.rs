@@ -233,6 +233,24 @@ async fn test_manager_errors_map_to_responses() {
             "",
         ),
         (
+            "ImagesError carried classified rejection",
+            ImagesError::Other(classified_rejection()).into(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "event has reached capacity",
+        ),
+        (
+            "ImagesError::Rejected",
+            ImagesError::Rejected(rejected()).into(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "ticket type is required",
+        ),
+        (
+            "ImagesError internal failure",
+            ImagesError::Other(internal_failure()).into(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "",
+        ),
+        (
             "InboxError carried classified rejection",
             InboxError::Other(classified_rejection()).into(),
             StatusCode::UNPROCESSABLE_ENTITY,

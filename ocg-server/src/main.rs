@@ -26,9 +26,12 @@ use crate::{
     db::{DynDB, PgDB, payments::DBPayments, pool as db_pool},
     services::{
         badges::start_badge_award_workers,
+        blocking::BlockingExecutor,
         enrollment::{DynEnrollmentManager, PgEnrollmentManager, start_enrollment_workers},
         events::{DynEventsManager, PgEventsManager},
-        images::{DbImageStorage, DynImageStorage, S3ImageStorage},
+        images::{
+            DbImageStorage, DefaultImagesManager, DynImageStorage, DynImagesManager, S3ImageStorage,
+        },
         inbox::{DynInboxManager, PgInboxManager},
         meetings::{DynMeetingsProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
@@ -92,6 +95,7 @@ async fn main() -> Result<()> {
 
     // Setup shared worker coordination and core infrastructure
     let background_tasks = BackgroundTasks::new(cfg.server.shutdown_grace_period());
+    let blocking_executor = BlockingExecutor::new(cfg.server.max_blocking_concurrency());
     let db = setup_db(&cfg)?;
     let image_storage = setup_image_storage(&cfg, db.clone());
 
@@ -148,15 +152,17 @@ async fn main() -> Result<()> {
         payments_manager.clone(),
         &cfg.server,
     );
+    let images_manager = setup_images_manager(blocking_executor.clone(), image_storage);
     let inbox_manager = setup_inbox_manager(db.clone());
 
     // Serve HTTP requests until a shutdown signal is received
     run_server(
         activity_tracker,
+        blocking_executor,
         db,
         enrollment_manager,
         events_manager,
-        image_storage,
+        images_manager,
         inbox_manager,
         cfg.meetings.clone(),
         cfg.payments.clone(),
@@ -177,10 +183,11 @@ async fn main() -> Result<()> {
 #[allow(clippy::too_many_arguments)]
 async fn run_server(
     activity_tracker: Arc<ActivityTrackerDB>,
+    blocking_executor: BlockingExecutor,
     db: Arc<PgDB>,
     enrollment_manager: DynEnrollmentManager,
     events_manager: DynEventsManager,
-    image_storage: DynImageStorage,
+    images_manager: DynImagesManager,
     inbox_manager: DynInboxManager,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
@@ -193,10 +200,11 @@ async fn run_server(
     let shutdown_drain = CancellationToken::new();
     let router = router::setup(
         activity_tracker,
+        blocking_executor,
         db,
         enrollment_manager,
         events_manager,
-        image_storage,
+        images_manager,
         inbox_manager,
         meetings_cfg,
         payments_cfg,
@@ -291,6 +299,14 @@ fn setup_image_storage(cfg: &Config, db: Arc<PgDB>) -> DynImageStorage {
         ImageStorageConfig::Db => Arc::new(DbImageStorage::new(db)),
         ImageStorageConfig::S3(s3_cfg) => Arc::new(S3ImageStorage::new(s3_cfg)),
     }
+}
+
+/// Configure the images manager.
+fn setup_images_manager(
+    blocking_executor: BlockingExecutor,
+    image_storage: DynImageStorage,
+) -> DynImagesManager {
+    Arc::new(DefaultImagesManager::new(blocking_executor, image_storage))
 }
 
 /// Configure the inbox manager.

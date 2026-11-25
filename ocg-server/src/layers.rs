@@ -12,7 +12,7 @@
 //! non-singleton `#[cached]` attribute specifies `max_size`.
 
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     fs,
     path::{Path, PathBuf},
 };
@@ -66,6 +66,32 @@ const DB_OPERATION_TYPES: &[&str] = &[
 /// `(source file, operation type)`. Empty: every workflow that built one has
 /// moved behind a manager, and new handler code never adds an entry.
 const HANDLER_OPERATION_TYPE_ALLOWANCES: &[(&str, &str)] = &[];
+
+/// Provider traits, trait objects, constructors, and concrete adapters that
+/// handlers must not reference directly. Handlers talk to managers instead.
+const PROVIDER_TYPES: &[&str] = &[
+    "services::images::DbImageStorage",
+    "services::images::DynImageStorage",
+    "services::images::ImageStorage",
+    "services::images::MockImageStorage",
+    "services::images::NewImage",
+    "services::images::S3ImageStorage",
+    "services::images::db::DbImageStorage",
+    "services::images::s3::S3ImageStorage",
+    "services::meetings::DynMeetingsProvider",
+    "services::meetings::DynMeetingsProviders",
+    "services::meetings::MeetingsProvider",
+    "services::meetings::MockMeetingsProvider",
+    "services::meetings::zoom::ZoomMeetingsProvider",
+    "services::meetings::zoom::client::ZoomClient",
+    "services::notifications::DynEmailSender",
+    "services::notifications::EmailSender",
+    "services::notifications::LettreEmailSender",
+    "services::notifications::MockEmailSender",
+    "services::payments::DynPaymentsProvider",
+    "services::payments::MockPaymentsProvider",
+    "services::payments::build_payments_provider",
+];
 
 /// Parsed `#[cached]` attribute found in a Rust source file.
 struct CachedAttribute {
@@ -683,6 +709,94 @@ fn crate_paths_flattens_use_trees_and_inline_paths() {
 }
 
 #[test]
+fn handler_provider_check_rejects_image_storage_in_handlers() {
+    // Exercise provider imports and manager imports in handler sources
+    let cases: &[(&str, &str, &[&str])] = &[
+        (
+            "use import of DynImageStorage fails",
+            "use crate::services::images::DynImageStorage;",
+            &[
+                "handlers/sample.rs references provider type `crate::services::images::DynImageStorage`",
+            ],
+        ),
+        (
+            "inline DynImageStorage and storage provider types fail",
+            r"
+                use crate::services::images::{ImageStorage, MockImageStorage, NewImage};
+                fn serve(_: crate::services::images::DynImageStorage) {}
+            ",
+            &[
+                "handlers/sample.rs references provider type `crate::services::images::DynImageStorage`",
+                "handlers/sample.rs references provider type `crate::services::images::ImageStorage`",
+                "handlers/sample.rs references provider type `crate::services::images::MockImageStorage`",
+                "handlers/sample.rs references provider type `crate::services::images::NewImage`",
+            ],
+        ),
+        (
+            "associated item calls and other provider types fail",
+            r"
+                fn wire() {
+                    let _ = crate::services::images::DbImageStorage::new;
+                    let _ = crate::services::meetings::zoom::ZoomMeetingsProvider::new;
+                    let _ = crate::services::payments::build_payments_provider;
+                }
+            ",
+            &[
+                "handlers/sample.rs references provider type `crate::services::images::DbImageStorage`",
+                "handlers/sample.rs references provider type `crate::services::meetings::zoom::ZoomMeetingsProvider`",
+                "handlers/sample.rs references provider type `crate::services::payments::build_payments_provider`",
+            ],
+        ),
+        (
+            "module-qualified and aliased provider references fail",
+            r"
+                use crate::services;
+                use crate::services::images;
+                use crate::services::images as img;
+                use crate::services::meetings::zoom;
+                use images::MockImageStorage;
+
+                fn bad(
+                    _: images::DynImageStorage,
+                    _: services::notifications::DynEmailSender,
+                ) {
+                    let _ = img::DbImageStorage::new;
+                    let _ = zoom::ZoomMeetingsProvider::new;
+                }
+            ",
+            &[
+                "handlers/sample.rs references provider type `crate::services::images::DbImageStorage`",
+                "handlers/sample.rs references provider type `crate::services::images::DynImageStorage`",
+                "handlers/sample.rs references provider type `crate::services::images::MockImageStorage`",
+                "handlers/sample.rs references provider type `crate::services::meetings::zoom::ZoomMeetingsProvider`",
+                "handlers/sample.rs references provider type `crate::services::notifications::DynEmailSender`",
+            ],
+        ),
+        (
+            "module-qualified manager references and non-provider imports pass",
+            r"
+                use crate::services::images::{self, DynImagesManager, MockImagesManager};
+                fn ok(_: images::UploadImageInput, _: DynImagesManager, _: MockImagesManager) {}
+            ",
+            &[],
+        ),
+        (
+            "DynImagesManager and MockImagesManager pass",
+            "use crate::services::images::{DynImagesManager, MockImagesManager, UploadImageInput};",
+            &[],
+        ),
+    ];
+
+    // Check every fixture matches the expected provider-type violations
+    for (case, source, expected) in cases {
+        let paths = crate_paths(source);
+        let violations = handler_provider_violations("handlers/sample.rs", &paths);
+        let expected: Vec<String> = expected.iter().map(|entry| (*entry).to_string()).collect();
+        assert_eq!(violations, expected, "{case}");
+    }
+}
+
+#[test]
 fn keyed_cached_reads_specify_max_size() {
     let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
 
@@ -801,6 +915,14 @@ fn layer_dependencies_follow_backend_rules() {
                 allowance.0, allowance.1
             ));
         }
+    }
+
+    // Check handlers do not reference storage or external provider types directly
+    for file in files.iter().filter(|file| file.layer == "handlers") {
+        violations.extend(handler_provider_violations(
+            &file.relative_path,
+            &file.paths,
+        ));
     }
 
     assert!(
@@ -1032,17 +1154,40 @@ fn count_newlines(slice: &str) -> usize {
 }
 
 /// Extracts every `crate::` path referenced by the source: flattened `use`
-/// trees plus inline paths. Line comments are ignored.
+/// trees, inline `crate::` paths, and module-qualified paths resolved through
+/// local `use crate::...` bindings. Comments and string literals are ignored.
 fn crate_paths(source: &str) -> BTreeSet<String> {
     let mut paths = BTreeSet::new();
-    let code = strip_line_comments(source);
+    let mut bindings: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let code = strip_non_code(source);
     let tokens = tokenize(&code);
 
+    // Collect `use crate::...` imports, local module bindings, and inline `crate::...` paths
     let mut index = 0;
     while index < tokens.len() {
         if tokens[index] == "use" && tokens.get(index + 1) == Some(&"crate") {
             // Flatten the use tree that starts after `crate::`
-            index = parse_use_tree(&tokens, index + 3, &[], &mut paths);
+            index = parse_use_tree(&tokens, index + 3, &[], &mut paths, &mut bindings);
+            continue;
+        }
+        if tokens[index] == "use"
+            && let Some(&head) = tokens.get(index + 1)
+            && tokens.get(index + 2) == Some(&"::")
+            && let Some(prefixes) = bindings.get(head).cloned()
+        {
+            // Expand follow-up `use <imported_mod>::...` statements
+            let mut next_index = index + 1;
+            for prefix in prefixes {
+                let prefix_segments: Vec<&str> = prefix.split("::").collect();
+                next_index = parse_use_tree(
+                    &tokens,
+                    index + 3,
+                    &prefix_segments,
+                    &mut paths,
+                    &mut bindings,
+                );
+            }
+            index = next_index;
             continue;
         }
         if tokens[index] == "crate" && tokens.get(index + 1) == Some(&"::") {
@@ -1068,6 +1213,56 @@ fn crate_paths(source: &str) -> BTreeSet<String> {
         }
         index += 1;
     }
+
+    // Resolve inline `<binding>::...` paths against recorded `use crate::...` bindings
+    if !bindings.is_empty() {
+        let mut index = 0;
+        let mut in_use = false;
+        while index < tokens.len() {
+            if tokens[index] == "use" {
+                in_use = true;
+                index += 1;
+                continue;
+            }
+            if in_use {
+                if tokens[index] == ";" {
+                    in_use = false;
+                }
+                index += 1;
+                continue;
+            }
+            let preceded_by_sep = index > 0 && tokens[index - 1] == "::";
+            if !preceded_by_sep
+                && is_identifier(tokens[index])
+                && tokens.get(index + 1) == Some(&"::")
+                && let Some(prefixes) = bindings.get(tokens[index])
+            {
+                let mut rest = Vec::new();
+                let mut cursor = index + 2;
+                while let Some(segment) = tokens.get(cursor) {
+                    if !is_identifier(segment) {
+                        break;
+                    }
+                    rest.push(*segment);
+                    if tokens.get(cursor + 1) == Some(&"::") {
+                        cursor += 2;
+                    } else {
+                        break;
+                    }
+                }
+                if !rest.is_empty() {
+                    let suffix = rest.join("::");
+                    for prefix in prefixes {
+                        paths.insert(format!("{prefix}::{suffix}"));
+                    }
+                }
+                index = cursor;
+                continue;
+            }
+            index += 1;
+        }
+    }
+
     paths
 }
 
@@ -1467,6 +1662,23 @@ fn find_raw_string_end(
         cursor += 1;
     }
     None
+}
+
+/// Returns provider-type violations for a handler file's referenced `crate::` paths.
+fn handler_provider_violations(relative_path: &str, paths: &BTreeSet<String>) -> Vec<String> {
+    let mut violations = Vec::new();
+    for provider_type in PROVIDER_TYPES {
+        let prefix = format!("{provider_type}::");
+        if paths
+            .iter()
+            .any(|path| path == *provider_type || path.starts_with(&prefix))
+        {
+            violations.push(format!(
+                "{relative_path} references provider type `crate::{provider_type}`"
+            ));
+        }
+    }
+    violations
 }
 
 /// Returns whether `code` contains a top-level early-returning
@@ -1931,14 +2143,17 @@ fn parse_function_at(source: &str, fn_start: usize) -> Option<FunctionBlock> {
 }
 
 /// Parses a use tree starting at `index`, appending each flattened path
-/// (prefixed by `prefix`) to `paths`, and returns the index after the tree.
+/// (prefixed by `prefix`) to `paths` and recording local bindings in
+/// `bindings`, and returns the index after the tree.
 fn parse_use_tree(
     tokens: &[&str],
     mut index: usize,
     prefix: &[&str],
     paths: &mut BTreeSet<String>,
+    bindings: &mut BTreeMap<String, BTreeSet<String>>,
 ) -> usize {
     let mut segments: Vec<&str> = prefix.to_vec();
+    let mut alias: Option<&str> = None;
     while let Some(token) = tokens.get(index) {
         match *token {
             "{" => {
@@ -1951,13 +2166,18 @@ fn parse_use_tree(
                             break;
                         }
                         Some(&",") => index += 1,
-                        Some(_) => index = parse_use_tree(tokens, index, &segments, paths),
+                        Some(_) => {
+                            index = parse_use_tree(tokens, index, &segments, paths, bindings);
+                        }
                     }
                 }
                 return index;
             }
             "::" => index += 1,
-            "as" => index += 2,
+            "as" => {
+                alias = tokens.get(index + 1).copied();
+                index += 2;
+            }
             "," | "}" | ";" => break,
             segment => {
                 if segment != "self" {
@@ -1968,7 +2188,18 @@ fn parse_use_tree(
         }
     }
     if !segments.is_empty() {
-        paths.insert(segments.join("::"));
+        let full_path = segments.join("::");
+        let local_name = alias.or_else(|| segments.last().copied());
+        if let Some(name) = local_name
+            && name != "_"
+            && is_identifier(name)
+        {
+            bindings
+                .entry(name.to_string())
+                .or_default()
+                .insert(full_path.clone());
+        }
+        paths.insert(full_path);
     }
     index
 }
@@ -2247,22 +2478,6 @@ fn strip_cfg_test_items(source: &str) -> String {
     }
 
     out
-}
-
-/// Returns the source with line comments removed, so documentation can mention
-/// paths and identifiers freely.
-fn strip_line_comments(source: &str) -> String {
-    source
-        .lines()
-        .map(|line| match line.find("//") {
-            Some(index) => &line[..index],
-            None => line,
-        })
-        .fold(String::new(), |mut acc, line| {
-            acc.push_str(line);
-            acc.push('\n');
-            acc
-        })
 }
 
 /// Returns `source` with comments and string or char literals replaced by spaces.

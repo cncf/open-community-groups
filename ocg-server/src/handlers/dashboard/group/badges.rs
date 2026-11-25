@@ -1,7 +1,5 @@
 //! Group dashboard badge definition, artwork, award, and revocation handlers.
 
-use std::{io::Cursor, path::Path as FilePath};
-
 use anyhow::Result;
 use askama::Template;
 use axum::{
@@ -11,7 +9,6 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use chrono::{NaiveDate, TimeDelta, Utc};
-use image::{GenericImageView, ImageFormat, ImageReader, Limits};
 use serde::Deserialize;
 use tracing::instrument;
 use uuid::Uuid;
@@ -22,7 +19,7 @@ use crate::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedQuery},
     },
-    services::images::DynImageStorage,
+    services::images::DynImagesManager,
     templates::dashboard::group::badges::{ArtworkPage, AwardsPage, BadgesPage},
     types::{
         badges::{
@@ -30,7 +27,6 @@ use crate::{
             BADGE_NAME_MAX_CHARS, BadgeAwardInput, BadgeFilters, BadgeInput,
         },
         dashboard::group::badges::{AwardsFilters, BadgesFilters},
-        images::Image,
         pagination::{self, NavigationLinks},
     },
 };
@@ -47,17 +43,11 @@ const AWARDS_DASHBOARD_URL: &str = "/dashboard/group?tab=awards";
 /// Partial dashboard URL for badge awards.
 const AWARDS_PARTIAL_URL: &str = "/dashboard/group/awards";
 
-/// Required badge artwork height and width.
-const BADGE_ARTWORK_SIZE: u32 = 512;
-
 /// Full dashboard URL for badge definitions.
 const BADGES_DASHBOARD_URL: &str = "/dashboard/group?tab=badges";
 
 /// Partial dashboard URL for badge definitions.
 const BADGES_PARTIAL_URL: &str = "/dashboard/group/badges";
-
-/// Maximum stored badge artwork size accepted by the upload boundary.
-const MAX_BADGE_ARTWORK_SIZE_BYTES: usize = 1024 * 1024;
 
 /// Largest badge-list offset accepted by database integer parameters.
 const MAX_DATABASE_OFFSET: usize = i32::MAX as usize;
@@ -176,7 +166,7 @@ pub(crate) async fn add_artwork(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(image_storage): State<DynImageStorage>,
+    State(images_manager): State<DynImagesManager>,
     Form(input): Form<ArtworkInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Validate the stored basename and image before adding the gallery reference
@@ -186,11 +176,7 @@ pub(crate) async fn add_artwork(
             "artwork filename is invalid".to_string(),
         ));
     }
-    let image = image_storage
-        .get(file_name)
-        .await?
-        .ok_or_else(|| HandlerError::Rejected("badge artwork was not found".to_string()))?;
-    validate_badge_artwork(file_name, &image)?;
+    images_manager.validate_badge_artwork(file_name).await?;
 
     // Register the artwork in the group's gallery
     db.add_badge_artwork(user.user_id, community_id, group_id, file_name)
@@ -552,55 +538,6 @@ fn parse_to_date_filter(value: &str) -> Result<Option<chrono::DateTime<Utc>>, Ha
                 .ok_or_else(|| HandlerError::Rejected("to date is invalid".to_string()))
         })
         .transpose()
-}
-
-/// Require a bounded 512×512 PNG, JPEG, or WebP stored image.
-fn validate_badge_artwork(file_name: &str, image: &Image) -> Result<(), HandlerError> {
-    let invalid = || {
-        HandlerError::Rejected(
-            "badge artwork must be a 512x512 PNG, JPEG, or WebP image".to_string(),
-        )
-    };
-    if image.bytes.len() > MAX_BADGE_ARTWORK_SIZE_BYTES {
-        return Err(invalid());
-    }
-
-    let mut reader = ImageReader::new(Cursor::new(&image.bytes))
-        .with_guessed_format()
-        .map_err(|_| invalid())?;
-    let extension = FilePath::new(file_name)
-        .extension()
-        .and_then(|extension| extension.to_str());
-    let format_matches = match reader.format() {
-        Some(ImageFormat::Jpeg) => {
-            extension.is_some_and(|extension| {
-                extension.eq_ignore_ascii_case("jpeg") || extension.eq_ignore_ascii_case("jpg")
-            }) && image.content_type == "image/jpeg"
-        }
-        Some(ImageFormat::Png) => {
-            extension.is_some_and(|extension| extension.eq_ignore_ascii_case("png"))
-                && image.content_type == "image/png"
-        }
-        Some(ImageFormat::WebP) => {
-            extension.is_some_and(|extension| extension.eq_ignore_ascii_case("webp"))
-                && image.content_type == "image/webp"
-        }
-        _ => false,
-    };
-    if !format_matches {
-        return Err(invalid());
-    }
-
-    let mut limits = Limits::default();
-    limits.max_alloc = Some(16 * 1024 * 1024);
-    limits.max_image_height = Some(BADGE_ARTWORK_SIZE);
-    limits.max_image_width = Some(BADGE_ARTWORK_SIZE);
-    reader.limits(limits);
-    let decoded = reader.decode().map_err(|_| invalid())?;
-    if decoded.dimensions() != (BADGE_ARTWORK_SIZE, BADGE_ARTWORK_SIZE) {
-        return Err(invalid());
-    }
-    Ok(())
 }
 
 /// Enforce required badge definition fields before calling the database.

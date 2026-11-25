@@ -51,7 +51,7 @@ use crate::{
         blocking::BlockingExecutor,
         enrollment::DynEnrollmentManager,
         events::DynEventsManager,
-        images::DynImageStorage,
+        images::DynImagesManager,
         inbox::DynInboxManager,
         notifications::DynNotificationsManager,
         payments::DynPaymentsManager,
@@ -133,7 +133,7 @@ pub(crate) struct State {
     pub activity_tracker: DynActivityTracker,
     /// Open Badges credential manager.
     pub badges_manager: DynBadgesManager,
-    /// Bounded executor for CPU-heavy work such as password hashing.
+    /// Bounded executor for CPU-heavy work such as password hashing and image processing.
     pub blocking_executor: BlockingExecutor,
     /// Database handle.
     pub db: DynDB,
@@ -141,8 +141,8 @@ pub(crate) struct State {
     pub enrollment_manager: DynEnrollmentManager,
     /// Events manager handle.
     pub events_manager: DynEventsManager,
-    /// Image storage provider handle.
-    pub image_storage: DynImageStorage,
+    /// Images manager handle.
+    pub images_manager: DynImagesManager,
     /// Inbox manager handle.
     pub inbox_manager: DynInboxManager,
     /// Meetings configuration.
@@ -170,10 +170,11 @@ pub(crate) struct State {
 #[instrument(skip_all)]
 pub(crate) async fn setup(
     activity_tracker: DynActivityTracker,
+    blocking_executor: BlockingExecutor,
     db: DynDB,
     enrollment_manager: DynEnrollmentManager,
     events_manager: DynEventsManager,
-    image_storage: DynImageStorage,
+    images_manager: DynImagesManager,
     inbox_manager: DynInboxManager,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
@@ -198,8 +199,7 @@ pub(crate) async fn setup(
         .as_ref()
         .expect("server badge configuration to be validated before router setup");
 
-    // Setup router state, sharing one blocking bound between handlers and the auth backend
-    let blocking_executor = BlockingExecutor::new(server_cfg.max_blocking_concurrency());
+    // Setup router state, sharing the caller's blocking bound with handlers and auth
     let state = State {
         activity_tracker,
         badges_manager: Arc::new(SsiBadgesManager::new(&server_cfg.base_url, badges_config)),
@@ -207,7 +207,7 @@ pub(crate) async fn setup(
         db: db.clone(),
         enrollment_manager,
         events_manager,
-        image_storage,
+        images_manager,
         inbox_manager,
         meetings_cfg,
         notifications_manager,

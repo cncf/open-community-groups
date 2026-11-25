@@ -12,7 +12,7 @@ use crate::{
     handlers::tests::*,
     services::{
         badges::{BadgesManager, SsiBadgesManager, png},
-        images::MockImageStorage,
+        images::MockImagesManager,
     },
     test_util::sample_png,
     types::{
@@ -34,13 +34,16 @@ async fn test_export_missing_artwork_returns_not_found() {
         .times(1)
         .withf(move |owner_id, badge_id| *owner_id == ids.user_id && *badge_id == user_badge_id)
         .return_once(move |_, _| Ok(Some(award)));
-    let mut storage = MockImageStorage::new();
-    storage
+    let mut images_manager = MockImagesManager::new();
+    images_manager
         .expect_get()
         .times(1)
         .withf(|file_name| file_name == "badge.png")
         .returning(|_| Box::pin(async { Ok(None) }));
-    let router = TestRouterBuilder::new(db).with_image_storage(storage).build().await;
+    let router = TestRouterBuilder::new(db)
+        .with_images_manager(images_manager)
+        .build()
+        .await;
 
     // Request a PNG export whose immutable source artwork is unavailable
     let request = get_request(
@@ -65,9 +68,12 @@ async fn test_export_revoked_badge_returns_not_found() {
         .times(1)
         .withf(move |owner_id, badge_id| *owner_id == ids.user_id && *badge_id == user_badge_id)
         .return_once(move |_, _| Ok(Some(award)));
-    let mut storage = MockImageStorage::new();
-    storage.expect_get().never();
-    let router = TestRouterBuilder::new(db).with_image_storage(storage).build().await;
+    let mut images_manager = MockImagesManager::new();
+    images_manager.expect_get().never();
+    let router = TestRouterBuilder::new(db)
+        .with_images_manager(images_manager)
+        .build()
+        .await;
 
     // Request a PNG export for a revoked credential
     let request = get_request(
@@ -109,8 +115,8 @@ async fn test_export_success() {
                 identity_salt: identity_salt.to_string(),
             })
         });
-    let mut storage = MockImageStorage::new();
-    storage
+    let mut images_manager = MockImagesManager::new();
+    images_manager
         .expect_get()
         .times(1)
         .withf(|file_name| file_name == "badge.png")
@@ -123,7 +129,7 @@ async fn test_export_success() {
             })
         });
     let router = TestRouterBuilder::new(db)
-        .with_image_storage(storage)
+        .with_images_manager(images_manager)
         .with_server_cfg(HttpServerConfig {
             badges: Some(config),
             base_url: base_url.to_string(),

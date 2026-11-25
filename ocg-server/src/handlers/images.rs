@@ -6,7 +6,10 @@ use anyhow::Result;
 use axum::{
     Json,
     body::Body,
-    extract::{Multipart, Path, State},
+    extract::{
+        Multipart, Path, State,
+        multipart::{Field, MultipartError},
+    },
     http::{
         HeaderMap, HeaderName, HeaderValue, StatusCode,
         header::{CACHE_CONTROL, CONTENT_TYPE},
@@ -20,16 +23,12 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{error::HandlerError, extractors::CurrentUser, request_headers_match_site_origin},
-    services::images::{DynImageStorage, NewImage, validation::validate_image_upload},
+    services::images::{DynImagesManager, MAX_IMAGE_SIZE_BYTES, UploadImageInput},
     types::images::ImageTarget,
-    util::compute_hash,
 };
 
 #[cfg(test)]
 mod tests;
-
-/// Maximum payload size allowed for image uploads (1 MiB).
-const MAX_IMAGE_SIZE_BYTES: usize = 1024 * 1024;
 
 /// Cache-Control header for long-lived responses.
 const CACHE_CONTROL_IMMUTABLE: &str = "public, max-age=31536000, immutable";
@@ -56,7 +55,7 @@ const X_CONTENT_TYPE_OPTIONS: HeaderName = HeaderName::from_static("x-content-ty
 #[instrument(skip_all)]
 pub(crate) async fn serve(
     headers: HeaderMap,
-    State(image_storage): State<DynImageStorage>,
+    State(images_manager): State<DynImagesManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path(file_name): Path<String>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -69,7 +68,7 @@ pub(crate) async fn serve(
         return Ok(StatusCode::FORBIDDEN.into_response());
     };
 
-    Ok(serve_image(&image_storage, &file_name, resource_policy)
+    Ok(serve_image(&images_manager, &file_name, resource_policy)
         .await?
         .into_response())
 }
@@ -78,7 +77,7 @@ pub(crate) async fn serve(
 #[instrument(skip_all)]
 pub(crate) async fn serve_badge(
     State(db): State<DynDB>,
-    State(image_storage): State<DynImageStorage>,
+    State(images_manager): State<DynImagesManager>,
     Path(file_name): Path<String>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Keep historical credential artwork available while referenced
@@ -87,7 +86,7 @@ pub(crate) async fn serve_badge(
     }
 
     Ok(
-        serve_image(&image_storage, &file_name, RESOURCE_POLICY_CROSS_ORIGIN)
+        serve_image(&images_manager, &file_name, RESOURCE_POLICY_CROSS_ORIGIN)
             .await?
             .into_response(),
     )
@@ -97,7 +96,7 @@ pub(crate) async fn serve_badge(
 #[instrument(skip_all)]
 pub(crate) async fn serve_open_graph(
     State(db): State<DynDB>,
-    State(image_storage): State<DynImageStorage>,
+    State(images_manager): State<DynImagesManager>,
     Path(file_name): Path<String>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Confirm the image is currently configured for public preview use
@@ -106,7 +105,7 @@ pub(crate) async fn serve_open_graph(
     }
 
     Ok(
-        serve_image(&image_storage, &file_name, RESOURCE_POLICY_CROSS_ORIGIN)
+        serve_image(&images_manager, &file_name, RESOURCE_POLICY_CROSS_ORIGIN)
             .await?
             .into_response(),
     )
@@ -116,7 +115,7 @@ pub(crate) async fn serve_open_graph(
 #[instrument(skip_all)]
 pub(crate) async fn upload(
     CurrentUser(user): CurrentUser,
-    State(image_storage): State<DynImageStorage>,
+    State(images_manager): State<DynImagesManager>,
     State(server_cfg): State<HttpServerConfig>,
     headers: HeaderMap,
     mut multipart: Multipart,
@@ -126,10 +125,10 @@ pub(crate) async fn upload(
         return Ok((StatusCode::FORBIDDEN).into_response());
     }
 
-    // Extract optional target, file name and bytes from multipart payload
+    // Stream optional target, file name, and bounded bytes from the multipart payload
     let mut target: Option<ImageTarget> = None;
     let mut file_name: Option<String> = None;
-    let mut data: Option<bytes::Bytes> = None;
+    let mut data: Option<Vec<u8>> = None;
 
     while let Some(field) = multipart.next_field().await? {
         let field_name = field.name().map(str::to_string);
@@ -144,7 +143,12 @@ pub(crate) async fn upload(
             }
             Some("file") => {
                 file_name = field.file_name().map(str::to_string);
-                data = Some(field.bytes().await?);
+                let Some(bytes) = read_bounded_field(field, MAX_IMAGE_SIZE_BYTES).await? else {
+                    return Ok(
+                        (StatusCode::PAYLOAD_TOO_LARGE, "image exceeds 1MB limit").into_response()
+                    );
+                };
+                data = Some(bytes);
             }
             _ => {}
         }
@@ -154,40 +158,26 @@ pub(crate) async fn upload(
     let Some(file_name) = file_name else {
         return Ok((StatusCode::BAD_REQUEST, "missing file in upload payload").into_response());
     };
-    let Some(data) = data else {
+    let Some(bytes) = data else {
         return Ok((StatusCode::BAD_REQUEST, "missing file in upload payload").into_response());
     };
 
-    // Enforce maximum file size
-    if data.len() > MAX_IMAGE_SIZE_BYTES {
-        return Ok((StatusCode::PAYLOAD_TOO_LARGE, "image exceeds 1MB limit").into_response());
-    }
+    // Delegate validation, hashing, and persistence to the images manager
+    let stored_file_name = images_manager
+        .upload(UploadImageInput {
+            bytes,
+            file_name,
+            user_id: user.user_id,
 
-    // Validate the format, extension, and target requirements
-    let validated = match validate_image_upload(&file_name, data.as_ref(), target) {
-        Ok(validated) => validated,
-        Err(err) => {
-            return Ok((StatusCode::UNPROCESSABLE_ENTITY, err.to_string()).into_response());
-        }
-    };
-
-    // Compute file hash
-    let hash = compute_hash(data.as_ref());
-
-    // Store image using the configured storage provider
-    let new_image = NewImage {
-        bytes: data.as_ref(),
-        content_type: validated.content_type,
-        file_name: &format!("{hash}.{}", validated.extension),
-        user_id: user.user_id,
-    };
-    image_storage.save(&new_image).await?;
+            target,
+        })
+        .await?;
 
     // Prepare response with image URL
     let image_path = if matches!(target, Some(ImageTarget::Badge)) {
-        format!("/images/badges/{}", new_image.file_name)
+        format!("/images/badges/{stored_file_name}")
     } else {
-        format!("/images/{}", new_image.file_name)
+        format!("/images/{stored_file_name}")
     };
     let body = Json(json!({ "url": image_path }));
 
@@ -196,14 +186,31 @@ pub(crate) async fn upload(
 
 // Helpers
 
-/// Loads an image from storage and returns an immutable public response.
+/// Reads a multipart field chunk by chunk, aborting once its size exceeds `max_bytes`.
+async fn read_bounded_field(
+    mut field: Field<'_>,
+    max_bytes: usize,
+) -> Result<Option<Vec<u8>>, MultipartError> {
+    let mut buffer = Vec::new();
+    while let Some(chunk) = field.chunk().await? {
+        // Stop draining the stream as soon as the field crosses the byte limit
+        if buffer.len().saturating_add(chunk.len()) > max_bytes {
+            return Ok(None);
+        }
+        buffer.extend_from_slice(&chunk);
+    }
+
+    Ok(Some(buffer))
+}
+
+/// Loads an image through the manager and returns an immutable public response.
 async fn serve_image(
-    image_storage: &DynImageStorage,
+    images_manager: &DynImagesManager,
     file_name: &str,
     resource_policy: &'static str,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Load the image bytes and content type from storage
-    let Some(image) = image_storage.get(file_name).await? else {
+    // Load the image bytes and content type through the images manager
+    let Some(image) = images_manager.get(file_name).await? else {
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
 

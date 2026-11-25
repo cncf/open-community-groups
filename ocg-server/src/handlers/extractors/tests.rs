@@ -27,7 +27,7 @@ use crate::{
         },
     },
     services::{
-        blocking::BlockingExecutor, images::MockImageStorage,
+        blocking::BlockingExecutor, images::MockImagesManager,
         notifications::MockNotificationsManager,
     },
 };
@@ -662,7 +662,7 @@ fn session_cookie(parts: &ResponseParts) -> String {
 fn state(db: MockDB) -> router::State {
     test_state_with_server_cfg(
         Arc::new(db),
-        Arc::new(MockImageStorage::new()),
+        Arc::new(MockImagesManager::new()),
         Arc::new(MockNotificationsManager::new()),
         &HttpServerConfig::default(),
     )
@@ -688,7 +688,7 @@ async fn with_auth_layer(
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
     let state = test_state_with_server_cfg(
         db,
-        Arc::new(MockImageStorage::new()),
+        Arc::new(MockImagesManager::new()),
         Arc::new(MockNotificationsManager::new()),
         server_cfg,
     );

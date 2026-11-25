@@ -20,7 +20,7 @@ use crate::{
     router::CACHE_CONTROL_NO_STORE,
     services::{
         badges::{BadgesManagerError, DynBadgesManager, png},
-        images::DynImageStorage,
+        images::DynImagesManager,
     },
     templates::dashboard::user::badges::ListPage,
 };
@@ -36,7 +36,7 @@ pub(crate) async fn export(
     CurrentUser(user): CurrentUser,
     State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
-    State(image_storage): State<DynImageStorage>,
+    State(images_manager): State<DynImagesManager>,
     Path(user_badge_id): Path<Uuid>,
 ) -> Result<Response, HandlerError> {
     // Resolve an active owned award and its immutable source artwork
@@ -45,7 +45,7 @@ pub(crate) async fn export(
         .await?
         .filter(|award| award.revoked_at.is_none())
         .ok_or(HandlerError::NotFound)?;
-    let source = image_storage
+    let source = images_manager
         .get(&award.snapshot.image_file_name)
         .await?
         .ok_or(HandlerError::NotFound)?;
