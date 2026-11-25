@@ -3,9 +3,12 @@
 use std::{fmt, str::FromStr};
 
 use chrono::{DateTime, Utc};
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use uuid::Uuid;
+
+use crate::validation::{trimmed_non_empty, valid_artwork_file_name};
 
 /// Maximum badge criteria length accepted at persistence boundaries.
 pub(crate) const BADGE_CRITERIA_MAX_CHARS: usize = 10_000;
@@ -15,6 +18,9 @@ pub(crate) const BADGE_DESCRIPTION_MAX_CHARS: usize = 10_000;
 
 /// Maximum badge name length accepted at persistence boundaries.
 pub(crate) const BADGE_NAME_MAX_CHARS: usize = 200;
+
+/// Maximum private revocation reason length accepted by the revocation form.
+pub(crate) const BADGE_REVOCATION_REASON_MAX_CHARS: usize = 1_000;
 
 /// Stable filter value that selects direct group awards.
 const GROUP_AWARD_SOURCE_VALUE: &str = "group";
@@ -157,15 +163,19 @@ pub(crate) struct BadgeFilters {
 }
 
 /// Input accepted when creating or updating a badge definition.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct BadgeInput {
     /// Human-readable achievement criteria.
+    #[garde(custom(trimmed_non_empty), length(chars, max = BADGE_CRITERIA_MAX_CHARS))]
     pub criteria: String,
     /// Human-readable badge description.
+    #[garde(custom(trimmed_non_empty), length(chars, max = BADGE_DESCRIPTION_MAX_CHARS))]
     pub description: String,
     /// Content-addressed artwork file name.
+    #[garde(custom(valid_artwork_file_name))]
     pub image_file_name: String,
     /// Badge name.
+    #[garde(custom(trimmed_non_empty), length(chars, max = BADGE_NAME_MAX_CHARS))]
     pub name: String,
 }
 
@@ -335,4 +345,82 @@ pub(crate) struct VerifiedBadge {
 
     /// Current local recipient display name, when the account remains associated.
     pub recipient_name: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::tests::sample_badge_input;
+
+    use super::*;
+
+    #[test]
+    fn test_badge_input_validation() {
+        let with = |update: fn(&mut BadgeInput)| {
+            let mut input = sample_badge_input();
+            update(&mut input);
+            input
+        };
+        let cases = [
+            ("valid definition", sample_badge_input(), None),
+            (
+                "text at every bound",
+                with(|input| {
+                    input.criteria = "a".repeat(BADGE_CRITERIA_MAX_CHARS);
+                    input.description = "a".repeat(BADGE_DESCRIPTION_MAX_CHARS);
+                    input.name = "é".repeat(BADGE_NAME_MAX_CHARS);
+                }),
+                None,
+            ),
+            (
+                "blank criteria",
+                with(|input| input.criteria = " ".to_string()),
+                Some("criteria: value cannot be empty or whitespace-only\n"),
+            ),
+            (
+                "empty description",
+                with(|input| input.description.clear()),
+                Some("description: value cannot be empty or whitespace-only\n"),
+            ),
+            (
+                "empty image file name",
+                with(|input| input.image_file_name.clear()),
+                Some("image_file_name: artwork filename is invalid\n"),
+            ),
+            (
+                "blank name",
+                with(|input| input.name = "\t".to_string()),
+                Some("name: value cannot be empty or whitespace-only\n"),
+            ),
+            (
+                "unsafe image file name",
+                with(|input| input.image_file_name = "../badge.png".to_string()),
+                Some("image_file_name: artwork filename is invalid\n"),
+            ),
+            (
+                "oversized criteria",
+                with(|input| input.criteria = "a".repeat(BADGE_CRITERIA_MAX_CHARS + 1)),
+                Some("criteria: length is greater than 10000\n"),
+            ),
+            (
+                "oversized description",
+                with(|input| input.description = "a".repeat(BADGE_DESCRIPTION_MAX_CHARS + 1)),
+                Some("description: length is greater than 10000\n"),
+            ),
+            (
+                "oversized name",
+                with(|input| input.name = "a".repeat(BADGE_NAME_MAX_CHARS + 1)),
+                Some("name: length is greater than 200\n"),
+            ),
+        ];
+
+        for (label, input, expected_error) in cases {
+            match (input.validate(), expected_error) {
+                (Ok(()), None) => {}
+                (Err(report), Some(expected_message)) => {
+                    assert_eq!(report.to_string(), expected_message, "{label}");
+                }
+                (result, expected) => panic!("{label}: got {result:?}, expected {expected:?}"),
+            }
+        }
+    }
 }

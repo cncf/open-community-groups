@@ -91,7 +91,7 @@ pub(crate) use crate::{
         sample_badges_cfg, sample_payments_cfg, sample_server_cfg, sample_zoom_meetings_cfg,
     },
     types::tests::{
-        sample_attendee, sample_community_invitation, sample_community_summary,
+        sample_attendee, sample_badge_input, sample_community_invitation, sample_community_summary,
         sample_community_team_member, sample_dashboard_user_profile, sample_enrollment_state,
         sample_event_analytics, sample_event_cohost_group, sample_event_form, sample_event_full,
         sample_event_invitation, sample_event_purchase_summary, sample_event_summary,

@@ -155,13 +155,9 @@ pub(crate) async fn list_page(
 /// Renders a database-free preview from the submitted event editor state.
 #[instrument(skip_all)]
 pub(crate) async fn preview(
-    State(serde_qs_de): State<serde_qs::Config>,
-    body: String,
+    ValidatedFormQs(input): ValidatedFormQs<events::preview::Input>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let input: events::preview::Input = serde_qs_de
-        .deserialize_str(&body)
-        .map_err(|err| HandlerError::Deserialization(err.to_string()))?;
     let template = events::preview::Page {
         event: input.into(),
     };

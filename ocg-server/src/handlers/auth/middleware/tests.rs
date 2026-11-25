@@ -335,6 +335,91 @@ async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
     assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
+// Path group community middleware.
+
+#[tokio::test]
+async fn test_user_has_path_group_community_access_allows_request() {
+    // Setup identifiers and a user with a group in the requested community
+    let ids = DashboardIds::new();
+    let groups = sample_user_groups_by_community(ids.community_id, ids.group_id);
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    db.expect_list_user_groups()
+        .times(1)
+        .withf(move |uid| *uid == ids.user_id)
+        .returning(move |_| Ok(groups.clone()));
+
+    // Setup router and send request
+    let router = setup_path_group_community_router(db).await;
+    let uri = format!("/community/{}/select", ids.community_id);
+    let (parts, bytes) = send(router, get_request(&uri, ids.session_id)).await;
+
+    // Check resolved community and group context reached the handler
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        bytes.as_ref(),
+        format!("{}:{}", ids.community_id, ids.group_id).as_bytes()
+    );
+}
+
+#[tokio::test]
+async fn test_user_has_path_group_community_access_forbidden_when_not_logged_in() {
+    // Setup an anonymous session
+    let ids = DashboardIds::new();
+    let mut db = MockDB::new();
+    expect_stored_session(&mut db, sample_empty_session_record(ids.session_id));
+
+    // Setup router and send request
+    let router = setup_path_group_community_router(db).await;
+    let uri = format!("/community/{}/select", ids.community_id);
+    let (parts, bytes) = send(router, get_request(&uri, ids.session_id)).await;
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_user_has_path_group_community_access_forbidden_without_groups_in_community() {
+    // Setup identifiers and groups belonging to another community
+    let ids = DashboardIds::new();
+    let other_community_id = Uuid::new_v4();
+    let groups = sample_user_groups_by_community(other_community_id, ids.group_id);
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    db.expect_list_user_groups()
+        .times(1)
+        .withf(move |uid| *uid == ids.user_id)
+        .returning(move |_| Ok(groups.clone()));
+
+    // Setup router and send request
+    let router = setup_path_group_community_router(db).await;
+    let uri = format!("/community/{}/select", ids.community_id);
+    let (parts, bytes) = send(router, get_request(&uri, ids.session_id)).await;
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_user_has_path_group_community_access_returns_error_on_db_failure() {
+    // Setup identifiers and a failing group listing
+    let ids = DashboardIds::new();
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    db.expect_list_user_groups()
+        .times(1)
+        .withf(move |uid| *uid == ids.user_id)
+        .returning(|_| Err(anyhow!("db error")));
+
+    // Setup router and send request
+    let router = setup_path_group_community_router(db).await;
+    let uri = format!("/community/{}/select", ids.community_id);
+    let (parts, bytes) = send(router, get_request(&uri, ids.session_id)).await;
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
+}
+
 // Path group middleware.
 
 #[tokio::test]
@@ -1193,6 +1278,28 @@ async fn setup_path_community_router(db: MockDB, permission: CommunityPermission
         .layer(middleware::from_fn_with_state(
             (db.clone(), permission),
             user_has_path_community_permission,
+        ));
+
+    protected_router(db, routes).await
+}
+
+/// Builds a router protecting `/community/{community_id}/select` with the path
+/// group community middleware.
+async fn setup_path_group_community_router(db: MockDB) -> Router {
+    let db: DynDB = Arc::new(db);
+    let routes = Router::new()
+        .route(
+            "/community/{community_id}/select",
+            get(
+                |SelectedCommunityId(community_id): SelectedCommunityId,
+                 SelectedGroupId(group_id): SelectedGroupId| async move {
+                    format!("{community_id}:{group_id}")
+                },
+            ),
+        )
+        .layer(middleware::from_fn_with_state(
+            db.clone(),
+            user_has_path_group_community_access,
         ));
 
     protected_router(db, routes).await

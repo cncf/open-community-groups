@@ -4,6 +4,7 @@ use anyhow::anyhow;
 use axum::{
     Router,
     body::Body,
+    extract::DefaultBodyLimit,
     http::{
         StatusCode,
         header::{CONTENT_TYPE, COOKIE, SET_COOKIE},
@@ -21,7 +22,7 @@ use crate::{
     config::{HttpServerConfig, OAuth2ProviderConfig},
     db::{DynDB, mock::MockDB},
     handlers::{
-        error::INVALID_REQUEST_PAYLOAD,
+        error::{INVALID_REQUEST_PAYLOAD, REQUEST_PAYLOAD_TOO_LARGE},
         tests::{
             assert_empty_response, request, sample_auth_user, send, test_state_with_server_cfg,
         },
@@ -359,18 +360,25 @@ async fn test_oidc_extractor_unsupported_provider() {
 
 #[tokio::test]
 async fn test_selected_community_id_extractor_missing_context() {
-    // Setup request parts
+    // Setup request parts and router using the extractor without middleware context
     let (mut parts, _) = request("GET", "/").body(Body::empty()).unwrap().into_parts();
+    let router = Router::new()
+        .route(
+            "/test",
+            get(|_community_id: SelectedCommunityId| async { StatusCode::OK }),
+        )
+        .with_state(state(MockDB::new()));
 
-    // Check extraction matches expectations
-    let result = SelectedCommunityId::from_request_parts(&mut parts, &state(MockDB::new())).await;
-    assert!(matches!(
-        result,
-        Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "missing selected community context"
-        ))
-    ));
+    // Check direct extraction returns an internal HandlerError
+    let err = SelectedCommunityId::from_request_parts(&mut parts, &state(MockDB::new()))
+        .await
+        .err()
+        .expect("extractor should fail without context");
+    assert!(matches!(err, HandlerError::Other(_)));
+
+    // Check the HTTP response is an empty 500
+    let (parts, bytes) = send(router, request("GET", "/test").body(Body::empty()).unwrap()).await;
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -407,18 +415,25 @@ async fn test_selected_group_id_extractor_success() {
 
 #[tokio::test]
 async fn test_selected_group_id_extractor_missing_context() {
-    // Setup request parts
+    // Setup request parts and router using the extractor without middleware context
     let (mut parts, _) = request("GET", "/").body(Body::empty()).unwrap().into_parts();
+    let router = Router::new()
+        .route(
+            "/test",
+            get(|_group_id: SelectedGroupId| async { StatusCode::OK }),
+        )
+        .with_state(state(MockDB::new()));
 
-    // Check extraction matches expectations
-    let result = SelectedGroupId::from_request_parts(&mut parts, &state(MockDB::new())).await;
-    assert!(matches!(
-        result,
-        Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "missing selected group context"
-        ))
-    ));
+    // Check direct extraction returns an internal HandlerError
+    let err = SelectedGroupId::from_request_parts(&mut parts, &state(MockDB::new()))
+        .await
+        .err()
+        .expect("extractor should fail without context");
+    assert!(matches!(err, HandlerError::Other(_)));
+
+    // Check the HTTP response is an empty 500
+    let (parts, bytes) = send(router, request("GET", "/test").body(Body::empty()).unwrap()).await;
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -455,6 +470,47 @@ async fn test_validated_form_deserialization_error() {
     // Check the fixed body hides the parser detail
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(bytes.as_ref(), INVALID_REQUEST_PAYLOAD.as_bytes());
+}
+
+#[tokio::test]
+async fn test_validated_form_invalid_content_type() {
+    // Setup router with a handler that uses ValidatedForm
+    let router = Router::new()
+        .route(
+            "/test",
+            post(|ValidatedForm(_form): ValidatedForm<TestForm>| async move { StatusCode::OK }),
+        )
+        .with_state(state(MockDB::new()));
+
+    // Send request with a non-form content type
+    let req = request("POST", "/test")
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from(r#"{"name":"test"}"#))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check 415 is preserved with the fixed body
+    assert_eq!(parts.status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
+    assert_eq!(bytes.as_ref(), INVALID_REQUEST_PAYLOAD.as_bytes());
+}
+
+#[tokio::test]
+async fn test_validated_form_payload_too_large() {
+    // Setup router with a tight body limit and a handler that uses ValidatedForm
+    let router = Router::new()
+        .route(
+            "/test",
+            post(|ValidatedForm(_form): ValidatedForm<TestForm>| async move { StatusCode::OK }),
+        )
+        .layer(DefaultBodyLimit::max(8))
+        .with_state(state(MockDB::new()));
+
+    // Send request larger than the body limit
+    let (parts, bytes) = send(router, form_post("/test", "name=exceeds-limit")).await;
+
+    // Check 413 is preserved with the fixed body
+    assert_eq!(parts.status, StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(bytes.as_ref(), REQUEST_PAYLOAD_TOO_LARGE.as_bytes());
 }
 
 #[tokio::test]
@@ -496,6 +552,51 @@ async fn test_validated_form_qs_deserialization_error() {
     // Check the fixed body hides the parser detail
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(bytes.as_ref(), INVALID_REQUEST_PAYLOAD.as_bytes());
+}
+
+#[tokio::test]
+async fn test_validated_form_qs_invalid_utf8() {
+    // Setup router with a handler that uses ValidatedFormQs
+    let router = Router::new()
+        .route(
+            "/test",
+            post(
+                |ValidatedFormQs(_form): ValidatedFormQs<TestFormQs>| async move { StatusCode::OK },
+            ),
+        )
+        .with_state(state(MockDB::new()));
+
+    // Send request with invalid UTF-8 bytes
+    let req = request("POST", "/test")
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(vec![0xff, 0xfe]))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check 400 is preserved with the fixed body hiding the raw Axum error string
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(bytes.as_ref(), INVALID_REQUEST_PAYLOAD.as_bytes());
+}
+
+#[tokio::test]
+async fn test_validated_form_qs_payload_too_large() {
+    // Setup router with a tight body limit and a handler that uses ValidatedFormQs
+    let router = Router::new()
+        .route(
+            "/test",
+            post(
+                |ValidatedFormQs(_form): ValidatedFormQs<TestFormQs>| async move { StatusCode::OK },
+            ),
+        )
+        .layer(DefaultBodyLimit::max(8))
+        .with_state(state(MockDB::new()));
+
+    // Send request larger than the body limit
+    let (parts, bytes) = send(router, form_post("/test", "name=exceeds-limit")).await;
+
+    // Check 413 is preserved with the fixed body
+    assert_eq!(parts.status, StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(bytes.as_ref(), REQUEST_PAYLOAD_TOO_LARGE.as_bytes());
 }
 
 #[tokio::test]

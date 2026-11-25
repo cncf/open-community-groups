@@ -208,6 +208,12 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
 #[allow(clippy::too_many_lines)]
 pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
     // Setup authorization middleware helpers
+    let check_path_group_community_access = || {
+        middleware::from_fn_with_state(
+            state.db.clone(),
+            auth::middleware::user_has_path_group_community_access,
+        )
+    };
     let check_path_group_permission = |permission| {
         middleware::from_fn_with_state(
             (state.db.clone(), permission),
@@ -588,7 +594,8 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         )
         .route(
             "/community/{community_id}/select",
-            put(dashboard::group::select_community),
+            put(dashboard::group::select_community)
+                .route_layer(check_path_group_community_access()),
         )
 }
 

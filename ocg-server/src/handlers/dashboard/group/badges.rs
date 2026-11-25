@@ -3,12 +3,13 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    Form, Json,
+    Json,
     extract::{Path, Query, RawQuery, State},
     http::{HeaderName, HeaderValue, StatusCode},
     response::{Html, IntoResponse},
 };
 use chrono::{NaiveDate, TimeDelta, Utc};
+use garde::Validate;
 use serde::Deserialize;
 use tracing::instrument;
 use uuid::Uuid;
@@ -17,18 +18,21 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedQuery},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
+        },
     },
     services::images::DynImagesManager,
     templates::dashboard::group::badges::{ArtworkPage, AwardsPage, BadgesPage},
     types::{
         badges::{
-            AwardedBadgesFilters, BADGE_CRITERIA_MAX_CHARS, BADGE_DESCRIPTION_MAX_CHARS,
-            BADGE_NAME_MAX_CHARS, BadgeAwardInput, BadgeFilters, BadgeInput,
+            AwardedBadgesFilters, BADGE_REVOCATION_REASON_MAX_CHARS, BadgeAwardInput, BadgeFilters,
+            BadgeInput,
         },
         dashboard::group::badges::{AwardsFilters, BadgesFilters},
         pagination::{self, NavigationLinks},
     },
+    validation::{trimmed_non_empty, valid_artwork_file_name},
 };
 
 #[cfg(test)]
@@ -145,11 +149,8 @@ pub(crate) async fn add(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    Form(input): Form<BadgeInput>,
+    ValidatedForm(input): ValidatedForm<BadgeInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate route-safe inputs before the audited database mutation
-    validate_badge_input(&input)?;
-
     // Create the badge definition
     db.add_badge(user.user_id, community_id, group_id, &input).await?;
 
@@ -167,15 +168,10 @@ pub(crate) async fn add_artwork(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(images_manager): State<DynImagesManager>,
-    Form(input): Form<ArtworkInput>,
+    ValidatedForm(input): ValidatedForm<ArtworkInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate the stored basename and image before adding the gallery reference
+    // Validate the stored image before adding the gallery reference
     let file_name = input.file_name.trim();
-    if !is_safe_artwork_file_name(file_name) {
-        return Err(HandlerError::Rejected(
-            "artwork filename is invalid".to_string(),
-        ));
-    }
     images_manager.validate_badge_artwork(file_name).await?;
 
     // Register the artwork in the group's gallery
@@ -285,7 +281,7 @@ pub(crate) async fn revoke(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(user_badge_id): Path<Uuid>,
-    Form(input): Form<RevokeInput>,
+    ValidatedForm(input): ValidatedForm<RevokeInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Permanently revoke the credential with its private audit reason
     db.revoke_group_user_badge(
@@ -310,10 +306,9 @@ pub(crate) async fn update(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(badge_id): Path<Uuid>,
-    Form(input): Form<BadgeInput>,
+    ValidatedForm(input): ValidatedForm<BadgeInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate route-safe inputs before the audited database mutation
-    validate_badge_input(&input)?;
+    // Persist the validated badge definition update
     db.update_badge(user.user_id, community_id, group_id, badge_id, &input)
         .await?;
     Ok((
@@ -325,9 +320,10 @@ pub(crate) async fn update(
 // Types.
 
 /// Artwork gallery form fields.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub(crate) struct ArtworkInput {
     /// Content-addressed uploaded filename.
+    #[garde(custom(valid_artwork_file_name))]
     file_name: String,
 }
 
@@ -375,9 +371,10 @@ pub(crate) enum RecipientScope {
 }
 
 /// Permanent group revocation form fields.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub(crate) struct RevokeInput {
     /// Private internal revocation reason.
+    #[garde(custom(trimmed_non_empty), custom(valid_revocation_reason_length))]
     reason: String,
 }
 
@@ -505,14 +502,6 @@ pub(crate) async fn prepare_badges_page(
     Ok((filters, template))
 }
 
-/// Return whether a stored image name is a bounded, route-safe basename.
-fn is_safe_artwork_file_name(file_name: &str) -> bool {
-    let mut bytes = file_name.bytes();
-    (1..=80).contains(&file_name.len())
-        && bytes.next().is_some_and(|byte| byte.is_ascii_alphanumeric())
-        && bytes.all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
-}
-
 /// Parse a date-only award filter at UTC midnight.
 fn parse_date_filter(
     field_name: &str,
@@ -540,28 +529,15 @@ fn parse_to_date_filter(value: &str) -> Result<Option<chrono::DateTime<Utc>>, Ha
         .transpose()
 }
 
-/// Enforce required badge definition fields before calling the database.
-fn validate_badge_input(input: &BadgeInput) -> Result<(), HandlerError> {
-    let required_fields = [
-        input.criteria.as_str(),
-        input.description.as_str(),
-        input.image_file_name.as_str(),
-        input.name.as_str(),
-    ];
-    if required_fields.iter().any(|value| value.trim().is_empty())
-        || !is_safe_artwork_file_name(input.image_file_name.trim())
-    {
-        return Err(HandlerError::Rejected(
-            "all badge fields are required".to_string(),
-        ));
-    }
-    if input.criteria.chars().count() > BADGE_CRITERIA_MAX_CHARS
-        || input.description.chars().count() > BADGE_DESCRIPTION_MAX_CHARS
-        || input.name.chars().count() > BADGE_NAME_MAX_CHARS
-    {
-        return Err(HandlerError::Rejected(
-            "badge text exceeds the allowed length".to_string(),
-        ));
+/// Validates that a revocation reason stays within the form character limit
+/// after normalizing browser CRLF line endings to LF.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn valid_revocation_reason_length(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
+    let len = value.as_ref().replace("\r\n", "\n").chars().count();
+    if len > BADGE_REVOCATION_REASON_MAX_CHARS {
+        return Err(garde::Error::new(format!(
+            "length is greater than {BADGE_REVOCATION_REASON_MAX_CHARS}"
+        )));
     }
     Ok(())
 }

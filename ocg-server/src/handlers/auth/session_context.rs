@@ -42,14 +42,6 @@ pub(super) struct ResolvedGroupContext {
     pub has_requested_permission: bool,
 }
 
-/// Defines whether syncing a community selection requires a group selection.
-pub(crate) enum SelectedGroupPolicy {
-    /// Group selection may be absent.
-    Optional,
-    /// Group selection must be present.
-    Required,
-}
-
 /// Resolves readable community dashboard context, repairing stale selection,
 /// and reports whether the requested permission holds on it.
 ///
@@ -209,7 +201,6 @@ pub(crate) async fn sync_selected_community_and_group(
     session: &Session,
     user_id: &Uuid,
     community_id: Uuid,
-    selected_group_policy: SelectedGroupPolicy,
 ) -> Result<(), HandlerError> {
     // Load the user's groups to keep the selected group in sync
     let groups_by_community = db.list_user_groups(user_id).await?;
@@ -218,10 +209,6 @@ pub(crate) async fn sync_selected_community_and_group(
         .find(|c| c.community.community_id == community_id)
         .and_then(|c| c.groups.first())
         .map(|g| g.group_id);
-
-    if matches!(selected_group_policy, SelectedGroupPolicy::Required) && first_group_id.is_none() {
-        return Err(HandlerError::Forbidden);
-    }
 
     // Persist the community selection and align the group selection with it
     session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
@@ -255,14 +242,7 @@ async fn repair_community_dashboard_context(
         }
 
         // Persist only verified replacement context
-        sync_selected_community_and_group(
-            db,
-            session,
-            user_id,
-            community.community_id,
-            SelectedGroupPolicy::Optional,
-        )
-        .await?;
+        sync_selected_community_and_group(db, session, user_id, community.community_id).await?;
         return Ok(Some(community.community_id));
     }
 

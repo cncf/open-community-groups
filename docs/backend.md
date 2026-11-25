@@ -211,6 +211,7 @@ user-facing rejections raise `OCG01`, everything else stays internal.
 | `Forbidden` | 403 | empty |
 | `Multipart(err)` | `err.status()` | fixed text, empty on 500; detail logged |
 | `NotFound` | 404 | empty |
+| `Payload(status, msg)` | `status` | fixed text, empty on 500; detail logged |
 | `Rejected(msg)` | 422 | `msg`, a business rejection decided in Rust |
 | `Validation(report)` | 422 | the `garde` report |
 | `Other`, `Serde`, `Session`, `Template` | 500 | empty |
@@ -280,11 +281,11 @@ A handler does extraction, delegation, and response shaping, in this order:
    `hx-push-url`), and body. Response-only shapes and contracts stay in the
    handler.
 
-Every `Result`-returning handler carries `#[instrument(skip_all)]`, without
-`err`: the returned `HandlerError` is logged once by `into_response` at the
-severity of its variant. Extractors keep `#[instrument(skip_all, err(Debug))]`
-because their rejection type is a tuple; extractors whose rejections are
-client errors add `level = "warn"`.
+Every `Result`-returning handler and `HandlerError`-rejecting extractor carries
+`#[instrument(skip_all)]`, without `err`: the returned `HandlerError` is logged
+once by `into_response` at the severity of its variant. Extractors whose
+rejection type is a tuple keep `#[instrument(skip_all, err(Debug))]`, adding
+`level = "warn"` when their rejections are client errors.
 
 `db/` methods carry `#[instrument(skip(self, ...), err)]`. Because `err`
 writes every span field on failure, including the `OCG01` rejections that end

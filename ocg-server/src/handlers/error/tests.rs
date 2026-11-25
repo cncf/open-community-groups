@@ -50,6 +50,7 @@ async fn db_contracts_raised_sqlstates_map_to_handler_responses() -> anyhow::Res
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_handler_errors_map_to_responses() {
     // Setup one error per variant with the response it must render
     let mut report = garde::Report::new();
@@ -98,6 +99,42 @@ async fn test_handler_errors_map_to_responses() {
         (
             "Other",
             HandlerError::Other(anyhow!("database unavailable")),
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "",
+        ),
+        (
+            "Payload over the request limit",
+            HandlerError::Payload(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "length limit exceeded".to_string(),
+            ),
+            StatusCode::PAYLOAD_TOO_LARGE,
+            REQUEST_PAYLOAD_TOO_LARGE,
+        ),
+        (
+            "Payload unsupported media type",
+            HandlerError::Payload(
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                "expected application/x-www-form-urlencoded".to_string(),
+            ),
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            INVALID_REQUEST_PAYLOAD,
+        ),
+        (
+            "Payload bad request",
+            HandlerError::Payload(
+                StatusCode::BAD_REQUEST,
+                "request body did not contain valid UTF-8".to_string(),
+            ),
+            StatusCode::BAD_REQUEST,
+            INVALID_REQUEST_PAYLOAD,
+        ),
+        (
+            "Payload server error",
+            HandlerError::Payload(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "stream error".to_string(),
+            ),
             StatusCode::INTERNAL_SERVER_ERROR,
             "",
         ),
