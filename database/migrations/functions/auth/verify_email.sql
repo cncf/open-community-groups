@@ -5,11 +5,10 @@ create or replace function verify_email(
 declare
     v_user_id uuid;
 begin
-    -- Delete the verification code and get the user_id
-    -- The code must be valid and not older than 24 hours
+    -- Delete the verification code within the shared validity window and load its owner
     delete from email_verification_code
     where email_verification_code_id = p_code
-    and created_at > current_timestamp - interval '1 day'
+    and created_at > current_timestamp - email_verification_code_ttl()
     returning user_id into v_user_id;
 
     -- Check if we found a valid code

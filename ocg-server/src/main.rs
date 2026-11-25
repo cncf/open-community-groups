@@ -41,7 +41,7 @@ use crate::{
             start_payment_workers,
         },
         rate_limit,
-        workers::{BackgroundTasks, queue_health},
+        workers::{BackgroundTasks, auth_cleanup, queue_health},
     },
     types::meetings::MeetingProvider,
 };
@@ -111,6 +111,7 @@ async fn main() -> Result<()> {
     // Configure background services that depend on the database
     let workers_db = db.clone() as DynDB;
     let activity_tracker = setup_activity_tracker(db.clone(), &background_tasks);
+    auth_cleanup::start(&workers_db, &background_tasks);
     start_badge_award_workers(&workers_db, &background_tasks);
     start_meetings_workers(cfg.meetings.as_ref(), db.clone(), &background_tasks)?;
     let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;

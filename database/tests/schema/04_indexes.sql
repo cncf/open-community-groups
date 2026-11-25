@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(140);
+select plan(142);
 
 -- ============================================================================
 -- TESTS
@@ -52,8 +52,16 @@ select is(
 
 -- Test: auth_session indexes should match expected
 select indexes_are('auth_session', array[
-    'auth_session_pkey'
+    'auth_session_pkey',
+    'auth_session_expires_at_idx'
 ]);
+
+-- Test: auth_session expires_at index should index expires_at for cleanup sweeps
+select is(
+    (select indexdef from pg_indexes where indexname = 'auth_session_expires_at_idx'),
+    'CREATE INDEX auth_session_expires_at_idx ON public.auth_session USING btree (expires_at)',
+    'auth_session expires_at index should index expires_at for cleanup sweeps'
+);
 
 -- Test: badge indexes should match expected
 select indexes_are('badge', array[
@@ -201,9 +209,17 @@ select indexes_are('custom_notification', array[
 -- Test: email_verification_code indexes should match expected
 select indexes_are('email_verification_code', array[
     'email_verification_code_pkey',
+    'email_verification_code_created_at_idx',
     'email_verification_code_user_id_idx',
     'email_verification_code_user_id_key'
 ]);
+
+-- Test: email_verification_code created_at index should index created_at for cleanup sweeps
+select is(
+    (select indexdef from pg_indexes where indexname = 'email_verification_code_created_at_idx'),
+    'CREATE INDEX email_verification_code_created_at_idx ON public.email_verification_code USING btree (created_at)',
+    'email_verification_code created_at index should index created_at for cleanup sweeps'
+);
 
 -- Test: event indexes should match expected
 select indexes_are('event', array[

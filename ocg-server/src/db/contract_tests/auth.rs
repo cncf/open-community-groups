@@ -11,7 +11,10 @@ use uuid::Uuid;
 
 use crate::{
     auth::ExternalUserProfile,
-    db::auth::{DBAuth, EmailVerificationNotification},
+    db::{
+        DBUnitOfWork, PgExecutor,
+        auth::{AUTH_CLEANUP_BATCH_SIZE, DBAuth, EmailVerificationNotification},
+    },
     types::user::UserProvider,
 };
 
@@ -90,23 +93,163 @@ async fn db_contracts_activate_pre_registered_user_external_provider_deserialize
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_delete_expired_auth_sessions_deletes_expired_and_skips_when_locked()
+-> Result<()> {
+    // Setup a rolled-back unit of work with two expired sessions and one active session
+    let uow = contract_unit_of_work().await?;
+    let now = OffsetDateTime::now_utc();
+    let expired_oldest = session::Record {
+        data: HashMap::from([("state".to_string(), json!("expired-oldest"))]),
+        expiry_date: now - Duration::hours(2),
+        id: session::Id::default(),
+    };
+    let expired_newer = session::Record {
+        data: HashMap::from([("state".to_string(), json!("expired-newer"))]),
+        expiry_date: now - Duration::hours(1),
+        id: session::Id::default(),
+    };
+    let active = session::Record {
+        data: HashMap::from([("state".to_string(), json!("active"))]),
+        expiry_date: now + Duration::hours(1),
+        id: session::Id::default(),
+    };
+    uow.create_session(&expired_oldest).await?;
+    uow.create_session(&expired_newer).await?;
+    uow.create_session(&active).await?;
+
+    // Hold the cleanup advisory lock on a second connection and check cleanup skips cleanly
+    let lock_uow = contract_unit_of_work().await?;
+    lock_uow
+        .execute(
+            "select pg_advisory_xact_lock(hashtextextended('ocg:auth-session-cleanup', 0));",
+            &[],
+        )
+        .await?;
+    let skipped = uow.delete_expired_auth_sessions(AUTH_CLEANUP_BATCH_SIZE).await?;
+    assert_eq!(skipped, 0);
+    Box::new(lock_uow).rollback().await?;
+
+    // Delete expired sessions in bounded batches after releasing the advisory lock
+    let first_batch = uow.delete_expired_auth_sessions(1).await?;
+    let second_batch = uow.delete_expired_auth_sessions(AUTH_CLEANUP_BATCH_SIZE).await?;
+    let third_batch = uow.delete_expired_auth_sessions(AUTH_CLEANUP_BATCH_SIZE).await?;
+
+    // Check only expired sessions were deleted and the active session remains
+    assert_eq!(first_batch, 1);
+    assert_eq!(second_batch, 1);
+    assert_eq!(third_batch, 0);
+    let expired_ids = vec![expired_oldest.id.to_string(), expired_newer.id.to_string()];
+    let remaining_expired: i64 = uow
+        .fetch_scalar_one(
+            "select count(*) from auth_session where auth_session_id = any($1::text[]);",
+            &[&expired_ids],
+        )
+        .await?;
+    assert_eq!(remaining_expired, 0);
+    assert!(uow.get_session(&active.id).await?.is_some());
+
+    Box::new(uow).rollback().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_delete_expired_email_verification_codes_deletes_expired_and_skips_when_locked()
+-> Result<()> {
+    // Setup a rolled-back unit of work with two expired codes and one active code
+    let uow = contract_unit_of_work().await?;
+    let expired_code_1 = Uuid::new_v4();
+    let expired_code_2 = Uuid::new_v4();
+    let active_code = Uuid::new_v4();
+    uow.execute(
+        "
+        insert into email_verification_code (email_verification_code_id, created_at, user_id)
+        values
+            ($1::uuid, current_timestamp - interval '48 hours', $4::uuid),
+            ($2::uuid, current_timestamp - interval '25 hours', $5::uuid),
+            ($3::uuid, current_timestamp - interval '1 hour', $6::uuid);
+        ",
+        &[
+            &expired_code_1,
+            &expired_code_2,
+            &active_code,
+            &attendee_id(),
+            &organizer_id(),
+            &activation_id(),
+        ],
+    )
+    .await?;
+
+    // Hold the cleanup advisory lock on a second connection and check cleanup skips cleanly
+    let lock_uow = contract_unit_of_work().await?;
+    lock_uow
+        .execute(
+            "select pg_advisory_xact_lock(hashtextextended('ocg:email-verification-code-cleanup', 0));",
+            &[],
+        )
+        .await?;
+    let skipped = uow
+        .delete_expired_email_verification_codes(AUTH_CLEANUP_BATCH_SIZE)
+        .await?;
+    assert_eq!(skipped, 0);
+    Box::new(lock_uow).rollback().await?;
+
+    // Delete expired verification codes in bounded batches after releasing the advisory lock
+    let first_batch = uow.delete_expired_email_verification_codes(1).await?;
+    let second_batch = uow
+        .delete_expired_email_verification_codes(AUTH_CLEANUP_BATCH_SIZE)
+        .await?;
+    let third_batch = uow
+        .delete_expired_email_verification_codes(AUTH_CLEANUP_BATCH_SIZE)
+        .await?;
+
+    // Check only expired verification codes were deleted and the active code remains
+    assert_eq!(first_batch, 1);
+    assert_eq!(second_batch, 1);
+    assert_eq!(third_batch, 0);
+    let expired_codes = vec![expired_code_1, expired_code_2];
+    let remaining_expired: i64 = uow
+        .fetch_scalar_one(
+            "select count(*) from email_verification_code where email_verification_code_id = any($1::uuid[]);",
+            &[&expired_codes],
+        )
+        .await?;
+    assert_eq!(remaining_expired, 0);
+    let remaining_active: i64 = uow
+        .fetch_scalar_one(
+            "select count(*) from email_verification_code where email_verification_code_id = $1::uuid;",
+            &[&active_code],
+        )
+        .await?;
+    assert_eq!(remaining_active, 1);
+
+    Box::new(uow).rollback().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_session_ignores_expired_sessions() -> Result<()> {
-    // Setup a session that expired well before the database clock
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and a session that expired well before the database clock
+    let uow = contract_unit_of_work().await?;
     let expired = session::Record {
         data: HashMap::from([("state".to_string(), json!("expired"))]),
         expiry_date: OffsetDateTime::now_utc() - Duration::hours(1),
         id: session::Id::default(),
     };
-    db.create_session(&expired).await?;
+    uow.create_session(&expired).await?;
 
     // Load the expired and a missing session through the Rust contract
-    let expired_session = db.get_session(&expired.id).await?;
-    let missing_session = db.get_session(&session::Id::default()).await?;
+    let expired_session = uow.get_session(&expired.id).await?;
+    let missing_session = uow.get_session(&session::Id::default()).await?;
 
     // Check neither session is returned
     assert!(expired_session.is_none());
     assert!(missing_session.is_none());
+
+    Box::new(uow).rollback().await?;
 
     Ok(())
 }
@@ -114,17 +257,17 @@ async fn db_contracts_get_session_ignores_expired_sessions() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_session_round_trips_unexpired_sessions() -> Result<()> {
-    // Setup a session that expires well after the database clock
-    let db = contract_tests_db()?;
+    // Setup a rolled-back unit of work and a session that expires well after the database clock
+    let uow = contract_unit_of_work().await?;
     let record = session::Record {
         data: HashMap::from([("state".to_string(), json!("unexpired"))]),
         expiry_date: OffsetDateTime::now_utc() + Duration::hours(1),
         id: session::Id::default(),
     };
-    db.create_session(&record).await?;
+    uow.create_session(&record).await?;
 
     // Load the session through the Rust contract
-    let session = db
+    let session = uow
         .get_session(&record.id)
         .await?
         .expect("unexpired contract session should exist");
@@ -136,6 +279,8 @@ async fn db_contracts_get_session_round_trips_unexpired_sessions() -> Result<()>
         record.expiry_date.unix_timestamp()
     );
     assert_eq!(session.id, record.id);
+
+    Box::new(uow).rollback().await?;
 
     Ok(())
 }

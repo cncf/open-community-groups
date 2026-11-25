@@ -1,6 +1,6 @@
 //! Database operations for authentication and authorization.
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use axum_login::tower_sessions::session;
 use tokio_postgres::types::Json;
@@ -15,6 +15,9 @@ use crate::{
         user::{UserDetailsInput, UserProvider},
     },
 };
+
+/// Maximum rows deleted per auth cleanup batch; matches the SQL `1..=1000` ceiling.
+pub(crate) const AUTH_CLEANUP_BATCH_SIZE: usize = 1000;
 
 /// Trait for database operations related to authentication and authorization.
 #[async_trait]
@@ -35,6 +38,12 @@ pub(crate) trait DBAuth {
 
     /// Creates a new session in the database.
     async fn create_session(&self, record: &session::Record) -> Result<()>;
+
+    /// Deletes one bounded batch of expired authentication sessions.
+    async fn delete_expired_auth_sessions(&self, batch_size: usize) -> Result<usize>;
+
+    /// Deletes one bounded batch of expired email verification codes.
+    async fn delete_expired_email_verification_codes(&self, batch_size: usize) -> Result<usize>;
 
     /// Deletes a session from the database.
     async fn delete_session(&self, session_id: &session::Id) -> Result<()>;
@@ -194,6 +203,35 @@ where
             ],
         )
         .await
+    }
+
+    /// [`DBAuth::delete_expired_auth_sessions`].
+    #[instrument(skip(self), err)]
+    async fn delete_expired_auth_sessions(&self, batch_size: usize) -> Result<usize> {
+        let batch_size = i32::try_from(batch_size)?;
+        let count: i32 = self
+            .fetch_scalar_one(
+                "select delete_expired_auth_sessions($1::integer)::integer;",
+                &[&batch_size],
+            )
+            .await?;
+
+        usize::try_from(count).map_err(|_| anyhow!("invalid expired auth sessions cleanup count"))
+    }
+
+    /// [`DBAuth::delete_expired_email_verification_codes`].
+    #[instrument(skip(self), err)]
+    async fn delete_expired_email_verification_codes(&self, batch_size: usize) -> Result<usize> {
+        let batch_size = i32::try_from(batch_size)?;
+        let count: i32 = self
+            .fetch_scalar_one(
+                "select delete_expired_email_verification_codes($1::integer)::integer;",
+                &[&batch_size],
+            )
+            .await?;
+
+        usize::try_from(count)
+            .map_err(|_| anyhow!("invalid expired email verification codes cleanup count"))
     }
 
     #[instrument(skip(self, session_id), err)]

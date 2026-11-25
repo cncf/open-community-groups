@@ -70,6 +70,9 @@ mock! {
             &self,
             record: &axum_login::tower_sessions::session::Record,
         ) -> Result<()>;
+        async fn delete_expired_auth_sessions(&self, batch_size: usize) -> Result<usize>;
+        async fn delete_expired_email_verification_codes(&self, batch_size: usize)
+        -> Result<usize>;
         async fn delete_session(
             &self,
             session_id: &axum_login::tower_sessions::session::Id,

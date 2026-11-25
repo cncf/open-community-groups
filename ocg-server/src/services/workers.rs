@@ -15,6 +15,7 @@ use tokio::{
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, warn};
 
+pub(crate) mod auth_cleanup;
 pub(crate) mod claim_loop;
 pub(crate) mod queue_health;
 

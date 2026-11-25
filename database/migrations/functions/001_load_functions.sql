@@ -253,6 +253,7 @@
 {{ template "internal/ticketing/validate_event_ticket_types_payload.sql" }}
 {{ template "internal/ticketing/validate_event_ticketing_payload.sql" }}
 
+{{ template "internal/users/email_verification_code_ttl.sql" }}
 {{ template "internal/users/get_public_user_provider.sql" }}
 {{ template "internal/users/issue_email_verification.sql" }}
 {{ template "internal/users/public_user_profile.sql" }}
@@ -271,6 +272,8 @@
 {{ template "internal/users/external_auth_user_json.sql" }} -- Depends on get_user_by_id
 {{ template "auth/activate_pre_registered_user_email_password.sql" }}
 {{ template "auth/activate_pre_registered_user_external_provider.sql" }}
+{{ template "auth/delete_expired_auth_sessions.sql" }}
+{{ template "auth/delete_expired_email_verification_codes.sql" }}
 {{ template "auth/get_auth_session.sql" }}
 {{ template "auth/get_user_by_email_for_external_auth.sql" }}
 {{ template "auth/get_user_by_id_verified.sql" }}
