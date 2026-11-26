@@ -16,7 +16,8 @@ use axum::{
     http::{
         HeaderValue, Method, StatusCode,
         header::{
-            ACCEPT, CACHE_CONTROL, CONTENT_TYPE, ORIGIN, REFERRER_POLICY, RETRY_AFTER, SET_COOKIE,
+            ACCEPT, CACHE_CONTROL, CONTENT_TYPE, LOCATION, ORIGIN, REFERRER_POLICY, RETRY_AFTER,
+            SET_COOKIE,
         },
     },
     middleware,
@@ -32,8 +33,9 @@ use crate::{
     handlers::{
         rate_limit::RATE_LIMITED_HEADER,
         tests::{
-            TestRouterBuilder, assert_html_response, authenticated_request, badge_verify_request,
-            request, sample_rate_limiter, sample_server_cfg, sample_user_badge, send,
+            DashboardIds, TestRouterBuilder, assert_html_response, authenticated_request,
+            badge_verify_request, expect_session, expect_test_community, request,
+            sample_rate_limiter, sample_server_cfg, sample_user_badge, send,
         },
     },
     router::{
@@ -42,10 +44,20 @@ use crate::{
             HEADERLESS_EXEMPT_ROUTES, ROUTE_MANIFEST_PATH, RouteManifestEntry, declared_routes,
         },
     },
-    services::rate_limit::{IpLimit, Limit, LogInFailureLimit, RateLimiter, client_ip::ClientKey},
+    services::{
+        images::MockImagesManager,
+        inbox::MockInboxManager,
+        rate_limit::{
+            IpLimit, Limit, LogInFailureLimit, RateLimiter, UserLimit, client_ip::ClientKey,
+        },
+    },
 };
 
 use super::*;
+
+/// Rejection body for an account that must wait one test budget period.
+const ACCOUNT_PERIOD_REJECTION_BODY: &str =
+    "Too many requests from your account. Please wait 60 minutes and try again.";
 
 /// Login options with every login method enabled.
 const ALL_LOGIN_OPTIONS: LoginOptions = LoginOptions {
@@ -89,14 +101,436 @@ const SAMPLE_PATH_ID: &str = "b4c5e5c6-1f4a-4a3e-9d43-3f7e6d3c6b1a";
 /// Origin of the configured test site.
 const SITE_ORIGIN: &str = "https://example.test";
 
+/// Multipart boundary used for image upload test requests.
+const UPLOAD_BOUNDARY: &str = "X-RATE-LIMIT-BOUNDARY";
+
+#[test]
+fn test_authenticated_route_limit_maps_routes_to_limits() {
+    // Setup labeled authenticated routes and methods with the expected per-user limit
+    let cases = [
+        (
+            "community custom notification",
+            Method::POST,
+            "/dashboard/community/notifications",
+            Some(UserLimit::CustomNotifications),
+        ),
+        (
+            "group custom notification",
+            Method::POST,
+            "/dashboard/group/notifications",
+            Some(UserLimit::CustomNotifications),
+        ),
+        (
+            "event custom notification",
+            Method::POST,
+            "/dashboard/group/notifications/{event_id}",
+            Some(UserLimit::CustomNotifications),
+        ),
+        (
+            "image upload",
+            Method::POST,
+            "/images",
+            Some(UserLimit::ImageUploads),
+        ),
+        (
+            "event contact message",
+            Method::POST,
+            "/{community}/event/{event_id}/contact",
+            Some(UserLimit::InboxMessages),
+        ),
+        (
+            "group inbox reply",
+            Method::POST,
+            "/dashboard/group/inbox/{inbox_conversation_id}/replies",
+            Some(UserLimit::InboxMessages),
+        ),
+        (
+            "user inbox follow-up message",
+            Method::POST,
+            "/dashboard/user/inbox/{inbox_conversation_id}/messages",
+            Some(UserLimit::InboxMessages),
+        ),
+        (
+            "community contact recipients preview",
+            Method::POST,
+            "/dashboard/community/contact/recipients",
+            None,
+        ),
+        (
+            "user inbox list",
+            Method::GET,
+            "/dashboard/user/inbox",
+            None,
+        ),
+        (
+            "group inbox close",
+            Method::PUT,
+            "/dashboard/group/inbox/{inbox_conversation_id}/close",
+            None,
+        ),
+        ("image upload wrong method", Method::GET, "/images", None),
+        (
+            "image serve route",
+            Method::GET,
+            "/images/{file_name}",
+            None,
+        ),
+        (
+            "event attend route",
+            Method::POST,
+            "/{community}/event/{event_id}/attend",
+            None,
+        ),
+        (
+            "account details update",
+            Method::PUT,
+            "/dashboard/account/update/details",
+            None,
+        ),
+    ];
+
+    // Check each route maps to the expected per-user limit
+    for (case, method, path, expected) in cases {
+        assert_eq!(authenticated_route_limit(&method, path), expected, "{case}");
+    }
+}
+
+#[tokio::test]
+async fn test_limit_authenticated_requests_fails_open_without_auth_session_extension() {
+    // Setup a minimal router mounting the inner middleware without an auth layer
+    let rate_limiter = sample_rate_limiter(single_request_budgets(), RateLimitMode::Enforce);
+    let router = Router::new()
+        .route("/images", post(|| async { StatusCode::OK }))
+        .route_layer(middleware::from_fn_with_state(
+            rate_limiter.clone(),
+            limit_authenticated_requests,
+        ));
+
+    // Send a mapped request with no AuthSession extension attached
+    let (parts, _) = send(
+        router,
+        request("POST", "/images").body(Body::empty()).unwrap(),
+    )
+    .await;
+
+    // Check the middleware passes the request through without counting it
+    assert_eq!(parts.status, StatusCode::OK);
+    let window = rate_limiter.take_window();
+    assert_eq!(window.limit(Limit::ImageUploads).requests, 0);
+}
+
+#[tokio::test]
+async fn test_limit_authenticated_requests_isolates_users_and_limits() {
+    // Setup two users sharing the same client IP and an enforcing limiter with burst 1
+    let first_user = DashboardIds::new();
+    let second_user = DashboardIds::new();
+    let rate_limiter = sample_rate_limiter(single_request_budgets(), RateLimitMode::Enforce);
+
+    // Exhaust image uploads for the first user only
+    assert_eq!(
+        rate_limiter.check_user(UserLimit::ImageUploads, first_user.user_id, Instant::now()),
+        Verdict::Allow
+    );
+
+    // Setup mocks expecting only the second user's upload and the first user's inbox contact
+    let mut db = MockDB::new();
+    expect_session(&mut db, &first_user);
+    expect_session(&mut db, &second_user);
+    expect_session(&mut db, &first_user);
+    expect_test_community(&mut db, first_user.community_id);
+
+    let mut images_manager = MockImagesManager::new();
+    let second_user_id = second_user.user_id;
+    images_manager
+        .expect_upload()
+        .times(1)
+        .withf(move |input| input.user_id == second_user_id)
+        .return_once(|_| Box::pin(async { Ok("uploaded.png".to_string()) }));
+
+    let mut inbox_manager = MockInboxManager::new();
+    let first_user_id = first_user.user_id;
+    inbox_manager
+        .expect_start_conversation()
+        .times(1)
+        .withf(move |input| input.user_id == first_user_id)
+        .return_once(|_| Box::pin(async { Ok(Uuid::new_v4()) }));
+
+    let router = TestRouterBuilder::new(db)
+        .with_images_manager(images_manager)
+        .with_inbox_manager(inbox_manager)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(site_server_cfg())
+        .build()
+        .await;
+
+    // First user is rejected on image upload from the shared IP
+    let (parts, bytes) = send(
+        router.clone(),
+        with_client(image_upload_request(first_user.session_id)),
+    )
+    .await;
+    assert_eq!(parts.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(bytes, ACCOUNT_PERIOD_REJECTION_BODY);
+
+    // Second user from the same IP succeeds on image upload
+    let (parts, _) = send(
+        router.clone(),
+        with_client(image_upload_request(second_user.session_id)),
+    )
+    .await;
+    assert_eq!(parts.status, StatusCode::CREATED);
+
+    // First user's inbox messages limit is unaffected by their exhausted image uploads budget
+    let event_id = Uuid::new_v4();
+    let contact_request = authenticated_request(
+        "POST",
+        &format!("/test-community/event/{event_id}/contact"),
+        first_user.session_id,
+    )
+    .header(ORIGIN, SITE_ORIGIN)
+    .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+    .body(Body::from("body=Hello+organizers"))
+    .unwrap();
+    let (parts, _) = send(router, with_client(contact_request)).await;
+    assert_eq!(parts.status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_limit_authenticated_requests_observe_mode_passes_requests_over_the_limit() {
+    // Setup a signed-in user and an observing limiter with an already-spent image uploads burst
+    let ids = DashboardIds::new();
+    let rate_limiter = sample_rate_limiter(single_request_budgets(), RateLimitMode::Observe);
+    assert_eq!(
+        rate_limiter.check_user(UserLimit::ImageUploads, ids.user_id, Instant::now()),
+        Verdict::Allow
+    );
+
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    let mut images_manager = MockImagesManager::new();
+    let user_id = ids.user_id;
+    images_manager
+        .expect_upload()
+        .times(1)
+        .withf(move |input| input.user_id == user_id)
+        .return_once(|_| Box::pin(async { Ok("uploaded.png".to_string()) }));
+
+    let router = TestRouterBuilder::new(db)
+        .with_images_manager(images_manager)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(site_server_cfg())
+        .build()
+        .await;
+
+    // Run an over-limit upload in observe mode
+    let (parts, _) = send(router, image_upload_request(ids.session_id)).await;
+
+    // Check the request reached the handler and was counted over the limit
+    assert_eq!(parts.status, StatusCode::CREATED);
+    let window = rate_limiter.take_window();
+    let uploads = window.limit(Limit::ImageUploads);
+    assert_eq!(uploads.requests, 2);
+    assert_eq!(uploads.over_limit, 1);
+}
+
+#[tokio::test]
+async fn test_limit_authenticated_requests_passes_unmapped_routes_through() {
+    // Setup a signed-in user with every per-user limit exhausted
+    let ids = DashboardIds::new();
+    let rate_limiter = sample_rate_limiter(single_request_budgets(), RateLimitMode::Enforce);
+    exhaust_user_limits(&rate_limiter, ids.user_id);
+    rate_limiter.take_window();
+
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    let router = TestRouterBuilder::new(db)
+        .with_rate_limiter(rate_limiter.clone())
+        .with_server_cfg(site_server_cfg())
+        .build()
+        .await;
+
+    // Run a same-origin authenticated request to an unmapped protected route
+    let request = authenticated_request("PUT", "/dashboard/account/update/details", ids.session_id)
+        .header(ORIGIN, SITE_ORIGIN)
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, _) = send(router, request).await;
+
+    // Check the request reached the handler's validation layer instead of returning 429
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    let window = rate_limiter.take_window();
+    for limit in UserLimit::ALL {
+        assert!(!window.limit(Limit::from(limit)).has_traffic(), "{limit:?}");
+    }
+}
+
+#[tokio::test]
+async fn test_limit_authenticated_requests_rejects_exhausted_users_before_handlers() {
+    for route in AUTHENTICATED_LIMITED_ROUTES {
+        // Setup the route's request method and case label
+        let method = route.method.as_str();
+        let case = format!("{method} {}", route.path);
+
+        // Setup a signed-in user whose only DB reads are session authentication
+        let ids = DashboardIds::new();
+        let mut db = MockDB::new();
+        expect_session(&mut db, &ids);
+        expect_session(&mut db, &ids);
+        let mut images_manager = MockImagesManager::new();
+        images_manager.expect_upload().never();
+        let mut inbox_manager = MockInboxManager::new();
+        inbox_manager.expect_start_conversation().never();
+        inbox_manager.expect_add_user_message().never();
+        inbox_manager.expect_add_group_reply().never();
+
+        let rate_limiter = sample_rate_limiter(single_request_budgets(), RateLimitMode::Enforce);
+        let router = TestRouterBuilder::new(db)
+            .with_images_manager(images_manager)
+            .with_inbox_manager(inbox_manager)
+            .with_rate_limiter(rate_limiter.clone())
+            .with_server_cfg(site_server_cfg())
+            .build()
+            .await;
+
+        // Spend the user's only token for the route's limit
+        let verdict = rate_limiter.check_user(route.limit, ids.user_id, Instant::now());
+        assert_eq!(verdict, Verdict::Allow, "{case}");
+
+        // Run a plain/HTMX request without ConnectInfo to prove client IP is not required
+        let uri = concrete_uri(route.path);
+        let plain_request = authenticated_request(method, &uri, ids.session_id)
+            .header(ORIGIN, SITE_ORIGIN)
+            .body(Body::empty())
+            .unwrap();
+        let (parts, bytes) = send(router.clone(), plain_request).await;
+
+        // Check the plain-text account 429 response stopped before permission checks or handlers
+        assert_eq!(parts.status, StatusCode::TOO_MANY_REQUESTS, "{case} plain");
+        assert_eq!(
+            parts.headers.get(RETRY_AFTER).unwrap(),
+            PERIOD_SECS.to_string().as_str(),
+            "{case} plain"
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            CACHE_CONTROL_NO_STORE,
+            "{case} plain"
+        );
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            "text/plain; charset=utf-8",
+            "{case} plain"
+        );
+        assert_eq!(
+            parts.headers.get(RATE_LIMITED_HEADER).unwrap(),
+            "true",
+            "{case} plain"
+        );
+        assert!(parts.headers.get(SET_COOKIE).is_none(), "{case} plain");
+        assert_eq!(bytes, ACCOUNT_PERIOD_REJECTION_BODY, "{case} plain");
+
+        // Run a browser document navigation from the same exhausted user
+        let nav_request = authenticated_request(method, &uri, ids.session_id)
+            .header(ACCEPT, BROWSER_ACCEPT)
+            .header(ORIGIN, SITE_ORIGIN)
+            .header("sec-fetch-mode", "navigate")
+            .body(Body::empty())
+            .unwrap();
+        let (parts, bytes) = send(router, nav_request).await;
+
+        // Check the navigation gets the HTML 429 page with the account message
+        assert_eq!(
+            parts.status,
+            StatusCode::TOO_MANY_REQUESTS,
+            "{case} navigation"
+        );
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            "text/html; charset=utf-8",
+            "{case} navigation"
+        );
+        assert!(
+            parts.headers.get(RATE_LIMITED_HEADER).is_none(),
+            "{case} navigation"
+        );
+        assert!(parts.headers.get(SET_COOKIE).is_none(), "{case} navigation");
+        let body = String::from_utf8(bytes.to_vec()).unwrap();
+        assert!(
+            body.contains(ACCOUNT_PERIOD_REJECTION_BODY),
+            "{case} navigation"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_limit_authenticated_requests_skips_anonymous_and_cross_origin_requests() {
+    for route in AUTHENTICATED_LIMITED_ROUTES {
+        // Setup the route's request method and case label
+        let method = route.method.as_str();
+        let case = format!("{method} {}", route.path);
+        let uri = concrete_uri(route.path);
+
+        // Setup a router with a user who has already exhausted every per-user limit
+        let ids = DashboardIds::new();
+        let mut db = MockDB::new();
+        expect_session(&mut db, &ids);
+        expect_session(&mut db, &ids);
+        let rate_limiter = sample_rate_limiter(single_request_budgets(), RateLimitMode::Enforce);
+        exhaust_user_limits(&rate_limiter, ids.user_id);
+        rate_limiter.take_window();
+
+        let router = TestRouterBuilder::new(db)
+            .with_rate_limiter(rate_limiter.clone())
+            .with_server_cfg(site_server_cfg())
+            .build()
+            .await;
+
+        // Anonymous same-origin request is redirected by login_required before user limiting
+        let anonymous_req = request(method, &uri)
+            .header(ORIGIN, SITE_ORIGIN)
+            .body(Body::empty())
+            .unwrap();
+        let (parts, _) = send(router.clone(), with_client(anonymous_req)).await;
+        assert_eq!(
+            parts.status,
+            StatusCode::TEMPORARY_REDIRECT,
+            "{case} anonymous"
+        );
+        assert!(
+            parts
+                .headers
+                .get(LOCATION)
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|location| location.starts_with("/log-in?next_url=")),
+            "{case} anonymous location"
+        );
+
+        // Authenticated cross-origin and headerless requests are rejected by CSRF before user limiting
+        let cross_origin_req = authenticated_request(method, &uri, ids.session_id)
+            .header(ORIGIN, "https://attacker.test")
+            .body(Body::empty())
+            .unwrap();
+        let (parts, _) = send(router.clone(), with_client(cross_origin_req)).await;
+        assert_eq!(parts.status, StatusCode::FORBIDDEN, "{case} cross-origin");
+
+        let headerless_req = authenticated_request(method, &uri, ids.session_id)
+            .body(Body::empty())
+            .unwrap();
+        let (parts, _) = send(router, with_client(headerless_req)).await;
+        assert_eq!(parts.status, StatusCode::FORBIDDEN, "{case} headerless");
+
+        // Check none of those requests reached or consumed the per-user limit
+        let window = rate_limiter.take_window();
+        assert_eq!(window.limit(Limit::from(route.limit)).requests, 0, "{case}");
+    }
+}
+
 #[tokio::test]
 async fn test_limit_requests_answers_exhausted_keys_before_the_session_layers() {
     for route in LIMITED_ROUTES {
         // Setup the route's request method and case label
-        let method = match route.method {
-            RouteMethod::Get => "GET",
-            RouteMethod::Post => "POST",
-        };
+        let method = route.method.as_str();
         let case = format!("{method} {}", route.path);
 
         // Setup the router with a database that expects no calls
@@ -177,10 +611,7 @@ async fn test_limit_requests_answers_exhausted_navigations_with_the_page_before_
         .filter(|route| route.limit != IpLimit::Views)
     {
         // Setup the route's request method and case label
-        let method = match route.method {
-            RouteMethod::Get => "GET",
-            RouteMethod::Post => "POST",
-        };
+        let method = route.method.as_str();
         let case = format!("{method} {}", route.path);
 
         // Setup the router with a database that expects no calls
@@ -664,29 +1095,28 @@ fn test_limited_routes_exist_in_router_and_manifest() {
         .map(|entry| (entry.method, entry.path))
         .collect();
 
-    // Check every limited route is unique and registered in both the router and manifest
-    let mut seen = BTreeSet::new();
-    for route in LIMITED_ROUTES {
-        let method = match route.method {
-            RouteMethod::Get => "GET",
-            RouteMethod::Post => "POST",
-        };
-        let key = (method.to_string(), route.path.to_string());
-
+    // Check both outer IP-limited and inner authenticated routes are unique, disjoint,
+    // and registered in both the router and manifest
+    let outer_routes = assert_routes_registered(
+        "LIMITED_ROUTES",
+        LIMITED_ROUTES.into_iter().map(|route| (route.method, route.path)),
+        &declared,
+        &manifest,
+    );
+    let authenticated_routes = assert_routes_registered(
+        "AUTHENTICATED_LIMITED_ROUTES",
+        AUTHENTICATED_LIMITED_ROUTES
+            .into_iter()
+            .map(|route| (route.method, route.path)),
+        &declared,
+        &manifest,
+    );
+    for key in &authenticated_routes {
         assert!(
-            seen.insert(key.clone()),
-            "duplicate LIMITED_ROUTES entry: {method} {}",
-            route.path
-        );
-        assert!(
-            declared.contains(&key),
-            "LIMITED_ROUTES entry is not declared in router: {method} {}",
-            route.path
-        );
-        assert!(
-            manifest.contains(&key),
-            "LIMITED_ROUTES entry is missing from {ROUTE_MANIFEST_PATH}: {method} {}",
-            route.path
+            !outer_routes.contains(key),
+            "route listed in both LIMITED_ROUTES and AUTHENTICATED_LIMITED_ROUTES: {} {}",
+            key.0,
+            key.1
         );
     }
 }
@@ -1180,6 +1610,35 @@ fn test_route_limit_maps_routes_to_limits() {
 
 // Helpers.
 
+/// Asserts every entry in a route table is unique and present in both the
+/// router declarations and the E2E route manifest, returning the seen keys.
+fn assert_routes_registered(
+    table_name: &str,
+    routes: impl IntoIterator<Item = (RouteMethod, &'static str)>,
+    declared: &BTreeSet<(String, String)>,
+    manifest: &BTreeSet<(String, String)>,
+) -> BTreeSet<(String, String)> {
+    let mut seen = BTreeSet::new();
+    for (route_method, path) in routes {
+        let method = route_method.as_str();
+        let key = (method.to_string(), path.to_string());
+
+        assert!(
+            seen.insert(key.clone()),
+            "duplicate {table_name} entry: {method} {path}"
+        );
+        assert!(
+            declared.contains(&key),
+            "{table_name} entry is not declared in router: {method} {path}"
+        );
+        assert!(
+            manifest.contains(&key),
+            "{table_name} entry is missing from {ROUTE_MANIFEST_PATH}: {method} {path}"
+        );
+    }
+    seen
+}
+
 /// Returns a request URI for a route template, with every path parameter
 /// replaced by a sample identifier.
 fn concrete_uri(path: &str) -> String {
@@ -1203,6 +1662,33 @@ fn exhaust_ip_limits(rate_limiter: &RateLimiter) {
     }
 }
 
+/// Spends the only token of `user_id` in every per-user limit.
+fn exhaust_user_limits(rate_limiter: &RateLimiter, user_id: Uuid) {
+    for limit in UserLimit::ALL {
+        let verdict = rate_limiter.check_user(limit, user_id, Instant::now());
+        assert_eq!(verdict, Verdict::Allow, "{limit:?}");
+    }
+}
+
+/// Builds a same-origin authenticated multipart image upload request.
+fn image_upload_request(session_id: session::Id) -> Request {
+    let body = format!(
+        "--{UPLOAD_BOUNDARY}\r\n\
+         Content-Disposition: form-data; name=\"file\"; filename=\"example.png\"\r\n\
+         Content-Type: image/png\r\n\r\n\
+         png-bytes\r\n\
+         --{UPLOAD_BOUNDARY}--\r\n"
+    );
+    authenticated_request("POST", "/images", session_id)
+        .header(ORIGIN, SITE_ORIGIN)
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={UPLOAD_BOUNDARY}"),
+        )
+        .body(Body::from(body))
+        .unwrap()
+}
+
 /// Returns budgets that allow one request per key and refill only after
 /// [`PERIOD_SECS`].
 fn single_request_budgets() -> RateLimitBudgets {
@@ -1212,8 +1698,11 @@ fn single_request_budgets() -> RateLimitBudgets {
     };
     RateLimitBudgets {
         badge_verify: budget,
+        custom_notifications: budget,
         explore_search: budget,
         external_auth: budget,
+        image_uploads: budget,
+        inbox_messages: budget,
         log_in: budget,
         log_in_failures: budget,
         password_reset: budget,

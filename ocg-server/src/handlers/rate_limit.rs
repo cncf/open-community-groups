@@ -33,13 +33,42 @@ const REJECTION_VARY: &str = "accept, hx-request, sec-fetch-mode, x-ocg-fetch";
 /// Content type of the plain-text rejection body.
 const TEXT_PLAIN_UTF_8: &str = "text/plain; charset=utf-8";
 
-/// Builds the 429 response returned to a request over a rate limit.
+/// Builds the 429 response returned to a request over an IP-keyed rate limit.
 ///
 /// A document navigation gets a standalone HTML page; htmx, fetch and any other caller get
 /// the same message as plain text, with the marker header the frontend checks before showing
 /// it. Neither representation reads the database, loads or writes the session, or sets a
 /// cookie: the page renders from a compiled template with the default theme.
 pub(crate) fn too_many_requests(headers: &HeaderMap, retry_after: Duration) -> Response {
+    too_many_requests_response(headers, retry_after, "your network")
+}
+
+/// Builds the 429 response returned to a request over a per-user rate limit.
+///
+/// Shares the same HTML and marked plain-text representations as
+/// [`too_many_requests`] without reading the database, modifying the session,
+/// or adding a cookie itself; unlike IP-keyed rejections, this runs inside the
+/// authentication middleware after the session has already been loaded.
+pub(crate) fn too_many_requests_for_user(headers: &HeaderMap, retry_after: Duration) -> Response {
+    too_many_requests_response(headers, retry_after, "your account")
+}
+
+/// Returns whether the request is a browser document navigation, not an htmx or script call.
+fn is_document_navigation(headers: &HeaderMap) -> bool {
+    !header_value_is_true(headers, "hx-request")
+        && !header_value_is_true(headers, "x-ocg-fetch")
+        && headers
+            .get("sec-fetch-mode")
+            .is_none_or(|mode| mode.as_bytes().eq_ignore_ascii_case(b"navigate"))
+        && accepts_media_type(headers, "text/html")
+}
+
+/// Builds the 429 response with a wait message naming `subject` (network or account).
+fn too_many_requests_response(
+    headers: &HeaderMap,
+    retry_after: Duration,
+    subject: &str,
+) -> Response {
     // Round the wait up to whole seconds and minutes, within the sent bounds
     let retry_after_secs = retry_after
         .as_secs()
@@ -53,7 +82,7 @@ pub(crate) fn too_many_requests(headers: &HeaderMap, retry_after: Duration) -> R
     };
 
     // Build the message shared by both representations
-    let message = format!("Too many requests from your network. Please wait {wait} and try again.");
+    let message = format!("Too many requests from {subject}. Please wait {wait} and try again.");
 
     // Prepare the uncacheable headers shared by both representations
     let common_headers = [
@@ -88,14 +117,4 @@ pub(crate) fn too_many_requests(headers: &HeaderMap, retry_after: Duration) -> R
         message,
     )
         .into_response()
-}
-
-/// Returns whether the request is a browser document navigation, not an htmx or script call.
-fn is_document_navigation(headers: &HeaderMap) -> bool {
-    !header_value_is_true(headers, "hx-request")
-        && !header_value_is_true(headers, "x-ocg-fetch")
-        && headers
-            .get("sec-fetch-mode")
-            .is_none_or(|mode| mode.as_bytes().eq_ignore_ascii_case(b"navigate"))
-        && accepts_media_type(headers, "text/html")
 }

@@ -20,7 +20,7 @@ use super::{
     Limit, RateLimiter,
     client_ip::{is_internal, mask_ip},
     mode_name,
-    stats::{ClientIpWindow, LimitWindow, MAX_CHAIN_LENGTH, ProxyWindow, WindowSnapshot},
+    stats::{ClientIpWindow, LimitKey, LimitWindow, MAX_CHAIN_LENGTH, ProxyWindow, WindowSnapshot},
 };
 
 #[cfg(test)]
@@ -50,7 +50,7 @@ const SUMMARY_WINDOW: Duration = Duration::from_mins(5);
 /// Number of internal client addresses listed in the internal clients warning.
 const TOP_INTERNAL_CLIENT_ADDRESSES: usize = 5;
 
-/// Number of client keys listed per limit.
+/// Number of client keys listed per IP-keyed limit.
 const TOP_KEYS: usize = 5;
 
 /// Number of peers listed in the proxy summary.
@@ -188,11 +188,11 @@ struct ProxySummary {
 /// Summary of one limit during one window.
 #[derive(Clone, Debug, PartialEq)]
 struct LimitSummary {
-    /// Number of distinct client keys tracked.
+    /// Number of distinct keys tracked.
     distinct_keys: usize,
     /// Whether more distinct keys were seen than could be tracked.
     distinct_keys_capped: bool,
-    /// Failed log-in store entries evicted to track new keys.
+    /// Store entries evicted to track new keys.
     evicted_store_full: u64,
     /// Level of the log line: `warn` when the store was full.
     level: Level,
@@ -210,7 +210,7 @@ struct LimitSummary {
     requests: u64,
     /// Requests passed through uncounted because they failed the origin check.
     skipped_origin_check: u64,
-    /// Most frequent tracked client keys, masked.
+    /// Most frequent tracked client keys for IP-keyed limits, masked.
     top_keys: Vec<KeyShare>,
     /// Requests allowed untracked because the store is full.
     untracked_store_full: u64,
@@ -356,9 +356,14 @@ fn client_ip_summary(
     }
 }
 
-/// Returns the dominant key warning of a limit, if its top tracked key
-/// holds at least half of its requests.
+/// Returns the dominant key warning of an IP-keyed limit, if its top tracked
+/// key holds at least half of its requests.
 fn dominant_key_warning(limit: &LimitSummary) -> Option<SummaryWarning> {
+    // Only IP-keyed limits can suffer from collapsed proxy or shared NAT keys
+    if !limit.limit.is_ip_keyed() {
+        return None;
+    }
+
     let top = limit.top_keys.first()?;
     let is_dominant = limit.requests >= DOMINANT_KEY_MIN_REQUESTS
         && reaches_share(
@@ -518,15 +523,23 @@ fn join<T: fmt::Display>(items: &[T]) -> String {
 
 /// Builds the summary of one limit with traffic.
 fn limit_summary(limit: Limit, window: &LimitWindow, mode: RateLimitMode) -> LimitSummary {
-    // List the most frequent tracked keys, masked, with their share of every request
-    let top_keys = top_entries(&window.keys.entries, |counts| counts.requests, TOP_KEYS)
-        .into_iter()
-        .map(|(key, counts)| KeyShare {
-            key: key.masked(),
-            requests: counts.requests,
-            share_permille: share_permille(counts.requests, window.requests),
-        })
-        .collect();
+    // List the most frequent tracked client keys (masked) for IP-keyed limits only,
+    // so routine summaries never log account identifiers
+    let top_keys = if limit.is_ip_keyed() {
+        top_entries(&window.keys.entries, |counts| counts.requests, TOP_KEYS)
+            .into_iter()
+            .filter_map(|(key, counts)| match key {
+                LimitKey::Client(client) => Some(KeyShare {
+                    key: client.masked(),
+                    requests: counts.requests,
+                    share_permille: share_permille(counts.requests, window.requests),
+                }),
+                LimitKey::User(_) => None,
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
 
     LimitSummary {
         distinct_keys: window.keys.entries.len(),

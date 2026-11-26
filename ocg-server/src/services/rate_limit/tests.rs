@@ -5,6 +5,7 @@ use std::{
 };
 
 use axum::http::{HeaderMap, HeaderName, HeaderValue};
+use uuid::Uuid;
 
 use crate::{
     config::{
@@ -15,8 +16,9 @@ use crate::{
 };
 
 use super::{
-    IpLimit, Limit, LogInFailureLimit, RateLimited, RateLimiter, Verdict, budget_lines,
-    client_ip::ClientKey, fold_username, setup,
+    IpLimit, Limit, LogInFailureLimit, RateLimited, RateLimiter, StartupWarning, UserLimit,
+    Verdict, budget_lines, client_ip::ClientKey, fold_username, is_non_localhost_https_base_url,
+    setup, startup_warning, stats::LimitKey,
 };
 
 #[test]
@@ -34,8 +36,11 @@ fn test_budget_lines_returns_every_limit_with_effective_budgets() {
         budget_lines(&budgets),
         [
             (Limit::BadgeVerify, defaults.badge_verify),
+            (Limit::CustomNotifications, defaults.custom_notifications),
             (Limit::ExploreSearch, defaults.explore_search),
             (Limit::ExternalAuth, defaults.external_auth),
+            (Limit::ImageUploads, defaults.image_uploads),
+            (Limit::InboxMessages, defaults.inbox_messages),
             (Limit::LogIn, defaults.log_in),
             (Limit::LogInFailures, budget(3, 30)),
             (Limit::PasswordReset, defaults.password_reset),
@@ -100,6 +105,63 @@ fn test_fold_username() {
 }
 
 #[test]
+fn test_is_non_localhost_https_base_url_classifies_urls() {
+    // Setup labeled base URLs with whether they represent a non-localhost HTTPS deployment
+    let cases = [
+        ("production https domain", "https://community.cncf.io", true),
+        (
+            "uppercase https with port and path",
+            "HTTPS://community.cncf.io:8443/app",
+            true,
+        ),
+        ("public ipv4 https", "https://203.0.113.10", true),
+        ("public ipv6 https", "https://[2001:db8::1]", true),
+        (
+            "ipv4-mapped public ipv6 https",
+            "https://[::ffff:203.0.113.10]",
+            true,
+        ),
+        (
+            "domain starting with localhost",
+            "https://localhost.example.com",
+            true,
+        ),
+        ("plain http domain", "http://community.cncf.io", false),
+        ("https localhost", "https://localhost", false),
+        ("https localhost with port", "https://localhost:9000", false),
+        (
+            "https uppercase localhost with trailing dot",
+            "https://LOCALHOST.:9000",
+            false,
+        ),
+        (
+            "https localhost subdomain",
+            "https://app.localhost:9000",
+            false,
+        ),
+        ("https ipv4 loopback", "https://127.0.0.1:9000", false),
+        ("https other 127/8 loopback", "https://127.0.0.2", false),
+        ("https ipv6 loopback", "https://[::1]:9000", false),
+        (
+            "https ipv4-mapped loopback",
+            "https://[::ffff:127.0.0.1]:9000",
+            false,
+        ),
+        ("unparseable url", "not a url", false),
+        ("empty url", "", false),
+    ];
+
+    // Check each base URL classifies as expected
+    for (case, base_url, expected) in cases {
+        assert_eq!(
+            is_non_localhost_https_base_url(base_url),
+            expected,
+            "{case}"
+        );
+    }
+}
+
+#[test]
 fn test_limit_from_ip_limit_and_name() {
     // Setup each IP limit with the limit and name it maps to
     let cases = [
@@ -126,14 +188,47 @@ fn test_limit_from_ip_limit_and_name() {
         (IpLimit::Views, Limit::Views, "views"),
     ];
 
-    // Check each IP limit converts and names as expected
+    // Check each IP limit converts, names, and reports IP keying as expected
+    assert_eq!(cases.len(), IpLimit::ALL.len());
     for (ip_limit, expected, name) in cases {
         assert_eq!(Limit::from(ip_limit), expected, "{name}");
         assert_eq!(expected.name(), name, "{name}");
+        assert!(expected.is_ip_keyed(), "{name}");
     }
 
-    // Check the limit without an IP counterpart is named too
+    // Check the failed log-in limit is named and IP-keyed too
     assert_eq!(Limit::LogInFailures.name(), "log_in_failures");
+    assert!(Limit::LogInFailures.is_ip_keyed());
+}
+
+#[test]
+fn test_limit_from_user_limit_and_name() {
+    // Setup each user limit with the limit and name it maps to
+    let cases = [
+        (
+            UserLimit::CustomNotifications,
+            Limit::CustomNotifications,
+            "custom_notifications",
+        ),
+        (
+            UserLimit::ImageUploads,
+            Limit::ImageUploads,
+            "image_uploads",
+        ),
+        (
+            UserLimit::InboxMessages,
+            Limit::InboxMessages,
+            "inbox_messages",
+        ),
+    ];
+
+    // Check each user limit converts, names, and reports user keying as expected
+    assert_eq!(cases.len(), UserLimit::ALL.len());
+    for (user_limit, expected, name) in cases {
+        assert_eq!(Limit::from(user_limit), expected, "{name}");
+        assert_eq!(expected.name(), name, "{name}");
+        assert!(!expected.is_ip_keyed(), "{name}");
+    }
 }
 
 #[test]
@@ -347,9 +442,18 @@ fn test_log_in_failure_limit_reserve_statistics_grouped_by_client() {
     assert_eq!(log_in_failures.requests, 6);
     assert_eq!(log_in_failures.over_limit, 1);
     assert_eq!(log_in_failures.keys.entries.len(), 2);
-    assert_eq!(log_in_failures.keys.entries[&client(1)].requests, 4);
-    assert_eq!(log_in_failures.keys.entries[&client(1)].over_limit, 1);
-    assert_eq!(log_in_failures.keys.entries[&client(2)].requests, 2);
+    assert_eq!(
+        log_in_failures.keys.entries[&LimitKey::Client(client(1))].requests,
+        4
+    );
+    assert_eq!(
+        log_in_failures.keys.entries[&LimitKey::Client(client(1))].over_limit,
+        1
+    );
+    assert_eq!(
+        log_in_failures.keys.entries[&LimitKey::Client(client(2))].requests,
+        2
+    );
     assert_eq!(log_in_failures.peak_burst_used_pct, 100);
 }
 
@@ -385,7 +489,10 @@ fn test_rate_limiter_check_enforce_rejects_over_limit() {
     let views = window.limit(Limit::Views);
     assert_eq!(views.requests, 4);
     assert_eq!(views.over_limit, 1);
-    assert_eq!(views.keys.entries[&client(1)].over_limit, 1);
+    assert_eq!(
+        views.keys.entries[&LimitKey::Client(client(1))].over_limit,
+        1
+    );
 }
 
 #[test]
@@ -440,6 +547,119 @@ fn test_rate_limiter_check_observe_allows_and_counts_over_limit() {
     assert_eq!(views.requests, 5);
     assert_eq!(views.over_limit, 3);
     assert_eq!(views.peak_burst_used_pct, 100);
+}
+
+#[test]
+fn test_rate_limiter_check_user_enforce_rejects_over_limit() {
+    // Setup an enforcing limiter with an image uploads burst of two
+    let now = Instant::now();
+    let user_id = Uuid::from_u128(1);
+    let limiter = limiter(
+        image_uploads_budgets(budget(2, 60)),
+        RateLimitMode::Enforce,
+        now,
+    );
+
+    // Spend the burst, then exceed it
+    let verdicts: Vec<_> = (0..3)
+        .map(|_| limiter.check_user(UserLimit::ImageUploads, user_id, now))
+        .collect();
+
+    // Check the request over the limit is rejected until one interval elapses
+    assert_eq!(
+        verdicts,
+        vec![
+            Verdict::Allow,
+            Verdict::Allow,
+            Verdict::Reject {
+                retry_after: Duration::from_secs(30)
+            },
+        ]
+    );
+    assert_eq!(
+        limiter.check_user(
+            UserLimit::ImageUploads,
+            user_id,
+            now + Duration::from_secs(30)
+        ),
+        Verdict::Allow
+    );
+
+    // Check the statistics count every request under the user's key
+    let window = limiter.take_window();
+    let uploads = window.limit(Limit::ImageUploads);
+    assert_eq!(uploads.requests, 4);
+    assert_eq!(uploads.over_limit, 1);
+    assert_eq!(uploads.keys.entries[&LimitKey::User(user_id)].over_limit, 1);
+}
+
+#[test]
+fn test_rate_limiter_check_user_limits_are_independent() {
+    // Setup an enforcing limiter and exhaust one user limit for one user
+    let now = Instant::now();
+    let first_user = Uuid::from_u128(1);
+    let second_user = Uuid::from_u128(2);
+    let limiter = limiter(
+        image_uploads_budgets(budget(1, 60)),
+        RateLimitMode::Enforce,
+        now,
+    );
+    assert_eq!(
+        limiter.check_user(UserLimit::ImageUploads, first_user, now),
+        Verdict::Allow
+    );
+
+    // Check other users and other limits are unaffected
+    assert!(matches!(
+        limiter.check_user(UserLimit::ImageUploads, first_user, now),
+        Verdict::Reject { .. }
+    ));
+    assert_eq!(
+        limiter.check_user(UserLimit::ImageUploads, second_user, now),
+        Verdict::Allow
+    );
+    assert_eq!(
+        limiter.check_user(UserLimit::InboxMessages, first_user, now),
+        Verdict::Allow
+    );
+    assert_eq!(
+        limiter.check_user(UserLimit::CustomNotifications, first_user, now),
+        Verdict::Allow
+    );
+}
+
+#[test]
+fn test_rate_limiter_check_user_observe_allows_and_counts_over_limit() {
+    // Setup an observing limiter with an image uploads burst of two
+    let now = Instant::now();
+    let user_id = Uuid::from_u128(1);
+    let limiter = limiter(
+        image_uploads_budgets(budget(2, 60)),
+        RateLimitMode::Observe,
+        now,
+    );
+
+    // Send more requests than the burst
+    let verdicts: Vec<_> = (0..5)
+        .map(|_| limiter.check_user(UserLimit::ImageUploads, user_id, now))
+        .collect();
+
+    // Check nothing is rejected but the would-be rejections are reported and counted
+    assert_eq!(
+        verdicts,
+        vec![
+            Verdict::Allow,
+            Verdict::Allow,
+            Verdict::AllowOverLimit,
+            Verdict::AllowOverLimit,
+            Verdict::AllowOverLimit,
+        ]
+    );
+    let window = limiter.take_window();
+    let uploads = window.limit(Limit::ImageUploads);
+    assert_eq!(uploads.requests, 5);
+    assert_eq!(uploads.over_limit, 3);
+    assert_eq!(uploads.peak_burst_used_pct, 100);
 }
 
 #[test]
@@ -639,6 +859,35 @@ fn test_rate_limiter_take_window_reports_log_in_failure_evictions() {
 }
 
 #[test]
+fn test_rate_limiter_take_window_reports_user_limit_evictions() {
+    // Setup an observing limiter whose image uploads budget outlasts the test
+    let now = Instant::now();
+    let limiter = limiter(
+        image_uploads_budgets(budget(10, 900)),
+        RateLimitMode::Observe,
+        now,
+    );
+
+    // Record more distinct users than the bounded store can track
+    for index in 0..60_000_u128 {
+        assert_eq!(
+            limiter.check_user(UserLimit::ImageUploads, Uuid::from_u128(index + 1), now),
+            Verdict::Allow
+        );
+    }
+
+    // Check bounded eviction is used and reported once
+    let window = limiter.take_window();
+    let uploads = window.limit(Limit::ImageUploads);
+    assert!(uploads.evicted_store_full > 0);
+    assert_eq!(uploads.untracked_store_full, 0);
+    assert_eq!(
+        limiter.take_window().limit(Limit::ImageUploads).evicted_store_full,
+        0
+    );
+}
+
+#[test]
 fn test_rate_limiter_take_window_starts_empty_window() {
     // Setup a limiter with traffic in the current window
     let now = Instant::now();
@@ -700,6 +949,71 @@ async fn test_setup_without_config_starts_nothing() {
     assert!(background_tasks.registry().snapshot().is_empty());
 }
 
+#[test]
+fn test_startup_warning_flags_unsafe_https_configs() {
+    // Setup observe and enforce configurations
+    let observe_cfg = RateLimitConfig {
+        client_ip: ClientIpConfig::Peer(ClientIpPeerConfig {}),
+        limits: RateLimitBudgets::default(),
+        mode: RateLimitMode::Observe,
+    };
+    let enforce_cfg = RateLimitConfig {
+        mode: RateLimitMode::Enforce,
+        ..observe_cfg.clone()
+    };
+
+    // Setup labeled combinations of configuration and base URL with the expected warning
+    let cases = [
+        (
+            "disabled on production https",
+            None,
+            "https://community.cncf.io",
+            Some(StartupWarning::Disabled),
+        ),
+        (
+            "observe mode on production https",
+            Some(&observe_cfg),
+            "https://community.cncf.io",
+            Some(StartupWarning::ObserveMode),
+        ),
+        (
+            "enforce mode on production https",
+            Some(&enforce_cfg),
+            "https://community.cncf.io",
+            None,
+        ),
+        (
+            "disabled on plain http",
+            None,
+            "http://community.cncf.io",
+            None,
+        ),
+        (
+            "observe mode on plain http",
+            Some(&observe_cfg),
+            "http://community.cncf.io",
+            None,
+        ),
+        (
+            "disabled on https localhost",
+            None,
+            "https://localhost:9000",
+            None,
+        ),
+        (
+            "observe mode on https localhost",
+            Some(&observe_cfg),
+            "https://localhost:9000",
+            None,
+        ),
+    ];
+
+    // Check each case produces the expected startup warning
+    for (case, cfg, base_url, expected) in cases {
+        assert_eq!(startup_warning(cfg, base_url), expected, "{case}");
+    }
+}
+
 // Helpers.
 
 /// Returns a budget.
@@ -735,6 +1049,14 @@ fn headers(lines: &[&str]) -> HeaderMap {
         );
     }
     headers
+}
+
+/// Returns default budgets with the image uploads budget replaced.
+fn image_uploads_budgets(image_uploads: RateLimitBudget) -> RateLimitBudgets {
+    RateLimitBudgets {
+        image_uploads,
+        ..RateLimitBudgets::default()
+    }
 }
 
 /// Parses an address.

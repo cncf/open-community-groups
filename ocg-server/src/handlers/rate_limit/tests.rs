@@ -10,6 +10,10 @@ use axum::{
 
 use super::*;
 
+/// Account rejection message for a wait of 90 seconds.
+const ACCOUNT_TWO_MINUTES_MESSAGE: &str =
+    "Too many requests from your account. Please wait 2 minutes and try again.";
+
 /// Accept header a browser sends on a document navigation.
 const BROWSER_ACCEPT: &str = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 
@@ -63,6 +67,53 @@ fn test_is_document_navigation_matches_browser_navigations_only() {
             "{case}"
         );
     }
+}
+
+#[tokio::test]
+async fn test_too_many_requests_for_user_returns_html_page_to_document_navigations() {
+    // Build the response to a browser navigation
+    let headers = headers_from(&[("accept", BROWSER_ACCEPT), ("sec-fetch-mode", "navigate")]);
+    let response = too_many_requests_for_user(&headers, Duration::from_secs(90));
+
+    // Check the status, headers, and account-scoped message
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(response.headers().get(RETRY_AFTER).unwrap(), "90");
+    assert_eq!(
+        response.headers().get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_NO_STORE
+    );
+    assert_eq!(
+        response.headers().get(CONTENT_TYPE).unwrap(),
+        "text/html; charset=utf-8"
+    );
+    assert_eq!(response.headers().get(VARY).unwrap(), REJECTION_VARY);
+    assert!(response.headers().get(RATE_LIMITED_HEADER).is_none());
+    assert!(response.headers().get(SET_COOKIE).is_none());
+    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let body = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body.contains(ACCOUNT_TWO_MINUTES_MESSAGE));
+}
+
+#[tokio::test]
+async fn test_too_many_requests_for_user_returns_plain_text_429() {
+    // Build the response
+    let response = too_many_requests_for_user(&HeaderMap::new(), Duration::from_secs(90));
+
+    // Check the status, headers, and account-scoped body
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(response.headers().get(RETRY_AFTER).unwrap(), "90");
+    assert_eq!(
+        response.headers().get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_NO_STORE
+    );
+    assert_eq!(
+        response.headers().get(CONTENT_TYPE).unwrap(),
+        "text/plain; charset=utf-8"
+    );
+    assert_eq!(response.headers().get(RATE_LIMITED_HEADER).unwrap(), "true");
+    assert_eq!(response.headers().get(VARY).unwrap(), REJECTION_VARY);
+    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    assert_eq!(body, ACCOUNT_TWO_MINUTES_MESSAGE);
 }
 
 #[test]

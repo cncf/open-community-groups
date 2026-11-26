@@ -245,10 +245,21 @@ server:
         - profile
         - email
 
-  # Rate limiting for unauthenticated routes (limits apply per pod)
+  # Rate limiting for public IP-keyed routes and authenticated user-ID routes (limits apply per pod).
+  # The server emits a startup warning when rate limiting is disabled or running in observe mode on
+  # non-localhost HTTPS deployments. Recommended production configuration (once clientIp resolution
+  # has been verified in observe mode):
+  #   rateLimit:
+  #     enabled: true
+  #     mode: enforce
+  #     clientIp:
+  #       source: header
+  #       header: x-forwarded-for
+  #       trustedProxies: ["<ingress-or-proxy-cidr>"]
   rateLimit:
     enabled: false
-    # observe | enforce (observe only logs would-be rejections)
+    # observe | enforce — applies to both IP-keyed and authenticated per-user limits
+    # (observe only logs would-be rejections without blocking either; use enforce in production)
     mode: observe
     clientIp:
       # Required when enabled: peer | header
@@ -259,8 +270,9 @@ server:
       # through the proxy; the rightmost header entry is then the client
       trustedProxies: []
     # Budget overrides: <limitName>: { burst: <requests>, periodSecs: <seconds> }
-    # Limits: badgeVerify, exploreSearch, externalAuth, logIn, logInFailures,
-    # passwordReset, resendVerification, signUp, verifyEmail, views
+    # Limits: badgeVerify, customNotifications, exploreSearch, externalAuth, imageUploads,
+    # inboxMessages, logIn, logInFailures, passwordReset, resendVerification, signUp,
+    # verifyEmail, views
     limits: {}
 
   # Optional list of hostnames that should redirect to baseUrl

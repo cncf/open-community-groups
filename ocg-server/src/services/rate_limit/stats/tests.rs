@@ -4,6 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use uuid::Uuid;
+
 use crate::services::rate_limit::{
     Limit,
     client_ip::{
@@ -13,8 +15,8 @@ use crate::services::rate_limit::{
 };
 
 use super::{
-    CappedMap, ClientIpWindow, KeyCounts, MAX_CHAIN_LENGTH, MAX_INTERNAL_CLIENT_ADDRESSES,
-    MAX_KEYS_PER_LIMIT, MAX_PEERS, PeerCounts, RateLimitStats,
+    CappedMap, ClientIpWindow, KeyCounts, LimitKey, MAX_CHAIN_LENGTH,
+    MAX_INTERNAL_CLIENT_ADDRESSES, MAX_KEYS_PER_LIMIT, MAX_PEERS, PeerCounts, RateLimitStats,
 };
 
 #[test]
@@ -39,13 +41,13 @@ fn test_rate_limit_stats_record_decision_caps_keys_per_limit() {
     let now = Instant::now();
     let stats = RateLimitStats::new(now);
     for index in 0..MAX_KEYS_PER_LIMIT {
-        stats.record_decision(Limit::Views, key(index), allowed(1));
+        stats.record_decision(Limit::Views, limit_key(index), allowed(1));
     }
 
     // Record a new key, then a key that is already tracked
-    stats.record_decision(Limit::Views, key(MAX_KEYS_PER_LIMIT), denied());
-    stats.record_decision(Limit::Views, key(0), allowed(1));
-    stats.record_decision(Limit::LogIn, key(MAX_KEYS_PER_LIMIT), allowed(1));
+    stats.record_decision(Limit::Views, limit_key(MAX_KEYS_PER_LIMIT), denied());
+    stats.record_decision(Limit::Views, limit_key(0), allowed(1));
+    stats.record_decision(Limit::LogIn, limit_key(MAX_KEYS_PER_LIMIT), allowed(1));
 
     // Check the new key is counted only in the overflow bucket
     let window = stats.take_window(now);
@@ -61,13 +63,16 @@ fn test_rate_limit_stats_record_decision_caps_keys_per_limit() {
             requests: 1
         }
     );
-    assert!(!views.keys.entries.contains_key(&key(MAX_KEYS_PER_LIMIT)));
-    assert_eq!(views.keys.entries[&key(0)].requests, 2);
+    assert!(!views.keys.entries.contains_key(&limit_key(MAX_KEYS_PER_LIMIT)));
+    assert_eq!(views.keys.entries[&limit_key(0)].requests, 2);
 
     // Check the cap applies per limit
     let log_in = window.limit(Limit::LogIn);
     assert!(!log_in.keys.is_capped);
-    assert_eq!(log_in.keys.entries[&key(MAX_KEYS_PER_LIMIT)].requests, 1);
+    assert_eq!(
+        log_in.keys.entries[&limit_key(MAX_KEYS_PER_LIMIT)].requests,
+        1
+    );
 }
 
 #[test]
@@ -75,8 +80,8 @@ fn test_rate_limit_stats_record_decision_counts_store_outcomes() {
     // Setup statistics
     let now = Instant::now();
     let stats = RateLimitStats::new(now);
-    let first = key(1);
-    let second = key(2);
+    let first = limit_key(1);
+    let second = limit_key(2);
 
     // Record allowed, denied and untracked requests for one limit
     stats.record_decision(Limit::ExploreSearch, first, allowed(40));
@@ -126,6 +131,42 @@ fn test_rate_limit_stats_record_decision_counts_store_outcomes() {
     for limit in Limit::ALL.into_iter().filter(|l| *l != Limit::ExploreSearch) {
         assert!(!window.limit(limit).has_traffic(), "{}", limit.name());
     }
+}
+
+#[test]
+fn test_rate_limit_stats_record_decision_tracks_user_keys() {
+    // Setup statistics and two user keys
+    let now = Instant::now();
+    let stats = RateLimitStats::new(now);
+    let first = LimitKey::User(Uuid::from_u128(1));
+    let second = LimitKey::User(Uuid::from_u128(2));
+
+    // Record allowed and denied requests for a user limit
+    stats.record_decision(Limit::ImageUploads, first, allowed(50));
+    stats.record_decision(Limit::ImageUploads, first, denied());
+    stats.record_decision(Limit::ImageUploads, second, allowed(25));
+
+    // Check the user keys are recorded without affecting client IP counters
+    let window = stats.take_window(now);
+    let uploads = window.limit(Limit::ImageUploads);
+    assert_eq!(uploads.requests, 3);
+    assert_eq!(uploads.over_limit, 1);
+    assert_eq!(uploads.peak_burst_used_pct, 100);
+    assert_eq!(
+        uploads.keys.entries[&first],
+        KeyCounts {
+            over_limit: 1,
+            requests: 2
+        }
+    );
+    assert_eq!(
+        uploads.keys.entries[&second],
+        KeyCounts {
+            over_limit: 0,
+            requests: 1
+        }
+    );
+    assert_eq!(window.client_ip, ClientIpWindow::default());
 }
 
 #[test]
@@ -392,7 +433,7 @@ fn test_rate_limit_stats_take_window_swaps_window() {
     let started = Instant::now();
     let stats = RateLimitStats::new(started);
     stats.record_resolution(None, false, &resolved_peer(key(1), false));
-    stats.record_decision(Limit::SignUp, key(1), allowed(1));
+    stats.record_decision(Limit::SignUp, limit_key(1), allowed(1));
 
     // Take the first window
     let first_end = started + Duration::from_secs(300);
@@ -436,6 +477,11 @@ fn ip(index: usize) -> IpAddr {
 fn key(index: usize) -> ClientKey {
     let [_, a, b, c] = u32::try_from(index).unwrap().to_be_bytes();
     ClientKey::V4([198, a, b, c])
+}
+
+/// Returns a distinct IP-backed limit key for an index.
+fn limit_key(index: usize) -> LimitKey {
+    LimitKey::Client(key(index))
 }
 
 /// Returns a resolution that selected the key from the header.

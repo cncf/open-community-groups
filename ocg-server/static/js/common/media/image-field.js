@@ -513,7 +513,11 @@ export class ImageField extends LitWrapper {
       uploadSucceeded = true;
     } catch (error) {
       this._pendingUploadFile = file;
-      showErrorAlert(getImageUploadErrorMessage("image", error.message, this._uploadErrorDetails), true);
+      if (error?.isRateLimited) {
+        showErrorAlert(error.message);
+      } else {
+        showErrorAlert(getImageUploadErrorMessage("image", error.message, this._uploadErrorDetails), true);
+      }
     } finally {
       this._isUploading = false;
       if (typeof resetCallback === "function") {

@@ -164,4 +164,128 @@ describe("gallery-field", () => {
     expect(alert.html).to.include("Image is too large &lt;strong&gt;");
     expect(alert.html).to.include("Something went wrong adding the images.");
   });
+
+  it("stops uploading remaining files on a rate-limit response and keeps earlier uploads", async () => {
+    // Accept the first upload, then return a marked 429 for the second file.
+    let attempt = 0;
+    fetchMock.setImpl(async () => {
+      attempt += 1;
+      if (attempt === 1) {
+        return {
+          status: 201,
+          async json() {
+            return { url: "https://example.com/1.png" };
+          },
+        };
+      }
+      return {
+        status: 429,
+        headers: new Headers({
+          "Retry-After": "120",
+          "X-OCG-Rate-Limited": "true",
+        }),
+        async text() {
+          return "Too many requests from your account. Please wait 2 minutes and try again.";
+        },
+      };
+    });
+
+    // Render the gallery-field fixture and upload four images.
+    const element = await mountLitComponent("gallery-field", {
+      fieldName: "gallery",
+    });
+    await element._handleIncomingFiles([
+      new File(["1"], "1.png", { type: "image/png" }),
+      new File(["2"], "2.png", { type: "image/png" }),
+      new File(["3"], "3.png", { type: "image/png" }),
+      new File(["4"], "4.png", { type: "image/png" }),
+    ]);
+    await element.updateComplete;
+
+    // The batch stops after the 429, keeps the first image, and tells the user how many remain.
+    expect(fetchMock.calls).to.have.length(2);
+    expect(element.images).to.deep.equal(["https://example.com/1.png"]);
+    expect(element._isUploading).to.equal(false);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal(
+      "Too many requests from your account. Please wait 2 minutes and try again. 3 images were not uploaded.",
+    );
+  });
+
+  it("reports a rate-limit stop even after an earlier validation error in the same batch", async () => {
+    // Reject the first file with a validation error, then rate-limit the second file.
+    let attempt = 0;
+    fetchMock.setImpl(async () => {
+      attempt += 1;
+      if (attempt === 1) {
+        return {
+          status: 422,
+          async text() {
+            return "Invalid image";
+          },
+        };
+      }
+      return {
+        status: 429,
+        headers: new Headers({
+          "Retry-After": "60",
+          "X-OCG-Rate-Limited": "true",
+        }),
+        async text() {
+          return "Too many requests from your account. Please wait 1 minute and try again.";
+        },
+      };
+    });
+
+    // Render the gallery-field fixture and upload four images.
+    const element = await mountLitComponent("gallery-field", {
+      fieldName: "gallery",
+    });
+    await element._handleIncomingFiles([
+      new File(["1"], "1.png", { type: "image/png" }),
+      new File(["2"], "2.png", { type: "image/png" }),
+      new File(["3"], "3.png", { type: "image/png" }),
+      new File(["4"], "4.png", { type: "image/png" }),
+    ]);
+    await element.updateComplete;
+
+    // The rate-limit alert is still displayed and the remaining files are not submitted.
+    expect(fetchMock.calls).to.have.length(2);
+    expect(swal.calls).to.have.length(2);
+    expect(swal.calls[1].text).to.equal(
+      "Too many requests from your account. Please wait 1 minute and try again. 3 images were not uploaded.",
+    );
+  });
+
+  it("excludes trailing animated GIFs from the rate-limit count and punctuates fallback text", async () => {
+    // Return an empty-body marked 429 on the first upload to exercise both edge cases.
+    fetchMock.setImpl(async () => ({
+      status: 429,
+      headers: new Headers({ "X-OCG-Rate-Limited": "true" }),
+      async text() {
+        return "";
+      },
+    }));
+
+    // Mix static images with trailing animated GIFs that would be rejected client-side.
+    const animatedGif = () =>
+      new File([new Uint8Array([...ANIMATED_GIF_HEADER, ...GIF_FRAME, ...GIF_FRAME, 0x3b])], "clip.gif", {
+        type: "image/gif",
+      });
+    const element = await mountLitComponent("gallery-field", {
+      fieldName: "gallery",
+    });
+    await element._handleIncomingFiles([
+      new File(["1"], "1.png", { type: "image/png" }),
+      animatedGif(),
+      new File(["2"], "2.png", { type: "image/png" }),
+      animatedGif(),
+    ]);
+    await element.updateComplete;
+
+    // Only the two uploadable static images are counted, with a period separating sentences.
+    expect(fetchMock.calls).to.have.length(1);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal("Upload failed. 2 images were not uploaded.");
+  });
 });

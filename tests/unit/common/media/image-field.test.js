@@ -457,6 +457,37 @@ describe("image-field", () => {
     expect(fetchMock.calls[1][1].body.get("file").name).to.equal("logo-cropped.webp");
   });
 
+  it("shows the plain rate-limit wait message and retains the file for retry", async () => {
+    // Mock a marked 429 account rate-limit rejection from the upload endpoint.
+    fetchMock.setImpl(async () => ({
+      status: 429,
+      headers: new Headers({
+        "Retry-After": "120",
+        "X-OCG-Rate-Limited": "true",
+      }),
+      async text() {
+        return "Too many requests from your account. Please wait 2 minutes and try again.";
+      },
+    }));
+
+    // Render the image-field fixture and attempt an upload.
+    const element = await mountLitComponent("image-field", {
+      label: "Banner",
+      name: "banner_image",
+      target: "banner",
+    });
+    const file = new File(["data"], "banner.png", { type: "image/png" });
+    await element._uploadFile(file);
+    await element.updateComplete;
+
+    // The alert shows only the server wait message while keeping the file available to retry.
+    const alert = env.current.swal.calls.at(-1);
+    expect(alert.icon).to.equal("error");
+    expect(alert.text).to.equal("Too many requests from your account. Please wait 2 minutes and try again.");
+    expect(alert.html).to.equal(undefined);
+    expect(element._pendingUploadFile).to.equal(file);
+  });
+
   it("restores focus to the upload control when cropping is cancelled", async () => {
     // Render the real image field and activate its visible upload control.
     const element = await mountLitComponent("image-field", {

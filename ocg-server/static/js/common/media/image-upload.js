@@ -1,3 +1,4 @@
+import { RATE_LIMITED_HEADER } from "/static/js/common/alerts.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { escapeHtml } from "/static/js/common/trusted-html.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
@@ -47,8 +48,12 @@ export const uploadImageFile = async (file, { target = "" } = {}) => {
   });
 
   if (!isSuccessfulXHRStatus(response.status)) {
-    const errorMessage = await response.text();
-    throw new Error(errorMessage || "Upload failed");
+    const isRateLimited = response.status === 429 && response.headers?.get?.(RATE_LIMITED_HEADER) === "true";
+    // Ignore proxy/CDN 429 HTML bodies lacking the server's plain-text rate-limit marker.
+    const errorMessage = response.status === 429 && !isRateLimited ? "" : (await response.text()).trim();
+    const error = new Error(errorMessage || "Upload failed");
+    error.isRateLimited = isRateLimited;
+    throw error;
   }
 
   const data = await response.json();

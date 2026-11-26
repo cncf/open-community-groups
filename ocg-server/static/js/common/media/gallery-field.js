@@ -227,7 +227,7 @@ export class GalleryField extends LitWrapper {
     let createdCount = 0;
     let animatedGifRejected = false;
 
-    for (const file of filesToUpload) {
+    for (const [index, file] of filesToUpload.entries()) {
       try {
         if (await isAnimatedGif(file)) {
           // Report once per batch and keep uploading the remaining static images.
@@ -243,6 +243,23 @@ export class GalleryField extends LitWrapper {
           this._setImages([...this.images, url]);
         }
       } catch (error) {
+        if (error?.isRateLimited) {
+          // Stop the remaining batch once the account upload limit is reached,
+          // counting only remaining static images that could have been uploaded.
+          let remainingCount = 1;
+          for (const remainingFile of filesToUpload.slice(index + 1)) {
+            if (!(await isAnimatedGif(remainingFile))) {
+              remainingCount += 1;
+            }
+          }
+          const alertMessage =
+            remainingCount > 1
+              ? `${/[.!?]$/.test(error.message) ? error.message : `${error.message}.`} ${remainingCount} images were not uploaded.`
+              : error.message;
+          showErrorAlert(alertMessage);
+          this._uploadErrorShown = true;
+          break;
+        }
         if (!this._uploadErrorShown) {
           showErrorAlert(getImageUploadErrorMessage("images", error.message), true);
           this._uploadErrorShown = true;

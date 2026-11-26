@@ -212,7 +212,7 @@ pub(crate) struct RouterDeps {
     pub meetings_cfg: Option<MeetingsConfig>,
     /// Payments configuration.
     pub payments_cfg: Option<PaymentsConfig>,
-    /// Rate limiter for unauthenticated routes, when configured.
+    /// Rate limiter for public and authenticated routes, when configured.
     pub rate_limiter: Option<Arc<RateLimiter>>,
 }
 
@@ -386,7 +386,17 @@ pub(crate) async fn setup(deps: RouterDeps) -> Result<Router> {
         .nest("/dashboard/group", group_dashboard_router)
         .nest("/dashboard/user", user_dashboard_router)
         // Protected image upload
-        .route("/images", post(images::upload))
+        .route("/images", post(images::upload));
+
+    // Limit authenticated routes per user ID inside the login guard, when configured
+    if let Some(rate_limiter) = rate_limiter.as_ref() {
+        router = router.route_layer(middleware::from_fn_with_state(
+            Arc::clone(rate_limiter),
+            rate_limit::limit_authenticated_requests,
+        ));
+    }
+
+    router = router
         .route_layer(login_required!(
             AuthnBackend,
             login_url = LOG_IN_URL,
