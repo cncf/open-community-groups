@@ -19,7 +19,7 @@ use ocg_common::{
 };
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::{
     config::{Config, HttpServerConfig, ImageStorageConfig, MeetingsConfig, PaymentsConfig},
@@ -40,7 +40,7 @@ use crate::{
             DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider,
             start_payment_workers,
         },
-        rate_limit,
+        rate_limit::{self, StartupWarning},
         workers::{BackgroundTasks, auth_cleanup, queue_health},
     },
     types::meetings::MeetingProvider,
@@ -131,6 +131,9 @@ async fn main() -> Result<()> {
 
     // Setup rate limiting and its summary worker, when configured
     let rate_limiter = rate_limit::setup(cfg.server.rate_limit.as_ref(), &background_tasks)?;
+
+    // Warn when rate limiting is disabled or observing on an HTTPS deployment
+    warn_rate_limit_config(&cfg.server);
 
     // Start the health reporter last so its reports cover every worker
     queue_health::start(&workers_db, background_tasks.registry(), &background_tasks);
@@ -358,4 +361,23 @@ fn start_meetings_workers(
     }
 
     Ok(())
+}
+
+/// Emit a startup warning when rate limiting is disabled or observing on a
+/// non-localhost HTTPS deployment.
+fn warn_rate_limit_config(server_cfg: &HttpServerConfig) {
+    match rate_limit::startup_warning(server_cfg.rate_limit.as_ref(), &server_cfg.base_url) {
+        Some(StartupWarning::Disabled) => {
+            warn!(
+                "rate limiting is disabled on an https deployment; configure server.rate_limit with mode=enforce for production"
+            );
+        }
+        Some(StartupWarning::ObserveMode) => {
+            warn!(
+                mode = "observe",
+                "rate limiting is running in observe mode on an https deployment; set server.rate_limit.mode=enforce for production"
+            );
+        }
+        None => {}
+    }
 }

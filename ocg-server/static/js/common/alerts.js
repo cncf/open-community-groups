@@ -16,7 +16,7 @@ const PAGE_ALERT_READY_KEY = "pageAlertReady";
 const BACKEND_FLASH_REFRESH_TRIGGERS = new Set(["refresh-user-dashboard-content"]);
 const REFRESH_BODY_EVENT = "refresh-body";
 // Header marking a plain-text rate limit rejection whose body is safe to show.
-const RATE_LIMITED_HEADER = "X-OCG-Rate-Limited";
+export const RATE_LIMITED_HEADER = "X-OCG-Rate-Limited";
 // Success icon parts SweetAlert2 paints with the popup background to mask the ring.
 const SUCCESS_ICON_MASK_SELECTOR = "[class^=swal2-success-circular-line], .swal2-success-fix";
 const SWAL_CONTAINER_SELECTOR = ".swal2-container";

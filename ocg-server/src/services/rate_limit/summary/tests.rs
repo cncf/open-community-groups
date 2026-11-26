@@ -8,6 +8,7 @@ use axum::http::{HeaderMap, HeaderName, HeaderValue};
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
 use tracing::Level;
+use uuid::Uuid;
 
 use crate::{
     config::{
@@ -18,7 +19,8 @@ use crate::{
         IpLimit, Limit, RateLimiter,
         client_ip::ClientKey,
         stats::{
-            ClientIpWindow, KeyCounts, LimitWindow, MAX_CHAIN_LENGTH, PeerCounts, WindowSnapshot,
+            ClientIpWindow, KeyCounts, LimitKey, LimitWindow, MAX_CHAIN_LENGTH, PeerCounts,
+            WindowSnapshot,
         },
     },
 };
@@ -488,13 +490,16 @@ fn test_build_report_top_keys_breaks_ties_by_key() {
         ..LimitWindow::default()
     };
     let keys = [
-        (ClientKey::V4([198, 51, 100, 1]), 2),
-        (ClientKey::V4([203, 0, 113, 9]), 5),
-        (ClientKey::V4([192, 0, 2, 1]), 3),
-        (ClientKey::V6Prefix([0x20, 0x01, 0x0d, 0xb8, 0, 1, 0, 0]), 3),
-        (ClientKey::V4([203, 0, 113, 1]), 3),
-        (ClientKey::V4([192, 0, 2, 9]), 2),
-        (ClientKey::V4([10, 0, 0, 1]), 2),
+        (LimitKey::Client(ClientKey::V4([198, 51, 100, 1])), 2),
+        (LimitKey::Client(ClientKey::V4([203, 0, 113, 9])), 5),
+        (LimitKey::Client(ClientKey::V4([192, 0, 2, 1])), 3),
+        (
+            LimitKey::Client(ClientKey::V6Prefix([0x20, 0x01, 0x0d, 0xb8, 0, 1, 0, 0])),
+            3,
+        ),
+        (LimitKey::Client(ClientKey::V4([203, 0, 113, 1])), 3),
+        (LimitKey::Client(ClientKey::V4([192, 0, 2, 9])), 2),
+        (LimitKey::Client(ClientKey::V4([10, 0, 0, 1])), 2),
     ];
     for (key, requests) in keys {
         views.keys.entries.insert(key, key_counts(0, requests));
@@ -526,6 +531,36 @@ fn test_build_report_unresolved_requests_absent_from_limits() {
     assert_eq!(report.client_ip.level, Level::WARN);
     assert_eq!(report.limits, []);
     assert!(report.proxy.is_none());
+}
+
+#[test]
+fn test_build_report_user_keyed_limit_omits_top_keys_and_dominant_key_warning() {
+    // Setup a user-keyed limit where one user accounts for every request above the threshold
+    let user_id = Uuid::from_u128(42);
+    let mut uploads = LimitWindow {
+        requests: 200,
+        over_limit: 5,
+        ..LimitWindow::default()
+    };
+    uploads
+        .keys
+        .entries
+        .insert(LimitKey::User(user_id), key_counts(5, 200));
+    let window = window_with_limit(Limit::ImageUploads, uploads);
+
+    // Build the report
+    let report = build_report(&window, RateLimitMode::Enforce, "header");
+
+    // Check aggregate counts stay intact while account IDs and IP/NAT warnings are omitted
+    assert_eq!(report.warnings, []);
+    let summary = &report.limits[0];
+    assert_eq!(summary.limit, Limit::ImageUploads);
+    assert_eq!(summary.level, Level::INFO);
+    assert_eq!(summary.distinct_keys, 1);
+    assert_eq!(summary.over_limit, 5);
+    assert_eq!(summary.over_limit_keys, 1);
+    assert_eq!(summary.requests, 200);
+    assert_eq!(summary.top_keys, []);
 }
 
 #[test]
@@ -655,9 +690,9 @@ fn ip(address: &str) -> IpAddr {
     address.parse().unwrap()
 }
 
-/// Returns a distinct IPv4 client key in `203.0.113.0/24` for an index.
-fn key(index: u8) -> ClientKey {
-    ClientKey::V4([203, 0, 113, index])
+/// Returns a distinct IPv4 client limit key in `203.0.113.0/24` for an index.
+fn key(index: u8) -> LimitKey {
+    LimitKey::Client(ClientKey::V4([203, 0, 113, index]))
 }
 
 /// Returns the request counts of one key.

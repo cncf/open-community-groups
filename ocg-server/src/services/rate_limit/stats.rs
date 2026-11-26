@@ -9,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use uuid::Uuid;
+
 use super::{
     Limit,
     client_ip::{ClientKey, Resolution, ResolvedVia, UnresolvedReason},
@@ -25,7 +27,7 @@ pub(super) const MAX_CHAIN_LENGTH: usize = 8;
 /// Maximum number of distinct internal client addresses tracked per window.
 const MAX_INTERNAL_CLIENT_ADDRESSES: usize = 256;
 
-/// Maximum number of distinct client keys tracked per limit per window.
+/// Maximum number of distinct keys tracked per limit per window.
 const MAX_KEYS_PER_LIMIT: usize = 4_096;
 
 /// Maximum number of distinct peers tracked per window.
@@ -51,15 +53,15 @@ impl RateLimitStats {
 
     /// Records the outcome of one store acquire for a limit.
     ///
-    /// `client` is the client key alone, also for the failed log-in limit,
-    /// so no username or username hash is ever kept in statistics.
-    pub(super) fn record_decision(&self, limit: Limit, client: ClientKey, decision: Decision) {
+    /// For the failed log-in limit, `key` carries the client IP key alone, so
+    /// no username or username hash is ever kept in statistics.
+    pub(super) fn record_decision(&self, limit: Limit, key: LimitKey, decision: Decision) {
         let mut window = self.window();
         let limit_window = window.snapshot.limit_mut(limit);
 
         // Count the request for the limit and its key
         limit_window.requests += 1;
-        let key_counts = limit_window.keys.slot(client, MAX_KEYS_PER_LIMIT);
+        let key_counts = limit_window.keys.slot(key, MAX_KEYS_PER_LIMIT);
         key_counts.requests += 1;
 
         // Count the store outcome
@@ -243,13 +245,23 @@ impl ClientIpWindow {
     }
 }
 
+/// Key tracked in per-limit statistics: a client address key or an
+/// authenticated user identifier.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub(crate) enum LimitKey {
+    /// Client IP address or IPv6 /64 prefix.
+    Client(ClientKey),
+    /// Authenticated user identifier.
+    User(Uuid),
+}
+
 /// Statistics of one limit during one window.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct LimitWindow {
-    /// Failed log-in store entries evicted to track new keys.
+    /// Store entries evicted to track new keys.
     pub evicted_store_full: u64,
-    /// Request counts per client key.
-    pub keys: CappedMap<ClientKey, KeyCounts>,
+    /// Request counts per limit key.
+    pub keys: CappedMap<LimitKey, KeyCounts>,
     /// Requests over the limit, rejected or would-be rejected in observe mode.
     pub over_limit: u64,
     /// Largest share of a key's burst in use, from 0 to 100.
@@ -269,7 +281,7 @@ impl LimitWindow {
     }
 }
 
-/// Request counts of one client key for one limit.
+/// Request counts of one limit key for one limit.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct KeyCounts {
     /// Requests over the limit.

@@ -1,4 +1,4 @@
-//! Opt-in, per-pod, in-memory rate limiting for unauthenticated routes.
+//! Opt-in, per-pod, in-memory rate limiting for unauthenticated and authenticated routes.
 
 use std::{
     fmt,
@@ -10,7 +10,9 @@ use std::{
 
 use anyhow::Result;
 use axum::http::HeaderMap;
+use reqwest::Url;
 use tracing::info;
+use uuid::Uuid;
 
 use crate::{
     config::{RateLimitBudget, RateLimitBudgets, RateLimitConfig, RateLimitMode},
@@ -19,7 +21,7 @@ use crate::{
 
 use self::{
     client_ip::{ClientIpResolver, ClientKey},
-    stats::{RateLimitStats, WindowSnapshot},
+    stats::{LimitKey, RateLimitStats, WindowSnapshot},
     store::{Decision, KeyedLimiter, OnFull, nanos_since},
 };
 
@@ -52,6 +54,8 @@ pub(crate) struct RateLimiter {
     resolver: ClientIpResolver,
     /// Statistics of the current window.
     stats: RateLimitStats,
+    /// User-keyed stores with bounded eviction, indexed by [`UserLimit`].
+    user_stores: [KeyedLimiter<Uuid>; UserLimit::ALL.len()],
     /// Process-random hasher for folded usernames, so collisions cannot be
     /// precomputed.
     username_hasher: RandomState,
@@ -73,6 +77,10 @@ impl RateLimiter {
             Limit::LogInFailures.budget(&cfg.limits),
             OnFull::EvictLeastPenalised,
         );
+        let user_stores = UserLimit::ALL.map(|limit| {
+            let budget = Limit::from(limit).budget(&cfg.limits);
+            KeyedLimiter::new(budget, OnFull::EvictLeastPenalised)
+        });
 
         Ok(Self {
             budgets: cfg.limits.clone(),
@@ -82,6 +90,7 @@ impl RateLimiter {
             mode: cfg.mode,
             resolver,
             stats: RateLimitStats::new(now),
+            user_stores,
             username_hasher: RandomState::new(),
         })
     }
@@ -99,16 +108,25 @@ impl RateLimiter {
     pub(crate) fn check(&self, limit: IpLimit, client: ClientKey, now: Instant) -> Verdict {
         // Apply the request to the limit's store and record the outcome
         let decision = self.ip_stores[limit as usize].acquire(client, nanos_since(self.epoch, now));
-        self.stats.record_decision(Limit::from(limit), client, decision);
+        self.stats
+            .record_decision(Limit::from(limit), LimitKey::Client(client), decision);
 
-        // Reject only in enforce mode
-        match (decision, self.mode) {
-            (Decision::Denied { retry_after }, RateLimitMode::Enforce) => {
-                Verdict::Reject { retry_after }
-            }
-            (Decision::Denied { .. }, RateLimitMode::Observe) => Verdict::AllowOverLimit,
-            _ => Verdict::Allow,
-        }
+        self.verdict(decision)
+    }
+
+    /// Applies one request from `user_id` to an authenticated per-user limit.
+    ///
+    /// The request is always counted. Only enforce mode rejects a request
+    /// over the limit; observe mode lets it through and reports that enforce
+    /// mode would have rejected it.
+    pub(crate) fn check_user(&self, limit: UserLimit, user_id: Uuid, now: Instant) -> Verdict {
+        // Apply the request to the limit's store and record the outcome
+        let decision =
+            self.user_stores[limit as usize].acquire(user_id, nanos_since(self.epoch, now));
+        self.stats
+            .record_decision(Limit::from(limit), LimitKey::User(user_id), decision);
+
+        self.verdict(decision)
     }
 
     /// Returns the failed log-in limit of one client.
@@ -157,9 +175,13 @@ impl RateLimiter {
         // Take the recorded window
         let mut snapshot = self.stats.take_window(Instant::now());
 
-        // Add the evictions the failed log-in store made since the last take
+        // Add the evictions made by evicting stores since the last take
         snapshot.limit_mut(Limit::LogInFailures).evicted_store_full +=
             self.log_in_failures_store.take_evictions();
+        for limit in UserLimit::ALL {
+            snapshot.limit_mut(Limit::from(limit)).evicted_store_full +=
+                self.user_stores[limit as usize].take_evictions();
+        }
 
         snapshot
     }
@@ -173,9 +195,20 @@ impl RateLimiter {
     fn username_hash(&self, username: &str) -> u64 {
         self.username_hasher.hash_one(fold_username(username))
     }
+
+    /// Translates a store decision into a middleware verdict under the active mode.
+    fn verdict(&self, decision: Decision) -> Verdict {
+        match (decision, self.mode) {
+            (Decision::Denied { retry_after }, RateLimitMode::Enforce) => {
+                Verdict::Reject { retry_after }
+            }
+            (Decision::Denied { .. }, RateLimitMode::Observe) => Verdict::AllowOverLimit,
+            _ => Verdict::Allow,
+        }
+    }
 }
 
-/// Limit applied per client address by the router middleware.
+/// Limit applied per client address by the outer router middleware.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum IpLimit {
     /// Badge verification.
@@ -213,15 +246,41 @@ impl IpLimit {
     ];
 }
 
+/// Limit applied per authenticated user ID by the inner router middleware.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub(crate) enum UserLimit {
+    /// Community, group, and event custom notification sends.
+    CustomNotifications,
+    /// Image uploads.
+    ImageUploads,
+    /// Event contact and inbox messaging endpoints.
+    InboxMessages,
+}
+
+impl UserLimit {
+    /// Every per-user limit, in declaration order.
+    pub(crate) const ALL: [UserLimit; 3] = [
+        UserLimit::CustomNotifications,
+        UserLimit::ImageUploads,
+        UserLimit::InboxMessages,
+    ];
+}
+
 /// Identifies a limit in budgets, statistics and log lines.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) enum Limit {
     /// Badge verification.
     BadgeVerify,
+    /// Custom notification sends per authenticated user.
+    CustomNotifications,
     /// Explore searches.
     ExploreSearch,
     /// External authentication redirects and callbacks.
     ExternalAuth,
+    /// Image uploads per authenticated user.
+    ImageUploads,
+    /// Inbox and contact messages per authenticated user.
+    InboxMessages,
     /// Log-in attempts.
     LogIn,
     /// Failed log-ins per client and username.
@@ -240,10 +299,13 @@ pub(crate) enum Limit {
 
 impl Limit {
     /// Every limit, in declaration order.
-    pub(crate) const ALL: [Limit; 10] = [
+    pub(crate) const ALL: [Limit; 13] = [
         Limit::BadgeVerify,
+        Limit::CustomNotifications,
         Limit::ExploreSearch,
         Limit::ExternalAuth,
+        Limit::ImageUploads,
+        Limit::InboxMessages,
         Limit::LogIn,
         Limit::LogInFailures,
         Limit::PasswordReset,
@@ -253,12 +315,32 @@ impl Limit {
         Limit::Views,
     ];
 
+    /// Returns whether the limit is keyed by client IP address rather than user ID.
+    fn is_ip_keyed(self) -> bool {
+        match self {
+            Limit::BadgeVerify
+            | Limit::ExploreSearch
+            | Limit::ExternalAuth
+            | Limit::LogIn
+            | Limit::LogInFailures
+            | Limit::PasswordReset
+            | Limit::ResendVerification
+            | Limit::SignUp
+            | Limit::VerifyEmail
+            | Limit::Views => true,
+            Limit::CustomNotifications | Limit::ImageUploads | Limit::InboxMessages => false,
+        }
+    }
+
     /// Returns the limit's `snake_case` configuration key.
     pub(crate) fn name(self) -> &'static str {
         match self {
             Limit::BadgeVerify => "badge_verify",
+            Limit::CustomNotifications => "custom_notifications",
             Limit::ExploreSearch => "explore_search",
             Limit::ExternalAuth => "external_auth",
+            Limit::ImageUploads => "image_uploads",
+            Limit::InboxMessages => "inbox_messages",
             Limit::LogIn => "log_in",
             Limit::LogInFailures => "log_in_failures",
             Limit::PasswordReset => "password_reset",
@@ -273,8 +355,11 @@ impl Limit {
     fn budget(self, budgets: &RateLimitBudgets) -> RateLimitBudget {
         match self {
             Limit::BadgeVerify => budgets.badge_verify,
+            Limit::CustomNotifications => budgets.custom_notifications,
             Limit::ExploreSearch => budgets.explore_search,
             Limit::ExternalAuth => budgets.external_auth,
+            Limit::ImageUploads => budgets.image_uploads,
+            Limit::InboxMessages => budgets.inbox_messages,
             Limit::LogIn => budgets.log_in,
             Limit::LogInFailures => budgets.log_in_failures,
             Limit::PasswordReset => budgets.password_reset,
@@ -302,7 +387,26 @@ impl From<IpLimit> for Limit {
     }
 }
 
-/// Result of checking an IP limit.
+impl From<UserLimit> for Limit {
+    fn from(limit: UserLimit) -> Self {
+        match limit {
+            UserLimit::CustomNotifications => Limit::CustomNotifications,
+            UserLimit::ImageUploads => Limit::ImageUploads,
+            UserLimit::InboxMessages => Limit::InboxMessages,
+        }
+    }
+}
+
+/// Warning about an unsafe rate limiting configuration on a production HTTPS deployment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum StartupWarning {
+    /// Rate limiting is omitted on a non-localhost HTTPS deployment.
+    Disabled,
+    /// Rate limiting is configured in observe mode on a non-localhost HTTPS deployment.
+    ObserveMode,
+}
+
+/// Result of checking a rate limit.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Verdict {
     /// Let the request through.
@@ -354,9 +458,11 @@ impl LogInFailureLimit {
         let decision = rate_limiter
             .log_in_failures_store
             .acquire(key, nanos_since(rate_limiter.epoch, now));
-        rate_limiter
-            .stats
-            .record_decision(Limit::LogInFailures, self.client, decision);
+        rate_limiter.stats.record_decision(
+            Limit::LogInFailures,
+            LimitKey::Client(self.client),
+            decision,
+        );
 
         // Refuse a denied reservation only in enforce mode
         let holds_token = match (decision, rate_limiter.mode) {
@@ -477,6 +583,23 @@ pub(crate) fn setup(
     Ok(Some(rate_limiter))
 }
 
+/// Returns a startup warning when rate limiting is omitted or running in
+/// observe mode on a non-localhost HTTPS deployment.
+pub(crate) fn startup_warning(
+    cfg: Option<&RateLimitConfig>,
+    base_url: &str,
+) -> Option<StartupWarning> {
+    if !is_non_localhost_https_base_url(base_url) {
+        return None;
+    }
+
+    match cfg {
+        None => Some(StartupWarning::Disabled),
+        Some(cfg) if cfg.mode == RateLimitMode::Observe => Some(StartupWarning::ObserveMode),
+        Some(_) => None,
+    }
+}
+
 /// Folds a username so every spelling that reaches the same account gets the
 /// same failed log-in key.
 ///
@@ -514,6 +637,33 @@ fn fold_username(username: &str) -> Vec<u8> {
         folded.push(byte);
     }
     folded
+}
+
+/// Returns whether `base_url` is an HTTPS URL whose host is not localhost or loopback.
+fn is_non_localhost_https_base_url(base_url: &str) -> bool {
+    // Parse the URL and require the HTTPS scheme with a host
+    let Ok(url) = Url::parse(base_url) else {
+        return false;
+    };
+    if url.scheme() != "https" {
+        return false;
+    }
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+
+    // Treat IPv4 and IPv6 loopback addresses (including IPv4-mapped forms) as local
+    let unbracketed = host
+        .strip_prefix('[')
+        .and_then(|s| s.strip_suffix(']'))
+        .unwrap_or(host);
+    if let Ok(ip) = unbracketed.parse::<IpAddr>() {
+        return !ip.to_canonical().is_loopback();
+    }
+
+    // Treat `localhost` and `*.localhost` (with optional FQDN trailing dot) as local
+    let normalized = host.strip_suffix('.').unwrap_or(host);
+    normalized != "localhost" && !normalized.ends_with(".localhost")
 }
 
 /// Returns the mode as its `snake_case` configuration value, for log lines.

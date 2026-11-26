@@ -49,6 +49,12 @@ const DEFAULT_CLIENT_IP_HEADER: &str = "x-forwarded-for";
 /// Default connection deadline in seconds for outbound clients.
 const DEFAULT_CONNECT_TIMEOUT_SECS: u64 = 10;
 
+/// Default rate limit budget for custom notification sends per authenticated user.
+const DEFAULT_CUSTOM_NOTIFICATIONS_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 10,
+    period_secs: 3_600,
+};
+
 /// Default rate limit budget for explore searches.
 const DEFAULT_EXPLORE_SEARCH_BUDGET: RateLimitBudget = RateLimitBudget {
     burst: 300,
@@ -63,6 +69,21 @@ const DEFAULT_EXTERNAL_AUTH_BUDGET: RateLimitBudget = RateLimitBudget {
 
 /// Default organizer-confirmation window in hours for external payments.
 const DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS: i32 = 72;
+
+/// Default rate limit budget for image uploads per authenticated user.
+///
+/// The burst exceeds `MAX_PUBLIC_GALLERY_IMAGES` (50) so a full photo gallery
+/// batch can be uploaded in one pass alongside a banner or logo.
+const DEFAULT_IMAGE_UPLOADS_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 60,
+    period_secs: 600,
+};
+
+/// Default rate limit budget for inbox and contact messages per authenticated user.
+const DEFAULT_INBOX_MESSAGES_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 60,
+    period_secs: 900,
+};
 
 /// Default rate limit budget for log-in attempts per client address.
 const DEFAULT_LOG_IN_BUDGET: RateLimitBudget = RateLimitBudget {
@@ -706,7 +727,7 @@ pub(crate) struct HttpServerConfig {
     ///
     /// Defaults to the available parallelism of the host.
     pub max_blocking_concurrency: Option<usize>,
-    /// Optional rate limiting for unauthenticated routes; absent disables it.
+    /// Optional rate limiting for public and authenticated routes; absent disables it.
     pub rate_limit: Option<RateLimitConfig>,
     /// Optional list of hostnames that should redirect to `base_url`.
     pub redirect_hosts: Option<Vec<String>>,
@@ -999,7 +1020,7 @@ impl fmt::Debug for OidcProviderConfig {
     }
 }
 
-/// Rate limiting configuration for unauthenticated routes.
+/// Rate limiting configuration.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct RateLimitConfig {
@@ -1123,10 +1144,16 @@ pub(crate) enum RateLimitMode {
 pub(crate) struct RateLimitBudgets {
     /// Budget for badge verification.
     pub badge_verify: RateLimitBudget,
+    /// Budget for custom notification sends per authenticated user.
+    pub custom_notifications: RateLimitBudget,
     /// Budget for explore searches.
     pub explore_search: RateLimitBudget,
     /// Budget for external authentication redirects and callbacks.
     pub external_auth: RateLimitBudget,
+    /// Budget for image uploads per authenticated user.
+    pub image_uploads: RateLimitBudget,
+    /// Budget for inbox and contact messages per authenticated user.
+    pub inbox_messages: RateLimitBudget,
     /// Budget for log-in attempts per client address.
     pub log_in: RateLimitBudget,
     /// Budget for failed log-ins per client address and username.
@@ -1149,8 +1176,11 @@ impl RateLimitBudgets {
         // Check each budget under its configuration key
         let budgets = [
             ("badge_verify", &self.badge_verify),
+            ("custom_notifications", &self.custom_notifications),
             ("explore_search", &self.explore_search),
             ("external_auth", &self.external_auth),
+            ("image_uploads", &self.image_uploads),
+            ("inbox_messages", &self.inbox_messages),
             ("log_in", &self.log_in),
             ("log_in_failures", &self.log_in_failures),
             ("password_reset", &self.password_reset),
@@ -1171,8 +1201,11 @@ impl Default for RateLimitBudgets {
     fn default() -> Self {
         Self {
             badge_verify: DEFAULT_BADGE_VERIFY_BUDGET,
+            custom_notifications: DEFAULT_CUSTOM_NOTIFICATIONS_BUDGET,
             explore_search: DEFAULT_EXPLORE_SEARCH_BUDGET,
             external_auth: DEFAULT_EXTERNAL_AUTH_BUDGET,
+            image_uploads: DEFAULT_IMAGE_UPLOADS_BUDGET,
+            inbox_messages: DEFAULT_INBOX_MESSAGES_BUDGET,
             log_in: DEFAULT_LOG_IN_BUDGET,
             log_in_failures: DEFAULT_LOG_IN_FAILURES_BUDGET,
             password_reset: DEFAULT_PASSWORD_RESET_BUDGET,

@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
-import { isAnimatedGif, isGifFile } from "/static/js/common/media/image-upload.js";
+import { isAnimatedGif, isGifFile, uploadImageFile } from "/static/js/common/media/image-upload.js";
+import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 /** Builds a GIF file from a header and a list of block byte arrays. */
 const createGifFile = (blocks, { name = "image.gif", type = "image/gif" } = {}) => {
@@ -81,5 +82,69 @@ describe("image-upload", () => {
     };
 
     expect(await isAnimatedGif(file)).to.equal(false);
+  });
+
+  describe("uploadImageFile", () => {
+    let fetchMock;
+
+    beforeEach(() => {
+      fetchMock = mockFetch();
+    });
+
+    afterEach(() => {
+      fetchMock.restore();
+    });
+
+    it("marks server rate-limit rejections", async () => {
+      // Return a server-marked 429 response.
+      fetchMock.setImpl(async () => ({
+        status: 429,
+        headers: new Headers({
+          "X-OCG-Rate-Limited": "true",
+        }),
+        async text() {
+          return "Too many requests from your account. Please wait 2 minutes and try again.";
+        },
+      }));
+
+      // Upload a file and capture the thrown error.
+      let caughtError;
+      try {
+        await uploadImageFile(new File(["data"], "photo.png", { type: "image/png" }));
+      } catch (error) {
+        caughtError = error;
+      }
+
+      // The error preserves the rate-limit flag and server wait message.
+      expect(caughtError).to.be.an("error");
+      expect(caughtError.isRateLimited).to.equal(true);
+      expect(caughtError.message).to.equal(
+        "Too many requests from your account. Please wait 2 minutes and try again.",
+      );
+    });
+
+    it("hides the body of unmarked 429 responses from proxies or CDNs", async () => {
+      // Return an unmarked HTML 429 response as a proxy would.
+      fetchMock.setImpl(async () => ({
+        status: 429,
+        headers: new Headers({ "Content-Type": "text/html" }),
+        async text() {
+          return "<!DOCTYPE html><title>Too many requests</title>";
+        },
+      }));
+
+      // Upload a file and capture the thrown error.
+      let caughtError;
+      try {
+        await uploadImageFile(new File(["data"], "photo.png", { type: "image/png" }));
+      } catch (error) {
+        caughtError = error;
+      }
+
+      // The unmarked 429 falls back to the generic message without exposing proxy HTML.
+      expect(caughtError).to.be.an("error");
+      expect(caughtError.isRateLimited).to.equal(false);
+      expect(caughtError.message).to.equal("Upload failed");
+    });
   });
 });

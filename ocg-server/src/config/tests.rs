@@ -629,8 +629,11 @@ fn test_rate_limit_config_defaults_optional_settings() {
         cfg.limits,
         RateLimitBudgets {
             badge_verify: budget(30, 300),
+            custom_notifications: budget(10, 3_600),
             explore_search: budget(300, 150),
             external_auth: budget(300, 150),
+            image_uploads: budget(60, 600),
+            inbox_messages: budget(60, 900),
             log_in: budget(300, 300),
             log_in_failures: budget(10, 900),
             password_reset: budget(30, 900),
@@ -767,6 +770,30 @@ fn test_rate_limit_config_rejects_invalid_settings() {
                 "limits": { "log_in_failures": { "burst": 10, "period_secs": 86_401 } },
             }),
             "server.rate_limit.limits.log_in_failures.period_secs must be between 1 and 86400",
+        ),
+        (
+            "zero burst on custom notifications",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "custom_notifications": { "burst": 0, "period_secs": 60 } },
+            }),
+            "server.rate_limit.limits.custom_notifications.burst must be between 1 and 100000",
+        ),
+        (
+            "zero period on image uploads",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "image_uploads": { "burst": 10, "period_secs": 0 } },
+            }),
+            "server.rate_limit.limits.image_uploads.period_secs must be between 1 and 86400",
+        ),
+        (
+            "oversized burst on inbox messages",
+            json!({
+                "client_ip": { "source": "peer" },
+                "limits": { "inbox_messages": { "burst": 100_001, "period_secs": 60 } },
+            }),
+            "server.rate_limit.limits.inbox_messages.burst must be between 1 and 100000",
         ),
         (
             "partial budget",
