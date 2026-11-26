@@ -9,11 +9,25 @@ declare
     v_lf_issuer text := nullif(p_user #>> '{provider,linuxfoundation,issuer}', '');
     v_lf_subject text := nullif(p_user #>> '{provider,linuxfoundation,subject}', '');
     v_name text := nullif(btrim(p_user->>'name'), '');
+    v_previous_email text;
     v_provider jsonb := p_user->'provider';
 begin
     -- Validate required external-auth email
     if v_email is null then
         raise exception 'external auth email is required';
+    end if;
+
+    -- Lock the registered user first to preserve user -> password_reset_token lock order
+    select lower(u.email)
+    into v_previous_email
+    from "user" u
+    where u.user_id = p_user_id
+    and u.registration_status = 'registered'
+    for update;
+
+    -- Ensure a registered user was found
+    if not found then
+        raise exception 'registered external-auth user not found' using errcode = 'OCG01';
     end if;
 
     -- Reject email addresses owned by another user
@@ -53,9 +67,11 @@ begin
     where user_id = p_user_id
     and registration_status = 'registered';
 
-    -- Ensure a registered user was updated
-    if not found then
-        raise exception 'registered external-auth user not found' using errcode = 'OCG01';
+    -- Revoke password reset tokens issued for a previous email address
+    if v_previous_email is distinct from v_email then
+        delete from password_reset_token
+        where user_id = p_user_id;
+        perform purge_password_reset_notification_data(array[p_user_id]);
     end if;
 
     -- Return an external-auth payload with required defaults

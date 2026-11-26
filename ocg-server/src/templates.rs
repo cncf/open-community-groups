@@ -48,12 +48,16 @@ pub(crate) enum PageId {
     CommunityDashboard,
     /// Public event page.
     Event,
+    /// Forgot-password page.
+    ForgotPassword,
     /// Public group page.
     Group,
     /// Group administration dashboard.
     GroupDashboard,
     /// Log-in page.
     LogIn,
+    /// Reset-password page.
+    ResetPassword,
     /// Sign-up page.
     SignUp,
     /// Site documentation page.

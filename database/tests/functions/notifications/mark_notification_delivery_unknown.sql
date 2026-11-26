@@ -5,23 +5,54 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set notificationPasswordResetID '8a090000-0000-0000-0000-000000000005'
 \set notificationProcessedID '8a090000-0000-0000-0000-000000000001'
 \set notificationProcessingID '8a090000-0000-0000-0000-000000000002'
 \set notificationStaleClaimID '8a090000-0000-0000-0000-000000000004'
+\set passwordResetTemplateDataID '8a090000-0000-0000-0000-000000000006'
 \set userID '8a090000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
+-- Template data for a password-reset notification scrubbed when marked unknown
+insert into notification_template_data (notification_template_data_id, data, hash)
+values (
+    :'passwordResetTemplateDataID',
+    '{"link":"https://example.test/reset-password/8a09-secret"}'::jsonb,
+    encode(digest('8a09-password-reset-payload', 'sha256'), 'hex')
+);
+
 -- User who owns the delivery notifications
 select fx_user(:'userID', jsonb_build_object('username', 'user-mark-notification-delivery-unknown'));
+
+-- Processing password-reset notification scrubbed when marked delivery-unknown
+insert into notification (
+    notification_id,
+    delivery_attempts,
+    delivery_status,
+    kind,
+    user_id,
+
+    delivery_claimed_at,
+    notification_template_data_id
+) values (
+    :'notificationPasswordResetID',
+    1,
+    'processing',
+    'password-reset',
+    :'userID',
+
+    '2025-01-01 00:00:05+00',
+    :'passwordResetTemplateDataID'
+);
 
 -- Processed notification rejected by the invalid-state scenario
 insert into notification (
@@ -178,6 +209,37 @@ select throws_ok(
     'P0001',
     'notification delivery claim not found or no longer active',
     'Should stop a stale worker from marking a newer delivery claim unknown'
+);
+
+-- Should scrub template data when marking a password-reset notification delivery-unknown
+select lives_ok(
+    format(
+        $$select mark_notification_delivery_unknown(
+            %L::uuid,
+            'smtp timeout after data',
+            '2025-01-01 00:00:05+00'::timestamptz
+        )$$,
+        :'notificationPasswordResetID'
+    ),
+    'Should mark a password-reset notification delivery-unknown'
+);
+select is(
+    (
+        select notification_template_data_id
+        from notification
+        where notification_id = :'notificationPasswordResetID'::uuid
+    ),
+    null::uuid,
+    'Should detach template data from a delivery-unknown password-reset notification'
+);
+select is(
+    (
+        select count(*)::int
+        from notification_template_data
+        where notification_template_data_id = :'passwordResetTemplateDataID'::uuid
+    ),
+    0,
+    'Should delete unreferenced password-reset template data on unknown outcome'
 );
 
 -- ============================================================================

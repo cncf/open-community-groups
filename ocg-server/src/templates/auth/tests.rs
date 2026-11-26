@@ -1,6 +1,112 @@
-use crate::test_util::{element_html_with, element_text_with, opening_tag_with};
+use crate::{
+    config::LoginOptions,
+    test_util::{element_html_with, element_text_with, opening_tag_with},
+    types::tests::sample_site_settings,
+};
 
 use super::*;
+
+#[test]
+fn test_forgot_password_page_renders_form_and_sign_in_link() {
+    // Render the forgot password page
+    let body = ForgotPasswordPage {
+        messages: vec![],
+        page_id: PageId::ForgotPassword,
+        path: "/forgot-password".to_string(),
+        site_settings: sample_site_settings(),
+        user: UserMenuState::default(),
+    }
+    .render()
+    .unwrap();
+
+    // Check heading, form contract, email input, and sign-in link
+    assert!(body.contains("Forgot Password"));
+    let form = opening_tag_with(&body, r#"action="/forgot-password""#);
+    assert!(form.contains(r#"method="post""#));
+    let email = opening_tag_with(&body, r#"id="email""#);
+    assert!(email.contains(r#"type="email""#));
+    assert!(email.contains(r#"name="email""#));
+    assert!(email.contains(r#"autocomplete="email""#));
+    assert!(body.contains("Send Reset Link"));
+    assert!(body.contains(r#"href="/log-in""#));
+}
+
+#[test]
+fn test_log_in_page_gates_recovery_controls_on_email_login() {
+    let cases = [
+        ("email login enabled", true, true),
+        ("email login disabled", false, false),
+    ];
+
+    for (label, email, expected) in cases {
+        // Render the log-in page for the case login option
+        let body = LogInPage {
+            login: LoginOptions {
+                email,
+                github: true,
+                linuxfoundation: false,
+            },
+            messages: vec![],
+            page_id: PageId::LogIn,
+            path: "/log-in".to_string(),
+            site_settings: sample_site_settings(),
+            user: UserMenuState::default(),
+
+            next_url: Some("%2Fdashboard".to_string()),
+        }
+        .render()
+        .unwrap();
+
+        // Check forgot-password and resend-verification controls follow email login
+        assert_eq!(
+            body.contains(r#"href="/forgot-password""#),
+            expected,
+            "forgot password link, {label}"
+        );
+        assert_eq!(
+            body.contains(r#"action="/resend-verification?next_url=%2Fdashboard""#),
+            expected,
+            "resend verification form, {label}"
+        );
+        assert_eq!(
+            body.contains("Didn't receive your verification email?"),
+            expected,
+            "resend verification trigger, {label}"
+        );
+    }
+}
+
+#[test]
+fn test_reset_password_page_renders_token_action_and_password_confirmation_hooks() {
+    // Check Debug formatting redacts the reset token
+    let page = ResetPasswordPage {
+        messages: vec![],
+        page_id: PageId::ResetPassword,
+        path: "/reset-password".to_string(),
+        site_settings: sample_site_settings(),
+        token: "sample-reset-token".to_string(),
+        user: UserMenuState::default(),
+    };
+    let debug = format!("{page:?}");
+    assert!(!debug.contains("sample-reset-token"));
+    assert!(debug.contains("[redacted]"));
+
+    // Render the reset password page without placing the token in `path`
+    let body = page.render().unwrap();
+
+    // Check form action, HTMX history suppression, and client-side password validation hooks
+    assert!(body.contains(r#"hx-history="false""#));
+    let form = opening_tag_with(&body, r#"id="reset-password-form""#);
+    assert!(form.contains(r#"action="/reset-password/sample-reset-token""#));
+    assert!(form.contains(r#"method="post""#));
+    let password = opening_tag_with(&body, r#"id="password""#);
+    assert!(password.contains("data-password"));
+    assert!(password.contains(r#"autocomplete="new-password""#));
+    let confirmation = opening_tag_with(&body, r#"id="password_confirmation""#);
+    assert!(confirmation.contains("data-password-confirmation"));
+    assert!(confirmation.contains(r#"autocomplete="new-password""#));
+    assert!(body.contains(r#"href="/log-in""#));
+}
 
 #[test]
 fn test_user_menu_section_gates_dashboard_rows_by_team() {

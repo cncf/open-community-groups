@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(93);
+select plan(94);
 
 -- ============================================================================
 -- TESTS
@@ -1057,6 +1057,13 @@ select columns_are('notification_template_data', array[
     'created_at',
     'data',
     'hash'
+]);
+
+-- Test: password_reset_token columns should match expected
+select columns_are('password_reset_token', array[
+    'token_hash',
+    'created_at',
+    'user_id'
 ]);
 
 -- Test: payment_provider columns should match expected

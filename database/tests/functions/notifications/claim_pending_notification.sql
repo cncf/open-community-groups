@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,6 +23,8 @@ select plan(19);
 \set notificationEventPublishedID '8a010000-0000-0000-0000-000000000007'
 \set notificationFutureRetryID '8a010000-0000-0000-0000-000000000023'
 \set notificationGroupWelcomeID '8a010000-0000-0000-0000-000000000008'
+\set notificationPasswordResetActiveID '8a010000-0000-0000-0000-000000000029'
+\set notificationPasswordResetDeadID '8a010000-0000-0000-0000-000000000030'
 \set notificationPreRegisteredAdmissionOfferCanceledID '8a010000-0000-0000-0000-000000000025'
 \set notificationPreRegisteredAdmissionOfferID '8a010000-0000-0000-0000-000000000024'
 \set notificationPreRegisteredGroupWelcomeID '8a010000-0000-0000-0000-000000000010'
@@ -34,6 +36,8 @@ select plan(19);
 \set templateEmailVerificationID '8a010000-0000-0000-0000-000000000016'
 \set templateEventPublishedID '8a010000-0000-0000-0000-000000000017'
 \set templateGroupWelcomeID '8a010000-0000-0000-0000-000000000018'
+\set templatePasswordResetActiveID '8a010000-0000-0000-0000-000000000031'
+\set templatePasswordResetDeadID '8a010000-0000-0000-0000-000000000032'
 \set userPreRegisteredID '8a010000-0000-0000-0000-000000000019'
 \set userPreRegisteredVerifiedID '8a010000-0000-0000-0000-000000000020'
 \set userUnverifiedID '8a010000-0000-0000-0000-000000000021'
@@ -83,7 +87,25 @@ insert into notification_template_data (data, hash, notification_template_data_i
         :'templateEmailVerificationID'
     ),
     ('{"event": "test"}'::jsonb, 'hash_event_published', :'templateEventPublishedID'),
-    ('{"group": "test"}'::jsonb, 'hash_group_welcome', :'templateGroupWelcomeID');
+    ('{"group": "test"}'::jsonb, 'hash_group_welcome', :'templateGroupWelcomeID'),
+    (
+        '{"link": "https://example.com/reset-password/active"}'::jsonb,
+        'hash_password_reset_active_8a01',
+        :'templatePasswordResetActiveID'
+    ),
+    (
+        '{"link": "https://example.com/reset-password/dead"}'::jsonb,
+        'hash_password_reset_dead_8a01',
+        :'templatePasswordResetDeadID'
+    );
+
+-- Active password reset token matching the active reset notification
+insert into password_reset_token (token_hash, created_at, user_id)
+values (
+    digest('8a01-active-reset-token', 'sha256'),
+    current_timestamp - interval '5 minutes',
+    :'userVerifiedID'
+);
 
 -- Notifications that should be skipped before the first eligible row
 insert into notification (
@@ -247,6 +269,26 @@ insert into notification (
         :'notificationPreRegisteredAdmissionOfferCanceledID',
         :'templateEventPublishedID',
         :'userPreRegisteredID'
+    ),
+    (
+        '2025-01-01 00:00:11.7',
+        0,
+        'pending',
+        'password-reset',
+        null,
+        :'notificationPasswordResetDeadID',
+        :'templatePasswordResetDeadID',
+        :'userVerifiedID'
+    ),
+    (
+        current_timestamp - interval '5 minutes',
+        0,
+        'pending',
+        'password-reset',
+        null,
+        :'notificationPasswordResetActiveID',
+        :'templatePasswordResetActiveID',
+        :'userVerifiedID'
     ),
     (
         '2025-01-01 00:00:12',
@@ -451,6 +493,41 @@ select is(
         'template_data', '{"event": "test"}'::jsonb
     ),
     'Should return admission offer cancellation notifications for pre-registered users'
+);
+
+-- Should fail and scrub dead password-reset notifications and claim the next active one
+select is(
+    (select row_to_json(r)::jsonb from claim_pending_notification() r),
+    jsonb_build_object(
+        'attachment_ids', null,
+        'delivery_claimed_at', current_timestamp,
+        'email', 'verified-claim-pending-notification@example.com',
+        'kind', 'password-reset',
+        'notification_id', :'notificationPasswordResetActiveID',
+        'template_data', '{"link": "https://example.com/reset-password/active"}'::jsonb
+    ),
+    'Should skip and scrub dead password-reset notifications to claim the active one'
+);
+select results_eq(
+    format(
+        $$
+            select delivery_status, error, notification_template_data_id is null
+            from notification
+            where notification_id = %L::uuid
+        $$,
+        :'notificationPasswordResetDeadID'
+    ),
+    $$values ('failed'::text, 'password reset token no longer active'::text, true)$$,
+    'Should fail and detach superseded password-reset notifications during claim'
+);
+select is(
+    (
+        select count(*)::int
+        from notification_template_data
+        where notification_template_data_id = :'templatePasswordResetDeadID'::uuid
+    ),
+    0,
+    'Should delete template data of dead password-reset notifications during claim'
 );
 
 -- Should leave other notification kinds for unverified users pending

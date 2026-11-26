@@ -1,5 +1,7 @@
 //! Notifications templates.
 
+use std::fmt;
+
 use askama::Template;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
@@ -1243,6 +1245,32 @@ impl NotificationTemplate for InboxReplyReceived {
     /// [`NotificationTemplate::subject`].
     fn subject(&self) -> String {
         scoped_subject(&self.group_name, "New reply to your message")
+    }
+}
+
+/// Template for password reset notification.
+#[derive(Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/password_reset.html")]
+pub(crate) struct PasswordReset {
+    /// Reset link for the user to set a new password.
+    pub link: String,
+    /// Theme configuration for the site.
+    pub theme: Theme,
+}
+
+impl fmt::Debug for PasswordReset {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PasswordReset")
+            .field("link", &"[redacted]")
+            .field("theme", &self.theme)
+            .finish()
+    }
+}
+
+impl NotificationTemplate for PasswordReset {
+    /// [`NotificationTemplate::subject`].
+    fn subject(&self) -> String {
+        "Reset your password".to_string()
     }
 }
 

@@ -1,5 +1,7 @@
 //! Database operations for authentication and authorization.
 
+use std::fmt;
+
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use axum_login::tower_sessions::session;
@@ -36,6 +38,13 @@ pub(crate) trait DBAuth {
         profile: &ExternalUserProfile,
     ) -> Result<User>;
 
+    /// Creates a password reset token for an eligible user and queues the reset email.
+    async fn create_password_reset_token(
+        &self,
+        email: &str,
+        reset: &PasswordResetNotification,
+    ) -> Result<bool>;
+
     /// Creates a new session in the database.
     async fn create_session(&self, record: &session::Record) -> Result<()>;
 
@@ -44,6 +53,9 @@ pub(crate) trait DBAuth {
 
     /// Deletes one bounded batch of expired email verification codes.
     async fn delete_expired_email_verification_codes(&self, batch_size: usize) -> Result<usize>;
+
+    /// Deletes one bounded batch of expired password reset tokens.
+    async fn delete_expired_password_reset_tokens(&self, batch_size: usize) -> Result<usize>;
 
     /// Deletes a session from the database.
     async fn delete_session(&self, session_id: &session::Id) -> Result<()>;
@@ -76,6 +88,19 @@ pub(crate) trait DBAuth {
         community_id: &Uuid,
         group_id: &Uuid,
     ) -> Result<bool>;
+
+    /// Checks whether a password reset token digest exists and is still valid.
+    async fn has_valid_password_reset_token(&self, token_hash: &[u8; 32]) -> Result<bool>;
+
+    /// Resends an email verification code for an unverified registered user after cooldown.
+    async fn resend_email_verification(
+        &self,
+        email: &str,
+        verification: &EmailVerificationNotification,
+    ) -> Result<bool>;
+
+    /// Consumes a single-use password reset token, updates the password, and rotates `auth_hash`.
+    async fn reset_password(&self, token_hash: &[u8; 32], new_password: &str) -> Result<()>;
 
     /// Registers a new user in the database.
     async fn sign_up_user(
@@ -182,6 +207,21 @@ where
         .await
     }
 
+    /// [`DBAuth::create_password_reset_token`].
+    #[instrument(skip(self, email, reset), err)]
+    async fn create_password_reset_token(
+        &self,
+        email: &str,
+        reset: &PasswordResetNotification,
+    ) -> Result<bool> {
+        let token_hash = reset.token_hash.as_slice();
+        self.fetch_scalar_one(
+            "select create_password_reset_token($1::text, $2::bytea, $3::jsonb);",
+            &[&email, &token_hash, &reset.template_data],
+        )
+        .await
+    }
+
     #[instrument(skip(self, record), err)]
     async fn create_session(&self, record: &session::Record) -> Result<()> {
         self.execute(
@@ -232,6 +272,21 @@ where
 
         usize::try_from(count)
             .map_err(|_| anyhow!("invalid expired email verification codes cleanup count"))
+    }
+
+    /// [`DBAuth::delete_expired_password_reset_tokens`].
+    #[instrument(skip(self), err)]
+    async fn delete_expired_password_reset_tokens(&self, batch_size: usize) -> Result<usize> {
+        let batch_size = i32::try_from(batch_size)?;
+        let count: i32 = self
+            .fetch_scalar_one(
+                "select delete_expired_password_reset_tokens($1::integer)::integer;",
+                &[&batch_size],
+            )
+            .await?;
+
+        usize::try_from(count)
+            .map_err(|_| anyhow!("invalid expired password reset tokens cleanup count"))
     }
 
     #[instrument(skip(self, session_id), err)]
@@ -317,6 +372,42 @@ where
         self.fetch_scalar_one(
             "select group_belongs_to_community($1::uuid, $2::uuid);",
             &[&community_id, &group_id],
+        )
+        .await
+    }
+
+    /// [`DBAuth::has_valid_password_reset_token`].
+    #[instrument(skip(self, token_hash), err)]
+    async fn has_valid_password_reset_token(&self, token_hash: &[u8; 32]) -> Result<bool> {
+        let token_hash = token_hash.as_slice();
+        self.fetch_scalar_one(
+            "select has_valid_password_reset_token($1::bytea);",
+            &[&token_hash],
+        )
+        .await
+    }
+
+    /// [`DBAuth::resend_email_verification`].
+    #[instrument(skip(self, email, verification), err)]
+    async fn resend_email_verification(
+        &self,
+        email: &str,
+        verification: &EmailVerificationNotification,
+    ) -> Result<bool> {
+        self.fetch_scalar_one(
+            "select resend_email_verification($1::text, $2::uuid, $3::jsonb);",
+            &[&email, &verification.code, &verification.template_data],
+        )
+        .await
+    }
+
+    /// [`DBAuth::reset_password`].
+    #[instrument(skip(self, token_hash, new_password), err)]
+    async fn reset_password(&self, token_hash: &[u8; 32], new_password: &str) -> Result<()> {
+        let token_hash = token_hash.as_slice();
+        self.execute(
+            "select reset_password($1::bytea, $2::text);",
+            &[&token_hash, &new_password],
         )
         .await
     }
@@ -451,7 +542,7 @@ where
         .await
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self, code), err)]
     async fn verify_email(&self, code: &Uuid) -> Result<()> {
         self.execute("select verify_email($1::uuid);", &[&code]).await
     }
@@ -464,4 +555,22 @@ pub(crate) struct EmailVerificationNotification {
     pub(crate) code: Uuid,
     /// Serialized `EmailVerification` template data for enqueueing.
     pub(crate) template_data: serde_json::Value,
+}
+
+/// Password reset notification data required when issuing a reset token.
+#[derive(Clone)]
+pub(crate) struct PasswordResetNotification {
+    /// Serialized `PasswordReset` template data for enqueueing.
+    pub(crate) template_data: serde_json::Value,
+    /// SHA-256 digest of the raw reset token stored in the database.
+    pub(crate) token_hash: [u8; 32],
+}
+
+impl fmt::Debug for PasswordResetNotification {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PasswordResetNotification")
+            .field("template_data", &"[redacted]")
+            .field("token_hash", &"[redacted]")
+            .finish()
+    }
 }

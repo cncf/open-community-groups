@@ -79,8 +79,20 @@ const DEFAULT_LOG_IN_FAILURES_BUDGET: RateLimitBudget = RateLimitBudget {
 /// Default maximum organizer-confirmation window in hours for external payments.
 const DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS: i32 = 336;
 
+/// Default rate limit budget for password reset requests and token submissions.
+const DEFAULT_PASSWORD_RESET_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 30,
+    period_secs: 900,
+};
+
 /// Default total-operation deadline in seconds for outbound clients.
 const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
+
+/// Default rate limit budget for verification email resend requests.
+const DEFAULT_RESEND_VERIFICATION_BUDGET: RateLimitBudget = RateLimitBudget {
+    burst: 30,
+    period_secs: 900,
+};
 
 /// Default grace period in seconds granted to background workers on shutdown.
 const DEFAULT_SHUTDOWN_GRACE_PERIOD_SECS: u64 = 30;
@@ -1119,6 +1131,10 @@ pub(crate) struct RateLimitBudgets {
     pub log_in: RateLimitBudget,
     /// Budget for failed log-ins per client address and username.
     pub log_in_failures: RateLimitBudget,
+    /// Budget for password reset requests and token submissions.
+    pub password_reset: RateLimitBudget,
+    /// Budget for verification email resend requests.
+    pub resend_verification: RateLimitBudget,
     /// Budget for sign-ups.
     pub sign_up: RateLimitBudget,
     /// Budget for email verification links.
@@ -1137,6 +1153,8 @@ impl RateLimitBudgets {
             ("external_auth", &self.external_auth),
             ("log_in", &self.log_in),
             ("log_in_failures", &self.log_in_failures),
+            ("password_reset", &self.password_reset),
+            ("resend_verification", &self.resend_verification),
             ("sign_up", &self.sign_up),
             ("verify_email", &self.verify_email),
             ("views", &self.views),
@@ -1157,6 +1175,8 @@ impl Default for RateLimitBudgets {
             external_auth: DEFAULT_EXTERNAL_AUTH_BUDGET,
             log_in: DEFAULT_LOG_IN_BUDGET,
             log_in_failures: DEFAULT_LOG_IN_FAILURES_BUDGET,
+            password_reset: DEFAULT_PASSWORD_RESET_BUDGET,
+            resend_verification: DEFAULT_RESEND_VERIFICATION_BUDGET,
             sign_up: DEFAULT_SIGN_UP_BUDGET,
             verify_email: DEFAULT_VERIFY_EMAIL_BUDGET,
             views: DEFAULT_VIEWS_BUDGET,

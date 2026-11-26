@@ -8,7 +8,7 @@ use crate::{
         EmailVerification, EventAttendanceCanceled, EventCanceled, EventPaidConfigured,
         EventPublished, EventRefundApproved, EventRefundRejected, EventRescheduled,
         EventWaitlistJoined, EventWaitlistLeft, EventWelcome, InboxMessageReceived,
-        InboxReplyReceived, SpeakerWelcome,
+        InboxReplyReceived, PasswordReset, SpeakerWelcome,
     },
     types::{
         notifications::NotificationKind,
@@ -554,4 +554,63 @@ fn test_build_inbox_reply_received_notification_returns_expected_payload() {
         )
     );
     assert_eq!(template.event_name, None);
+}
+
+#[tokio::test]
+async fn test_build_password_reset_notification_rejects_empty_base_url() {
+    // Setup database mock, which must not be read without a base URL
+    let mut db = MockDB::new();
+    db.expect_get_site_settings().never();
+
+    // Build the notification payload
+    let err = build_password_reset_notification(&db, &sample_server_cfg(""))
+        .await
+        .expect_err("empty base URL to be rejected");
+
+    // Check the configuration error
+    assert_eq!(
+        err.to_string(),
+        "base URL is required to send password reset email"
+    );
+}
+
+#[tokio::test]
+async fn test_build_password_reset_notification_returns_hashed_token_link_and_theme() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_site_settings(&mut db);
+
+    // Build the notification payload
+    let notification =
+        build_password_reset_notification(&db, &sample_server_cfg("https://example.test/"))
+            .await
+            .expect("notification to be built");
+
+    // Extract the raw token from the link and check its SHA-256 digest matches token_hash
+    let notification_debug = format!("{notification:?}");
+    let template: PasswordReset =
+        serde_json::from_value(notification.template_data).expect("template data to deserialize");
+    let raw_token = template
+        .link
+        .strip_prefix("https://example.test/reset-password/")
+        .expect("reset link prefix");
+    assert!(!notification_debug.contains(raw_token));
+    assert!(notification_debug.contains("[redacted]"));
+    let template_debug = format!("{template:?}");
+    assert!(!template_debug.contains(raw_token));
+    assert!(template_debug.contains("[redacted]"));
+    assert_eq!(raw_token.len(), 43);
+    assert!(
+        raw_token
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+    );
+    assert_eq!(
+        hash_password_reset_token(raw_token),
+        notification.token_hash
+    );
+    assert_eq!(
+        template.theme.primary_color,
+        sample_site_settings().theme.primary_color
+    );
 }

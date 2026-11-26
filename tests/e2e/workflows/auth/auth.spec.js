@@ -8,12 +8,14 @@ import {
   SAME_ORIGIN_HEADERS,
 } from "../../utils.js";
 import {
+  ageEmailVerificationCode,
   deleteUserByUsername,
   fillSignUpForm,
   logInWithEmail,
   readUserIdByUsername,
   signUpWithEmail,
   waitForEmailVerificationCode,
+  waitForPasswordResetPath,
 } from "./helpers.js";
 
 const USER_DASHBOARD_EVENTS_PATH = "/dashboard/user?tab=events";
@@ -143,9 +145,12 @@ test.describe("authentication", () => {
     // Verify the failure redirects to login and explains token expiry.
     await expect(page).toHaveURL(/\/log-in$/);
     await expect(
-      page.getByText("Error verifying email (please note that links are only valid for 24 hours).", {
-        exact: true,
-      }),
+      page.getByText(
+        "Error verifying email (links are only valid for 24 hours). You can request a new verification email below.",
+        {
+          exact: true,
+        },
+      ),
     ).toBeVisible();
   });
 
@@ -245,9 +250,12 @@ test.describe("authentication", () => {
     await navigateToPath(page, `/verify-email/${verificationCode}`);
     await expect(page).toHaveURL(/\/log-in$/);
     await expect(
-      page.getByText("Error verifying email (please note that links are only valid for 24 hours).", {
-        exact: true,
-      }),
+      page.getByText(
+        "Error verifying email (links are only valid for 24 hours). You can request a new verification email below.",
+        {
+          exact: true,
+        },
+      ),
     ).toBeVisible();
   });
 
@@ -316,5 +324,207 @@ test.describe("authentication", () => {
     await navigateToPath(page, USER_DASHBOARD_EVENTS_PATH);
     await expect(page).toHaveURL(/\/log-in\?next_url=/);
     await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+  });
+
+  test("password reset completes end to end, invalidates active sessions, and rejects replay", async ({
+    browser,
+    notifications,
+    owned,
+    page,
+    request,
+  }) => {
+    // Create and verify a unique email user for the password reset lifecycle.
+    const user = buildAuthUser();
+    const updatedPassword = "ResetPassword456!";
+    owned.defer(() => deleteUserByUsername(user.username));
+
+    await signUpWithEmail(page, user);
+    const userId = readUserIdByUsername(user.username);
+    expect(userId).not.toBeNull();
+    const verificationCode = await waitForEmailVerificationCode(user.email);
+    await navigateToPath(page, `/verify-email/${verificationCode}`);
+    await expect(page).toHaveURL(/\/log-in/);
+
+    // Establish an active authenticated session in a second browser context.
+    const activeSessionContext = await browser.newContext();
+    const activeSessionPage = await activeSessionContext.newPage();
+    try {
+      await navigateToPath(activeSessionPage, "/log-in");
+      await Promise.all([
+        activeSessionPage.waitForURL((url) => url.pathname === "/"),
+        logInWithEmail(activeSessionPage, user),
+      ]);
+      await navigateToPath(activeSessionPage, USER_DASHBOARD_EVENTS_PATH);
+      await expect(activeSessionPage.locator("#dashboard-content")).toBeVisible();
+
+      // Open forgot-password from login and submit the user's email address.
+      await navigateToPath(page, "/log-in");
+      await page.getByRole("link", { name: "Forgot password?" }).click();
+      await expect(page).toHaveURL(/\/forgot-password$/);
+      await expect(page.getByRole("heading", { name: "Forgot Password" })).toBeVisible();
+      await page.getByLabel("Email Address").fill(user.email);
+      await page.getByRole("button", { name: "Send Reset Link" }).click();
+
+      // Confirm generic confirmation copy and queued password-reset notification.
+      await expect(page).toHaveURL(/\/log-in$/);
+      await expect(
+        page.getByText(
+          "If an eligible account matches that email address, we've sent password reset instructions.",
+          { exact: true },
+        ),
+      ).toBeVisible();
+      notifications.expectNew([
+        {
+          kind: "email-verification",
+          userIds: [userId],
+        },
+        {
+          kind: "password-reset",
+          userIds: [userId],
+        },
+      ]);
+
+      // Read the queued reset link and verify an immediate retry hits the 2-minute cooldown.
+      const resetPath = await waitForPasswordResetPath(user.email);
+      await navigateToPath(page, "/forgot-password");
+      await page.getByLabel("Email Address").fill(user.email);
+      await page.getByRole("button", { name: "Send Reset Link" }).click();
+      await expect(page).toHaveURL(/\/log-in$/);
+      expect(await waitForPasswordResetPath(user.email)).toBe(resetPath);
+
+      // Verify GET /reset-password/{token} emits strict cache and referrer protection headers.
+      const resetPageResponse = await request.get(buildE2eUrl(resetPath), { maxRedirects: 0 });
+      expect(resetPageResponse.status()).toBe(200);
+      expect(resetPageResponse.headers()["cache-control"]).toBe("no-store");
+      expect(resetPageResponse.headers()["referrer-policy"]).toBe("no-referrer");
+
+      // Open the reset page, verify navigating away does not cache the token in HTMX sessionStorage.
+      await navigateToPath(page, resetPath);
+      await expect(page.getByRole("heading", { name: "Reset Password" })).toBeVisible();
+      await page.getByRole("link", { name: "Explore", exact: true }).click();
+      await expect(page).toHaveURL(/\/explore/);
+      const sessionStorageDump = await page.evaluate(() => JSON.stringify(Object.entries(sessionStorage)));
+      expect(sessionStorageDump).not.toContain(resetPath);
+
+      // Return to the reset page, verify client-side mismatch validation, then set the new password.
+      await navigateToPath(page, resetPath);
+      await expect(page.getByRole("heading", { name: "Reset Password" })).toBeVisible();
+      await page.getByLabel("New Password").fill(updatedPassword);
+      const confirmation = page.getByLabel("Confirm Password");
+      await confirmation.fill("DifferentPassword789!");
+      await page.getByRole("button", { name: "Reset Password" }).click();
+      await expect(confirmation).toBeFocused();
+      await expect(confirmation).toHaveJSProperty("validationMessage", "Passwords do not match");
+
+      await confirmation.fill(updatedPassword);
+      await page.getByRole("button", { name: "Reset Password" }).click();
+      await expect(page).toHaveURL(/\/log-in$/);
+      await expect(
+        page.getByText("Your password has been reset. You can now log in with your new password.", {
+          exact: true,
+        }),
+      ).toBeVisible();
+
+      // Verify the previously active session was invalidated by auth_hash rotation.
+      await navigateToPath(activeSessionPage, USER_DASHBOARD_EVENTS_PATH);
+      await expect(activeSessionPage).toHaveURL(/\/log-in\?next_url=/);
+
+      // Verify the old password is rejected and the new password logs in.
+      await logInWithEmail(page, user);
+      await expect(page).toHaveURL(/\/log-in$/);
+      await expect(page.getByText(/Invalid credentials/)).toBeVisible();
+
+      await Promise.all([
+        page.waitForURL((url) => url.pathname === "/"),
+        logInWithEmail(page, { ...user, password: updatedPassword }),
+      ]);
+
+      // Verify replaying the consumed reset link redirects to forgot-password with strict headers.
+      const replayResponse = await request.get(buildE2eUrl(resetPath), { maxRedirects: 0 });
+      expect(replayResponse.status()).toBe(303);
+      expect(replayResponse.headers().location).toBe("/forgot-password");
+      expect(replayResponse.headers()["cache-control"]).toBe("no-store");
+      expect(replayResponse.headers()["referrer-policy"]).toBe("no-referrer");
+    } finally {
+      await activeSessionContext.close();
+    }
+  });
+
+  test("resend verification enforces cooldown and issues a replacement verification link", async ({
+    notifications,
+    owned,
+    page,
+  }) => {
+    // Sign up a new unverified user and capture the initial verification code.
+    const user = buildAuthUser();
+    owned.defer(() => deleteUserByUsername(user.username));
+
+    await signUpWithEmail(page, user);
+    const userId = readUserIdByUsername(user.username);
+    expect(userId).not.toBeNull();
+    const initialCode = await waitForEmailVerificationCode(user.email);
+
+    // Submit resend immediately from the login page during the 2-minute cooldown.
+    await navigateToPath(page, "/log-in");
+    await page.getByText("Didn't receive your verification email?", { exact: true }).click();
+    const resendForm = page.getByRole("form", { name: "Resend verification email" });
+    await resendForm.getByLabel("Email Address").fill(user.email);
+    await resendForm.getByRole("button", { name: "Resend Verification Email" }).click();
+
+    // Confirm generic feedback while the original verification code remains intact.
+    await expect(page).toHaveURL(/\/log-in$/);
+    await expect(
+      page.getByText(
+        "If an unverified account matches that email address, we've sent a new verification email.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    expect(await waitForEmailVerificationCode(user.email)).toBe(initialCode);
+
+    // Age the code past the 2-minute cooldown and resend again.
+    ageEmailVerificationCode(user.email);
+    await page.getByText("Didn't receive your verification email?", { exact: true }).click();
+    const retryForm = page.getByRole("form", { name: "Resend verification email" });
+    await retryForm.getByLabel("Email Address").fill(user.email);
+    await retryForm.getByRole("button", { name: "Resend Verification Email" }).click();
+
+    await expect(page).toHaveURL(/\/log-in$/);
+    let replacementCode = null;
+    await expect
+      .poll(async () => {
+        replacementCode = await waitForEmailVerificationCode(user.email);
+        return replacementCode !== initialCode;
+      })
+      .toBe(true);
+    notifications.expectNew([
+      {
+        kind: "email-verification",
+        userIds: [userId],
+      },
+      {
+        kind: "email-verification",
+        userIds: [userId],
+      },
+    ]);
+
+    // Confirm the superseded code fails while the replacement code verifies the account.
+    await navigateToPath(page, `/verify-email/${initialCode}`);
+    await expect(page).toHaveURL(/\/log-in$/);
+    await expect(
+      page.getByText(
+        "Error verifying email (links are only valid for 24 hours). You can request a new verification email below.",
+        {
+          exact: true,
+        },
+      ),
+    ).toBeVisible();
+
+    await navigateToPath(page, `/verify-email/${replacementCode}`);
+    await expect(page).toHaveURL(/\/log-in$/);
+    await expect(
+      page.getByText("Email verified successfully. You can now log in using your credentials."),
+    ).toBeVisible();
+
+    await Promise.all([page.waitForURL((url) => url.pathname === "/"), logInWithEmail(page, user)]);
   });
 });

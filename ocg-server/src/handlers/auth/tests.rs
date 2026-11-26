@@ -10,7 +10,10 @@ use axum::{
     extract::{ConnectInfo, Query},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{ACCEPT, CACHE_CONTROL, CONTENT_TYPE, COOKIE, LOCATION, RETRY_AFTER, SET_COOKIE},
+        header::{
+            ACCEPT, CACHE_CONTROL, CONTENT_TYPE, COOKIE, LOCATION, REFERRER_POLICY, RETRY_AFTER,
+            SET_COOKIE,
+        },
     },
     response::IntoResponse,
 };
@@ -36,6 +39,7 @@ use crate::{
     },
     db::{
         DynDB,
+        contract_tests::helpers::contract_tests_pool,
         mock::{MockDB, expect_site_settings},
     },
     handlers::{
@@ -53,6 +57,71 @@ use crate::{
 use super::*;
 
 // Pages and sections.
+
+#[tokio::test]
+async fn test_forgot_password_page_not_found_when_email_login_disabled() {
+    // Setup router with email login disabled; unmatched single-segment GET falls through to /{community}
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "forgot-password")
+        .returning(|_| Ok(None));
+    expect_site_settings(&mut db);
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(github_login_cfg())
+        .build()
+        .await;
+
+    // Send request to forgot-password page
+    let request = request("GET", FORGOT_PASSWORD_URL).body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check route is not mounted without email login
+    assert_html_response(&parts, &bytes, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_forgot_password_page_redirects_when_authenticated() {
+    // Setup identifiers and database mock
+    let ids = DashboardIds::new();
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let (parts, bytes) = send(router, get_request(FORGOT_PASSWORD_URL, ids.session_id)).await;
+
+    // Check response redirects to home
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/"))
+    );
+}
+
+#[tokio::test]
+async fn test_forgot_password_page_success() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_site_settings(&mut db);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let request = request("GET", FORGOT_PASSWORD_URL).body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check response renders the forgot-password form
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("Forgot Password"));
+    assert!(body.contains(r#"action="/forgot-password""#));
+}
 
 #[tokio::test]
 async fn test_log_in_page_success() {
@@ -86,6 +155,164 @@ async fn test_log_in_page_redirects_when_authenticated() {
         parts.headers.get(LOCATION),
         Some(&HeaderValue::from_static("/"))
     );
+}
+
+#[tokio::test]
+async fn test_reset_password_page_invalid_token_redirects_with_security_headers() {
+    // Setup database mock rejecting an unknown or expired token
+    let token = "expired-or-unknown-token";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(false));
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| message_matches(record, PASSWORD_RESET_INVALID_MESSAGE))
+        .returning(|_| Ok(()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let request = request("GET", &format!("{RESET_PASSWORD_URL}/{token}"))
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check redirect target and strict cache/referrer headers
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(FORGOT_PASSWORD_URL))
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE))
+    );
+    assert_eq!(
+        parts.headers.get(REFERRER_POLICY),
+        Some(&HeaderValue::from_static("no-referrer"))
+    );
+}
+
+#[tokio::test]
+async fn test_reset_password_page_invalid_token_redirects_authenticated_user_to_dashboard() {
+    // Setup an authenticated session and database mock rejecting the token
+    let ids = DashboardIds::new();
+    let token = "expired-token-authenticated";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(false));
+    db.expect_update_session()
+        .times(1)
+        .withf(|record| message_matches(record, PASSWORD_RESET_INVALID_MESSAGE))
+        .returning(|_| Ok(()));
+
+    // Setup router and send authenticated request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let (parts, bytes) = send(
+        router,
+        get_request(&format!("{RESET_PASSWORD_URL}/{token}"), ids.session_id),
+    )
+    .await;
+
+    // Check authenticated user redirects directly to /dashboard/user instead of /forgot-password
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static("/dashboard/user"))
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE))
+    );
+    assert_eq!(
+        parts.headers.get(REFERRER_POLICY),
+        Some(&HeaderValue::from_static("no-referrer"))
+    );
+}
+
+#[tokio::test]
+async fn test_reset_password_page_malformed_token_skips_db_and_sets_security_headers() {
+    // Setup database mock that must not be queried for malformed tokens
+    let mut db = MockDB::new();
+    db.expect_has_valid_password_reset_token().never();
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| message_matches(record, PASSWORD_RESET_INVALID_MESSAGE))
+        .returning(|_| Ok(()));
+
+    // Setup router and send request with disallowed characters in the token segment
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let request = request("GET", "/reset-password/bad!token")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check redirect and strict cache/referrer headers
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(FORGOT_PASSWORD_URL))
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE))
+    );
+    assert_eq!(
+        parts.headers.get(REFERRER_POLICY),
+        Some(&HeaderValue::from_static("no-referrer"))
+    );
+}
+
+#[tokio::test]
+async fn test_reset_password_page_valid_token_renders_form_with_security_headers() {
+    // Setup database mock returning a valid token and site settings
+    let token = "valid-reset-token-123";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(true));
+    expect_site_settings(&mut db);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let request = request("GET", &format!("{RESET_PASSWORD_URL}/{token}"))
+        .body(Body::empty())
+        .unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check rendered form and strict cache/referrer headers
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE))
+    );
+    assert_eq!(
+        parts.headers.get(REFERRER_POLICY),
+        Some(&HeaderValue::from_static("no-referrer"))
+    );
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("Reset Password"));
+    assert!(body.contains(r#"action="/reset-password/valid-reset-token-123""#));
 }
 
 #[tokio::test]
@@ -2360,7 +2587,7 @@ async fn test_verify_email_failure() {
         .withf(move |record| {
             message_matches(
                 record,
-                "Error verifying email (please note that links are only valid for 24 hours).",
+                "Error verifying email (links are only valid for 24 hours). You can request a new verification email below.",
             )
         })
         .returning(|_| Ok(()));
@@ -2500,6 +2727,661 @@ fn test_sanitize_next_url() {
             "{case}"
         );
     }
+}
+
+#[tokio::test]
+async fn test_forgot_password_returns_generic_success_for_issued_and_suppressed_outcomes() {
+    for (case, issued) in [("eligible account", true), ("suppressed or unknown", false)] {
+        // Setup database mock returning the case outcome
+        let mut db = MockDB::new();
+        expect_site_settings(&mut db);
+        db.expect_create_password_reset_token()
+            .times(1)
+            .withf(|email, reset| {
+                email == "user@example.com"
+                    && reset
+                        .template_data
+                        .get("link")
+                        .and_then(serde_json::Value::as_str)
+                        .is_some_and(|link| link.starts_with("https://app.example/reset-password/"))
+            })
+            .returning(move |_, _| Ok(issued));
+        db.expect_create_session()
+            .times(1)
+            .withf(|record| message_matches(record, FORGOT_PASSWORD_GENERIC_MESSAGE))
+            .returning(|_| Ok(()));
+
+        // Setup router and send same-origin form post with surrounding whitespace
+        let router = TestRouterBuilder::new(db)
+            .with_server_cfg(email_login_cfg())
+            .build()
+            .await;
+        let req = request("POST", FORGOT_PASSWORD_URL)
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .header("Origin", "https://app.example")
+            .body(Body::from("email=++user%40example.com++"))
+            .unwrap();
+        let (parts, bytes) = send(router, req).await;
+
+        // Check identical generic redirect for both outcomes
+        assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION),
+            Some(&HeaderValue::from_static(LOG_IN_URL)),
+            "{case}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_forgot_password_handles_db_and_config_errors() {
+    // Verify notification payload build error redirects with generic failure message
+    let mut db = MockDB::new();
+    db.expect_create_password_reset_token().never();
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| {
+            message_matches(
+                record,
+                "Something went wrong while processing your request. Please try again later.",
+            )
+        })
+        .returning(|_| Ok(()));
+    let mut cfg_without_base_url = email_login_cfg();
+    cfg_without_base_url.base_url = String::new();
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(cfg_without_base_url)
+        .build()
+        .await;
+    let req = request("POST", FORGOT_PASSWORD_URL)
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Sec-Fetch-Site", "same-origin")
+        .body(Body::from("email=user%40example.com"))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(FORGOT_PASSWORD_URL))
+    );
+
+    // Verify database failure redirects back to /forgot-password with generic failure message
+    let mut db = MockDB::new();
+    expect_site_settings(&mut db);
+    db.expect_create_password_reset_token()
+        .times(1)
+        .returning(|_, _| Err(anyhow!("database unavailable")));
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| {
+            message_matches(
+                record,
+                "Something went wrong while processing your request. Please try again later.",
+            )
+        })
+        .returning(|_| Ok(()));
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", FORGOT_PASSWORD_URL)
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from("email=user%40example.com"))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(FORGOT_PASSWORD_URL))
+    );
+}
+
+#[tokio::test]
+async fn test_forgot_password_rejects_invalid_email() {
+    // Setup database mock that must not be queried on invalid form input
+    let mut db = MockDB::new();
+    db.expect_create_password_reset_token().never();
+    db.expect_create_session().times(1).returning(|_| Ok(()));
+
+    // Setup router and send malformed email
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", FORGOT_PASSWORD_URL)
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from("email=not-an-email"))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check redirect back to forgot-password form
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(FORGOT_PASSWORD_URL))
+    );
+}
+
+#[tokio::test]
+async fn test_resend_verification_returns_generic_success_and_preserves_next_url() {
+    for (case, resent) in [
+        ("eligible unverified", true),
+        ("suppressed or unknown", false),
+    ] {
+        // Setup database mock returning the case outcome
+        let mut db = MockDB::new();
+        expect_site_settings(&mut db);
+        db.expect_resend_email_verification()
+            .times(1)
+            .withf(|email, verification| {
+                email == "pending@example.com"
+                    && verification
+                        .template_data
+                        .get("link")
+                        .and_then(serde_json::Value::as_str)
+                        .is_some_and(|link| {
+                            link == format!(
+                                "https://app.example/verify-email/{}",
+                                verification.code
+                            )
+                        })
+            })
+            .returning(move |_, _| Ok(resent));
+        db.expect_create_session()
+            .times(1)
+            .withf(|record| message_matches(record, RESEND_VERIFICATION_GENERIC_MESSAGE))
+            .returning(|_| Ok(()));
+
+        // Setup router and send form post with next_url
+        let router = TestRouterBuilder::new(db)
+            .with_server_cfg(email_login_cfg())
+            .build()
+            .await;
+        let req = request("POST", "/resend-verification?next_url=%2Fdashboard%2Fuser")
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .header("Origin", "https://app.example")
+            .body(Body::from("email=+pending%40example.com+"))
+            .unwrap();
+        let (parts, bytes) = send(router, req).await;
+
+        // Check identical generic redirect preserving next_url
+        assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION),
+            Some(&HeaderValue::from_static(
+                "/log-in?next_url=%2Fdashboard%2Fuser"
+            )),
+            "{case}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_resend_verification_rejects_invalid_email_and_handles_db_and_config_errors() {
+    // Verify invalid email skips DB calls and redirects to /log-in preserving next_url
+    let mut db = MockDB::new();
+    db.expect_resend_email_verification().never();
+    db.expect_create_session().times(1).returning(|_| Ok(()));
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", "/resend-verification?next_url=%2Fdashboard%2Fuser")
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from("email=not-an-email"))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(
+            "/log-in?next_url=%2Fdashboard%2Fuser"
+        ))
+    );
+
+    // Verify notification payload build error redirects with generic failure message
+    let mut db = MockDB::new();
+    db.expect_resend_email_verification().never();
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| {
+            message_matches(
+                record,
+                "Something went wrong while processing your request. Please try again later.",
+            )
+        })
+        .returning(|_| Ok(()));
+    let mut cfg_without_base_url = email_login_cfg();
+    cfg_without_base_url.base_url = String::new();
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(cfg_without_base_url)
+        .build()
+        .await;
+    let req = request("POST", "/resend-verification")
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Sec-Fetch-Site", "same-origin")
+        .body(Body::from("email=pending%40example.com"))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL))
+    );
+
+    // Verify database failure redirects to /log-in with generic failure message
+    let mut db = MockDB::new();
+    expect_site_settings(&mut db);
+    db.expect_resend_email_verification()
+        .times(1)
+        .returning(|_, _| Err(anyhow!("database unavailable")));
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| {
+            message_matches(
+                record,
+                "Something went wrong while processing your request. Please try again later.",
+            )
+        })
+        .returning(|_| Ok(()));
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", "/resend-verification")
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from("email=pending%40example.com"))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL))
+    );
+}
+
+#[tokio::test]
+async fn test_reset_password_invalid_token_redirects_before_hashing() {
+    // Setup database mock rejecting an invalid token on pre-check
+    let token = "expired-token-value";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(false));
+    db.expect_reset_password().never();
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| message_matches(record, PASSWORD_RESET_INVALID_MESSAGE))
+        .returning(|_| Ok(()));
+
+    // Setup router and submit a valid password form against the expired token
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", &format!("{RESET_PASSWORD_URL}/{token}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from(
+            "password=NewPassword123!&password_confirmation=NewPassword123!",
+        ))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check redirect target and strict security headers
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(FORGOT_PASSWORD_URL))
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE))
+    );
+    assert_eq!(
+        parts.headers.get(REFERRER_POLICY),
+        Some(&HeaderValue::from_static("no-referrer"))
+    );
+}
+
+#[tokio::test]
+async fn test_reset_password_expired_token_with_mismatched_confirmation_redirects_once() {
+    // Setup database mock rejecting the expired token before form validation runs
+    let token = "expired-token-mismatch";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(false));
+    db.expect_reset_password().never();
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| message_matches(record, PASSWORD_RESET_INVALID_MESSAGE))
+        .returning(|_| Ok(()));
+
+    // Submit mismatched confirmation against the expired token
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", &format!("{RESET_PASSWORD_URL}/{token}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from(
+            "password=NewPassword123!&password_confirmation=Different123!",
+        ))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check redirect goes straight to /forgot-password with only the invalid-token flash
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(FORGOT_PASSWORD_URL))
+    );
+}
+
+#[tokio::test]
+async fn test_reset_password_rejects_mismatched_confirmation() {
+    // Setup database mock confirming the token is valid while rejecting mismatched input
+    let token = "valid-token-mismatch";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(true));
+    db.expect_reset_password().never();
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| message_matches(record, "Passwords do not match."))
+        .returning(|_| Ok(()));
+
+    // Setup router and send mismatched password confirmation
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", &format!("{RESET_PASSWORD_URL}/{token}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from(
+            "password=NewPassword123!&password_confirmation=Different123!",
+        ))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check redirect back to the reset page with strict security headers
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(
+            "/reset-password/valid-token-mismatch"
+        ))
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE))
+    );
+    assert_eq!(
+        parts.headers.get(REFERRER_POLICY),
+        Some(&HeaderValue::from_static("no-referrer"))
+    );
+}
+
+#[tokio::test]
+async fn test_reset_password_rejects_whitespace_only_password() {
+    // Setup database mock confirming token validity without consuming it
+    let token = "valid-token-whitespace";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(true));
+    db.expect_reset_password().never();
+    db.expect_create_session().times(1).returning(|_| Ok(()));
+
+    // Submit matching whitespace-only passwords that LoginForm would reject
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", &format!("{RESET_PASSWORD_URL}/{token}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from(
+            "password=++++++++++&password_confirmation=++++++++++",
+        ))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check redirect back to the reset page without consuming the token
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(
+            "/reset-password/valid-token-whitespace"
+        ))
+    );
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_reset_password_remaps_ocg01_to_redirect_with_security_headers()
+-> anyhow::Result<()> {
+    // Produce a real PostgreSQL OCG01 error to exercise concurrent token consumption remapping
+    let client = contract_tests_pool()?.get().await?;
+    let ocg01_err = client
+        .batch_execute(
+            "do $$ begin raise exception 'password reset failed: invalid or expired token' using errcode = 'OCG01'; end $$",
+        )
+        .await
+        .expect_err("OCG01 raise should fail");
+
+    let token = "raced-reset-token";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(true));
+    db.expect_reset_password()
+        .times(1)
+        .return_once(move |_, _| Err(anyhow::Error::from(ocg01_err)));
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| message_matches(record, PASSWORD_RESET_INVALID_MESSAGE))
+        .returning(|_| Ok(()));
+
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", &format!("{RESET_PASSWORD_URL}/{token}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from(
+            "password=NewPassword123!&password_confirmation=NewPassword123!",
+        ))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check OCG01 remaps cleanly to 303 /forgot-password with strict security headers
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(FORGOT_PASSWORD_URL))
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE))
+    );
+    assert_eq!(
+        parts.headers.get(REFERRER_POLICY),
+        Some(&HeaderValue::from_static("no-referrer"))
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_reset_password_success_hashes_password_and_sets_security_headers() {
+    // Setup database mock accepting the token and verifying a valid Argon2id hash is stored
+    let token = "valid-reset-token-ok";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(true));
+    db.expect_reset_password()
+        .times(1)
+        .withf(move |hash, password_hash| {
+            *hash == expected_hash && verify_password("NewPassword123!", password_hash).is_ok()
+        })
+        .returning(|_, _| Ok(()));
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| message_matches(record, PASSWORD_RESET_SUCCESS_MESSAGE))
+        .returning(|_| Ok(()));
+
+    // Setup router and submit the new password
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", &format!("{RESET_PASSWORD_URL}/{token}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from(
+            "password=NewPassword123!&password_confirmation=NewPassword123!",
+        ))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check redirect to login and strict security headers
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL))
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE))
+    );
+    assert_eq!(
+        parts.headers.get(REFERRER_POLICY),
+        Some(&HeaderValue::from_static("no-referrer"))
+    );
+}
+
+#[tokio::test]
+async fn test_reset_password_logs_out_authenticated_session_before_flashing_success() {
+    // Setup an authenticated session and database expectations
+    let ids = DashboardIds::new();
+    let token = "valid-reset-token-logged-in";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    expect_session(&mut db, &ids);
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(true));
+    db.expect_reset_password()
+        .times(1)
+        .withf(move |hash, password_hash| {
+            *hash == expected_hash && verify_password("NewPassword123!", password_hash).is_ok()
+        })
+        .returning(|_, _| Ok(()));
+    db.expect_delete_session()
+        .times(1)
+        .withf(move |id| *id == ids.session_id)
+        .returning(|_| Ok(()));
+    db.expect_create_session()
+        .times(1)
+        .withf(|record| message_matches(record, PASSWORD_RESET_SUCCESS_MESSAGE))
+        .returning(|_| Ok(()));
+
+    // Setup router and submit the new password while authenticated
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = authenticated_request(
+        "POST",
+        &format!("{RESET_PASSWORD_URL}/{token}"),
+        ids.session_id,
+    )
+    .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+    .header("Origin", "https://app.example")
+    .body(Body::from(
+        "password=NewPassword123!&password_confirmation=NewPassword123!",
+    ))
+    .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check redirect to login after session flush and flash creation
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL))
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE))
+    );
+    assert_eq!(
+        parts.headers.get(REFERRER_POLICY),
+        Some(&HeaderValue::from_static("no-referrer"))
+    );
+}
+
+#[tokio::test]
+async fn test_reset_password_internal_db_error_returns_500_with_security_headers() {
+    // Setup database mock failing with a non-OCG01 internal error during token consumption
+    let token = "valid-reset-token-db-error";
+    let expected_hash = hash_password_reset_token(token);
+    let mut db = MockDB::new();
+    db.expect_has_valid_password_reset_token()
+        .times(1)
+        .withf(move |hash| *hash == expected_hash)
+        .returning(|_| Ok(true));
+    db.expect_reset_password()
+        .times(1)
+        .returning(|_, _| Err(anyhow!("database connection dropped")));
+
+    // Setup router and submit a valid password form
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(email_login_cfg())
+        .build()
+        .await;
+    let req = request("POST", &format!("{RESET_PASSWORD_URL}/{token}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header("Origin", "https://app.example")
+        .body(Body::from(
+            "password=NewPassword123!&password_confirmation=NewPassword123!",
+        ))
+        .unwrap();
+    let (parts, bytes) = send(router, req).await;
+
+    // Check internal error still carries strict no-store and no-referrer headers
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL),
+        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE))
+    );
+    assert_eq!(
+        parts.headers.get(REFERRER_POLICY),
+        Some(&HeaderValue::from_static("no-referrer"))
+    );
 }
 
 // Helpers.

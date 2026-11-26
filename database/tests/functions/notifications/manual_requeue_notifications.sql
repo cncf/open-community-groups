@@ -5,13 +5,14 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set notificationFailedID '8a080000-0000-0000-0000-000000000001'
+\set notificationPasswordResetFailedID '8a080000-0000-0000-0000-000000000005'
 \set notificationProcessedID '8a080000-0000-0000-0000-000000000002'
 \set notificationUnknownID '8a080000-0000-0000-0000-000000000003'
 \set userID '8a080000-0000-0000-0000-000000000004'
@@ -43,6 +44,17 @@ insert into notification (
         'smtp timeout',
         'event-welcome',
         :'notificationFailedID',
+        current_timestamp - interval '10 minutes',
+        :'userID'
+    ),
+    (
+        '2025-01-01 00:00:04',
+        3,
+        current_timestamp - interval '10 minutes',
+        'failed',
+        'smtp timeout',
+        'password-reset',
+        :'notificationPasswordResetFailedID',
         current_timestamp - interval '10 minutes',
         :'userID'
     ),
@@ -226,6 +238,22 @@ select results_eq(
     ),
     $$ values (null::text, 'smtp recovered'::text) $$,
     'Should retain the audit reason after a new delivery claim clears the transient error'
+);
+
+-- Should ignore failed password-reset notifications whose payloads were scrubbed
+select is(
+    manual_requeue_notifications(array[:'notificationPasswordResetFailedID']::uuid[], 'smtp recovered'),
+    0,
+    'Should not manually requeue password-reset notifications'
+);
+select is(
+    (
+        select delivery_status
+        from notification
+        where notification_id = :'notificationPasswordResetFailedID'::uuid
+    ),
+    'failed',
+    'Should keep password-reset notifications in failed status after manual requeue attempt'
 );
 
 -- ============================================================================

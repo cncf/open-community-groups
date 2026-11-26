@@ -186,6 +186,10 @@ pub(crate) enum IpLimit {
     ExternalAuth,
     /// Log-in attempts.
     LogIn,
+    /// Password reset requests and token submissions.
+    PasswordReset,
+    /// Verification email resend requests.
+    ResendVerification,
     /// Sign-ups.
     SignUp,
     /// Email verification links.
@@ -196,11 +200,13 @@ pub(crate) enum IpLimit {
 
 impl IpLimit {
     /// Every IP limit, in declaration order.
-    pub(crate) const ALL: [IpLimit; 7] = [
+    pub(crate) const ALL: [IpLimit; 9] = [
         IpLimit::BadgeVerify,
         IpLimit::ExploreSearch,
         IpLimit::ExternalAuth,
         IpLimit::LogIn,
+        IpLimit::PasswordReset,
+        IpLimit::ResendVerification,
         IpLimit::SignUp,
         IpLimit::VerifyEmail,
         IpLimit::Views,
@@ -220,6 +226,10 @@ pub(crate) enum Limit {
     LogIn,
     /// Failed log-ins per client and username.
     LogInFailures,
+    /// Password reset requests and token submissions.
+    PasswordReset,
+    /// Verification email resend requests.
+    ResendVerification,
     /// Sign-ups.
     SignUp,
     /// Email verification links.
@@ -230,12 +240,14 @@ pub(crate) enum Limit {
 
 impl Limit {
     /// Every limit, in declaration order.
-    pub(crate) const ALL: [Limit; 8] = [
+    pub(crate) const ALL: [Limit; 10] = [
         Limit::BadgeVerify,
         Limit::ExploreSearch,
         Limit::ExternalAuth,
         Limit::LogIn,
         Limit::LogInFailures,
+        Limit::PasswordReset,
+        Limit::ResendVerification,
         Limit::SignUp,
         Limit::VerifyEmail,
         Limit::Views,
@@ -249,6 +261,8 @@ impl Limit {
             Limit::ExternalAuth => "external_auth",
             Limit::LogIn => "log_in",
             Limit::LogInFailures => "log_in_failures",
+            Limit::PasswordReset => "password_reset",
+            Limit::ResendVerification => "resend_verification",
             Limit::SignUp => "sign_up",
             Limit::VerifyEmail => "verify_email",
             Limit::Views => "views",
@@ -263,6 +277,8 @@ impl Limit {
             Limit::ExternalAuth => budgets.external_auth,
             Limit::LogIn => budgets.log_in,
             Limit::LogInFailures => budgets.log_in_failures,
+            Limit::PasswordReset => budgets.password_reset,
+            Limit::ResendVerification => budgets.resend_verification,
             Limit::SignUp => budgets.sign_up,
             Limit::VerifyEmail => budgets.verify_email,
             Limit::Views => budgets.views,
@@ -277,6 +293,8 @@ impl From<IpLimit> for Limit {
             IpLimit::ExploreSearch => Limit::ExploreSearch,
             IpLimit::ExternalAuth => Limit::ExternalAuth,
             IpLimit::LogIn => Limit::LogIn,
+            IpLimit::PasswordReset => Limit::PasswordReset,
+            IpLimit::ResendVerification => Limit::ResendVerification,
             IpLimit::SignUp => Limit::SignUp,
             IpLimit::VerifyEmail => Limit::VerifyEmail,
             IpLimit::Views => Limit::Views,
@@ -416,7 +434,9 @@ struct LogInFailureKey {
 }
 
 /// Returns every limit with its effective budget, for the startup log.
-pub(crate) fn budget_lines(budgets: &RateLimitBudgets) -> [(Limit, RateLimitBudget); 8] {
+pub(crate) fn budget_lines(
+    budgets: &RateLimitBudgets,
+) -> [(Limit, RateLimitBudget); Limit::ALL.len()] {
     Limit::ALL.map(|limit| (limit, limit.budget(budgets)))
 }
 

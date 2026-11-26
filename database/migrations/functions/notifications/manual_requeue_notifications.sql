@@ -16,7 +16,7 @@ begin
         raise exception 'requeue reason is required';
     end if;
 
-    -- Lock selected terminal notifications in a stable order
+    -- Lock selected terminal notifications in a stable order, excluding non-replayable reset emails
     for v_notification in
         select
             notification_id,
@@ -25,6 +25,7 @@ begin
         from notification
         where notification_id = any(p_notification_ids)
         and delivery_status in ('delivery-unknown', 'failed')
+        and kind <> 'password-reset'
         order by notification_id
         for update
     loop

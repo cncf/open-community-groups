@@ -96,6 +96,7 @@ select tables_are(
         'notification_category',
         'notification_kind',
         'notification_template_data',
+        'password_reset_token',
         'payment_job',
         'payment_provider',
         'payment_provider_tax_location',

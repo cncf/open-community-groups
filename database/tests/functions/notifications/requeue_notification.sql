@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,14 +13,34 @@ select plan(16);
 
 \set notificationCappedDelayID '8a000000-0000-0000-0000-000000000005'
 \set notificationMaxAttemptsID '8a000000-0000-0000-0000-000000000001'
+\set notificationPasswordResetExhaustedID '8a000000-0000-0000-0000-000000000007'
+\set notificationPasswordResetInactiveID '8a000000-0000-0000-0000-000000000008'
 \set notificationProcessedID '8a000000-0000-0000-0000-000000000002'
 \set notificationRetryID '8a000000-0000-0000-0000-000000000003'
 \set notificationStaleClaimID '8a000000-0000-0000-0000-000000000006'
+\set tplPasswordResetExhaustedID '8a000000-0000-0000-0000-000000000009'
+\set tplPasswordResetInactiveID '8a000000-0000-0000-0000-000000000010'
 \set userID '8a000000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Template data for an exhausted password-reset notification
+insert into notification_template_data (notification_template_data_id, data, hash)
+values (
+    :'tplPasswordResetExhaustedID',
+    '{"link":"https://example.test/reset-password/8a00-exhausted"}'::jsonb,
+    encode(digest('8a00-password-reset-exhausted', 'sha256'), 'hex')
+);
+
+-- Template data for a password-reset notification whose token was already revoked
+insert into notification_template_data (notification_template_data_id, data, hash)
+values (
+    :'tplPasswordResetInactiveID',
+    '{"link":"https://example.test/reset-password/8a00-inactive"}'::jsonb,
+    encode(digest('8a00-password-reset-inactive', 'sha256'), 'hex')
+);
 
 -- User who owns the retry notifications
 select fx_user(:'userID', jsonb_build_object('username', 'user-requeue-notification'));
@@ -34,18 +54,23 @@ insert into notification (
     user_id,
 
     delivery_claimed_at,
+    notification_template_data_id,
     processed_at
 ) values
     (:'notificationCappedDelayID', 6, 'processing', 'event-welcome', :'userID',
-        '2025-01-01 00:00:05+00', null),
+        '2025-01-01 00:00:05+00', null, null),
     (:'notificationMaxAttemptsID', 10, 'processing', 'event-welcome', :'userID',
-        '2025-01-01 00:00:01+00', null),
+        '2025-01-01 00:00:01+00', null, null),
+    (:'notificationPasswordResetExhaustedID', 10, 'processing', 'password-reset', :'userID',
+        '2025-01-01 00:00:07+00', :'tplPasswordResetExhaustedID', null),
+    (:'notificationPasswordResetInactiveID', 1, 'processing', 'password-reset', :'userID',
+        '2025-01-01 00:00:08+00', :'tplPasswordResetInactiveID', null),
     (:'notificationProcessedID', 1, 'processed', 'event-welcome', :'userID',
-        '2025-01-01 00:00:02+00', current_timestamp),
+        '2025-01-01 00:00:02+00', null, current_timestamp),
     (:'notificationRetryID', 2, 'processing', 'event-welcome', :'userID',
-        '2025-01-01 00:00:03+00', null),
+        '2025-01-01 00:00:03+00', null, null),
     (:'notificationStaleClaimID', 2, 'processing', 'event-welcome', :'userID',
-        '2025-01-01 00:00:06+00', null);
+        '2025-01-01 00:00:06+00', null, null);
 
 -- ============================================================================
 -- TESTS
@@ -292,6 +317,72 @@ select throws_ok(
     'P0001',
     'notification delivery claim not found or no longer active',
     'Should stop a stale worker from requeueing a newer delivery claim'
+);
+
+-- Should scrub template data when a password-reset notification exhausts retry attempts
+select lives_ok(
+    format(
+        $$select requeue_notification(
+            %L::uuid, 'smtp timeout', 60, 1800, 10,
+            '2025-01-01 00:00:07+00'::timestamptz
+        )$$,
+        :'notificationPasswordResetExhaustedID'
+    ),
+    'Should finalize an exhausted password-reset notification'
+);
+select results_eq(
+    format(
+        $$
+            select delivery_status, notification_template_data_id is null
+            from notification
+            where notification_id = %L::uuid
+        $$,
+        :'notificationPasswordResetExhaustedID'
+    ),
+    $$values ('failed'::text, true)$$,
+    'Should detach template data from an exhausted password-reset notification'
+);
+select is(
+    (
+        select count(*)::int
+        from notification_template_data
+        where notification_template_data_id = :'tplPasswordResetExhaustedID'::uuid
+    ),
+    0,
+    'Should delete template data of an exhausted password-reset notification'
+);
+
+-- Should fail and scrub a password-reset notification whose token is no longer active
+select lives_ok(
+    format(
+        $$select requeue_notification(
+            %L::uuid, 'smtp timeout', 60, 1800, 10,
+            '2025-01-01 00:00:08+00'::timestamptz
+        )$$,
+        :'notificationPasswordResetInactiveID'
+    ),
+    'Should fail a password-reset notification whose token is no longer active'
+);
+select results_eq(
+    format(
+        $$
+            select delivery_status, error, notification_template_data_id is null
+            from notification
+            where notification_id = %L::uuid
+        $$,
+        :'notificationPasswordResetInactiveID'
+    ),
+    $$values ('failed'::text, 'password reset token no longer active'::text, true)$$,
+    'Should finalize and detach a password-reset notification with no active token'
+);
+select is(
+    (
+        select count(*)::int
+        from notification_template_data
+        where notification_template_data_id = :'tplPasswordResetInactiveID'::uuid
+    ),
+    0,
+    'Should delete template data of an inactive-token password-reset notification'
 );
 
 -- ============================================================================

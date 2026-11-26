@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(142);
+select plan(146);
 
 -- ============================================================================
 -- TESTS
@@ -693,6 +693,7 @@ select indexes_are('notification', array[
     'notification_kind_idx',
     'notification_not_processed_idx',
     'notification_processing_claimed_at_idx',
+    'notification_template_data_id_idx',
     'notification_user_id_idx'
 ]);
 
@@ -701,6 +702,13 @@ select is(
     (select indexdef from pg_indexes where indexname = 'notification_processing_claimed_at_idx'),
     'CREATE INDEX notification_processing_claimed_at_idx ON public.notification USING btree (delivery_claimed_at) WHERE (delivery_status = ''processing''::text)',
     'notification processing claim index should be partial on processing notifications'
+);
+
+-- Test: notification template data index should be partial on non-null template data ids
+select is(
+    (select indexdef from pg_indexes where indexname = 'notification_template_data_id_idx'),
+    'CREATE INDEX notification_template_data_id_idx ON public.notification USING btree (notification_template_data_id) WHERE (notification_template_data_id IS NOT NULL)',
+    'notification template data index should be partial on non-null template data ids'
 );
 
 -- Test: notification_attachment indexes should match expected
@@ -726,6 +734,21 @@ select indexes_are('notification_template_data', array[
     'notification_template_data_hash_idx',
     'notification_template_data_pkey'
 ]);
+
+-- Test: password_reset_token indexes should match expected
+select indexes_are('password_reset_token', array[
+    'password_reset_token_pkey',
+    'password_reset_token_created_at_idx',
+    'password_reset_token_user_id_key'
+]);
+select index_is_unique('password_reset_token', 'password_reset_token_user_id_key');
+
+-- Test: password_reset_token created_at index should index created_at for cleanup sweeps
+select is(
+    (select indexdef from pg_indexes where indexname = 'password_reset_token_created_at_idx'),
+    'CREATE INDEX password_reset_token_created_at_idx ON public.password_reset_token USING btree (created_at)',
+    'password_reset_token created_at index should index created_at for cleanup sweeps'
+);
 
 -- Test: payment job indexes should match expected
 select indexes_are('payment_job', array[

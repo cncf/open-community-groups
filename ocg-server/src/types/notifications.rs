@@ -197,6 +197,8 @@ pub(crate) enum NotificationKind {
     InboxMessageReceived,
     /// Notification telling a user that the group replied to their inbox conversation.
     InboxReplyReceived,
+    /// Notification for password reset.
+    PasswordReset,
     /// Notification inviting a co-speaker to respond to a session proposal invitation.
     SessionProposalCoSpeakerInvitation,
     /// Notification welcoming a speaker to multiple events in a linked series.

@@ -74,9 +74,13 @@
 
               {# Password field -#}
               <div>
-                <label for="password" class="form-label">
-                  Password <span class="asterisk" aria-label="required">*</span>
-                </label>
+                <div class="flex items-center justify-between gap-2">
+                  <label for="password" class="form-label">
+                    Password <span class="asterisk" aria-label="required">*</span>
+                  </label>
+                  <a href="/forgot-password"
+                     class="text-sm text-primary-fg hover:text-primary-fg-hover font-medium transition-colors">Forgot password?</a>
+                </div>
                 <div class="mt-2">
                   <input type="password"
                          id="password"
@@ -107,6 +111,38 @@
              class="text-primary-fg hover:text-primary-fg-hover font-medium transition-colors">Sign up</a>
         </div>
         {# End sign up link -#}
+
+        {# Resend verification email -#}
+        {% if login.email -%}
+          <details class="mt-6 pt-5 border-t border-stone-200 text-sm text-stone-600">
+            <summary class="cursor-pointer text-center font-medium text-primary-fg hover:text-primary-fg-hover transition-colors list-none [&::-webkit-details-marker]:hidden">
+              Didn't receive your verification email?
+            </summary>
+            <form action="/resend-verification{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
+                  method="post"
+                  role="form"
+                  aria-label="Resend verification email"
+                  class="mt-4 space-y-4">
+              <div>
+                <label for="resend-verification-email" class="form-label">
+                  Email Address <span class="asterisk" aria-label="required">*</span>
+                </label>
+                <div class="mt-2">
+                  <input type="email"
+                         id="resend-verification-email"
+                         name="email"
+                         maxlength="{{ crate::validation::MAX_LEN_S }}"
+                         class="input-primary"
+                         autocomplete="email"
+                         required
+                         aria-required="true" />
+                </div>
+              </div>
+              <button type="submit" class="btn-primary-outline w-full">Resend Verification Email</button>
+            </form>
+          </details>
+        {% endif -%}
+        {# End resend verification email -#}
 
         {# Messages -#}
         {% if !messages.is_empty() -%}

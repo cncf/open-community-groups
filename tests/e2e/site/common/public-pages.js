@@ -94,6 +94,12 @@ export const PUBLIC_PAGES = [
   },
   {
     landmarks: NO_FOOTER_LANDMARKS,
+    name: "forgot password",
+    path: "/forgot-password",
+    ready: (page) => page.getByRole("heading", { name: "Forgot Password" }),
+  },
+  {
+    landmarks: NO_FOOTER_LANDMARKS,
     name: "login",
     path: "/log-in",
     ready: (page) => page.getByRole("heading", { name: "Log In" }),

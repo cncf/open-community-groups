@@ -105,6 +105,7 @@ select bag_eq(
         ('notification_category', array['notification_category_id']),
         ('notification_kind', array['notification_kind_id']),
         ('notification_template_data', array['notification_template_data_id']),
+        ('password_reset_token', array['token_hash']),
         ('payment_job', array['payment_job_id']),
         ('payment_provider', array['payment_provider_id']),
         ('payment_provider_tax_location', array['payment_provider_tax_location_id']),
@@ -677,6 +678,7 @@ select bag_eq(
             array['notification_category_id'],
             'no action'
         ),
+        ('password_reset_token', array['user_id'], '"user"', array['user_id'], 'cascade'),
         (
             'payment_job',
             array['event_purchase_id'],

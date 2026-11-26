@@ -659,6 +659,8 @@ fn test_delivery_worker_prepare_content_email_verification() {
     assert_eq!(subject, "Verify your email address");
     assert!(body.contains("Verify your email"));
     assert!(body.contains("https://example.test/verify"));
+    assert!(body.contains("request a new verification email from the log-in page"));
+    assert!(!body.contains("sign up again"));
 }
 
 #[test]
@@ -1609,6 +1611,26 @@ fn test_delivery_worker_prepare_content_missing_data() {
 
     // Check error message
     assert_eq!(err.to_string(), "missing template data");
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_password_reset() {
+    // Setup literal persisted template_data fixture
+    let template_data = json!({
+        "link": "https://example.test/reset-password/test-reset-token",
+        "theme": {"primary_color": "#000000"}
+    });
+
+    // Prepare content
+    let (subject, body) = render(NotificationKind::PasswordReset, template_data);
+
+    // Check content matches expectations
+    let body = normalize_whitespace(&body);
+    assert_eq!(subject, "Reset your password");
+    assert!(body.contains("Reset your password"));
+    assert!(body.contains("https://example.test/reset-password/test-reset-token"));
+    assert!(body.contains("only valid for 1 hour"));
+    assert!(body.contains("all existing sessions will be signed out"));
 }
 
 #[test]

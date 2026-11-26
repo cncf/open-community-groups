@@ -37,7 +37,8 @@ pub(crate) fn start(db: &DynDB, background_tasks: &BackgroundTasks) {
     });
 }
 
-/// Removes expired authentication sessions and verification codes on an hourly cadence.
+/// Removes expired authentication sessions, verification codes, and password
+/// reset tokens on an hourly cadence.
 struct Worker {
     /// Coordinates graceful worker shutdown.
     cancellation_token: CancellationToken,
@@ -80,7 +81,14 @@ impl Worker {
             })
             .await;
 
-        sessions_outcome.combine(codes_outcome)
+        // Delete expired password reset tokens in bounded batches
+        let reset_tokens_outcome = self
+            .drain_batches("password_reset_token", || {
+                self.db.delete_expired_password_reset_tokens(AUTH_CLEANUP_BATCH_SIZE)
+            })
+            .await;
+
+        sessions_outcome.combine(codes_outcome).combine(reset_tokens_outcome)
     }
 
     /// Drains one cleanup target in bounded batches until caught up, capped,
