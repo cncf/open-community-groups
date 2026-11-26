@@ -15,7 +15,10 @@ use axum::{
     response::IntoResponse,
 };
 use axum_login::tower_sessions::session;
-use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl, basic::BasicClient};
+use oauth2::{
+    AuthUrl, ClientId, ClientSecret, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, TokenUrl,
+    basic::BasicClient,
+};
 use openidconnect as oidc;
 use serde_json::json;
 use tower_sessions::{MemoryStore, Session};
@@ -24,7 +27,8 @@ use uuid::Uuid;
 use crate::{
     auth::{
         AUTH_PROVIDER_KEY, EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR,
-        EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR, OAuth2ProviderDetails, OidcProviderDetails,
+        EXTERNAL_AUTH_EMAIL_NOT_VERIFIED_ERROR, EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR,
+        EXTERNAL_AUTH_OIDC_EMAIL_NOT_VERIFIED_ERROR, OAuth2ProviderDetails, OidcProviderDetails,
     },
     config::{
         HttpServerConfig, LoginOptions, OAuth2Provider, RateLimitBudget, RateLimitBudgets,
@@ -848,14 +852,63 @@ async fn test_log_out_success_with_invalid_session() {
 // OAuth2 callbacks and redirects.
 
 #[tokio::test]
-async fn test_oauth2_callback_missing_state() {
-    // Setup database mock with a session without csrf state
+async fn test_oauth2_callback_missing_pkce_verifier() {
+    // Setup database mock with csrf state and flow provider but no pkce verifier
     let session_id = session::Id::default();
+    let session_record = session_record_with_values(
+        session_id,
+        &[
+            (OAUTH2_CSRF_STATE_KEY, "state-in-session"),
+            (OAUTH2_FLOW_PROVIDER_KEY, "oauth2:github"),
+        ],
+    );
     let mut db = MockDB::new();
-    expect_stored_session(&mut db, sample_empty_session_record(session_id));
+    expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
-        .withf(move |record| message_matches(record, "OAuth2 authorization failed"))
+        .withf(move |record| {
+            message_matches(record, "OAuth2 authorization failed")
+                && !record.data.contains_key(OAUTH2_CSRF_STATE_KEY)
+                && !record.data.contains_key(OAUTH2_FLOW_PROVIDER_KEY)
+        })
+        .returning(|_| Ok(()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(github_login_cfg())
+        .build()
+        .await;
+    let uri = "/log-in/oauth2/github/callback?code=test-code&state=state-in-session";
+    let (parts, bytes) = send(router, get_request(uri, session_id)).await;
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
+    );
+}
+
+#[tokio::test]
+async fn test_oauth2_callback_missing_state() {
+    // Setup database mock with a session without csrf state but with sibling flow keys
+    let session_id = session::Id::default();
+    let session_record = session_record_with_values(
+        session_id,
+        &[
+            (OAUTH2_FLOW_PROVIDER_KEY, "oauth2:github"),
+            (OAUTH2_PKCE_VERIFIER_KEY, "verifier-in-session"),
+        ],
+    );
+    let mut db = MockDB::new();
+    expect_stored_session(&mut db, session_record);
+    db.expect_update_session()
+        .times(1)
+        .withf(move |record| {
+            message_matches(record, "OAuth2 authorization failed")
+                && !record.data.contains_key(OAUTH2_FLOW_PROVIDER_KEY)
+                && !record.data.contains_key(OAUTH2_PKCE_VERIFIER_KEY)
+        })
         .returning(|_| Ok(()));
 
     // Setup router and send request
@@ -875,16 +928,78 @@ async fn test_oauth2_callback_missing_state() {
 }
 
 #[tokio::test]
+async fn test_oauth2_callback_provider_mismatch() {
+    // Setup in-memory session originating from OIDC instead of OAuth2 GitHub
+    let session = callback_session(
+        "oidc:linuxfoundation",
+        Some("nonce-in-session"),
+        Some("/dashboard"),
+    )
+    .await;
+    let mut db = MockDB::new();
+    db.expect_list_user_groups().times(0);
+    let db: DynDB = Arc::new(db);
+    let mut callback_auth = MockCallbackAuth::default();
+
+    // Execute helper against the GitHub OAuth2 callback
+    let (error_message, on_error) = capture_error();
+    let redirect = oauth2_callback_with_auth(
+        &mut callback_auth,
+        session.clone(),
+        &db,
+        OAuth2Provider::GitHub,
+        "test-code".to_string(),
+        oauth2::CsrfToken::new("state-in-session".to_string()),
+        on_error,
+    )
+    .await
+    .unwrap();
+
+    // Check no token exchange occurs and pending flow state is evicted
+    let response = redirect.into_response();
+    let csrf_state: Option<String> = session.get(OAUTH2_CSRF_STATE_KEY).await.unwrap();
+    let flow_provider: Option<String> = session.get(OAUTH2_FLOW_PROVIDER_KEY).await.unwrap();
+    let nonce: Option<String> = session.get(OIDC_NONCE_KEY).await.unwrap();
+    let pkce_verifier: Option<String> = session.get(OAUTH2_PKCE_VERIFIER_KEY).await.unwrap();
+    assert_eq!(response.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        response.headers().get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
+    );
+    assert_eq!(
+        *error_message.lock().unwrap(),
+        Some("OAuth2 authorization failed".to_string()),
+    );
+    assert_eq!(callback_auth.oauth2_call, None);
+    assert!(!callback_auth.login_called);
+    assert_eq!(csrf_state, None);
+    assert_eq!(flow_provider, None);
+    assert_eq!(nonce, None);
+    assert_eq!(pkce_verifier, None);
+}
+
+#[tokio::test]
 async fn test_oauth2_callback_state_mismatch() {
-    // Setup database mock with a session holding another csrf state
+    // Setup database mock with a session holding another csrf state, flow provider and pkce verifier
     let session_id = session::Id::default();
-    let session_record =
-        session_record_with_values(session_id, &[(OAUTH2_CSRF_STATE_KEY, "state-in-session")]);
+    let session_record = session_record_with_values(
+        session_id,
+        &[
+            (OAUTH2_CSRF_STATE_KEY, "state-in-session"),
+            (OAUTH2_FLOW_PROVIDER_KEY, "oauth2:github"),
+            (OAUTH2_PKCE_VERIFIER_KEY, "verifier-in-session"),
+        ],
+    );
     let mut db = MockDB::new();
     expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
-        .withf(move |record| message_matches(record, "OAuth2 authorization failed"))
+        .withf(move |record| {
+            message_matches(record, "OAuth2 authorization failed")
+                && !record.data.contains_key(OAUTH2_CSRF_STATE_KEY)
+                && !record.data.contains_key(OAUTH2_FLOW_PROVIDER_KEY)
+                && !record.data.contains_key(OAUTH2_PKCE_VERIFIER_KEY)
+        })
         .returning(|_| Ok(()));
 
     // Setup router and send request
@@ -906,7 +1021,7 @@ async fn test_oauth2_callback_state_mismatch() {
 #[tokio::test]
 async fn test_oauth2_callback_authorization_error() {
     // Setup in-memory session and mocks
-    let session = callback_session(None, Some("/dashboard")).await;
+    let session = callback_session("oauth2:github", None, Some("/dashboard")).await;
     let mut db = MockDB::new();
     db.expect_list_user_groups().times(0);
     let db: DynDB = Arc::new(db);
@@ -932,6 +1047,7 @@ async fn test_oauth2_callback_authorization_error() {
     // Check callback result and side effects
     let response = redirect.into_response();
     let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
+    let pkce_verifier: Option<String> = session.get(OAUTH2_PKCE_VERIFIER_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
         response.headers().get(LOCATION),
@@ -939,8 +1055,9 @@ async fn test_oauth2_callback_authorization_error() {
     );
     assert_eq!(
         *error_message.lock().unwrap(),
-        Some("OAuth2 authorization failed: oauth2 auth error".to_string()),
+        Some("OAuth2 authorization failed".to_string()),
     );
+    assert_eq!(pkce_verifier, None);
     assert!(!callback_auth.login_called);
     assert_eq!(auth_provider, None);
     assert_eq!(selected_ids(&session).await, (None, None));
@@ -949,7 +1066,7 @@ async fn test_oauth2_callback_authorization_error() {
 #[tokio::test]
 async fn test_oauth2_callback_rejects_unauthenticated_user() {
     // Setup in-memory session and mocks
-    let session = callback_session(None, Some("/dashboard")).await;
+    let session = callback_session("oauth2:github", None, Some("/dashboard")).await;
     let mut db = MockDB::new();
     db.expect_list_user_groups().times(0);
     let db: DynDB = Arc::new(db);
@@ -996,7 +1113,7 @@ async fn test_oauth2_callback_success() {
     let groups = sample_user_groups_by_community(ids.community_id, ids.group_id);
 
     // Setup in-memory session and mocks
-    let session = callback_session(None, Some("/dashboard")).await;
+    let session = callback_session("oauth2:github", None, Some("/dashboard")).await;
     let mut db = MockDB::new();
     db.expect_list_user_groups()
         .times(1)
@@ -1024,9 +1141,11 @@ async fn test_oauth2_callback_success() {
     .await
     .unwrap();
 
-    // Check callback result and side effects
+    // Check callback result and side effects, including PKCE verifier consumption
     let response = redirect.into_response();
     let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
+    let flow_provider: Option<String> = session.get(OAUTH2_FLOW_PROVIDER_KEY).await.unwrap();
+    let pkce_verifier: Option<String> = session.get(OAUTH2_PKCE_VERIFIER_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
         response.headers().get(LOCATION),
@@ -1034,8 +1153,14 @@ async fn test_oauth2_callback_success() {
     );
     assert_eq!(
         callback_auth.oauth2_call,
-        Some(("test-code".to_string(), OAuth2Provider::GitHub)),
+        Some((
+            "test-code".to_string(),
+            "verifier-in-session".to_string(),
+            OAuth2Provider::GitHub,
+        )),
     );
+    assert_eq!(flow_provider, None);
+    assert_eq!(pkce_verifier, None);
     assert!(callback_auth.login_called);
     assert_eq!(
         auth_provider.as_deref(),
@@ -1049,12 +1174,14 @@ async fn test_oauth2_callback_success() {
 
 #[tokio::test]
 async fn test_oauth2_callback_returns_error_when_provider_is_not_configured() {
-    // Setup database mock with a valid csrf state and next url
+    // Setup database mock with a valid csrf state, flow provider, pkce verifier and next url
     let session_id = session::Id::default();
     let session_record = session_record_with_values(
         session_id,
         &[
             (OAUTH2_CSRF_STATE_KEY, "state-in-session"),
+            (OAUTH2_FLOW_PROVIDER_KEY, "oauth2:github"),
+            (OAUTH2_PKCE_VERIFIER_KEY, "verifier-in-session"),
             (NEXT_URL_KEY, "/dashboard"),
         ],
     );
@@ -1062,12 +1189,7 @@ async fn test_oauth2_callback_returns_error_when_provider_is_not_configured() {
     expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
-        .withf(move |record| {
-            message_matches(
-                record,
-                "OAuth2 authorization failed: oauth2 provider not found",
-            )
-        })
+        .withf(move |record| message_matches(record, "OAuth2 authorization failed"))
         .returning(|_| Ok(()));
 
     // Setup router and send request
@@ -1084,6 +1206,23 @@ async fn test_oauth2_callback_returns_error_when_provider_is_not_configured() {
         parts.headers.get(LOCATION),
         Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
     );
+}
+
+#[tokio::test]
+async fn test_oauth2_redirect_rejects_unknown_provider() {
+    // Setup router with GitHub login enabled
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_server_cfg(github_login_cfg())
+        .build()
+        .await;
+
+    // Send redirect request with an unknown provider slug
+    let request = request("GET", "/log-in/oauth2/gitlab").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the custom OAuth2 extractor rejection is returned instead of Axum's raw path error
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(bytes.as_ref(), b"missing oauth2 provider");
 }
 
 #[tokio::test]
@@ -1109,10 +1248,15 @@ async fn test_oauth2_redirect_success() {
     };
 
     // Execute handler
-    let response = oauth2_redirect(session.clone(), OAuth2(Arc::new(provider)), query)
-        .await
-        .expect("oauth2 redirect should succeed")
-        .into_response();
+    let response = oauth2_redirect(
+        session.clone(),
+        OAuth2(Arc::new(provider)),
+        Path(OAuth2Provider::GitHub),
+        query,
+    )
+    .await
+    .expect("oauth2 redirect should succeed")
+    .into_response();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
     let location = parts.headers.get(LOCATION).unwrap().to_str().unwrap();
@@ -1120,14 +1264,28 @@ async fn test_oauth2_redirect_success() {
         .split_once('?')
         .expect("redirect url to contain query string");
 
-    // Check response matches expectations
+    // Check response matches expectations, including S256 PKCE challenge and stored verifier
     let csrf_state: Option<String> = session.get(OAUTH2_CSRF_STATE_KEY).await.unwrap();
+    let flow_provider: Option<String> = session.get(OAUTH2_FLOW_PROVIDER_KEY).await.unwrap();
+    let pkce_verifier: Option<String> = session.get(OAUTH2_PKCE_VERIFIER_KEY).await.unwrap();
     let next_url: Option<Option<String>> = session.get(NEXT_URL_KEY).await.unwrap();
+    let expected_challenge = PkceCodeChallenge::from_code_verifier_sha256(&PkceCodeVerifier::new(
+        pkce_verifier.expect("pkce verifier in session"),
+    ));
     assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(base_url, "https://oauth.example/authorize");
     assert_eq!(
         csrf_state.as_deref(),
         query_param(query, "state").as_deref()
+    );
+    assert_eq!(flow_provider.as_deref(), Some("oauth2:github"));
+    assert_eq!(
+        query_param(query, "code_challenge_method").as_deref(),
+        Some("S256"),
+    );
+    assert_eq!(
+        query_param(query, "code_challenge").as_deref(),
+        Some(expected_challenge.as_str()),
     );
     assert_eq!(next_url, Some(Some("/dashboard".to_string())));
 }
@@ -1136,15 +1294,66 @@ async fn test_oauth2_redirect_success() {
 
 #[tokio::test]
 async fn test_oidc_callback_missing_nonce() {
-    // Setup database mock with a csrf state but no nonce
+    // Setup database mock with a csrf state, flow provider and pkce verifier but no nonce
     let session_id = session::Id::default();
-    let session_record =
-        session_record_with_values(session_id, &[(OAUTH2_CSRF_STATE_KEY, "state-in-session")]);
+    let session_record = session_record_with_values(
+        session_id,
+        &[
+            (OAUTH2_CSRF_STATE_KEY, "state-in-session"),
+            (OAUTH2_FLOW_PROVIDER_KEY, "oidc:linuxfoundation"),
+            (OAUTH2_PKCE_VERIFIER_KEY, "verifier-in-session"),
+        ],
+    );
     let mut db = MockDB::new();
     expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
-        .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
+        .withf(move |record| {
+            message_matches(record, "OpenID Connect authorization failed")
+                && !record.data.contains_key(OAUTH2_CSRF_STATE_KEY)
+                && !record.data.contains_key(OAUTH2_FLOW_PROVIDER_KEY)
+                && !record.data.contains_key(OAUTH2_PKCE_VERIFIER_KEY)
+        })
+        .returning(|_| Ok(()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db)
+        .with_server_cfg(linuxfoundation_login_cfg())
+        .build()
+        .await;
+    let uri = "/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-session";
+    let (parts, bytes) = send(router, get_request(uri, session_id)).await;
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
+    );
+}
+
+#[tokio::test]
+async fn test_oidc_callback_missing_pkce_verifier() {
+    // Setup database mock with csrf state, flow provider and nonce but no pkce verifier
+    let session_id = session::Id::default();
+    let session_record = session_record_with_values(
+        session_id,
+        &[
+            (OAUTH2_CSRF_STATE_KEY, "state-in-session"),
+            (OAUTH2_FLOW_PROVIDER_KEY, "oidc:linuxfoundation"),
+            (OIDC_NONCE_KEY, "nonce-in-session"),
+        ],
+    );
+    let mut db = MockDB::new();
+    expect_stored_session(&mut db, session_record);
+    db.expect_update_session()
+        .times(1)
+        .withf(move |record| {
+            message_matches(record, "OpenID Connect authorization failed")
+                && !record.data.contains_key(OAUTH2_CSRF_STATE_KEY)
+                && !record.data.contains_key(OAUTH2_FLOW_PROVIDER_KEY)
+                && !record.data.contains_key(OIDC_NONCE_KEY)
+        })
         .returning(|_| Ok(()));
 
     // Setup router and send request
@@ -1165,13 +1374,26 @@ async fn test_oidc_callback_missing_nonce() {
 
 #[tokio::test]
 async fn test_oidc_callback_missing_state() {
-    // Setup database mock with a session without csrf state
+    // Setup database mock with a session without csrf state but with sibling flow keys
     let session_id = session::Id::default();
+    let session_record = session_record_with_values(
+        session_id,
+        &[
+            (OAUTH2_FLOW_PROVIDER_KEY, "oidc:linuxfoundation"),
+            (OAUTH2_PKCE_VERIFIER_KEY, "verifier-in-session"),
+            (OIDC_NONCE_KEY, "nonce-in-session"),
+        ],
+    );
     let mut db = MockDB::new();
-    expect_stored_session(&mut db, sample_empty_session_record(session_id));
+    expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
-        .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
+        .withf(move |record| {
+            message_matches(record, "OpenID Connect authorization failed")
+                && !record.data.contains_key(OAUTH2_FLOW_PROVIDER_KEY)
+                && !record.data.contains_key(OAUTH2_PKCE_VERIFIER_KEY)
+                && !record.data.contains_key(OIDC_NONCE_KEY)
+        })
         .returning(|_| Ok(()));
 
     // Setup router and send request
@@ -1191,6 +1413,57 @@ async fn test_oidc_callback_missing_state() {
 }
 
 #[tokio::test]
+async fn test_oidc_callback_provider_mismatch() {
+    // Setup in-memory session originating from OAuth2 GitHub instead of OIDC
+    let session = callback_session(
+        "oauth2:github",
+        Some("nonce-in-session"),
+        Some("/dashboard"),
+    )
+    .await;
+    let mut db = MockDB::new();
+    db.expect_list_user_groups().times(0);
+    let db: DynDB = Arc::new(db);
+    let mut callback_auth = MockCallbackAuth::default();
+
+    // Execute helper against the Linux Foundation OIDC callback
+    let (error_message, on_error) = capture_error();
+    let redirect = oidc_callback_with_auth(
+        &mut callback_auth,
+        session.clone(),
+        &db,
+        OidcProvider::LinuxFoundation,
+        "test-code".to_string(),
+        oauth2::CsrfToken::new("state-in-session".to_string()),
+        on_error,
+    )
+    .await
+    .unwrap();
+
+    // Check no token exchange occurs and pending flow state is evicted
+    let response = redirect.into_response();
+    let csrf_state: Option<String> = session.get(OAUTH2_CSRF_STATE_KEY).await.unwrap();
+    let flow_provider: Option<String> = session.get(OAUTH2_FLOW_PROVIDER_KEY).await.unwrap();
+    let nonce: Option<String> = session.get(OIDC_NONCE_KEY).await.unwrap();
+    let pkce_verifier: Option<String> = session.get(OAUTH2_PKCE_VERIFIER_KEY).await.unwrap();
+    assert_eq!(response.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        response.headers().get(LOCATION),
+        Some(&HeaderValue::from_static(LOG_IN_URL)),
+    );
+    assert_eq!(
+        *error_message.lock().unwrap(),
+        Some("OpenID Connect authorization failed".to_string()),
+    );
+    assert_eq!(callback_auth.oidc_call, None);
+    assert!(!callback_auth.login_called);
+    assert_eq!(csrf_state, None);
+    assert_eq!(flow_provider, None);
+    assert_eq!(nonce, None);
+    assert_eq!(pkce_verifier, None);
+}
+
+#[tokio::test]
 async fn test_oidc_callback_state_mismatch() {
     // Setup database mock with a session holding another csrf state
     let session_id = session::Id::default();
@@ -1198,6 +1471,8 @@ async fn test_oidc_callback_state_mismatch() {
         session_id,
         &[
             (OAUTH2_CSRF_STATE_KEY, "state-in-session"),
+            (OAUTH2_FLOW_PROVIDER_KEY, "oidc:linuxfoundation"),
+            (OAUTH2_PKCE_VERIFIER_KEY, "verifier-in-session"),
             (OIDC_NONCE_KEY, "nonce-in-session"),
         ],
     );
@@ -1205,7 +1480,13 @@ async fn test_oidc_callback_state_mismatch() {
     expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
-        .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
+        .withf(move |record| {
+            message_matches(record, "OpenID Connect authorization failed")
+                && !record.data.contains_key(OAUTH2_CSRF_STATE_KEY)
+                && !record.data.contains_key(OAUTH2_FLOW_PROVIDER_KEY)
+                && !record.data.contains_key(OAUTH2_PKCE_VERIFIER_KEY)
+                && !record.data.contains_key(OIDC_NONCE_KEY)
+        })
         .returning(|_| Ok(()));
 
     // Setup router and send request
@@ -1227,7 +1508,12 @@ async fn test_oidc_callback_state_mismatch() {
 #[tokio::test]
 async fn test_oidc_callback_authorization_error() {
     // Setup in-memory session and mocks
-    let session = callback_session(Some("nonce-in-session"), Some("/dashboard")).await;
+    let session = callback_session(
+        "oidc:linuxfoundation",
+        Some("nonce-in-session"),
+        Some("/dashboard"),
+    )
+    .await;
     let mut db = MockDB::new();
     db.expect_list_user_groups().times(0);
     let db: DynDB = Arc::new(db);
@@ -1253,6 +1539,7 @@ async fn test_oidc_callback_authorization_error() {
     // Check callback result and side effects
     let response = redirect.into_response();
     let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
+    let pkce_verifier: Option<String> = session.get(OAUTH2_PKCE_VERIFIER_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
         response.headers().get(LOCATION),
@@ -1260,8 +1547,9 @@ async fn test_oidc_callback_authorization_error() {
     );
     assert_eq!(
         *error_message.lock().unwrap(),
-        Some("OpenID Connect authorization failed: oidc auth error".to_string()),
+        Some("OpenID Connect authorization failed".to_string()),
     );
+    assert_eq!(pkce_verifier, None);
     assert!(!callback_auth.login_called);
     assert_eq!(auth_provider, None);
     assert_eq!(selected_ids(&session).await, (None, None));
@@ -1270,7 +1558,12 @@ async fn test_oidc_callback_authorization_error() {
 #[tokio::test]
 async fn test_oidc_callback_rejects_unauthenticated_user() {
     // Setup in-memory session and mocks
-    let session = callback_session(Some("nonce-in-session"), Some("/dashboard")).await;
+    let session = callback_session(
+        "oidc:linuxfoundation",
+        Some("nonce-in-session"),
+        Some("/dashboard"),
+    )
+    .await;
     let mut db = MockDB::new();
     db.expect_list_user_groups().times(0);
     let db: DynDB = Arc::new(db);
@@ -1317,7 +1610,12 @@ async fn test_oidc_callback_success() {
     let groups = sample_user_groups_by_community(ids.community_id, ids.group_id);
 
     // Setup in-memory session and mocks
-    let session = callback_session(Some("nonce-in-session"), Some("/dashboard")).await;
+    let session = callback_session(
+        "oidc:linuxfoundation",
+        Some("nonce-in-session"),
+        Some("/dashboard"),
+    )
+    .await;
     let mut db = MockDB::new();
     db.expect_list_user_groups()
         .times(1)
@@ -1345,10 +1643,12 @@ async fn test_oidc_callback_success() {
     .await
     .unwrap();
 
-    // Check callback result and side effects, including the session nonce hand-off
+    // Check callback result and side effects, including nonce and PKCE hand-off
     let response = redirect.into_response();
     let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
+    let flow_provider: Option<String> = session.get(OAUTH2_FLOW_PROVIDER_KEY).await.unwrap();
     let nonce: Option<String> = session.get(OIDC_NONCE_KEY).await.unwrap();
+    let pkce_verifier: Option<String> = session.get(OAUTH2_PKCE_VERIFIER_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
         response.headers().get(LOCATION),
@@ -1359,10 +1659,13 @@ async fn test_oidc_callback_success() {
         Some((
             "test-code".to_string(),
             "nonce-in-session".to_string(),
+            "verifier-in-session".to_string(),
             OidcProvider::LinuxFoundation,
         )),
     );
+    assert_eq!(flow_provider, None);
     assert_eq!(nonce, None);
+    assert_eq!(pkce_verifier, None);
     assert!(callback_auth.login_called);
     assert_eq!(
         auth_provider.as_deref(),
@@ -1376,12 +1679,14 @@ async fn test_oidc_callback_success() {
 
 #[tokio::test]
 async fn test_oidc_callback_returns_error_when_provider_is_not_configured() {
-    // Setup database mock with a valid csrf state, nonce and next url
+    // Setup database mock with a valid csrf state, flow provider, pkce verifier, nonce and next url
     let session_id = session::Id::default();
     let session_record = session_record_with_values(
         session_id,
         &[
             (OAUTH2_CSRF_STATE_KEY, "state-in-session"),
+            (OAUTH2_FLOW_PROVIDER_KEY, "oidc:linuxfoundation"),
+            (OAUTH2_PKCE_VERIFIER_KEY, "verifier-in-session"),
             (OIDC_NONCE_KEY, "nonce-in-session"),
             (NEXT_URL_KEY, "/dashboard"),
         ],
@@ -1390,12 +1695,7 @@ async fn test_oidc_callback_returns_error_when_provider_is_not_configured() {
     expect_stored_session(&mut db, session_record);
     db.expect_update_session()
         .times(1)
-        .withf(move |record| {
-            message_matches(
-                record,
-                "OpenID Connect authorization failed: oidc provider not found",
-            )
-        })
+        .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
         .returning(|_| Ok(()));
 
     // Setup router and send request
@@ -1412,6 +1712,23 @@ async fn test_oidc_callback_returns_error_when_provider_is_not_configured() {
         parts.headers.get(LOCATION),
         Some(&HeaderValue::from_static("/log-in?next_url=%2Fdashboard")),
     );
+}
+
+#[tokio::test]
+async fn test_oidc_redirect_rejects_unknown_provider() {
+    // Setup router with Linux Foundation login enabled
+    let router = TestRouterBuilder::new(MockDB::new())
+        .with_server_cfg(linuxfoundation_login_cfg())
+        .build()
+        .await;
+
+    // Send redirect request with an unknown provider slug
+    let request = request("GET", "/log-in/oidc/unknown").body(Body::empty()).unwrap();
+    let (parts, bytes) = send(router, request).await;
+
+    // Check the custom Oidc extractor rejection is returned instead of Axum's raw path error
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(bytes.as_ref(), b"missing oidc provider");
 }
 
 #[tokio::test]
@@ -1450,10 +1767,15 @@ async fn test_oidc_redirect_success() {
     };
 
     // Execute handler
-    let response = oidc_redirect(session.clone(), Oidc(Arc::new(provider)), query)
-        .await
-        .expect("oidc redirect should succeed")
-        .into_response();
+    let response = oidc_redirect(
+        session.clone(),
+        Oidc(Arc::new(provider)),
+        Path(OidcProvider::LinuxFoundation),
+        query,
+    )
+    .await
+    .expect("oidc redirect should succeed")
+    .into_response();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
     let location = parts.headers.get(LOCATION).unwrap().to_str().unwrap();
@@ -1461,15 +1783,29 @@ async fn test_oidc_redirect_success() {
         .split_once('?')
         .expect("redirect url to contain query string");
 
-    // Check response matches expectations
+    // Check response matches expectations, including S256 PKCE challenge and stored verifier
     let csrf_state: Option<String> = session.get(OAUTH2_CSRF_STATE_KEY).await.unwrap();
+    let flow_provider: Option<String> = session.get(OAUTH2_FLOW_PROVIDER_KEY).await.unwrap();
+    let pkce_verifier: Option<String> = session.get(OAUTH2_PKCE_VERIFIER_KEY).await.unwrap();
     let nonce: Option<String> = session.get(OIDC_NONCE_KEY).await.unwrap();
     let next_url: Option<Option<String>> = session.get(NEXT_URL_KEY).await.unwrap();
+    let expected_challenge = PkceCodeChallenge::from_code_verifier_sha256(&PkceCodeVerifier::new(
+        pkce_verifier.expect("pkce verifier in session"),
+    ));
     assert_empty_response(&parts, &bytes, StatusCode::SEE_OTHER);
     assert_eq!(base_url, "https://issuer.example/authorize");
     assert_eq!(
         csrf_state.as_deref(),
         query_param(query, "state").as_deref()
+    );
+    assert_eq!(flow_provider.as_deref(), Some("oidc:linuxfoundation"));
+    assert_eq!(
+        query_param(query, "code_challenge_method").as_deref(),
+        Some("S256"),
+    );
+    assert_eq!(
+        query_param(query, "code_challenge").as_deref(),
+        Some(expected_challenge.as_str()),
     );
     assert_eq!(nonce.as_deref(), query_param(query, "nonce").as_deref());
     assert_eq!(next_url, Some(Some("/dashboard".to_string())));
@@ -2071,10 +2407,40 @@ fn test_get_log_in_url_appends_sanitized_next_url() {
 }
 
 #[test]
+fn test_oauth2_authorization_error_message_sanitizes_unknown_errors() {
+    // Setup authorization errors and the flash message each one expects
+    let unverified_email =
+        format!("github profile error: {EXTERNAL_AUTH_EMAIL_NOT_VERIFIED_ERROR}");
+    let cases = [
+        (
+            "unverified primary email",
+            unverified_email.as_str(),
+            OAUTH2_UNVERIFIED_EMAIL_MESSAGE,
+        ),
+        (
+            "internal provider error",
+            "oauth2 provider not found",
+            OAUTH2_AUTHORIZATION_FAILED,
+        ),
+        (
+            "database error",
+            "error communicating with database: connection refused",
+            OAUTH2_AUTHORIZATION_FAILED,
+        ),
+    ];
+
+    for (case, err, expected) in cases {
+        assert_eq!(oauth2_authorization_error_message(err), expected, "{case}");
+    }
+}
+
+#[test]
 fn test_oidc_authorization_error_message_maps_known_conflicts() {
     // Setup authorization errors and the flash message each one expects
     let email_conflict = format!("db error: {EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR}");
     let identity_conflict = format!("db error: {EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR}");
+    let unverified_email =
+        format!("oidc claims error: {EXTERNAL_AUTH_OIDC_EMAIL_NOT_VERIFIED_ERROR}");
     let cases = [
         (
             "email conflict",
@@ -2087,10 +2453,11 @@ fn test_oidc_authorization_error_message_maps_known_conflicts() {
             LF_SSO_IDENTITY_CONFLICT_MESSAGE,
         ),
         (
-            "other error",
-            "oidc auth error",
-            "OpenID Connect authorization failed: oidc auth error",
+            "unverified email",
+            unverified_email.as_str(),
+            LF_SSO_UNVERIFIED_EMAIL_MESSAGE,
         ),
+        ("other error", "oidc auth error", OIDC_AUTHORIZATION_FAILED),
     ];
 
     for (case, err, expected) in cases {
@@ -2151,9 +2518,9 @@ const UPDATE_PASSWORD_URL: &str = "/dashboard/account/update/password";
 struct MockCallbackAuth {
     login_called: bool,
     login_result: Option<Result<(), HandlerError>>,
-    oauth2_call: Option<(String, OAuth2Provider)>,
+    oauth2_call: Option<(String, String, OAuth2Provider)>,
     oauth2_result: Option<Result<Option<auth::User>, String>>,
-    oidc_call: Option<(String, String, OidcProvider)>,
+    oidc_call: Option<(String, String, String, OidcProvider)>,
     oidc_result: Option<Result<Option<auth::User>, String>>,
 }
 
@@ -2162,9 +2529,10 @@ impl CallbackAuth for MockCallbackAuth {
     async fn authenticate_oauth2(
         &mut self,
         code: String,
+        pkce_verifier: oauth2::PkceCodeVerifier,
         provider: OAuth2Provider,
     ) -> Result<Option<auth::User>, String> {
-        self.oauth2_call = Some((code, provider));
+        self.oauth2_call = Some((code, pkce_verifier.secret().clone(), provider));
         self.oauth2_result
             .take()
             .expect("oauth2 callback auth result should be configured in tests")
@@ -2174,9 +2542,15 @@ impl CallbackAuth for MockCallbackAuth {
         &mut self,
         code: String,
         nonce: oidc::Nonce,
+        pkce_verifier: oidc::PkceCodeVerifier,
         provider: OidcProvider,
     ) -> Result<Option<auth::User>, String> {
-        self.oidc_call = Some((code, nonce.secret().clone(), provider));
+        self.oidc_call = Some((
+            code,
+            nonce.secret().clone(),
+            pkce_verifier.secret().clone(),
+            provider,
+        ));
         self.oidc_result
             .take()
             .expect("oidc callback auth result should be configured in tests")
@@ -2214,11 +2588,20 @@ fn assert_theme_group_checks_system(body: &str) {
     }
 }
 
-/// Builds an in-memory callback session holding the expected csrf state.
-async fn callback_session(nonce: Option<&str>, next_url: Option<&str>) -> Session {
+/// Builds an in-memory callback session holding the expected csrf state, flow provider and pkce verifier.
+async fn callback_session(
+    flow_provider: &str,
+    nonce: Option<&str>,
+    next_url: Option<&str>,
+) -> Session {
     let session = Session::new(None, Arc::new(MemoryStore::default()), None);
     session
         .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
+        .await
+        .unwrap();
+    session.insert(OAUTH2_FLOW_PROVIDER_KEY, flow_provider).await.unwrap();
+    session
+        .insert(OAUTH2_PKCE_VERIFIER_KEY, "verifier-in-session")
         .await
         .unwrap();
     if let Some(nonce) = nonce {

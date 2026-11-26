@@ -19,6 +19,12 @@ const REFRESH_BODY_EVENT = "refresh-body";
 const RATE_LIMITED_HEADER = "X-OCG-Rate-Limited";
 // Success icon parts SweetAlert2 paints with the popup background to mask the ring.
 const SUCCESS_ICON_MASK_SELECTOR = "[class^=swal2-success-circular-line], .swal2-success-fix";
+const SWAL_CONTAINER_SELECTOR = ".swal2-container";
+
+// Element focused before the current alert opened, restored on close unless focus moved.
+let alertReturnFocusTarget = null;
+// Monotonic token distinguishing the active alert from an earlier one finishing teardown.
+let alertFocusToken = 0;
 
 /**
  * Returns common configuration options for all alert dialogs.
@@ -34,6 +40,7 @@ export const getCommonAlertOptions = () => {
     position: isPhoneViewport() ? "bottom" : "top-end",
     topLayer: true,
     ...(openModalDialog ? { target: openModalDialog } : {}),
+    ...createAlertFocusHooks(openModalDialog),
     buttonsStyling: false,
     // Pinned to the vendor default, so an upgrade cannot switch popups to its own dark palette.
     theme: "light",
@@ -503,6 +510,56 @@ export const waitForAlertToClose = (root = document) =>
     });
     observer.observe(root.body, { childList: true, subtree: true });
   });
+
+/**
+ * Builds SweetAlert2 lifecycle hooks that return focus immediately on close
+ * instead of using SweetAlert2's delayed unconditional focus timer, leaving
+ * focus alone when the user or page already moved it elsewhere.
+ * @param {HTMLDialogElement|null} openModalDialog - Topmost open modal dialog, if any
+ * @returns {{didClose: () => void, returnFocus: boolean, willOpen: () => void}} Alert focus options
+ */
+const createAlertFocusHooks = (openModalDialog) => {
+  const active = document.activeElement;
+  const isReplacing = Boolean(globalThis.Swal?.isVisible?.());
+  const opener =
+    active instanceof HTMLElement &&
+    active !== document.body &&
+    active !== document.documentElement &&
+    !active.closest(SWAL_CONTAINER_SELECTOR)
+      ? active
+      : null;
+  let token = 0;
+
+  return {
+    returnFocus: false,
+    willOpen: () => {
+      alertFocusToken += 1;
+      token = alertFocusToken;
+      if (opener) {
+        alertReturnFocusTarget = opener;
+      } else if (!isReplacing || !alertReturnFocusTarget?.isConnected) {
+        alertReturnFocusTarget = null;
+      }
+    },
+    didClose: () => {
+      if (token !== alertFocusToken || globalThis.Swal?.isVisible?.()) {
+        return;
+      }
+
+      const target = alertReturnFocusTarget;
+      alertReturnFocusTarget = null;
+      const current = document.activeElement;
+      const focusLost =
+        !current ||
+        current === document.body ||
+        current === document.documentElement ||
+        (openModalDialog && current === openModalDialog && target !== openModalDialog);
+      if (focusLost && target?.isConnected) {
+        target.focus({ preventScroll: true });
+      }
+    },
+  };
+};
 
 /** Returns the topmost open modal dialog, if any. */
 const getOpenModalDialog = () => [...document.querySelectorAll("dialog:modal")].at(-1) ?? null;

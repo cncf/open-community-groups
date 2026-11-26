@@ -39,13 +39,25 @@ mod tests;
 /// Key used to store the authentication provider in the session.
 pub(crate) const AUTH_PROVIDER_KEY: &str = "auth_provider";
 
+/// Dummy Argon2id PHC hash matching `password_auth::generate_hash` defaults,
+/// used to equalize password verification timing for unknown or SSO-only users.
+const DUMMY_PASSWORD_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$o02vab7VgqfMUwFVdDlvvA$K8RgsDa/dQ63MzIDNFFnJcmWGWDyrIHdUKwhYJiRLOI";
+
 /// Error raised when an external-auth email is already owned by another user.
 pub(crate) const EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR: &str =
     "external auth email belongs to another user";
 
+/// Error raised when an external-auth account has no verified primary email.
+pub(crate) const EXTERNAL_AUTH_EMAIL_NOT_VERIFIED_ERROR: &str =
+    "external auth primary email is not verified";
+
 /// Error raised when an external-auth identity is already owned by another user.
 pub(crate) const EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR: &str =
     "external auth identity belongs to another user";
+
+/// Error raised when an OIDC ID token email is not verified.
+pub(crate) const EXTERNAL_AUTH_OIDC_EMAIL_NOT_VERIFIED_ERROR: &str =
+    "external auth oidc email is not verified";
 
 /// Type alias for the authentication layer used in the router.
 pub(crate) type AuthLayer = AuthManagerLayer<AuthnBackend, SessionStore>;
@@ -217,6 +229,7 @@ impl AuthnBackend {
         let access_token = oauth2_provider
             .client
             .exchange_code(oauth2::AuthorizationCode::new(creds.code))
+            .set_pkce_verifier(creds.pkce_verifier)
             .request_async(&self.http_client)
             .await?
             .access_token()
@@ -244,6 +257,7 @@ impl AuthnBackend {
         let token_response = oidc_provider
             .client
             .exchange_code(oidc::AuthorizationCode::new(creds.code))?
+            .set_pkce_verifier(creds.pkce_verifier)
             .request_async(&self.http_client)
             .await?;
 
@@ -270,26 +284,23 @@ impl AuthnBackend {
         // Get user from database
         let user = self.db.get_user_by_username(&creds.username).await?;
 
-        // Check if the credentials are valid, returning the user if they are
-        if let Some(mut user) = user {
-            // Check if the user's password is set
-            let Some(password_hash) = user.password.clone() else {
-                return Ok(None);
-            };
+        // Extract the stored hash, falling back to a dummy Argon2id hash when
+        // the user is missing or has no password so verification timing stays
+        // comparable
+        let (user, password_hash) = match user.and_then(|mut u| u.password.take().map(|h| (u, h))) {
+            Some((user, password_hash)) => (Some(user), password_hash),
+            None => (None, DUMMY_PASSWORD_HASH.to_string()),
+        };
 
-            // Verify the password within the shared CPU-heavy work bound
-            if self
-                .blocking_executor
-                .run(move || verify_password(creds.password, &password_hash))
-                .await?
-                .is_ok()
-            {
-                user.password = None;
-                return Ok(Some(user));
-            }
-        }
+        // Verify the password within the shared CPU-heavy work bound
+        let verified = self
+            .blocking_executor
+            .run(move || verify_password(creds.password, &password_hash))
+            .await?
+            .is_ok();
 
-        Ok(None)
+        // Return the user only when a real stored password verified
+        Ok(user.filter(|_| verified))
     }
 
     /// Get an existing external-auth user or sign them up.
@@ -474,7 +485,7 @@ pub(crate) struct OidcProviderDetails {
 pub(crate) struct AuthError(#[from] anyhow::Error);
 
 /// Credentials for authenticating a user.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub enum Credentials {
     /// `OAuth2` credentials.
     OAuth2(OAuth2Credentials),
@@ -505,21 +516,25 @@ struct GitHubUserEmail {
 }
 
 /// Credentials for `OAuth2` authentication.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct OAuth2Credentials {
     /// Authorization code from the `OAuth2` provider.
     pub code: String,
+    /// PKCE code verifier paired with the authorization challenge.
+    pub pkce_verifier: oauth2::PkceCodeVerifier,
     /// The `OAuth2` provider to use.
     pub provider: OAuth2Provider,
 }
 
 /// Credentials for `Oidc` authentication.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct OidcCredentials {
     /// Authorization code from the `Oidc` provider.
     pub code: String,
     /// Nonce used for ID token verification.
     pub nonce: oidc::Nonce,
+    /// PKCE code verifier paired with the authorization challenge.
+    pub pkce_verifier: oidc::PkceCodeVerifier,
     /// The `Oidc` provider to use.
     pub provider: OidcProvider,
 }
@@ -593,7 +608,7 @@ impl ExternalUserProfile {
         let email = emails
             .into_iter()
             .find(|email| email.primary && email.verified)
-            .ok_or_else(|| anyhow!("no valid email found (primary email must be verified)"))?;
+            .ok_or_else(|| anyhow!(EXTERNAL_AUTH_EMAIL_NOT_VERIFIED_ERROR))?;
 
         Ok(Self {
             email: email.email,
@@ -611,7 +626,7 @@ impl ExternalUserProfile {
     ) -> Result<Self> {
         // Ensure email is verified and extract user info
         if !claims.email_verified().unwrap_or(false) {
-            bail!("email not verified");
+            bail!(EXTERNAL_AUTH_OIDC_EMAIL_NOT_VERIFIED_ERROR);
         }
 
         let email = claims.email().ok_or_else(|| anyhow!("email missing"))?.to_string();
