@@ -64,6 +64,7 @@ const LAYER_EDGE_ALLOWANCES: &[(&str, &str)] = &[];
 /// needs one is orchestrating a workflow that belongs to a manager.
 const DB_OPERATION_TYPES: &[&str] = &[
     "db::auth::EmailVerificationNotification",
+    "db::auth::PasswordResetNotification",
     "db::dashboard::group::EventAdmissionAllocationResult",
     "db::dashboard::group::EventAttendeeCancellationStatus",
     "db::dashboard::group::EventAttendeeInvitationInput",

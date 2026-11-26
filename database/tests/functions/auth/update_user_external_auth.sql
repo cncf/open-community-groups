@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -57,6 +57,14 @@ select fx_user(:'userWithoutNameID', jsonb_build_object('email', 'no-name-old@ex
 select fx_user(:'userWithoutProviderID', jsonb_build_object(
     'name', 'No Provider User'
 ));
+
+-- Password reset token that must be revoked when external auth changes email
+insert into password_reset_token (token_hash, user_id)
+values (digest('0a0e-email-change-token', 'sha256'), :'userID');
+
+-- Password reset token that must survive an external auth sync keeping the same email
+insert into password_reset_token (token_hash, user_id)
+values (digest('0a0e-same-email-token', 'sha256'), :'conflictUserID');
 
 -- ============================================================================
 -- TESTS
@@ -216,6 +224,29 @@ select throws_ok(
     'OCG01',
     'registered external-auth user not found',
     'Should reject pre-registered users'
+);
+
+-- Should revoke active password reset tokens when external auth changes the user's email
+select is(
+    (select count(*)::int from password_reset_token where user_id = :'userID'::uuid),
+    0,
+    'Should revoke active password reset tokens when external auth changes email'
+);
+
+-- Should preserve active password reset tokens when external auth keeps the same email
+select is(
+    (
+        select count(*)::int
+        from (
+            select update_user_external_auth(
+                :'conflictUserID',
+                jsonb_build_object('email', 'CONFLICT@EXAMPLE.COM', 'name', 'Same Email')
+            )
+        ) as updated
+        join password_reset_token prt on prt.user_id = :'conflictUserID'::uuid
+    ),
+    1,
+    'Should preserve active password reset tokens when external auth keeps the same email'
 );
 
 -- ============================================================================

@@ -43,7 +43,7 @@ use crate::{
         EventSurveyOpened, EventTicketRequestApproved, EventTicketWaitlistOffer,
         EventWaitlistJoined, EventWaitlistLeft, EventWelcome, GroupCustom, GroupTeamInvitation,
         GroupWelcome, InboxMessageReceived, InboxReplyReceived, NotificationTemplate,
-        SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
+        PasswordReset, SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
     },
     types::{
         event::EventSummary,
@@ -484,6 +484,9 @@ impl DeliveryWorker {
             }
             NotificationKind::InboxReplyReceived => {
                 Self::render_template::<InboxReplyReceived>(template_data, base_url)
+            }
+            NotificationKind::PasswordReset => {
+                Self::render_template::<PasswordReset>(template_data, base_url)
             }
             NotificationKind::SessionProposalCoSpeakerInvitation => {
                 Self::render_template::<SessionProposalCoSpeakerInvitation>(template_data, base_url)

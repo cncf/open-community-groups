@@ -633,6 +633,8 @@ fn test_rate_limit_config_defaults_optional_settings() {
             external_auth: budget(300, 150),
             log_in: budget(300, 300),
             log_in_failures: budget(10, 900),
+            password_reset: budget(30, 900),
+            resend_verification: budget(30, 900),
             sign_up: budget(100, 1200),
             verify_email: budget(100, 1200),
             views: budget(600, 600),

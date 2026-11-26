@@ -1,5 +1,7 @@
 //! Templates and types for authentication-related pages and user info.
 
+use std::fmt;
+
 use anyhow::Result;
 use askama::Template;
 use axum_messages::Message;
@@ -16,6 +18,22 @@ use crate::{
 mod tests;
 
 // Pages and sections templates.
+
+/// Template for the forgot password page.
+#[derive(Debug, Clone, Template)]
+#[template(path = "auth/forgot_password.html")]
+pub(crate) struct ForgotPasswordPage {
+    /// Flash or status messages to display.
+    pub messages: Vec<Message>,
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current request path.
+    pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
+    /// Authenticated user information.
+    pub user: UserMenuState,
+}
 
 /// Template for the log in page.
 #[derive(Debug, Clone, Template)]
@@ -36,6 +54,37 @@ pub(crate) struct LogInPage {
 
     /// Next URL to redirect to after login, if any.
     pub next_url: Option<String>,
+}
+
+/// Template for the reset password page.
+#[derive(Clone, Template)]
+#[template(path = "auth/reset_password.html")]
+pub(crate) struct ResetPasswordPage {
+    /// Flash or status messages to display.
+    pub messages: Vec<Message>,
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current request path.
+    pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
+    /// Password reset token carried in the form action.
+    pub token: String,
+    /// Authenticated user information.
+    pub user: UserMenuState,
+}
+
+impl fmt::Debug for ResetPasswordPage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ResetPasswordPage")
+            .field("messages", &self.messages)
+            .field("page_id", &self.page_id)
+            .field("path", &self.path)
+            .field("site_settings", &self.site_settings)
+            .field("token", &"[redacted]")
+            .field("user", &self.user)
+            .finish()
+    }
 }
 
 /// Template for the sign up page.

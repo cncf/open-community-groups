@@ -6,7 +6,8 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::{
-        DBOperations, auth::EmailVerificationNotification,
+        DBOperations,
+        auth::{EmailVerificationNotification, PasswordResetNotification},
         dashboard::group::EventCohostNotificationData,
     },
     templates::notifications::{
@@ -15,7 +16,7 @@ use crate::{
         EventCohostResponded, EventCustom, EventPaidConfigured, EventPaidConfiguredItem,
         EventPublished, EventRefundApproved, EventRefundRejected, EventRescheduled,
         EventWaitlistJoined, EventWaitlistLeft, EventWelcome, GroupCustom, InboxMessageReceived,
-        InboxReplyReceived, SpeakerWelcome,
+        InboxReplyReceived, PasswordReset, SpeakerWelcome,
     },
     types::{
         community::CommunitySummary,
@@ -27,7 +28,7 @@ use crate::{
     },
     util::{
         base_url_without_trailing_slash, build_event_calendar_attachment, build_event_page_link,
-        build_user_dashboard_events_link,
+        build_user_dashboard_events_link, hash_password_reset_token,
     },
 };
 
@@ -578,6 +579,37 @@ pub(crate) fn build_inbox_reply_received_notification(
         kind: NotificationKind::InboxReplyReceived,
         recipients: vec![user.user_id],
         template_data: Some(serde_json::to_value(&template_data)?),
+    })
+}
+
+/// Builds the password reset notification payload and SHA-256 token digest.
+///
+/// Generates a 256-bit CSPRNG token for the reset URL while returning only its
+/// SHA-256 digest for database storage.
+pub(crate) async fn build_password_reset_notification(
+    db: &dyn DBOperations,
+    server_cfg: &HttpServerConfig,
+) -> Result<PasswordResetNotification> {
+    // Require a base URL before loading any template context
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
+    if base_url.is_empty() {
+        return Err(anyhow!("base URL is required to send password reset email"));
+    }
+
+    // Generate a 256-bit CSPRNG token and hash it for database storage
+    let token = oauth2::CsrfToken::new_random_len(32);
+    let token_hash = hash_password_reset_token(token.secret());
+
+    // Build the template data from the current site theme
+    let site_settings = db.get_site_settings().await?;
+    let template_data = serde_json::to_value(PasswordReset {
+        link: format!("{base_url}/reset-password/{}", token.secret()),
+        theme: site_settings.theme,
+    })?;
+
+    Ok(PasswordResetNotification {
+        template_data,
+        token_hash,
     })
 }
 

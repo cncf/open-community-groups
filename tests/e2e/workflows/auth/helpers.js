@@ -3,6 +3,19 @@ import { expect } from "../../fixtures.js";
 import { queryE2eDatabase } from "../../database.js";
 import { navigateToPath } from "../../utils.js";
 
+/** Ages an unverified user's verification code past the 2-minute resend cooldown. */
+export const ageEmailVerificationCode = (email) => {
+  const escapedEmail = email.replace(/'/g, "''");
+
+  queryE2eDatabase(`
+    update email_verification_code evc
+    set created_at = current_timestamp - interval '3 minutes'
+    from "user" u
+    where evc.user_id = u.user_id
+    and lower(u.email) = lower('${escapedEmail}')
+  `);
+};
+
 /** Deletes a browser-created auth user by exact username. */
 export const deleteUserByUsername = (username) => {
   const escapedUsername = username.replace(/'/g, "''");
@@ -66,6 +79,27 @@ export const waitForEmailVerificationCode = async (email) => {
   return verificationCode;
 };
 
+/** Waits until password reset persistence queues a reset link for the user. */
+export const waitForPasswordResetPath = async (email) => {
+  let resetPath = null;
+
+  await expect
+    .poll(
+      () => {
+        resetPath = readPasswordResetPath(email);
+        return resetPath;
+      },
+      {
+        intervals: [250],
+        message: `Timed out waiting for password reset link for ${email}`,
+        timeout: 10_000,
+      },
+    )
+    .not.toBeNull();
+
+  return resetPath;
+};
+
 /** Reads the email verification code for a newly created user from the E2E DB. */
 const readEmailVerificationCode = (email) => {
   const escapedEmail = email.replace(/'/g, "''");
@@ -79,4 +113,26 @@ const readEmailVerificationCode = (email) => {
   const output = queryE2eDatabase(sql);
 
   return output || null;
+};
+
+/** Reads the latest password reset notification path for a user from the E2E DB. */
+const readPasswordResetPath = (email) => {
+  const escapedEmail = email.replace(/'/g, "''");
+  const sql = `
+    select ntd.data->>'link'
+    from notification n
+    join notification_template_data ntd using (notification_template_data_id)
+    join "user" u using (user_id)
+    where n.kind = 'password-reset'
+    and lower(u.email) = lower('${escapedEmail}')
+    order by n.created_at desc
+    limit 1
+  `;
+
+  const output = queryE2eDatabase(sql);
+  if (!output) {
+    return null;
+  }
+
+  return new URL(output).pathname;
 };

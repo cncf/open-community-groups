@@ -37,12 +37,15 @@ use crate::{
     },
     services::{
         blocking::BlockingExecutor,
-        notifications::payloads::build_email_verification_notification,
+        notifications::payloads::{
+            build_email_verification_notification, build_password_reset_notification,
+        },
         rate_limit::{LogInFailureLimit, RateLimited},
     },
     templates::{self, PageId, auth::UserMenuState},
     types::user::{UserDetailsInput, UserPasswordInput},
-    validation::{MAX_LEN_S, trimmed_non_empty},
+    util::hash_password_reset_token,
+    validation::{MAX_LEN_S, MIN_PASSWORD_LEN, trimmed_non_empty},
 };
 
 use self::session_context::select_first_community_and_group;
@@ -54,6 +57,13 @@ mod tests;
 
 /// Session value for password authentication.
 pub(crate) const AUTH_PROVIDER_EMAIL: &str = "email";
+
+/// Generic confirmation shown after a forgot-password request to avoid account enumeration.
+const FORGOT_PASSWORD_GENERIC_MESSAGE: &str =
+    "If an eligible account matches that email address, we've sent password reset instructions.";
+
+/// URL for the forgot password page.
+pub(crate) const FORGOT_PASSWORD_URL: &str = "/forgot-password";
 
 /// Friendly message for LF SSO email ownership conflicts.
 const LF_SSO_EMAIL_CONFLICT_MESSAGE: &str = concat!(
@@ -97,10 +107,52 @@ const OIDC_AUTHORIZATION_FAILED: &str = "OpenID Connect authorization failed";
 /// Key used to store the `Oidc` nonce in the session.
 pub(crate) const OIDC_NONCE_KEY: &str = "oidc.nonce";
 
+/// Generic error shown when a password reset link is invalid, expired, or already used.
+const PASSWORD_RESET_INVALID_MESSAGE: &str =
+    "Invalid or expired password reset link. Please request a new one.";
+
+/// Confirmation shown after a password reset completes.
+const PASSWORD_RESET_SUCCESS_MESSAGE: &str =
+    "Your password has been reset. You can now log in with your new password.";
+
+/// Generic confirmation shown after a verification resend request to avoid account enumeration.
+const RESEND_VERIFICATION_GENERIC_MESSAGE: &str =
+    "If an unverified account matches that email address, we've sent a new verification email.";
+
+/// Base URL for the password reset page.
+pub(crate) const RESET_PASSWORD_URL: &str = "/reset-password";
+
 /// URL for the sign up page.
 pub(crate) const SIGN_UP_URL: &str = "/sign-up";
 
 // Pages and sections handlers.
+
+/// Handler that returns the forgot password page.
+#[instrument(skip_all)]
+pub(crate) async fn forgot_password_page(
+    auth_session: AuthSession,
+    messages: Messages,
+    State(db): State<DynDB>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Redirect users who are already logged in
+    if auth_session.user.is_some() {
+        return Ok(Redirect::to("/").into_response());
+    }
+
+    // Load site settings for page rendering
+    let site_settings = db.get_site_settings().await?;
+
+    // Prepare template
+    let template = templates::auth::ForgotPasswordPage {
+        messages: messages.into_iter().collect(),
+        page_id: PageId::ForgotPassword,
+        path: FORGOT_PASSWORD_URL.to_string(),
+        site_settings,
+        user: UserMenuState::default(),
+    };
+
+    Ok(Html(template.render()?).into_response())
+}
 
 /// Handler that returns the log in page.
 #[instrument(skip_all)]
@@ -133,6 +185,43 @@ pub(crate) async fn log_in_page(
         user: UserMenuState::default(),
 
         next_url,
+    };
+
+    Ok(Html(template.render()?).into_response())
+}
+
+/// Handler that returns the password reset page for a valid reset token.
+#[instrument(skip_all)]
+pub(crate) async fn reset_password_page(
+    auth_session: AuthSession,
+    messages: Messages,
+    State(db): State<DynDB>,
+    Path(token): Path<String>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Reject malformed, unknown, or expired tokens without exposing details
+    let invalid_redirect_url = invalid_reset_token_redirect_url(&auth_session);
+    if !is_valid_password_reset_token_format(&token) {
+        messages.error(PASSWORD_RESET_INVALID_MESSAGE);
+        return Ok(Redirect::to(invalid_redirect_url).into_response());
+    }
+    let token_hash = hash_password_reset_token(&token);
+    if !db.has_valid_password_reset_token(&token_hash).await? {
+        messages.error(PASSWORD_RESET_INVALID_MESSAGE);
+        return Ok(Redirect::to(invalid_redirect_url).into_response());
+    }
+
+    // Load site settings and user menu state for page rendering
+    let site_settings = db.get_site_settings().await?;
+    let user = UserMenuState::from_session(auth_session).await?;
+
+    // Prepare template without embedding the secret token in the page path
+    let template = templates::auth::ResetPasswordPage {
+        messages: messages.into_iter().collect(),
+        page_id: PageId::ResetPassword,
+        path: RESET_PASSWORD_URL.to_string(),
+        site_settings,
+        token,
+        user,
     };
 
     Ok(Html(template.render()?).into_response())
@@ -188,6 +277,46 @@ pub(crate) async fn user_menu_section(
 }
 
 // Actions handlers.
+
+/// Handler that initiates a password reset email when an eligible account exists.
+#[instrument(skip_all)]
+pub(crate) async fn forgot_password(
+    messages: Messages,
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    Form(mut form): Form<EmailForm>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Normalize and validate the submitted email address
+    form.email = form.email.trim().to_string();
+    if let Err(err) = form.validate() {
+        messages.error(err.to_string());
+        return Ok(Redirect::to(FORGOT_PASSWORD_URL));
+    }
+
+    // Prepare the reset token digest and email template payload
+    let reset = match build_password_reset_notification(db.as_ref(), &server_cfg).await {
+        Ok(reset) => reset,
+        Err(err) => {
+            warn!(error = %format_args!("{err:#}"), "failed to prepare password reset notification");
+            messages.error(
+                "Something went wrong while processing your request. Please try again later.",
+            );
+            return Ok(Redirect::to(FORGOT_PASSWORD_URL));
+        }
+    };
+
+    // Issue the token and queue the reset email when eligible and outside cooldown
+    if let Err(err) = db.create_password_reset_token(&form.email, &reset).await {
+        warn!(error = %format_args!("{err:#}"), "failed to create password reset token");
+        messages
+            .error("Something went wrong while processing your request. Please try again later.");
+        return Ok(Redirect::to(FORGOT_PASSWORD_URL));
+    }
+
+    // Return the same confirmation regardless of whether an email was queued
+    messages.success(FORGOT_PASSWORD_GENERIC_MESSAGE);
+    Ok(Redirect::to(LOG_IN_URL))
+}
 
 /// Handler that logs the user in.
 ///
@@ -395,6 +524,111 @@ pub(crate) async fn oidc_redirect(
     Ok(Redirect::to(authorize_url.as_str()))
 }
 
+/// Handler that resends an email verification link for an unverified registered user.
+#[instrument(skip_all)]
+pub(crate) async fn resend_verification(
+    messages: Messages,
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    Query(query): Query<HashMap<String, String>>,
+    Form(mut form): Form<EmailForm>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Preserve the requested post-login destination on redirect
+    let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
+    let log_in_url = get_log_in_url(next_url.as_deref());
+
+    // Normalize and validate the submitted email address
+    form.email = form.email.trim().to_string();
+    if let Err(err) = form.validate() {
+        messages.error(err.to_string());
+        return Ok(Redirect::to(&log_in_url));
+    }
+
+    // Prepare the verification code and email template payload
+    let verification = match build_email_verification_notification(db.as_ref(), &server_cfg).await {
+        Ok(verification) => verification,
+        Err(err) => {
+            warn!(error = %format_args!("{err:#}"), "failed to prepare verification resend notification");
+            messages.error(
+                "Something went wrong while processing your request. Please try again later.",
+            );
+            return Ok(Redirect::to(&log_in_url));
+        }
+    };
+
+    // Issue a replacement code when eligible and outside the per-user cooldown
+    if let Err(err) = db.resend_email_verification(&form.email, &verification).await {
+        warn!(error = %format_args!("{err:#}"), "failed to resend email verification");
+        messages
+            .error("Something went wrong while processing your request. Please try again later.");
+        return Ok(Redirect::to(&log_in_url));
+    }
+
+    // Return the same confirmation regardless of whether an email was queued
+    messages.success(RESEND_VERIFICATION_GENERIC_MESSAGE);
+    Ok(Redirect::to(&log_in_url))
+}
+
+/// Handler that consumes a password reset token and sets a new password.
+#[instrument(skip_all)]
+pub(crate) async fn reset_password(
+    mut auth_session: AuthSession,
+    messages: Messages,
+    State(blocking_executor): State<BlockingExecutor>,
+    State(db): State<DynDB>,
+    Path(token): Path<String>,
+    Form(form): Form<ResetPasswordForm>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Reject malformed, unknown, or expired tokens before form validation or Argon2id work
+    let invalid_redirect_url = invalid_reset_token_redirect_url(&auth_session);
+    if !is_valid_password_reset_token_format(&token) {
+        messages.error(PASSWORD_RESET_INVALID_MESSAGE);
+        return Ok(Redirect::to(invalid_redirect_url));
+    }
+    let token_hash = hash_password_reset_token(&token);
+    if !db.has_valid_password_reset_token(&token_hash).await? {
+        messages.error(PASSWORD_RESET_INVALID_MESSAGE);
+        return Ok(Redirect::to(invalid_redirect_url));
+    }
+
+    // Validate the new password and confirmation before running Argon2id hashing
+    if let Err(err) = form.validate() {
+        let message = if form.password == form.password_confirmation {
+            err.to_string()
+        } else {
+            "Passwords do not match.".to_string()
+        };
+        messages.error(message);
+        return Ok(Redirect::to(&format!("{RESET_PASSWORD_URL}/{token}")));
+    }
+
+    // Hash the new password within the shared CPU-heavy work bound
+    let password_hash = blocking_executor
+        .run(move || password_auth::generate_hash(&form.password))
+        .await?;
+
+    // Atomically consume the token, update the password, and rotate auth_hash
+    if let Err(err) = db.reset_password(&token_hash, &password_hash).await {
+        return match HandlerError::from(err) {
+            HandlerError::Database(_) => {
+                messages.error(PASSWORD_RESET_INVALID_MESSAGE);
+                Ok(Redirect::to(invalid_redirect_url))
+            }
+            other => Err(other),
+        };
+    }
+
+    // Flush any active session before storing the post-reset confirmation flash message
+    if auth_session.user.is_some()
+        && let Err(err) = auth_session.logout().await
+    {
+        warn!(error = %format_args!("{err:#}"), "failed to delete current session after password reset");
+    }
+
+    messages.success(PASSWORD_RESET_SUCCESS_MESSAGE);
+    Ok(Redirect::to(LOG_IN_URL))
+}
+
 /// Handler that signs up a new user.
 #[instrument(skip_all)]
 pub(crate) async fn sign_up(
@@ -519,8 +753,9 @@ pub(crate) async fn verify_email(
     if db.verify_email(&code).await.is_ok() {
         messages.success("Email verified successfully. You can now log in using your credentials.");
     } else {
-        messages
-            .error("Error verifying email (please note that links are only valid for 24 hours).");
+        messages.error(
+            "Error verifying email (links are only valid for 24 hours). You can request a new verification email below.",
+        );
     }
     Ok(Redirect::to(LOG_IN_URL))
 }
@@ -722,6 +957,14 @@ where
 
 // Types.
 
+/// Email-only form data for forgot-password and resend-verification requests.
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct EmailForm {
+    /// Email address submitted by the user.
+    #[garde(email, length(max = MAX_LEN_S))]
+    pub email: String,
+}
+
 /// Login form data from the user.
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct LoginForm {
@@ -731,6 +974,17 @@ pub(crate) struct LoginForm {
     /// Username for authentication.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
     pub username: String,
+}
+
+/// Form data submitted to complete a password reset.
+#[derive(Deserialize, Validate)]
+pub(crate) struct ResetPasswordForm {
+    /// New password chosen by the user.
+    #[garde(custom(trimmed_non_empty), length(min = MIN_PASSWORD_LEN, max = MAX_LEN_S))]
+    pub password: String,
+    /// Confirmation that must match `password`.
+    #[garde(matches(password))]
+    pub password_confirmation: String,
 }
 
 // Deserialization helpers.
@@ -796,6 +1050,27 @@ fn get_sign_up_url(next_url: Option<&str>) -> Redirect {
         sign_up_url = format!("{sign_up_url}?next_url={}", encode_next_url(&next_url));
     }
     Redirect::to(&sign_up_url)
+}
+
+/// Returns the redirect target when a password reset link is invalid or expired.
+///
+/// Authenticated users are sent to `/dashboard/user` where flash messages are
+/// rendered immediately instead of bouncing through `/forgot-password` -> `/`.
+fn invalid_reset_token_redirect_url(auth_session: &AuthSession) -> &'static str {
+    if auth_session.user.is_some() {
+        "/dashboard/user"
+    } else {
+        FORGOT_PASSWORD_URL
+    }
+}
+
+/// Returns whether a password reset token uses a safe URL-safe format and length.
+fn is_valid_password_reset_token_format(token: &str) -> bool {
+    !token.is_empty()
+        && token.len() <= MAX_LEN_S
+        && token
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
 }
 
 /// Formats `OAuth2` authorization errors for user-facing flash messages.

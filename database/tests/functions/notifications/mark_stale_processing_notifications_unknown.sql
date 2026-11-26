@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,12 +14,22 @@ select plan(5);
 \set notificationFreshProcessingID '8a040000-0000-0000-0000-000000000001'
 \set notificationPendingID '8a040000-0000-0000-0000-000000000002'
 \set notificationProcessedID '8a040000-0000-0000-0000-000000000003'
+\set notificationStalePasswordResetID '8a040000-0000-0000-0000-000000000006'
 \set notificationStaleProcessingID '8a040000-0000-0000-0000-000000000004'
+\set stalePasswordResetTemplateDataID '8a040000-0000-0000-0000-000000000007'
 \set userID '8a040000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Template data for a stale password-reset notification scrubbed during timeout recovery
+insert into notification_template_data (notification_template_data_id, data, hash)
+values (
+    :'stalePasswordResetTemplateDataID',
+    '{"link":"https://example.test/reset-password/8a04-stale"}'::jsonb,
+    encode(digest('8a04-stale-password-reset-payload', 'sha256'), 'hex')
+);
 
 -- User
 select fx_user(:'userID', jsonb_build_object('username', 'user-mark-stale-processing-notifications-unknown'));
@@ -30,6 +40,7 @@ insert into notification (
     delivery_status,
     kind,
     notification_id,
+    notification_template_data_id,
     processed_at,
     user_id
 ) values
@@ -39,6 +50,7 @@ insert into notification (
         'group-welcome',
         :'notificationFreshProcessingID',
         null,
+        null,
         :'userID'
     ),
     (
@@ -47,6 +59,7 @@ insert into notification (
         'group-welcome',
         :'notificationPendingID',
         null,
+        null,
         :'userID'
     ),
     (
@@ -54,7 +67,17 @@ insert into notification (
         'processed',
         'group-welcome',
         :'notificationProcessedID',
+        null,
         current_timestamp - interval '30 minutes',
+        :'userID'
+    ),
+    (
+        current_timestamp - interval '30 minutes',
+        'processing',
+        'password-reset',
+        :'notificationStalePasswordResetID',
+        :'stalePasswordResetTemplateDataID',
+        null,
         :'userID'
     ),
     (
@@ -62,6 +85,7 @@ insert into notification (
         'processing',
         'group-welcome',
         :'notificationStaleProcessingID',
+        null,
         null,
         :'userID'
     );
@@ -81,7 +105,7 @@ select throws_ok(
 -- Should mark only stale processing notifications
 select is(
     mark_stale_processing_notifications_unknown(900),
-    1,
+    2,
     'Should mark only stale processing notifications'
 );
 
@@ -151,6 +175,26 @@ select results_eq(
         :'notificationProcessedID'
     ),
     'Should leave other delivery statuses unchanged'
+);
+
+-- Should detach and delete template data for stale password-reset notifications
+select is(
+    (
+        select notification_template_data_id
+        from notification
+        where notification_id = :'notificationStalePasswordResetID'::uuid
+    ),
+    null::uuid,
+    'Should detach template data from stale password-reset notifications'
+);
+select is(
+    (
+        select count(*)::int
+        from notification_template_data
+        where notification_template_data_id = :'stalePasswordResetTemplateDataID'::uuid
+    ),
+    0,
+    'Should delete unreferenced password-reset template data on stale claim recovery'
 );
 
 -- ============================================================================

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -106,6 +106,17 @@ select throws_ok(
     'OCG01',
     'email verification failed: invalid code',
     'Should raise exception for expired verification code'
+);
+
+-- Should leave other users' verification codes intact when verifying one user
+select is(
+    (
+        select count(*)::int
+        from email_verification_code
+        where email_verification_code_id = :'expiredVerificationCodeID'::uuid
+    ),
+    1,
+    'Should leave other users verification codes intact after verifying a user'
 );
 
 -- Should raise exception for already used verification code

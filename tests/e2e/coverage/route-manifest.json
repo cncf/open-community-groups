@@ -800,6 +800,14 @@
     "path": "/favicon.ico"
   },
   {
+    "method": "GET",
+    "path": "/forgot-password"
+  },
+  {
+    "method": "POST",
+    "path": "/forgot-password"
+  },
+  {
     "method": "POST",
     "path": "/groups/{group_id}/views"
   },
@@ -850,6 +858,18 @@
   {
     "method": "POST",
     "path": "/log-out"
+  },
+  {
+    "method": "POST",
+    "path": "/resend-verification"
+  },
+  {
+    "method": "GET",
+    "path": "/reset-password/{token}"
+  },
+  {
+    "method": "POST",
+    "path": "/reset-password/{token}"
   },
   {
     "method": "GET",

@@ -120,6 +120,7 @@
 {{ template "internal/notifications/community_contact_group_labels.sql" }}
 {{ template "internal/notifications/community_contact_groups.sql" }}
 {{ template "internal/notifications/community_contact_team_seats.sql" }}
+{{ template "internal/notifications/delete_unreferenced_notification_template_data.sql" }}
 {{ template "internal/notifications/describe_community_contact_filters.sql" }}
 {{ template "internal/notifications/list_user_notification_group_ids.sql" }}
 {{ template "internal/notifications/track_custom_notification.sql" }}
@@ -253,14 +254,18 @@
 {{ template "internal/ticketing/validate_event_ticket_types_payload.sql" }}
 {{ template "internal/ticketing/validate_event_ticketing_payload.sql" }}
 
+{{ template "internal/users/auth_recovery_cooldown.sql" }}
 {{ template "internal/users/email_verification_code_ttl.sql" }}
 {{ template "internal/users/get_public_user_provider.sql" }}
+{{ template "internal/users/password_reset_token_ttl.sql" }} -- Dependency for is_password_reset_notification_active
+{{ template "internal/users/is_password_reset_notification_active.sql" }}
 {{ template "internal/users/issue_email_verification.sql" }}
 {{ template "internal/users/public_user_profile.sql" }}
 {{ template "internal/users/public_user_summary.sql" }}
 {{ template "internal/events/session_proposal_json.sql" }} -- Depends on public_user_summary
 {{ template "internal/inbox/inbox_conversation_json.sql" }} -- Depends on public_user_summary
 {{ template "internal/surveys/event_survey_response_details.sql" }} -- Depends on public_user_summary
+{{ template "internal/users/purge_password_reset_notification_data.sql" }}
 {{ template "internal/users/resolve_unique_username.sql" }}
 
 {{ template "activity-tracker/update_community_views.sql" }}
@@ -272,14 +277,19 @@
 {{ template "internal/users/external_auth_user_json.sql" }} -- Depends on get_user_by_id
 {{ template "auth/activate_pre_registered_user_email_password.sql" }}
 {{ template "auth/activate_pre_registered_user_external_provider.sql" }}
+{{ template "auth/create_password_reset_token.sql" }}
 {{ template "auth/delete_expired_auth_sessions.sql" }}
 {{ template "auth/delete_expired_email_verification_codes.sql" }}
+{{ template "auth/delete_expired_password_reset_tokens.sql" }}
 {{ template "auth/get_auth_session.sql" }}
 {{ template "auth/get_user_by_email_for_external_auth.sql" }}
 {{ template "auth/get_user_by_id_verified.sql" }}
 {{ template "auth/get_user_by_linuxfoundation_identity_for_external_auth.sql" }}
 {{ template "auth/get_user_by_username.sql" }}
 {{ template "auth/group_belongs_to_community.sql" }}
+{{ template "auth/has_valid_password_reset_token.sql" }}
+{{ template "auth/resend_email_verification.sql" }}
+{{ template "auth/reset_password.sql" }}
 {{ template "auth/sign_up_user.sql" }}
 {{ template "auth/update_user_details.sql" }}
 {{ template "auth/update_user_external_auth.sql" }}

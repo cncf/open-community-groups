@@ -12,6 +12,12 @@ returns table (
 
     template_data jsonb
 ) as $$
+declare
+    v_created_at timestamptz;
+    v_kind text;
+    v_notification_id uuid;
+    v_notification_template_data_id uuid;
+    v_user_id uuid;
 begin
     -- Require a positive rate limit
     if p_delivery_rate_limit <= 0 then
@@ -37,10 +43,21 @@ begin
         return;
     end if;
 
-    -- Find the oldest deliverable pending notification
-    return query
-    with next_notification as (
-        select n.notification_id
+    -- Scan pending notifications in FIFO order, failing and scrubbing dead password-reset rows
+    loop
+        -- Lock the oldest deliverable pending notification
+        select
+            n.created_at,
+            n.kind,
+            n.notification_id,
+            n.notification_template_data_id,
+            n.user_id
+        into
+            v_created_at,
+            v_kind,
+            v_notification_id,
+            v_notification_template_data_id,
+            v_user_id
         from notification n
         join "user" u using (user_id)
         where n.delivery_status = 'pending'
@@ -61,42 +78,71 @@ begin
         )
         order by n.created_at asc
         limit 1
-        for update of n skip locked
-    ),
-    -- Persist the claim before any external delivery work
-    claimed_notification as (
-        update notification n
-        set
-            delivery_attempts = n.delivery_attempts + 1,
-            delivery_claimed_at = current_timestamp,
-            delivery_status = 'processing',
-            error = null,
-            next_delivery_attempt_at = null,
-            processed_at = null
-        from next_notification nn
-        where n.notification_id = nn.notification_id
-        returning
-            n.delivery_claimed_at,
-            n.kind,
-            n.notification_id,
-            n.notification_template_data_id,
-            n.user_id
-    )
-    -- Return the claimed notification payload to the worker
-    select
-        (
-            select array_agg(na.attachment_id order by na.attachment_id)
-            from notification_attachment na
-            where na.notification_id = cn.notification_id
-        ) as attachment_ids,
-        cn.delivery_claimed_at,
-        u.email,
-        cn.kind,
-        cn.notification_id,
+        for update of n skip locked;
 
-        ntd.data as template_data
-    from claimed_notification cn
-    join "user" u using (user_id)
-    left join notification_template_data ntd using (notification_template_data_id);
+        -- Stop when no deliverable pending notification exists
+        if not found then
+            return;
+        end if;
+
+        -- Fail and scrub password-reset notifications whose token has expired or been replaced
+        if v_kind = 'password-reset'
+           and not is_password_reset_notification_active(v_user_id, v_created_at) then
+            update notification n
+            set
+                delivery_status = 'failed',
+                error = 'password reset token no longer active',
+                next_delivery_attempt_at = null,
+                notification_template_data_id = null,
+                processed_at = current_timestamp
+            where n.notification_id = v_notification_id;
+
+            -- Delete unreferenced template data so dead tokens do not persist at rest
+            if v_notification_template_data_id is not null then
+                perform delete_unreferenced_notification_template_data(
+                    array[v_notification_template_data_id]
+                );
+            end if;
+
+            continue;
+        end if;
+
+        -- Persist the claim before any external delivery work and return its payload
+        return query
+        with claimed_notification as (
+            update notification n
+            set
+                delivery_attempts = n.delivery_attempts + 1,
+                delivery_claimed_at = current_timestamp,
+                delivery_status = 'processing',
+                error = null,
+                next_delivery_attempt_at = null,
+                processed_at = null
+            where n.notification_id = v_notification_id
+            returning
+                n.delivery_claimed_at,
+                n.kind,
+                n.notification_id,
+                n.notification_template_data_id,
+                n.user_id
+        )
+        select
+            (
+                select array_agg(na.attachment_id order by na.attachment_id)
+                from notification_attachment na
+                where na.notification_id = cn.notification_id
+            ) as attachment_ids,
+            cn.delivery_claimed_at,
+            u.email,
+            cn.kind,
+            cn.notification_id,
+
+            ntd.data as template_data
+        from claimed_notification cn
+        join "user" u using (user_id)
+        left join notification_template_data ntd using (notification_template_data_id);
+
+        return;
+    end loop;
 end;
 $$ language plpgsql;

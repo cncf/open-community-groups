@@ -331,6 +331,7 @@ select set_eq(
         ('notification', 'notification_next_delivery_attempt_at_chk'),
         ('notification_category', 'notification_category_display_name_check'),
         ('notification_kind', 'notification_kind_name_check'),
+        ('password_reset_token', 'password_reset_token_token_hash_check'),
         ('payment_job', 'payment_job_attempt_count_check'),
         ('payment_job', 'payment_job_claim_chk'),
         ('payment_job', 'payment_job_completed_chk'),
@@ -770,6 +771,7 @@ select results_eq(
         ('group-welcome', null::text),
         ('inbox-message-received', 'group-inbox'::text),
         ('inbox-reply-received', null::text),
+        ('password-reset', null::text),
         ('session-proposal-co-speaker-invitation', null::text),
         ('speaker-series-welcome', null::text),
         ('speaker-welcome', null::text)

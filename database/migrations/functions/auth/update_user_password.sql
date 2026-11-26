@@ -12,6 +12,11 @@ begin
         password = p_password
     where user_id = p_actor_user_id;
 
+    -- Revoke any active password reset token and scrub its notification payload
+    delete from password_reset_token
+    where user_id = p_actor_user_id;
+    perform purge_password_reset_notification_data(array[p_actor_user_id]);
+
     -- Track the password update
     perform insert_audit_log(
         'user_password_updated',

@@ -259,8 +259,8 @@ server:
       # through the proxy; the rightmost header entry is then the client
       trustedProxies: []
     # Budget overrides: <limitName>: { burst: <requests>, periodSecs: <seconds> }
-    # Limits: badgeVerify, exploreSearch, externalAuth, logIn, logInFailures, signUp,
-    # verifyEmail, views
+    # Limits: badgeVerify, exploreSearch, externalAuth, logIn, logInFailures,
+    # passwordReset, resendVerification, signUp, verifyEmail, views
     limits: {}
 
   # Optional list of hostnames that should redirect to baseUrl

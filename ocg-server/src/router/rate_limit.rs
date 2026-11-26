@@ -19,7 +19,7 @@ use crate::{
     services::rate_limit::{IpLimit, RateLimiter, Verdict},
 };
 
-use super::{OriginPolicy, browser_request_allowed};
+use super::{OriginPolicy, RESET_PASSWORD_PATH_PREFIX, browser_request_allowed};
 
 #[cfg(test)]
 mod tests;
@@ -29,7 +29,7 @@ mod tests;
 /// Paths are the route templates registered in `router::setup`, as reported
 /// by `MatchedPath`. HEAD requests map with GET. Every route not listed here
 /// is exempt.
-const LIMITED_ROUTES: [LimitedRoute; 18] = [
+const LIMITED_ROUTES: [LimitedRoute; 22] = [
     LimitedRoute::new(IpLimit::BadgeVerify, RouteMethod::Post, "/badges/verify"),
     LimitedRoute::new(IpLimit::ExploreSearch, RouteMethod::Get, "/explore"),
     LimitedRoute::new(
@@ -87,6 +87,30 @@ const LIMITED_ROUTES: [LimitedRoute; 18] = [
     )
     .with_login(LoginOption::LinuxFoundation),
     LimitedRoute::new(IpLimit::LogIn, RouteMethod::Post, "/log-in").with_login(LoginOption::Email),
+    LimitedRoute::new(
+        IpLimit::PasswordReset,
+        RouteMethod::Post,
+        "/forgot-password",
+    )
+    .with_login(LoginOption::Email),
+    LimitedRoute::new(
+        IpLimit::PasswordReset,
+        RouteMethod::Get,
+        "/reset-password/{token}",
+    )
+    .with_login(LoginOption::Email),
+    LimitedRoute::new(
+        IpLimit::PasswordReset,
+        RouteMethod::Post,
+        "/reset-password/{token}",
+    )
+    .with_login(LoginOption::Email),
+    LimitedRoute::new(
+        IpLimit::ResendVerification,
+        RouteMethod::Post,
+        "/resend-verification",
+    )
+    .with_login(LoginOption::Email),
     LimitedRoute::new(IpLimit::SignUp, RouteMethod::Post, "/sign-up")
         .with_login(LoginOption::Email),
     LimitedRoute::new(
@@ -260,10 +284,12 @@ fn post_origin_allowed(
     request: &Request,
 ) -> Result<bool> {
     // Match the route's origin layer policy
-    let policy = if limit == IpLimit::BadgeVerify {
-        OriginPolicy::AllowHeaderless
-    } else {
-        OriginPolicy::RequireEvidence
+    let policy = match limit {
+        IpLimit::BadgeVerify => OriginPolicy::AllowHeaderless,
+        IpLimit::PasswordReset if request.uri().path().starts_with(RESET_PASSWORD_PATH_PREFIX) => {
+            OriginPolicy::AllowNoReferrerSameOrigin
+        }
+        _ => OriginPolicy::RequireEvidence,
     };
     if !browser_request_allowed(server_cfg, request.method(), request.headers(), policy)? {
         return Ok(false);

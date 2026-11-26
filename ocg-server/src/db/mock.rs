@@ -66,6 +66,11 @@ mock! {
             user_id: &Uuid,
             profile: &crate::auth::ExternalUserProfile,
         ) -> Result<crate::auth::User>;
+        async fn create_password_reset_token(
+            &self,
+            email: &str,
+            reset: &crate::db::auth::PasswordResetNotification,
+        ) -> Result<bool>;
         async fn create_session(
             &self,
             record: &axum_login::tower_sessions::session::Record,
@@ -73,6 +78,7 @@ mock! {
         async fn delete_expired_auth_sessions(&self, batch_size: usize) -> Result<usize>;
         async fn delete_expired_email_verification_codes(&self, batch_size: usize)
         -> Result<usize>;
+        async fn delete_expired_password_reset_tokens(&self, batch_size: usize) -> Result<usize>;
         async fn delete_session(
             &self,
             session_id: &axum_login::tower_sessions::session::Id,
@@ -101,6 +107,13 @@ mock! {
             community_id: &Uuid,
             group_id: &Uuid,
         ) -> Result<bool>;
+        async fn has_valid_password_reset_token(&self, token_hash: &[u8; 32]) -> Result<bool>;
+        async fn resend_email_verification(
+            &self,
+            email: &str,
+            verification: &crate::db::auth::EmailVerificationNotification,
+        ) -> Result<bool>;
+        async fn reset_password(&self, token_hash: &[u8; 32], new_password: &str) -> Result<()>;
         async fn sign_up_user(
             &self,
             profile: &crate::auth::ExternalUserProfile,

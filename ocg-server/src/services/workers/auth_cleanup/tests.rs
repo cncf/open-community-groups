@@ -32,6 +32,10 @@ async fn test_cleanup_caps_draining_at_max_batches_per_sweep() {
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
         .times(1)
         .return_once(|_| Ok(0));
+    db.expect_delete_expired_password_reset_tokens()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .return_once(|_| Ok(0));
     let worker = worker(db);
 
     // Run one sweep and check the outcome reports remaining backlog
@@ -41,7 +45,7 @@ async fn test_cleanup_caps_draining_at_max_batches_per_sweep() {
 
 #[tokio::test]
 async fn test_cleanup_continues_after_session_cleanup_error() {
-    // Setup a failing session cleanup followed by a succeeding code cleanup
+    // Setup a failing session cleanup followed by succeeding code and reset-token cleanups
     let mut db = MockDB::new();
     db.expect_delete_expired_auth_sessions()
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
@@ -51,16 +55,20 @@ async fn test_cleanup_continues_after_session_cleanup_error() {
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
         .times(1)
         .return_once(|_| Ok(3));
+    db.expect_delete_expired_password_reset_tokens()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .return_once(|_| Ok(1));
     let worker = worker(db);
 
-    // Run one sweep and verify the second target still executes and error is reported
+    // Run one sweep and verify remaining targets still execute and error is reported
     let outcome = worker.cleanup().await;
     assert_eq!(outcome, SweepOutcome::Error);
 }
 
 #[tokio::test]
 async fn test_cleanup_drains_multiple_batches_until_short_batch() {
-    // Setup two full session batches plus a trailing short batch, and one full code batch plus a zero tail
+    // Setup full batches plus trailing short batches across all three cleanup targets
     let mut db = MockDB::new();
     let mut session_seq = Sequence::new();
     db.expect_delete_expired_auth_sessions()
@@ -90,6 +98,18 @@ async fn test_cleanup_drains_multiple_batches_until_short_batch() {
         .times(1)
         .in_sequence(&mut code_seq)
         .return_once(|_| Ok(0));
+
+    let mut reset_seq = Sequence::new();
+    db.expect_delete_expired_password_reset_tokens()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .in_sequence(&mut reset_seq)
+        .return_once(|_| Ok(AUTH_CLEANUP_BATCH_SIZE));
+    db.expect_delete_expired_password_reset_tokens()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .in_sequence(&mut reset_seq)
+        .return_once(|_| Ok(4));
     let worker = worker(db);
 
     // Run one sweep and verify all batches drain completely
@@ -99,7 +119,7 @@ async fn test_cleanup_drains_multiple_batches_until_short_batch() {
 
 #[tokio::test]
 async fn test_cleanup_runs_single_batch_per_target_when_caught_up() {
-    // Setup both cleanup targets returning short batches
+    // Setup all cleanup targets returning short batches
     let mut db = MockDB::new();
     db.expect_delete_expired_auth_sessions()
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
@@ -109,6 +129,10 @@ async fn test_cleanup_runs_single_batch_per_target_when_caught_up() {
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
         .times(1)
         .return_once(|_| Ok(2));
+    db.expect_delete_expired_password_reset_tokens()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .return_once(|_| Ok(1));
     let worker = worker(db);
 
     // Run one sweep and verify the worker reports caught up
@@ -130,6 +154,7 @@ async fn test_cleanup_stops_draining_and_skips_remaining_targets_when_cancelled(
             Ok(AUTH_CLEANUP_BATCH_SIZE)
         });
     db.expect_delete_expired_email_verification_codes().never();
+    db.expect_delete_expired_password_reset_tokens().never();
     let worker = Worker {
         cancellation_token,
         db: Arc::new(db),
@@ -161,6 +186,11 @@ async fn test_run_pauses_briefly_on_backlog_before_resuming_hourly_cadence() {
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
         .times(1)
         .in_sequence(&mut seq)
+        .return_once(|_| Ok(0));
+    db.expect_delete_expired_password_reset_tokens()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .in_sequence(&mut seq)
         .return_once(move |_| {
             sweeps_first.fetch_add(1, Ordering::SeqCst);
             notify_first_done.notify_one();
@@ -172,6 +202,11 @@ async fn test_run_pauses_briefly_on_backlog_before_resuming_hourly_cadence() {
         .in_sequence(&mut seq)
         .return_once(|_| Ok(0));
     db.expect_delete_expired_email_verification_codes()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .in_sequence(&mut seq)
+        .return_once(|_| Ok(0));
+    db.expect_delete_expired_password_reset_tokens()
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
         .times(1)
         .in_sequence(&mut seq)
@@ -228,6 +263,11 @@ async fn test_run_repeats_on_hourly_cadence_and_stops_on_cancellation() {
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
         .times(1)
         .in_sequence(&mut seq)
+        .return_once(|_| Ok(0));
+    db.expect_delete_expired_password_reset_tokens()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .in_sequence(&mut seq)
         .return_once(move |_| {
             sweeps_first.fetch_add(1, Ordering::SeqCst);
             notify_first_done.notify_one();
@@ -239,6 +279,11 @@ async fn test_run_repeats_on_hourly_cadence_and_stops_on_cancellation() {
         .in_sequence(&mut seq)
         .return_once(|_| Ok(0));
     db.expect_delete_expired_email_verification_codes()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .in_sequence(&mut seq)
+        .return_once(|_| Ok(0));
+    db.expect_delete_expired_password_reset_tokens()
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
         .times(1)
         .in_sequence(&mut seq)
@@ -295,6 +340,11 @@ async fn test_run_retries_after_error_pause_when_cleanup_fails() {
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
         .times(1)
         .in_sequence(&mut seq)
+        .return_once(|_| Ok(0));
+    db.expect_delete_expired_password_reset_tokens()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .in_sequence(&mut seq)
         .return_once(move |_| {
             sweeps_first.fetch_add(1, Ordering::SeqCst);
             notify_first_done.notify_one();
@@ -306,6 +356,11 @@ async fn test_run_retries_after_error_pause_when_cleanup_fails() {
         .in_sequence(&mut seq)
         .return_once(|_| Ok(0));
     db.expect_delete_expired_email_verification_codes()
+        .with(eq(AUTH_CLEANUP_BATCH_SIZE))
+        .times(1)
+        .in_sequence(&mut seq)
+        .return_once(|_| Ok(0));
+    db.expect_delete_expired_password_reset_tokens()
         .with(eq(AUTH_CLEANUP_BATCH_SIZE))
         .times(1)
         .in_sequence(&mut seq)
@@ -347,6 +402,7 @@ async fn test_run_stops_immediately_when_cancelled_before_start() {
     let mut db = MockDB::new();
     db.expect_delete_expired_auth_sessions().never();
     db.expect_delete_expired_email_verification_codes().never();
+    db.expect_delete_expired_password_reset_tokens().never();
     let worker = worker(db);
 
     // Cancel before running the worker

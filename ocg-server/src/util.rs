@@ -214,6 +214,11 @@ pub(crate) fn compute_hash(bytes: &[u8]) -> String {
     hex::encode(hasher.finalize())
 }
 
+/// Computes the 32-byte SHA-256 digest stored for a password reset token.
+pub(crate) fn hash_password_reset_token(token: &str) -> [u8; 32] {
+    Sha256::digest(token.as_bytes()).into()
+}
+
 /// Helper function to format `DateTime` with timezone for ICS format (YYYYMMDDTHHMMSS)
 fn format_datetime_for_ics<Tz: chrono::TimeZone>(dt: &DateTime<Tz>) -> String {
     format!(

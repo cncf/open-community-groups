@@ -10,7 +10,7 @@ mod route_hits;
 #[cfg(test)]
 mod tests;
 
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 use anyhow::Result;
 use axum::{
@@ -127,8 +127,14 @@ pub(crate) const PUBLIC_SHARED_CACHE_HEADERS: [(HeaderName, &str); 2] = [
 /// Vary header value for public shared-cache responses.
 pub(crate) const PUBLIC_SHARED_CACHE_VARY: &str = "x-ocg-commit-sha, hx-request, x-ocg-fetch";
 
+/// Referrer-Policy header value suppressing referrers on sensitive token routes.
+const REFERRER_POLICY_NO_REFERRER: &str = "no-referrer";
+
 /// Referrer-Policy header value applied to every response.
 const REFERRER_POLICY_VALUE: &str = "strict-origin-when-cross-origin";
+
+/// Path prefix of password reset token routes requiring strict cache/referrer headers and log redaction.
+pub(super) const RESET_PASSWORD_PATH_PREFIX: &str = "/reset-password/";
 
 /// Matched path recorded for requests served by the router fallback.
 const ROUTE_FALLBACK_PATH: &str = "fallback";
@@ -138,6 +144,9 @@ const STATIC_PATH_PREFIX: &str = "/static/";
 
 /// Strict-Transport-Security header value applied when `base_url` uses HTTPS.
 const STRICT_TRANSPORT_SECURITY_VALUE: &str = "max-age=31536000";
+
+/// Path prefix of email verification routes requiring log redaction.
+const VERIFY_EMAIL_PATH_PREFIX: &str = "/verify-email/";
 
 /// X-Content-Type-Options header value applied to every response.
 const X_CONTENT_TYPE_OPTIONS_VALUE: &str = "nosniff";
@@ -152,14 +161,26 @@ const X_FRAME_OPTIONS_VALUE: &str = "DENY";
 #[folder = "dist/static"]
 struct StaticFile;
 
-/// Policy controlling how unsafe requests without browser origin headers are handled.
+/// Policy controlling how unsafe requests without standard browser origin headers are handled.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum OriginPolicy {
     /// Allow requests lacking `Sec-Fetch-Site`, `Origin`, and `Referer` while
     /// still rejecting explicit cross-site browser signals.
     AllowHeaderless,
+    /// Fail closed unless trustworthy same-origin browser signals are present,
+    /// additionally accepting `Origin: null` (without `Referer`) paired with
+    /// `Sec-Fetch-Site: same-origin` for `Referrer-Policy: no-referrer` form submits.
+    AllowNoReferrerSameOrigin,
     /// Fail closed unless trustworthy same-origin browser signals are present.
     RequireEvidence,
+}
+
+/// Header configuration enforced on `/reset-password/` responses.
+struct ResetPasswordHeadersState {
+    /// Active CSP header name (`Content-Security-Policy` or report-only variant).
+    csp_header_name: HeaderName,
+    /// Base CSP header value without `report-uri`, so reset URLs are never reported externally.
+    csp_header_value: HeaderValue,
 }
 
 /// Dependencies required to build the application router.
@@ -468,7 +489,16 @@ pub(crate) async fn setup(deps: RouterDeps) -> Result<Router> {
     // Setup some routes based on the login options enabled
     if state.server_cfg.login.email {
         router = router
+            .route(
+                "/forgot-password",
+                get(auth::forgot_password_page).post(auth::forgot_password),
+            )
             .route("/log-in", post(auth::log_in))
+            .route("/resend-verification", post(auth::resend_verification))
+            .route(
+                "/reset-password/{token}",
+                get(auth::reset_password_page).post(auth::reset_password),
+            )
             .route("/sign-up", post(auth::sign_up))
             .route("/verify-email/{code}", get(auth::verify_email));
     }
@@ -565,14 +595,24 @@ pub(crate) async fn setup(deps: RouterDeps) -> Result<Router> {
         ));
     }
 
-    // Build the global Content-Security-Policy header before moving state into layers
-    let (csp_header_name, csp_header_value) =
+    // Build the global Content-Security-Policy header and its report-uri-free variant for reset routes
+    let (csp_header_name, csp_header_value, reset_password_csp_value) =
         build_content_security_policy(&state.server_cfg.security)?;
+    let reset_password_headers_state = Arc::new(ResetPasswordHeadersState {
+        csp_header_name: csp_header_name.clone(),
+        csp_header_value: reset_password_csp_value,
+    });
 
     router = router
         .layer(middleware::from_fn_with_state(
             state.clone(),
             redirect_old_hosts,
+        ))
+        // Enforce strict no-store, no-referrer, and report-uri-free CSP on every /reset-password/*
+        // response, including 403/429/500 responses from outer layers
+        .layer(middleware::from_fn_with_state(
+            reset_password_headers_state,
+            enforce_reset_password_headers,
         ))
         // Apply global security headers to every response without overriding stricter handler policies
         .layer(
@@ -695,7 +735,14 @@ async fn enforce_browser_same_origin(
     request: Request,
     next: Next,
 ) -> axum::response::Response {
-    enforce_origin_policy(&server_cfg, OriginPolicy::RequireEvidence, request, next).await
+    // Allow `Origin: null` + `Sec-Fetch-Site: same-origin` only on `/reset-password/*`
+    // because those pages emit `Referrer-Policy: no-referrer`
+    let policy = if request.uri().path().starts_with(RESET_PASSWORD_PATH_PREFIX) {
+        OriginPolicy::AllowNoReferrerSameOrigin
+    } else {
+        OriginPolicy::RequireEvidence
+    };
+    enforce_origin_policy(&server_cfg, policy, request, next).await
 }
 
 /// Applies the given origin check policy to a request before invoking the next service.
@@ -721,6 +768,35 @@ async fn enforce_origin_policy(
     } else {
         StatusCode::FORBIDDEN.into_response()
     }
+}
+
+/// Enforces `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and a
+/// `report-uri`-free Content-Security-Policy on every response served under
+/// `/reset-password/`, including rate-limit 429s, CSRF 403s, redirects, and errors.
+async fn enforce_reset_password_headers(
+    AxumState(headers_state): AxumState<Arc<ResetPasswordHeadersState>>,
+    request: Request,
+    next: Next,
+) -> axum::response::Response {
+    let is_reset_password_route = request.uri().path().starts_with(RESET_PASSWORD_PATH_PREFIX);
+    let mut response = next.run(request).await;
+
+    if is_reset_password_route {
+        response.headers_mut().insert(
+            CACHE_CONTROL,
+            HeaderValue::from_static(CACHE_CONTROL_NO_STORE),
+        );
+        response.headers_mut().insert(
+            REFERRER_POLICY,
+            HeaderValue::from_static(REFERRER_POLICY_NO_REFERRER),
+        );
+        response.headers_mut().insert(
+            headers_state.csp_header_name.clone(),
+            headers_state.csp_header_value.clone(),
+        );
+    }
+
+    response
 }
 
 /// Inserts the current commit SHA response header.
@@ -895,26 +971,48 @@ fn browser_request_allowed(
         return Ok(false);
     }
 
-    // Apply Fetch Metadata policy when origin headers are absent
-    let has_explicit_origin = headers.contains_key(ORIGIN) || headers.contains_key(REFERER);
-    if !has_explicit_origin {
-        if fetch_sites.is_empty() {
-            return Ok(policy == OriginPolicy::AllowHeaderless);
-        }
-        let all_same_origin = fetch_sites.iter().all(|value| {
+    // Check whether all present Fetch Metadata headers confirm a same-origin request
+    let fetch_metadata_same_origin = !fetch_sites.is_empty()
+        && fetch_sites.iter().all(|value| {
             value
                 .to_str()
                 .is_ok_and(|value| value.eq_ignore_ascii_case("same-origin"))
         });
-        return Ok(all_same_origin);
+
+    // Reject requests carrying multiple Origin headers so conflicting values cannot slip past
+    let origins: Vec<_> = headers.get_all(ORIGIN).iter().collect();
+    if origins.len() > 1 {
+        return Ok(false);
+    }
+
+    // Browsers omit Referer and send `Origin: null` when submitting a same-origin
+    // form from a `Referrer-Policy: no-referrer` document (such as password reset).
+    // Accept that combination only on routes opting into AllowNoReferrerSameOrigin
+    // when Fetch Metadata proves `same-origin` and no Referer header is present.
+    let is_null_origin_only = origins.len() == 1
+        && !headers.contains_key(REFERER)
+        && origins[0].to_str().is_ok_and(|value| value == "null");
+    if is_null_origin_only {
+        return Ok(policy == OriginPolicy::AllowNoReferrerSameOrigin && fetch_metadata_same_origin);
+    }
+
+    // Apply Fetch Metadata policy when origin headers are absent
+    let has_explicit_origin = !origins.is_empty() || headers.contains_key(REFERER);
+    if !has_explicit_origin {
+        if fetch_sites.is_empty() {
+            return Ok(policy == OriginPolicy::AllowHeaderless);
+        }
+        return Ok(fetch_metadata_same_origin);
     }
 
     // Require explicit browser origin evidence to match the configured site
     request_headers_match_site_origin(server_cfg, headers)
 }
 
-/// Builds the global Content-Security-Policy header name and value from configuration.
-fn build_content_security_policy(security: &SecurityConfig) -> Result<(HeaderName, HeaderValue)> {
+/// Builds the global Content-Security-Policy header and its `report-uri`-free variant for reset routes.
+fn build_content_security_policy(
+    security: &SecurityConfig,
+) -> Result<(HeaderName, HeaderValue, HeaderValue)> {
     // Select enforced or report-only header name
     let header_name = if security.csp_report_only {
         CONTENT_SECURITY_POLICY_REPORT_ONLY
@@ -923,7 +1021,7 @@ fn build_content_security_policy(security: &SecurityConfig) -> Result<(HeaderNam
     };
 
     // Assemble the base policy with build-time inline script hashes
-    let mut policy = format!(
+    let base_policy = format!(
         "default-src 'self'; \
          script-src 'self' {CSP_SCRIPT_HASHES}; \
          style-src 'self' 'unsafe-inline'; \
@@ -935,17 +1033,19 @@ fn build_content_security_policy(security: &SecurityConfig) -> Result<(HeaderNam
          object-src 'none'; \
          base-uri 'self'"
     );
+    let base_value = HeaderValue::from_str(&base_policy)?;
 
-    // Append report-uri when configured
-    if let Some(report_uri) = &security.csp_report_uri {
+    // Append report-uri for non-reset routes when configured
+    let global_value = if let Some(report_uri) = &security.csp_report_uri {
+        let mut policy = base_policy;
         policy.push_str("; report-uri ");
         policy.push_str(report_uri);
-    }
+        HeaderValue::from_str(&policy)?
+    } else {
+        base_value.clone()
+    };
 
-    // Parse the assembled policy into an HTTP header value
-    let header_value = HeaderValue::from_str(&policy)?;
-
-    Ok((header_name, header_value))
+    Ok((header_name, global_value, base_value))
 }
 
 /// Returns whether the configured base URL uses the HTTPS scheme.
@@ -956,19 +1056,23 @@ fn is_https_base_url(base_url: &str) -> bool {
 }
 
 /// Opens the request span, carrying the request id so downstream log lines can be correlated.
+///
+/// Redacts token-bearing auth recovery URIs so bearer tokens are never written to logs.
 fn make_request_span(request: &Request) -> Span {
     let request_id = request
         .headers()
         .get("x-request-id")
         .and_then(|value| value.to_str().ok())
         .unwrap_or_default();
+    let matched_path = request_matched_path(request);
+    let uri = sanitized_request_uri(request, matched_path);
 
     info_span!(
         "request",
         method = %request.method(),
-        uri = %request.uri(),
+        uri = %uri,
         version = ?request.version(),
-        matched_path = request_matched_path(request),
+        matched_path,
         request_id,
     )
 }
@@ -980,4 +1084,23 @@ fn request_matched_path(request: &Request) -> &str {
         .extensions()
         .get::<MatchedPath>()
         .map_or(ROUTE_FALLBACK_PATH, MatchedPath::as_str)
+}
+
+/// Returns a log-safe request URI, redacting secret token path segments on recovery routes.
+fn sanitized_request_uri<'a>(request: &'a Request, matched_path: &'a str) -> Cow<'a, str> {
+    let path = request.uri().path();
+    if path.starts_with(RESET_PASSWORD_PATH_PREFIX) {
+        return Cow::Borrowed("/reset-password/{token}");
+    }
+    if path.starts_with(VERIFY_EMAIL_PATH_PREFIX) {
+        return Cow::Borrowed("/verify-email/{code}");
+    }
+    if matches!(
+        matched_path,
+        "/reset-password/{token}" | "/verify-email/{code}"
+    ) {
+        return Cow::Borrowed(matched_path);
+    }
+
+    Cow::Owned(request.uri().to_string())
 }

@@ -163,6 +163,10 @@ async fn test_browser_same_origin_middleware_enforces_browser_signals() {
                 .post(|| async { StatusCode::NO_CONTENT })
                 .put(|| async { StatusCode::NO_CONTENT }),
         )
+        .route(
+            "/reset-password/{token}",
+            post(|| async { StatusCode::NO_CONTENT }),
+        )
         .route_layer(middleware::from_fn_with_state(
             sample_server_cfg("https://example.test"),
             enforce_browser_same_origin,
@@ -216,6 +220,46 @@ async fn test_browser_same_origin_middleware_enforces_browser_signals() {
             Some("same-site"),
             None,
             None,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "null origin rejected on ordinary routes even with same-origin fetch",
+            Method::POST,
+            Some("same-origin"),
+            Some("null"),
+            None,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "null origin without fetch metadata",
+            Method::POST,
+            None,
+            Some("null"),
+            None,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "null origin from same-site fetch",
+            Method::POST,
+            Some("same-site"),
+            Some("null"),
+            None,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "null origin from cross-site fetch",
+            Method::POST,
+            Some("cross-site"),
+            Some("null"),
+            None,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "null origin with mismatched referer",
+            Method::POST,
+            Some("same-origin"),
+            Some("null"),
+            Some("https://attacker.test/page"),
             StatusCode::FORBIDDEN,
         ),
         (
@@ -276,14 +320,156 @@ async fn test_browser_same_origin_middleware_enforces_browser_signals() {
         assert_eq!(parts.status, expected_status, "{case}");
     }
 
+    // Null origin with same-origin Fetch Metadata is accepted only on /reset-password/*
+    let reset_null_origin = request("POST", "/reset-password/sample-token")
+        .header("Sec-Fetch-Site", "same-origin")
+        .header(ORIGIN, "null")
+        .body(Body::empty())
+        .unwrap();
+    let (parts, _) = send(router.clone(), reset_null_origin).await;
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+
+    // Null origin on /reset-password/* still fails closed without same-origin Fetch Metadata
+    for (case, fetch_site) in [
+        ("missing fetch metadata", None),
+        ("same-site fetch", Some("same-site")),
+        ("cross-site fetch", Some("cross-site")),
+    ] {
+        let mut req = request("POST", "/reset-password/sample-token").header(ORIGIN, "null");
+        if let Some(fetch_site) = fetch_site {
+            req = req.header("Sec-Fetch-Site", fetch_site);
+        }
+        let (parts, _) = send(router.clone(), req.body(Body::empty()).unwrap()).await;
+        assert_eq!(parts.status, StatusCode::FORBIDDEN, "{case}");
+    }
+
     // Conflicting duplicate Sec-Fetch-Site headers must also be rejected
     let duplicate_request = request("POST", "/")
         .header("Sec-Fetch-Site", "same-origin")
         .header("Sec-Fetch-Site", "cross-site")
         .body(Body::empty())
         .unwrap();
-    let (parts, _) = send(router, duplicate_request).await;
+    let (parts, _) = send(router.clone(), duplicate_request).await;
     assert_eq!(parts.status, StatusCode::FORBIDDEN);
+
+    // Duplicate Origin headers must be rejected regardless of header order
+    for (case, first, second) in [
+        ("site origin then null", "https://example.test", "null"),
+        ("null then site origin", "null", "https://example.test"),
+        (
+            "site origin then foreign origin",
+            "https://example.test",
+            "https://attacker.test",
+        ),
+    ] {
+        let req = request("POST", "/")
+            .header("Sec-Fetch-Site", "same-origin")
+            .header(ORIGIN, first)
+            .header(ORIGIN, second)
+            .body(Body::empty())
+            .unwrap();
+        let (parts, _) = send(router.clone(), req).await;
+        assert_eq!(parts.status, StatusCode::FORBIDDEN, "{case}");
+    }
+}
+
+#[tokio::test]
+async fn test_reset_password_routes_omit_csp_report_uri() {
+    for (case, report_only, expected_header) in [
+        ("enforced csp", false, CONTENT_SECURITY_POLICY),
+        ("report-only csp", true, CONTENT_SECURITY_POLICY_REPORT_ONLY),
+    ] {
+        // Setup router with email login and csp_report_uri configured
+        let mut db = MockDB::new();
+        db.expect_has_valid_password_reset_token()
+            .times(1)
+            .returning(|_| Ok(true));
+        expect_site_settings(&mut db);
+        let mut server_cfg = sample_server_cfg("https://example.test");
+        server_cfg.login.email = true;
+        server_cfg.security = SecurityConfig {
+            csp_report_only: report_only,
+            csp_report_uri: Some("https://csp.example.test/reports".to_string()),
+        };
+        let router = TestRouterBuilder::new(db).with_server_cfg(server_cfg).build().await;
+
+        // Check ordinary routes retain report-uri while /reset-password/{token} omits it
+        let (health_parts, _) = send(
+            router.clone(),
+            request("GET", "/health-check").body(Body::empty()).unwrap(),
+        )
+        .await;
+        let health_csp = health_parts.headers.get(&expected_header).unwrap().to_str().unwrap();
+        assert!(
+            health_csp.contains("report-uri https://csp.example.test/reports"),
+            "{case}"
+        );
+
+        let (reset_parts, _) = send(
+            router,
+            request("GET", "/reset-password/secret-token-value")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(reset_parts.status, StatusCode::OK, "{case}");
+        let reset_csp = reset_parts.headers.get(&expected_header).unwrap().to_str().unwrap();
+        assert!(reset_csp.contains("default-src 'self'"), "{case}");
+        assert!(!reset_csp.contains("report-uri"), "{case}: {reset_csp}");
+        assert_eq!(
+            reset_parts.headers.get(CACHE_CONTROL),
+            Some(&HeaderValue::from_static(CACHE_CONTROL_NO_STORE)),
+            "{case}"
+        );
+        assert_eq!(
+            reset_parts.headers.get(REFERRER_POLICY),
+            Some(&HeaderValue::from_static(REFERRER_POLICY_NO_REFERRER)),
+            "{case}"
+        );
+    }
+}
+
+#[test]
+fn test_sanitized_request_uri_redacts_auth_recovery_tokens() {
+    let cases = [
+        (
+            "password reset route",
+            "/reset-password/secret-token-abc",
+            "/reset-password/{token}",
+            "/reset-password/{token}",
+        ),
+        (
+            "password reset route with query",
+            "/reset-password/secret-token-abc?extra=1",
+            "/reset-password/{token}",
+            "/reset-password/{token}",
+        ),
+        (
+            "unmatched password reset subpath",
+            "/reset-password/secret-token-abc/extra",
+            ROUTE_FALLBACK_PATH,
+            "/reset-password/{token}",
+        ),
+        (
+            "email verification route",
+            "/verify-email/11111111-1111-1111-1111-111111111111",
+            "/verify-email/{code}",
+            "/verify-email/{code}",
+        ),
+        (
+            "ordinary route preserved",
+            "/forgot-password?ref=1",
+            "/forgot-password",
+            "/forgot-password?ref=1",
+        ),
+    ];
+
+    for (case, uri, matched_path, expected) in cases {
+        let req = Request::builder().uri(uri).body(Body::empty()).unwrap();
+        let sanitized = sanitized_request_uri(&req, matched_path);
+        assert_eq!(sanitized.as_ref(), expected, "{case}");
+        assert!(!sanitized.contains("secret-token-abc"), "{case}");
+    }
 }
 
 /// Only routes declared with a path literal in `.route(` calls of the router

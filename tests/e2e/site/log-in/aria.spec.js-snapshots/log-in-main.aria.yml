@@ -5,8 +5,12 @@
     - text: Username *
     - textbox "Username required"
     - text: Password *
+    - link "Forgot password?":
+      - /url: /forgot-password
     - textbox "Password required"
     - button "Sign In"
   - text: Don't have an account?
   - link "Sign up":
     - /url: /sign-up
+  - group:
+    - text: Didn't receive your verification email?

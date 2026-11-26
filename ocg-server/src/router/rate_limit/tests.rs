@@ -15,7 +15,9 @@ use axum::{
     extract::ConnectInfo,
     http::{
         HeaderValue, Method, StatusCode,
-        header::{ACCEPT, CACHE_CONTROL, CONTENT_TYPE, ORIGIN, RETRY_AFTER, SET_COOKIE},
+        header::{
+            ACCEPT, CACHE_CONTROL, CONTENT_TYPE, ORIGIN, REFERRER_POLICY, RETRY_AFTER, SET_COOKIE,
+        },
     },
     middleware,
     routing::{get, post},
@@ -227,6 +229,13 @@ async fn test_limit_requests_answers_exhausted_navigations_with_the_page_before_
                 CACHE_CONTROL_NO_STORE,
                 "{case} {variant}"
             );
+            if route.path == "/reset-password/{token}" {
+                assert_eq!(
+                    parts.headers.get(REFERRER_POLICY).unwrap(),
+                    "no-referrer",
+                    "{case} {variant}"
+                );
+            }
             assert_eq!(
                 parts.headers.get(CONTENT_TYPE).unwrap(),
                 "text/html; charset=utf-8",
@@ -711,6 +720,19 @@ fn test_post_origin_allowed_matches_route_origin_policies() {
             "POST {} should not allow explicit cross-site requests in post_origin_allowed",
             route.path
         );
+
+        let null_origin_same_origin_req = request("POST", &concrete_uri(route.path))
+            .header("Sec-Fetch-Site", "same-origin")
+            .header(ORIGIN, "null")
+            .body(Body::empty())
+            .unwrap();
+        let expected_null_origin = route.path == "/reset-password/{token}";
+        assert_eq!(
+            post_origin_allowed(&server_cfg, route.limit, &null_origin_same_origin_req).unwrap(),
+            expected_null_origin,
+            "POST {} null-origin policy mismatch in post_origin_allowed",
+            route.path
+        );
     }
 }
 
@@ -725,12 +747,23 @@ fn test_route_limit_maps_head_like_get() {
             Some(IpLimit::VerifyEmail),
         ),
         (
+            "password reset page",
+            "/reset-password/{token}",
+            Some(IpLimit::PasswordReset),
+        ),
+        (
             "external auth callback",
             "/log-in/oidc/{provider}/callback",
             Some(IpLimit::ExternalAuth),
         ),
         ("badge verification post route", "/badges/verify", None),
+        ("forgot password post route", "/forgot-password", None),
         ("log-in post route", "/log-in", None),
+        (
+            "resend verification post route",
+            "/resend-verification",
+            None,
+        ),
         ("view post route", "/events/{event_id}/views", None),
     ];
 
@@ -903,6 +936,74 @@ fn test_route_limit_maps_routes_to_limits() {
             "log-in post without email login",
             Method::POST,
             "/log-in",
+            LoginOptions {
+                email: false,
+                ..ALL_LOGIN_OPTIONS
+            },
+            None,
+        ),
+        (
+            "forgot-password post",
+            Method::POST,
+            "/forgot-password",
+            ALL_LOGIN_OPTIONS,
+            Some(IpLimit::PasswordReset),
+        ),
+        (
+            "forgot-password post without email login",
+            Method::POST,
+            "/forgot-password",
+            LoginOptions {
+                email: false,
+                ..ALL_LOGIN_OPTIONS
+            },
+            None,
+        ),
+        (
+            "reset-password get",
+            Method::GET,
+            "/reset-password/{token}",
+            ALL_LOGIN_OPTIONS,
+            Some(IpLimit::PasswordReset),
+        ),
+        (
+            "reset-password get without email login",
+            Method::GET,
+            "/reset-password/{token}",
+            LoginOptions {
+                email: false,
+                ..ALL_LOGIN_OPTIONS
+            },
+            None,
+        ),
+        (
+            "reset-password post",
+            Method::POST,
+            "/reset-password/{token}",
+            ALL_LOGIN_OPTIONS,
+            Some(IpLimit::PasswordReset),
+        ),
+        (
+            "reset-password post without email login",
+            Method::POST,
+            "/reset-password/{token}",
+            LoginOptions {
+                email: false,
+                ..ALL_LOGIN_OPTIONS
+            },
+            None,
+        ),
+        (
+            "resend-verification post",
+            Method::POST,
+            "/resend-verification",
+            ALL_LOGIN_OPTIONS,
+            Some(IpLimit::ResendVerification),
+        ),
+        (
+            "resend-verification post without email login",
+            Method::POST,
+            "/resend-verification",
             LoginOptions {
                 email: false,
                 ..ALL_LOGIN_OPTIONS
@@ -1115,6 +1216,8 @@ fn single_request_budgets() -> RateLimitBudgets {
         external_auth: budget,
         log_in: budget,
         log_in_failures: budget,
+        password_reset: budget,
+        resend_verification: budget,
         sign_up: budget,
         verify_email: budget,
         views: budget,
