@@ -1,4 +1,9 @@
-use std::{collections::BTreeSet, env, fs, path::Path};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, BTreeSet, VecDeque},
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::anyhow;
 use axum::{
@@ -87,6 +92,40 @@ impl RouteManifestEntry {
     fn label(&self) -> String {
         format!("{} {}", self.method, self.path)
     }
+}
+
+/// Source language used when stripping comments before scanning for vendor asset references.
+#[derive(Clone, Copy)]
+enum AssetSourceKind {
+    /// CSS stylesheet (`/* ... */` comments).
+    Css,
+    /// HTML or Askama template (`<!-- ... -->`, `{# ... #}`, and inline `<script>`/`<style>`).
+    Html,
+    /// JavaScript module (`// ...` and `/* ... */` comments).
+    Js,
+}
+
+impl AssetSourceKind {
+    /// Resolves the comment-stripping language for a file extension, if supported.
+    fn from_extension(ext: &str) -> Option<Self> {
+        match ext {
+            "css" => Some(Self::Css),
+            "html" => Some(Self::Html),
+            "js" => Some(Self::Js),
+            _ => None,
+        }
+    }
+}
+
+/// Source file scanned for references to vendored static assets.
+struct VendorRefSource {
+    /// Raw file contents.
+    content: String,
+    /// Source language used for comment stripping.
+    kind: AssetSourceKind,
+
+    /// Directory relative to `/static/` for resolving relative URLs, when served under `/static/`.
+    static_dir: Option<String>,
 }
 
 #[tokio::test]
@@ -1471,6 +1510,54 @@ async fn test_responses_carry_a_request_id_header() {
     );
 }
 
+#[test]
+fn test_static_assets_e2e_images_follow_build_profile() {
+    // Check build-time e2e exclusion cfg and embedded static assets match the active Cargo profile
+    let env_included = option_env!("OCG_INCLUDE_E2E_ASSETS").is_some_and(|v| v.trim() == "1");
+    let expected_excluded = env!("OCG_BUILD_PROFILE") == "release" && !env_included;
+    assert_eq!(cfg!(ocg_exclude_e2e_assets), expected_excluded);
+
+    let has_e2e_images = StaticFile::iter().any(|path| path.starts_with("images/e2e/"));
+    assert_eq!(has_e2e_images, !expected_excluded);
+}
+
+#[test]
+fn test_static_assets_exclude_dotfiles() {
+    // Check embedded static assets exclude dotfiles such as .prettierrc.yaml and .DS_Store
+    let static_paths: Vec<String> = StaticFile::iter().map(Cow::into_owned).collect();
+    assert_ne!(static_paths.len(), 0);
+    let static_dotfiles: Vec<&str> = static_paths
+        .iter()
+        .map(String::as_str)
+        .filter(|path| has_dot_segment(path))
+        .collect();
+    assert!(
+        static_dotfiles.is_empty(),
+        "unexpected dotfiles in dist/static: {}",
+        static_dotfiles.join(", ")
+    );
+
+    // Check copied dist templates exclude dotfiles such as .djlintrc
+    let dist_templates_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("dist/templates");
+    let mut template_paths = Vec::new();
+    collect_relative_paths(
+        &dist_templates_dir,
+        &dist_templates_dir,
+        &mut template_paths,
+    );
+    assert_ne!(template_paths.len(), 0);
+    let template_dotfiles: Vec<&str> = template_paths
+        .iter()
+        .map(String::as_str)
+        .filter(|path| has_dot_segment(path))
+        .collect();
+    assert!(
+        template_dotfiles.is_empty(),
+        "unexpected dotfiles in dist/templates: {}",
+        template_dotfiles.join(", ")
+    );
+}
+
 #[tokio::test]
 async fn test_static_handler_missing_asset_returns_not_found() {
     // Run handler
@@ -1522,7 +1609,7 @@ async fn test_static_handler_serves_assets_with_cache_policy() {
         ),
         (
             "vendor js",
-            "/static/vendor/js/htmx.v2.0.7.min.js".to_string(),
+            "/static/vendor/js/htmx.v2.0.10.min.js".to_string(),
             "text/javascript",
             CACHE_CONTROL_IMMUTABLE,
         ),
@@ -1570,6 +1657,289 @@ async fn test_static_handler_serves_docs_index_with_hashed_theme() {
     );
     assert!(body[hash_start + 8..].starts_with(".css\""), "{body}");
     assert!(!body.contains("assets/theme.css"), "{body}");
+}
+
+#[test]
+fn test_static_vendor_comment_stripper_preserves_minified_bundles() {
+    // Collect vendored JS bundles and locate each regex-heavy bundle by prefix
+    let vendor_js_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("static/vendor/js");
+    let mut vendor_js_files = Vec::new();
+    collect_non_dotfile_paths(&vendor_js_dir, &mut vendor_js_files);
+
+    // Check minified bundles containing slash/backtick regexes are not truncated
+    for prefix in ["docsify.v", "easymde.v", "echarts.v"] {
+        let bundle_path = vendor_js_files
+            .iter()
+            .find(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with(prefix) && name.ends_with(".min.js"))
+            })
+            .unwrap_or_else(|| panic!("expected vendored bundle matching {prefix}*.min.js"));
+        let raw = fs::read_to_string(bundle_path).unwrap();
+        let stripped = strip_asset_source_comments(&raw, AssetSourceKind::Js);
+        assert!(
+            stripped.len() * 100 >= raw.len() * 95,
+            "{} lost too much content during comment stripping ({} -> {} bytes)",
+            bundle_path.display(),
+            raw.len(),
+            stripped.len()
+        );
+    }
+}
+
+#[test]
+fn test_static_vendor_files_are_all_referenced() {
+    // Collect every non-dotfile asset under static/vendor
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let vendor_dir = manifest_dir.join("static/vendor");
+    let mut vendor_paths = Vec::new();
+    collect_non_dotfile_paths(&vendor_dir, &mut vendor_paths);
+    assert_ne!(vendor_paths.len(), 0);
+
+    let mut vendor_files = BTreeMap::new();
+    for path in vendor_paths {
+        let rel = path
+            .strip_prefix(&vendor_dir)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        let content = fs::read_to_string(&path).ok();
+        vendor_files.insert(rel, content);
+    }
+
+    // Read templates, JS modules, source CSS, and docs assets that may reference vendor files
+    let generated_styles_css = manifest_dir.join("static/css/styles.css");
+    let source_roots = [
+        (manifest_dir.join("templates"), None, &["html", "js"][..]),
+        (manifest_dir.join("static/js"), Some("js"), &["js"][..]),
+        (manifest_dir.join("static/css"), Some("css"), &["css"][..]),
+        (
+            manifest_dir.join("../docs"),
+            Some("docs"),
+            &["css", "html", "js"][..],
+        ),
+    ];
+    let mut sources = Vec::new();
+    for (root, static_prefix, allowed_exts) in source_roots {
+        let mut files = Vec::new();
+        collect_non_dotfile_paths(&root, &mut files);
+        for file in files {
+            if file == generated_styles_css {
+                continue;
+            }
+            let Some(ext) = file.extension().and_then(|ext| ext.to_str()) else {
+                continue;
+            };
+            if !allowed_exts.contains(&ext) {
+                continue;
+            }
+            let Some(kind) = AssetSourceKind::from_extension(ext) else {
+                panic!("unexpected source extension: {ext}");
+            };
+            let static_dir = static_prefix.map(|prefix| {
+                let rel = file.strip_prefix(&root).unwrap().to_string_lossy().replace('\\', "/");
+                let (rel_dir, _) = split_rel_path(&rel);
+                if rel_dir.is_empty() {
+                    prefix.to_string()
+                } else {
+                    format!("{prefix}/{rel_dir}")
+                }
+            });
+            sources.push(VendorRefSource {
+                content: fs::read_to_string(&file).unwrap(),
+                kind,
+                static_dir,
+            });
+        }
+    }
+    assert_ne!(sources.len(), 0);
+
+    // Check every vendored file is referenced directly, transitively, or as a companion license
+    let unreferenced = find_unreferenced_vendor_files(&vendor_files, &sources);
+    assert!(
+        unreferenced.is_empty(),
+        "found unreferenced files under ocg-server/static/vendor/:\n{}",
+        unreferenced.join("\n")
+    );
+}
+
+#[test]
+fn test_static_vendor_reference_scanner_detects_unreferenced_files() {
+    // Setup synthetic vendor files covering direct, relative, transitive, cyclic, and license cases
+    let vendor_files = BTreeMap::from([
+        ("css/icons.woff2".to_string(), None),
+        (
+            "css/theme.v1.min.css".to_string(),
+            Some("src:url(../fonts/theme.woff2),url(icons.woff2)".to_string()),
+        ),
+        ("fonts/font.woff2".to_string(), None),
+        ("fonts/theme.woff2".to_string(), None),
+        ("js/app.LICENSE.txt".to_string(), Some("MIT".to_string())),
+        ("js/app.v0.min.js".to_string(), Some("old".to_string())),
+        ("js/app.v1.min.js".to_string(), Some("new".to_string())),
+        ("js/app.v1.min.js.map".to_string(), Some("map".to_string())),
+        ("js/exact-license.min.js".to_string(), Some("e".to_string())),
+        (
+            "js/exact-license.min.js.LICENSE.txt".to_string(),
+            Some("MIT".to_string()),
+        ),
+        (
+            "js/orphan-a.js".to_string(),
+            Some(r#"import("./orphan-b.js");"#.to_string()),
+        ),
+        (
+            "js/orphan-b.js".to_string(),
+            Some(r#"import("./orphan-a.js");"#.to_string()),
+        ),
+        (
+            "js/scanner-worker.min.js".to_string(),
+            Some("worker".to_string()),
+        ),
+        (
+            "js/scanner.min.js".to_string(),
+            Some(r#"import("./scanner-worker.min.js");"#.to_string()),
+        ),
+        ("js/stale.LICENSE".to_string(), Some("BSD".to_string())),
+        ("js/stale.min.js".to_string(), Some("stale".to_string())),
+    ]);
+    let sources = vec![
+        VendorRefSource {
+            content: concat!(
+                r#"<link href="/static/vendor/css/theme.v1.min.css">"#,
+                r#"<script src="/static/vendor/js/app.v1.min.js"></script>"#,
+            )
+            .to_string(),
+            kind: AssetSourceKind::Html,
+            static_dir: None,
+        },
+        VendorRefSource {
+            content: concat!(
+                "import S from \"../../../../vendor/js/scanner.min.js\";\n",
+                "import \"/static/vendor/js/exact-license.min.js\";\n",
+            )
+            .to_string(),
+            kind: AssetSourceKind::Js,
+            static_dir: Some("js/dashboard/group/check-in".to_string()),
+        },
+        VendorRefSource {
+            content: "src: url(/static/vendor/fonts/font.woff2) format('woff2');".to_string(),
+            kind: AssetSourceKind::Css,
+            static_dir: Some("css".to_string()),
+        },
+    ];
+
+    // Check only genuinely unreferenced files and orphaned licenses are reported
+    assert_eq!(
+        find_unreferenced_vendor_files(&vendor_files, &sources),
+        vec![
+            "js/app.v0.min.js",
+            "js/app.v1.min.js.map",
+            "js/orphan-a.js",
+            "js/orphan-b.js",
+            "js/stale.LICENSE",
+            "js/stale.min.js",
+        ]
+    );
+}
+
+#[test]
+fn test_static_vendor_reference_scanner_ignores_comments_and_preserves_js_literals() {
+    // Setup synthetic vendor files referenced inside comments, inline blocks, or after JS regexes
+    let vendor_files = BTreeMap::from([
+        ("fonts/commented-inline-style.woff2".to_string(), None),
+        ("fonts/commented.woff2".to_string(), None),
+        (
+            "js/commented-after-control-regex.min.js".to_string(),
+            Some("c".to_string()),
+        ),
+        (
+            "js/commented-after-template.min.js".to_string(),
+            Some("t".to_string()),
+        ),
+        (
+            "js/commented-askama.min.js".to_string(),
+            Some("a".to_string()),
+        ),
+        (
+            "js/commented-html.min.js".to_string(),
+            Some("h".to_string()),
+        ),
+        (
+            "js/commented-inline-askama.min.js".to_string(),
+            Some("ia".to_string()),
+        ),
+        (
+            "js/commented-inline-script.min.js".to_string(),
+            Some("i".to_string()),
+        ),
+        ("js/commented-js.min.js".to_string(), Some("j".to_string())),
+        ("js/lit.min.js".to_string(), Some("lit".to_string())),
+        (
+            "js/minified-worker.min.js".to_string(),
+            Some("worker".to_string()),
+        ),
+        (
+            "js/minified.min.js".to_string(),
+            Some(
+                r#"var a=e.replace(/^\//,""),b=/WebKit\//.test(e),c=s.replace(/\`/g,"`1");import("./minified-worker.min.js");"#
+                    .to_string(),
+            ),
+        ),
+        ("js/stale.min.js".to_string(), Some("stale".to_string())),
+    ]);
+    let sources = vec![
+        VendorRefSource {
+            content: concat!(
+                r#"<script type="importmap">{"imports":{"lit":"/static/vendor/js/lit.min.js"}}</script>"#,
+                r#"<script type="module">// import "/static/vendor/js/commented-inline-script.min.js";</script>"#,
+                r#"<script type="module">{# import "/static/vendor/js/commented-inline-askama.min.js"; #}</script>"#,
+                r#"<style>/* url(/static/vendor/fonts/commented-inline-style.woff2) */</style>"#,
+                r#"<!-- <script src="/static/vendor/js/commented-html.min.js"></script> -->"#,
+                r#"{# <script src="/static/vendor/js/commented-askama.min.js"></script> #}"#,
+            )
+            .to_string(),
+            kind: AssetSourceKind::Html,
+            static_dir: None,
+        },
+        VendorRefSource {
+            content: concat!(
+                "const api = \"https://example.test\";\n",
+                "const re = /[\"'\\n]/g;\n",
+                "if (ok) /'/.test(v); // import \"/static/vendor/js/commented-after-control-regex.min.js\";\n",
+                "const tpl = html`<div>${ok ? html`<span>x</span>` : \"\"}</div>`;\n",
+                "// import \"/static/vendor/js/commented-after-template.min.js\";\n",
+                "// import \"/static/vendor/js/commented-js.min.js\";\n",
+                "/* import \"/static/vendor/js/stale.min.js\"; */\n",
+                "import \"/static/vendor/js/minified.min.js\";\n",
+            )
+            .to_string(),
+            kind: AssetSourceKind::Js,
+            static_dir: Some("js/common".to_string()),
+        },
+        VendorRefSource {
+            content: "/* url(/static/vendor/fonts/commented.woff2) */".to_string(),
+            kind: AssetSourceKind::Css,
+            static_dir: Some("css".to_string()),
+        },
+    ];
+
+    // Check commented references are ignored while importmap and post-regex imports stay live
+    assert_eq!(
+        find_unreferenced_vendor_files(&vendor_files, &sources),
+        vec![
+            "fonts/commented-inline-style.woff2",
+            "fonts/commented.woff2",
+            "js/commented-after-control-regex.min.js",
+            "js/commented-after-template.min.js",
+            "js/commented-askama.min.js",
+            "js/commented-html.min.js",
+            "js/commented-inline-askama.min.js",
+            "js/commented-inline-script.min.js",
+            "js/commented-js.min.js",
+            "js/stale.min.js",
+        ]
+    );
 }
 
 #[tokio::test]
@@ -1656,6 +2026,40 @@ fn assert_public_response_without_set_cookie(parts: &Parts) {
     );
 }
 
+/// Recursively collects regular non-dotfile paths under `dir`.
+fn collect_non_dotfile_paths(dir: &Path, files: &mut Vec<PathBuf>) {
+    for entry in fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        if entry.file_name().as_encoded_bytes().starts_with(b".") {
+            continue;
+        }
+        let path = entry.path();
+        if path.is_dir() {
+            collect_non_dotfile_paths(&path, files);
+        } else if path.is_file() {
+            files.push(path);
+        }
+    }
+}
+
+/// Recursively collects forward-slash relative paths of files and dot-entries under `dir`.
+fn collect_relative_paths(root: &Path, dir: &Path, paths: &mut Vec<String>) {
+    for entry in fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        let rel = path.strip_prefix(root).unwrap().to_string_lossy().replace('\\', "/");
+        if entry.file_name().as_encoded_bytes().starts_with(b".") {
+            paths.push(rel);
+            continue;
+        }
+        if entry.file_type().unwrap().is_dir() {
+            collect_relative_paths(root, &path, paths);
+        } else {
+            paths.push(rel);
+        }
+    }
+}
+
 /// Replaces every `{...}` segment of a route path with a random UUID.
 fn concrete_uri(path: &str) -> String {
     path.split('/')
@@ -1670,6 +2074,21 @@ fn concrete_uri(path: &str) -> String {
         .join("/")
 }
 
+/// Returns whether `content` references `asset_path` inside asset path delimiters.
+fn contains_delimited_asset_ref(content: &str, asset_path: &str) -> bool {
+    let bytes = content.as_bytes();
+    content.match_indices(asset_path).any(|(start, _)| {
+        let end = start + asset_path.len();
+        let before_ok = start
+            .checked_sub(1)
+            .is_some_and(|i| matches!(bytes[i], b'"' | b'\'' | b'`' | b'('));
+        let after_ok = bytes
+            .get(end)
+            .is_some_and(|b| matches!(b, b'"' | b'\'' | b'`' | b')' | b'?' | b'#'));
+        before_ok && after_ok
+    })
+}
+
 /// Checks whether the route arguments call the given axum method router.
 fn contains_method_call(args: &str, name: &str) -> bool {
     let needle = format!("{name}(");
@@ -1679,6 +2098,33 @@ fn contains_method_call(args: &str, name: &str) -> bool {
             .next_back()
             .is_none_or(|c| !(c.is_alphanumeric() || c == '_' || c == ':'))
     })
+}
+
+/// Returns whether `content` references `target_vendor_rel` by absolute or relative URL.
+fn contains_vendor_asset_ref(
+    content: &str,
+    from_static_dir: Option<&str>,
+    target_vendor_rel: &str,
+) -> bool {
+    let public_path = format!("/static/vendor/{target_vendor_rel}");
+    if contains_delimited_asset_ref(content, &public_path) {
+        return true;
+    }
+
+    if let Some(from_dir) = from_static_dir {
+        let target_static_path = format!("vendor/{target_vendor_rel}");
+        let rel_ref = relative_static_path(from_dir, &target_static_path);
+        if contains_delimited_asset_ref(content, &rel_ref) {
+            return true;
+        }
+        if let Some(bare_ref) = rel_ref.strip_prefix("./")
+            && contains_delimited_asset_ref(content, bare_ref)
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// Extracts the mutation routes declared by the community and group dashboard routers.
@@ -1723,6 +2169,137 @@ async fn echo_matched_path(request: Request, next: Next) -> axum::response::Resp
     let mut response = next.run(request).await;
     response.headers_mut().insert(MATCHED_PATH_TEST_HEADER, matched_path);
     response
+}
+
+/// Finds the first ASCII case-insensitive occurrence of `needle_lower` in `haystack`.
+fn find_ascii_case_insensitive(haystack: &str, needle_lower: &str) -> Option<usize> {
+    let hay = haystack.as_bytes();
+    let needle = needle_lower.as_bytes();
+    hay.windows(needle.len())
+        .position(|window| window.eq_ignore_ascii_case(needle))
+}
+
+/// Returns vendor asset paths (relative to `static/vendor/`) that are not
+/// referenced directly by `sources`, transitively by a referenced vendor
+/// asset, or as a companion license for a referenced library.
+fn find_unreferenced_vendor_files(
+    vendor_files: &BTreeMap<String, Option<String>>,
+    sources: &[VendorRefSource],
+) -> Vec<String> {
+    // Strip comments from application sources before scanning for active asset references
+    let stripped_sources: Vec<(Option<&str>, String)> = sources
+        .iter()
+        .map(|source| {
+            (
+                source.static_dir.as_deref(),
+                strip_asset_source_comments(&source.content, source.kind),
+            )
+        })
+        .collect();
+
+    // Seed reachability with vendor assets referenced directly from application sources
+    let mut referenced = BTreeSet::new();
+    let mut queue = VecDeque::new();
+    for rel_path in vendor_files.keys() {
+        if stripped_sources
+            .iter()
+            .any(|(static_dir, content)| contains_vendor_asset_ref(content, *static_dir, rel_path))
+            && referenced.insert(rel_path.clone())
+        {
+            queue.push_back(rel_path.clone());
+        }
+    }
+
+    // Follow absolute and relative references emitted by already-referenced vendor assets
+    while let Some(referrer) = queue.pop_front() {
+        let Some(Some(raw_content)) = vendor_files.get(&referrer) else {
+            continue;
+        };
+        let content = match Path::new(&referrer)
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .and_then(AssetSourceKind::from_extension)
+        {
+            Some(kind) => Cow::Owned(strip_asset_source_comments(raw_content, kind)),
+            None => Cow::Borrowed(raw_content.as_str()),
+        };
+        let (referrer_dir, _) = split_rel_path(&referrer);
+        let referrer_static_dir = if referrer_dir.is_empty() {
+            "vendor".to_string()
+        } else {
+            format!("vendor/{referrer_dir}")
+        };
+        for candidate in vendor_files.keys() {
+            if referenced.contains(candidate) {
+                continue;
+            }
+            if contains_vendor_asset_ref(&content, Some(&referrer_static_dir), candidate)
+                && referenced.insert(candidate.clone())
+            {
+                queue.push_back(candidate.clone());
+            }
+        }
+    }
+
+    // Allow companion license files paired with a referenced library in the same directory
+    let referenced_assets: Vec<String> = referenced.iter().cloned().collect();
+    for rel_path in vendor_files.keys() {
+        if referenced.contains(rel_path) {
+            continue;
+        }
+        let (dir, file_name) = split_rel_path(rel_path);
+        let Some(prefix) = vendor_license_prefix(file_name) else {
+            continue;
+        };
+        let prefix_with_dot = format!("{prefix}.");
+        let has_paired_asset = referenced_assets.iter().any(|asset| {
+            let (asset_dir, asset_name) = split_rel_path(asset);
+            asset_dir == dir
+                && vendor_license_prefix(asset_name).is_none()
+                && (asset_name == prefix || asset_name.starts_with(&prefix_with_dot))
+        });
+        if has_paired_asset {
+            referenced.insert(rel_path.clone());
+        }
+    }
+
+    // Return remaining unreferenced vendor paths in sorted order
+    vendor_files
+        .keys()
+        .filter(|rel_path| !referenced.contains(*rel_path))
+        .cloned()
+        .collect()
+}
+
+/// Returns whether any `/`-separated path segment starts with a dot.
+fn has_dot_segment(path: &str) -> bool {
+    path.split('/').any(|segment| segment.starts_with('.'))
+}
+
+/// Returns whether a JS keyword introduces a parenthesized header after which `/` starts a regex.
+fn is_js_control_paren_keyword(word: &str) -> bool {
+    matches!(word, "for" | "if" | "while" | "with")
+}
+
+/// Returns whether a JS keyword can be immediately followed by a regex literal.
+fn js_keyword_allows_regex(word: &str) -> bool {
+    matches!(
+        word,
+        "await"
+            | "case"
+            | "delete"
+            | "do"
+            | "else"
+            | "in"
+            | "instanceof"
+            | "new"
+            | "of"
+            | "return"
+            | "throw"
+            | "typeof"
+            | "void"
+            | "yield"
+    )
 }
 
 /// Builds a database answering every session read of a user with a selected
@@ -1796,6 +2373,24 @@ fn refresh_path_literals(source: &str) -> Vec<&str> {
             Some(&literal[..literal.find('"').expect("path literal should close")])
         })
         .collect()
+}
+
+/// Returns a relative path from `from_dir` to `target` within `/static/`.
+fn relative_static_path(from_dir: &str, target: &str) -> String {
+    let from_parts: Vec<&str> = from_dir.split('/').filter(|s| !s.is_empty()).collect();
+    let target_parts: Vec<&str> = target.split('/').filter(|s| !s.is_empty()).collect();
+    let common = from_parts
+        .iter()
+        .zip(&target_parts)
+        .take_while(|(a, b)| a == b)
+        .count();
+    let ups = from_parts.len() - common;
+    let rest = target_parts[common..].join("/");
+    if ups == 0 {
+        format!("./{rest}")
+    } else {
+        format!("{}{rest}", "../".repeat(ups))
+    }
 }
 
 /// Extracts every `.route(` declaration of the router sections in source
@@ -1922,10 +2517,346 @@ fn site_settings_db() -> MockDB {
     db
 }
 
+/// Advances past a JS regex literal starting at the opening `/` byte at `start`.
+fn skip_js_regex_literal(bytes: &[u8], start: usize) -> usize {
+    let mut i = start + 1;
+    let mut in_char_class = false;
+    while i < bytes.len() {
+        if bytes[i] == b'\\' {
+            i += 1;
+            if i < bytes.len() && bytes[i] < 0x80 {
+                i += 1;
+            }
+        } else if bytes[i] == b'[' {
+            in_char_class = true;
+            i += 1;
+        } else if bytes[i] == b']' && in_char_class {
+            in_char_class = false;
+            i += 1;
+        } else if bytes[i] == b'/' && !in_char_class {
+            return i + 1;
+        } else if bytes[i] == b'\n' {
+            return i;
+        } else {
+            i += 1;
+        }
+    }
+    bytes.len()
+}
+
+/// Advances across JS template literal text starting at `start`, returning
+/// `(next_index, entered_interpolation)`.
+fn skip_js_template_segment(bytes: &[u8], start: usize) -> (usize, bool) {
+    let mut i = start;
+    while i < bytes.len() {
+        if bytes[i] == b'\\' {
+            i += 1;
+            if i < bytes.len() && bytes[i] < 0x80 {
+                i += 1;
+            }
+        } else if bytes[i] == b'`' {
+            return (i + 1, false);
+        } else if bytes[i..].starts_with(b"${") {
+            return (i + 2, true);
+        } else {
+            i += 1;
+        }
+    }
+    (bytes.len(), false)
+}
+
+/// Advances past a JS identifier/keyword or numeric literal starting at `start`.
+fn skip_js_word(bytes: &[u8], start: usize) -> usize {
+    let mut i = start + 1;
+    if bytes[start].is_ascii_digit() {
+        while i < bytes.len()
+            && (bytes[i].is_ascii_alphanumeric() || matches!(bytes[i], b'_' | b'.'))
+        {
+            i += 1;
+        }
+    } else {
+        while i < bytes.len()
+            && (bytes[i].is_ascii_alphanumeric()
+                || matches!(bytes[i], b'_' | b'$')
+                || bytes[i] >= 0x80)
+        {
+            i += 1;
+        }
+    }
+    i
+}
+
+/// Advances past a single- or double-quoted literal starting at `start`.
+fn skip_quoted_literal(bytes: &[u8], start: usize, stop_at_newline: bool) -> usize {
+    let open_quote = bytes[start];
+    let mut i = start + 1;
+    while i < bytes.len() {
+        if bytes[i] == b'\\' {
+            i += 1;
+            if i < bytes.len() && bytes[i] < 0x80 {
+                i += 1;
+            }
+        } else if bytes[i] == open_quote || (stop_at_newline && bytes[i] == b'\n') {
+            return i + 1;
+        } else {
+            i += 1;
+        }
+    }
+    bytes.len()
+}
+
+/// Splits a forward-slash relative path into `(parent_dir, file_name)`.
+fn split_rel_path(path: &str) -> (&str, &str) {
+    path.rsplit_once('/').unwrap_or(("", path))
+}
+
 /// Finds an embedded static asset path matching the given prefix and suffix.
 fn static_path_with_prefix_and_suffix(prefix: &str, suffix: &str) -> String {
     StaticFile::iter()
         .find(|path| path.starts_with(prefix) && path.ends_with(suffix))
         .unwrap_or_else(|| panic!("{prefix} asset ending with {suffix} to exist"))
         .to_string()
+}
+
+/// Removes Askama `{# ... #}` comments from a template before HTML/JS/CSS parsing.
+fn strip_askama_comments(content: &str) -> String {
+    let bytes = content.as_bytes();
+    let mut output = String::with_capacity(content.len());
+    let mut segment_start = 0;
+    let mut i = 0;
+
+    while i < bytes.len() {
+        if bytes[i..].starts_with(b"{#") {
+            output.push_str(&content[segment_start..i]);
+            output.push(' ');
+            i = match content[i + 2..].find("#}") {
+                Some(offset) => i + 2 + offset + 2,
+                None => bytes.len(),
+            };
+            segment_start = i;
+        } else {
+            i += 1;
+        }
+    }
+
+    output.push_str(&content[segment_start..]);
+    output
+}
+
+/// Removes comments from `content` according to `kind` while preserving string literals.
+fn strip_asset_source_comments(content: &str, kind: AssetSourceKind) -> String {
+    match kind {
+        AssetSourceKind::Css => strip_css_comments(content),
+        AssetSourceKind::Html => strip_html_comments(content),
+        AssetSourceKind::Js => strip_js_comments(content),
+    }
+}
+
+/// Removes CSS block comments while preserving quoted strings.
+fn strip_css_comments(content: &str) -> String {
+    let bytes = content.as_bytes();
+    let mut output = String::with_capacity(content.len());
+    let mut segment_start = 0;
+    let mut i = 0;
+
+    while i < bytes.len() {
+        if matches!(bytes[i], b'"' | b'\'') {
+            i = skip_quoted_literal(bytes, i, false);
+        } else if bytes[i..].starts_with(b"/*") {
+            output.push_str(&content[segment_start..i]);
+            output.push(' ');
+            i = match content[i + 2..].find("*/") {
+                Some(offset) => i + 2 + offset + 2,
+                None => bytes.len(),
+            };
+            segment_start = i;
+        } else {
+            i += 1;
+        }
+    }
+
+    output.push_str(&content[segment_start..]);
+    output
+}
+
+/// Removes HTML/Askama comments and strips comments inside inline `<script>` and `<style>` blocks.
+fn strip_html_comments(content: &str) -> String {
+    // Strip Askama `{# ... #}` comments first so they are also removed inside script/style blocks
+    let content = strip_askama_comments(content);
+    let bytes = content.as_bytes();
+    let mut output = String::with_capacity(content.len());
+    let mut segment_start = 0;
+    let mut i = 0;
+
+    while i < bytes.len() {
+        if bytes[i..].starts_with(b"<!--") {
+            output.push_str(&content[segment_start..i]);
+            output.push(' ');
+            i = match content[i + 4..].find("-->") {
+                Some(offset) => i + 4 + offset + 3,
+                None => bytes.len(),
+            };
+            segment_start = i;
+        } else if let Some((open_len, close_tag, body_kind)) = [
+            (b"<script".as_slice(), "</script", AssetSourceKind::Js),
+            (b"<style".as_slice(), "</style", AssetSourceKind::Css),
+        ]
+        .into_iter()
+        .find_map(|(open, close_tag, kind)| {
+            (bytes.len() >= i + open.len()
+                && bytes[i..i + open.len()].eq_ignore_ascii_case(open)
+                && bytes
+                    .get(i + open.len())
+                    .is_none_or(|b| b.is_ascii_whitespace() || matches!(b, b'>' | b'/')))
+            .then_some((open.len(), close_tag, kind))
+        }) {
+            // Scan to the end of the opening tag while skipping quoted attribute values
+            let mut cursor = i + open_len;
+            while cursor < bytes.len() {
+                if matches!(bytes[cursor], b'"' | b'\'') {
+                    let quote = bytes[cursor];
+                    cursor += 1;
+                    while cursor < bytes.len() && bytes[cursor] != quote {
+                        cursor += 1;
+                    }
+                    if cursor < bytes.len() {
+                        cursor += 1;
+                    }
+                } else if bytes[cursor] == b'>' {
+                    cursor += 1;
+                    break;
+                } else {
+                    cursor += 1;
+                }
+            }
+
+            // Preserve the opening tag and strip comments inside the inline block body
+            output.push_str(&content[segment_start..cursor]);
+            let body_end = find_ascii_case_insensitive(&content[cursor..], close_tag)
+                .map_or(bytes.len(), |offset| cursor + offset);
+            output.push_str(&strip_asset_source_comments(
+                &content[cursor..body_end],
+                body_kind,
+            ));
+            i = body_end;
+            segment_start = i;
+        } else {
+            i += 1;
+        }
+    }
+
+    output.push_str(&content[segment_start..]);
+    output
+}
+
+/// Removes JS line and block comments while preserving strings, nested templates, and regexes.
+fn strip_js_comments(content: &str) -> String {
+    let bytes = content.as_bytes();
+    let mut output = String::with_capacity(content.len());
+    let mut segment_start = 0;
+    let mut i = 0;
+    let mut regex_allowed = true;
+    let mut pending_control_paren = false;
+    let mut paren_allows_regex_on_close: Vec<bool> = Vec::new();
+    let mut template_brace_depths: Vec<usize> = Vec::new();
+    let mut in_template = false;
+
+    while i < bytes.len() {
+        // Scan template literal text until an unescaped backtick or `${` interpolation
+        if in_template {
+            let (next_i, entered_interpolation) = skip_js_template_segment(bytes, i);
+            i = next_i;
+            in_template = false;
+            pending_control_paren = false;
+            if entered_interpolation {
+                template_brace_depths.push(0);
+                regex_allowed = true;
+            } else {
+                regex_allowed = false;
+            }
+            continue;
+        }
+
+        let b = bytes[i];
+        if b.is_ascii_whitespace() {
+            i += 1;
+            continue;
+        }
+        if bytes[i..].starts_with(b"/*") || bytes[i..].starts_with(b"//") {
+            output.push_str(&content[segment_start..i]);
+            output.push(' ');
+            i = if bytes[i + 1] == b'*' {
+                content[i + 2..].find("*/").map_or(bytes.len(), |o| i + o + 4)
+            } else {
+                content[i + 2..].find('\n').map_or(bytes.len(), |o| i + o + 2)
+            };
+            segment_start = i;
+            continue;
+        }
+
+        // Consume any pending control-flow paren flag on the next non-trivia token
+        let was_control_paren = std::mem::take(&mut pending_control_paren);
+        if matches!(b, b'"' | b'\'') {
+            i = skip_quoted_literal(bytes, i, true);
+            regex_allowed = false;
+        } else if b == b'`' {
+            in_template = true;
+            i += 1;
+        } else if b == b'/' && regex_allowed {
+            i = skip_js_regex_literal(bytes, i);
+            regex_allowed = false;
+        } else if b == b'(' {
+            paren_allows_regex_on_close.push(was_control_paren);
+            regex_allowed = true;
+            i += 1;
+        } else if b == b')' {
+            regex_allowed = paren_allows_regex_on_close.pop().unwrap_or(false);
+            i += 1;
+        } else if b == b'{' {
+            if let Some(depth) = template_brace_depths.last_mut() {
+                *depth += 1;
+            }
+            regex_allowed = true;
+            i += 1;
+        } else if b == b'}' {
+            if let Some(depth) = template_brace_depths.last_mut() {
+                if *depth == 0 {
+                    template_brace_depths.pop();
+                    in_template = true;
+                } else {
+                    *depth -= 1;
+                    regex_allowed = true;
+                }
+            } else {
+                regex_allowed = true;
+            }
+            i += 1;
+        } else if b.is_ascii_alphabetic() || matches!(b, b'_' | b'$') || b >= 0x80 {
+            let word_start = i;
+            i = skip_js_word(bytes, i);
+            let word = &content[word_start..i];
+            pending_control_paren = is_js_control_paren_keyword(word);
+            regex_allowed = js_keyword_allows_regex(word);
+        } else if b.is_ascii_digit() {
+            i = skip_js_word(bytes, i);
+            regex_allowed = false;
+        } else if b == b']' {
+            regex_allowed = false;
+            i += 1;
+        } else {
+            regex_allowed = true;
+            i += 1;
+        }
+    }
+
+    output.push_str(&content[segment_start..]);
+    output
+}
+
+/// Extracts the library stem from a companion license file name, if it is one.
+fn vendor_license_prefix(file_name: &str) -> Option<&str> {
+    file_name
+        .strip_suffix(".LICENSE")
+        .or_else(|| file_name.strip_suffix(".LICENSE.txt"))
+        .filter(|prefix| !prefix.is_empty())
 }

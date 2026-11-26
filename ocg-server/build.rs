@@ -1,6 +1,8 @@
 use std::{
     collections::BTreeMap,
-    env, fs,
+    env,
+    ffi::OsStr,
+    fs,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -19,8 +21,8 @@ const COMMIT_SHA_ENV_VAR: &str = "OCG_COMMIT_SHA";
 /// Path to the documentation source directory.
 const DOCS_PATH: &str = "../docs";
 
-/// Path to the generated documentation static files directory.
-const DOCS_STATIC_DIST_PATH: &str = "dist/static/docs";
+/// Subdirectory inside the static distribution directory for documentation files.
+const DOCS_STATIC_SUBDIR: &str = "docs";
 
 /// Static asset directories whose files should be content hashed.
 const HASHED_ASSET_DIRS: [&str; 2] = ["css", "js"];
@@ -28,19 +30,31 @@ const HASHED_ASSET_DIRS: [&str; 2] = ["css", "js"];
 /// Opening tag of the static inline import map in the base template.
 const IMPORT_MAP_OPEN_TAG: &str = r#"<script type="importmap">"#;
 
+/// Environment variable that keeps e2e static assets in release builds.
+const INCLUDE_E2E_ASSETS_ENV_VAR: &str = "OCG_INCLUDE_E2E_ASSETS";
+
 /// Relative paths of static inline scripts included in rendered templates.
 const INLINE_SCRIPT_PATHS: [&str; 2] = [
     "common/scripts/deployment_refresh_cleanup.js",
     "common/scripts/preferences_init.js",
 ];
 
-/// Path to the static assets distribution directory. This path contains a copy
-/// of the static assets with some modifications applied (e.g. assets hashed
-/// paths).
+/// Path to the static assets distribution directory that retains e2e fixtures
+/// (used by debug builds and `OCG_INCLUDE_E2E_ASSETS=1` release builds). This
+/// path contains a copy of the static assets with some modifications applied
+/// (e.g. assets hashed paths).
 const STATIC_DIST_PATH: &str = "dist/static";
+
+/// Path to the e2e-only static images directory.
+const STATIC_E2E_IMAGES_PATH: &str = "static/images/e2e";
 
 /// Path to the static assets directory.
 const STATIC_PATH: &str = "static";
+
+/// Path to the release static assets distribution directory that omits e2e
+/// fixtures. Kept separate from `STATIC_DIST_PATH` so release builds never
+/// remove e2e fixtures needed by debug or opted-in builds.
+const STATIC_RELEASE_DIST_PATH: &str = "dist/static-release";
 
 /// Path to the templates distribution directory. This path contains a copy of
 /// the templates with some modifications applied (e.g. assets hashed paths).
@@ -66,7 +80,25 @@ fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=static");
     println!("cargo:rerun-if-changed=templates");
     println!("cargo:rerun-if-env-changed={COMMIT_SHA_ENV_VAR}");
+    println!("cargo:rerun-if-env-changed={INCLUDE_E2E_ASSETS_ENV_VAR}");
+    println!("cargo:rustc-check-cfg=cfg(ocg_exclude_e2e_assets)");
+    println!(
+        "cargo:rustc-env=OCG_BUILD_PROFILE={}",
+        env::var("PROFILE").unwrap_or_default()
+    );
     println!("cargo:rustc-env=OCG_COMMIT_SHA={}", commit_sha());
+
+    // Route e2e-excluded release builds to a dedicated static dist directory so
+    // `dist/static` always retains e2e fixtures and `dist/static-release` never does
+    let exclude_e2e = !include_e2e_assets();
+    if exclude_e2e {
+        println!("cargo:rustc-cfg=ocg_exclude_e2e_assets");
+    }
+    let static_dist_dir = Path::new(if exclude_e2e {
+        STATIC_RELEASE_DIST_PATH
+    } else {
+        STATIC_DIST_PATH
+    });
 
     // Check if required external tools are available
     if which("tailwindcss").is_err() {
@@ -87,16 +119,25 @@ fn main() -> Result<()> {
     )?;
 
     // Copy static assets to the dist directory
-    if let Err(err) = fs::remove_dir_all(STATIC_DIST_PATH)
+    if let Err(err) = fs::remove_dir_all(static_dist_dir)
         && err.kind() != std::io::ErrorKind::NotFound
     {
         bail!(err);
     }
-    copy_dir(Path::new(STATIC_PATH), Path::new(STATIC_DIST_PATH))?;
+    let excluded_static_paths: &[&Path] = if exclude_e2e {
+        &[Path::new(STATIC_E2E_IMAGES_PATH)]
+    } else {
+        &[]
+    };
+    copy_dir(
+        Path::new(STATIC_PATH),
+        static_dist_dir,
+        excluded_static_paths,
+    )?;
 
     // Rewrite hashable assets and generate a manifest mapping original asset
     // paths to their final hashed versions.
-    let assets_manifest = write_hashed_static_assets()?;
+    let assets_manifest = write_hashed_static_assets(static_dist_dir)?;
 
     // Prepare templates
 
@@ -106,7 +147,11 @@ fn main() -> Result<()> {
     {
         bail!(err);
     }
-    copy_dir(Path::new(TEMPLATES_PATH), Path::new(TEMPLATES_DIST_PATH))?;
+    copy_dir(
+        Path::new(TEMPLATES_PATH),
+        Path::new(TEMPLATES_DIST_PATH),
+        &[],
+    )?;
 
     // Replace assets paths references with their hashed versions
     replace_hashed_assets_refs(Path::new(TEMPLATES_DIST_PATH), &assets_manifest)?;
@@ -119,15 +164,13 @@ fn main() -> Result<()> {
     );
 
     // Copy documentation to the dist directory
-    copy_dir(Path::new(DOCS_PATH), Path::new(DOCS_STATIC_DIST_PATH))?;
+    let docs_static_dist_dir = static_dist_dir.join(DOCS_STATIC_SUBDIR);
+    copy_dir(Path::new(DOCS_PATH), &docs_static_dist_dir, &[])?;
 
     // Point the standalone documentation index at the hashed docs theme. Only
     // the index is rewritten, as Markdown prose quoting static asset paths
     // must stay as written.
-    replace_hashed_assets_refs_in_file(
-        &Path::new(DOCS_STATIC_DIST_PATH).join("index.html"),
-        &assets_manifest,
-    )?;
+    replace_hashed_assets_refs_in_file(&docs_static_dist_dir.join("index.html"), &assets_manifest)?;
 
     Ok(())
 }
@@ -146,13 +189,19 @@ fn commit_sha() -> String {
 }
 
 /// Writes content-hashed static assets and returns their final path manifest.
-fn write_hashed_static_assets() -> Result<AssetsManifest> {
+fn write_hashed_static_assets(static_dist_dir: &Path) -> Result<AssetsManifest> {
     let graph = build_hashed_assets_graph()?;
     let mut manifest = AssetsManifest::new();
     let mut visiting = Vec::new();
 
     for plain_path in graph.keys() {
-        write_hashed_static_asset(plain_path, &graph, &mut manifest, &mut visiting)?;
+        write_hashed_static_asset(
+            plain_path,
+            &graph,
+            static_dist_dir,
+            &mut manifest,
+            &mut visiting,
+        )?;
     }
 
     Ok(manifest)
@@ -196,11 +245,14 @@ fn build_hashed_assets_graph() -> Result<BTreeMap<String, HashedAsset>> {
     Ok(graph)
 }
 
-/// Collects all file paths in a directory and its subdirectories.
+/// Collects all non-dotfile paths in a directory and its subdirectories.
 fn collect_file_paths(path: &Path, file_paths: &mut Vec<PathBuf>) -> Result<()> {
     if path.is_dir() {
         for entry in fs::read_dir(path)? {
             let entry = entry?;
+            if is_dotfile(&entry.file_name()) {
+                continue;
+            }
             let path = entry.path();
             if path.is_dir() {
                 collect_file_paths(&path, file_paths)?;
@@ -217,6 +269,7 @@ fn collect_file_paths(path: &Path, file_paths: &mut Vec<PathBuf>) -> Result<()> 
 fn write_hashed_static_asset(
     plain_path: &str,
     graph: &BTreeMap<String, HashedAsset>,
+    static_dist_dir: &Path,
     manifest: &mut AssetsManifest,
     visiting: &mut Vec<String>,
 ) -> Result<()> {
@@ -239,7 +292,7 @@ fn write_hashed_static_asset(
     // Finalize dependencies before hashing this asset.
     visiting.push(plain_path.to_string());
     for dependency_path in &asset.dependencies {
-        write_hashed_static_asset(dependency_path, graph, manifest, visiting)?;
+        write_hashed_static_asset(dependency_path, graph, static_dist_dir, manifest, visiting)?;
     }
     visiting.pop();
 
@@ -250,13 +303,13 @@ fn write_hashed_static_asset(
     let hashed_path = hashed_static_asset_path(plain_path, &hash);
 
     // Write the hashed asset and remove its unhashed dist copy.
-    let hashed_dist_path = static_dist_path(&hashed_path)?;
+    let hashed_dist_path = static_dist_path(static_dist_dir, &hashed_path)?;
     if let Some(parent) = hashed_dist_path.parent() {
         fs::create_dir_all(parent)?;
     }
     fs::write(hashed_dist_path, final_content)?;
 
-    let plain_dist_path = static_dist_path(plain_path)?;
+    let plain_dist_path = static_dist_path(static_dist_dir, plain_path)?;
     fs::remove_file(plain_dist_path)?;
 
     manifest.insert(plain_path.to_string(), hashed_path);
@@ -289,9 +342,8 @@ fn hashed_static_asset_path(plain_path: &str, hash: &str) -> String {
 }
 
 /// Returns the dist filesystem path for a static asset public path.
-fn static_dist_path(asset_path: &str) -> Result<PathBuf> {
-    Ok(Path::new(STATIC_DIST_PATH)
-        .join(Path::new(asset_path).strip_prefix(format!("/{STATIC_PATH}/"))?))
+fn static_dist_path(static_dist_dir: &Path, asset_path: &str) -> Result<PathBuf> {
+    Ok(static_dist_dir.join(Path::new(asset_path).strip_prefix(format!("/{STATIC_PATH}/"))?))
 }
 
 /// Calculate sha256 hash of content.
@@ -403,18 +455,50 @@ fn strip_single_trailing_lf(content: &str) -> &str {
     content.strip_suffix('\n').unwrap_or(content)
 }
 
-/// Helper function to copy a directory recursively.
-fn copy_dir(src: &Path, dst: &Path) -> Result<()> {
+/// Copies a directory recursively, skipping dotfiles and excluded paths.
+fn copy_dir(src: &Path, dst: &Path, excluded_paths: &[&Path]) -> Result<()> {
     fs::create_dir_all(dst)?;
     for entry in fs::read_dir(src)? {
         let entry = entry?;
+        let entry_name = entry.file_name();
+        let entry_path = entry.path();
+        if is_dotfile(&entry_name) || excluded_paths.contains(&entry_path.as_path()) {
+            continue;
+        }
         if entry.file_type()?.is_dir() {
-            copy_dir(&entry.path(), &dst.join(entry.file_name()))?;
+            copy_dir(&entry_path, &dst.join(&entry_name), excluded_paths)?;
         } else {
-            fs::copy(entry.path(), dst.join(entry.file_name()))?;
+            fs::copy(&entry_path, dst.join(&entry_name))?;
         }
     }
     Ok(())
+}
+
+/// Returns whether e2e static assets should be copied into the distribution directory.
+fn include_e2e_assets() -> bool {
+    let is_release = env::var("PROFILE").is_ok_and(|profile| profile == "release");
+    if !is_release {
+        return true;
+    }
+
+    match env::var(INCLUDE_E2E_ASSETS_ENV_VAR) {
+        Ok(value) => match value.trim() {
+            "1" => true,
+            "" | "0" => false,
+            other => {
+                println!(
+                    "cargo:warning=ignoring unrecognized {INCLUDE_E2E_ASSETS_ENV_VAR} value '{other}'; set {INCLUDE_E2E_ASSETS_ENV_VAR}=1 to include e2e static assets in release builds"
+                );
+                false
+            }
+        },
+        Err(_) => false,
+    }
+}
+
+/// Returns whether a directory entry name starts with a dot.
+fn is_dotfile(name: &OsStr) -> bool {
+    name.as_encoded_bytes().starts_with(b".")
 }
 
 /// Replace assets paths references with their hashed versions in the files in

@@ -158,7 +158,8 @@ const X_FRAME_OPTIONS_VALUE: &str = "DENY";
 ///
 /// Embeds all files from the static directory into the binary.
 #[derive(Embed)]
-#[folder = "dist/static"]
+#[cfg_attr(not(ocg_exclude_e2e_assets), folder = "dist/static")]
+#[cfg_attr(ocg_exclude_e2e_assets, folder = "dist/static-release")]
 struct StaticFile;
 
 /// Policy controlling how unsafe requests without standard browser origin headers are handled.
