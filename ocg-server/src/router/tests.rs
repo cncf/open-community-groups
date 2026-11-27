@@ -117,6 +117,27 @@ impl AssetSourceKind {
     }
 }
 
+/// Temporary directory removed automatically when the test finishes.
+struct TempDirGuard {
+    /// Filesystem path of the temporary directory.
+    path: PathBuf,
+}
+
+impl TempDirGuard {
+    /// Creates a unique empty directory under the system temp directory.
+    fn new(prefix: &str) -> Self {
+        let path = env::temp_dir().join(format!("{prefix}-{}", Uuid::new_v4()));
+        fs::create_dir_all(&path).unwrap();
+        Self { path }
+    }
+}
+
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
 /// Source file scanned for references to vendored static assets.
 struct VendorRefSource {
     /// Raw file contents.
@@ -1483,9 +1504,13 @@ async fn test_stale_ocg_fetch_static_request_serves_asset_without_commit_sha() {
 
     // Check the asset is served without deployment version headers
     assert_non_empty_response(&parts, &bytes, StatusCode::OK);
+    #[cfg(not(ocg_dev_static))]
+    let expected_cache_control = CACHE_CONTROL_IMMUTABLE;
+    #[cfg(ocg_dev_static)]
+    let expected_cache_control = CACHE_CONTROL_NO_STORE;
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE)
+        &HeaderValue::from_static(expected_cache_control)
     );
     assert!(parts.headers.get(COMMIT_SHA_HEADER).is_none());
     assert!(parts.headers.get("X-OCG-Refresh").is_none());
@@ -1514,6 +1539,7 @@ async fn test_responses_carry_a_request_id_header() {
     );
 }
 
+#[cfg(not(ocg_dev_static))]
 #[test]
 fn test_static_assets_e2e_images_follow_build_profile() {
     // Check build-time e2e exclusion cfg and embedded static assets match the active Cargo profile
@@ -1528,18 +1554,21 @@ fn test_static_assets_e2e_images_follow_build_profile() {
 #[test]
 fn test_static_assets_exclude_dotfiles() {
     // Check embedded static assets exclude dotfiles such as .prettierrc.yaml and .DS_Store
-    let static_paths: Vec<String> = StaticFile::iter().map(Cow::into_owned).collect();
-    assert_ne!(static_paths.len(), 0);
-    let static_dotfiles: Vec<&str> = static_paths
-        .iter()
-        .map(String::as_str)
-        .filter(|path| has_dot_segment(path))
-        .collect();
-    assert!(
-        static_dotfiles.is_empty(),
-        "unexpected dotfiles in dist/static: {}",
-        static_dotfiles.join(", ")
-    );
+    #[cfg(not(ocg_dev_static))]
+    {
+        let static_paths: Vec<String> = StaticFile::iter().map(Cow::into_owned).collect();
+        assert_ne!(static_paths.len(), 0);
+        let static_dotfiles: Vec<&str> = static_paths
+            .iter()
+            .map(String::as_str)
+            .filter(|path| has_dot_segment(path))
+            .collect();
+        assert!(
+            static_dotfiles.is_empty(),
+            "unexpected dotfiles in dist/static: {}",
+            static_dotfiles.join(", ")
+        );
+    }
 
     // Check copied dist templates exclude dotfiles such as .djlintrc
     let dist_templates_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("dist/templates");
@@ -1562,6 +1591,219 @@ fn test_static_assets_exclude_dotfiles() {
     );
 }
 
+#[cfg(not(ocg_dev_static))]
+#[test]
+fn test_static_assets_styles_are_minified_and_hashed_in_templates() {
+    // Read compiled dist templates referencing the Tailwind stylesheet
+    let dist_templates_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("dist/templates");
+    let base_html = fs::read_to_string(dist_templates_dir.join("common/base.html")).unwrap();
+    let rate_limit_html =
+        fs::read_to_string(dist_templates_dir.join("site/too_many_requests/page.html")).unwrap();
+
+    // Check both templates link the same content-hashed stylesheet and omit the unhashed path
+    let base_styles_href = extract_hashed_styles_href(&base_html);
+    let rate_limit_styles_href = extract_hashed_styles_href(&rate_limit_html);
+    assert_eq!(base_styles_href, rate_limit_styles_href);
+    assert!(!base_html.contains(r#"href="/static/css/styles.css""#));
+    assert!(!rate_limit_html.contains(r#"href="/static/css/styles.css""#));
+
+    // Check the embedded stylesheet is minified and no unhashed copy remains
+    let embedded_path = base_styles_href
+        .strip_prefix(STATIC_PATH_PREFIX)
+        .expect("hashed stylesheet href to start with /static/");
+    let embedded_file =
+        StaticFile::get(embedded_path).expect("hashed stylesheet to exist in embedded assets");
+    let css = std::str::from_utf8(embedded_file.data.as_ref()).unwrap();
+    assert_ne!(css, "");
+    assert!(
+        css.lines().count() <= 5,
+        "expected minified Tailwind CSS, got {} lines",
+        css.lines().count()
+    );
+    assert!(
+        StaticFile::get("css/styles.css").is_none(),
+        "unhashed css/styles.css should not remain in embedded assets"
+    );
+}
+
+#[tokio::test]
+async fn test_static_dev_live_disk_resolver_rejects_unsafe_paths() {
+    // Setup a temporary workspace with dotfiles, an external secret, and symlinks
+    let (temp, manifest_dir) = setup_dev_static_workspace();
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::symlink;
+
+        symlink(
+            temp.path.join("secret.txt"),
+            manifest_dir.join("static/escape.txt"),
+        )
+        .unwrap();
+        symlink(
+            manifest_dir.join("static/.DS_Store"),
+            manifest_dir.join("static/dotlink.txt"),
+        )
+        .unwrap();
+    }
+
+    // Check dotfiles, traversal attempts, malformed segments, directories, and missing paths are rejected
+    let rejected_cases = [
+        "",
+        "/css/styles.css",
+        "css/styles.css/",
+        "css//styles.css",
+        "./css/styles.css",
+        "../secret.txt",
+        "js/../../secret.txt",
+        "docs/../secret.txt",
+        "css\\styles.css",
+        "css/styles.css\0.txt",
+        ".DS_Store",
+        "js/.prettierrc.yaml",
+        "docs/.DS_Store",
+        "docs",
+        "docs/",
+        "js",
+        "js/common",
+        "does/not/exist.txt",
+    ];
+    for request_path in rejected_cases {
+        let loaded = load_dev_static_asset(request_path, &manifest_dir).await;
+        assert!(
+            loaded.is_none(),
+            "expected dev static resolver to reject {request_path:?}"
+        );
+        let response = static_asset_response(request_path, loaded);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND, "{request_path:?}");
+    }
+
+    // Check symlinks escaping root or targeting dotfiles are rejected on Unix
+    #[cfg(unix)]
+    for request_path in ["escape.txt", "dotlink.txt"] {
+        assert!(
+            load_dev_static_asset(request_path, &manifest_dir).await.is_none(),
+            "expected dev static resolver to reject symlink {request_path:?}"
+        );
+    }
+
+    drop(temp);
+}
+
+#[tokio::test]
+async fn test_static_dev_live_disk_resolver_serves_live_assets() {
+    // Setup a temporary workspace mirroring ocg-server/ and sibling docs/
+    let (temp, manifest_dir) = setup_dev_static_workspace();
+
+    // Check valid assets resolve from dist/static-dev, static/, and ../docs/ with no-store headers
+    let valid_cases = [
+        ("css/styles.css", "/* generated minified */", "text/css"),
+        ("css/docs/theme.css", "body { color: black; }", "text/css"),
+        (
+            "js/common/app-init.js",
+            "export const init = 1;",
+            "text/javascript",
+        ),
+        ("images/favicon.svg", "<svg></svg>", "image/svg+xml"),
+        (
+            "vendor/js/htmx.v2.0.10.min.js",
+            "/* htmx */",
+            "text/javascript",
+        ),
+        ("docs/index.html", "<html>docs</html>", "text/html"),
+        ("docs/guides/quickstart.md", "# Quickstart", "text/markdown"),
+    ];
+    for (request_path, expected_body, expected_mime) in valid_cases {
+        let loaded = load_dev_static_asset(request_path, &manifest_dir).await;
+        let response = static_asset_response(request_path, loaded);
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        assert_eq!(parts.status, StatusCode::OK, "{request_path}");
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static(expected_mime),
+            "{request_path}"
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_STORE),
+            "{request_path}"
+        );
+        assert_eq!(bytes.as_ref(), expected_body.as_bytes(), "{request_path}");
+    }
+
+    // Check on-disk edits are observed immediately without rebuilding
+    fs::write(
+        manifest_dir.join("dist/static-dev/css/styles.css"),
+        "/* rebuilt */",
+    )
+    .unwrap();
+    fs::write(
+        manifest_dir.join("static/js/common/app-init.js"),
+        "export const init = 2;",
+    )
+    .unwrap();
+    assert_eq!(
+        load_dev_static_asset("css/styles.css", &manifest_dir).await,
+        Some((
+            Cow::Owned(b"/* rebuilt */".to_vec()),
+            CACHE_CONTROL_NO_STORE
+        ))
+    );
+    assert_eq!(
+        load_dev_static_asset("js/common/app-init.js", &manifest_dir).await,
+        Some((
+            Cow::Owned(b"export const init = 2;".to_vec()),
+            CACHE_CONTROL_NO_STORE
+        ))
+    );
+
+    drop(temp);
+}
+
+#[cfg(ocg_dev_static)]
+#[tokio::test]
+async fn test_static_handler_dev_static_serves_live_assets() {
+    // Check live-disk assets are served with expected content types and no-store cache control
+    let cases = [
+        ("generated css", "/static/css/styles.css", "text/css"),
+        ("docs css", "/static/css/docs/theme.css", "text/css"),
+        (
+            "js module",
+            "/static/js/common/app-init.js",
+            "text/javascript",
+        ),
+        ("docs index", "/static/docs/index.html", "text/html"),
+    ];
+    for (case, uri, content_type) in cases {
+        let response = static_handler(Uri::from_static(uri)).await.into_response();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        assert_eq!(parts.status, StatusCode::OK, "{case}");
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static(content_type),
+            "{case}"
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_STORE),
+            "{case}"
+        );
+        assert!(!bytes.is_empty(), "{case}");
+    }
+
+    // Check dotfiles and traversal paths return 404
+    for uri in [
+        "/static/js/.prettierrc.yaml",
+        "/static/../Cargo.toml",
+        "/static/docs/../README.md",
+    ] {
+        let response = static_handler(Uri::from_static(uri)).await.into_response();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND, "{uri}");
+    }
+}
+
 #[tokio::test]
 async fn test_static_handler_missing_asset_returns_not_found() {
     // Run handler
@@ -1574,6 +1816,7 @@ async fn test_static_handler_missing_asset_returns_not_found() {
     assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
 }
 
+#[cfg(not(ocg_dev_static))]
 #[tokio::test]
 async fn test_static_handler_serves_assets_with_cache_policy() {
     // Setup labeled embedded assets with their content type and cache policy
@@ -1639,6 +1882,7 @@ async fn test_static_handler_serves_assets_with_cache_policy() {
     }
 }
 
+#[cfg(not(ocg_dev_static))]
 #[tokio::test]
 async fn test_static_handler_serves_docs_index_with_hashed_theme() {
     // Run handler
@@ -1946,6 +2190,55 @@ fn test_static_vendor_reference_scanner_ignores_comments_and_preserves_js_litera
     );
 }
 
+#[test]
+fn test_tailwind_version_pin_matches_across_build_dockerfile_and_action() {
+    // Read build.rs, Dockerfile, and the install-tailwind GitHub Action
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let build_rs = fs::read_to_string(manifest_dir.join("build.rs")).unwrap();
+    let dockerfile = fs::read_to_string(manifest_dir.join("Dockerfile")).unwrap();
+    let action_yml =
+        fs::read_to_string(manifest_dir.join("../.github/actions/install-tailwind/action.yml"))
+            .unwrap();
+
+    // Extract the pinned Tailwind CSS version from each file
+    let build_version = build_rs
+        .lines()
+        .find_map(|line| {
+            line.trim()
+                .strip_prefix("const TAILWIND_VERSION: &str = \"")
+                .and_then(|rest| rest.strip_suffix("\";"))
+        })
+        .expect("TAILWIND_VERSION constant in ocg-server/build.rs");
+    let dockerfile_version = dockerfile
+        .lines()
+        .find_map(|line| {
+            line.split_once("tailwindcss/releases/download/v")
+                .and_then(|(_, rest)| rest.split('/').next())
+        })
+        .expect("pinned tailwindcss download URL in ocg-server/Dockerfile");
+    let action_version = action_yml
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("default: v"))
+        .expect(
+            "default pinned tailwindcss version in .github/actions/install-tailwind/action.yml",
+        );
+
+    // Check all three pins are identical semantic versions
+    assert_eq!(build_version, dockerfile_version);
+    assert_eq!(build_version, action_version);
+    assert_eq!(
+        build_version.split('.').count(),
+        3,
+        "expected major.minor.patch Tailwind CSS version, got {build_version}"
+    );
+    assert!(
+        build_version
+            .split('.')
+            .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit())),
+        "expected numeric Tailwind CSS version, got {build_version}"
+    );
+}
+
 #[tokio::test]
 async fn test_zoom_webhook_route_is_not_mounted_when_zoom_is_disabled() {
     // Setup disabled Zoom configuration
@@ -2173,6 +2466,30 @@ async fn echo_matched_path(request: Request, next: Next) -> axum::response::Resp
     let mut response = next.run(request).await;
     response.headers_mut().insert(MATCHED_PATH_TEST_HEADER, matched_path);
     response
+}
+
+/// Extracts the content-hashed `/static/css/styles.<8hex>.css` href from rendered HTML.
+#[cfg(not(ocg_dev_static))]
+fn extract_hashed_styles_href(html: &str) -> String {
+    let prefix = r#"href="/static/css/styles."#;
+    let start = html
+        .find(prefix)
+        .expect("hashed styles.css link to exist in template")
+        + r#"href=""#.len();
+    let rest = &html[start..];
+    let end = rest.find('"').expect("closing quote for hashed styles.css href");
+    let href = &rest[..end];
+    let hash_with_ext = href
+        .strip_prefix("/static/css/styles.")
+        .expect("href to start with /static/css/styles.");
+    let hash = hash_with_ext.strip_suffix(".css").expect("href to end with .css");
+    assert_eq!(hash.len(), 8, "{href}");
+    assert!(
+        hash.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')),
+        "{href}"
+    );
+
+    href.to_string()
 }
 
 /// Finds the first ASCII case-insensitive occurrence of `needle_lower` in `haystack`.
@@ -2514,6 +2831,59 @@ fn router_sections() -> [(&'static str, &'static str); 4] {
     })
 }
 
+/// Creates a temporary workspace mirroring `ocg-server/` and sibling `docs/` for dev-static tests.
+fn setup_dev_static_workspace() -> (TempDirGuard, PathBuf) {
+    let temp = TempDirGuard::new("ocg-dev-static");
+    let manifest_dir = temp.path.join("ocg-server");
+    let docs_dir = temp.path.join("docs");
+
+    let files = [
+        (
+            manifest_dir.join("dist/static-dev/css/styles.css"),
+            "/* generated minified */",
+        ),
+        (
+            manifest_dir.join("dist/static/css/styles.css"),
+            "/* hashed dist decoy */",
+        ),
+        (
+            manifest_dir.join("static/css/styles.css"),
+            "/* stale static */",
+        ),
+        (
+            manifest_dir.join("static/css/docs/theme.css"),
+            "body { color: black; }",
+        ),
+        (
+            manifest_dir.join("static/js/common/app-init.js"),
+            "export const init = 1;",
+        ),
+        (
+            manifest_dir.join("static/images/favicon.svg"),
+            "<svg></svg>",
+        ),
+        (
+            manifest_dir.join("static/vendor/js/htmx.v2.0.10.min.js"),
+            "/* htmx */",
+        ),
+        (manifest_dir.join("static/.DS_Store"), "finder"),
+        (
+            manifest_dir.join("static/js/.prettierrc.yaml"),
+            "semi: true\n",
+        ),
+        (docs_dir.join("index.html"), "<html>docs</html>"),
+        (docs_dir.join("guides/quickstart.md"), "# Quickstart"),
+        (docs_dir.join(".DS_Store"), "finder"),
+        (temp.path.join("secret.txt"), "top secret"),
+    ];
+    for (path, content) in files {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, content).unwrap();
+    }
+
+    (temp, manifest_dir)
+}
+
 /// Builds a database answering the site settings read of a rendered page.
 fn site_settings_db() -> MockDB {
     let mut db = MockDB::new();
@@ -2615,6 +2985,7 @@ fn split_rel_path(path: &str) -> (&str, &str) {
 }
 
 /// Finds an embedded static asset path matching the given prefix and suffix.
+#[cfg(not(ocg_dev_static))]
 fn static_path_with_prefix_and_suffix(prefix: &str, suffix: &str) -> String {
     StaticFile::iter()
         .find(|path| path.starts_with(prefix) && path.ends_with(suffix))

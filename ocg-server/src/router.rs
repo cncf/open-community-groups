@@ -10,6 +10,8 @@ mod route_hits;
 #[cfg(test)]
 mod tests;
 
+#[cfg(any(ocg_dev_static, test))]
+use std::path::{Path, PathBuf};
 use std::{borrow::Cow, sync::Arc};
 
 use anyhow::Result;
@@ -30,6 +32,7 @@ use axum::{
 };
 use axum_login::login_required;
 use axum_messages::MessagesManagerLayer;
+#[cfg(not(ocg_dev_static))]
 use rust_embed::Embed;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceBuilder;
@@ -66,7 +69,7 @@ use crate::{
 use self::rate_limit::RateLimitLayerState;
 
 /// Cache-Control header value for immutable public assets.
-#[cfg(any(not(debug_assertions), test))]
+#[cfg(all(any(not(debug_assertions), test), not(ocg_dev_static)))]
 const CACHE_CONTROL_IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
 /// Cache-Control header value instructing clients and proxies not to store responses.
@@ -88,15 +91,15 @@ pub(crate) const CACHE_CONTROL_PUBLIC_SHARED: &str = "public, max-age=0";
 const CACHE_CONTROL_FAVICON_REDIRECT: &str = "public, max-age=604800";
 
 /// Cache-Control header value for default static asset responses.
-#[cfg(any(not(debug_assertions), test))]
+#[cfg(all(any(not(debug_assertions), test), not(ocg_dev_static)))]
 const CACHE_CONTROL_STATIC_DEFAULT: &str = "max-age=3600";
 
 /// Cache-Control header value for local development static asset responses.
-#[cfg(all(debug_assertions, not(test)))]
+#[cfg(all(debug_assertions, not(test), not(ocg_dev_static)))]
 const CACHE_CONTROL_STATIC_DEVELOPMENT: &str = "max-age=0";
 
 /// Cache-Control header value for static image responses.
-#[cfg(any(not(debug_assertions), test))]
+#[cfg(all(any(not(debug_assertions), test), not(ocg_dev_static)))]
 const CACHE_CONTROL_STATIC_IMAGES: &str = "max-age=604800";
 
 /// Current application commit SHA embedded at build time.
@@ -107,6 +110,26 @@ pub(crate) const COMMIT_SHA_HEADER: &str = "x-ocg-commit-sha";
 
 /// Space-separated CSP SHA-256 hashes for build-time static inline scripts.
 pub(crate) const CSP_SCRIPT_HASHES: &str = env!("OCG_CSP_SCRIPT_HASHES");
+
+/// Documentation source directory relative to the server manifest directory in dev-static mode.
+#[cfg(any(ocg_dev_static, test))]
+const DEV_STATIC_DOCS_DIR: &str = "../docs";
+
+/// First `/static/` path segment mapped to the repository docs directory in dev-static mode.
+#[cfg(any(ocg_dev_static, test))]
+const DEV_STATIC_DOCS_SEGMENT: &str = "docs";
+
+/// Directory holding generated static assets relative to the server manifest directory in dev-static mode.
+#[cfg(any(ocg_dev_static, test))]
+const DEV_STATIC_GENERATED_DIR: &str = "dist/static-dev";
+
+/// Relative `/static/` path of the Tailwind-generated stylesheet in dev-static mode.
+#[cfg(any(ocg_dev_static, test))]
+const DEV_STATIC_GENERATED_STYLES_PATH: &str = "css/styles.css";
+
+/// Source static assets directory relative to the server manifest directory in dev-static mode.
+#[cfg(any(ocg_dev_static, test))]
+const DEV_STATIC_SOURCE_DIR: &str = "static";
 
 /// Header used to request an application-level page refresh for `ocgFetch`.
 const OCG_REFRESH_HEADER: &str = "x-ocg-refresh";
@@ -157,6 +180,7 @@ const X_FRAME_OPTIONS_VALUE: &str = "DENY";
 /// Static file embedder using rust-embed.
 ///
 /// Embeds all files from the static directory into the binary.
+#[cfg(not(ocg_dev_static))]
 #[derive(Embed)]
 #[cfg_attr(not(ocg_exclude_e2e_assets), folder = "dist/static")]
 #[cfg_attr(ocg_exclude_e2e_assets, folder = "dist/static-release")]
@@ -693,40 +717,25 @@ async fn health_check(
     StatusCode::OK
 }
 
-/// Static file handler for embedded assets.
+/// Static file handler for embedded assets, or live disk assets when
+/// `OCG_DEV_STATIC=1` is enabled in debug builds.
 ///
-/// Serves files embedded in the binary with appropriate MIME types and cache headers.
+/// Serves static files with appropriate MIME types and cache headers.
 #[instrument]
 async fn static_handler(uri: Uri) -> impl IntoResponse {
     // Extract file path from URI
-    let path = uri.path().trim_start_matches(STATIC_PATH_PREFIX);
-
-    // Set cache policy based on resource type
-    #[cfg(any(not(debug_assertions), test))]
-    let cache = if path.starts_with("js/") || path.starts_with("css/") {
-        // Cache content-hashed assets indefinitely
-        CACHE_CONTROL_IMMUTABLE
-    } else if path.starts_with("vendor/") {
-        // Cache versioned vendor assets indefinitely
-        CACHE_CONTROL_IMMUTABLE
-    } else if path.starts_with("images/") {
-        CACHE_CONTROL_STATIC_IMAGES
-    } else {
-        // Use the default cache duration for other static resources
-        CACHE_CONTROL_STATIC_DEFAULT
+    let Some(path) = uri.path().strip_prefix(STATIC_PATH_PREFIX) else {
+        return StatusCode::NOT_FOUND.into_response();
     };
-    #[cfg(all(debug_assertions, not(test)))]
-    let cache = CACHE_CONTROL_STATIC_DEVELOPMENT;
 
-    // Get file content and return it (if available)
-    match StaticFile::get(path) {
-        Some(file) => {
-            let mime = mime_guess::from_path(path).first_or_octet_stream();
-            let headers = [(CONTENT_TYPE, mime.as_ref()), (CACHE_CONTROL, cache)];
-            (headers, file.data).into_response()
-        }
-        None => StatusCode::NOT_FOUND.into_response(),
-    }
+    // Load file bytes and cache policy for the active static serving mode
+    #[cfg(ocg_dev_static)]
+    let loaded = load_dev_static_asset(path, Path::new(env!("CARGO_MANIFEST_DIR"))).await;
+    #[cfg(not(ocg_dev_static))]
+    let loaded = load_embedded_static_asset(path);
+
+    // Return file content with inferred content type and cache headers
+    static_asset_response(path, loaded)
 }
 
 // Middleware.
@@ -1066,6 +1075,66 @@ fn is_https_base_url(base_url: &str) -> bool {
         .is_some_and(|prefix| prefix.eq_ignore_ascii_case("https://"))
 }
 
+/// Loads a static asset live from disk with `no-store` caching in `OCG_DEV_STATIC=1` mode.
+///
+/// Resolves `css/styles.css` from `dist/static-dev/css/styles.css`, `docs/*` from
+/// `../docs/*`, and all other assets from `static/*`, rejecting dotfiles,
+/// path traversal, directories, and symlinks escaping the target root.
+#[cfg(any(ocg_dev_static, test))]
+async fn load_dev_static_asset(
+    request_path: &str,
+    manifest_dir: &Path,
+) -> Option<(Cow<'static, [u8]>, &'static str)> {
+    // Resolve the target root and candidate path after rejecting unsafe segments
+    let (root, candidate) = resolve_dev_static_target(request_path, manifest_dir)?;
+
+    // Canonicalize both paths to block symlink escapes outside the allowed root
+    let canonical_root = tokio::fs::canonicalize(&root).await.ok()?;
+    let canonical_candidate = tokio::fs::canonicalize(&candidate).await.ok()?;
+    let relative_candidate = canonical_candidate.strip_prefix(&canonical_root).ok()?;
+    if relative_candidate
+        .components()
+        .any(|component| component.as_os_str().as_encoded_bytes().starts_with(b"."))
+    {
+        return None;
+    }
+
+    // Serve regular files only, rejecting directories
+    let metadata = tokio::fs::metadata(&canonical_candidate).await.ok()?;
+    if !metadata.is_file() {
+        return None;
+    }
+
+    // Read current bytes directly from disk without caching
+    let bytes = tokio::fs::read(&canonical_candidate).await.ok()?;
+    Some((Cow::Owned(bytes), CACHE_CONTROL_NO_STORE))
+}
+
+/// Loads an embedded static asset along with its cache policy.
+#[cfg(not(ocg_dev_static))]
+fn load_embedded_static_asset(path: &str) -> Option<(Cow<'static, [u8]>, &'static str)> {
+    // Set cache policy based on resource type
+    #[cfg(any(not(debug_assertions), test))]
+    let cache = if path.starts_with("js/") || path.starts_with("css/") {
+        // Cache content-hashed assets indefinitely
+        CACHE_CONTROL_IMMUTABLE
+    } else if path.starts_with("vendor/") {
+        // Cache versioned vendor assets indefinitely
+        CACHE_CONTROL_IMMUTABLE
+    } else if path.starts_with("images/") {
+        CACHE_CONTROL_STATIC_IMAGES
+    } else {
+        // Use the default cache duration for other static resources
+        CACHE_CONTROL_STATIC_DEFAULT
+    };
+    #[cfg(all(debug_assertions, not(test)))]
+    let cache = CACHE_CONTROL_STATIC_DEVELOPMENT;
+
+    // Read embedded file content
+    let file = StaticFile::get(path)?;
+    Some((file.data, cache))
+}
+
 /// Opens the request span, carrying the request id so downstream log lines can be correlated.
 ///
 /// Redacts token-bearing auth recovery URIs so bearer tokens are never written to logs.
@@ -1097,6 +1166,45 @@ fn request_matched_path(request: &Request) -> &str {
         .map_or(ROUTE_FALLBACK_PATH, MatchedPath::as_str)
 }
 
+/// Maps a `/static/`-relative request path to its `(root_dir, file_path)` on disk.
+#[cfg(any(ocg_dev_static, test))]
+fn resolve_dev_static_target(
+    request_path: &str,
+    manifest_dir: &Path,
+) -> Option<(PathBuf, PathBuf)> {
+    // Reject empty paths, null bytes, backslashes, empty segments, and dot segments/dotfiles
+    if request_path.is_empty() || request_path.contains(['\0', '\\']) {
+        return None;
+    }
+    let segments: Vec<&str> = request_path.split('/').collect();
+    if segments
+        .iter()
+        .any(|segment| segment.is_empty() || segment.starts_with('.'))
+    {
+        return None;
+    }
+
+    // Route Tailwind's generated stylesheet to dist/static-dev/css/styles.css
+    if request_path == DEV_STATIC_GENERATED_STYLES_PATH {
+        let root = manifest_dir.join(DEV_STATIC_GENERATED_DIR);
+        let candidate = root.join(DEV_STATIC_GENERATED_STYLES_PATH);
+        return Some((root, candidate));
+    }
+
+    // Route documentation files directly to the repository docs directory
+    if segments[0] == DEV_STATIC_DOCS_SEGMENT && segments.len() > 1 {
+        let root = manifest_dir.join(DEV_STATIC_DOCS_DIR);
+        let candidate = root.join(segments[1..].iter().collect::<PathBuf>());
+        return Some((root, candidate));
+    }
+
+    // Route all remaining assets to the source static directory
+    let root = manifest_dir.join(DEV_STATIC_SOURCE_DIR);
+    let candidate = root.join(segments.iter().collect::<PathBuf>());
+
+    Some((root, candidate))
+}
+
 /// Returns a log-safe request URI, redacting secret token path segments on recovery routes.
 fn sanitized_request_uri<'a>(request: &'a Request, matched_path: &'a str) -> Cow<'a, str> {
     let path = request.uri().path();
@@ -1114,4 +1222,17 @@ fn sanitized_request_uri<'a>(request: &'a Request, matched_path: &'a str) -> Cow
     }
 
     Cow::Owned(request.uri().to_string())
+}
+
+/// Builds the HTTP response for a loaded static asset, or 404 when absent.
+fn static_asset_response(
+    path: &str,
+    loaded: Option<(Cow<'static, [u8]>, &'static str)>,
+) -> axum::response::Response {
+    let Some((bytes, cache)) = loaded else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let mime = mime_guess::from_path(path).first_or_octet_stream();
+    let headers = [(CONTENT_TYPE, mime.as_ref()), (CACHE_CONTROL, cache)];
+    (headers, bytes).into_response()
 }

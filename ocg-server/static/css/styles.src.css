@@ -65,7 +65,7 @@
 }
 /*
  * Resolved color theme is dark (set by common/scripts/preferences_init.js). Screen only, and
- * descendants of light islands (.plate, .ink) never match. With the pinned Tailwind v4.1.10,
+ * descendants of light islands (.plate, .ink) never match. With the pinned Tailwind v4.3.5,
  * dark utilities sort after sm, md and the other min-width breakpoints but before max-sm,
  * max-md and phone, so phone:bg-red-500 beats dark:bg-blue-500 on a dark phone. An element
  * that sets one property under both uses phone:dark:, which compounds and wins.
