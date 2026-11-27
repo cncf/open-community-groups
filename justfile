@@ -269,6 +269,74 @@ server:
 server-build:
     cargo build -p ocg-server
 
+# Run the server with live static assets from disk and Tailwind CSS watch mode.
+server-dev:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ source_dir }}"
+    server_bin=$(OCG_DEV_STATIC=1 cargo build -p ocg-server --message-format=json-render-diagnostics \
+        | node -e 'const fs=require("fs");let exe="";for(const l of fs.readFileSync(0,"utf8").split("\n")){if(!l)continue;try{const m=JSON.parse(l);if(m.reason==="compiler-artifact"&&m.target?.name==="ocg-server"&&m.executable)exe=m.executable;}catch{}}process.stdout.write(exe);')
+    if [ -z "$server_bin" ] || [ ! -x "$server_bin" ]; then
+        echo "error: could not locate built ocg-server executable" >&2
+        exit 1
+    fi
+    tw_pid=""
+    server_pid=""
+    sleep_pid=""
+    cleanup() {
+        trap '' INT TERM
+        if [ -n "$sleep_pid" ]; then
+            kill "$sleep_pid" 2>/dev/null || true
+            wait "$sleep_pid" 2>/dev/null || true
+        fi
+        if [ -n "$tw_pid" ]; then
+            kill "$tw_pid" 2>/dev/null || true
+        fi
+        if [ -n "$server_pid" ] && kill -0 "$server_pid" 2>/dev/null; then
+            for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+                kill -INT "$server_pid" 2>/dev/null || true
+                sleep 0.1
+                kill -0 "$server_pid" 2>/dev/null || break
+            done
+            if kill -0 "$server_pid" 2>/dev/null; then
+                kill -KILL "$server_pid" 2>/dev/null || true
+            fi
+        fi
+        if [ -n "$tw_pid" ]; then
+            wait "$tw_pid" 2>/dev/null || true
+        fi
+        if [ -n "$server_pid" ]; then
+            wait "$server_pid" 2>/dev/null || true
+        fi
+    }
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    trap cleanup EXIT
+    tailwindcss --cwd ocg-server -i static/css/styles.src.css -o dist/static-dev/css/styles.css --minify --watch=always &
+    tw_pid=$!
+    "$server_bin" -c "{{ server_config }}" &
+    server_pid=$!
+    while kill -0 "$server_pid" 2>/dev/null && kill -0 "$tw_pid" 2>/dev/null; do
+        sleep 0.5 &
+        sleep_pid=$!
+        wait "$sleep_pid"
+        sleep_pid=""
+    done
+    if ! kill -0 "$tw_pid" 2>/dev/null; then
+        tw_status=0
+        wait "$tw_pid" || tw_status=$?
+        tw_pid=""
+        echo "error: tailwindcss watcher exited unexpectedly (status $tw_status)" >&2
+        if [ "$tw_status" -eq 0 ]; then
+            exit 1
+        fi
+        exit "$tw_status"
+    fi
+    server_status=0
+    wait "$server_pid" || server_status=$?
+    server_pid=""
+    exit "$server_status"
+
 # Format and lint server code.
 server-fmt-and-lint:
     cargo fmt

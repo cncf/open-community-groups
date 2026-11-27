@@ -201,6 +201,10 @@ async fn run_server(deps: RouterDeps) -> Result<()> {
 
     // Serve requests with their peer address until a graceful shutdown signal arrives
     info!("server started");
+    #[cfg(ocg_dev_static)]
+    info!(
+        "serving static assets live from disk (OCG_DEV_STATIC=1); run `just server-dev` or `tailwindcss --watch` for live CSS rebuilds"
+    );
     info!(%addr, "listening");
 
     if let Err(err) = axum::serve(

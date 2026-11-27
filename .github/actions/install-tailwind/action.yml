@@ -5,7 +5,7 @@ inputs:
   version:
     description: Tailwind CSS release tag to install.
     required: false
-    default: v4.1.10
+    default: v4.3.5
 
 runs:
   using: composite
