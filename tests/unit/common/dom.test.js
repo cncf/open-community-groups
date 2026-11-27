@@ -15,6 +15,7 @@ import {
   isElementHidden,
   isOutsideElementEvent,
   loadScriptOnce,
+  loadStylesheetOnce,
   markDatasetReady,
   setElementHidden,
   toggleElementHidden,
@@ -24,15 +25,22 @@ import { resetDom, trackAddedEventListeners } from "/tests/unit/test-utils/dom.j
 
 describe("common dom", () => {
   const exampleScriptSrc = "data:text/javascript,window.__ocgDomTestScriptLoaded%3Dtrue";
+  const exampleStylesheetHref = "data:text/css,.ocg-dom-test{}";
 
   beforeEach(() => {
     resetDom();
     document.head.querySelectorAll(`script[src="${exampleScriptSrc}"]`).forEach((script) => script.remove());
+    document.head
+      .querySelectorAll(`link[rel="stylesheet"][href="${exampleStylesheetHref}"], link[rel="stylesheet"][href^="/static/css/styles"]`)
+      .forEach((link) => link.remove());
   });
 
   afterEach(() => {
     resetDom();
     document.head.querySelectorAll(`script[src="${exampleScriptSrc}"]`).forEach((script) => script.remove());
+    document.head
+      .querySelectorAll(`link[rel="stylesheet"][href="${exampleStylesheetHref}"], link[rel="stylesheet"][href^="/static/css/styles"]`)
+      .forEach((link) => link.remove());
   });
 
   it("builds stable element ids", () => {
@@ -338,5 +346,113 @@ describe("common dom", () => {
 
     // The loader resolves after the appended script fires load.
     await loadPromise;
+  });
+
+  it("removes a failed script element so a retry can append it again", async () => {
+    // Trigger an error on the first script load attempt.
+    const firstAttempt = loadScriptOnce(exampleScriptSrc);
+    const firstScript = document.querySelector(`script[src="${exampleScriptSrc}"]`);
+    expect(firstScript).to.not.equal(null);
+    firstScript.onerror();
+
+    let failedError = null;
+    try {
+      await firstAttempt;
+    } catch (error) {
+      failedError = error;
+    }
+
+    // Verify the failed element was removed and a retry succeeds.
+    expect(failedError).to.be.an("error");
+    expect(document.querySelector(`script[src="${exampleScriptSrc}"]`)).to.equal(null);
+
+    const retryAttempt = loadScriptOnce(exampleScriptSrc);
+    const retryScript = document.querySelector(`script[src="${exampleScriptSrc}"]`);
+    expect(retryScript).to.not.equal(null);
+    retryScript.onload();
+    await retryAttempt;
+  });
+
+  it("inserts a lazy stylesheet before the app stylesheet and deduplicates repeated loads", async () => {
+    // Place a hashed app stylesheet in head to verify cascade order.
+    const appStylesheet = document.createElement("link");
+    appStylesheet.rel = "stylesheet";
+    appStylesheet.href = "/static/css/styles.12345678.css";
+    document.head.append(appStylesheet);
+
+    // Start two concurrent stylesheet loads for the same href.
+    const firstLoad = loadStylesheetOnce(exampleStylesheetHref);
+    const secondLoad = loadStylesheetOnce(exampleStylesheetHref);
+    const links = document.head.querySelectorAll(`link[rel="stylesheet"][href="${exampleStylesheetHref}"]`);
+    expect(links).to.have.length(1);
+    expect(links[0].nextElementSibling).to.equal(appStylesheet);
+
+    // Complete the load and verify subsequent calls resolve immediately.
+    links[0].dispatchEvent(new Event("load"));
+    await Promise.all([firstLoad, secondLoad]);
+    await loadStylesheetOnce(exampleStylesheetHref);
+    expect(
+      document.head.querySelectorAll(`link[rel="stylesheet"][href="${exampleStylesheetHref}"]`),
+    ).to.have.length(1);
+  });
+
+  it("removes a failed stylesheet element so a retry can insert it again", async () => {
+    // Trigger an error on the first stylesheet load attempt.
+    const firstAttempt = loadStylesheetOnce(exampleStylesheetHref);
+    const firstLink = document.head.querySelector(`link[rel="stylesheet"][href="${exampleStylesheetHref}"]`);
+    expect(firstLink).to.not.equal(null);
+    firstLink.onerror();
+
+    let failedError = null;
+    try {
+      await firstAttempt;
+    } catch (error) {
+      failedError = error;
+    }
+
+    // Verify the failed link was removed and a retry succeeds.
+    expect(failedError).to.be.an("error");
+    expect(document.head.querySelector(`link[rel="stylesheet"][href="${exampleStylesheetHref}"]`)).to.equal(
+      null,
+    );
+
+    const retryAttempt = loadStylesheetOnce(exampleStylesheetHref);
+    const retryLink = document.head.querySelector(`link[rel="stylesheet"][href="${exampleStylesheetHref}"]`);
+    expect(retryLink).to.not.equal(null);
+    retryLink.onload();
+    await retryAttempt;
+  });
+
+  it("preserves existing onload handlers when awaiting an existing script or stylesheet tag", async () => {
+    // Attach existing tags with caller-owned onload handlers.
+    let existingScriptOnloadCount = 0;
+    const script = document.createElement("script");
+    script.src = exampleScriptSrc;
+    script.onload = () => {
+      existingScriptOnloadCount += 1;
+    };
+    document.head.append(script);
+
+    let existingLinkOnloadCount = 0;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = exampleStylesheetHref;
+    link.onload = () => {
+      existingLinkOnloadCount += 1;
+    };
+    document.head.append(link);
+
+    // Wait on the existing tags and dispatch load events.
+    const scriptPromise = loadScriptOnce(exampleScriptSrc);
+    const linkPromise = loadStylesheetOnce(exampleStylesheetHref);
+    script.dispatchEvent(new Event("load"));
+    link.dispatchEvent(new Event("load"));
+    await Promise.all([scriptPromise, linkPromise]);
+
+    // Existing handlers remain intact and ran when load fired.
+    expect(existingScriptOnloadCount).to.equal(1);
+    expect(existingLinkOnloadCount).to.equal(1);
+    expect(typeof script.onload).to.equal("function");
+    expect(typeof link.onload).to.equal("function");
   });
 });

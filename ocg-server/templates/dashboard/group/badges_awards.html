@@ -437,6 +437,8 @@
   {# End award history pagination -#}
 </section>
 
+<script type="module" src="/static/js/dashboard/group/badges.js"></script>
+
 {# Award revocation badge and details tooltip. #}
 {% macro award_revocation_badge(award) -%}
   {% if let Some(revoked_at) = &award.revoked_at -%}

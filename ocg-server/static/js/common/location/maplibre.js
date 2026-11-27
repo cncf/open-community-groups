@@ -1,9 +1,10 @@
-import { loadScriptOnce } from "/static/js/common/dom.js";
+import { loadVendorAssetsOnce } from "/static/js/common/dom.js";
 import { getResolvedTheme, THEME_CHANGE_EVENT } from "/static/js/common/theme.js";
 
 // Keep locations on the edge of the initial bounds inside the viewport so their pins render.
 const BOUNDS_PADDING_PX = 40;
 const MAPLIBRE_SCRIPT_SRC = "/static/vendor/js/maplibre-gl.v5.24.0.min.js";
+const MAPLIBRE_STYLESHEET_HREF = "/static/vendor/css/maplibre-gl.v5.24.0.min.css";
 // OpenFreeMap basemap style for each color theme.
 const MAP_STYLE_URLS = {
   dark: "https://tiles.openfreemap.org/styles/fiord",
@@ -141,10 +142,12 @@ export const getMapStyleUrl = (theme) =>
   Object.hasOwn(MAP_STYLE_URLS, theme) ? MAP_STYLE_URLS[theme] : MAP_STYLE_URLS.light;
 
 /**
- * Loads MapLibre once, including when several maps initialize together.
- * @returns {Promise<void>} Resolves when MapLibre is available.
+ * Loads MapLibre JS and CSS once, including when several maps initialize together.
+ * @returns {Promise<void>} Resolves when MapLibre assets are available.
  */
 export const loadMapScript = () =>
-  loadScriptOnce(MAPLIBRE_SCRIPT_SRC, {
-    isLoaded: () => typeof window.maplibregl !== "undefined",
+  loadVendorAssetsOnce({
+    isScriptLoaded: () => typeof window.maplibregl !== "undefined",
+    scriptSrc: MAPLIBRE_SCRIPT_SRC,
+    stylesheetHref: MAPLIBRE_STYLESHEET_HREF,
   });

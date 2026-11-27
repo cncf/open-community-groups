@@ -271,6 +271,19 @@ fn test_base_layout_runs_inline_initializers_before_assets() {
     // Check the viewport mode and color theme behavior modules are loaded
     assert!(html.contains(r#"src="/static/js/common/viewport-mode."#));
     assert!(html.contains(r#"src="/static/js/common/theme."#));
+
+    // Check EasyMDE and MapLibre assets are lazy-loaded rather than global in head
+    assert!(!html.contains("/static/vendor/css/maplibre-gl."));
+    assert!(!html.contains("/static/vendor/css/easymde."));
+    assert!(!html.contains("/static/vendor/js/easymde."));
+
+    // Check SweetAlert2 is deferred and precedes the module scripts
+    let swal_tag = opening_tag_with(&html, r#"src="/static/vendor/js/sweetalert2."#);
+    assert!(swal_tag.contains(" defer"));
+    assert!(
+        html.find(r#"src="/static/vendor/js/sweetalert2."#).unwrap()
+            < html.find(r#"<script type="module""#).unwrap()
+    );
 }
 
 #[test]

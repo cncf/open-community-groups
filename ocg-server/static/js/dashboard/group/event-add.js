@@ -1,3 +1,5 @@
+import "/static/js/dashboard/group/event-form-elements.js";
+import "/static/js/dashboard/group/event-selector/selector.js";
 import { initializeEventContributors } from "/static/js/dashboard/group/event-contributors.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventLabels } from "/static/js/dashboard/group/event-labels.js";

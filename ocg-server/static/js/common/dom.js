@@ -1,6 +1,13 @@
 // Number of element id prefixes generated for components without an id.
 let generatedElementIdPrefixCount = 0;
 
+// Maps dynamically created or awaited <script>/<link> elements to their active load promise.
+const pendingAssetLoads = new WeakMap();
+
+// Tracks vendor stylesheets that failed after their companion script already loaded, so retries
+// reload the stylesheet even though the global script check now returns true.
+const partialStylesheetFailures = new Set();
+
 /**
  * Builds a stable element id from a prefix and suffix.
  * @param {string} prefix Element id prefix.
@@ -264,10 +271,27 @@ export const initializeMatchingRoots = (root = document, selector, initializer) 
 };
 
 /**
+ * Returns whether a vendor script and its companion stylesheet are both ready
+ * without needing another async load.
+ * @param {object} config Asset check configuration.
+ * @param {() => boolean} config.isScriptLoaded Predicate checking the vendor global.
+ * @param {string} config.stylesheetHref Companion stylesheet URL.
+ * @returns {boolean} True when both script and stylesheet are ready.
+ */
+export const isVendorAssetsReady = ({ isScriptLoaded, stylesheetHref }) => {
+  if (!isScriptLoaded() || partialStylesheetFailures.has(stylesheetHref)) {
+    return false;
+  }
+
+  const existingLink = document.querySelector(`link[rel="stylesheet"][href="${stylesheetHref}"]`);
+  return !existingLink || isStylesheetLinkLoaded(existingLink);
+};
+
+/**
  * Loads a script once, or waits for an existing tag with the same src.
  * @param {string} src Script URL.
- * @param {object} options Loader options.
- * @param {() => boolean} options.isLoaded Existing global/library check.
+ * @param {object} [options={}] Loader options.
+ * @param {() => boolean} [options.isLoaded] Existing global/library check.
  * @returns {Promise<void>} Promise resolved when the script is loaded.
  */
 export const loadScriptOnce = (src, { isLoaded = () => false } = {}) => {
@@ -281,29 +305,160 @@ export const loadScriptOnce = (src, { isLoaded = () => false } = {}) => {
       return Promise.resolve();
     }
 
-    return new Promise((resolve, reject) => {
-      existingScript.addEventListener(
-        "load",
-        () => {
-          existingScript.dataset.ocgScriptLoaded = "true";
-          resolve();
-        },
-        { once: true },
-      );
-      existingScript.addEventListener("error", () => reject(new Error(`Failed to load script: ${src}`)), {
-        once: true,
-      });
+    return waitForAssetElement(existingScript, {
+      errorMessage: `Failed to load script: ${src}`,
+      loadedAttr: "ocgScriptLoaded",
+      removeOnError: false,
     });
   }
 
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => {
-      script.dataset.ocgScriptLoaded = "true";
+  const script = document.createElement("script");
+  script.src = src;
+  const loadPromise = waitForAssetElement(script, {
+    errorMessage: `Failed to load script: ${src}`,
+    loadedAttr: "ocgScriptLoaded",
+    removeOnError: true,
+  });
+  document.head.appendChild(script);
+  return loadPromise;
+};
+
+/**
+ * Loads a stylesheet once before the application stylesheet so vendor CSS keeps
+ * its cascade position, or waits for an existing link with the same href.
+ * @param {string} href Stylesheet URL.
+ * @param {object} [options={}] Loader options.
+ * @param {() => boolean} [options.isLoaded] Existing stylesheet check.
+ * @returns {Promise<void>} Promise resolved when the stylesheet is loaded.
+ */
+export const loadStylesheetOnce = (href, { isLoaded = () => false } = {}) => {
+  if (isLoaded()) {
+    return Promise.resolve();
+  }
+
+  const existingLink = document.querySelector(`link[rel="stylesheet"][href="${href}"]`);
+  if (existingLink) {
+    if (isStylesheetLinkLoaded(existingLink)) {
+      return Promise.resolve();
+    }
+
+    return waitForAssetElement(existingLink, {
+      errorMessage: `Failed to load stylesheet: ${href}`,
+      loadedAttr: "ocgStylesheetLoaded",
+      removeOnError: false,
+    });
+  }
+
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = href;
+  const loadPromise = waitForAssetElement(link, {
+    errorMessage: `Failed to load stylesheet: ${href}`,
+    loadedAttr: "ocgStylesheetLoaded",
+    removeOnError: true,
+  });
+
+  const appStylesheet = document.head.querySelector('link[rel="stylesheet"][href^="/static/css/styles"]');
+  if (appStylesheet) {
+    document.head.insertBefore(link, appStylesheet);
+  } else {
+    document.head.appendChild(link);
+  }
+  return loadPromise;
+};
+
+/**
+ * Loads a paired vendor script and stylesheet in parallel once, recovering if
+ * the stylesheet failed while the script succeeded.
+ * @param {object} config Vendor asset configuration.
+ * @param {() => boolean} config.isScriptLoaded Predicate checking the vendor global.
+ * @param {string} config.scriptSrc Script URL.
+ * @param {string} config.stylesheetHref Stylesheet URL.
+ * @returns {Promise<void>} Resolves once both assets are ready.
+ */
+export const loadVendorAssetsOnce = async ({ isScriptLoaded, scriptSrc, stylesheetHref }) => {
+  if (isVendorAssetsReady({ isScriptLoaded, stylesheetHref })) {
+    return;
+  }
+
+  const [stylesheetResult, scriptResult] = await Promise.allSettled([
+    loadStylesheetOnce(stylesheetHref),
+    loadScriptOnce(scriptSrc, { isLoaded: isScriptLoaded }),
+  ]);
+
+  if (stylesheetResult.status === "fulfilled") {
+    partialStylesheetFailures.delete(stylesheetHref);
+  } else if (isScriptLoaded()) {
+    partialStylesheetFailures.add(stylesheetHref);
+  }
+
+  if (stylesheetResult.status === "rejected") {
+    throw stylesheetResult.reason;
+  }
+  if (scriptResult.status === "rejected") {
+    throw scriptResult.reason;
+  }
+};
+
+/**
+ * Returns whether a stylesheet link element has already finished loading.
+ * @param {HTMLLinkElement} link Stylesheet link element.
+ * @returns {boolean} True when the stylesheet is loaded.
+ */
+const isStylesheetLinkLoaded = (link) => link.dataset.ocgStylesheetLoaded === "true" || link.sheet !== null;
+
+/**
+ * Waits once for an asset element to finish loading, sharing one in-flight promise
+ * across concurrent callers and detaching both handlers on settlement.
+ * @param {HTMLScriptElement|HTMLLinkElement} element Asset element to observe.
+ * @param {object} config Settlement behavior.
+ * @param {string} config.errorMessage Rejection message on error.
+ * @param {string} config.loadedAttr Dataset key set to `"true"` on load.
+ * @param {boolean} config.removeOnError Whether to remove the element on error.
+ * @returns {Promise<void>} Shared settlement promise.
+ */
+const waitForAssetElement = (element, { errorMessage, loadedAttr, removeOnError }) => {
+  const existingPromise = pendingAssetLoads.get(element);
+  if (existingPromise) {
+    return existingPromise;
+  }
+
+  const promise = new Promise((resolve, reject) => {
+    const handleLoad = () => {
+      cleanup();
+      element.dataset[loadedAttr] = "true";
       resolve();
     };
-    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-    document.head.appendChild(script);
+    const handleError = () => {
+      cleanup();
+      if (removeOnError) {
+        element.remove();
+      }
+      reject(new Error(errorMessage));
+    };
+
+    // Newly created elements use IDL properties so callers/tests can invoke `.onload()` directly;
+    // existing elements use addEventListener so pre-existing handlers are never overwritten.
+    const cleanup = () => {
+      if (removeOnError) {
+        element.onload = null;
+        element.onerror = null;
+      } else {
+        element.removeEventListener("load", handleLoad);
+        element.removeEventListener("error", handleError);
+      }
+      pendingAssetLoads.delete(element);
+    };
+
+    if (removeOnError) {
+      element.onload = handleLoad;
+      element.onerror = handleError;
+    } else {
+      element.addEventListener("load", handleLoad);
+      element.addEventListener("error", handleError);
+    }
   });
+
+  pendingAssetLoads.set(element, promise);
+  return promise;
 };

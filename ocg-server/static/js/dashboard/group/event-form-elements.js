@@ -1,0 +1,12 @@
+import "/static/js/common/labels-editor.js";
+import "/static/js/common/online-event-details.js";
+import "/static/js/common/timezone-selector.js";
+import "/static/js/common/users/speakers-selector.js";
+import "/static/js/common/users/user-search-selector.js";
+import "/static/js/dashboard/event/cohosts.js";
+import "/static/js/dashboard/event/sessions/section.js";
+import "/static/js/dashboard/event/sponsors.js";
+import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
+import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
+import "/static/js/dashboard/form-page-elements.js";
+import "/static/js/dashboard/location-clear.js";

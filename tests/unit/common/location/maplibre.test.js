@@ -4,6 +4,7 @@ import {
   createMapMarker,
   getMapStyleUrl,
   loadMap,
+  loadMapScript,
 } from "/static/js/common/location/maplibre.js";
 import { THEME_CHANGE_EVENT, THEME_STORAGE_KEY } from "/static/js/common/theme.js";
 import { waitForAnimationFrames } from "/tests/unit/test-utils/async.js";
@@ -40,6 +41,11 @@ describe("shared MapLibre map", () => {
     // Restore the map resources, storage and DOM.
     mapLibre.restore();
     localStorage.removeItem(THEME_STORAGE_KEY);
+    document.head
+      .querySelectorAll(
+        'script[src*="maplibre-gl.v5.24.0.min.js"], link[href*="maplibre-gl.v5.24.0.min.css"], link[href^="/static/css/styles"]',
+      )
+      .forEach((node) => node.remove());
     resetDom();
   });
 
@@ -261,5 +267,48 @@ describe("shared MapLibre map", () => {
     expect(marker.getElement()).to.equal(element);
     expect(marker.coordinates).to.deep.equal([-4.4214, 36.7213]);
     expect(marker.options.anchor).to.equal("center");
+  });
+
+  it("lazy-loads MapLibre CSS before styles.css alongside the script and retries CSS failures", async () => {
+    // Place an app stylesheet in head and clear the global library.
+    const appStylesheet = document.createElement("link");
+    appStylesheet.rel = "stylesheet";
+    appStylesheet.href = "/static/css/styles.abcdef12.css";
+    document.head.append(appStylesheet);
+    delete globalThis.maplibregl;
+
+    // Simulate JS loading while CSS fails on the first attempt.
+    const firstAttempt = loadMapScript();
+    const firstLink = document.head.querySelector(
+      'link[rel="stylesheet"][href="/static/vendor/css/maplibre-gl.v5.24.0.min.css"]',
+    );
+    const firstScript = document.head.querySelector(
+      'script[src="/static/vendor/js/maplibre-gl.v5.24.0.min.js"]',
+    );
+    expect(firstLink).not.to.equal(null);
+    expect(firstLink.nextElementSibling).to.equal(appStylesheet);
+    expect(firstScript).not.to.equal(null);
+
+    globalThis.maplibregl = mapLibre.api;
+    firstScript.onload();
+    firstLink.onerror();
+
+    let firstError = null;
+    try {
+      await firstAttempt;
+    } catch (error) {
+      firstError = error;
+    }
+    expect(firstError).to.be.an("error");
+
+    // Retry and verify CSS is requested again even though the JS global is already present.
+    const retryAttempt = loadMapScript();
+    const retryLink = document.head.querySelector(
+      'link[rel="stylesheet"][href="/static/vendor/css/maplibre-gl.v5.24.0.min.css"]',
+    );
+    expect(retryLink).not.to.equal(null);
+    expect(retryLink.nextElementSibling).to.equal(appStylesheet);
+    retryLink.onload();
+    await retryAttempt;
   });
 });

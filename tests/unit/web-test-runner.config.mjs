@@ -35,7 +35,7 @@ const readVendorBundles = (templatePath) => {
   const bundles = {};
 
   for (const [, path, name] of template.matchAll(
-    /<script src="(\/static\/vendor\/js\/([a-z0-9-]+)\.v[\d.]+\.min\.js)">/g,
+    /<script src="(\/static\/vendor\/js\/([a-z0-9-]+)\.v[\d.]+\.min\.js)"(?:\s+defer)?>/g,
   )) {
     bundles[name] = path;
   }

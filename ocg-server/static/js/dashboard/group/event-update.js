@@ -1,3 +1,6 @@
+import "/static/js/dashboard/event/cfs/actions.js";
+import "/static/js/dashboard/group/badge-award-modal.js";
+import "/static/js/dashboard/group/event-form-elements.js";
 import { confirmAction, confirmSeriesAction, handleHtmxResponse } from "/static/js/common/alerts.js";
 import {
   getElementById,

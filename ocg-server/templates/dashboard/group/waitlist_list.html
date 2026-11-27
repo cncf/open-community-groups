@@ -415,6 +415,10 @@
 {% endif -%}
 {# End pagination -#}
 
+<script type="module" src="/static/js/dashboard/group/events-list.js"></script>
+<script type="module"
+        src="/static/js/common/users/user-profile-modal-triggers.js"></script>
+
 {# Waitlist offer status badge and deadline. #}
 {% macro waitlist_offer_status_badge(entry, event, label, canceled, published) -%}
   {% if let Some(offer_expires_at) = &entry.offer_expires_at -%}
