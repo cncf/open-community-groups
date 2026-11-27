@@ -55,7 +55,8 @@ workers and stacks, in any order.
   `chromium-mobile-deep` projects run; any `--project` argument replaces that
   default.
 - Prebuilt server: `OCG_E2E_SERVER_BINARY` names an executable to run instead
-  of building one, absolute or relative to the repository root.
+  of building one, absolute or relative to the repository root. Release builds
+  exclude `static/images/e2e/` unless compiled with `OCG_INCLUDE_E2E_ASSETS=1`.
 - Shutdown: after Playwright finishes or is interrupted, the servers are
   stopped with `SIGINT`, so they skip the drain delay and exit cleanly. The
   recipe exits with Playwright's status.
