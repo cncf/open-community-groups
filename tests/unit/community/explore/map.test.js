@@ -107,6 +107,9 @@ describe("community explore map", () => {
     document.head
       .querySelector('script[src*="maplibre-gl.v5.24.0.min.js"]')
       ?.remove();
+    document.head
+      .querySelector('link[href*="maplibre-gl.v5.24.0.min.css"]')
+      ?.remove();
     resetDom();
   });
 
@@ -152,14 +155,19 @@ describe("community explore map", () => {
   };
 
   it("loads only MapLibre and configures Bright with attribution and zoom controls at the top", async () => {
-    // Resolve the requested vendor script before initializing the map.
+    // Resolve the requested vendor script and stylesheet before initializing the map.
     delete globalThis.maplibregl;
     const controller = new ExploreMap("groups", { groups: [] });
+    const link = document.head.querySelector(
+      'link[rel="stylesheet"][href*="maplibre-gl.v5.24.0.min.css"]',
+    );
     const script = document.head.querySelector(
       'script[src*="maplibre-gl.v5.24.0.min.js"]',
     );
+    expect(link).not.to.equal(null);
     expect(script).not.to.equal(null);
     globalThis.maplibregl = mapLibre.api;
+    link.onload();
     script.onload();
     await waitForMicrotask();
     await controller.setupPromise;

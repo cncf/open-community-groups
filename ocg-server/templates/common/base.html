@@ -80,9 +80,6 @@
     {% endif -%}
 
     {# Styles -#}
-    <link rel="stylesheet"
-          href="/static/vendor/css/maplibre-gl.v5.24.0.min.css" />
-    <link rel="stylesheet" href="/static/vendor/css/easymde.v2.21.0.min.css" />
     <link rel="stylesheet" href="/static/css/styles.css" />
     {# Brand ramp: per-site light primary shades, read by the numbered primary
        shades in styles.css, and dark primary roles, read by the dark block.
@@ -104,8 +101,7 @@
 }</script>
     {# djlint:on #}
     <script src="/static/vendor/js/htmx.v2.0.10.min.js"></script>
-    <script src="/static/vendor/js/sweetalert2.v11.26.25.min.js"></script>
-    <script src="/static/vendor/js/easymde.v2.21.0.min.js"></script>
+    <script src="/static/vendor/js/sweetalert2.v11.26.25.min.js" defer></script>
     <script type="module" src="/static/js/common/app-init.js"></script>
     <script type="module" src="/static/js/common/header.js"></script>
     <script type="module" src="/static/js/common/modals/modal-toggle-bindings.js"></script>

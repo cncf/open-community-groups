@@ -29,7 +29,6 @@ const ROW_TICKET_EMPTY_SELECTOR =
 const ROW_TICKET_SUBMIT_SELECTOR =
   "[data-invitation-request-ticket-submit], [data-waitlist-invite-ticket-submit]";
 const ROW_TICKET_TYPE_SELECTOR = "[data-invitation-request-ticket-type], [data-waitlist-invite-ticket-type]";
-const TABLE_FILTER_MENU_SELECTOR = "[data-table-filter-menu]";
 const initializedRoots = new WeakSet();
 let documentDismissHandlerBound = false;
 
@@ -93,7 +92,7 @@ export const initializeEventsListPage = (root = document) => {
 };
 
 /**
- * Binds global dismissal for event actions and table filters once.
+ * Binds global dismissal for event actions once.
  * @returns {void}
  */
 const bindDocumentDropdownDismissHandler = () => {
@@ -103,14 +102,6 @@ const bindDocumentDropdownDismissHandler = () => {
 
   documentDismissHandlerBound = true;
   document.addEventListener("click", (event) => {
-    const tableFilterMenu = closestElement(event.target, TABLE_FILTER_MENU_SELECTOR);
-    if (tableFilterMenu) {
-      closeTableFilterMenus(tableFilterMenu);
-      return;
-    }
-
-    closeTableFilterMenus();
-
     if (
       closestElement(event.target, EVENTS_LIST_PAGE_SELECTOR) ||
       closestElement(event.target, EVENT_ACTION_DROPDOWN_SELECTOR) ||
@@ -123,7 +114,6 @@ const bindDocumentDropdownDismissHandler = () => {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      closeTableFilterMenus();
       closeDropdowns(document, null, true);
     }
   });
@@ -147,19 +137,6 @@ const closeDropdowns = (root, exceptDropdown = null, restoreFocus = false) => {
     setActionsDropdownExpanded(root, dropdown, false);
     if (shouldRestoreFocus) {
       actionsButton?.focus();
-    }
-  });
-};
-
-/**
- * Closes table filter disclosure elements except an optional active menu.
- * @param {Element|null} exceptMenu Menu to keep open.
- * @returns {void}
- */
-const closeTableFilterMenus = (exceptMenu = null) => {
-  document.querySelectorAll(`${TABLE_FILTER_MENU_SELECTOR}[open]`).forEach((menu) => {
-    if (menu !== exceptMenu) {
-      menu.open = false;
     }
   });
 };

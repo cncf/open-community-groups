@@ -1208,6 +1208,10 @@
 {% include "dashboard/group/check_in_scanner_modal.html" -%}
 {# End QR scanner modal -#}
 
+<script type="module" src="/static/js/dashboard/group/attendees.js"></script>
+<script type="module" src="/static/js/dashboard/group/badge-award-modal.js"></script>
+<script type="module" src="/static/js/dashboard/group/check-in/scanner.js"></script>
+
 {# Active offer badge with deadline tooltip. #}
 {% macro attendee_offer_status_badge(attendee, event, label, canceled, status_instance) -%}
   {% if let Some(offer_expires_at) = &attendee.offer_expires_at -%}

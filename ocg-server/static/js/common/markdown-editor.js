@@ -1,6 +1,10 @@
 import { html, nothing } from "lit";
 import { createRef, ref } from "lit/directives/ref.js";
+import { isVendorAssetsReady, loadVendorAssetsOnce } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+
+const EASYMDE_SCRIPT_SRC = "/static/vendor/js/easymde.v2.21.0.min.js";
+const EASYMDE_STYLESHEET_HREF = "/static/vendor/css/easymde.v2.21.0.min.css";
 
 // Shared inline SVG attributes for local EasyMDE toolbar icons.
 const TOOLBAR_ICON_ATTRS =
@@ -132,13 +136,92 @@ export class MarkdownEditor extends LitWrapper {
     this.mini = false;
     this.disabled = false;
     this.maxlength = undefined;
+    this._editor = null;
+    this._loadingEditor = false;
+    this._seededInitialContent = false;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    // Retry lazy enhancement if the element was detached during loading and reconnected later.
+    if (this.hasUpdated && !this._editor && !this._loadingEditor) {
+      this._ensureEditorInitialized();
+    }
   }
 
   firstUpdated() {
     super.firstUpdated();
+    this._ensureEditorInitialized();
+  }
 
+  updated(changedProperties) {
+    super.updated(changedProperties);
+    if (changedProperties.has("disabled")) {
+      this._syncDisabledState();
+    }
+  }
+
+  /**
+   * Seeds initial textarea content and enhances it with EasyMDE once assets are ready.
+   * @returns {void}
+   * @private
+   */
+  _ensureEditorInitialized() {
     const textarea = this.textareaRef.value;
-    if (!textarea) {
+    if (!textarea || this._editor || this._loadingEditor) {
+      return;
+    }
+
+    if (!this._seededInitialContent) {
+      this._seededInitialContent = true;
+      if (!textarea.value && this.content) {
+        textarea.value = this.content;
+      }
+    }
+
+    if (
+      isVendorAssetsReady({
+        isScriptLoaded: isEasyMdeScriptLoaded,
+        stylesheetHref: EASYMDE_STYLESHEET_HREF,
+      })
+    ) {
+      this._initEditor(textarea);
+      return;
+    }
+
+    void this._loadAndInitEditor(textarea);
+  }
+
+  /**
+   * Forwards native textarea input to `onChange` while EasyMDE has not enhanced the field.
+   * @param {InputEvent} event Native textarea input event
+   * @returns {void}
+   * @private
+   */
+  _handleTextareaInput(event) {
+    if (!this._editor && this.onChange) {
+      this.onChange(event.target.value);
+    }
+  }
+
+  /**
+   * Lazy-loads EasyMDE JS and CSS and initializes the editor if still connected.
+   * @param {HTMLTextAreaElement} textarea - The textarea element to enhance
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _loadAndInitEditor(textarea) {
+    this._loadingEditor = true;
+    try {
+      await loadEasyMdeAssets();
+    } catch (error) {
+      console.error("Failed to load EasyMDE assets:", error);
+      return;
+    } finally {
+      this._loadingEditor = false;
+    }
+
+    if (!this.isConnected || !textarea.isConnected || this.textareaRef.value !== textarea || this._editor) {
       return;
     }
 
@@ -151,6 +234,10 @@ export class MarkdownEditor extends LitWrapper {
    * @private
    */
   _initEditor(textarea) {
+    const hadFocus = document.activeElement === textarea;
+    const selectionStart = hadFocus ? textarea.selectionStart : null;
+    const selectionEnd = hadFocus ? textarea.selectionEnd : null;
+
     // Disable CDN-backed Font Awesome and dictionary spellcheck fetches to stay CSP-clean.
     // CodeMirror's dictionary spellcheck is omitted; desktop uses plain textarea editing
     // and touch devices use browser spellcheck where supported.
@@ -160,7 +247,7 @@ export class MarkdownEditor extends LitWrapper {
       autoRefresh: { delay: 300 },
       element: textarea,
       forceSync: true,
-      initialValue: this.content,
+      initialValue: textarea.value,
       previewClass: "markdown",
       // Match server-side rendering, where single line breaks are soft breaks
       renderingConfig: { singleLineBreaks: false },
@@ -169,31 +256,77 @@ export class MarkdownEditor extends LitWrapper {
       toolbar: buildEasyMdeToolbar(EasyMDE),
     });
 
+    this._editor = markdownEditor;
     markdownEditor.codemirror.on("change", () => {
       if (this.onChange) {
         this.onChange(markdownEditor.value());
       }
     });
 
+    this._syncDisabledState();
+
+    // Hide the validation textarea visually and from assistive tech once EasyMDE owns editing.
+    textarea.className = "absolute top-0 left-0 opacity-0 p-0";
+    textarea.removeAttribute("aria-label");
+    textarea.setAttribute("aria-hidden", "true");
     // Show textarea to avoid console errors with required attribute
     textarea.style.display = "block";
     // Set after init: CodeMirror copies a textarea tabindex onto its own input.
     textarea.tabIndex = -1;
+
+    // Transfer focus and caret position if the user started typing before EasyMDE finished loading.
+    if (hadFocus) {
+      if (typeof markdownEditor.codemirror?.focus === "function") {
+        markdownEditor.codemirror.focus();
+        if (
+          selectionStart !== null &&
+          selectionEnd !== null &&
+          typeof markdownEditor.codemirror?.posFromIndex === "function" &&
+          typeof markdownEditor.codemirror?.setSelection === "function"
+        ) {
+          markdownEditor.codemirror.setSelection(
+            markdownEditor.codemirror.posFromIndex(selectionStart),
+            markdownEditor.codemirror.posFromIndex(selectionEnd),
+          );
+        }
+      } else {
+        textarea.blur();
+      }
+    }
+  }
+
+  /**
+   * Synchronizes CodeMirror's read-only option and toolbar buttons with the disabled property.
+   * @returns {void}
+   * @private
+   */
+  _syncDisabledState() {
+    this._editor?.codemirror?.setOption?.("readOnly", this.disabled ? "nocursor" : false);
+    this.querySelectorAll(".editor-toolbar button").forEach((button) => {
+      button.disabled = this.disabled;
+    });
   }
 
   render() {
-    // The textarea only carries the form value and validation; EasyMDE renders the editable input.
+    // Keep the textarea visible and accessible until EasyMDE takes over editing, avoiding
+    // zero-height layout shifts, invisible focus targets, and unusable fallback fields.
+    const textareaClass = this._editor
+      ? "absolute top-0 left-0 opacity-0 p-0"
+      : `input-primary w-full ${this.mini ? "min-h-24" : "min-h-36"}`;
+    const fallbackAriaLabel = !this._editor && !this.inputId ? resolveHostLabelText(this.id) : "";
     return html`
       <div class="relative text-sm/6 ${this.mini ? "mini" : ""}">
         <textarea
           ${ref(this.textareaRef)}
           id=${this.inputId || nothing}
           name=${this.name || this.id}
-          class="absolute top-0 left-0 opacity-0 p-0"
-          aria-hidden="true"
+          class=${textareaClass}
+          aria-label=${fallbackAriaLabel || nothing}
+          aria-hidden=${this._editor ? "true" : nothing}
           ?required=${this.required}
           ?disabled=${this.disabled}
           maxlength=${this.maxlength}
+          @input=${this._handleTextareaInput}
         ></textarea>
       </div>
     `;
@@ -292,5 +425,35 @@ const buildEasyMdeToolbar = (editorCtor) => [
     title: "Redo",
   },
 ];
+
+/**
+ * Returns whether the EasyMDE script constructor is available on window.
+ * @returns {boolean} True when EasyMDE is defined.
+ */
+const isEasyMdeScriptLoaded = () => typeof window.EasyMDE !== "undefined";
+
+/**
+ * Loads EasyMDE JS and CSS once, including when several editors mount together.
+ * @returns {Promise<void>} Resolves when EasyMDE assets are available.
+ */
+const loadEasyMdeAssets = () =>
+  loadVendorAssetsOnce({
+    isScriptLoaded: isEasyMdeScriptLoaded,
+    scriptSrc: EASYMDE_SCRIPT_SRC,
+    stylesheetHref: EASYMDE_STYLESHEET_HREF,
+  });
+
+/**
+ * Resolves accessible label text from a document `<label for="...">` pointing at the host.
+ * @param {string} hostId Host element id.
+ * @returns {string} Trimmed label text, or empty string when none exists.
+ */
+const resolveHostLabelText = (hostId) => {
+  if (!hostId || typeof CSS?.escape !== "function") {
+    return "";
+  }
+  const label = document.querySelector(`label[for="${CSS.escape(hostId)}"]`);
+  return label?.textContent?.replace(/\s+/g, " ").trim() || "";
+};
 
 customElements.define("markdown-editor", MarkdownEditor);

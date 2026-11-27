@@ -146,4 +146,39 @@ describe("actions menu", () => {
     expect(dropdown.style.insetBlockStart).to.equal("auto");
     expect(dropdown.style.insetBlockEnd).to.equal("calc(100% + 8px)");
   });
+
+  it("dismisses table filter menus on outside click, sibling click, and escape while keeping inside clicks open", () => {
+    // Render two table filter menus and an outside button.
+    document.body.innerHTML = `
+      <details data-table-filter-menu open>
+        <summary>Status</summary>
+        <label><input type="checkbox" /> Open</label>
+      </details>
+      <details data-table-filter-menu>
+        <summary>Type</summary>
+        <label><input type="checkbox" /> Paid</label>
+      </details>
+      <button id="outside" type="button">Outside</button>
+    `;
+    const menus = document.querySelectorAll("[data-table-filter-menu]");
+
+    // Clicking inside a filter menu keeps it open while closing any other open menu.
+    menus[0].querySelector("input").click();
+    expect(menus[0].open).to.equal(true);
+    menus[1].open = true;
+    menus[0].querySelector("input").click();
+    expect(menus[0].open).to.equal(true);
+    expect(menus[1].open).to.equal(false);
+
+    // Clicking outside dismisses the open filter menu.
+    document.getElementById("outside").click();
+    expect(menus[0].open).to.equal(false);
+
+    // Pressing Escape dismisses an open filter menu and restores focus to its summary.
+    menus[0].open = true;
+    menus[0].querySelector("input").focus();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(menus[0].open).to.equal(false);
+    expect(document.activeElement).to.equal(menus[0].querySelector("summary"));
+  });
 });

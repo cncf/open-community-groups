@@ -5,6 +5,7 @@ import { isEscapeEvent } from "/static/js/common/keyboard.js";
 const ACTIONS_MENU_SELECTOR = "[data-actions-menu]";
 const ACTIONS_MENU_DROPDOWN_SELECTOR = ":scope > .dropdown";
 const DATA_KEY = "actionsMenuReady";
+const TABLE_FILTER_MENU_SELECTOR = "[data-table-filter-menu]";
 const VIEWPORT_GAP = 8;
 
 /**
@@ -81,7 +82,21 @@ export const closeActionsMenus = (root = document, exceptMenu = null) => {
 };
 
 /**
- * Initializes delegated details-based action menu behavior.
+ * Closes details-based table filter menus within a root.
+ * @param {Document|Element} [root=document] Query root.
+ * @param {HTMLDetailsElement|null} [exceptMenu=null] Menu to keep open.
+ * @returns {void}
+ */
+export const closeTableFilterMenus = (root = document, exceptMenu = null) => {
+  root.querySelectorAll?.(`${TABLE_FILTER_MENU_SELECTOR}[open]`).forEach((menu) => {
+    if (menu instanceof HTMLDetailsElement && menu !== exceptMenu) {
+      menu.open = false;
+    }
+  });
+};
+
+/**
+ * Initializes delegated details-based action menu and table filter dismissal.
  * @returns {void}
  */
 export const initializeActionsMenus = () => {
@@ -90,6 +105,13 @@ export const initializeActionsMenus = () => {
   }
 
   document.addEventListener("click", (event) => {
+    const tableFilterMenu = closestElement(event.target, TABLE_FILTER_MENU_SELECTOR);
+    if (tableFilterMenu instanceof HTMLDetailsElement) {
+      closeTableFilterMenus(document, tableFilterMenu);
+    } else {
+      closeTableFilterMenus(document);
+    }
+
     const summary = closestElement(event.target, `${ACTIONS_MENU_SELECTOR} > summary`);
     const menu = summary?.closest(ACTIONS_MENU_SELECTOR);
     if (menu instanceof HTMLDetailsElement) {
@@ -114,6 +136,18 @@ export const initializeActionsMenus = () => {
   document.addEventListener("keydown", (event) => {
     if (!isEscapeEvent(event)) {
       return;
+    }
+
+    const focusedFilterMenu = closestElement(document.activeElement, TABLE_FILTER_MENU_SELECTOR);
+    const openFilterMenu =
+      focusedFilterMenu instanceof HTMLDetailsElement && focusedFilterMenu.open ? focusedFilterMenu : null;
+    closeTableFilterMenus(document);
+    if (openFilterMenu) {
+      const summary = openFilterMenu.querySelector("summary");
+      if (summary instanceof HTMLElement) {
+        event.preventDefault();
+        summary.focus();
+      }
     }
 
     const focusedMenu = closestElement(document.activeElement, ACTIONS_MENU_SELECTOR);

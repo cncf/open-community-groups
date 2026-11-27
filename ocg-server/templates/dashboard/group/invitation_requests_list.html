@@ -552,6 +552,10 @@
 {% endif -%}
 {# End pagination -#}
 
+<script type="module" src="/static/js/dashboard/group/events-list.js"></script>
+<script type="module"
+        src="/static/js/common/users/user-profile-modal-triggers.js"></script>
+
 {# Invitation request ticket offer outcome for the column or stacked status layout. #}
 {% macro invitation_request_offer(request, event, stacked = false) -%}
   {% if let Some(offer_status) = request.admission_offer_status -%}

@@ -42,6 +42,9 @@ describe("location map preview", () => {
     document.head
       .querySelector('script[src*="maplibre-gl.v5.24.0.min.js"]')
       ?.remove();
+    document.head
+      .querySelector('link[href*="maplibre-gl.v5.24.0.min.css"]')
+      ?.remove();
     resetDom();
   });
 
@@ -147,8 +150,11 @@ describe("location map preview", () => {
     const pendingMap = loadMap("location-map", 36.7213, -4.4214);
     document.getElementById("location-map").remove();
 
-    // Complete the script load after the preview has disappeared.
+    // Complete the script and stylesheet loads after the preview has disappeared.
     globalThis.maplibregl = mapLibre.api;
+    document.head
+      .querySelector('link[href*="maplibre-gl.v5.24.0.min.css"]')
+      .onload();
     document.head
       .querySelector('script[src*="maplibre-gl.v5.24.0.min.js"]')
       .onload();

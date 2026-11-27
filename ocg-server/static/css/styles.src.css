@@ -2687,6 +2687,9 @@ input:placeholder-shown {
 .htmx-request.hx-spinner {
   display: inline;
 }
+.hx-spinner[data-ocg-preloading] {
+  display: inline;
+}
 .header-dropdown-link-pending .hx-spinner {
   display: inline;
 }
@@ -2804,7 +2807,7 @@ input:placeholder-shown {
 
 @variant phone {
   /* Phones keep the dashboard spinner inside the closed menu sheet, so the bar stands in. */
-  html:has(#dashboard-spinner.htmx-request)::after {
+  html:has(#dashboard-spinner:is(.htmx-request, [data-ocg-preloading]))::after {
     animation: var(--page-loading-bar-animation);
   }
 }
