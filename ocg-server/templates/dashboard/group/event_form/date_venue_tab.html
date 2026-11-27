@@ -1,0 +1,289 @@
+{# Date & Venue Tab (shared by events_add.html and events_update.html; expects `form`, `meetings_enabled`, `meetings_max_participants`, `timezones`, `setting_half_col`, `setting_spacer_col`) -#}
+<div data-content="date-venue" class="hidden">
+  <form id="date-venue-form" data-event-form>
+    <div class="space-y-12">
+      {# Date and Time section -#}
+      <div>
+        {{ dashboard::form_title(title = "Date & Venue", description = "When will this event take place?") -}}
+        {% if let Some(event) = form.existing_event -%}
+          {% if event.is_past() -%}
+            <p class="mt-2 text-xs text-stone-500">
+              Past events can be edited, but dates cannot be moved into the future.
+            </p>
+          {%- endif %}
+        {%- endif %}
+
+        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+          {# Timezone -#}
+          <div class="{{ setting_half_col }}">
+            <label class="form-label">
+              Timezone <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <timezone-selector name="timezone" {% if let Some(event) = form.existing_event %}value="{{ event.timezone }}" {% endif %}timezones="{{ timezones|json }}" required></timezone-selector>
+            </div>
+            <p class="form-legend">Timezone for event times (e.g. America/New_York, Europe/Amsterdam).</p>
+          </div>
+          {# End Timezone -#}
+
+          <div class="{{ setting_spacer_col }}"></div>
+
+          {# Start date/time -#}
+          <div class="{{ setting_half_col }}">
+            <label for="starts_at" class="form-label">Start Date & Time</label>
+            <div class="mt-2">
+              <input type="datetime-local"
+                     name="starts_at"
+                     id="starts_at"
+                     class="input-primary"
+                     {% if let Some(event) = form.existing_event %}value="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}"{% endif %}>
+            </div>
+            <p class="form-legend">When the event starts.</p>
+          </div>
+          {# End Start date/time -#}
+
+          {# Finish date/time -#}
+          <div class="{{ setting_half_col }}">
+            <label for="ends_at" class="form-label">End Date & Time</label>
+            <div class="mt-2">
+              <input type="datetime-local"
+                     name="ends_at"
+                     id="ends_at"
+                     class="input-primary"
+                     {% if let Some(event) = form.existing_event %}value="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}"{% endif %}>
+            </div>
+            <p class="form-legend">When the event ends.</p>
+          </div>
+          {# End finish date/time -#}
+
+          {# Registration window start -#}
+          <div class="{{ setting_half_col }}">
+            <label for="registration_starts_at" class="form-label">Registration Opens</label>
+            <div class="mt-2">
+              <input type="datetime-local"
+                     name="registration_starts_at"
+                     id="registration_starts_at"
+                     class="input-primary"
+                     {% if let Some(event) = form.existing_event %}value="{{ event.registration_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}"{% endif %}>
+            </div>
+            <p class="form-legend">Leave blank to allow registration immediately.</p>
+          </div>
+          {# End registration window start -#}
+
+          {# Registration window end -#}
+          <div class="{{ setting_half_col }}">
+            <label for="registration_ends_at" class="form-label">Registration Closes</label>
+            <div class="mt-2">
+              <input type="datetime-local"
+                     name="registration_ends_at"
+                     id="registration_ends_at"
+                     class="input-primary"
+                     {% if let Some(event) = form.existing_event %}value="{{ event.registration_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}"{% endif %}>
+            </div>
+            <p class="form-legend">
+              Must be after the open date. Leave blank with an open date to close at event start.
+              Leave both fields blank for no window.
+            </p>
+          </div>
+          {# End registration window end -#}
+
+          <div class="col-span-full rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
+            A registration window limits attendee self-registration, ticket checkout, new invitation
+            requests, waitlist promotion, and registration-question answers. Organizers can still
+            accept pending invitation requests and reissue expired approval offers outside the
+            window. Rejecting requests and inviting attendees manually still work; those invitees can
+            complete required registration questions.
+          </div>
+
+          {% if form.existing_event.is_none() -%}
+            {# Recurrence -#}
+            <div class="{{ setting_half_col }}">
+              <label for="recurrence_pattern" class="form-label">Recurrence</label>
+              <div class="mt-2">
+                <select id="recurrence_pattern"
+                        name="recurrence_pattern"
+                        class="input-primary">
+                  <option value="just-once">Just once</option>
+                  <option value="weekly" data-recurrence-label="weekly">Weekly</option>
+                  <option value="biweekly" data-recurrence-label="biweekly">Every two weeks</option>
+                  <option value="monthly" data-recurrence-label="monthly">Monthly</option>
+                </select>
+              </div>
+              <p class="form-legend">Create linked events from this event's dates and schedule.</p>
+            </div>
+
+            <div id="recurrence-additional-occurrences-container"
+                 class="hidden {{ setting_half_col }}">
+              <label for="recurrence_additional_occurrences" class="form-label">
+                Additional Events <span class="asterisk">*</span>
+              </label>
+              <div class="mt-2">
+                <input type="number"
+                       name="recurrence_additional_occurrences"
+                       id="recurrence_additional_occurrences"
+                       min="1"
+                       max="{{ crate::validation::MAX_RECURRING_ADDITIONAL_OCCURRENCES }}"
+                       class="input-primary"
+                       inputmode="numeric">
+              </div>
+              <p class="form-legend">
+                How many extra linked events to create, up to {{ crate::validation::MAX_RECURRING_ADDITIONAL_OCCURRENCES }}.
+              </p>
+            </div>
+            {# End Recurrence -#}
+          {% endif -%}
+
+          {# Event reminder toggle -#}
+          <div class="col-span-full lg:col-span-6">
+            <label class="inline-flex items-center cursor-pointer">
+              <input id="toggle_event_reminder_enabled"
+                     name="toggle_event_reminder_enabled"
+                     value="enabled"
+                     type="checkbox"
+                     class="sr-only peer"
+                     {% if form.event_reminder_enabled() %}checked{% endif %}>
+              <input type="hidden"
+                     id="event_reminder_enabled"
+                     name="event_reminder_enabled"
+                     value="{{ form.event_reminder_enabled() }}">
+              <div class="toggle-track"></div>
+              <span class="ms-3 text-sm font-medium text-stone-900">Send Event Reminder</span>
+            </label>
+            <p class="form-legend">Send a reminder email 24 hours before the event starts.</p>
+          </div>
+          {# End Event reminder toggle -#}
+        </div>
+      </div>
+      {# End date and time section -#}
+
+      {# Venue Information section -#}
+      <div id="venue-information-section"
+           class="border-t border-stone-900/10 pt-12">
+        {% let clear_location_button -%}
+        <button id="clear-location-fields"
+                type="button"
+                class="btn-primary-outline btn-mini whitespace-nowrap"
+                aria-label="Clear location details">Clear location</button>
+      {%- endlet %}
+      {{ dashboard::form_title(title = "Venue Information",
+        description = "Location details for in-person and hybrid events.",
+        button = clear_location_button) -}}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Location search -#}
+        {# djlint:off #}
+        <div class="col-span-full">
+          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" state-field-name="venue_state_name" state-code-field-name="venue_state_code" country-name-field-name="venue_country_name" country-code-field-name="venue_country_code" latitude-field-name="latitude" longitude-field-name="longitude"{% if let Some(event) = form.existing_event %} {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %} {% if let Some(venue_address) = &event.venue_address %}initial-venue-address="{{ venue_address }}"{% endif %} {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %} {% if let Some(venue_zip_code) = &event.venue_zip_code %}initial-venue-zip-code="{{ venue_zip_code }}"{% endif %} {% if let Some(venue_state_name) = &event.venue_state_name %}initial-state="{{ venue_state_name }}"{% endif %} {% if let Some(venue_state_code) = &event.venue_state_code %}initial-state-code="{{ venue_state_code }}"{% endif %} {% if let Some(venue_country_name) = &event.venue_country_name %}initial-country-name="{{ venue_country_name }}"{% endif %} {% if let Some(venue_country_code) = &event.venue_country_code %}initial-country-code="{{ venue_country_code }}"{% endif %} {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %} {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}{% endif %}>
+          </location-search-field>
+        </div>
+        {# djlint:on #}
+        {# End location search -#}
+      </div>
+    </div>
+    {# End venue information section -#}
+
+    {# Online Event Details section -#}
+    <div id="online-event-details-section"
+         class="border-t border-stone-900/10 pt-12">
+      {{ dashboard::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -}}
+      <div class="mt-10 max-w-5xl">
+        {% if meetings_enabled %}
+          {# djlint:off #}
+          {% if let Some(event) = form.existing_event %}
+            <online-event-details id="online-event-details" kind="{{ event.kind }}" {% if event.is_past() %}event-past{% endif %} {% if let Some(meeting_join_url) = &event.meeting_join_url %}meeting-join-url="{{ meeting_join_url }}"{% endif %} {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %}meeting-join-instructions="{{ meeting_join_instructions|json }}"{% endif %} {% if let Some(meeting_recording_url) = &event.meeting_recording_url %}meeting-recording-url="{{ meeting_recording_url }}"{% endif %} meeting-recording-published="{{ event.meeting_recording_published.unwrap_or(false) }}" {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %}meeting-recording-raw-urls="{{ meeting_recording_raw_urls|json }}"{% endif %} {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %}meeting-recording-requested="{{ meeting_recording_requested }}"{% endif %} {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %} {% if let Some(meeting_in_sync) = &event.meeting_in_sync %}{% if meeting_in_sync %}meeting-in-sync="true"{% endif %}{% endif %} {% if let Some(meeting_password) = &event.meeting_password %}meeting-password="{{ meeting_password }}"{% endif %} {% if let Some(meeting_error) = &event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %} {% if let Some(meeting_hosts) = &event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %} meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}"></online-event-details>
+          {% else %}
+            <online-event-details id="online-event-details" kind="virtual" meeting-max-participants="{{ meetings_max_participants|json }}"></online-event-details>
+          {% endif %}
+          {# djlint:on #}
+        {% else %}
+          <div class="space-y-6">
+            <div class="grid grid-cols-1 gap-6">
+              <div class="space-y-2">
+                <label for="meeting_join_url" class="form-label">Meeting URL</label>
+                <div class="mt-2">
+                  <input type="url"
+                         id="meeting_join_url"
+                         name="meeting_join_url"
+                         class="input-primary"
+                         placeholder="https://meet.example.com/123456789"
+                         {% if let Some(meeting_join_url) = form.meeting_join_url() %}value="{{ meeting_join_url }}"{% endif %}>
+                </div>
+                <p class="form-legend">Teams, Meet, or any other video link.</p>
+              </div>
+              <div class="space-y-2">
+                <label for="meeting_join_instructions" class="form-label">Join instructions (optional)</label>
+                <div class="mt-2">
+                  <textarea id="meeting_join_instructions"
+                            name="meeting_join_instructions"
+                            rows="4"
+                            maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                            class="input-primary"
+                            placeholder="Add passcodes, waiting room details, or other attendee instructions.">{% if let Some(meeting_join_instructions) = form.meeting_join_instructions() %}{{ meeting_join_instructions }}{% endif %}</textarea>
+                </div>
+                <p class="form-legend">Shown with the meeting details on the public event page.</p>
+              </div>
+              {% if let Some(event) = form.existing_event %}
+                {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %}
+                  <div class="space-y-2">
+                    {% for meeting_recording_raw_url in meeting_recording_raw_urls %}
+                      <div class="space-y-2">
+                        <label for="meeting_recording_raw_urls_{{ loop.index }}" class="form-label">
+                          Original provider recording {{ loop.index }}
+                        </label>
+                        <div class="mt-2">
+                          <input type="url"
+                                 id="meeting_recording_raw_urls_{{ loop.index }}"
+                                 class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
+                                 value="{{ meeting_recording_raw_url }}"
+                                 readonly>
+                        </div>
+                      </div>
+                    {% endfor %}
+                    <p class="form-legend">
+                      Zoom can send multiple raw recordings when participants join before or after the main meeting. Review them and copy the correct URL into the final public recording field if needed.
+                    </p>
+                  </div>
+                {% endif %}
+              {% endif %}
+              <div class="space-y-2">
+                <label for="meeting_recording_url"
+                       class="form-label">Final public recording URL (optional)</label>
+                <div class="mt-2">
+                  <input type="url"
+                         id="meeting_recording_url"
+                         name="meeting_recording_url"
+                         class="input-primary"
+                         placeholder="https://youtube.com/watch?v=..."
+                         {% if let Some(meeting_recording_url) = form.meeting_recording_url() %}value="{{ meeting_recording_url }}"{% endif %}>
+                </div>
+                <p class="form-legend">
+                  Optional final recording URL, such as a processed upload or a reviewed provider recording.
+                </p>
+              </div>
+              <div class="space-y-2">
+                <label class="inline-flex items-center cursor-pointer">
+                  <input id="toggle_meeting_recording_published"
+                         name="toggle_meeting_recording_published"
+                         type="checkbox"
+                         class="sr-only peer"
+                         value="true"
+                         {% if form.meeting_recording_published() %}checked{% endif %}>
+                  <input type="hidden"
+                         id="meeting_recording_published"
+                         name="meeting_recording_published"
+                         value="{{ form.meeting_recording_published() }}">
+                  <span class="toggle-track"></span>
+                  <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
+                </label>
+                <p class="form-legend">Controls whether public visitors can see the final public recording URL.</p>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {# End online event details section -#}
+  </div>
+</form>
+</div>
+{# End Date & Venue Tab -#}

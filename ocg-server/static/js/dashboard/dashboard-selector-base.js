@@ -151,7 +151,7 @@ export class DashboardSelectorBase extends LitWrapper {
     this._combobox.close();
     try {
       await this._selectDashboardItem(this._getItemId(item));
-    } catch (_) {
+    } catch {
       showErrorAlert(
         `Something went wrong selecting the ${this._selectorConfig.errorLabel}. Please try again later.`,
       );

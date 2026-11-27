@@ -396,7 +396,8 @@ describe("community contact", () => {
   it("wires a form restored from an HTMX history snapshot", async () => {
     // Initialize the contact form, then restore its serialized markup
     initializeCommunityContactForm(renderContactForm());
-    document.body.innerHTML = document.body.innerHTML;
+    const serializedHtml = document.body.innerHTML;
+    document.body.innerHTML = serializedHtml;
     const restoredForm = document.getElementById("community-contact-form");
     initializeCommunityContactForm(restoredForm);
 

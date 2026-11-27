@@ -433,7 +433,7 @@ class EventSelector extends LitWrapper {
     this._primaryFetchPromise = fetchPromise;
     try {
       await fetchPromise;
-    } catch (_error) {
+    } catch {
       // handled above
     } finally {
       this._primaryFetchPromise = null;
@@ -477,7 +477,7 @@ class EventSelector extends LitWrapper {
           this.selectedEvent = match;
         }
       }
-    } catch (_error) {
+    } catch {
       if (isCurrentSearch()) {
         this._error = "Unable to load events";
       }

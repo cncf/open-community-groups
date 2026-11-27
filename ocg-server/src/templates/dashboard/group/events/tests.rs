@@ -107,6 +107,11 @@ fn test_add_page_renders_external_payment_fields_for_external_rail() {
         normalize_whitespace(&html).contains("Organizers are responsible for tax and receipts")
     );
 
+    // Check add-only external rail omits update-only presence markers
+    assert!(!html.contains(r#"name="external_payment_url_present""#));
+    assert!(!html.contains(r#"name="external_payment_window_hours_present""#));
+    assert!(!html.contains(r#"name="external_payment_instructions_present""#));
+
     // Check the Stripe rail renders no external payment fields
     let html = sample_add_page(GroupExternalPaymentsContext::default(), true)
         .render()
@@ -183,6 +188,11 @@ fn test_add_page_renders_tax_controls_only_for_paid_ticketing() {
         assert_eq!(
             element_text_with(&html, readiness),
             "Check readiness",
+            "{case}"
+        );
+        assert!(!html.contains("data-readiness-url="), "{case}");
+        assert!(
+            !html.contains(r#"id="automatic-tax-readiness-status""#),
             "{case}"
         );
 
@@ -267,6 +277,72 @@ fn test_add_page_wires_editor_forms_to_the_save_action() {
     // Check the labels editor lives in the labels form only
     assert!(element_html_with(&html, r#"id="labels-form""#).contains(r#"id="labels-editor""#));
     assert!(!element_html_with(&html, r#"id="cfs-form""#).contains(r#"id="labels-editor""#));
+
+    // Check add page keeps add-only fields and omits update-only controls
+    assert!(html.contains(r#"button-id="copy-event-selector""#));
+    assert!(html.contains(r#"id="recurrence_pattern""#));
+    assert!(!html.contains(r#"id="event-hosts-award-button""#));
+    assert!(!html.contains(r#"id="event-organizers-award-button""#));
+}
+
+#[test]
+fn test_form_state_maps_add_defaults_and_update_flags() {
+    // Setup add-page scenarios
+    let add_manager = sample_add_page(GroupExternalPaymentsContext::default(), false);
+    let mut add_viewer = sample_add_page(GroupExternalPaymentsContext::default(), false);
+    add_viewer.can_manage_events = false;
+
+    // Setup update-page scenarios
+    let mut update_published = sample_update_page(GroupExternalPaymentsContext::default(), true);
+    update_published.event.published = true;
+    update_published.event.waitlist_enabled = true;
+    update_published.event.payment_currency_code = Some("USD".to_string());
+
+    let mut update_canceled = sample_update_page(GroupExternalPaymentsContext::default(), true);
+    update_canceled.event.canceled = true;
+
+    // (case, state, [award, cohosts_disabled, ro, reminder, has_event, free_only, ticketing_ro, waitlist])
+    let cases = [
+        (
+            "add manager without paid rail",
+            add_manager.form_state(),
+            [false, false, false, true, false, true, false, false],
+        ),
+        (
+            "add viewer cannot manage events",
+            add_viewer.form_state(),
+            [false, true, false, true, false, true, false, false],
+        ),
+        (
+            "update published event with stripe rail",
+            update_published.form_state(),
+            [true, true, false, true, true, false, false, true],
+        ),
+        (
+            "update canceled event",
+            update_canceled.form_state(),
+            [false, true, true, true, true, false, true, false],
+        ),
+    ];
+
+    for (case, state, expected) in cases {
+        let actual = [
+            state.can_award_badges(),
+            state.cohosts_disabled(),
+            state.event_read_only(),
+            state.event_reminder_enabled(),
+            state.existing_event.is_some(),
+            state.ticketing_free_only(),
+            state.ticketing_read_only(),
+            state.waitlist_enabled(),
+        ];
+        assert_eq!(actual, expected, "{case}");
+    }
+
+    // Check selected currency matching on update vs add
+    assert!(update_published.form_state().is_selected_payment_currency_code("USD"));
+    assert!(!update_published.form_state().is_selected_payment_currency_code("EUR"));
+    assert!(!add_manager.form_state().is_selected_payment_currency_code("USD"));
 }
 
 #[test]
@@ -512,7 +588,7 @@ fn test_update_page_explains_read_only_paid_ticketing_per_rail() {
         assert!(page.event.is_paid_capable(), "{case}: paid capable");
         assert!(page.event.external_payment_url.is_none(), "{case}: url");
         assert_eq!(
-            page.is_paid_ticketing_available(),
+            page.form_state().is_paid_ticketing_available(),
             expected_message.is_none(),
             "{case}: available"
         );
@@ -719,6 +795,11 @@ fn test_update_page_wires_editor_forms_and_limits() {
     assert!(sessions.contains(&format!(
         r#"label-max-selected="{MAX_ASSIGNED_EVENT_LABELS}""#
     )));
+
+    // Check update page omits add-only copy selector and recurrence fields
+    assert!(!html.contains(r#"button-id="copy-event-selector""#));
+    assert!(!html.contains(r#"id="recurrence_pattern""#));
+    assert!(!html.contains(r#"id="recurrence_additional_occurrences""#));
 }
 
 // Helpers.

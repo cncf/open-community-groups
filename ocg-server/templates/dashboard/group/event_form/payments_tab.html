@@ -1,0 +1,355 @@
+{# Tickets Tab (shared by events_add.html and events_update.html; expects `form`, `external_payments`, `payment_currency_codes`) -#}
+<div data-content="payments" class="hidden">
+  <form id="payments-form" data-event-form>
+    <div class="space-y-12">
+      {% if form.show_paid_ticketing_settings() -%}
+        <div>
+          {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
+
+          {% if form.paid_ticketing_read_only() -%}
+            <div class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600">
+              <p class="text-sm/6">
+                {% if form.requires_external_payments_opt_in() -%}
+                  Paid ticket settings are read-only. This group's country collects payments outside the platform:
+                  enable external payments in group settings and add a payment URL to keep selling these tickets.
+                {% else if form.requires_external_payments_seller_name() -%}
+                  Paid ticket settings are read-only until the legal name of the organization collecting
+                  external payments is saved in group settings.
+                {% else -%}
+                  Paid ticket settings are read-only until server payments and a matching group recipient are configured.
+                {% endif -%}
+              </p>
+            </div>
+          {% endif -%}
+
+          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
+            <div class="col-span-full 2xl:col-span-2">
+              <label for="payment_currency_code" class="form-label">
+                Event Currency
+                <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
+              </label>
+              <div class="mt-2">
+                <select id="payment_currency_code"
+                        name="payment_currency_code"
+                        class="select-primary"
+                        {% if form.ticketing_read_only() %}disabled{% endif %}>
+                  <option value="">Select currency</option>
+                  {% for payment_currency_code in payment_currency_codes -%}
+                    <option value="{{ payment_currency_code }}"
+                            {% if form.is_selected_payment_currency_code(payment_currency_code) %}selected{% endif %}>{{ payment_currency_code }}</option>
+                  {% endfor -%}
+                </select>
+              </div>
+              <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
+            </div>
+
+            {% if form.show_external_ticketing() -%}
+              {% if form.existing_event.is_some() -%}
+                {% if form.requires_external_payments_seller_name() -%}
+                  <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
+                       role="note">
+                    Save the legal name of the organization collecting external payments
+                    in group settings to save changes and keep selling these tickets.
+                  </div>
+                {% else if !form.uses_external_ticketing() -%}
+                  <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
+                       role="note">
+                    External payments are no longer available for this group. To save changes,
+                    turn external payments back on in group settings if the group is still
+                    eligible, or clear the external payment URL and set every ticket price to 0.
+                    Paid tickets off the external rail need a Stripe fiscal sponsor, which is not
+                    offered in external-payment countries.
+                  </div>
+                {% endif -%}
+              {% endif -%}
+
+              <div class="col-span-full 2xl:col-span-4 2xl:col-start-1">
+                {% if form.existing_event.is_some() -%}
+                  <input type="hidden" name="external_payment_url_present" value="true">
+                {% endif -%}
+                <label for="external_payment_url" class="form-label">
+                  External payment URL
+                  <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
+                </label>
+                <div class="mt-2">
+                  <input type="url"
+                         id="external_payment_url"
+                         name="external_payment_url"
+                         data-external-ticketing-enabled="{{ form.uses_external_ticketing() }}"
+                         class="input-primary"
+                         maxlength="{{ crate::validation::MAX_LEN_L }}"
+                         placeholder="https://"
+                         {% if let Some(url) = form.external_payment_url() %}value="{{ url }}"{% endif %}
+                         {% if form.external_payment_url_disabled() %}disabled{% endif %}>
+                </div>
+                <p class="form-legend">
+                  Attendees open this page to pay outside the platform. Include the purchase
+                  reference shown after they reserve a ticket.
+                </p>
+              </div>
+
+              <div class="col-span-full 2xl:col-span-2">
+                {% if form.existing_event.is_some() -%}
+                  <input type="hidden"
+                         name="external_payment_window_hours_present"
+                         value="true">
+                {% endif -%}
+                <label for="external_payment_window_hours" class="form-label">Payment window (hours)</label>
+                <div class="mt-2">
+                  <input type="number"
+                         id="external_payment_window_hours"
+                         name="external_payment_window_hours"
+                         class="input-primary"
+                         min="1"
+                         {% if let Some(max_hours) = external_payments.max_payment_window_hours %}max="{{ max_hours }}"{% endif %}
+                         {% if let Some(default_hours) = external_payments.default_payment_window_hours %}placeholder="{{ default_hours }}"{% endif %}
+                         {% if let Some(hours) = form.external_payment_window_hours() %}value="{{ hours }}"{% endif %}
+                         {% if form.ticketing_read_only() %}disabled{% endif %}>
+                </div>
+                <p class="form-legend">
+                  Organizer-confirmation deadline, capped by registration close and event start.
+                  {% if let Some(max_hours) = external_payments.max_payment_window_hours -%}
+                    Maximum {{ max_hours }} hours.
+                  {% endif -%}
+                </p>
+              </div>
+
+              <div class="col-span-full">
+                {% if form.existing_event.is_some() -%}
+                  <input type="hidden"
+                         name="external_payment_instructions_present"
+                         value="true">
+                {% endif -%}
+                <label for="external_payment_instructions" class="form-label">Payment instructions</label>
+                <div class="mt-2">
+                  <textarea id="external_payment_instructions"
+                            name="external_payment_instructions"
+                            class="input-primary"
+                            rows="4"
+                            maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                            {% if form.ticketing_read_only() %}disabled{% endif %}>{% if let Some(instructions) = form.external_payment_instructions() %}{{ instructions }}{% endif %}</textarea>
+                </div>
+                <p class="form-legend">Optional plain-text instructions shown with the payment page.</p>
+              </div>
+
+              <input type="hidden" name="tax_calculation_mode" value="none">
+              <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900">
+                Organizers are responsible for tax and receipts for payments collected outside
+                this platform. Paid tickets require a complete venue in the group country
+                {%- if let Some(country_code) = external_payments.country_code %} ({{ country_code }}){% endif -%}.
+              </div>
+            {% else -%}
+              <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
+                  {% if form.existing_event.is_some() -%}
+                    <button type="button"
+                            class="btn-primary-outline btn-mini"
+                            aria-describedby="automatic-tax-readiness-status"
+                            data-automatic-tax-readiness-action="check"
+                            title="Check the saved venue with the automatic-tax provider"
+                            {% if form.event_read_only() %}disabled{% endif %}>Check readiness</button>
+                  {% else -%}
+                    <button type="button"
+                            class="btn-primary-outline btn-mini"
+                            data-automatic-tax-readiness-action="check"
+                            aria-label="Save the event before checking whether its venue is ready for automatic tax."
+                            title="Save the event before checking whether its venue is ready for automatic tax."
+                            disabled>Check readiness</button>
+                  {% endif -%}
+                </div>
+                <div class="mt-2">
+                  <select id="tax_calculation_mode"
+                          name="tax_calculation_mode"
+                          class="select-primary"
+                          {% if form.ticketing_read_only() %}disabled{% endif %}>
+                    <option value="automatic"
+                            {%- if !form.uses_manual_ticket_tax() && !form.uses_no_ticket_tax() %} selected{% endif %}>Automatic Stripe Tax</option>
+                    <option value="manual"
+                            {%- if form.uses_manual_ticket_tax() %} selected{% endif %}>Manual Stripe Tax Rates</option>
+                    <option value="none"
+                            {%- if form.uses_no_ticket_tax() %} selected{% endif %}>Do not collect tax</option>
+                  </select>
+                  {% if form.ticketing_read_only() -%}
+                    <input type="hidden"
+                           name="tax_calculation_mode"
+                           value="{% if form.uses_manual_ticket_tax() %}manual{% else if form.uses_no_ticket_tax() %}none{% else %}automatic{% endif %}">
+                  {% endif -%}
+                </div>
+                <p class="form-legend">Choose how tax is calculated for every paid ticket tier.</p>
+              </div>
+
+              <div class="col-span-full 2xl:col-span-2" data-tax-control="behavior">
+                <label for="tax_behavior" class="form-label">Ticket Tax Display</label>
+                <div class="mt-2">
+                  <select id="tax_behavior"
+                          name="tax_behavior"
+                          class="select-primary"
+                          {% if form.ticketing_read_only() || form.uses_no_ticket_tax() %}disabled{% endif %}>
+                    <option value="inclusive"
+                            {%- if !form.uses_exclusive_ticket_tax() %} selected{% endif %}>Tax included in ticket price</option>
+                    <option value="exclusive"
+                            {%- if form.uses_exclusive_ticket_tax() %} selected{% endif %}>Tax added at Checkout</option>
+                  </select>
+                  {% if form.ticketing_read_only() -%}
+                    <input type="hidden"
+                           name="tax_behavior"
+                           value="{% if form.uses_exclusive_ticket_tax() %}exclusive{% else %}inclusive{% endif %}">
+                  {% endif -%}
+                </div>
+                <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
+              </div>
+
+              {% if let Some(event) = form.existing_event -%}
+                <div class="col-span-full hidden rounded-md border px-4 py-3"
+                     data-automatic-tax-readiness
+                     data-saved="true"
+                     data-readiness-url="/dashboard/group/events/{{ event.event_id }}/automatic-tax/readiness">
+                  <p id="automatic-tax-readiness-status"
+                     class="text-sm/6"
+                     data-automatic-tax-readiness-role="status"
+                     role="status"
+                     aria-live="polite"></p>
+                  <button type="button"
+                          class="btn-primary-outline btn-mini mt-3 me-3"
+                          data-automatic-tax-readiness-action="review-state"
+                          hidden>Review State code</button>
+                  <a href="/docs#/guides/event-operations?id=tickets-discounts-and-refunds"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     hx-boost="false"
+                     class="mt-3 inline-block text-sm font-medium text-primary-fg-hover hover:text-primary-fg-hover-strong hover:underline"
+                     data-automatic-tax-readiness-role="manual-tax-help"
+                     hidden>Learn how to configure manual tax</a>
+                </div>
+              {% endif -%}
+
+              <div id="manual-tax-rates-fieldset"
+                   class="col-span-full max-w-3xl"
+                   data-disabled="{{ form.ticketing_read_only() }}"
+                   data-selected-rate-ids='{% if let Some(event) = form.existing_event %}{{ event.manual_tax_rate_ids|json }}{% else %}[]{% endif %}'
+                   data-tax-rates-url="/dashboard/group/events/tax-rates"
+                   tabindex="-1"
+                   {% if !form.uses_manual_ticket_tax() %}hidden{% endif %}>
+                <div class="form-label">
+                  <label for="manual-tax-rates">Manual Stripe Tax Rates</label>
+                  <span class="group/manual-tax-info relative inline-flex align-super">
+                    <button type="button"
+                            class="relative inline-flex cursor-help rounded-full before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge"
+                            aria-label="About Manual Stripe Tax Rates"
+                            aria-describedby="manual-tax-rates-info">
+                      <span class="svg-icon size-3 icon-question-mark bg-stone-500"
+                            aria-hidden="true"></span>
+                    </button>
+                    {% call dashboard::tooltip_panel(
+                      id = "manual-tax-rates-info",
+                      title = "Stripe Tax Rates",
+                      visibility_classes = "group-hover/manual-tax-info:visible group-hover/manual-tax-info:opacity-100 group-focus-within/manual-tax-info:visible group-focus-within/manual-tax-info:opacity-100",
+                      width_classes = "w-72"
+                    ) -%}
+                    <span class="block text-stone-900">Create Tax Rates in the fiscal sponsor's Stripe account.</span>
+                    {% endcall -%}
+                  </span>
+                </div>
+                <div class="mt-2 flex items-end gap-3">
+                  <select id="manual-tax-rates"
+                          name="manual_tax_rate_ids[]"
+                          class="select-primary flex-1"
+                          data-tax-rates-role="select"
+                          aria-describedby="manual-tax-rates-help manual-tax-rates-state"></select>
+                  <button type="button"
+                          class="btn-primary-outline inline-flex min-w-28 shrink-0 items-center justify-center whitespace-nowrap"
+                          data-tax-rates-action="retry"
+                          aria-label="Retry loading Stripe Tax Rates"
+                          hidden>
+                    <span data-tax-rates-role="retry-label">Retry</span>
+                    <span class="inline-flex items-center"
+                          data-tax-rates-role="retry-loading"
+                          hidden>
+                      <svg-spinner size="size-4" label="Loading Stripe Tax Rates">
+                      </svg-spinner>
+                    </span>
+                  </button>
+                </div>
+                <p id="manual-tax-rates-help" class="form-legend">
+                  Select an active rate owned by this group's fiscal sponsor. The same rate applies to every paid ticket tier.
+                </p>
+                <p id="manual-tax-rates-state"
+                   class="mt-2 rounded-md border px-4 py-3 text-sm/6"
+                   data-tax-rates-role="state"
+                   role="status"
+                   aria-live="polite"
+                   hidden></p>
+              </div>
+            {% endif -%}
+          </div>
+        </div>
+      {% endif -%}
+
+      <div>
+        <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
+        <p class="mt-1 text-sm/6 text-stone-500">
+          Use one ticket type per tier and add price windows for scheduled pricing.
+          Paid ticket prices require an in-person or hybrid event with a venue name,
+          address, city, postal code, and country.
+          {% if form.ticketing_free_only() -%}
+            {% if form.requires_external_payments_opt_in() -%}
+              Ticket prices are fixed at 0 until external payments are enabled in group settings;
+              this deployment does not offer Stripe connected accounts for this group's country.
+            {% else if form.requires_external_payments_seller_name() -%}
+              Ticket prices are fixed at 0 until the legal name of the organization collecting
+              external payments is saved in group settings.
+            {% else -%}
+              Ticket prices are fixed at 0 until payments are configured.
+            {% endif -%}
+          {% else -%}
+            Set the ticket amount to 0 to make a specific tier free.
+          {% endif -%}
+        </p>
+        <div class="mt-10">
+          <div class="flex justify-end">
+            <button id="add-ticket-type-button"
+                    type="button"
+                    class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"
+                    aria-label="Add ticket type"
+                    {% if form.ticketing_read_only() %}
+                      disabled title="Ticket settings are currently read-only."
+                    {% endif %}>Add ticket type</button>
+          </div>
+          {# djlint:off #}
+          {% if let Some(event) = form.existing_event -%}
+            <ticket-types-editor id="ticket-types-ui" class="mt-5 block space-y-4" data-disabled="{{ form.ticketing_read_only() }}" {% if form.ticketing_free_only() %}free-only{% endif %} ticket-types="{% if let Some(ticket_types) = &event.ticket_types -%}{{ ticket_types|json }}{%- else -%}[]{%- endif -%}"></ticket-types-editor>
+          {% else -%}
+            <ticket-types-editor id="ticket-types-ui" class="mt-5 block space-y-4" data-disabled="false" {% if form.ticketing_free_only() %}free-only{% endif %} ticket-types='[{"active":true,"availability":"public","order":1,"price_windows":[{"amount_minor":0}],"seats_total":500,"title":"General Admission"}]'></ticket-types-editor>
+          {% endif -%}
+          {# djlint:on #}
+        </div>
+      </div>
+
+      {% if form.show_paid_ticketing_settings() -%}
+        <div class="pb-12">
+          <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
+          <p class="mt-1 text-sm/6 text-stone-500">
+            Discount codes apply to the event currency and can be limited by schedule, remaining
+            uses, or total redemptions.
+          </p>
+          <div class="mt-10">
+            <div class="flex justify-end">
+              <button id="add-discount-code-button"
+                      type="button"
+                      class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"
+                      aria-label="Add discount code"
+                      {% if form.ticketing_read_only() %}
+                        disabled title="Ticket settings are currently read-only."
+                      {% endif %}>Add discount code</button>
+            </div>
+            {# djlint:off #}
+            <discount-codes-editor id="discount-codes-ui" class="mt-5 block space-y-4" data-disabled="{{ form.ticketing_read_only() }}" discount-codes="{% if let Some(event) = form.existing_event %}{% if let Some(discount_codes) = &event.discount_codes -%}{{ discount_codes|json }}{%- else -%}[]{%- endif -%}{% else %}[]{% endif %}"></discount-codes-editor>
+            {# djlint:on #}
+          </div>
+        </div>
+      {% endif -%}
+    </div>
+  </form>
+</div>
+{# End Tickets Tab -#}

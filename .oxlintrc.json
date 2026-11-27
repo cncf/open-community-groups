@@ -1,0 +1,55 @@
+{
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "globals": {
+    "EasyMDE": "readonly",
+    "FullCalendar": "readonly",
+    "Swal": "readonly",
+    "echarts": "readonly",
+    "htmx": "readonly",
+    "maplibregl": "readonly"
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "ocg-server/dist/**",
+    "ocg-server/static/vendor/**",
+    "target/**"
+  ],
+  "rules": {
+    "eqeqeq": ["error", "smart"],
+    "no-undef": "error",
+    "no-var": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "tests/e2e/**/*.js",
+        "tests/theme-lint/**/*.mjs",
+        "tests/unit/web-test-runner.config.mjs"
+      ],
+      "env": {
+        "node": true
+      }
+    },
+    {
+      "files": ["tests/e2e/**/*.js"],
+      "rules": {
+        "no-empty-pattern": "off"
+      }
+    },
+    {
+      "files": ["tests/unit/**/*.js"],
+      "env": {
+        "mocha": true
+      },
+      "rules": {
+        "no-unused-expressions": "off"
+      }
+    }
+  ]
+}

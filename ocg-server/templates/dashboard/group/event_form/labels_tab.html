@@ -1,0 +1,23 @@
+{# Labels Tab (shared by events_add.html and events_update.html; expects `form`) -#}
+<div data-content="labels" class="hidden">
+  <form id="labels-form" data-event-form>
+    <div class="pb-12">
+      {{ dashboard::form_title(title = "Labels", description = "Categorize sessions and Call for Speakers submissions.") -}}
+      <div class="mt-6 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
+        Labels are shared by sessions and Call for Speakers submissions. For example, you can use them to organize sessions by track, topic, or theme. Renaming a label updates it everywhere it is used. To delete a label, use its trash button.
+      </div>
+      <div class="mt-10 max-w-5xl">
+        <labels-editor id="labels-editor" field-name="labels" {% if let Some(event) = form.existing_event %}labels="{{ event.labels|json }}" {% endif %}max-items="{{ crate::validation::MAX_EVENT_LABELS_PER_EVENT }}" max-name-length="{{ crate::validation::MAX_LEN_EVENT_LABEL_NAME }}" colors="{{ crate::validation::EVENT_LABEL_COLORS|json }}">
+        <p slot="legend" class="form-legend">
+          Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
+          <span class="font-semibold">/</span> as the separator for consistency.
+          {% if form.existing_event.is_some() -%}
+            If you need a different label without renaming the existing one, delete it with its trash button and add a new one.
+          {% endif -%}
+        </p>
+        </labels-editor>
+      </div>
+    </div>
+  </form>
+</div>
+{# End Labels Tab -#}

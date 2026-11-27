@@ -1,0 +1,24 @@
+{# Questions Tab (shared by events_add.html and events_update.html; expects `form`) -#}
+<div data-content="questions" class="hidden">
+  <form id="questions-form" data-event-form>
+    <div class="pb-12">
+      {{ dashboard::form_title(title = "Registration questions", description = "Ask attendees extra questions. Mark a question Required if you need the answer with a ticket request, RSVP, checkout, or offer claim.") -}}
+      <div class="mt-6 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
+        Only questions marked Required must be answered. Questions appear with a ticket request,
+        before RSVP or checkout, and when claiming an organizer or waitlist offer. Joining a
+        waiting list does not collect answers. Ticket-request answers are available from Requests.
+      </div>
+      {% if form.registration_questions_locked() -%}
+        <div class="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Registration questions are read-only because attendees have submitted answers.
+        </div>
+      {% endif -%}
+      {# djlint:off #}
+      <div class="mt-10">
+        <questions-editor name="registration_questions" questions="{% if let Some(event) = form.existing_event %}{{ event.registration_questions|json }}{% else %}[]{% endif %}" empty-message='No registration questions yet. Click "Add question" to create one.' empty-disabled-message="No registration questions were added for this event." editing-warning="Questionnaire questions cannot be edited after an attendee has submitted answers." required-help="Required answers are collected with a ticket request, RSVP, checkout, or offer claim. Optional questions can be skipped." prompt-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}" option-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" {% if form.registration_questions_locked() %}disabled{% endif %}></questions-editor>
+      </div>
+      {# djlint:on #}
+    </div>
+  </form>
+</div>
+{# End Questions Tab -#}

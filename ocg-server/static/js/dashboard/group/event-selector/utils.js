@@ -281,7 +281,7 @@ export const formatEventDate = (event) => {
     const text = [dateWithYear, timeWithZone].filter(Boolean).join(" · ");
 
     return { text: text || formatter.format(date), isPlaceholder: false };
-  } catch (_error) {
+  } catch {
     return { text: "-", isPlaceholder: false };
   }
 };

@@ -24,7 +24,7 @@ export const getAdBannerStorageKey = (imageUrl, linkUrl) =>
 export const isAdBannerClosed = (imageUrl, linkUrl) => {
   try {
     return localStorage.getItem(getAdBannerStorageKey(imageUrl, linkUrl)) === "true";
-  } catch (_error) {
+  } catch {
     return false;
   }
 };
@@ -47,7 +47,7 @@ const hideAdBanner = (banner) => {
 const saveClosedAdBanner = (imageUrl, linkUrl) => {
   try {
     localStorage.setItem(getAdBannerStorageKey(imageUrl, linkUrl), "true");
-  } catch (_error) {
+  } catch {
     return;
   }
 };

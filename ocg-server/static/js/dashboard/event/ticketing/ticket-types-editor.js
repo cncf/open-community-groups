@@ -528,7 +528,7 @@ class TicketTypesEditor extends TicketingEditorBase {
         currency: this._currencyCode(),
         style: "currency",
       }).format(amount);
-    } catch (_) {
+    } catch {
       return `${this._currencyCode()} ${amount}`;
     }
   }

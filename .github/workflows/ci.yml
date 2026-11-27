@@ -69,7 +69,9 @@ jobs:
               - '.hadolint.yaml'
               - '**/Dockerfile*'
             javascript:
+              - '.github/actions/install-oxlint/**'
               - '.github/workflows/ci.yml'
+              - '.oxlintrc.json'
               - 'tests/e2e/**'
               - 'tests/unit/**'
               - 'ocg-server/static/css/docs/**'
@@ -133,6 +135,10 @@ jobs:
           dry: true
           prettier_version: 3.9.4
           prettier_options: --check ocg-server/static/js/**/*.js ocg-server/templates/**/*.js tests/theme-lint/**/*.mjs tests/e2e/**/*.js --config ocg-server/static/js/.prettierrc.yaml
+      - name: Install oxlint
+        uses: ./.github/actions/install-oxlint
+      - name: Run oxlint
+        run: oxlint -c .oxlintrc.json --deny-warnings ocg-server/static/js ocg-server/templates tests/theme-lint tests/e2e tests/unit
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:

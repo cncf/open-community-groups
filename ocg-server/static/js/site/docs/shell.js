@@ -274,7 +274,7 @@ const mountDocs = async (docsRoot, docsApp) => {
     }
 
     scheduleDocsEnhancements();
-  } catch (error) {
+  } catch {
     if (!isCurrentMount(runId, docsRoot)) {
       return;
     }

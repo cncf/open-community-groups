@@ -200,7 +200,7 @@ const loadRefundActionEligibility = async (action) => {
     if (action.isConnected) {
       setElementHidden(action, enrollment?.can_request_refund !== true);
     }
-  } catch (_) {
+  } catch {
     setElementHidden(action, true);
   }
 };

@@ -90,7 +90,7 @@ export const initializeEventPreview = ({ pageRoot }) => {
       }
 
       openEventPreviewModal(modalRoot, previewHtml, pageRoot);
-    } catch (_) {
+    } catch {
       showErrorAlert("Unable to open the event preview. Please try again.");
     } finally {
       previewButton.disabled = false;
@@ -301,7 +301,7 @@ const initializeEventPreviewMap = async (mapRoot, latitude, longitude) => {
     });
     setElementHidden(fallback, true);
     setElementHidden(emptyState, true);
-  } catch (_) {
+  } catch {
     setElementHidden(mapCanvas, true);
     setElementHidden(fallback, false);
     setElementHidden(emptyState, false);
@@ -570,7 +570,7 @@ const getShortTimezoneLabel = (timezone, startsAt) => {
       timeZoneName: "short",
     }).formatToParts(date);
     return parts.find((part) => part.type === "timeZoneName")?.value;
-  } catch (_) {
+  } catch {
     return undefined;
   }
 };

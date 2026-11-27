@@ -1,0 +1,291 @@
+{# Event Details Tab (shared by events_add.html and events_update.html; expects `form`, `categories`, `event_kinds`, and layout class bindings) -#}
+<div data-content="details">
+  <form id="details-form" data-event-form>
+    <div class="pb-12">
+      {% if let Some(event) = form.existing_event -%}
+        {{ dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.", id = event.event_id.to_string()) -}}
+      {% else -%}
+        {{ dashboard::form_title(title = "Event details", description = "Please add as many details about this event as possible.") -}}
+      {% endif -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {% if form.existing_event.is_none() -%}
+          <div class="col-span-full min-w-0 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <label for="copy-event-selector" class="form-label m-0">
+                Choose an event to copy <span class="font-semibold">from</span> (optional)
+              </label>
+              <div data-copy-indicator
+                   id="copy-event-feedback"
+                   class="hidden items-center gap-2 text-sm text-primary-fg-strong"
+                   aria-live="polite">
+                <svg-spinner size="size-4" label="Copying event">
+                </svg-spinner>
+              </div>
+            </div>
+            <event-selector class="block min-w-0 max-w-full" button-id="copy-event-selector" group-id="{{ form.group_id }}"></event-selector>
+            <p class="form-legend mt-3 break-words">
+              Start and end dates are left blank, and sessions are not copied so you can set a
+              new schedule. Meeting links are not carried over. When copying from events imported from the previous community platform,
+              some fields like event's hosts and speakers won't be copied. Note that this only
+              applies to events that have not been created from Open Community Groups.
+            </p>
+          </div>
+        {% endif -%}
+
+        {# Event name -#}
+        <div class="{{ field_half_col }} min-w-0">
+          <label for="name" class="form-label">
+            Name <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="name"
+                   id="name"
+                   maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   {% if let Some(event) = form.existing_event %}value="{{ event.name }}"{% endif %}
+                   required>
+          </div>
+          <p class="form-legend">
+            Display name of the event (e.g. Kubernetes Amsterdam Meetup). Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
+          </p>
+        </div>
+        {# End Event name -#}
+
+        <div class="{{ field_spacer_col }}"></div>
+
+        {# Event kind -#}
+        <div class="{{ field_half_col }}">
+          <label for="kind_id" class="form-label">
+            Event Type <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2 grid grid-cols-1">
+            <select id="kind_id" name="kind_id" class="select-primary" required>
+              <option value="">Select an event type</option>
+              {% for kind in event_kinds %}
+                <option value="{{ kind.event_kind_id }}"
+                        {% if let Some(event) = form.existing_event %}{% if kind.event_kind_id == event.kind.to_string() %}selected{% endif %}
+                        {% endif %}>{{ kind.display_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
+        </div>
+        {# End Event kind -#}
+
+        {# Event category -#}
+        <div class="{{ field_half_col }}">
+          <label for="category_id" class="form-label">
+            Category <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2 grid grid-cols-1">
+            <select id="category_id" name="category_id" class="select-primary" required>
+              <option value="">Select a category</option>
+              {% for category in categories %}
+                <option value="{{ category.event_category_id }}"
+                        {% if let Some(event) = form.existing_event %}{% if category.name == event.category_name %}selected{% endif %}
+                        {% endif %}>{{ category.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <p class="form-legend">Type of event or meetup.</p>
+        </div>
+        {# End Event category -#}
+
+        {# djlint:off #}
+        {% let logo_value -%}{%- if let Some(event) = form.existing_event -%}value="{%- if let Some(custom_logo_url) = &event.custom_logo_url -%}{{ custom_logo_url }}{%- endif -%}"{%- endif -%}{%- endlet %}
+        {% let logo_dark_value -%}{%- if let Some(event) = form.existing_event -%}value="{%- if let Some(custom_logo_dark_url) = &event.custom_logo_dark_url -%}{{ custom_logo_dark_url }}{%- endif -%}"{%- endif -%}{%- endlet %}
+        {% let banner_value -%}{%- if let Some(event) = form.existing_event -%}value="{%- if let Some(banner_url) = &event.banner_url -%}{{ banner_url }}{%- endif -%}"{%- endif -%}{%- endlet %}
+        {% let banner_dark_value -%}{%- if let Some(event) = form.existing_event -%}value="{%- if let Some(banner_dark_url) = &event.banner_dark_url -%}{{ banner_dark_url }}{%- endif -%}"{%- endif -%}{%- endlet %}
+        {% let banner_mobile_value -%}{%- if let Some(event) = form.existing_event -%}value="{%- if let Some(banner_mobile_url) = &event.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endif -%}{%- endlet %}
+        {% let banner_mobile_dark_value -%}{%- if let Some(event) = form.existing_event -%}value="{%- if let Some(banner_mobile_dark_url) = &event.banner_mobile_dark_url -%}{{ banner_mobile_dark_url }}{%- endif -%}"{%- endif -%}{%- endlet %}
+        {# djlint:on #}
+
+        {# Logo URL -#}
+        {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", value_attr = logo_value, field_class = logo_col, input_class = "w-full block") -}}
+        {# End Logo URL -#}
+
+        {# Logo dark URL -#}
+        {{ form_fields::image_field(label = "Logo (dark mode)", name = "logo_dark_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "Optional. Shown instead of the logo in dark mode, without the white background. Used only together with the logo above.", value_attr = logo_dark_value, field_class = logo_col, input_class = "w-full block", extra_attrs = "dark-preview") -}}
+        {# End Logo dark URL -#}
+
+        {# Banner URL -#}
+        {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_value, input_class = "w-full block") -}}
+        {# End Banner URL -#}
+
+        {# Banner dark URL -#}
+        {{ form_fields::image_field(label = "Banner (dark mode)", name = "banner_dark_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "Optional. Shown instead of the banner in dark mode. Used only together with the banner above.", value_attr = banner_dark_value, input_class = "w-full block", extra_attrs = "dark-preview") -}}
+        {# End Banner dark URL -#}
+
+        {# Banner Mobile URL -#}
+        {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_mobile_value, input_class = "w-full block") -}}
+        {# End Banner Mobile URL -#}
+
+        {# Banner Mobile dark URL -#}
+        {{ form_fields::image_field(label = "Banner Mobile (dark mode)", name = "banner_mobile_dark_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "Optional. Shown instead of the mobile banner in dark mode. Used only together with the mobile banner above.", value_attr = banner_mobile_dark_value, input_class = "w-full block", extra_attrs = "dark-preview") -}}
+        {# End Banner Mobile dark URL -#}
+
+        {# Short Description -#}
+        <div class="col-span-full">
+          <label for="description_short" class="form-label">Short Description</label>
+          <div class="mt-2">
+            <input type="text"
+                   id="description_short"
+                   name="description_short"
+                   class="input-primary"
+                   maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                   {% if let Some(description_short) = form.description_short() %}value="{{ description_short }}"{% endif %} />
+          </div>
+          <p class="form-legend">
+            Brief description used in event listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
+          </p>
+        </div>
+        {# End Short Description -#}
+
+        {# Event Description -#}
+        <div class="col-span-full">
+          <label for="description" class="form-label">
+            Description <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <markdown-editor id="description" name="description" {% if let Some(event) = form.existing_event %}content="{{ event.description }}" {% endif %}maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
+          </div>
+          <p class="form-legend">
+            Full description of the event and its purpose. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
+          </p>
+        </div>
+        {# End Event Description -#}
+      </div>
+    </div>
+
+    {# Additional Information section -#}
+    <div class="border-t border-stone-900/10 pt-12">
+      {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-6xl">
+        {# Waitlist enabled -#}
+        <div class="{{ setting_half_col }}">
+          <label data-enrollment-toggle-label="waitlist"
+                 class="inline-flex items-center cursor-pointer transition-opacity">
+            <input id="toggle_waitlist_enabled"
+                   name="toggle_waitlist_enabled"
+                   value="enabled"
+                   type="checkbox"
+                   class="sr-only peer"
+                   {% if form.waitlist_enabled() %}checked{% endif %}>
+            <input type="hidden"
+                   id="waitlist_enabled"
+                   name="waitlist_enabled"
+                   value="{{ form.waitlist_enabled() }}">
+            <div class="toggle-track"></div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
+          </label>
+          <p class="form-legend">
+            Allow full events, including paid ticket events, to add people to a waiting list
+            instead of rejecting them. Capacity is the total of ticket seats. Invitation approval and the
+            waitlist cannot be enabled together.
+          </p>
+        </div>
+        {# End Waitlist enabled -#}
+
+        {# Attendee approval required -#}
+        <div class="{{ setting_half_col }}">
+          <label data-enrollment-toggle-label="attendee-approval"
+                 class="inline-flex items-center cursor-pointer transition-opacity">
+            <input id="toggle_attendee_approval_required"
+                   name="toggle_attendee_approval_required"
+                   value="required"
+                   type="checkbox"
+                   class="sr-only peer"
+                   {% if form.attendee_approval_required() %}checked{% endif %}>
+            <input type="hidden"
+                   id="attendee_approval_required"
+                   name="attendee_approval_required"
+                   value="{{ form.attendee_approval_required() }}">
+            <div class="toggle-track"></div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Require Invitation Approval</span>
+          </label>
+          <p class="form-legend">
+            Let people request organizer approval before attending or claiming a ticket. Paid
+            ticket events can use invitation approval. Invitation approval and the waitlist
+            cannot be enabled together. Accept pending requests and reissue expired offers while
+            the event is still active, including outside the public registration window.
+          </p>
+        </div>
+        {# End Attendee approval required -#}
+
+        {# Test event -#}
+        <div class="{{ setting_half_col }}">
+          <label class="inline-flex items-center cursor-pointer">
+            <input id="toggle_test_event"
+                   name="toggle_test_event"
+                   value="enabled"
+                   type="checkbox"
+                   class="sr-only peer"
+                   {% if form.test_event() %}checked{% endif %}>
+            <input type="hidden"
+                   id="test_event"
+                   name="test_event"
+                   value="{{ form.test_event() }}">
+            <div class="toggle-track"></div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Test Event</span>
+          </label>
+          <p class="form-legend">Exclude this event from discovery, stats, and broadcast notifications.</p>
+        </div>
+        {# End Test event -#}
+
+        <div class="col-span-full grid grid-cols-1 gap-x-6 gap-y-8 {{ links_grid_cols }}">
+          {# Meetup URL -#}
+          <div>
+            <label for="meetup_url" class="form-label">Meetup.com URL</label>
+            <div class="mt-2">
+              <input type="url"
+                     name="meetup_url"
+                     id="meetup_url"
+                     class="input-primary"
+                     placeholder="https://meetup.com/group/events/123456"
+                     {% if let Some(meetup_url) = form.meetup_url() %}value="{{ meetup_url }}"{% endif %}>
+            </div>
+            <p class="form-legend">Link to the Meetup.com event page.</p>
+          </div>
+          {# End Meetup URL -#}
+
+          {# Luma URL -#}
+          <div>
+            <label for="luma_url" class="form-label">Luma URL</label>
+            <div class="mt-2">
+              <input type="url"
+                     name="luma_url"
+                     id="luma_url"
+                     class="input-primary"
+                     placeholder="https://luma.com/event"
+                     {% if let Some(luma_url) = form.luma_url() %}value="{{ luma_url }}"{% endif %}>
+            </div>
+            <p class="form-legend">Link to the Luma event page.</p>
+          </div>
+          {# End Luma URL -#}
+        </div>
+
+        {# Photos -#}
+        {# djlint:off #}
+        {% let photos_attr -%}{%- if let Some(event) = form.existing_event -%}images="{%- if let Some(photos_urls) = &event.photos_urls -%}{{ photos_urls|json }}{%- endif -%}"{%- endif -%}{%- endlet %}
+        {% let tags_items -%}{%- if let Some(event) = form.existing_event -%}items=" {%- if let Some(tags) = &event.tags -%}{{ tags|json }}{%- endif -%}"{%- endif -%}{%- endlet %}
+        {% let tag_legend -%}Optional tags to help categorize and find the event. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.{%- endlet %}
+        {# djlint:on #}
+        {{ form_fields::gallery_field(legend = "Optional photos related to the event.", images_attr = photos_attr) -}}
+        {# End Photos -#}
+
+        {# Tags -#}
+        {{ form_fields::tags_field(legend = tag_legend, items_attr = tags_items, field_class = tags_col, label_text = "Tags") -}}
+        {# End Tags -#}
+      </div>
+    </div>
+    {# End additional information section -#}
+  </form>
+</div>
+{# End Event Details Tab -#}

@@ -117,6 +117,21 @@ impl Content {
     fn is_team(&self) -> bool {
         matches!(self, Content::Team(_))
     }
+
+    /// Returns the partial path used to refresh the dashboard content.
+    fn refresh_path(&self) -> &'static str {
+        match self {
+            Content::Analytics(_) => "analytics",
+            Content::Contact(_) => "contact",
+            Content::EventCategories(_) => "event-categories",
+            Content::GroupCategories(_) => "group-categories",
+            Content::Groups(_) => "groups",
+            Content::Logs(_) => "logs",
+            Content::Regions(_) => "regions",
+            Content::Settings(_) => "settings/update",
+            Content::Team(_) => "team",
+        }
+    }
 }
 
 impl std::fmt::Display for Content {

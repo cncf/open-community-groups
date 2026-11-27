@@ -9,8 +9,6 @@ import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-u
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("event-selector", () => {
-  const EventSelector = customElements.get("event-selector");
-
   let swal;
   let scrollToMock;
 

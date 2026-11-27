@@ -110,7 +110,8 @@ const getHtmxKeepEmptyNames = (requestElement) => {
  * @returns {void}
  */
 const replaceHtmxEntries = (parameters, entries) => {
-  for (const key of [...parameters.keys()]) {
+  // Snapshot keys before deleting so live FormData/URLSearchParams iterators do not skip entries.
+  for (const key of Array.from(parameters.keys())) {
     parameters.delete(key);
   }
 

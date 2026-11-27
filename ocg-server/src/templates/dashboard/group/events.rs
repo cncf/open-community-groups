@@ -64,33 +64,243 @@ pub(crate) struct AddPage {
 }
 
 impl AddPage {
+    /// Returns the shared form state consumed by the event editor tab partials.
+    pub(crate) fn form_state(&self) -> EventFormState<'_> {
+        EventFormState {
+            can_manage_events: self.can_manage_events,
+            external_payments: &self.external_payments,
+            group_id: self.group_id,
+            payments_ready: self.payments_ready,
+
+            approved_submissions: None,
+            cohosts: None,
+            existing_event: None,
+        }
+    }
+
     /// Returns the event editor tab groups shown on the add page.
     #[allow(clippy::unused_self)]
     pub(crate) fn form_tab_groups(&self) -> Vec<EventFormTabGroup> {
         sections::form_tab_groups(&EventFormMode::Add, EventFormTabFlags::default())
     }
+}
+
+/// Shared event editor context consumed by the add and update tab partials.
+pub(crate) struct EventFormState<'a> {
+    /// Whether the current user can manage events.
+    pub can_manage_events: bool,
+    /// Group-level external-payments eligibility and window limits.
+    pub external_payments: &'a GroupExternalPaymentsContext,
+    /// Group identifier owning the event.
+    pub group_id: Uuid,
+    /// Whether this group can publish paid events.
+    pub payments_ready: bool,
+
+    /// Approved CFS submissions for linking sessions when editing an event.
+    pub approved_submissions: Option<&'a [ApprovedSubmissionSummary]>,
+    /// Current co-hosts when editing an event.
+    pub cohosts: Option<&'a EventCohostsEditor>,
+    /// Existing event when editing an event.
+    pub existing_event: Option<&'a EventFull>,
+}
+
+impl<'a> EventFormState<'a> {
+    /// Returns whether organizer approval is required before attending.
+    pub(crate) fn attendee_approval_required(&self) -> bool {
+        self.existing_event
+            .is_some_and(|event| event.attendee_approval_required)
+    }
+
+    /// Returns whether the current user can award badges on this event.
+    pub(crate) fn can_award_badges(&self) -> bool {
+        self.existing_event
+            .is_some_and(|event| self.can_manage_events && !event.canceled)
+    }
+
+    /// Returns whether Call for Speakers is enabled.
+    pub(crate) fn cfs_enabled(&self) -> bool {
+        self.existing_event
+            .and_then(|event| event.cfs_enabled)
+            .unwrap_or(false)
+    }
+
+    /// Returns whether the co-hosts selector is disabled.
+    pub(crate) fn cohosts_disabled(&self) -> bool {
+        self.existing_event.map_or(!self.can_manage_events, |event| {
+            event.published || self.event_read_only()
+        })
+    }
+
+    /// Returns the existing short description, if any.
+    pub(crate) fn description_short(&self) -> Option<&'a str> {
+        self.existing_event
+            .and_then(|event| event.description_short.as_deref())
+    }
+
+    /// Returns whether the event editor forms are read-only.
+    pub(crate) fn event_read_only(&self) -> bool {
+        self.existing_event
+            .is_some_and(|event| event.canceled || !self.can_manage_events)
+    }
+
+    /// Returns whether the 24-hour event reminder email is enabled (defaults to true on add).
+    pub(crate) fn event_reminder_enabled(&self) -> bool {
+        self.existing_event.is_none_or(EventFull::event_reminder_is_enabled)
+    }
+
+    /// Returns the existing external payment instructions, if any.
+    pub(crate) fn external_payment_instructions(&self) -> Option<&'a str> {
+        self.existing_event
+            .and_then(|event| event.external_payment_instructions.as_deref())
+    }
+
+    /// Returns the existing external payment URL, if any.
+    pub(crate) fn external_payment_url(&self) -> Option<&'a str> {
+        self.existing_event
+            .and_then(|event| event.external_payment_url.as_deref())
+    }
+
+    /// Returns whether the external payment URL input is disabled.
+    pub(crate) fn external_payment_url_disabled(&self) -> bool {
+        self.event_read_only() || (self.ticketing_read_only() && self.uses_external_ticketing())
+    }
+
+    /// Returns the existing external payment window in hours, if any.
+    pub(crate) fn external_payment_window_hours(&self) -> Option<i32> {
+        self.existing_event
+            .and_then(|event| event.external_payment_window_hours)
+    }
 
     /// Returns true when paid tickets can be configured through Stripe or external payments.
     pub(crate) fn is_paid_ticketing_available(&self) -> bool {
-        is_paid_ticketing_available(self.payments_ready, &self.external_payments)
+        is_paid_ticketing_available(self.payments_ready, self.external_payments)
+    }
+
+    /// Returns true when the provided currency code matches the event currency.
+    pub(crate) fn is_selected_payment_currency_code(&self, payment_currency_code: &str) -> bool {
+        self.existing_event
+            .and_then(|event| event.payment_currency_code.as_deref())
+            == Some(payment_currency_code)
+    }
+
+    /// Returns the existing Luma URL, if any.
+    pub(crate) fn luma_url(&self) -> Option<&'a str> {
+        self.existing_event.and_then(|event| event.luma_url.as_deref())
+    }
+
+    /// Returns the existing meeting join instructions, if any.
+    pub(crate) fn meeting_join_instructions(&self) -> Option<&'a str> {
+        self.existing_event
+            .and_then(|event| event.meeting_join_instructions.as_deref())
+    }
+
+    /// Returns the existing meeting join URL, if any.
+    pub(crate) fn meeting_join_url(&self) -> Option<&'a str> {
+        self.existing_event
+            .and_then(|event| event.meeting_join_url.as_deref())
+    }
+
+    /// Returns whether the final public recording URL is published publicly.
+    pub(crate) fn meeting_recording_published(&self) -> bool {
+        self.existing_event
+            .and_then(|event| event.meeting_recording_published)
+            .unwrap_or(false)
+    }
+
+    /// Returns the existing final public recording URL, if any.
+    pub(crate) fn meeting_recording_url(&self) -> Option<&'a str> {
+        self.existing_event
+            .and_then(|event| event.meeting_recording_url.as_deref())
+    }
+
+    /// Returns the existing Meetup.com URL, if any.
+    pub(crate) fn meetup_url(&self) -> Option<&'a str> {
+        self.existing_event.and_then(|event| event.meetup_url.as_deref())
+    }
+
+    /// Returns whether paid ticket settings are read-only due to missing rail setup.
+    pub(crate) fn paid_ticketing_read_only(&self) -> bool {
+        self.existing_event.is_some_and(|event| {
+            !self.is_paid_ticketing_available()
+                && event.is_paid_capable()
+                && event.external_payment_url.is_none()
+        })
+    }
+
+    /// Returns whether registration questions are locked because answers exist.
+    pub(crate) fn registration_questions_locked(&self) -> bool {
+        self.existing_event
+            .is_some_and(|event| event.registration_questions_locked)
     }
 
     /// Returns true when paid tickets wait only on the group's external-payments opt-in.
     pub(crate) fn requires_external_payments_opt_in(&self) -> bool {
-        requires_external_payments_opt_in(self.payments_ready, &self.external_payments)
+        requires_external_payments_opt_in(self.payments_ready, self.external_payments)
     }
 
     /// Returns true when paid tickets wait only on the external payee legal name.
     pub(crate) fn requires_external_payments_seller_name(&self) -> bool {
-        requires_external_payments_seller_name(self.payments_ready, &self.external_payments)
+        requires_external_payments_seller_name(self.payments_ready, self.external_payments)
+    }
+
+    /// Returns whether external-ticketing fields should be rendered.
+    pub(crate) fn show_external_ticketing(&self) -> bool {
+        self.uses_external_ticketing()
+            || self
+                .existing_event
+                .is_some_and(|event| event.external_payment_url.is_some())
+    }
+
+    /// Returns whether paid ticketing settings and discount codes should be rendered.
+    pub(crate) fn show_paid_ticketing_settings(&self) -> bool {
+        self.is_paid_ticketing_available()
+            || self.existing_event.is_some_and(EventFull::is_paid_capable)
+    }
+
+    /// Returns whether this event is marked as a test event.
+    pub(crate) fn test_event(&self) -> bool {
+        self.existing_event.is_some_and(|event| event.test_event)
+    }
+
+    /// Returns whether ticket prices are restricted to free tiers only.
+    pub(crate) fn ticketing_free_only(&self) -> bool {
+        !self.show_paid_ticketing_settings()
+    }
+
+    /// Returns whether ticket and discount controls are read-only.
+    pub(crate) fn ticketing_read_only(&self) -> bool {
+        self.event_read_only() || self.paid_ticketing_read_only()
+    }
+
+    /// Returns whether tax is added to the configured ticket price.
+    pub(crate) fn uses_exclusive_ticket_tax(&self) -> bool {
+        self.existing_event
+            .is_some_and(|event| event.tax_behavior == TicketTaxBehavior::Exclusive)
     }
 
     /// Returns true when the group currently collects paid tickets outside the platform.
     pub(crate) fn uses_external_ticketing(&self) -> bool {
         matches!(
-            event_ticketing_mode(self.payments_ready, &self.external_payments),
+            event_ticketing_mode(self.payments_ready, self.external_payments),
             EventTicketingMode::External
         )
+    }
+
+    /// Returns whether the event uses manual Stripe Tax Rates.
+    pub(crate) fn uses_manual_ticket_tax(&self) -> bool {
+        self.existing_event
+            .is_some_and(|event| event.tax_calculation_mode == TicketTaxCalculationMode::Manual)
+    }
+
+    /// Returns whether the event does not collect ticket tax.
+    pub(crate) fn uses_no_ticket_tax(&self) -> bool {
+        self.existing_event
+            .is_some_and(|event| event.tax_calculation_mode == TicketTaxCalculationMode::None)
+    }
+
+    /// Returns whether the event waitlist is enabled.
+    pub(crate) fn waitlist_enabled(&self) -> bool {
+        self.existing_event.is_some_and(|event| event.waitlist_enabled)
     }
 }
 
@@ -163,6 +373,20 @@ pub(crate) struct UpdatePage {
 }
 
 impl UpdatePage {
+    /// Returns the shared form state consumed by the event editor tab partials.
+    pub(crate) fn form_state(&self) -> EventFormState<'_> {
+        EventFormState {
+            can_manage_events: self.can_manage_events,
+            external_payments: &self.external_payments,
+            group_id: self.event.group.group_id,
+            payments_ready: self.payments_ready,
+
+            approved_submissions: Some(&self.approved_submissions),
+            cohosts: Some(&self.cohosts),
+            existing_event: Some(&self.event),
+        }
+    }
+
     /// Returns the event editor tab groups shown on the update page.
     pub(crate) fn form_tab_groups(&self) -> Vec<EventFormTabGroup> {
         let mode = EventFormMode::Update {
@@ -177,52 +401,9 @@ impl UpdatePage {
         sections::form_tab_groups(&mode, flags)
     }
 
-    /// Returns true when paid tickets can be configured through Stripe or external payments.
-    pub(crate) fn is_paid_ticketing_available(&self) -> bool {
-        is_paid_ticketing_available(self.payments_ready, &self.external_payments)
-    }
-
     /// Returns the number of co-hosts that have not responded yet.
     pub(crate) fn pending_cohosts_count(&self) -> usize {
         self.cohosts.pending_count()
-    }
-
-    /// Returns true when the provided currency code matches the current event currency.
-    pub(crate) fn is_selected_payment_currency_code(&self, payment_currency_code: &str) -> bool {
-        self.event.payment_currency_code.as_deref() == Some(payment_currency_code)
-    }
-
-    /// Returns true when paid tickets wait only on the group's external-payments opt-in.
-    pub(crate) fn requires_external_payments_opt_in(&self) -> bool {
-        requires_external_payments_opt_in(self.payments_ready, &self.external_payments)
-    }
-
-    /// Returns true when paid tickets wait only on the external payee legal name.
-    pub(crate) fn requires_external_payments_seller_name(&self) -> bool {
-        requires_external_payments_seller_name(self.payments_ready, &self.external_payments)
-    }
-
-    /// Returns true when tax is added to the configured ticket price.
-    pub(crate) fn uses_exclusive_ticket_tax(&self) -> bool {
-        self.event.tax_behavior == TicketTaxBehavior::Exclusive
-    }
-
-    /// Returns true when the group currently collects paid tickets outside the platform.
-    pub(crate) fn uses_external_ticketing(&self) -> bool {
-        matches!(
-            event_ticketing_mode(self.payments_ready, &self.external_payments),
-            EventTicketingMode::External
-        )
-    }
-
-    /// Returns true when the event uses manual Stripe Tax Rates.
-    pub(crate) fn uses_manual_ticket_tax(&self) -> bool {
-        self.event.tax_calculation_mode == TicketTaxCalculationMode::Manual
-    }
-
-    /// Returns true when the event does not collect ticket tax.
-    pub(crate) fn uses_no_ticket_tax(&self) -> bool {
-        self.event.tax_calculation_mode == TicketTaxCalculationMode::None
     }
 }
 

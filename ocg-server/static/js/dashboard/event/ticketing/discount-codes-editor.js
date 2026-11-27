@@ -350,7 +350,7 @@ class DiscountCodesEditor extends TicketingEditorBase {
         style: "currency",
         currency: this._currencyCode(),
       }).format(amount);
-    } catch (_) {
+    } catch {
       return `${this._currencyCode()} ${amount}`;
     }
   }
