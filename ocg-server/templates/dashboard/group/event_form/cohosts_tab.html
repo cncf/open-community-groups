@@ -1,0 +1,22 @@
+{# Co-hosts Tab (shared by events_add.html and events_update.html; expects `form`, `communities`) -#}
+<div data-content="cohosts" class="hidden">
+  <form id="cohosts-form" data-event-form>
+    <div class="pb-12">
+      {{ dashboard::form_title(title = "Co-hosts", description = "Invite other groups to co-host this event.") -}}
+      <div class="mt-6 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
+        Co-hosts must be added and must respond before the event can be published. Co-hosts can't be changed while the event is published.
+      </div>
+      {% if let Some(event) = form.existing_event -%}
+        {% if event.published -%}
+          {{ dashboard::permission_warning(message = "Co-hosts can't be changed while the event is published. If you unpublish it to change them, it can't be published again until every newly added group responds.", extra_classes = "mt-6") -}}
+        {% endif -%}
+      {% endif -%}
+      {# djlint:off #}
+      <div class="mt-10">
+        <cohosts-selector communities="{{ communities|json }}" selected-cohosts="{% if let Some(cohosts) = form.cohosts %}{{ cohosts.cohosts|json }}{% else %}[]{% endif %}" revision="{% if let Some(cohosts) = form.cohosts %}{{ cohosts.revision }}{% else %}0{% endif %}" current-group-id="{{ form.group_id }}" {% if form.cohosts_disabled() %}disabled{% endif %}></cohosts-selector>
+      </div>
+      {# djlint:on #}
+    </div>
+  </form>
+</div>
+{# End Co-hosts Tab -#}

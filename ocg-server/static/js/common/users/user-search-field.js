@@ -366,7 +366,7 @@ export class UserSearchField extends LitWrapper {
     const ids = this.disabledUserIds || [];
     try {
       return ids.some((id) => String(id) === String(user.user_id));
-    } catch (_) {
+    } catch {
       return false;
     }
   }

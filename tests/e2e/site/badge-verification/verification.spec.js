@@ -1,10 +1,8 @@
 import { expect, test } from "../../fixtures.js";
 
-import { TEST_GROUP_IDS } from "../../seed.js";
 import { buildE2eUrl, getPageOverflow, navigateToPath } from "../../utils.js";
 
 const ACTIVE_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada02";
-const BADGE_STATUS_LIST_ID = "cacacaca-caca-caca-caca-cacacacaca01";
 const MEMBER_HOST_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada06";
 const PHONE_VIEWPORTS = [
   { height: 568, width: 320 },

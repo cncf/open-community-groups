@@ -1,5 +1,15 @@
 {% extends "common/base.html" -%}
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/feedback.html" as feedback -%}
+{% import "macros/ui.html" as ui -%}
+
+{% block scripts -%}
+  <script type="module" src="/static/js/common/tooltip-panel.js"></script>
+  <script type="module" src="/static/js/dashboard/confirm-actions.js"></script>
+  <script type="module" src="/static/js/dashboard/menu-drawer.js"></script>
+  {% block dashboard_scripts -%}
+  {% endblock dashboard_scripts -%}
+{% endblock scripts -%}
 
 {% block skip_link -%}
   {# Skip navigation link -#}
@@ -63,8 +73,27 @@
       {# End close menu button (mobile only) -#}
 
       <div class="sheet-body flex flex-col h-full w-full py-5 pt-14 md:pt-24 phone:h-auto phone:pt-2">
-        {% block menu -%}
-        {% endblock menu -%}
+        <div id="dashboard-menu"
+             class="contents"
+             {% block dashboard_menu_attributes -%}
+             hx-target="body"
+             {% endblock dashboard_menu_attributes -%}>
+          <div class="flex justify-between items-center mt-3 mb-6 px-3 xl:px-5">
+            <div class="font-semibold text-stone-900 text-sm xl:text-lg">
+              {% block dashboard_title -%}
+              {% endblock dashboard_title -%}
+            </div>
+            <div id="dashboard-spinner"
+                 class="{% block dashboard_spinner_classes -%}group hx-spinner -mt-0.5 relative{% endblock dashboard_spinner_classes -%}">
+              {{ ui::spinner(size = "size-5") -}}
+            </div>
+          </div>
+
+          <div class="w-full flex flex-col flex-1 space-y-5 overflow-y-auto px-3 xl:px-5">
+            {% block menu -%}
+            {% endblock menu -%}
+          </div>
+        </div>
       </div>
     </aside>
     {# End sticky menu -#}
@@ -80,6 +109,15 @@
           role="main">
       {% block dashboard_main -%}
       {% endblock dashboard_main -%}
+
+      {# Messages -#}
+      {% if !messages.is_empty() -%}
+        {{ feedback::alerts(messages) -}}
+      {% endif -%}
+      {# End messages -#}
+
+      {% block dashboard_modals -%}
+      {% endblock dashboard_modals -%}
     </main>
   </div>
   {# End Main Content -#}

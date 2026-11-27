@@ -1,16 +1,16 @@
 {% extends "dashboard/dashboard_base.html" -%}
-{% import "macros/feedback.html" as feedback -%}
 {% import "macros/dashboard.html" as dashboard -%}
 
 {% block dashboard_main_classes -%}
   {% if content.is_check_in() %}block{% else %}hidden md:block{% if content.is_invitations() %} phone:block{% endif %}{% endif %}
 {% endblock dashboard_main_classes -%}
 
-{% block scripts -%}
-  <script type="module" src="/static/js/common/tooltip-panel.js"></script>
+{% block dashboard_title -%}
+  User Dashboard
+{%- endblock dashboard_title -%}
+
+{% block dashboard_scripts -%}
   <script type="module" src="/static/js/dashboard/user/form-page-elements.js"></script>
-  <script type="module" src="/static/js/dashboard/confirm-actions.js"></script>
-  <script type="module" src="/static/js/dashboard/menu-drawer.js"></script>
   <script type="module" src="/static/js/dashboard/group/events-list.js"></script>
   <script type="module" src="/static/js/dashboard/user/badges.js"></script>
   <script type="module" src="/static/js/dashboard/user/check-in.js"></script>
@@ -24,7 +24,7 @@
           src="/static/js/dashboard/user/session-proposals/actions.js"></script>
   <script type="module" src="/static/js/dashboard/user/submissions.js"></script>
   <script type="module" src="/static/js/dashboard/user/surveys.js"></script>
-{% endblock scripts -%}
+{% endblock dashboard_scripts -%}
 
 {% block mobile_dashboard_view -%}
   {% if content.is_invitations() -%}
@@ -35,42 +35,38 @@
 {% endblock mobile_dashboard_view -%}
 
 {% block menu -%}
-  {% call dashboard::dashboard_menu_shell("User Dashboard") -%}
   {# Events check-in (mobile only) -#}
-  <div class="leading-10 grid gap-y-0.5 md:hidden">
-    {{ dashboard::menu_title(text = "Events", extra_styles = "py-1.5") -}}
-    {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/user?tab=check-in", extra_styles = "phone:[&>a]:py-1.5") -}}
-  </div>
+  {% call dashboard::menu_section(title = "Events", section_classes = "md:hidden") -%}
+  {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/user?tab=check-in", extra_styles = "phone:[&>a]:py-1.5") -}}
+  {% endcall -%}
   {# End events check-in (mobile only) -#}
+
   {# User -#}
-  <div class="leading-10 grid gap-y-0.5 max-md:hidden phone:grid phone:border-t phone:border-stone-200 phone:pt-6">
-    {{ dashboard::menu_title(text = "User", extra_styles = "py-1.5") -}}
-    {{ dashboard::menu_item(name = "My Groups", icon = "groups", is_active = content.is_groups() , href = "/dashboard/user?tab=groups", extra_styles = "phone:hidden") -}}
-    {{ dashboard::menu_item(name = "My Events", icon = "events", is_active = content.is_events() , href = "/dashboard/user?tab=events", extra_styles = "phone:hidden") -}}
-    {{ dashboard::menu_item(name = "Surveys", icon = "survey", is_active = content.is_surveys() , href = "/dashboard/user?tab=surveys", items_count = surveys_unanswered_count, items_count_label = "unanswered", extra_styles = "phone:hidden") -}}
-    {{ dashboard::menu_item(name = "Purchases & documents", compact_name = "Purchases", icon = "invoice", is_active = content.is_purchases() , href = "/dashboard/user?tab=purchases", extra_styles = "phone:hidden") -}}
-    {{ dashboard::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account() , href = "/dashboard/user?tab=account", extra_styles = "phone:hidden") -}}
-    {{ dashboard::menu_item(name = "Notifications", icon = "bell", is_active = content.is_notifications() , href = "/dashboard/user?tab=notifications", extra_styles = "phone:hidden") -}}
-    {{ dashboard::menu_item(name = "Badges", icon = "certificate", is_active = content.is_badges() , href = "/dashboard/user?tab=badges", extra_styles = "phone:hidden") -}}
-    {{ dashboard::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations", items_count = invitations_pending_count, items_count_label = "pending", extra_styles = "phone:[&>a]:py-1.5") -}}
-    {{ dashboard::menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/user?tab=inbox", extra_styles = "phone:hidden") -}}
-  </div>
+  {% call dashboard::menu_section(title = "User", section_classes = "max-md:hidden phone:grid phone:border-t phone:border-stone-200 phone:pt-6") -%}
+  {{ dashboard::menu_item(name = "My Groups", icon = "groups", is_active = content.is_groups() , href = "/dashboard/user?tab=groups", extra_styles = "phone:hidden") -}}
+  {{ dashboard::menu_item(name = "My Events", icon = "events", is_active = content.is_events() , href = "/dashboard/user?tab=events", extra_styles = "phone:hidden") -}}
+  {{ dashboard::menu_item(name = "Surveys", icon = "survey", is_active = content.is_surveys() , href = "/dashboard/user?tab=surveys", items_count = surveys_unanswered_count, items_count_label = "unanswered", extra_styles = "phone:hidden") -}}
+  {{ dashboard::menu_item(name = "Purchases & documents", compact_name = "Purchases", icon = "invoice", is_active = content.is_purchases() , href = "/dashboard/user?tab=purchases", extra_styles = "phone:hidden") -}}
+  {{ dashboard::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account() , href = "/dashboard/user?tab=account", extra_styles = "phone:hidden") -}}
+  {{ dashboard::menu_item(name = "Notifications", icon = "bell", is_active = content.is_notifications() , href = "/dashboard/user?tab=notifications", extra_styles = "phone:hidden") -}}
+  {{ dashboard::menu_item(name = "Badges", icon = "certificate", is_active = content.is_badges() , href = "/dashboard/user?tab=badges", extra_styles = "phone:hidden") -}}
+  {{ dashboard::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations", items_count = invitations_pending_count, items_count_label = "pending", extra_styles = "phone:[&>a]:py-1.5") -}}
+  {{ dashboard::menu_item(name = "Inbox", icon = "email", is_active = content.is_inbox() , href = "/dashboard/user?tab=inbox", extra_styles = "phone:hidden") -}}
+  {% endcall -%}
   {# End User -#}
+
   {# Call for Speakers -#}
-  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5 max-md:hidden">
-    {{ dashboard::menu_title(text = "Call for Speakers", extra_styles = "py-1.5") -}}
-    {{ dashboard::menu_item(name = "Session proposals", icon = "proposal", is_active = content.is_session_proposals() , href = "/dashboard/user?tab=session-proposals") -}}
-    {{ dashboard::menu_item(name = "Submissions", icon = "submission", is_active = content.is_submissions() , href = "/dashboard/user?tab=submissions") -}}
-  </div>
+  {% call dashboard::menu_section(title = "Call for Speakers") -%}
+  {{ dashboard::menu_item(name = "Session proposals", icon = "proposal", is_active = content.is_session_proposals() , href = "/dashboard/user?tab=session-proposals") -}}
+  {{ dashboard::menu_item(name = "Submissions", icon = "submission", is_active = content.is_submissions() , href = "/dashboard/user?tab=submissions") -}}
+  {% endcall -%}
   {# End Call for Speakers -#}
 
   {# Audit -#}
-  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5 max-md:hidden">
-    {{ dashboard::menu_title(text = "AUDIT", extra_styles = "py-1.5") -}}
-    {{ dashboard::menu_item(name = "Logs", icon = "logs", is_active = content.is_logs() , href = "/dashboard/user?tab=logs") -}}
-  </div>
-  {# End Audit -#}
+  {% call dashboard::menu_section(title = "AUDIT") -%}
+  {{ dashboard::menu_item(name = "Logs", icon = "logs", is_active = content.is_logs() , href = "/dashboard/user?tab=logs") -}}
   {% endcall -%}
+  {# End Audit -#}
 {% endblock menu -%}
 
 {% block dashboard_main -%}
@@ -88,9 +84,4 @@
     {# End Content -#}
   </div>
   {# djlint:on #}
-  {# Messages -#}
-  {% if !messages.is_empty() -%}
-    {{ feedback::alerts(messages) -}}
-  {% endif -%}
-  {# End messages -#}
 {% endblock dashboard_main -%}

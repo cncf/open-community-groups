@@ -1,0 +1,34 @@
+name: Install oxlint
+description: Install the pinned oxlint standalone binary for JavaScript linting.
+
+inputs:
+  version:
+    description: oxlint release version to install (without the leading oxlint_v).
+    required: false
+    default: 1.95.0
+
+runs:
+  using: composite
+  steps:
+    - name: Install oxlint
+      shell: bash
+      env:
+        OXLINT_VERSION: ${{ inputs.version }}
+      run: |
+        set -eu
+        case "$OXLINT_VERSION" in
+          ''|*[!0-9.]*) echo "Invalid oxlint version: $OXLINT_VERSION" >&2; exit 1 ;;
+        esac
+        arch=$(uname -m)
+        case "$arch" in
+          x86_64) target="x86_64-unknown-linux-gnu" ;;
+          aarch64|arm64) target="aarch64-unknown-linux-gnu" ;;
+          *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
+        esac
+        curl -sSL --fail --retry 3 \
+          "https://github.com/oxc-project/oxc/releases/download/oxlint_v${OXLINT_VERSION}/oxlint-${target}.tar.gz" \
+          -o oxlint.tar.gz
+        tar -xzf oxlint.tar.gz
+        chmod +x "oxlint-${target}"
+        sudo mv "oxlint-${target}" /usr/local/bin/oxlint
+        rm -f oxlint.tar.gz

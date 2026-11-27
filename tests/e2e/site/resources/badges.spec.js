@@ -5,8 +5,6 @@ import { buildE2eUrl, navigateToEvent } from "../../utils.js";
 
 const ACTIVE_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada02";
 const BADGE_STATUS_LIST_ID = "cacacaca-caca-caca-caca-cacacacaca01";
-const MEMBER_HOST_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada06";
-const REVOKED_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada04";
 
 test.describe("public badge resources", () => {
   test("publishes credential, issuer, and status-list JSON contracts", async ({ request }) => {

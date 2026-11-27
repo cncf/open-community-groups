@@ -1,18 +1,22 @@
-{% import "macros/ui.html" as ui -%}
-{% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/event_form.html" as event_form -%}
 {% import "macros/form_fields.html" as form_fields -%}
 
 {# Events update form -#}
-{% let event_read_only = event.canceled || !can_manage_events -%}
-{% let paid_ticketing_available = self.is_paid_ticketing_available() -%}
-{% let paid_ticketing_read_only = !paid_ticketing_available && event.is_paid_capable() && event.external_payment_url.is_none() -%}
+{# Shared tab partials under event_form/ consume `form` and the literal layout classes below. -#}
+{% let form = self.form_state() -%}
 {% let pending_cohosts_count = self.pending_cohosts_count() -%}
-{% let ticketing_free_only = !paid_ticketing_available && !event.is_paid_capable() -%}
-{% let ticketing_read_only = event_read_only || paid_ticketing_read_only -%}
 {% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
 {% let event_public_url_enabled = event.published || event.canceled -%}
+{% let back_href -%}/dashboard/group?tab=events{% if event.is_past() %}&events_tab={{ EventsTab::Past }}{% endif %}{%- endlet %}
+{% let field_half_col = "col-span-full 2xl:col-span-3" -%}
+{% let field_spacer_col = "hidden 2xl:flex col-span-3" -%}
+{% let logo_col = "col-span-full 2xl:col-span-4" -%}
+{% let setting_half_col = "col-span-full 2xl:col-span-3" -%}
+{% let setting_spacer_col = "hidden 2xl:flex col-span-3" -%}
+{% let links_grid_cols = "2xl:grid-cols-2" -%}
+{% let session_speakers_classes = "mt-8" -%}
+{% let tags_col = "col-span-full 2xl:col-span-3" -%}
 <div id="event-update-page"
      class="group/event-page grid h-full min-h-full min-w-0 grow grid-rows-[auto_minmax(0,1fr)] gap-y-8 has-[#pending-changes-alert:not(.hidden)]:grid-rows-[auto_auto_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
      data-event-page="update"
@@ -38,18 +42,7 @@
      data-group-banner-mobile-url="{%- if let Some(banner_mobile_url) = &event.group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}">
   <div class="col-span-full min-w-0 space-y-4">
     {# Back to the events list tab holding this event, guarded when the event has pending changes -#}
-    <a id="event-back-link"
-       href="/dashboard/group?tab=events{% if event.is_past() %}&events_tab={{ EventsTab::Past }}{% endif %}"
-       hx-get="/dashboard/group?tab=events{% if event.is_past() %}&events_tab={{ EventsTab::Past }}{% endif %}"
-       hx-trigger="click, confirmed"
-       hx-target="body"
-       hx-indicator="#dashboard-spinner"
-       data-pending-changes-guard
-       class="flex w-fit items-center gap-1 text-sm font-medium text-primary-fg hover:underline">
-      <span class="svg-icon size-4 icon-arrow-left bg-primary-fg"
-            aria-hidden="true"></span>
-      Back to events
-    </a>
+    {{ event_form::back_link(href = back_href) -}}
     {# End back to events -#}
 
     {# Event header -#}
@@ -113,27 +106,7 @@
           {% endif -%}
         </span>
         <div class="ms-auto flex flex-wrap items-center justify-end gap-3">
-          <button id="event-preview-button"
-                  type="button"
-                  aria-label="Preview"
-                  class="group btn-primary-outline btn-mini h-7! inline-flex items-center justify-center gap-1.5 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-                  {% if !can_manage_events -%}
-                    disabled title="Your role cannot preview events."
-                  {% else -%}
-                    title="Preview"
-                  {% endif -%}>
-            <svg class="size-3.5 shrink-0"
-                 aria-hidden="true"
-                 stroke="currentColor"
-                 fill="currentColor"
-                 stroke-width="0"
-                 viewBox="0 0 16 16"
-                 xmlns="http://www.w3.org/2000/svg">
-              <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
-              </path>
-            </svg>
-            <span>Preview</span>
-          </button>
+          {{ event_form::preview_button(can_manage_events = can_manage_events) -}}
           {% if event_public_url_enabled -%}
             <a id="event-public-page-link"
                href="{{ event_public_url }}"
@@ -169,31 +142,28 @@
     {% endif -%}
   </div>
 
-  <div id="pending-changes-alert" class="col-span-full hidden min-w-0">
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-edge-faint bg-primary-tint px-4 py-3 text-primary-fg-deep">
-      <p class="min-w-0 flex-1 break-words text-sm/6">You have pending changes. If you leave without saving, changes will be lost.</p>
-      <button id="update-event-button"
-              type="button"
-              class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto
-                     {% if event_read_only -%}
-                       opacity-50 cursor-not-allowed
-                     {% endif -%}"
-              hx-put="/dashboard/group/events/{{ event.event_id }}/update"
-              hx-trigger="click, confirmed"
-              hx-ext="no-empty-vals-keep-zero"
-              hx-include="form[data-event-form]"
-              hx-target="#dashboard-content"
-              hx-swap="none"
-              hx-indicator="#dashboard-spinner"
-              hx-disabled-elt="#update-event-button, #cancel-button"
-              {% if event.canceled -%}
-                disabled title="Canceled events are read-only."
-              {% else if !can_manage_events -%}
-                disabled title="Your role cannot update events."
-              {% endif -%}
-              hx-exclude="input[type='checkbox'][name^='toggle_']">Save</button>
-    </div>
-  </div>
+  {% call event_form::pending_changes_alert(message = "You have pending changes. If you leave without saving, changes will be lost.") -%}
+  <button id="update-event-button"
+          type="button"
+          class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto
+                 {% if form.event_read_only() -%}
+                   opacity-50 cursor-not-allowed
+                 {% endif -%}"
+          hx-put="/dashboard/group/events/{{ event.event_id }}/update"
+          hx-trigger="click, confirmed"
+          hx-ext="no-empty-vals-keep-zero"
+          hx-include="form[data-event-form]"
+          hx-target="#dashboard-content"
+          hx-swap="none"
+          hx-indicator="#dashboard-spinner"
+          hx-disabled-elt="#update-event-button, #cancel-button"
+          {% if event.canceled -%}
+            disabled title="Canceled events are read-only."
+          {% else if !can_manage_events -%}
+            disabled title="Your role cannot update events."
+          {% endif -%}
+          hx-exclude="input[type='checkbox'][name^='toggle_']">Save</button>
+  {% endcall -%}
 
   <div class="col-span-full row-start-2 grid h-full content-start min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 xl:grid-cols-[11rem_minmax(0,1fr)] xl:content-stretch xl:gap-x-8 xl:gap-y-0">
     <aside class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8">
@@ -201,1239 +171,109 @@
     </aside>
 
     <div class="min-w-0">
-      <div class="inert-form" {% if event_read_only -%} inert {% endif -%}>
+      <div class="inert-form"
+           {% if form.event_read_only() -%}
+             inert
+           {% endif -%}>
         <div class="space-y-12">
-          {# Event Details Tab -#}
-          <div data-content="details">
-            <form id="details-form" data-event-form>
-              <div class="pb-12">
-                {{ dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.", id = event.event_id.to_string()) -}}
+          {% include "dashboard/group/event_form/details_tab.html" -%}
+          {% include "dashboard/group/event_form/cohosts_tab.html" -%}
+          {% include "dashboard/group/event_form/labels_tab.html" -%}
+          {% include "dashboard/group/event_form/questions_tab.html" -%}
+          {% include "dashboard/group/event_form/cfs_tab.html" -%}
+          {% include "dashboard/group/event_form/date_venue_tab.html" -%}
 
-                <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-                  {# Event name -#}
-                  <div class="col-span-full min-w-0 2xl:col-span-3">
-                    <label for="name" class="form-label">
-                      Name <span class="asterisk">*</span>
-                    </label>
-                    <div class="mt-2">
-                      <input type="text"
-                             name="name"
-                             id="name"
-                             maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
-                             class="input-primary"
-                             autocomplete="off"
-                             autocorrect="off"
-                             autocapitalize="off"
-                             spellcheck="false"
-                             value="{{ event.name }}"
-                             required>
-                    </div>
-                    <p class="form-legend">
-                      Display name of the event (e.g. Kubernetes Amsterdam Meetup). Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
-                    </p>
-                  </div>
-                  {# End Event name -#}
-
-                  <div class="hidden 2xl:flex col-span-3"></div>
-
-                  {# Event kind -#}
-                  <div class="col-span-full 2xl:col-span-3">
-                    <label for="kind_id" class="form-label">
-                      Event Type <span class="asterisk">*</span>
-                    </label>
-                    <div class="mt-2 grid grid-cols-1">
-                      <select id="kind_id" name="kind_id" class="select-primary" required>
-                        <option value="">Select an event type</option>
-                        {% for kind in event_kinds %}
-                          <option value="{{ kind.event_kind_id }}"
-                                  {% if kind.event_kind_id == event.kind.to_string() %}selected{% endif %}>{{ kind.display_name }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
-                  </div>
-                  {# End Event kind -#}
-
-                  {# Event category -#}
-                  <div class="col-span-full 2xl:col-span-3">
-                    <label for="category_id" class="form-label">
-                      Category <span class="asterisk">*</span>
-                    </label>
-                    <div class="mt-2 grid grid-cols-1">
-                      <select id="category_id" name="category_id" class="select-primary" required>
-                        <option value="">Select a category</option>
-                        {% for category in categories %}
-                          <option value="{{ category.event_category_id }}"
-                                  {% if category.name == event.category_name %}selected{% endif %}>{{ category.name }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    <p class="form-legend">Type of event or meetup.</p>
-                  </div>
-                  {# End Event category -#}
-
-                  {% let logo_value -%}value="{%- if let Some(custom_logo_url) = &event.custom_logo_url -%}{{ custom_logo_url }}{%- endif -%}"{%- endlet %}
-                {% let banner_value -%}value="{%- if let Some(banner_url) = &event.banner_url -%}{{ banner_url }}{%- endif -%}"{%- endlet %}
-              {% let banner_mobile_value -%}value="{%- if let Some(banner_mobile_url) = &event.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endlet %}
-            {# djlint:off #}
-            {% let logo_dark_value -%}value="{%- if let Some(custom_logo_dark_url) = &event.custom_logo_dark_url -%}{{ custom_logo_dark_url }}{%- endif -%}"{%- endlet %}
-            {% let banner_dark_value -%}value="{%- if let Some(banner_dark_url) = &event.banner_dark_url -%}{{ banner_dark_url }}{%- endif -%}"{%- endlet %}
-            {% let banner_mobile_dark_value -%}value="{%- if let Some(banner_mobile_dark_url) = &event.banner_mobile_dark_url -%}{{ banner_mobile_dark_url }}{%- endif -%}"{%- endlet %}
-            {# djlint:on #}
-
-            {# Logo URL -#}
-            {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", value_attr = logo_value, field_class = "col-span-full 2xl:col-span-4", input_class = "w-full block") -}}
-            {# End Logo URL -#}
-
-            {# Logo dark URL -#}
-            {{ form_fields::image_field(label = "Logo (dark mode)", name = "logo_dark_url", image_kind = "logo", target = crate::types::images::ImageTarget::Logo, legend = "Optional. Shown instead of the logo in dark mode, without the white background. Used only together with the logo above.", value_attr = logo_dark_value, field_class = "col-span-full 2xl:col-span-4", input_class = "w-full block", extra_attrs = "dark-preview") -}}
-            {# End Logo dark URL -#}
-
-            {# Banner URL -#}
-            {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_value, input_class = "w-full block") -}}
-            {# End Banner URL -#}
-
-            {# Banner dark URL -#}
-            {{ form_fields::image_field(label = "Banner (dark mode)", name = "banner_dark_url", image_kind = "banner", target = crate::types::images::ImageTarget::Banner, legend = "Optional. Shown instead of the banner in dark mode. Used only together with the banner above.", value_attr = banner_dark_value, input_class = "w-full block", extra_attrs = "dark-preview") -}}
-            {# End Banner dark URL -#}
-
-            {# Banner Mobile URL -#}
-            {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_mobile_value, input_class = "w-full block") -}}
-            {# End Banner Mobile URL -#}
-
-            {# Banner Mobile dark URL -#}
-            {{ form_fields::image_field(label = "Banner Mobile (dark mode)", name = "banner_mobile_dark_url", image_kind = "banner", target = crate::types::images::ImageTarget::BannerMobile, legend = "Optional. Shown instead of the mobile banner in dark mode. Used only together with the mobile banner above.", value_attr = banner_mobile_dark_value, input_class = "w-full block", extra_attrs = "dark-preview") -}}
-            {# End Banner Mobile dark URL -#}
-
-            {# Short Description -#}
-            <div class="col-span-full">
-              <label for="description_short" class="form-label">Short Description</label>
-              <div class="mt-2">
-                <input type="text"
-                       id="description_short"
-                       name="description_short"
-                       class="input-primary"
-                       maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
-                       value="{%- if let Some(description_short) = &event.description_short -%}{{ description_short }}{%- endif -%}" />
-              </div>
-              <p class="form-legend">
-                Brief description used in event listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
-              </p>
+          {# Submissions Tab -#}
+          <div data-content="submissions" class="hidden">
+            <div id="submissions-content">
+              {{ dashboard::page_title(title = "Submissions", docs_href = "/docs#/guides/event-operations?id=submissions", description = "Review and manage call for speakers submissions.") -}}
+              {{ event_form::loading_placeholder(id = "submissions-loading", label = "Loading submissions...") -}}
             </div>
-            {# End Short Description -#}
-
-            {# Event Description -#}
-            <div class="col-span-full">
-              <label for="description" class="form-label">
-                Description <span class="asterisk">*</span>
-              </label>
-              <div class="mt-2">
-                <markdown-editor id="description" name="description" content="{{ event.description }}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
-              </div>
-              <p class="form-legend">
-                Full description of the event and its purpose. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
-              </p>
-            </div>
-            {# End Event Description -#}
+            <review-submission-modal id="review-submission-modal" event-id="{{ event.event_id }}" statuses="{{ cfs_submission_statuses|json }}" labels="{{ event.labels|json }}" label-max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}" current-user-id="{{ current_user_id }}" message-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}"></review-submission-modal>
           </div>
-        </div>
+          {# End Submissions Tab -#}
 
-        {# Additional Information section -#}
-        <div class="border-t border-stone-900/10 pt-12">
-          {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
-
-          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-6xl">
-            {# Waitlist enabled -#}
-            <div class="col-span-full 2xl:col-span-3">
-              <label data-enrollment-toggle-label="waitlist"
-                     class="inline-flex items-center cursor-pointer transition-opacity">
-                <input id="toggle_waitlist_enabled"
-                       name="toggle_waitlist_enabled"
-                       value="enabled"
-                       type="checkbox"
-                       class="sr-only peer"
-                       {% if event.waitlist_enabled %}
-                         checked
-                       {% endif %}>
-                <input type="hidden"
-                       id="waitlist_enabled"
-                       name="waitlist_enabled"
-                       value="{{ event.waitlist_enabled }}">
-                <div class="toggle-track"></div>
-                <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
-              </label>
-              <p class="form-legend">
-                Allow full events, including paid ticket events, to add people to a waiting list instead
-                of rejecting them. Capacity is the total of ticket seats. Invitation approval and the waitlist cannot be
-                enabled together.
-              </p>
-            </div>
-            {# End Waitlist enabled -#}
-
-            {# Attendee approval required -#}
-            <div class="col-span-full 2xl:col-span-3">
-              <label data-enrollment-toggle-label="attendee-approval"
-                     class="inline-flex items-center cursor-pointer transition-opacity">
-                <input id="toggle_attendee_approval_required"
-                       name="toggle_attendee_approval_required"
-                       value="required"
-                       type="checkbox"
-                       class="sr-only peer"
-                       {% if event.attendee_approval_required %}
-                         checked
-                       {% endif %}>
-                <input type="hidden"
-                       id="attendee_approval_required"
-                       name="attendee_approval_required"
-                       value="{{ event.attendee_approval_required }}">
-                <div class="toggle-track"></div>
-                <span class="ms-3 text-sm font-medium text-stone-900">Require Invitation Approval</span>
-              </label>
-              <p class="form-legend">
-                Let people request organizer approval before attending or claiming a ticket. Paid ticket
-                events can use invitation approval. Invitation approval and the waitlist cannot be enabled
-                together. Accept pending requests and reissue expired offers while the event is still
-                active, including outside the public registration window.
-              </p>
-            </div>
-            {# End Attendee approval required -#}
-
-            {# Test event -#}
-            <div class="col-span-full 2xl:col-span-3">
-              <label class="inline-flex items-center cursor-pointer">
-                <input id="toggle_test_event"
-                       name="toggle_test_event"
-                       value="enabled"
-                       type="checkbox"
-                       class="sr-only peer"
-                       {% if event.test_event %}
-                         checked
-                       {% endif %}>
-                <input type="hidden"
-                       id="test_event"
-                       name="test_event"
-                       value="{{ event.test_event }}">
-                <div class="toggle-track"></div>
-                <span class="ms-3 text-sm font-medium text-stone-900">Test Event</span>
-              </label>
-              <p class="form-legend">Exclude this event from discovery, stats, and broadcast notifications.</p>
-            </div>
-            {# End Test event -#}
-
-            <div class="col-span-full grid grid-cols-1 gap-x-6 gap-y-8 2xl:grid-cols-2">
-              {# Meetup URL -#}
-              <div>
-                <label for="meetup_url" class="form-label">Meetup.com URL</label>
-                <div class="mt-2">
-                  <input type="url"
-                         name="meetup_url"
-                         id="meetup_url"
-                         class="input-primary"
-                         placeholder="https://meetup.com/group/events/123456"
-                         {% if let Some(meetup_url) = &event.meetup_url %}
-                           value="{{ meetup_url }}"
-                         {% endif %}>
-                </div>
-                <p class="form-legend">Link to the Meetup.com event page.</p>
-              </div>
-              {# End Meetup URL -#}
-
-              {# Luma URL -#}
-              <div>
-                <label for="luma_url" class="form-label">Luma URL</label>
-                <div class="mt-2">
-                  <input type="url"
-                         name="luma_url"
-                         id="luma_url"
-                         class="input-primary"
-                         placeholder="https://luma.com/event"
-                         {% if let Some(luma_url) = &event.luma_url %}
-                           value="{{ luma_url }}"
-                         {% endif %}>
-                </div>
-                <p class="form-legend">Link to the Luma event page.</p>
-              </div>
-              {# End Luma URL -#}
-            </div>
-
-            {# Photos -#}
-            {% let photos_attr -%}images="{%- if let Some(photos_urls) = &event.photos_urls -%}{{ photos_urls|json }}{%- endif -%}"{%- endlet %}
-          {{ form_fields::gallery_field(legend = "Optional photos related to the event.", images_attr = photos_attr) -}}
-          {# End Photos -#}
-
-          {# Tags -#}
-          {% let tags_items -%}items=" {%- if let Some(tags) = &event.tags -%}{{ tags|json }}{%- endif -%}"{%- endlet %}
-        {% let tag_legend -%}Optional tags to help categorize and find the event. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.{%- endlet %}
-      {{ form_fields::tags_field(legend = tag_legend, items_attr = tags_items, field_class = "col-span-full 2xl:col-span-3", label_text = "Tags") -}}
-      {# End Tags -#}
-    </div>
-  </div>
-  {# End additional information section -#}
-</form>
-</div>
-{# End Event Details Tab -#}
-
-{# Co-hosts Tab -#}
-<div data-content="cohosts" class="hidden">
-  <form id="cohosts-form" data-event-form>
-    <div class="pb-12">
-      {{ dashboard::form_title(title = "Co-hosts", description = "Invite other groups to co-host this event.") -}}
-      <div class="mt-6 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
-        Co-hosts must be added and must respond before the event can be published. Co-hosts can't be changed while the event is published.
-      </div>
-      {% if event.published -%}
-        {{ dashboard::permission_warning(message = "Co-hosts can't be changed while the event is published. If you unpublish it to change them, it can't be published again until every newly added group responds.", extra_classes = "mt-6") -}}
-      {% endif -%}
-      <div class="mt-10">
-        <cohosts-selector communities="{{ communities|json }}" selected-cohosts="{{ cohosts.cohosts|json }}" revision="{{ cohosts.revision }}" current-group-id="{{ event.group.group_id }}" {% if event.published || event_read_only %}disabled{% endif %}></cohosts-selector>
-      </div>
-    </div>
-  </form>
-</div>
-{# End Co-hosts Tab -#}
-
-{# Labels Tab -#}
-<div data-content="labels" class="hidden">
-  <form id="labels-form" data-event-form>
-    <div class="pb-12">
-      {{ dashboard::form_title(title = "Labels", description = "Categorize sessions and Call for Speakers submissions.") -}}
-      <div class="mt-6 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
-        Labels are shared by sessions and Call for Speakers submissions. For example, you can use them to organize sessions by track, topic, or theme. Renaming a label updates it everywhere it is used. To delete a label, use its trash button.
-      </div>
-      <div class="mt-10 max-w-5xl">
-        <labels-editor id="labels-editor" field-name="labels" labels="{{ event.labels|json }}" max-items="{{ crate::validation::MAX_EVENT_LABELS_PER_EVENT }}" max-name-length="{{ crate::validation::MAX_LEN_EVENT_LABEL_NAME }}" colors="{{ crate::validation::EVENT_LABEL_COLORS|json }}">
-        <p slot="legend" class="form-legend">
-          Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
-          <span class="font-semibold">/</span> as the separator for consistency.
-          If you need a different label without renaming the existing one, delete it with its trash button and add a new one.
-        </p>
-        </labels-editor>
-      </div>
-    </div>
-  </form>
-</div>
-{# End Labels Tab -#}
-
-{# Questions Tab -#}
-<div data-content="questions" class="hidden">
-  <form id="questions-form" data-event-form>
-    <div class="pb-12">
-      {{ dashboard::form_title(title = "Registration questions", description = "Ask attendees extra questions. Mark a question Required if you need the answer with a ticket request, RSVP, checkout, or offer claim.") -}}
-      <div class="mt-6 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
-        Only questions marked Required must be answered. Questions appear with a ticket request,
-        before RSVP or checkout, and when claiming an organizer or waitlist offer. Joining a
-        waiting list does not collect answers. Ticket-request answers are available from Requests.
-      </div>
-      {% if event.registration_questions_locked -%}
-        <div class="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Registration questions are read-only because attendees have submitted answers.
-        </div>
-      {% endif -%}
-      <div class="mt-10">
-        <questions-editor name="registration_questions" questions="{{ event.registration_questions|json }}" empty-message='No registration questions yet. Click "Add question" to create one.' empty-disabled-message="No registration questions were added for this event." editing-warning="Questionnaire questions cannot be edited after an attendee has submitted answers." required-help="Required answers are collected with a ticket request, RSVP, checkout, or offer claim. Optional questions can be skipped." prompt-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}" option-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" {% if event.registration_questions_locked %}disabled{% endif %}></questions-editor>
-      </div>
-    </div>
-  </form>
-</div>
-{# End Questions Tab -#}
-
-{# CFS Tab -#}
-<div data-content="cfs" class="hidden">
-  <form id="cfs-form" data-event-form>
-    <div class="pb-12">
-      {{ dashboard::form_title(title = "Call for Speakers", description = "Collect session proposals ahead of the event.") -}}
-
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Enable CFS toggle -#}
-        <div class="col-span-full 2xl:col-span-3">
-          <label class="inline-flex items-center cursor-pointer">
-            <input id="toggle_cfs_enabled"
-                   name="toggle_cfs_enabled"
-                   value="enabled"
-                   type="checkbox"
-                   class="sr-only peer"
-                   {% if let Some(cfs_enabled) = &event.cfs_enabled %}
-                     {% if cfs_enabled %}checked{% endif %}
-                   {% endif %}>
-            <input type="hidden"
-                   id="cfs_enabled"
-                   name="cfs_enabled"
-                   value="{%- if let Some(cfs_enabled) = &event.cfs_enabled -%} {{ cfs_enabled }} {%- else -%} false {%- endif -%}">
-            <div class="toggle-track"></div>
-            <span class="ms-3 text-sm font-medium text-stone-900">Enable Call for Speakers</span>
-          </label>
-          <p class="form-legend">Allow speakers to submit session proposals.</p>
-        </div>
-        {# End Enable CFS toggle -#}
-
-        <div class="hidden 2xl:flex col-span-3"></div>
-
-        {# Opens at -#}
-        <div class="col-span-full 2xl:col-span-3">
-          <label for="cfs_starts_at" class="form-label">
-            Opens at
-            <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
-          </label>
-          <div class="mt-2">
-            <input type="datetime-local"
-                   name="cfs_starts_at"
-                   id="cfs_starts_at"
-                   class="input-primary"
-                   value="{{ event.cfs_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
-          </div>
-          <p class="form-legend">When submissions open.</p>
-        </div>
-        {# End Opens at -#}
-
-        {# Closes at -#}
-        <div class="col-span-full 2xl:col-span-3">
-          <label for="cfs_ends_at" class="form-label">
-            Closes at
-            <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
-          </label>
-          <div class="mt-2">
-            <input type="datetime-local"
-                   name="cfs_ends_at"
-                   id="cfs_ends_at"
-                   class="input-primary"
-                   value="{{ event.cfs_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
-          </div>
-          <p class="form-legend">When submissions close.</p>
-        </div>
-        {# End Closes at -#}
-
-        {# CFS description -#}
-        <div class="col-span-full">
-          <label for="cfs_description" class="form-label">
-            CFS description
-            <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
-          </label>
-          <div class="mt-2">
-            <markdown-editor id="cfs_description" name="cfs_description" content="{%- if let Some(cfs_description) = &event.cfs_description -%}{{ cfs_description }}{%- endif -%}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"></markdown-editor>
-          </div>
-          <p class="form-legend">Shown on the event page to invite speakers.</p>
-        </div>
-        {# End CFS description -#}
-
-        {# Labels pointer -#}
-        <div class="col-span-full rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
-          Submitters can pick from the event labels when submitting their proposals. Manage them from the
-          <span class="font-semibold">Labels</span> tab.
-        </div>
-        {# End labels pointer -#}
-      </div>
-    </div>
-  </form>
-</div>
-{# End CFS Tab -#}
-
-{# Date & Venue Tab -#}
-<div data-content="date-venue" class="hidden">
-  <form id="date-venue-form" data-event-form>
-    <div class="space-y-12">
-      {# Date and Time section -#}
-      <div>
-        {{ dashboard::form_title(title = "Date & Venue", description = "When will this event take place?") -}}
-        {% if event.is_past() -%}
-          <p class="mt-2 text-xs text-stone-500">
-            Past events can be edited, but dates cannot be moved into the future.
-          </p>
-        {%- endif %}
-
-        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-          {# Timezone -#}
-          <div class="col-span-full 2xl:col-span-3">
-            <label class="form-label">
-              Timezone <span class="asterisk">*</span>
-            </label>
-            <div class="mt-2">
-              <timezone-selector name="timezone" value="{{ event.timezone }}" timezones="{{ timezones|json }}" required></timezone-selector>
-            </div>
-            <p class="form-legend">Timezone for event times (e.g. America/New_York, Europe/Amsterdam).</p>
-          </div>
-          {# End Timezone -#}
-
-          <div class="hidden 2xl:flex col-span-3"></div>
-
-          {# Start date/time -#}
-          <div class="col-span-full 2xl:col-span-3">
-            <label for="starts_at" class="form-label">Start Date & Time</label>
-            <div class="mt-2">
-              <input type="datetime-local"
-                     name="starts_at"
-                     id="starts_at"
-                     class="input-primary"
-                     value="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
-            </div>
-            <p class="form-legend">When the event starts.</p>
-          </div>
-          {# End Start date/time -#}
-
-          {# Finish date/time -#}
-          <div class="col-span-full 2xl:col-span-3">
-            <label for="ends_at" class="form-label">End Date & Time</label>
-            <div class="mt-2">
-              <input type="datetime-local"
-                     name="ends_at"
-                     id="ends_at"
-                     class="input-primary"
-                     value="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
-            </div>
-            <p class="form-legend">When the event ends.</p>
-          </div>
-          {# End finish date/time -#}
-
-          {# Registration window start -#}
-          <div class="col-span-full 2xl:col-span-3">
-            <label for="registration_starts_at" class="form-label">Registration Opens</label>
-            <div class="mt-2">
-              <input type="datetime-local"
-                     name="registration_starts_at"
-                     id="registration_starts_at"
-                     class="input-primary"
-                     value="{{ event.registration_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
-            </div>
-            <p class="form-legend">Leave blank to allow registration immediately.</p>
-          </div>
-          {# End registration window start -#}
-
-          {# Registration window end -#}
-          <div class="col-span-full 2xl:col-span-3">
-            <label for="registration_ends_at" class="form-label">Registration Closes</label>
-            <div class="mt-2">
-              <input type="datetime-local"
-                     name="registration_ends_at"
-                     id="registration_ends_at"
-                     class="input-primary"
-                     value="{{ event.registration_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
-            </div>
-            <p class="form-legend">
-              Must be after the open date. Leave blank with an open date to close at event start.
-              Leave both fields blank for no window.
-            </p>
-          </div>
-          {# End registration window end -#}
-
-          <div class="col-span-full rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
-            A registration window limits attendee self-registration, ticket checkout, new invitation
-            requests, waitlist promotion, and registration-question answers. Organizers can still
-            accept pending invitation requests and reissue expired approval offers outside the window.
-            Rejecting requests and inviting attendees manually still work; those invitees can complete
-            required registration questions.
-          </div>
-
-          {# Event reminder toggle -#}
-          <div class="col-span-full lg:col-span-6">
-            <label class="inline-flex items-center cursor-pointer">
-              <input id="toggle_event_reminder_enabled"
-                     name="toggle_event_reminder_enabled"
-                     value="enabled"
-                     type="checkbox"
-                     class="sr-only peer"
-                     {% if event.event_reminder_is_enabled() %}
-                       checked
-                     {% endif %}>
-              <input type="hidden"
-                     id="event_reminder_enabled"
-                     name="event_reminder_enabled"
-                     value="{{ event.event_reminder_is_enabled() }}">
-              <div class="toggle-track"></div>
-              <span class="ms-3 text-sm font-medium text-stone-900">Send Event Reminder</span>
-            </label>
-            <p class="form-legend">Send a reminder email 24 hours before the event starts.</p>
-          </div>
-          {# End Event reminder toggle -#}
+          {% include "dashboard/group/event_form/sessions_tab.html" -%}
+          {% include "dashboard/group/event_form/payments_tab.html" -%}
+          {% include "dashboard/group/event_form/contributors_tab.html" -%}
         </div>
       </div>
-      {# End date and time section -#}
 
-      {# Venue Information section -#}
-      <div id="venue-information-section"
-           class="border-t border-stone-900/10 pt-12">
-        {% let clear_location_button -%}
-        <button id="clear-location-fields"
-                type="button"
-                class="btn-primary-outline btn-mini whitespace-nowrap"
-                aria-label="Clear location details">Clear location</button>
-      {%- endlet %}
-      {{ dashboard::form_title(title = "Venue Information",
-        description = "Location details for in-person and hybrid events.",
-        button = clear_location_button) -}}
-
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Location search -#}
-        <div class="col-span-full">
-          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" state-field-name="venue_state_name" state-code-field-name="venue_state_code" country-name-field-name="venue_country_name" country-code-field-name="venue_country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %} {% if let Some(venue_address) = &event.venue_address %} initial-venue-address="{{ venue_address }}" {% endif %} {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %} {% if let Some(venue_zip_code) = &event.venue_zip_code %} initial-venue-zip-code="{{ venue_zip_code }}" {% endif %} {% if let Some(venue_state_name) = &event.venue_state_name %}initial-state="{{ venue_state_name }}"{% endif %} {% if let Some(venue_state_code) = &event.venue_state_code %}initial-state-code="{{ venue_state_code }}"{% endif %} {% if let Some(venue_country_name) = &event.venue_country_name %}initial-country-name="{{ venue_country_name }}"{% endif %} {% if let Some(venue_country_code) = &event.venue_country_code %}initial-country-code="{{ venue_country_code }}"{% endif %} {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %} {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}>
-          </location-search-field>
+      {# Attendees Tab -#}
+      <div data-content="attendees" class="hidden min-w-0">
+        <div id="attendees-content" data-group-check-in-root>
+          {{ dashboard::form_title(title = "Attendees", description = "Review registrations and manage attendee check-in.") -}}
+          {{ event_form::loading_placeholder(id = "attendees-loading", label = "Loading attendees...") -}}
         </div>
-        {# End location search -#}
       </div>
-    </div>
-    {# End venue information section -#}
+      {# End Attendees Tab -#}
 
-    {# Online Event Details section -#}
-    <div id="online-event-details-section"
-         class="border-t border-stone-900/10 pt-12">
-      {{ dashboard::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -}}
-      <div class="mt-10 max-w-5xl">
-        {% if meetings_enabled %}
-          <online-event-details id="online-event-details" kind="{{ event.kind }}" {% if event.is_past() %}event-past{% endif %} {% if let Some(meeting_join_url) = &event.meeting_join_url %} meeting-join-url="{{ meeting_join_url }}" {% endif %} {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %} meeting-join-instructions="{{ meeting_join_instructions|json }}" {% endif %} {% if let Some(meeting_recording_url) = &event.meeting_recording_url %} meeting-recording-url="{{ meeting_recording_url }}" {% endif %} meeting-recording-published="{{ event.meeting_recording_published.unwrap_or(false) }}" {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %} meeting-recording-raw-urls="{{ meeting_recording_raw_urls|json }}" {% endif %} {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %} meeting-recording-requested="{{ meeting_recording_requested }}" {% endif %} {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %} {% if let Some(meeting_in_sync) = &event.meeting_in_sync %} {% if meeting_in_sync %}meeting-in-sync="true"{% endif %} {% endif %} {% if let Some(meeting_password) = &event.meeting_password %} meeting-password="{{ meeting_password }}" {% endif %} {% if let Some(meeting_error) = &event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %} {% if let Some(meeting_hosts) = &event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %} meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}"></online-event-details>
-        {% else %}
-          <div class="space-y-6">
-            <div class="grid grid-cols-1 gap-6">
-              <div class="space-y-2">
-                <label for="meeting_join_url" class="form-label">Meeting URL</label>
-                <div class="mt-2">
-                  <input type="url"
-                         id="meeting_join_url"
-                         name="meeting_join_url"
-                         class="input-primary"
-                         placeholder="https://meet.example.com/123456789"
-                         {% if let Some(meeting_join_url) = &event.meeting_join_url %}value="{{ meeting_join_url }}"{% endif %}>
-                </div>
-                <p class="form-legend">Teams, Meet, or any other video link.</p>
-              </div>
-              <div class="space-y-2">
-                <label for="meeting_join_instructions" class="form-label">Join instructions (optional)</label>
-                <div class="mt-2">
-                  <textarea id="meeting_join_instructions"
-                            name="meeting_join_instructions"
-                            rows="4"
-                            maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
-                            class="input-primary"
-                            placeholder="Add passcodes, waiting room details, or other attendee instructions.">{% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %}{{ meeting_join_instructions }}{% endif %}</textarea>
-                </div>
-                <p class="form-legend">Shown with the meeting details on the public event page.</p>
-              </div>
-              {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %}
-                <div class="space-y-2">
-                  {% for meeting_recording_raw_url in meeting_recording_raw_urls %}
-                    <div class="space-y-2">
-                      <label for="meeting_recording_raw_urls_{{ loop.index }}" class="form-label">
-                        Original provider recording {{ loop.index }}
-                      </label>
-                      <div class="mt-2">
-                        <input type="url"
-                               id="meeting_recording_raw_urls_{{ loop.index }}"
-                               class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
-                               value="{{ meeting_recording_raw_url }}"
-                               readonly>
-                      </div>
-                    </div>
-                  {% endfor %}
-                  <p class="form-legend">
-                    Zoom can send multiple raw recordings when participants join before or after the main meeting. Review them and copy the correct URL into the final public recording field if needed.
-                  </p>
-                </div>
-              {% endif %}
-              <div class="space-y-2">
-                <label for="meeting_recording_url"
-                       class="form-label">Final public recording URL (optional)</label>
-                <div class="mt-2">
-                  <input type="url"
-                         id="meeting_recording_url"
-                         name="meeting_recording_url"
-                         class="input-primary"
-                         placeholder="https://youtube.com/watch?v=..."
-                         {% if let Some(meeting_recording_url) = &event.meeting_recording_url %}
-                           value="{{ meeting_recording_url }}"
-                         {% endif %}>
-                </div>
-                <p class="form-legend">
-                  Optional final recording URL, such as a processed upload or a reviewed provider recording.
-                </p>
-              </div>
-              <div class="space-y-2">
-                <label class="inline-flex items-center cursor-pointer">
-                  <input type="checkbox"
-                         id="toggle_meeting_recording_published"
-                         name="toggle_meeting_recording_published"
-                         class="sr-only peer"
-                         value="true"
-                         {% if event.meeting_recording_published.unwrap_or(false) %}
-                           checked
-                         {% endif %}>
-                  <input type="hidden"
-                         id="meeting_recording_published"
-                         name="meeting_recording_published"
-                         value="{{ event.meeting_recording_published.unwrap_or(false) }}">
-                  <span class="toggle-track"></span>
-                  <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
-                </label>
-                <p class="form-legend">Controls whether public visitors can see the final public recording URL.</p>
-              </div>
-            </div>
-          </div>
-        {% endif %}
-      </div>
-    </div>
-    {# End online event details section -#}
-  </div>
-</form>
-</div>
-{# End Date & Venue Tab -#}
-
-{# Submissions Tab -#}
-<div data-content="submissions" class="hidden">
-  <div id="submissions-content">
-    {{ dashboard::page_title(title = "Submissions", docs_href = "/docs#/guides/event-operations?id=submissions", description = "Review and manage call for speakers submissions.") -}}
-    {# Loading placeholder -#}
-    <div id="submissions-loading"
-         class="flex items-center justify-center py-12">
-      <div class="flex flex-col items-center space-y-4">
-        {{ ui::spinner(size = "size-10") -}}
-        <div class="text-sm text-stone-500">Loading submissions...</div>
-      </div>
-    </div>
-  </div>
-  <review-submission-modal id="review-submission-modal" event-id="{{ event.event_id }}" statuses="{{ cfs_submission_statuses|json }}" labels="{{ event.labels|json }}" label-max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}" current-user-id="{{ current_user_id }}" message-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}"></review-submission-modal>
-</div>
-{# End Submissions Tab -#}
-
-{# Sessions Tab -#}
-<div data-content="sessions" class="hidden">
-  <form id="sessions-form" data-event-form>
-    <div class="pb-12">
-      {{ dashboard::form_title(title = "Sessions") -}}
-      <div class="mt-10">
-        <sessions-section sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" approved-submissions="{{ approved_submissions|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" label-max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}" event-starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" event-ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" {% if event.is_past() %}event-past{% endif %} {% if meetings_enabled %}meetings-enabled{% endif %}></sessions-section>
-      </div>
-    </div>
-  </form>
-</div>
-{# End Sessions Tab -#}
-
-{# Tickets Tab -#}
-<div data-content="payments" class="hidden">
-  <form id="payments-form" data-event-form>
-    <div class="space-y-12">
-      {% if paid_ticketing_available || event.is_paid_capable() -%}
-        <div>
-          {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
-
-          {% if paid_ticketing_read_only -%}
-            <div class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600">
-              <p class="text-sm/6">
-                {% if self.requires_external_payments_opt_in() -%}
-                  Paid ticket settings are read-only. This group's country collects payments outside the platform:
-                  enable external payments in group settings and add a payment URL to keep selling these tickets.
-                {% else if self.requires_external_payments_seller_name() -%}
-                  Paid ticket settings are read-only until the legal name of the organization collecting
-                  external payments is saved in group settings.
-                {% else -%}
-                  Paid ticket settings are read-only until server payments and a matching group recipient are configured.
-                {% endif -%}
-              </p>
-            </div>
-          {% endif -%}
-
-          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
-            <div class="col-span-full 2xl:col-span-2">
-              <label for="payment_currency_code" class="form-label">
-                Event Currency
-                <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
-              </label>
-              <div class="mt-2">
-                <select id="payment_currency_code"
-                        name="payment_currency_code"
-                        class="select-primary"
-                        {% if ticketing_read_only %}disabled{% endif %}>
-                  <option value="">Select currency</option>
-                  {% for payment_currency_code in payment_currency_codes -%}
-                    <option value="{{ payment_currency_code }}"
-                            {% if self.is_selected_payment_currency_code(payment_currency_code) %}selected{% endif %}>{{ payment_currency_code }}</option>
-                  {% endfor -%}
-                </select>
-              </div>
-              <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
-            </div>
-
-            {% if self.uses_external_ticketing() || event.external_payment_url.is_some() -%}
-              {% if self.requires_external_payments_seller_name() -%}
-                <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
-                     role="note">
-                  Save the legal name of the organization collecting external payments
-                  in group settings to save changes and keep selling these tickets.
-                </div>
-              {% else if !self.uses_external_ticketing() -%}
-                <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
-                     role="note">
-                  External payments are no longer available for this group. To save changes,
-                  turn external payments back on in group settings if the group is still
-                  eligible, or clear the external payment URL and set every ticket price to 0.
-                  Paid tickets off the external rail need a Stripe fiscal sponsor, which is not
-                  offered in external-payment countries.
-                </div>
-              {% endif -%}
-              <div class="col-span-full 2xl:col-span-4 2xl:col-start-1">
-                <input type="hidden" name="external_payment_url_present" value="true">
-                <label for="external_payment_url" class="form-label">
-                  External payment URL
-                  <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
-                </label>
-                <div class="mt-2">
-                  <input type="url"
-                         id="external_payment_url"
-                         name="external_payment_url"
-                         data-external-ticketing-enabled="{{ self.uses_external_ticketing() }}"
-                         class="input-primary"
-                         maxlength="{{ crate::validation::MAX_LEN_L }}"
-                         placeholder="https://"
-                         {% if let Some(url) = event.external_payment_url %}value="{{ url }}"{% endif %}
-                         {% if event_read_only || (ticketing_read_only && self.uses_external_ticketing()) %}disabled{% endif %}>
-                </div>
-                <p class="form-legend">
-                  Attendees open this page to pay outside the platform. Include the purchase
-                  reference shown after they reserve a ticket.
-                </p>
-              </div>
-
-              <div class="col-span-full 2xl:col-span-2">
-                <input type="hidden"
-                       name="external_payment_window_hours_present"
-                       value="true">
-                <label for="external_payment_window_hours" class="form-label">Payment window (hours)</label>
-                <div class="mt-2">
-                  <input type="number"
-                         id="external_payment_window_hours"
-                         name="external_payment_window_hours"
-                         class="input-primary"
-                         min="1"
-                         {% if let Some(max_hours) = external_payments.max_payment_window_hours %}max="{{ max_hours }}"{% endif %}
-                         {% if let Some(default_hours) = external_payments.default_payment_window_hours %}placeholder="{{ default_hours }}"{% endif %}
-                         {% if let Some(hours) = event.external_payment_window_hours %}value="{{ hours }}"{% endif %}
-                         {% if ticketing_read_only %}disabled{% endif %}>
-                </div>
-                <p class="form-legend">
-                  Organizer-confirmation deadline, capped by registration close and event start.
-                  {% if let Some(max_hours) = external_payments.max_payment_window_hours -%}
-                    Maximum {{ max_hours }} hours.
-                  {% endif -%}
-                </p>
-              </div>
-
-              <div class="col-span-full">
-                <input type="hidden"
-                       name="external_payment_instructions_present"
-                       value="true">
-                <label for="external_payment_instructions" class="form-label">Payment instructions</label>
-                <div class="mt-2">
-                  <textarea id="external_payment_instructions"
-                            name="external_payment_instructions"
-                            class="input-primary"
-                            rows="4"
-                            maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
-                            {% if ticketing_read_only %}disabled{% endif %}>{% if let Some(instructions) = event.external_payment_instructions %}{{ instructions }}{% endif %}</textarea>
-                </div>
-                <p class="form-legend">Optional plain-text instructions shown with the payment page.</p>
-              </div>
-
-              <input type="hidden" name="tax_calculation_mode" value="none">
-              <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900">
-                Organizers are responsible for tax and receipts for payments collected outside
-                this platform. Paid tickets require a complete venue in the group country
-                {%- if let Some(country_code) = external_payments.country_code %} ({{ country_code }}){% endif -%}.
-              </div>
-            {% else -%}
-              <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
-                  <button type="button"
-                          class="btn-primary-outline btn-mini"
-                          aria-describedby="automatic-tax-readiness-status"
-                          data-automatic-tax-readiness-action="check"
-                          title="Check the saved venue with the automatic-tax provider"
-                          {% if event_read_only %}disabled{% endif %}>Check readiness</button>
-                </div>
-                <div class="mt-2">
-                  <select id="tax_calculation_mode"
-                          name="tax_calculation_mode"
-                          class="select-primary"
-                          {% if ticketing_read_only %}disabled{% endif %}>
-                    <option value="automatic"
-                            {% if !self.uses_manual_ticket_tax() && !self.uses_no_ticket_tax() %}selected{% endif %}>Automatic Stripe Tax</option>
-                    <option value="manual"
-                            {% if self.uses_manual_ticket_tax() %}selected{% endif %}>Manual Stripe Tax Rates</option>
-                    <option value="none"
-                            {% if self.uses_no_ticket_tax() %}selected{% endif %}>Do not collect tax</option>
-                  </select>
-                  {% if ticketing_read_only -%}
-                    <input type="hidden"
-                           name="tax_calculation_mode"
-                           value="{% if self.uses_manual_ticket_tax() %}manual{% else if self.uses_no_ticket_tax() %}none{% else %}automatic{% endif %}">
-                  {% endif -%}
-                </div>
-                <p class="form-legend">Choose how tax is calculated for every paid ticket tier.</p>
-              </div>
-
-              <div class="col-span-full 2xl:col-span-2" data-tax-control="behavior">
-                <label for="tax_behavior" class="form-label">Ticket Tax Display</label>
-                <div class="mt-2">
-                  <select id="tax_behavior"
-                          name="tax_behavior"
-                          class="select-primary"
-                          {% if ticketing_read_only || self.uses_no_ticket_tax() %}disabled{% endif %}>
-                    <option value="inclusive"
-                            {% if !self.uses_exclusive_ticket_tax() %}selected{% endif %}>Tax included in ticket price</option>
-                    <option value="exclusive"
-                            {% if self.uses_exclusive_ticket_tax() %}selected{% endif %}>Tax added at Checkout</option>
-                  </select>
-                  {% if ticketing_read_only -%}
-                    <input type="hidden"
-                           name="tax_behavior"
-                           value="{% if self.uses_exclusive_ticket_tax() %}exclusive{% else %}inclusive{% endif %}">
-                  {% endif -%}
-                </div>
-                <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
-              </div>
-
-              <div class="col-span-full hidden rounded-md border px-4 py-3"
-                   data-automatic-tax-readiness
-                   data-saved="true"
-                   data-readiness-url="/dashboard/group/events/{{ event.event_id }}/automatic-tax/readiness">
-                <p id="automatic-tax-readiness-status"
-                   class="text-sm/6"
-                   data-automatic-tax-readiness-role="status"
-                   role="status"
-                   aria-live="polite"></p>
-                <button type="button"
-                        class="btn-primary-outline btn-mini mt-3 me-3"
-                        data-automatic-tax-readiness-action="review-state"
-                        hidden>Review State code</button>
-                <a href="/docs#/guides/event-operations?id=tickets-discounts-and-refunds"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   hx-boost="false"
-                   class="mt-3 inline-block text-sm font-medium text-primary-fg-hover hover:text-primary-fg-hover-strong hover:underline"
-                   data-automatic-tax-readiness-role="manual-tax-help"
-                   hidden>Learn how to configure manual tax</a>
-              </div>
-
-              <div id="manual-tax-rates-fieldset"
-                   class="col-span-full max-w-3xl"
-                   data-disabled="{{ ticketing_read_only }}"
-                   data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'
-                   data-tax-rates-url="/dashboard/group/events/tax-rates"
-                   tabindex="-1"
-                   {% if !self.uses_manual_ticket_tax() %}hidden{% endif %}>
-                <div class="form-label">
-                  <label for="manual-tax-rates">Manual Stripe Tax Rates</label>
-                  <span class="group/manual-tax-info relative inline-flex align-super">
-                    <button type="button"
-                            class="relative inline-flex cursor-help rounded-full before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-edge"
-                            aria-label="About Manual Stripe Tax Rates"
-                            aria-describedby="manual-tax-rates-info">
-                      <span class="svg-icon size-3 icon-question-mark bg-stone-500"
-                            aria-hidden="true"></span>
-                    </button>
-                    {% call dashboard::tooltip_panel(
-                      id = "manual-tax-rates-info",
-                      title = "Stripe Tax Rates",
-                      visibility_classes = "group-hover/manual-tax-info:visible group-hover/manual-tax-info:opacity-100 group-focus-within/manual-tax-info:visible group-focus-within/manual-tax-info:opacity-100",
-                      width_classes = "w-72"
-                    ) -%}
-                    <span class="block text-stone-900">Create Tax Rates in the fiscal sponsor's Stripe account.</span>
-                    {% endcall -%}
-                  </span>
-                </div>
-                <div class="mt-2 flex items-end gap-3">
-                  <select id="manual-tax-rates"
-                          name="manual_tax_rate_ids[]"
-                          class="select-primary flex-1"
-                          data-tax-rates-role="select"
-                          aria-describedby="manual-tax-rates-help manual-tax-rates-state"></select>
-                  <button type="button"
-                          class="btn-primary-outline inline-flex min-w-28 shrink-0 items-center justify-center whitespace-nowrap"
-                          data-tax-rates-action="retry"
-                          aria-label="Retry loading Stripe Tax Rates"
-                          hidden>
-                    <span data-tax-rates-role="retry-label">Retry</span>
-                    <span class="inline-flex items-center"
-                          data-tax-rates-role="retry-loading"
-                          hidden>
-                      <svg-spinner size="size-4" label="Loading Stripe Tax Rates">
-                      </svg-spinner>
-                    </span>
-                  </button>
-                </div>
-                <p id="manual-tax-rates-help" class="form-legend">
-                  Select an active rate owned by this group's fiscal sponsor. The same rate applies to every paid ticket tier.
-                </p>
-                <p id="manual-tax-rates-state"
-                   class="mt-2 rounded-md border px-4 py-3 text-sm/6"
-                   data-tax-rates-role="state"
-                   role="status"
-                   aria-live="polite"
-                   hidden></p>
-              </div>
-            {% endif -%}
+      {% if show_invitation_requests_tab -%}
+        {# Invitation Requests Tab -#}
+        <div data-content="invitation-requests" class="hidden min-w-0">
+          <div id="invitation-requests-content">
+            {{ dashboard::form_title(title = "Requests", description = "Review and manage attendee approval requests.") -}}
+            {{ event_form::loading_placeholder(id = "invitation-requests-loading", label = "Loading invitation requests...") -}}
           </div>
         </div>
+        {# End Invitation Requests Tab -#}
       {% endif -%}
 
-      <div>
-        <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
-        <p class="mt-1 text-sm/6 text-stone-500">
-          Use one ticket type per tier and add price windows for scheduled pricing.
-          Paid ticket prices require an in-person or hybrid event with a venue name,
-          address, city, postal code, and country.
-          {% if ticketing_free_only -%}
-            {% if self.requires_external_payments_opt_in() -%}
-              Ticket prices are fixed at 0 until external payments are enabled in group settings;
-              this deployment does not offer Stripe connected accounts for this group's country.
-            {% else if self.requires_external_payments_seller_name() -%}
-              Ticket prices are fixed at 0 until the legal name of the organization collecting
-              external payments is saved in group settings.
-            {% else -%}
-              Ticket prices are fixed at 0 until payments are configured.
-            {% endif -%}
-          {% else -%}
-            Set the ticket amount to 0 to make a specific tier free.
-          {% endif -%}
-        </p>
-        <div class="mt-10">
-          <div class="flex justify-end">
-            <button id="add-ticket-type-button"
-                    type="button"
-                    class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"
-                    aria-label="Add ticket type"
-                    {% if ticketing_read_only %}
-                      disabled title="Ticket settings are currently read-only."
-                    {% endif %}>Add ticket type</button>
-          </div>
-          {# djlint:off #}
-          <ticket-types-editor id="ticket-types-ui" class="mt-5 block space-y-4" data-disabled="{{ ticketing_read_only }}" {% if ticketing_free_only %}free-only{% endif %} ticket-types="{% if let Some(ticket_types) = &event.ticket_types -%}{{ ticket_types|json }}{%- else -%}[]{%- endif -%}"></ticket-types-editor>
-          {# djlint:on #}
-        </div>
-      </div>
-
-      {% if paid_ticketing_available || event.is_paid_capable() -%}
-        <div class="pb-12">
-          <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
-          <p class="mt-1 text-sm/6 text-stone-500">
-            Discount codes apply to the event currency and can be limited by schedule, remaining
-            uses, or total redemptions.
-          </p>
-          <div class="mt-10">
-            <div class="flex justify-end">
-              <button id="add-discount-code-button"
-                      type="button"
-                      class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"
-                      aria-label="Add discount code"
-                      {% if ticketing_read_only %}
-                        disabled title="Ticket settings are currently read-only."
-                      {% endif %}>Add discount code</button>
-            </div>
-            {# djlint:off #}
-            <discount-codes-editor id="discount-codes-ui" class="mt-5 block space-y-4" data-disabled="{{ ticketing_read_only }}" discount-codes="{% if let Some(discount_codes) = &event.discount_codes -%}{{ discount_codes|json }}{%- else -%}[]{%- endif -%}"></discount-codes-editor>
-            {# djlint:on #}
+      {% if show_waitlist_tab -%}
+        {# Waitlist Tab -#}
+        <div data-content="waitlist" class="hidden min-w-0">
+          <div id="waitlist-content">
+            {{ dashboard::form_title(title = "Waitlist", description = "Review and manage people waiting for a seat.") -}}
+            {{ event_form::loading_placeholder(id = "waitlist-loading", label = "Loading waitlist...") -}}
           </div>
         </div>
+        {# End Waitlist Tab -#}
       {% endif -%}
-    </div>
-  </form>
-</div>
-{# End Tickets Tab -#}
 
-{# Contributors Tab -#}
-<div data-content="contributors" class="hidden">
-  <form id="contributors-form" data-event-form>
-    <p class="mb-8 text-sm text-stone-500">
-      People without a full name in their profile aren't listed on the public event page.
-    </p>
-    <div class="space-y-12">
-      {# Speakers Section -#}
-      <div>
-        {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
-          {% if !legacy_speakers.is_empty() -%}
-            {{ dashboard::permission_warning(message = "This event has legacy speakers imported from the previous platform. These speakers cannot be edited.", extra_classes = "mb-4") -}}
-          {% endif -%}
-        {% endif -%}
-        <speakers-selector id="event-speakers-selector" selected-speakers="{{ event.speakers|json }}" dashboard-type="group" {% if event_read_only %}disabled{% endif %} display-mode="table" event-id="{{ event.event_id }}" field-name-prefix="speakers" show-add-button {% if can_manage_events && !event.canceled %}can-award-badges show-award-all{% endif %} label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
-        <div class="mt-8">
-          <h3 class="form-label m-0">Session-level speakers</h3>
-          <p class="mt-2 text-sm text-stone-500">
-            Speakers added to individual sessions are listed here. Manage their session assignments from
-            the Sessions tab.
-          </p>
-          <session-speakers-table id="session-speakers-table" sessions="{{ event.sessions|json }}" event-id="{{ event.event_id }}" {% if can_manage_events && !event.canceled %}can-award-badges{% endif %}></session-speakers-table>
+      {% if !event.canceled -%}
+        {# Surveys Tab -#}
+        <div data-content="surveys" class="hidden min-w-0">
+          <div id="surveys-refresh"
+               hx-get="/dashboard/group/events/{{ event.event_id }}/surveys"
+               hx-trigger="refresh-event-surveys from:body"
+               hx-target="#surveys-content"
+               hx-swap="innerHTML"
+               hx-indicator="#dashboard-spinner"></div>
+          <div id="surveys-content" data-event-surveys-root>
+            {{ dashboard::form_title(title = "Surveys", description = "Collect feedback from attendees after the event ends.") -}}
+            {{ event_form::loading_placeholder(id = "surveys-loading", label = "Loading surveys...") -}}
+          </div>
+        </div>
+        {# End Surveys Tab -#}
+      {% endif -%}
+
+      {# Analytics Tab -#}
+      <div data-content="analytics" class="hidden min-w-0">
+        <p id="analytics-status" class="sr-only" role="status"></p>
+        <div id="analytics-content"
+             data-analytics-url="/dashboard/group/events/{{ event.event_id }}/analytics"
+             data-analytics-state="idle">
+          {{ dashboard::page_title(title = "Analytics", docs_href = "/docs#/guides/event-operations?id=analytics",
+            description = "Traffic, registrations and attendance for this event. Analytics are cached for up to an hour and may not display up to date information.") }}
+          {{ event_form::loading_placeholder(id = "analytics-loading", label = "Loading analytics...") -}}
+          <div id="analytics-error"
+               class="hidden mt-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+               role="alert"
+               tabindex="-1">
+            <p>Analytics could not be loaded. Please try again.</p>
+            <button type="button"
+                    class="btn-primary-outline btn-mini mt-3"
+                    data-analytics-retry>Retry</button>
+          </div>
         </div>
       </div>
-      {# End Speakers Section -#}
+      {# End Analytics Tab -#}
 
-      {# Hosts Section -#}
-      <div>
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
-          {% if can_manage_events && !event.canceled -%}
-            <button id="event-hosts-award-button"
-                    type="button"
-                    class="btn-primary-outline"
-                    data-badge-award-open
-                    disabled>Award badge</button>
-          {% endif -%}
-        </div>
-        <div class="mt-5">
-          {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
-            {% if !legacy_hosts.is_empty() -%}
-              {{ dashboard::permission_warning(message = "This event has legacy hosts imported from the previous platform. These hosts cannot be edited.", extra_classes = "mb-6") -}}
-            {% endif -%}
-          {% endif -%}
-          <user-search-selector id="event-hosts-selector" selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" {% if event_read_only %}disabled{% endif %} display-mode="table" event-id="{{ event.event_id }}" {% if can_manage_events && !event.canceled %}can-award-badges award-button-id="event-hosts-award-button"{% endif %} label="host" legend="Search for event hosts by their username"></user-search-selector>
-        </div>
-      </div>
-      {# End Hosts Section -#}
-
-      {# Organizers Section -#}
-      <div>
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Organizers</div>
-          {% if can_manage_events && !event.canceled -%}
-            <button id="event-organizers-award-button"
-                    type="button"
-                    class="btn-primary-outline"
-                    data-badge-award-open
-                    disabled>Award badge</button>
-          {% endif -%}
-        </div>
-        <p class="mt-2 text-sm text-stone-500">
-          Organizers are listed on the public event page. Only accepted group team members can be added, and
-          new events start with the whole team. People who leave the team stay listed until removed. Contact
-          messages still go to the group team.
-        </p>
-        <div class="mt-5">
-          <user-search-selector id="event-organizers-selector" selected-users="{{ event.organizers|json }}" available-users="{{ team_members|json }}" field-name="organizers" dashboard-type="group" {% if event_read_only %}disabled{% endif %} display-mode="table" event-id="{{ event.event_id }}" {% if can_manage_events && !event.canceled %}can-award-badges award-button-id="event-organizers-award-button"{% endif %} label="organizer" legend="Search group team members by name or username"></user-search-selector>
-          <input type="hidden" name="organizers_present" value="true">
-        </div>
-      </div>
-      {# End Organizers Section -#}
-
-      {# Sponsors Section -#}
-      <div class="pb-12">
-        <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Sponsors</div>
-        <div class="mt-2">
-          <sponsors-section sponsors="{{ sponsors|json }}" selected-sponsors="{{ event.sponsors|json }}" event-id="{{ event.event_id }}"></sponsors-section>
-        </div>
-      </div>
-      {# End Sponsors Section -#}
-    </div>
-  </form>
-</div>
-{# End Contributors Tab -#}
-
-</div>
-</div>
-
-{# Attendees Tab -#}
-<div data-content="attendees" class="hidden min-w-0">
-  <div id="attendees-content" data-group-check-in-root>
-    {{ dashboard::form_title(title = "Attendees", description = "Review registrations and manage attendee check-in.") -}}
-    {# Loading placeholder -#}
-    <div id="attendees-loading" class="flex items-center justify-center py-12">
-      <div class="flex flex-col items-center space-y-4">
-        {{ ui::spinner(size = "size-10") -}}
-        <div class="text-sm text-stone-500">Loading attendees...</div>
-      </div>
+      {# Form buttons (hidden while the survey form or results show their own actions) -#}
+      {{ event_form::form_footer_actions(extra_classes = "group-has-[[data-content=analytics]:not(.hidden)]/event-page:mt-10 group-has-[[data-content=surveys]:not(.hidden)_:is([data-event-survey-form],[data-event-survey-results],[data-event-survey-responses])]/event-page:hidden") -}}
+      {# End form buttons -#}
     </div>
   </div>
-</div>
-{# End Attendees Tab -#}
-
-{% if show_invitation_requests_tab -%}
-  {# Invitation Requests Tab -#}
-  <div data-content="invitation-requests" class="hidden min-w-0">
-    <div id="invitation-requests-content">
-      {{ dashboard::form_title(title = "Requests", description = "Review and manage attendee approval requests.") -}}
-      <div id="invitation-requests-loading"
-           class="flex items-center justify-center py-12">
-        <div class="flex flex-col items-center space-y-4">
-          {{ ui::spinner(size = "size-10") -}}
-          <div class="text-sm text-stone-500">Loading invitation requests...</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {# End Invitation Requests Tab -#}
-{% endif -%}
-
-{% if show_waitlist_tab -%}
-  {# Waitlist Tab -#}
-  <div data-content="waitlist" class="hidden min-w-0">
-    <div id="waitlist-content">
-      {{ dashboard::form_title(title = "Waitlist", description = "Review and manage people waiting for a seat.") -}}
-      <div id="waitlist-loading" class="flex items-center justify-center py-12">
-        <div class="flex flex-col items-center space-y-4">
-          {{ ui::spinner(size = "size-10") -}}
-          <div class="text-sm text-stone-500">Loading waitlist...</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {# End Waitlist Tab -#}
-{% endif -%}
-
-{% if !event.canceled -%}
-  {# Surveys Tab -#}
-  <div data-content="surveys" class="hidden min-w-0">
-    <div id="surveys-refresh"
-         hx-get="/dashboard/group/events/{{ event.event_id }}/surveys"
-         hx-trigger="refresh-event-surveys from:body"
-         hx-target="#surveys-content"
-         hx-swap="innerHTML"
-         hx-indicator="#dashboard-spinner"></div>
-    <div id="surveys-content" data-event-surveys-root>
-      {{ dashboard::form_title(title = "Surveys", description = "Collect feedback from attendees after the event ends.") -}}
-      <div id="surveys-loading" class="flex items-center justify-center py-12">
-        <div class="flex flex-col items-center space-y-4">
-          {{ ui::spinner(size = "size-10") -}}
-          <div class="text-sm text-stone-500">Loading surveys...</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {# End Surveys Tab -#}
-{% endif -%}
-
-{# Analytics Tab -#}
-<div data-content="analytics" class="hidden min-w-0">
-  <p id="analytics-status" class="sr-only" role="status"></p>
-  <div id="analytics-content"
-       data-analytics-url="/dashboard/group/events/{{ event.event_id }}/analytics"
-       data-analytics-state="idle">
-    {{ dashboard::page_title(title = "Analytics", docs_href = "/docs#/guides/event-operations?id=analytics",
-      description = "Traffic, registrations and attendance for this event. Analytics are cached for up to an hour and may not display up to date information.") }}
-    <div id="analytics-loading" class="flex items-center justify-center py-12">
-      <div class="flex flex-col items-center space-y-4">
-        {{ ui::spinner(size = "size-10") -}}
-        <div class="text-sm text-stone-500">Loading analytics...</div>
-      </div>
-    </div>
-    <div id="analytics-error"
-         class="hidden mt-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-         role="alert"
-         tabindex="-1">
-      <p>Analytics could not be loaded. Please try again.</p>
-      <button type="button"
-              class="btn-primary-outline btn-mini mt-3"
-              data-analytics-retry>Retry</button>
-    </div>
-  </div>
-</div>
-{# End Analytics Tab -#}
-
-{# Form buttons (hidden while the survey form or results show their own actions) -#}
-<div class="flex flex-wrap items-center justify-end gap-3 mt-6 group-has-[[data-content=analytics]:not(.hidden)]/event-page:mt-10 group-has-[[data-content=surveys]:not(.hidden)_:is([data-event-survey-form],[data-event-survey-results],[data-event-survey-responses])]/event-page:hidden">
-  <button type="button" data-section-next class="btn-primary w-24">Next</button>
-  <button id="cancel-button"
-          type="button"
-          hx-get="/dashboard/group?tab=events"
-          hx-trigger="click, confirmed"
-          hx-target="body"
-          hx-indicator="#dashboard-spinner"
-          class="btn-primary-outline w-24">Cancel</button>
-</div>
-{# End form buttons -#}
-</div>
 </div>
 
 <div id="event-preview-modal-root" class="contents"></div>

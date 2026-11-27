@@ -1,3 +1,90 @@
+{% import "macros/ui.html" as ui -%}
+
+{# Event form back link -#}
+{# Used by event add and update pages to return to the events list. -#}
+{% macro back_link(href) -%}
+  <a id="event-back-link"
+     href="{{ href }}"
+     hx-get="{{ href }}"
+     hx-trigger="click, confirmed"
+     hx-target="body"
+     hx-indicator="#dashboard-spinner"
+     data-pending-changes-guard
+     class="flex w-fit items-center gap-1 text-sm font-medium text-primary-fg hover:underline">
+    <span class="svg-icon size-4 icon-arrow-left bg-primary-fg"
+          aria-hidden="true"></span>
+    Back to events
+  </a>
+{% endmacro back_link -%}
+{# End event form back link -#}
+
+{# Event form footer actions -#}
+{# Used by event add and update pages for Next and Cancel buttons. -#}
+{% macro form_footer_actions(extra_classes = "") -%}
+  <div class="flex flex-wrap items-center justify-end gap-3 mt-6 {{ extra_classes }}">
+    <button type="button" data-section-next class="btn-primary w-24">Next</button>
+    <button id="cancel-button"
+            type="button"
+            hx-get="/dashboard/group?tab=events"
+            hx-trigger="click, confirmed"
+            hx-target="body"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary-outline w-24">Cancel</button>
+  </div>
+{% endmacro form_footer_actions -%}
+{# End event form footer actions -#}
+
+{# Event form lazy tab loading placeholder -#}
+{# Used by lazy-loaded review tabs on the event update page. -#}
+{% macro loading_placeholder(id, label) -%}
+  <div id="{{ id }}" class="flex items-center justify-center py-12">
+    <div class="flex flex-col items-center space-y-4">
+      {{ ui::spinner(size = "size-10") -}}
+      <div class="text-sm text-stone-500">{{ label }}</div>
+    </div>
+  </div>
+{% endmacro loading_placeholder -%}
+{# End event form lazy tab loading placeholder -#}
+
+{# Event form pending changes alert -#}
+{# Used by event add and update pages; the caller body renders the save button. -#}
+{% macro pending_changes_alert(message) -%}
+  <div id="pending-changes-alert" class="col-span-full hidden min-w-0">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-edge-faint bg-primary-tint px-4 py-3 text-primary-fg-deep">
+      <p class="min-w-0 flex-1 break-words text-sm/6">{{ message }}</p>
+      {{ caller() }}
+    </div>
+  </div>
+{% endmacro pending_changes_alert -%}
+{# End event form pending changes alert -#}
+
+{# Event form preview button -#}
+{# Used by event add and update headers to preview the draft or saved event. -#}
+{% macro preview_button(can_manage_events) -%}
+  <button id="event-preview-button"
+          type="button"
+          aria-label="Preview"
+          class="group btn-primary-outline btn-mini h-7! inline-flex items-center justify-center gap-1.5 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+          {% if !can_manage_events -%}
+            disabled title="Your role cannot preview events."
+          {% else -%}
+            title="Preview"
+          {% endif -%}>
+    <svg class="size-3.5 shrink-0"
+         aria-hidden="true"
+         stroke="currentColor"
+         fill="currentColor"
+         stroke-width="0"
+         viewBox="0 0 16 16"
+         xmlns="http://www.w3.org/2000/svg">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
+      </path>
+    </svg>
+    <span>Preview</span>
+  </button>
+{% endmacro preview_button -%}
+{# End event form preview button -#}
+
 {# Event form tab button -#}
 {# Used by event add and update pages for primary form tabs. -#}
 {% macro tab_button(section, icon, label, active = false, extra_attrs = "") -%}

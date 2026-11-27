@@ -21,7 +21,7 @@ export const localizeCurrencyLabel = (value, locale = undefined) => {
 
   try {
     return `${prefix}${new Intl.NumberFormat(locale, { currency, style: "currency" }).format(amount)}`;
-  } catch (_) {
+  } catch {
     return label;
   }
 };

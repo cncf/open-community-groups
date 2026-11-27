@@ -26,6 +26,9 @@ use crate::{
     },
 };
 
+#[cfg(test)]
+mod tests;
+
 /// Home page template for the group dashboard.
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/group/home.html")]

@@ -136,7 +136,7 @@ export const toDateTimeLocalInTimezone = (value, timezone) => {
 
   try {
     return convertDateToDateTimeLocalInTz(date, timezone) || value.slice(0, 16);
-  } catch (_) {
+  } catch {
     return value.slice(0, 16);
   }
 };
@@ -173,7 +173,7 @@ export const toUtcIsoInTimezone = (value, timezone) => {
     const guessDate = new Date(guessMs);
     const offsetMs = getTimeZoneOffsetMs(guessDate, timezone);
     return new Date(guessMs - offsetMs).toISOString();
-  } catch (_) {
+  } catch {
     return trimmedValue;
   }
 };

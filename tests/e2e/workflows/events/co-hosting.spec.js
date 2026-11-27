@@ -401,7 +401,6 @@ test.describe("event co-hosting workflows", () => {
     // Verify only the new co-host blocks publishing again.
     await expectPendingCohostBlocksPublication(organizerGroupPage, 1);
     await openCohostsSection(organizerGroupPage);
-    const cohostsSelector = getCohostsSelector(organizerGroupPage);
     await expect(getSelectedCohostCard(organizerGroupPage, COHOST_GROUP_NAME)).toContainText("Approved");
     await expect(getSelectedCohostCard(organizerGroupPage, SECOND_COHOST_GROUP_NAME)).toContainText(
       "Pending",

@@ -1,0 +1,14 @@
+{# Sessions Tab (shared by events_add.html and events_update.html; expects `form`, `meetings_enabled`, `meetings_max_participants`, `session_kinds`) -#}
+<div data-content="sessions" class="hidden">
+  <form id="sessions-form" data-event-form>
+    <div class="pb-12">
+      {{ dashboard::form_title(title = "Sessions") -}}
+      {# djlint:off #}
+      <div class="mt-10">
+        <sessions-section {% if let Some(event) = form.existing_event %}sessions="{{ event.sessions|json }}" {% endif %}session-kinds="{{ session_kinds|json }}" {% if let Some(approved_submissions) = form.approved_submissions %}approved-submissions="{{ approved_submissions|json }}" {% endif %}{% if let Some(event) = form.existing_event %}timezone="{{ event.timezone }}" {% endif %}meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" label-max-selected="{{ crate::validation::MAX_ASSIGNED_EVENT_LABELS }}" {% if let Some(event) = form.existing_event %}event-starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" event-ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" {% if event.is_past() %}event-past {% endif %}{% endif %}{% if meetings_enabled %}meetings-enabled{% endif %}></sessions-section>
+      </div>
+      {# djlint:on #}
+    </div>
+  </form>
+</div>
+{# End Sessions Tab -#}

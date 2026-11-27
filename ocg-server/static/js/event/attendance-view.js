@@ -10,7 +10,6 @@ import {
   ATTEND_EVENT_LABEL,
   ATTENDANCE_CHECK_FAILED_MESSAGE,
   CANCEL_ATTENDANCE_LABEL,
-  CANCEL_INVITATION_REQUEST_LABEL,
   CANCELED_EVENT_TITLE,
   CONTINUE_CHECKOUT_LABEL,
   GET_FREE_TICKET_LABEL,
@@ -806,7 +805,7 @@ const formatExternalPaymentDeadline = (deadline, timezone) => {
 
   try {
     return date.toLocaleString(undefined, formatOptions);
-  } catch (_) {
+  } catch {
     delete formatOptions.timeZone;
     return date.toLocaleString(undefined, formatOptions);
   }

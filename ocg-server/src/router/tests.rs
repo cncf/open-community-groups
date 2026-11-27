@@ -822,6 +822,10 @@ fn test_dashboard_refresh_paths_are_routed_gets() {
     let routes = declared_routes();
     let homes = [
         (
+            "/dashboard/community",
+            include_str!("../templates/dashboard/community/home.rs"),
+        ),
+        (
             "/dashboard/group",
             include_str!("../templates/dashboard/group/home.rs"),
         ),

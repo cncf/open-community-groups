@@ -70,7 +70,7 @@ const resolveCurrencyFractionDigits = (currencyCode) => {
       currency: currencyCode,
       style: "currency",
     }).resolvedOptions().maximumFractionDigits;
-  } catch (_) {
+  } catch {
     return 2;
   }
 };
@@ -93,7 +93,7 @@ export const formatMinorUnitsForDisplay = (amountMinor, currencyCode) => {
       currency: currencyCode,
       style: "currency",
     }).format(amountMinor / divisor);
-  } catch (_) {
+  } catch {
     if (fractionDigits === 0) {
       return `${currencyCode} ${amountMinor}`;
     }
