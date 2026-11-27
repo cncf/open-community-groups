@@ -316,7 +316,8 @@
          hx-boost="false"
          class="group inline-flex size-7 shrink-0 self-center items-center justify-center rounded-full border border-primary-edge bg-surface transition-colors hover:bg-primary-fill focus:outline-none focus:ring-4 focus:ring-primary-halo"
          aria-label="{% if docs_aria_label.is_empty() -%} Open documentation {% else -%} {{ docs_aria_label }} {% endif -%}">
-        <div class="svg-icon size-4 icon-question bg-primary-fg transition-colors group-hover:bg-on-primary"></div>
+        <div class="svg-icon size-4 icon-question bg-primary-fg transition-colors group-hover:bg-on-primary">
+        </div>
       </a>
     </div>
     {% if !description.is_empty() || !description_html.is_empty() || !id.is_empty() -%}
