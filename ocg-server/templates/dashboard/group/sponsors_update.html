@@ -30,9 +30,9 @@
     {% if let Some(website) = &sponsor.website_url -%}
       value="{{ website }}"
     {%- endif %}
-  {%- endlet %}
-  {{ sponsor_fields::details_fields(name_attr = sponsor_name_attr, logo_attr = sponsor_logo_attr, website_attr = sponsor_website_attr, featured_checked = sponsor.featured) -}}
-</div>
+    {%- endlet %}
+    {{ sponsor_fields::details_fields(name_attr = sponsor_name_attr, logo_attr = sponsor_logo_attr, website_attr = sponsor_website_attr, featured_checked = sponsor.featured) -}}
+  </div>
 </div>
 </div>
 

@@ -22,7 +22,8 @@
         <button type="button"
                 data-event-preview-close
                 class="group ms-4 inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-transparent text-sm text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-900">
-          <div class="svg-icon size-5 bg-stone-500 transition-colors group-hover:bg-stone-900 icon-close"></div>
+          <div class="svg-icon size-5 bg-stone-500 transition-colors group-hover:bg-stone-900 icon-close">
+          </div>
           <span class="sr-only">Close modal</span>
         </button>
       </div>
@@ -328,7 +329,8 @@
                   <ol class="relative border-s border-stone-200">
                     {% for session in event.sessions -%}
                       <li class="{% if !loop.last %}mb-5 {% endif %}ms-4">
-                        <div class="absolute -start-1.5 mt-1 size-3 rounded-full border border-surface bg-stone-300"></div>
+                        <div class="absolute -start-1.5 mt-1 size-3 rounded-full border border-surface bg-stone-300">
+                        </div>
                         <div class="mb-2 text-sm text-stone-500/75">{{ session.time_label }}</div>
                         <div class="flex flex-col items-start gap-2 sm:flex-row">
                           <h3 class="font-semibold text-stone-900 md:text-lg">{{ session.name_label() }}</h3>
